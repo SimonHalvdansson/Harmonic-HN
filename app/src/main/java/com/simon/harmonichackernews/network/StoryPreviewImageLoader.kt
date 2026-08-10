@@ -5,19 +5,12 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
-import com.simon.harmonichackernews.network.LinkSummaryLoader.buildYoutubeOEmbedUrl
-import com.simon.harmonichackernews.network.LinkSummaryLoader.extract
-import com.simon.harmonichackernews.network.LinkSummaryLoader.extractYoutubeOEmbedSummary
 import com.simon.harmonichackernews.network.LinkSummaryLoader.isYoutubeVideoUrl
-import com.simon.harmonichackernews.network.LinkSummaryLoader.readBoundedBody
-import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache
-import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import java.util.Locale
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
+import kotlinx.coroutines.Job
 
 object StoryPreviewImageLoader {
     private const val MAX_CACHE_SIZE = 300
@@ -150,14 +143,6 @@ object StoryPreviewImageLoader {
             return previewImageRequest
         }
 
-        val youtubeOEmbedUrl = buildYoutubeOEmbedUrl(normalizedPageUrl)
-        val youtubeOEmbedRequest = !TextUtils.isEmpty(youtubeOEmbedUrl)
-        val requestUrl = if (youtubeOEmbedRequest) youtubeOEmbedUrl.orEmpty() else normalizedPageUrl
-        val acceptHeader = if (youtubeOEmbedRequest)
-            "application/json"
-        else
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-
         var pendingBatch: PendingPreviewImageBatch?
         synchronized(StoryPreviewImageLoader::class.java) {
             if (!forceRefresh) {
@@ -186,96 +171,31 @@ object StoryPreviewImageLoader {
             PENDING_CALLBACKS.put(normalizedPageUrl, pendingBatch)
         }
 
-        val request = HttpRequest.Builder()
-            .url(requestUrl)
-            .header("Accept", acceptHeader)
-            .get()
-            .build()
-
-        val call = httpClientInstance.newCall(request)
         val requestBatch = pendingBatch
+        val job = NetworkComponent.launchCallbackRequest(
+            request = {
+                NetworkComponent.linkSummaryRepository.load(normalizedPageUrl)
+            },
+            onSuccess = { sharedSummary ->
+                val summary = LinkSummaryLoader.fromShared(sharedSummary)
+                StoryPreviewImageLoader.finish(
+                    normalizedPageUrl,
+                    requestBatch!!,
+                    summary.imageUrl,
+                    summary,
+                )
+            },
+            onFailure = {
+                StoryPreviewImageLoader.finish(normalizedPageUrl, requestBatch!!, null, null)
+            },
+        )
         synchronized(StoryPreviewImageLoader::class.java) {
             if (PENDING_CALLBACKS.get(normalizedPageUrl) === requestBatch) {
-                requestBatch!!.call = call
+                requestBatch!!.call = job
             } else {
-                call.cancel()
+                job.cancel()
             }
         }
-
-        call.enqueue(object : HttpCallback {
-            override fun onFailure(call: HttpCall, e: IOException) {
-                StoryPreviewImageLoader.finish(normalizedPageUrl, requestBatch!!, null, null)
-            }
-
-            override fun onResponse(call: HttpCall, response: HttpResponse) {
-                try {
-                    response.use { closeableResponse ->
-                        if (!closeableResponse.isSuccessful) {
-                            StoryPreviewImageLoader.finish(
-                                normalizedPageUrl,
-                                requestBatch!!,
-                                null,
-                                null
-                            )
-                            return
-                        }
-                        val contentType = closeableResponse.header("Content-Type", "")
-                        if (!youtubeOEmbedRequest && !TextUtils.isEmpty(contentType) && !contentType!!.lowercase()
-                                .contains("html")
-                        ) {
-                            StoryPreviewImageLoader.finish(
-                                normalizedPageUrl,
-                                requestBatch!!,
-                                null,
-                                null
-                            )
-                            return
-                        }
-
-                        val responseBody = readBoundedBody(
-                            closeableResponse.body ?: run {
-                                StoryPreviewImageLoader.finish(
-                                    normalizedPageUrl,
-                                    requestBatch!!,
-                                    null,
-                                    null
-                                )
-                                return
-                            }
-                        )
-                        if (youtubeOEmbedRequest) {
-                            val summary = extractYoutubeOEmbedSummary(
-                                responseBody,
-                                normalizedPageUrl
-                            )
-                            StoryPreviewImageLoader.finish(
-                                normalizedPageUrl,
-                                requestBatch!!,
-                                if (summary == null) null else summary.imageUrl,
-                                summary
-                            )
-                            return
-                        }
-
-                        val baseUrl = closeableResponse.requestUrl.toString()
-                        val summary = extract(
-                            responseBody,
-                            null,
-                            normalizeContentType(contentType),
-                            baseUrl
-                        )
-                        StoryPreviewImageLoader.finish(
-                            normalizedPageUrl,
-                            requestBatch!!,
-                            summary.imageUrl,
-                            summary
-                        )
-                    }
-                } catch (e: Exception) {
-                    StoryPreviewImageLoader.finish(normalizedPageUrl, requestBatch!!, null, null)
-                }
-            }
-        })
         return previewImageRequest
     }
 
@@ -299,17 +219,6 @@ object StoryPreviewImageLoader {
 
         val previewImageCacheEntryId = getPreviewImageCacheEntryId(storyId, normalizedPageUrl)
         return loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId, false).loaded
-    }
-
-    private fun normalizeContentType(contentType: String?): String {
-        if (TextUtils.isEmpty(contentType)) {
-            return ""
-        }
-        val separator = contentType!!.indexOf(';')
-        return (if (separator >= 0) contentType.substring(
-            0,
-            separator
-        ) else contentType).trim { it <= ' ' }
     }
 
     private fun normalizeHttpUrl(url: String?): String? {
@@ -789,43 +698,14 @@ object StoryPreviewImageLoader {
     }
 
     private fun serializeLinkSummary(result: LinkSummaryLoader.Result): String {
-        try {
-            return JSONObject()
-                .put("title", result.title)
-                .put("site", result.siteName)
-                .put("author", result.author)
-                .put("published", result.publishedTime)
-                .put("language", result.language)
-                .put("type", result.contentType)
-                .put("description", result.description)
-                .put("image", result.imageUrl)
-                .put("url", result.finalUrl)
-                .toString()
-        } catch (e: Exception) {
-            return ""
-        }
+        return LinkSummaryCodec.encode(LinkSummaryLoader.toShared(result))
     }
 
     private fun deserializeLinkSummary(serialized: String?): LinkSummaryLoader.Result? {
         if (serialized.isNullOrEmpty()) {
             return null
         }
-        try {
-            val json = JSONObject(serialized)
-            return LinkSummaryLoader.Result(
-                json.optString("title", ""),
-                json.optString("site", ""),
-                json.optString("author", ""),
-                json.optString("published", ""),
-                json.optString("language", ""),
-                json.optString("type", ""),
-                json.optString("description", ""),
-                json.optString("image", ""),
-                json.optString("url", "")
-            )
-        } catch (e: Exception) {
-            return null
-        }
+        return LinkSummaryCodec.decode(serialized)?.let(LinkSummaryLoader::fromShared)
     }
 
     private fun getPreviewImageTintColorCacheId(
@@ -894,7 +774,7 @@ object StoryPreviewImageLoader {
 
     private class PendingPreviewImageBatch {
         val requests: MutableList<PendingPreviewImageRequest> = ArrayList()
-        var call: HttpCall? = null
+        var call: Job? = null
     }
 
     private class PendingPreviewImageRequest(

@@ -1,49 +1,27 @@
 package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
-import android.text.TextUtils
 import android.webkit.ValueCallback
 import android.webkit.WebView
 import com.simon.harmonichackernews.data.NitterInfo
-import java.net.MalformedURLException
-import java.net.URL
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
+import com.simon.harmonichackernews.network.NitterPreview
+import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 object NitterGetter {
     fun isValidNitterUrl(url: String?): Boolean {
-        return url != null && url.contains("nitter.net")
+        return NitterPreview.isNitterUrl(url)
     }
 
     fun isConvertibleToNitter(url: String?): Boolean {
-        try {
-            val u = URL(url)
-            var host = u.getHost()
-            if (host == null) return false
-
-            host = host.lowercase()
-            if (host.startsWith("www.")) host = host.substring(4)
-            if (host.startsWith("mobile.")) host = host.substring(7)
-            if (host != "twitter.com" && host != "x.com") return false
-
-            val path = u.getPath()
-            if (path == null) return false
-
-            // /<handle>/status/<digits> or /i/web/status/<digits>, allow trailing segments like /photo/1
-            return path.matches("^/(?:[A-Za-z0-9_]{1,15}/status/\\d+|i/web/status/\\d+)(?:/[^/]*)*$".toRegex())
-        } catch (e: MalformedURLException) {
-            return false
-        }
+        return NitterPreview.isConvertibleUrl(url)
     }
 
 
     fun convertToNitterUrl(url: String): String {
-        return url.replace("twitter.com", "nitter.net").replace("x.com", "nitter.net")
+        return NitterPreview.convertUrl(url)
     }
 
     fun getInfo(webView: WebView, ctx: Context?, callback: GetterCallback) {
-        val nitterInfo = NitterInfo()
-
         webView.evaluateJavascript(
             "(function() { " +
                     "function absoluteUrl(value) {" +
@@ -102,36 +80,10 @@ object NitterGetter {
                     "});" +
                     "}) ();", object : ValueCallback<String> {
                 override fun onReceiveValue(value: String?) {
-                    var resp = value.orEmpty()
                     try {
-                        resp = JSONArray("[" + resp + "]").getString(0)
-
-                        val jsonObject = JSONObject(resp)
-                        nitterInfo.text = jsonObject.getString("text").replace("\n", "<br>")
-                        nitterInfo.userName = jsonObject.getString("userName")
-                        nitterInfo.userTag = jsonObject.getString("userTag")
-                        nitterInfo.date = jsonObject.getString("date")
-                        nitterInfo.replyCount = jsonObject.getString("replyCount")
-                        nitterInfo.reposts = jsonObject.getString("reposts")
-                        nitterInfo.likes = jsonObject.getString("likes")
-                        nitterInfo.imgSrc = jsonObject.optString("imgSrc")
-                        nitterInfo.hasVideo = jsonObject.optBoolean("hasVideo")
-
-                        nitterInfo.beforeUserName = jsonObject.optString("beforeName")
-                        nitterInfo.beforeUserTag = jsonObject.optString("beforeTag")
-                        nitterInfo.beforeText = jsonObject.optString("beforeText")
-                        nitterInfo.beforeDate = jsonObject.optString("beforeDate")
-                        nitterInfo.beforeImgSrc = jsonObject.optString("beforeImgSrc")
-
-                        if (TextUtils.isEmpty(nitterInfo.imgSrc) || nitterInfo.imgSrc == "null") {
-                            nitterInfo.imgSrc = null
-                        }
-
-                        if (TextUtils.isEmpty(nitterInfo.beforeImgSrc) || nitterInfo.beforeImgSrc == "null") {
-                            nitterInfo.beforeImgSrc = null
-                        }
-
-                        callback.onSuccess(nitterInfo)
+                        val response = JsonStringCodec.decodeJavascriptString(value)
+                            ?: error("Nitter returned an invalid script result")
+                        callback.onSuccess(NitterPreview.parseJavascriptResult(response))
                     } catch (e: Exception) {
                         e.printStackTrace()
                         callback.onFailure("Failed at getting Nitter info")

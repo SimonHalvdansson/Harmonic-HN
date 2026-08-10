@@ -149,6 +149,14 @@ class JsonArray internal constructor(
 class JsonException(message: String, cause: Throwable? = null) :
     IllegalArgumentException(message, cause)
 
+object JsonStringCodec {
+    /** Decodes the JSON string literal returned by WebView evaluateJavascript. */
+    fun decodeJavascriptString(value: String?): String? {
+        if (value.isNullOrEmpty() || value == "null") return null
+        return runCatching { JsonArray("[$value]").getString(0) }.getOrNull()
+    }
+}
+
 private fun parseElement(source: String?): JsonElement = try {
     Json.parseToJsonElement(source ?: throw JsonException("JSON source is null"))
 } catch (error: SerializationException) {

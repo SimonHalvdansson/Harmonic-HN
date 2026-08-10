@@ -12,4 +12,6 @@
     <item name="comments_webview" type="id" />
     <item name="webview_download" type="id" />
     <item name="webview_progress" type="id" />
+    <item name="main_navigation_compose" type="id" />
+    <item name="widget_config_compose" type="id" />
 </resources>

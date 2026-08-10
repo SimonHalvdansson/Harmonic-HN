@@ -1,18 +1,7 @@
 package com.simon.harmonichackernews.network
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.header
-import io.ktor.client.request.request
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.contentType
-import io.ktor.http.formUrlEncode
-import io.ktor.http.parameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -134,7 +123,7 @@ open class JsonObjectRequest(
 }
 
 class RequestQueue(
-    private val client: HttpClient,
+    private val client: KtorHttpClient,
     private val workerScope: CoroutineScope,
     private val callbackDispatcher: CoroutineDispatcher,
 ) {
@@ -190,37 +179,42 @@ class RequestQueue(
         var timeoutMillis = policy.timeoutMillis.toLong()
         while (true) {
             try {
-                val response = client.request(request.url) {
-                    method = when (request.method) {
-                        QueueRequest.Method.POST -> HttpMethod.Post
-                        else -> HttpMethod.Get
-                    }
-                    timeout { requestTimeoutMillis = timeoutMillis }
-                    request.getHeaders().forEach { (name, value) -> header(name, value) }
-                    if (!request.canUseCache()) {
-                        header(HttpHeaders.CacheControl, "no-cache, no-store")
-                    }
-                    when {
-                        request is JsonObjectRequest && request.jsonBody() != null -> {
-                            contentType(ContentType.Application.Json)
-                            setBody(request.jsonBody().orEmpty())
-                        }
-                        request.method == QueueRequest.Method.POST -> {
-                            contentType(ContentType.Application.FormUrlEncoded)
-                            setBody(parameters {
-                                request.getParams().forEach { (name, value) -> append(name, value) }
-                            }.formUrlEncode())
-                        }
-                    }
+                val requestBuilder = HttpRequest.Builder().url(request.url)
+                request.getHeaders().forEach { (name, value) -> requestBuilder.header(name, value) }
+                if (!request.canUseCache()) {
+                    requestBuilder.header(HttpHeaders.CacheControl, "no-cache, no-store")
                 }
-                val body = response.bodyAsText()
-                if (response.status.value !in 200..299) {
-                    throw NetworkError(
-                        message = "HTTP ${response.status.value}",
-                        networkResponse = NetworkResponse(response.status.value, body),
-                    )
+                when {
+                    request is JsonObjectRequest && request.jsonBody() != null -> {
+                        requestBuilder.post(
+                            request.jsonBody().orEmpty().toHttpRequestBody(
+                                "application/json".toHttpMediaType(),
+                            ),
+                        )
+                    }
+
+                    request.method == QueueRequest.Method.POST -> {
+                        val formBody = FormRequestBody.Builder().apply {
+                            request.getParams().forEach { (name, value) -> add(name, value) }
+                        }.build()
+                        requestBuilder.post(formBody)
+                    }
+
+                    else -> requestBuilder.get()
                 }
-                return Result.success(body)
+                val requestClient = client.newBuilder()
+                    .readTimeoutMillis(timeoutMillis)
+                    .build()
+                requestClient.execute(requestBuilder.build()).use { response ->
+                    val body = response.body.readText()
+                    if (!response.isSuccessful) {
+                        throw NetworkError(
+                            message = "HTTP ${response.code}",
+                            networkResponse = NetworkResponse(response.code, body),
+                        )
+                    }
+                    return Result.success(body)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {

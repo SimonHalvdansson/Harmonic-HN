@@ -40,12 +40,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 private const val HackerNewsBaseUrl = "https://news.ycombinator.com/"
 private const val CaptchaResponseScript =
@@ -58,7 +58,7 @@ private const val CaptchaResponseScript =
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun CaptchaDialog(
-    challenge: UserActions.CaptchaChallenge,
+    challenge: HackerNewsCaptchaChallenge,
     onDismiss: () -> Unit,
     onCaptchaResponse: (String) -> Unit,
 ) {
@@ -196,12 +196,7 @@ private fun CaptchaDialogLayout(
 }
 
 private fun decodeJavascriptString(value: String?): String {
-    if (value.isNullOrEmpty() || value == "null") return ""
-    return try {
-        JSONArray("[$value]").optString(0, "")
-    } catch (_: JSONException) {
-        ""
-    }
+    return JsonStringCodec.decodeJavascriptString(value).orEmpty()
 }
 
 @Preview(showBackground = true)

@@ -81,6 +81,7 @@ object WidgetConfigComposeHost {
         listener: Listener,
     ) {
         val composeView = ComposeView(activity).apply {
+            id = R.id.widget_config_compose
             setViewCompositionStrategy(
                 ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
             )

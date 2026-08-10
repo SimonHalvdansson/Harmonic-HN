@@ -1,12 +1,10 @@
 package com.simon.harmonichackernews.network
 
-import android.text.TextUtils
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import com.simon.harmonichackernews.network.dto.applyTo
 import com.simon.harmonichackernews.network.dto.toComment
-import com.simon.harmonichackernews.utils.Utils
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
@@ -54,7 +52,7 @@ object JSONParser {
 
     @Throws(JSONException::class)
     fun updateCommentMasterStoryWithHNJson(story: Story?, response: String?): Boolean {
-        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
+        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
             return false
         }
 
@@ -173,7 +171,7 @@ object JSONParser {
     }
 
     fun compactAlgoliaStoryResponse(response: String?, fallbackId: Int): String? {
-        if (TextUtils.isEmpty(response)
+        if (response.isNullOrEmpty()
             || JSON_NULL_LITERAL == response
             || ALGOLIA_ERROR_STRING == response
         ) {
@@ -217,7 +215,7 @@ object JSONParser {
     }
 
     fun updateCachedStorySummaryPreviewState(response: String?, story: Story?): String? {
-        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
+        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
             return null
         }
 
@@ -227,9 +225,9 @@ object JSONParser {
                 return null
             }
 
-            if (story.previewImageUrlLoaded || !TextUtils.isEmpty(story.previewImageUrl)) {
+            if (story.previewImageUrlLoaded || !story.previewImageUrl.isNullOrEmpty()) {
                 summary.put(KEY_PREVIEW_IMAGE_URL_LOADED, true)
-                if (TextUtils.isEmpty(story.previewImageUrl)) {
+                if (story.previewImageUrl.isNullOrEmpty()) {
                     summary.remove(KEY_PREVIEW_IMAGE_URL)
                 } else {
                     summary.put(KEY_PREVIEW_IMAGE_URL, story.previewImageUrl)
@@ -237,12 +235,12 @@ object JSONParser {
                 summary.put(KEY_PREVIEW_IMAGE_LOAD_FAILED, story.previewImageLoadFailed)
             }
 
-            if (story.previewImageTintColorLoaded && !TextUtils.isEmpty(story.previewImageTintSourceUrl)) {
+            if (story.previewImageTintColorLoaded && !story.previewImageTintSourceUrl.isNullOrEmpty()) {
                 summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, true)
                 summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor)
                 summary.put(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageTintSourceUrl)
                 summary.put(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor)
-                if (TextUtils.isEmpty(story.previewImageTintMode)) {
+                if (story.previewImageTintMode.isNullOrEmpty()) {
                     summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE)
                 } else {
                     summary.put(KEY_PREVIEW_IMAGE_TINT_MODE, story.previewImageTintMode)
@@ -255,12 +253,12 @@ object JSONParser {
                 summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE)
             }
 
-            if (story.faviconTintColorLoaded && !TextUtils.isEmpty(story.faviconTintSourceUrl)) {
+            if (story.faviconTintColorLoaded && !story.faviconTintSourceUrl.isNullOrEmpty()) {
                 summary.put(KEY_FAVICON_TINT_COLOR_LOADED, true)
                 summary.put(KEY_FAVICON_TINT_COLOR, story.faviconTintColor)
                 summary.put(KEY_FAVICON_TINT_SOURCE_URL, story.faviconTintSourceUrl)
                 summary.put(KEY_FAVICON_TINT_BASE_COLOR, story.faviconTintBaseColor)
-                if (TextUtils.isEmpty(story.faviconTintMode)) {
+                if (story.faviconTintMode.isNullOrEmpty()) {
                     summary.remove(KEY_FAVICON_TINT_MODE)
                 } else {
                     summary.put(KEY_FAVICON_TINT_MODE, story.faviconTintMode)
@@ -280,7 +278,7 @@ object JSONParser {
     }
 
     fun updateStoryWithCachedStorySummary(story: Story?, response: String?): Boolean {
-        if (story == null || TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
+        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
             return false
         }
 
@@ -333,7 +331,7 @@ object JSONParser {
             updateTitleBadgeProperties(story)
             story.loaded = true
             story.loadingFailed = false
-            return !TextUtils.isEmpty(story.title)
+            return !story.title.isNullOrEmpty()
         } catch (e: JSONException) {
             return false
         }
@@ -341,7 +339,7 @@ object JSONParser {
 
     @Throws(JSONException::class)
     private fun putNonNullString(`object`: JSONObject, key: String, value: String?) {
-        if (!TextUtils.isEmpty(value) && !JSON_NULL_LITERAL.equals(value, ignoreCase = true)) {
+        if (!value.isNullOrEmpty() && !JSON_NULL_LITERAL.equals(value, ignoreCase = true)) {
             `object`.put(key, value)
         }
     }
@@ -374,22 +372,22 @@ object JSONParser {
         if (previewImageUrlLoaded) {
             val previewImageUrl = item.optString(KEY_PREVIEW_IMAGE_URL, "").trim { it <= ' ' }
             story.previewImageUrl =
-                if (TextUtils.isEmpty(previewImageUrl)) null else previewImageUrl
+                if (previewImageUrl.isEmpty()) null else previewImageUrl
             story.previewImageUrlLoaded = true
             story.previewImageLoadFailed = item.optBoolean(
                 KEY_PREVIEW_IMAGE_LOAD_FAILED,
-                TextUtils.isEmpty(story.previewImageUrl)
+                story.previewImageUrl.isNullOrEmpty()
             )
         }
 
         if (item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)
-            && !TextUtils.isEmpty(story.previewImageUrl)
+            && !story.previewImageUrl.isNullOrEmpty()
         ) {
             val tintSourceUrl =
                 item.optString(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageUrl)
             story.previewImageTintColor =
                 item.optInt(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor)
-            story.previewImageTintColorLoaded = !TextUtils.isEmpty(tintSourceUrl)
+            story.previewImageTintColorLoaded = !tintSourceUrl.isNullOrEmpty()
             story.previewImageTintSourceUrl = tintSourceUrl
             story.previewImageTintBaseColor =
                 item.optInt(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor)
@@ -405,7 +403,7 @@ object JSONParser {
         }
 
         val tintSourceUrl = optStringOrNull(item, KEY_FAVICON_TINT_SOURCE_URL)
-        if (TextUtils.isEmpty(tintSourceUrl)) {
+        if (tintSourceUrl.isNullOrEmpty()) {
             return
         }
 
@@ -476,7 +474,7 @@ object JSONParser {
     // Official HN API parsing methods for fallback
     fun updateStoryWithOfficialHNResponse(story: Story, response: String?): Boolean {
         try {
-            if (TextUtils.isEmpty(response) || JSON_NULL_LITERAL == response) {
+            if (response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
                 return false
             }
             return ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response.orEmpty()).applyTo(story)

@@ -1,17 +1,14 @@
+@file:JvmName("AndroidHarmonicThemeKt")
+
 package com.simon.harmonichackernews.ui.theme
 
 import android.content.Context
 import android.util.TypedValue
 import androidx.annotation.AttrRes
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -46,43 +43,6 @@ val GoogleSansFlexRoundedFontFamily: FontFamily
         val bold = Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold)
         return remember(regular, bold) { FontFamily(regular, bold) }
     }
-
-@Immutable
-data class HarmonicColors(
-    val background: Color,
-    val accent: Color,
-    val onSurface: Color,
-    val textPrimary: Color,
-    val textSecondary: Color,
-    val link: Color,
-    val surfaceContainerHigh: Color,
-    val surfaceContainerHighest: Color,
-    val secondaryContainer: Color,
-    val onSecondaryContainer: Color,
-    val storyNormal: Color,
-    val storyDisabled: Color,
-    val outlineVariant: Color,
-    val commentDivider: Color,
-    val drawable: Color,
-    val popupMenuBackground: Color,
-    val settingsSegment: Color,
-    val settingsHeaderSelected: Color,
-    val settingsMainToggle: Color,
-    val settingsMainToggleText: Color,
-    val overlayButton: Color,
-    val submissionsCommentTimeBackground: Color,
-    val submissionsCommentTimeOutline: Color,
-)
-
-private val LocalHarmonicColors = staticCompositionLocalOf<HarmonicColors> {
-    error("HarmonicTheme is not present")
-}
-
-object HarmonicTheme {
-    val colors: HarmonicColors
-        @Composable
-        get() = LocalHarmonicColors.current
-}
 
 @Composable
 fun HarmonicTheme(content: @Composable () -> Unit) {
@@ -139,23 +99,6 @@ fun HarmonicTheme(content: @Composable () -> Unit) {
         colorScheme = colorScheme,
         content = content,
     )
-}
-
-/** Platform-neutral theme entry point for callers that already resolved their color palette. */
-@Composable
-fun HarmonicTheme(
-    colors: HarmonicColors,
-    colorScheme: ColorScheme,
-    content: @Composable () -> Unit,
-) {
-    CompositionLocalProvider(
-        LocalHarmonicColors provides colors,
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            content = content,
-        )
-    }
 }
 
 fun harmonicColors(context: Context): HarmonicColors {

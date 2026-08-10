@@ -10,6 +10,9 @@ import android.os.BatteryManager
 import android.text.TextUtils
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils.sanitizeMode
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils.clearTintColorCaches
@@ -383,13 +386,7 @@ object SettingsUtils {
     }
 
     fun sanitizePaletteTintMode(mode: String?): String {
-        val modePart = getPaletteTintModePart(mode)
-        if (PALETTE_TINT_VIBRANT == modePart
-            || PALETTE_TINT_DOMINANT == modePart
-        ) {
-            return modePart
-        }
-        return PALETTE_TINT_DEFAULT
+        return PaletteTintPreferences.sanitizeMode(mode)
     }
 
     fun buildPaletteTintConfigKey(
@@ -398,64 +395,35 @@ object SettingsUtils {
         colorfulness: Int,
         tone: Int
     ): String {
-        return (sanitizePaletteTintMode(mode)
-                + "|"
-                + clampPaletteTintStrength(strength)
-                + "|"
-                + clampPaletteTintColorfulness(colorfulness)
-                + "|"
-                + clampPaletteTintTone(tone))
+        return PaletteTintPreferences.configKey(mode, strength, colorfulness, tone)
     }
 
     fun getPaletteTintConfigKey(modeOrConfigKey: String?): String {
-        return buildPaletteTintConfigKey(
-            modeOrConfigKey,
-            getPaletteTintStrength(modeOrConfigKey),
-            getPaletteTintColorfulness(modeOrConfigKey),
-            getPaletteTintTone(modeOrConfigKey)
-        )
+        return PaletteTintPreferences.normalizeConfigKey(modeOrConfigKey)
     }
 
     fun getPaletteTintStrength(modeOrConfigKey: String?): Int {
-        return clampPaletteTintStrength(
-            getPaletteTintConfigInt(
-                modeOrConfigKey,
-                1,
-                DEFAULT_PALETTE_TINT_STRENGTH
-            )
-        )
+        return PaletteTintPreferences.strength(modeOrConfigKey)
     }
 
     fun getPaletteTintColorfulness(modeOrConfigKey: String?): Int {
-        return clampPaletteTintColorfulness(
-            getPaletteTintConfigInt(
-                modeOrConfigKey,
-                2,
-                DEFAULT_PALETTE_TINT_COLORFULNESS
-            )
-        )
+        return PaletteTintPreferences.colorfulness(modeOrConfigKey)
     }
 
     fun getPaletteTintTone(modeOrConfigKey: String?): Int {
-        return clampPaletteTintTone(
-            getPaletteTintConfigInt(
-                modeOrConfigKey,
-                3,
-                DEFAULT_PALETTE_TINT_TONE
-            )
-        )
+        return PaletteTintPreferences.tone(modeOrConfigKey)
     }
 
     fun getPaletteTintStrengthMultiplier(modeOrConfigKey: String?): Float {
-        return getPaletteTintStrength(modeOrConfigKey) / 100f
+        return PaletteTintPreferences.strengthMultiplier(modeOrConfigKey)
     }
 
     fun getPaletteTintColorfulnessMultiplier(modeOrConfigKey: String?): Float {
-        return getPaletteTintColorfulness(modeOrConfigKey) / 100f
+        return PaletteTintPreferences.colorfulnessMultiplier(modeOrConfigKey)
     }
 
     fun getPaletteTintToneOffset(modeOrConfigKey: String?): Float {
-        return getPaletteTintTone(modeOrConfigKey) / 100f
+        return PaletteTintPreferences.toneOffset(modeOrConfigKey)
     }
 
     fun isDefaultPaletteTintTuning(ctx: Context): Boolean {
@@ -473,52 +441,19 @@ object SettingsUtils {
     }
 
     fun getPaletteTintModeLabel(mode: String?): String {
-        when (sanitizePaletteTintMode(mode)) {
-            PALETTE_TINT_VIBRANT -> return "Vibrant"
-            PALETTE_TINT_DOMINANT -> return "Dominant"
-            PALETTE_TINT_DEFAULT -> return "Muted"
-            else -> return "Muted"
-        }
+        return PaletteTintPreferences.modeLabel(mode)
     }
 
     fun clampPaletteTintStrength(strength: Int): Int {
-        return max(MIN_PALETTE_TINT_STRENGTH, min(MAX_PALETTE_TINT_STRENGTH, strength))
+        return PaletteTintPreferences.clampStrength(strength)
     }
 
     fun clampPaletteTintColorfulness(colorfulness: Int): Int {
-        return max(MIN_PALETTE_TINT_COLORFULNESS, min(MAX_PALETTE_TINT_COLORFULNESS, colorfulness))
+        return PaletteTintPreferences.clampColorfulness(colorfulness)
     }
 
     fun clampPaletteTintTone(tone: Int): Int {
-        return max(MIN_PALETTE_TINT_TONE, min(MAX_PALETTE_TINT_TONE, tone))
-    }
-
-    private fun getPaletteTintModePart(modeOrConfigKey: String?): String {
-        if (modeOrConfigKey == null) {
-            return PALETTE_TINT_DEFAULT
-        }
-
-        val separatorIndex = modeOrConfigKey.indexOf('|')
-        if (separatorIndex < 0) {
-            return modeOrConfigKey
-        }
-        return modeOrConfigKey.substring(0, separatorIndex)
-    }
-
-    private fun getPaletteTintConfigInt(
-        modeOrConfigKey: String?,
-        partIndex: Int,
-        defaultValue: Int
-    ): Int {
-        if (modeOrConfigKey == null) {
-            return defaultValue
-        }
-
-        return modeOrConfigKey
-            .split('|')
-            .getOrNull(partIndex)
-            ?.toIntOrNull()
-            ?: defaultValue
+        return PaletteTintPreferences.clampTone(tone)
     }
 
     fun shouldShowNavigationButtons(ctx: Context): Boolean {
@@ -941,112 +876,15 @@ object SettingsUtils {
     }
 
     fun parseArchiveRedirectDomains(value: String?): ArrayList<String> {
-        val domains = ArrayList<String>()
-        if (TextUtils.isEmpty(value)) {
-            return domains
-        }
-
-        for (part in value!!.split(',')) {
-            val domain = normalizeArchiveRedirectDomain(part)
-            if (!TextUtils.isEmpty(domain) && !containsDomain(domains, domain)) {
-                domains.add(domain)
-            }
-        }
-        return domains
+        return ArrayList(ArchiveRedirectPolicy.parseDomains(value))
     }
 
     fun normalizeArchiveRedirectDomain(value: String?): String {
-        if (TextUtils.isEmpty(value)) {
-            return ""
-        }
-
-        var normalized = value!!.trim { it <= ' ' }.lowercase()
-        if (normalized.startsWith("//")) {
-            normalized = "https:" + normalized
-        } else if (!normalized.contains("://") && normalized.contains("/")) {
-            normalized = "https://" + normalized
-        }
-
-        val uri = Uri.parse(normalized)
-        val host = uri.host
-        if (!host.isNullOrEmpty()) {
-            normalized = host
-        } else {
-            val pathStart = normalized.indexOf('/')
-            if (pathStart >= 0) {
-                normalized = normalized.substring(0, pathStart)
-            }
-        }
-
-        val portStart = normalized.indexOf(':')
-        if (portStart >= 0) {
-            normalized = normalized.substring(0, portStart)
-        }
-        while (normalized.startsWith(".")) {
-            normalized = normalized.substring(1)
-        }
-        while (normalized.endsWith(".")) {
-            normalized = normalized.substring(0, normalized.length - 1)
-        }
-        if (normalized.startsWith("www.")) {
-            normalized = normalized.substring(4)
-        }
-
-        if (!normalized.contains(".") || !normalized.matches("[a-z0-9.-]+".toRegex())) {
-            return ""
-        }
-        return normalized
+        return ArchiveRedirectPolicy.normalizeDomain(value)
     }
 
     fun getArchiveRedirectUrl(ctx: Context, url: String?): String? {
-        if (TextUtils.isEmpty(url)) {
-            return null
-        }
-
-        val uri = Uri.parse(url)
-        val scheme = uri.getScheme()
-        if (!"http".equals(scheme, ignoreCase = true) && !"https".equals(
-                scheme,
-                ignoreCase = true
-            )
-        ) {
-            return null
-        }
-
-        val host = uri.host
-        if (host.isNullOrEmpty() || isArchiveHost(host)) {
-            return null
-        }
-
-        val domain = normalizeArchiveRedirectDomain(host)
-        if (TextUtils.isEmpty(domain)) {
-            return null
-        }
-
-        for (archiveRedirectDomain in getArchiveRedirectDomains(ctx)) {
-            if (domain == archiveRedirectDomain || domain.endsWith("." + archiveRedirectDomain)) {
-                return "https://archive.is/newest/" + Uri.encode(url)
-            }
-        }
-        return null
-    }
-
-    private fun isArchiveHost(host: String?): Boolean {
-        val domain = normalizeArchiveRedirectDomain(host)
-        return "archive.is" == domain
-                || "archive.today" == domain
-                || "archive.ph" == domain
-                || "archive.vn" == domain
-                || "archive.md" == domain
-    }
-
-    private fun containsDomain(domains: MutableList<String>, domain: String?): Boolean {
-        for (existing in domains) {
-            if (existing.equals(domain, ignoreCase = true)) {
-                return true
-            }
-        }
-        return false
+        return ArchiveRedirectPolicy.redirectUrl(url, getArchiveRedirectDomains(ctx))
     }
 
     fun shouldUseLinkPreviewX(ctx: Context): Boolean {
@@ -1234,10 +1072,7 @@ object SettingsUtils {
     }
 
     fun sanitizeFaviconProvider(provider: String?): String {
-        if (FAVICON_PROVIDER_DUCKDUCKGO == provider || FAVICON_PROVIDER_TWENTY == provider) {
-            return provider
-        }
-        return FAVICON_PROVIDER_GOOGLE
+        return FaviconPreferences.sanitizeProvider(provider)
     }
 
     fun getFaviconProviderIconResource(provider: String): Int {

@@ -14,10 +14,9 @@ import com.simon.harmonichackernews.utils.Utils
 import java.util.ArrayDeque
 import kotlin.math.max
 import kotlin.math.min
+import com.simon.harmonichackernews.data.StoryCachePayloadParser
 import com.simon.harmonichackernews.network.HttpCall
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 import com.simon.harmonichackernews.serialization.JsonException as JSONException
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 
 internal class StoryCacheController(private val callbacks: Callbacks) {
     internal interface Callbacks {
@@ -92,17 +91,21 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             Request.Method.GET, Utils.URL_TOP,
             Response.Listener { response: String? ->
                 try {
-                    val arr = JSONArray(response.orEmpty())
                     val storyCount = storiesToCache
                     if (storyCount == 0) {
                         finishProgress(CACHE_PROGRESS_STATUS_EMPTY)
                         return@Listener
                     }
 
-                    val remaining = intArrayOf(storyCount)
+                    val storyIds = StoryCachePayloadParser.storyIds(response, storyCount)
+                    if (storyIds.isEmpty()) {
+                        finishProgress(CACHE_PROGRESS_STATUS_EMPTY)
+                        return@Listener
+                    }
+
+                    val remaining = intArrayOf(storyIds.size)
                     val articleFailures = intArrayOf(0)
-                    for (i in 0..<storyCount) {
-                        val id = arr.getInt(i)
+                    for (id in storyIds) {
                         val url = "https://hn.algolia.com/api/v1/items/" + id
                         val storyRequest = StringRequest(
                             Request.Method.GET,
@@ -205,16 +208,8 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         }
 
         try {
-            val storyObject = JSONObject(storyJson)
-            if (!storyObject.has("url") || storyObject.isNull("url")) {
-                onComplete()
-                return
-            }
-
-            val articleUrl = storyObject.optString("url", "")
-            if (articleUrl.isEmpty() ||
-                !(articleUrl.startsWith("http://") || articleUrl.startsWith("https://"))
-            ) {
+            val articleUrl = StoryCachePayloadParser.externalArticleUrl(storyJson)
+            if (articleUrl == null) {
                 onComplete()
                 return
             }

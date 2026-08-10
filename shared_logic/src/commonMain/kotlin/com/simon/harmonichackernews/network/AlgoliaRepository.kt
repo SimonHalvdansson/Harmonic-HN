@@ -5,8 +5,6 @@ import com.simon.harmonichackernews.network.dto.AlgoliaSearchResponseDto
 import com.simon.harmonichackernews.network.dto.toStory
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.URLBuilder
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -32,7 +30,7 @@ class KtorAlgoliaRepository(
     }
 
     override suspend fun search(url: String): List<Story> {
-        val body = get(url)
+        val body = client.getTextOrThrow(url)
         return try {
             json.decodeFromString<AlgoliaSearchResponseDto>(body)
                 .hits
@@ -50,22 +48,13 @@ class KtorAlgoliaRepository(
         var attempt = 0
         while (true) {
             try {
-                return get(url)
+                return client.getTextOrThrow(url)
             } catch (error: HttpRequestTimeoutException) {
                 if (++attempt >= ITEM_REQUEST_ATTEMPTS) throw error
             } catch (error: HttpStatusException) {
                 if (error.statusCode < 500 || ++attempt >= ITEM_REQUEST_ATTEMPTS) throw error
             }
         }
-    }
-
-    private suspend fun get(url: String): String {
-        val response = client.get(url)
-        val body = response.bodyAsText()
-        if (response.status.value !in 200..299) {
-            throw HttpStatusException(response.status.value, response.status.description, url)
-        }
-        return body
     }
 
     private companion object {

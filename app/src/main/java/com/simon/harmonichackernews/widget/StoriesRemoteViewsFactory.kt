@@ -12,6 +12,7 @@ import android.widget.RemoteViewsService.RemoteViewsFactory
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StoryCachePayloadParser
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
 import com.simon.harmonichackernews.network.HttpRequest
@@ -20,10 +21,8 @@ import com.simon.harmonichackernews.utils.SettingsUtils.shouldIncludeTopLevelDom
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
 import com.simon.harmonichackernews.utils.Utils.getTimeAgo
 import com.simon.harmonichackernews.utils.Utils.log
-import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
     RemoteViewsFactory {
@@ -88,15 +87,16 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                     terminalStatePosted = true
                     return
                 }
-                val idsArray = JSONArray(idsBody)
-                val count = min(idsArray.length(), fetchStoryCount)
+                val allStoryIds = StoryCachePayloadParser.storyIds(idsBody, Int.MAX_VALUE)
+                val storyIds = allStoryIds.take(fetchStoryCount)
+                val count = storyIds.size
 
                 log(
                     "WidgetFactory ids fetched widgetId=$appWidgetId" +
-                        " totalIds=${idsArray.length()} visibleCount=$visibleStoryCount" +
+                            " totalIds=${allStoryIds.size} visibleCount=$visibleStoryCount" +
                         " fetchTarget=$fetchStoryCount fetchCount=$count"
                 )
-                for (i in 0..<count) {
+                for (storyId in storyIds) {
                     val elapsed = startedAt.elapsedNow()
                     if (elapsed > TOTAL_FETCH_TIMEOUT) {
                         log(
@@ -106,7 +106,6 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                         break
                     }
 
-                    val storyId = idsArray.getInt(i)
                     val storyUrl =
                         "https://hacker-news.firebaseio.com/v0/item/$storyId.json"
 

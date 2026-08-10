@@ -18,21 +18,23 @@ import io.ktor.http.contentType
 import io.ktor.http.formUrlEncode
 import io.ktor.http.appendPathSegments
 import io.ktor.http.charset
+import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.LineEnding
 import io.ktor.utils.io.cancel
+import io.ktor.utils.io.charsets.Charset
 import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readLine
 import io.ktor.utils.io.readRemaining
-import io.ktor.utils.io.readUTF8Line
+import kotlinx.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.readByteArray
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.net.URI
+import kotlin.concurrent.Volatile
 
 class NetworkUrl private constructor(internal val value: Url) {
     val scheme: String get() = value.protocol.name
@@ -47,7 +49,7 @@ class NetworkUrl private constructor(internal val value: Url) {
     fun newBuilder(): Builder = Builder(URLBuilder(value))
 
     fun resolve(relativeUrl: String): NetworkUrl? = try {
-        parse(URI(toString()).resolve(relativeUrl).toString())
+        NetworkUrl(URLBuilder(value).takeFrom(relativeUrl).build())
     } catch (_: IllegalArgumentException) {
         null
     }
@@ -55,6 +57,10 @@ class NetworkUrl private constructor(internal val value: Url) {
     override fun toString(): String = value.toString()
 
     class Builder internal constructor(private val delegate: URLBuilder) {
+        fun host(host: String): Builder = apply {
+            delegate.host = host
+        }
+
         fun addQueryParameter(name: String, value: String?): Builder = apply {
             delegate.parameters.append(name, value.orEmpty())
         }
@@ -88,7 +94,7 @@ data class HttpMediaType(private val value: String) {
     val type: String get() = ContentType.parse(value).contentType
     val subtype: String get() = ContentType.parse(value).contentSubtype
 
-    fun charset(default: java.nio.charset.Charset): java.nio.charset.Charset =
+    fun charset(default: Charset): Charset =
         try {
             ContentType.parse(value).charset() ?: default
         } catch (_: IllegalArgumentException) {
@@ -199,14 +205,7 @@ class HttpCall internal constructor(
     }
 
     /** Primary non-blocking execution path. Blocking and callback APIs are compatibility adapters. */
-    @Throws(IOException::class)
-    suspend fun await(): HttpResponse = try {
-        executeInternal()
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Throwable) {
-        throw error as? IOException ?: IOException(error.message, error)
-    }
+    suspend fun await(): HttpResponse = executeInternal()
 
     fun cancel() {
         canceled = true
@@ -240,7 +239,7 @@ class HttpCall internal constructor(
     }
 }
 
-class KtorHttpClient internal constructor(
+class KtorHttpClient(
     private val client: HttpClient,
     private val scope: CoroutineScope,
     private val readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
@@ -325,14 +324,16 @@ class HttpResponseBody internal constructor(
     fun source(): HttpBodySource = source
 
     internal fun readAtMost(maxBytes: Int): ByteArray {
-        val output = ByteArrayOutputStream(maxBytes.coerceAtMost(8 * 1024))
+        val output = ByteArray(maxBytes)
         val buffer = ByteArray(8 * 1024)
-        while (output.size() < maxBytes) {
-            val read = source.read(buffer, 0, minOf(buffer.size, maxBytes - output.size()))
+        var outputSize = 0
+        while (outputSize < maxBytes) {
+            val read = source.read(buffer, 0, minOf(buffer.size, maxBytes - outputSize))
             if (read == -1) break
-            output.write(buffer, 0, read)
+            buffer.copyInto(output, outputSize, 0, read)
+            outputSize += read
         }
-        return output.toByteArray()
+        return output.copyOf(outputSize)
     }
 
     override fun close() {
@@ -347,5 +348,7 @@ class HttpBodySource internal constructor(private val channel: ByteReadChannel) 
     }
 
     @Throws(IOException::class)
-    fun readUtf8Line(): String? = runBlocking { channel.readUTF8Line() }
+    fun readUtf8Line(): String? = runBlocking { channel.readLine(LineEnding.Lenient) }
+
+    suspend fun readUtf8LineAsync(): String? = channel.readLine(LineEnding.Lenient)
 }

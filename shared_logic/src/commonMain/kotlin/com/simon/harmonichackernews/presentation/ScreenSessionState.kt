@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
 
 /**
@@ -9,47 +11,30 @@ import com.simon.harmonichackernews.data.Story
  * Android lifecycle holders retain this object, but no Android type crosses the boundary.
  */
 class StoriesSessionState {
-    val mainStories = mutableListOf<Story>()
-    val searchStories = mutableListOf<Story>()
+    var initialized: Boolean = false
+    val mainStoryList = StoryListStore()
+    val searchStoryList = StoryListStore()
+    val mainStories: MutableList<Story> = mainStoryList.stories
+    val searchStories: MutableList<Story> = searchStoryList.stories
     val bookmarkStories = mutableListOf<Story>()
     val userItemListStories = mutableListOf<Story>()
     val userItemListCommentIds = mutableSetOf<Int>()
 
     var mainTypeLabel: String? = null
     var searchTypeLabel: String? = null
-    var mainVisibleStoryCount: Int = 0
-    var searchVisibleStoryCount: Int = 0
-    var mainShowLoadMoreButton: Boolean = false
-    var searchShowLoadMoreButton: Boolean = false
 
     var searching: Boolean = false
     var lastSearch: String = ""
-    var mainLoadedTo: Int = 0
-    var searchLoadedTo: Int = 0
-    var mainShowingCached: Boolean = false
-    var searchShowingCached: Boolean = false
-    var mainLoadingFailed: Boolean = false
-    var mainLoadingFailedServerError: Boolean = false
-    var mainLoadingFailedRateLimited: Boolean = false
-    var searchLoadingFailed: Boolean = false
-    var searchLoadingFailedServerError: Boolean = false
-    var searchLoadingFailedRateLimited: Boolean = false
-    var mainAlgoliaHitsPerPage: Int = 0
-    var searchAlgoliaHitsPerPage: Int = 0
+    var mainAlgoliaHitsPerPage: Int = StorySearchController.ALGOLIA_HITS_INCREMENT
+    var searchAlgoliaHitsPerPage: Int = StorySearchController.ALGOLIA_HITS_INCREMENT
     var mainLastAlgoliaTopStoriesStartTime: Int = 0
     var searchLastAlgoliaTopStoriesStartTime: Int = 0
 
     var lastLoaded: Long = 0
     var updateButtonShowing: Boolean = false
-    var userItemListFilter: Int = 0
+    var userItemListFilter: Int = 1
     var frontPageDayUtcMillis: Long = -1L
     var scrapedFrontpageNextPageUrl: String? = null
-
-    var mainFirstVisiblePosition: Int = -1
-    var mainFirstVisibleTop: Int = 0
-    var searchFirstVisiblePosition: Int = -1
-    var searchFirstVisibleTop: Int = 0
-    var appBarCollapsed: Boolean = false
 
     var searchSortIndex: Int = 0
     var searchDateRangeIndex: Int = 0
@@ -59,10 +44,14 @@ class StoriesSessionState {
 }
 
 /** Canonical non-visual state for a comments session. */
-class CommentsSessionState {
+class CommentsSessionState(
+    val scrollProgress: CommentsScrollProgress = CommentsScrollProgress(),
+) {
+    var initialized: Boolean = false
+    val commentThread = CommentThreadStore()
     var story: Story? = null
-    var comments: MutableList<Comment>? = null
-    var allComments: MutableList<Comment>? = null
+    var comments: MutableList<Comment>? = commentThread.displayedComments
+    var allComments: MutableList<Comment>? = commentThread.allComments
     var showWebsite: Boolean = false
     var commentsLoaded: Boolean = false
     var refreshInProgress: Boolean = false
@@ -72,9 +61,17 @@ class CommentsSessionState {
     var storyVoteLoading: Boolean = false
     var storyFavoriteLoading: Boolean = false
     var scrollToCommentId: Int = -1
-    var commentsByOpFilterActive: Boolean = false
-    var currentCommentSorting: String? = null
     var lastLoaded: Long = 0
+}
+
+/** Canonical state for a submissions session, including its visible list position. */
+class SubmissionsSessionState(
+    val submissions: SubmissionsStore,
+) {
+    var initialized: Boolean = false
+    var firstVisibleStoryPosition: Int = 0
+    var firstVisibleStoryTop: Int = 0
+    var appBarCollapsed: Boolean = false
 }
 
 enum class SubmissionFilter {

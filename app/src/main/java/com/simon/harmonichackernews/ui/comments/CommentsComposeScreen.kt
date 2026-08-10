@@ -53,9 +53,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -154,6 +152,7 @@ import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -256,6 +255,10 @@ class CommentsComposeController private constructor(
         private set
     internal var searchDialogVisible by mutableStateOf(false)
         private set
+    internal var searchQuery by mutableStateOf("")
+        private set
+    internal var searchResults by mutableStateOf<List<Comment>>(emptyList())
+        private set
     internal var sheetRequest by mutableStateOf<SheetRequest?>(null)
         private set
     internal var webViewFullscreen by mutableStateOf(false)
@@ -324,6 +327,8 @@ class CommentsComposeController private constructor(
         contentInsetRightPx: Int,
         storyVoteLoading: Boolean,
         storyFavoriteLoading: Boolean,
+        searchQuery: String,
+        searchResults: List<Comment>,
     ) {
         this.story = story
         this.comments = comments.toList()
@@ -346,6 +351,8 @@ class CommentsComposeController private constructor(
         this.contentInsetRightPx = contentInsetRightPx
         this.storyVoteLoading = storyVoteLoading
         this.storyFavoriteLoading = storyFavoriteLoading
+        this.searchQuery = searchQuery
+        this.searchResults = searchResults.toList()
         contentVersion++
     }
 
@@ -574,11 +581,17 @@ class CommentsComposeController private constructor(
 
     internal fun dismissCommentSearch() {
         searchDialogVisible = false
+        listener.onSearchQueryChanged("")
     }
 
     internal fun selectSearchResult(comment: Comment) {
         searchDialogVisible = false
+        listener.onSearchQueryChanged("")
         listener.onSearchResultSelected(comment)
+    }
+
+    internal fun updateSearchQuery(query: String) {
+        listener.onSearchQueryChanged(query)
     }
 
     internal fun revealSearchResult(commentId: Int, visiblePosition: Int) {
@@ -773,6 +786,7 @@ class CommentsComposeController private constructor(
         val commentIndex = state.firstVisibleItemIndex - 1
         firstVisibleCommentId = visibleComments.getOrNull(commentIndex)?.id ?: 0
         firstVisibleCommentOffset = state.firstVisibleItemScrollOffset
+        listener.onScrollPositionChanged(firstVisibleCommentId, firstVisibleCommentOffset)
     }
 
     internal data class NavigationRequest(
@@ -803,6 +817,7 @@ class CommentsComposeController private constructor(
 
     interface Listener {
         fun onToggleComment(comment: Comment, position: Int)
+        fun onScrollPositionChanged(commentId: Int, offset: Int) {}
         fun onCommentAction(comment: Comment, action: Int)
         fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
@@ -813,6 +828,7 @@ class CommentsComposeController private constructor(
         fun onShareAction(action: Int)
         fun onMoreAction(action: Int)
         fun onSearchResultSelected(comment: Comment)
+        fun onSearchQueryChanged(query: String)
         fun onSortComments(sortType: String)
         fun onSheetAction(action: Int)
         fun onCollapseSheetForWebsite()
@@ -1198,27 +1214,25 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
     }
 
     val list: @Composable () -> Unit = {
-        LazyColumn(
+        SharedLazyContentList(
+            items = visibleComments,
+            key = { item -> item.comment.id },
+            contentType = { if (settings.cardStyle) "comment-card" else "comment" },
             modifier = Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
                 .nestedScroll(nestedScrollInterop),
             state = listState,
             contentPadding = PaddingValues(bottom = bottomPadding),
-        ) {
-            item(key = "header", contentType = "header") {
+            headerKey = "header",
+            header = {
                 CommentsHeader(
                     controller = controller,
                     settings = settings,
                     contentVersion = controller.contentVersion,
                 )
-            }
-
-            itemsIndexed(
-                items = visibleComments,
-                key = { _, item -> item.comment.id },
-                contentType = { _, _ -> if (settings.cardStyle) "comment-card" else "comment" },
-            ) { _, item ->
+            },
+        ) { _, item ->
                 DisposableEffect(item.comment.id) {
                     onDispose { controller.removeCommentBounds(item.comment.id) }
                 }
@@ -1285,8 +1299,8 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
                             sourceCommentId = item.comment.id,
                         )
                     },
+                    onLinkClick = { url -> Utils.openLinkMaybeHN(context, url) },
                 )
-            }
         }
     }
 
@@ -1381,10 +1395,12 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
 
     if (controller.searchDialogVisible) {
         CommentsSearchDialog(
-            comments = controller.comments,
+            searchTerm = controller.searchQuery,
+            visibleComments = controller.searchResults,
             settings = settings,
             storyAuthor = controller.story.by,
             accountUser = controller.accountUser,
+            onSearchTermChanged = controller::updateSearchQuery,
             onDismiss = controller::dismissCommentSearch,
             onCommentSelected = controller::selectSearchResult,
         )

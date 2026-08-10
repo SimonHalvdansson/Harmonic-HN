@@ -5,10 +5,9 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.UserActions.ActionCallback
-import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.utils.Utils
-import com.simon.harmonichackernews.network.HttpResponse
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
@@ -85,7 +84,7 @@ class ComposeEditorCoordinator(
             url,
             activity,
             object : ActionCallback {
-                override fun onSuccess(response: HttpResponse) {
+                override fun onSuccess() {
                     Toast.makeText(
                         activity,
                         "Post submitted, it might take a minute to show up",
@@ -99,13 +98,13 @@ class ComposeEditorCoordinator(
                     showSubmissionFailure(summary, response, null)
                 }
 
-                override fun onCaptchaRequired(challenge: CaptchaChallenge) {
+                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
                     val callback: ActionCallback = this
                     activity.showCaptchaDialog(
                         challenge,
                         object : CaptchaResultCallback {
                             override fun onCaptchaResponse(
-                                captchaChallenge: CaptchaChallenge,
+                                captchaChallenge: HackerNewsCaptchaChallenge,
                                 captchaResponse: String,
                             ) {
                                 if (captchaChallenge.isLoginChallenge) {
@@ -149,7 +148,7 @@ class ComposeEditorCoordinator(
             commentText,
             activity,
             object : ActionCallback {
-                override fun onSuccess(response: HttpResponse) {
+                override fun onSuccess() {
                     Toast.makeText(
                         activity,
                         "Comment posted, it might take a minute to show up",
@@ -163,13 +162,13 @@ class ComposeEditorCoordinator(
                     showSubmissionFailure(summary, response, commentText)
                 }
 
-                override fun onCaptchaRequired(challenge: CaptchaChallenge) {
+                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
                     val callback: ActionCallback = this
                     activity.showCaptchaDialog(
                         challenge,
                         object : CaptchaResultCallback {
                             override fun onCaptchaResponse(
-                                captchaChallenge: CaptchaChallenge,
+                                captchaChallenge: HackerNewsCaptchaChallenge,
                                 captchaResponse: String,
                             ) {
                                 UserActions.continueCaptchaAction(

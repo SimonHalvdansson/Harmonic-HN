@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.utils
 
 import com.simon.harmonichackernews.data.Story
+import kotlin.concurrent.Volatile
 
 object StoryUpdate {
     @Volatile

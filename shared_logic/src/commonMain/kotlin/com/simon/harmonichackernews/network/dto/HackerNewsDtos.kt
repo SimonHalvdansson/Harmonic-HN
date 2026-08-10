@@ -22,6 +22,15 @@ data class HackerNewsItemDto(
     val parts: List<Int> = emptyList(),
 )
 
+@Serializable
+data class HackerNewsUserDto(
+    val id: String = "",
+    val created: Long = 0L,
+    val karma: Int = 0,
+    val about: String? = null,
+    val submitted: List<Int> = emptyList(),
+)
+
 /** Wire representation of an Algolia search response. */
 @Serializable
 data class AlgoliaSearchResponseDto(

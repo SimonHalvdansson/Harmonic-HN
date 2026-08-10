@@ -16,7 +16,6 @@ import coil3.request.target
 import coil3.target.ImageViewTarget
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 
 object FaviconLoader {
@@ -58,7 +57,7 @@ object FaviconLoader {
         faviconProvider: String?,
         fadeIn: Boolean
     ) {
-        val faviconUrl = getFaviconUrlForHost(host, faviconProvider)
+        val faviconUrl = FaviconUrlBuilder.faviconUrlForHost(host, faviconProvider)
         if (faviconUrl == into.getTag(R.id.favicon_request_url)) {
             return
         }
@@ -114,18 +113,13 @@ object FaviconLoader {
 
     @Throws(Exception::class)
     fun getFaviconUrl(url: String?, faviconProvider: String?): String {
-        return getFaviconUrlForHost(Utils.getDomainName(url ?: throw IllegalArgumentException("Missing URL")), faviconProvider)
+        return FaviconUrlBuilder.faviconUrl(
+            url ?: throw IllegalArgumentException("Missing URL"),
+            faviconProvider,
+        )
     }
 
     fun getFaviconUrlSchema(faviconProvider: String?): String {
-        return getFaviconUrlForHost("{host}", faviconProvider)
-    }
-
-    private fun getFaviconUrlForHost(host: String, faviconProvider: String?): String {
-        return when (SettingsUtils.sanitizeFaviconProvider(faviconProvider)) {
-            SettingsUtils.FAVICON_PROVIDER_TWENTY -> "https://twenty-icons.com/$host"
-            SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO -> "https://icons.duckduckgo.com/ip3/$host.ico"
-            else -> "https://www.google.com/s2/favicons?domain=$host&sz=128"
-        }
+        return FaviconUrlBuilder.faviconUrlTemplate(faviconProvider)
     }
 }

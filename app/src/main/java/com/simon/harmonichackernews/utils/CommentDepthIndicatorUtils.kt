@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils
 
 import android.content.Context
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import kotlin.math.abs
 
 object CommentDepthIndicatorUtils {
@@ -66,25 +67,13 @@ object CommentDepthIndicatorUtils {
     }
 
     fun sanitizeMode(mode: String): String {
-        if (MODE_MATERIAL_YOU == mode
-            || MODE_COLORS == mode
-            || MODE_MONOCHROME == mode
-            || MODE_NONE == mode
-        ) {
-            return mode
-        }
-        return MODE_THEME_DEFAULT
+        return CommentDepthPreferences.sanitizeMode(mode)
     }
 
-    fun shouldShowIndicators(mode: String): Boolean = MODE_NONE != sanitizeMode(mode)
+    fun shouldShowIndicators(mode: String): Boolean =
+        CommentDepthPreferences.shouldShowIndicators(mode)
 
-    fun getModeLabel(mode: String): String = when (sanitizeMode(mode)) {
-        MODE_MATERIAL_YOU -> "Material You"
-        MODE_COLORS -> "Standard"
-        MODE_MONOCHROME -> "Monochrome"
-        MODE_NONE -> "None"
-        else -> "Theme default"
-    }
+    fun getModeLabel(mode: String): String = CommentDepthPreferences.modeLabel(mode)
 
     private fun getStandardColorResource(ctx: Context, theme: String?, index: Int): Int {
         return if (ThemeUtils.isDarkMode(

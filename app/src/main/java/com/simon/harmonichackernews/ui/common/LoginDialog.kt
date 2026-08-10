@@ -42,13 +42,13 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
-import com.simon.harmonichackernews.network.HttpResponse
 
 private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
 
@@ -66,14 +66,13 @@ fun LoginDialog(
     var showInformation by rememberSaveable { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var captchaChallenge by remember { mutableStateOf<UserActions.CaptchaChallenge?>(null) }
+    var captchaChallenge by remember { mutableStateOf<HackerNewsCaptchaChallenge?>(null) }
     val loginFailure = stringResource(Res.string.login_dialog_failure)
     val loginSuccess = stringResource(Res.string.login_dialog_success)
     val captchaCancelled = stringResource(Res.string.login_dialog_captcha_cancelled)
     val credentialsValid = username.isNotBlank() && password.isNotEmpty()
 
-    fun finishLogin(response: HttpResponse) {
-        response.close()
+    fun finishLogin() {
         loading = false
         Utils.toast(loginSuccess, context)
         onAccountStateChanged()
@@ -86,7 +85,7 @@ fun LoginDialog(
         error = message
     }
 
-    fun continueLogin(challenge: UserActions.CaptchaChallenge, response: String) {
+    fun continueLogin(challenge: HackerNewsCaptchaChallenge, response: String) {
         captchaChallenge = null
         loading = true
         UserActions.continueLoginWithCaptcha(
@@ -94,11 +93,11 @@ fun LoginDialog(
             challenge,
             response,
             object : UserActions.ActionCallback {
-                override fun onSuccess(response: HttpResponse) = finishLogin(response)
+                override fun onSuccess() = finishLogin()
 
                 override fun onFailure(summary: String?, response: String?) = failLogin()
 
-                override fun onCaptchaRequired(challenge: UserActions.CaptchaChallenge) {
+                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
                     loading = false
                     captchaChallenge = challenge
                 }
@@ -114,11 +113,11 @@ fun LoginDialog(
         UserActions.login(
             context,
             object : UserActions.ActionCallback {
-                override fun onSuccess(response: HttpResponse) = finishLogin(response)
+                override fun onSuccess() = finishLogin()
 
                 override fun onFailure(summary: String?, response: String?) = failLogin()
 
-                override fun onCaptchaRequired(challenge: UserActions.CaptchaChallenge) {
+                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
                     loading = false
                     captchaChallenge = challenge
                 }

@@ -71,8 +71,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.min
 import com.simon.harmonichackernews.network.HttpCall
-import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 internal class CommentsWebViewController(
     private val coordinator: CommentsCoordinator,
@@ -1972,11 +1971,8 @@ internal class CommentsWebViewController(
             if (result == null || "null" == result) {
                 return ""
             }
-            try {
-                return JSONArray("[" + result + "]").optString(0, "")
-            } catch (e: JSONException) {
-                return result.replace("^\"|\"$".toRegex(), "")
-            }
+            return JsonStringCodec.decodeJavascriptString(result)
+                ?: result.replace("^\"|\"$".toRegex(), "")
         }
     }
 }

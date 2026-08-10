@@ -11,9 +11,14 @@ import io.ktor.client.plugins.cache.storage.FileStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import java.io.File
 import kotlin.concurrent.Volatile
 
@@ -37,8 +42,69 @@ object NetworkComponent {
         DefaultHackerNewsRepository(hackerNewsApi)
     }
 
+    val replyScanner: ReplyScanner by lazy {
+        DefaultReplyScanner(hackerNewsApi)
+    }
+
     val algoliaRepository: AlgoliaRepository by lazy {
         KtorAlgoliaRepository(transportClient)
+    }
+
+    val linkPreviewRepository: LinkPreviewRepository by lazy {
+        KtorLinkPreviewRepository(transportClient)
+    }
+
+    val linkSummaryRepository: LinkSummaryRepository by lazy {
+        KtorLinkSummaryRepository(transportClient, linkPreviewRepository)
+    }
+
+    val cloudSummaryRepository: CloudSummaryRepository by lazy {
+        KtorCloudSummaryRepository(httpClientInstance)
+    }
+
+    val aiModelCatalogRepository: AiModelCatalogRepository by lazy {
+        KtorAiModelCatalogRepository(httpClientInstance)
+    }
+
+    val openRouterProviderIconRepository: OpenRouterProviderIconRepository by lazy {
+        KtorOpenRouterProviderIconRepository(httpClientInstance)
+    }
+
+    val hackerNewsWebRepository: HackerNewsWebRepository by lazy {
+        KtorHackerNewsWebRepository(transportClient)
+    }
+
+    /** Callback bridge for Android callers while shared repositories remain suspend-first. */
+    fun <T> launchCallbackRequest(
+        request: suspend () -> T,
+        onSuccess: (T) -> Unit,
+        onFailure: (Throwable) -> Unit,
+    ): Job = networkScope.launch {
+        try {
+            val result = request()
+            withContext(Dispatchers.Main.immediate) { onSuccess(result) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            withContext(Dispatchers.Main.immediate) { onFailure(error) }
+        }
+    }
+
+    /** Collects a shared flow on the network scope and delivers every event on Android's UI. */
+    fun <T> collectCallbackFlow(
+        flow: Flow<T>,
+        onEach: (T) -> Unit,
+        onFailure: (Throwable) -> Unit,
+    ): Job = networkScope.launch {
+        try {
+            flow.collect { event ->
+                withContext(Dispatchers.Main.immediate) { onEach(event) }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            withContext(Dispatchers.Main.immediate) { onFailure(error) }
+        }
     }
 
     @Volatile
@@ -46,6 +112,12 @@ object NetworkComponent {
 
     @Volatile
     private var cookieClient: KtorHttpClient? = null
+
+    @Volatile
+    private var authenticatedWebRepository: HackerNewsWebRepository? = null
+
+    @Volatile
+    private var authenticatedActionRepository: HackerNewsActionRepository? = null
 
     private var requestQueueInstance: RequestQueue? = null
 
@@ -57,10 +129,35 @@ object NetworkComponent {
             }
         }
 
+    val authenticatedHackerNewsWebRepository: HackerNewsWebRepository
+        get() {
+            authenticatedWebRepository?.let { return it }
+            return synchronized(NetworkComponent::class.java) {
+                authenticatedWebRepository ?: run {
+                    createCookieClient()
+                    checkNotNull(authenticatedWebRepository)
+                }
+            }
+        }
+
+    val hackerNewsActionRepository: HackerNewsActionRepository
+        get() {
+            authenticatedActionRepository?.let { return it }
+            return synchronized(NetworkComponent::class.java) {
+                authenticatedActionRepository ?: run {
+                    httpClientInstanceWithCookies
+                    checkNotNull(authenticatedActionRepository)
+                }
+            }
+        }
+
     private fun createCookieClient(): KtorHttpClient {
         val transport = createClient { install(HttpCookies) }
+        val client = KtorHttpClient(transport, networkScope)
         cookieTransportClient = transport
-        return KtorHttpClient(transport, networkScope)
+        authenticatedWebRepository = KtorHackerNewsWebRepository(transport)
+        authenticatedActionRepository = KtorHackerNewsActionRepository(httpClientInstance, client)
+        return client
     }
 
     fun resetHttpClientCookieInstance() {
@@ -68,6 +165,8 @@ object NetworkComponent {
             cookieTransportClient?.close()
             cookieTransportClient = null
             cookieClient = null
+            authenticatedWebRepository = null
+            authenticatedActionRepository = null
         }
     }
 
@@ -90,7 +189,7 @@ object NetworkComponent {
                 }
             }
             RequestQueue(
-                client = queueClient,
+                client = KtorHttpClient(queueClient, networkScope),
                 workerScope = networkScope,
                 callbackDispatcher = Dispatchers.Main.immediate,
             ).also { requestQueueInstance = it }

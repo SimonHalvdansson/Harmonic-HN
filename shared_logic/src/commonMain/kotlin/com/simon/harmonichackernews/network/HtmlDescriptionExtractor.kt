@@ -1,42 +1,39 @@
 package com.simon.harmonichackernews.network
 
-import java.util.Locale
-import java.util.regex.Matcher
-import java.util.regex.Pattern
 import kotlin.math.min
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 
 /** Conservative fallback extraction for pages whose description metadata is not useful.  */
-internal object HtmlDescriptionExtractor {
+object HtmlDescriptionExtractor {
     private const val MIN_DESCRIPTION_CHARS = 32
     private const val MIN_LETTER_CHARS = 20
     private const val MIN_LATIN_WORDS = 5
     private const val MAX_CANDIDATE_CHARS = 600
-    private val WORD_PATTERN: Pattern = Pattern.compile("[\\p{L}\\p{N}][\\p{L}\\p{N}'’_-]*")
-    private val SENTENCE_PUNCTUATION_PATTERN: Pattern = Pattern.compile("[.!?。！？]")
-    private val POSITIVE_CONTAINER_PATTERN: Pattern = Pattern.compile(
+    private val WORD_PATTERN = Regex("[\\p{L}\\p{N}][\\p{L}\\p{N}'’_-]*")
+    private val SENTENCE_PUNCTUATION_PATTERN = Regex("[.!?。！？]")
+    private val POSITIVE_CONTAINER_PATTERN = Regex(
         "(?:^|[-_\\s])(article|articlebody|article-body|body|content|entry|main|post|story|text)"
                 + "(?:$|[-_\\s])",
-        Pattern.CASE_INSENSITIVE
+        RegexOption.IGNORE_CASE,
     )
-    private val NEGATIVE_CONTAINER_PATTERN: Pattern = Pattern.compile(
+    private val NEGATIVE_CONTAINER_PATTERN = Regex(
         ("(?:^|[-_\\s])(ad|advert|author|bio|breadcrumb|caption|comment|comments|consent|cookie|"
                 + "credit|date|dialog|footer|header|login|menu|meta|modal|nav|newsletter|popup|"
                 + "promo|recommend|related|reply|share|sidebar|signup|social|subscribe|tag|widget)"
                 + "(?:$|[-_\\s])"),
-        Pattern.CASE_INSENSITIVE
+        RegexOption.IGNORE_CASE,
     )
-    private val BOILERPLATE_PATTERN: Pattern = Pattern.compile(
+    private val BOILERPLATE_PATTERN = Regex(
         ("^(advertisement|all rights reserved|click here|enable javascript|home|homepage|loading|"
                 + "log in|read more|sign in|sign up|skip to|subscribe|welcome)(?:[.!\\s]|$)|"
                 + "^(please enable (?:java ?script|js)|this site uses cookies|we use cookies|your browser)|"
                 + "^by .{0,120}\\bisbn\\b"),
-        Pattern.CASE_INSENSITIVE
+        RegexOption.IGNORE_CASE,
     )
-    private val MARKUP_OR_STYLE_PATTERN: Pattern = Pattern.compile(
+    private val MARKUP_OR_STYLE_PATTERN = Regex(
         "<[a-z][^>]*>|\\{[^}]{0,160}:|(?:^|[;{])\\s*[a-z-]{2,}\\s*:",
-        Pattern.CASE_INSENSITIVE
+        RegexOption.IGNORE_CASE,
     )
 
     fun chooseDescription(
@@ -57,10 +54,9 @@ internal object HtmlDescriptionExtractor {
     fun isMeaningful(value: String?, pageTitle: String?, fallbackTitle: String?): Boolean {
         val cleaned = clean(value)
         val qualityText = withoutProviderBoilerplate(cleaned)
-        if (cleaned.length < MIN_DESCRIPTION_CHARS || countLetters(cleaned) < MIN_LETTER_CHARS || BOILERPLATE_PATTERN.matcher(
-                cleaned
-            ).find()
-            || MARKUP_OR_STYLE_PATTERN.matcher(cleaned).find()
+        if (cleaned.length < MIN_DESCRIPTION_CHARS || countLetters(cleaned) < MIN_LETTER_CHARS
+            || BOILERPLATE_PATTERN.containsMatchIn(cleaned)
+            || MARKUP_OR_STYLE_PATTERN.containsMatchIn(cleaned)
             || duplicatesTitle(qualityText, pageTitle)
             || duplicatesTitle(qualityText, fallbackTitle)
         ) {
@@ -143,7 +139,7 @@ internal object HtmlDescriptionExtractor {
             }
 
             val identifiers = current.id() + " " + current.className()
-            if (NEGATIVE_CONTAINER_PATTERN.matcher(identifiers).find()
+            if (NEGATIVE_CONTAINER_PATTERN.containsMatchIn(identifiers)
                 || current.hasAttr("hidden")
                 || "true".equals(current.attr("aria-hidden"), ignoreCase = true)
             ) {
@@ -160,7 +156,7 @@ internal object HtmlDescriptionExtractor {
 
     private fun scoreParagraph(paragraph: Element, text: String, paragraphIndex: Int): Int {
         var score = min(text.length, 240) / 4
-        if (SENTENCE_PUNCTUATION_PATTERN.matcher(text).find()) {
+        if (SENTENCE_PUNCTUATION_PATTERN.containsMatchIn(text)) {
             score += 20
         }
 
@@ -185,7 +181,7 @@ internal object HtmlDescriptionExtractor {
                 break
             }
             val identifiers = current.id() + " " + current.className()
-            if (POSITIVE_CONTAINER_PATTERN.matcher(identifiers).find()) {
+            if (POSITIVE_CONTAINER_PATTERN.containsMatchIn(identifiers)) {
                 positiveContainerFound = true
             }
             current = current.parent()
@@ -232,18 +228,13 @@ internal object HtmlDescriptionExtractor {
     }
 
     private fun countWords(value: String): Int {
-        var count = 0
-        val matcher = WORD_PATTERN.matcher(value)
-        while (matcher.find()) {
-            count++
-        }
-        return count
+        return WORD_PATTERN.findAll(value).count()
     }
 
     private fun countLetters(value: String): Int {
         var count = 0
         for (i in 0..<value.length) {
-            if (Character.isLetter(value.get(i))) {
+            if (value[i].isLetter()) {
                 count++
             }
         }
@@ -253,7 +244,8 @@ internal object HtmlDescriptionExtractor {
     private fun countLatinLetters(value: String): Int {
         var count = 0
         for (i in 0..<value.length) {
-            if (Character.UnicodeScript.of(value.get(i).code) == Character.UnicodeScript.LATIN) {
+            val code = value[i].code
+            if (code in 0x0041..0x024f || code in 0x1e00..0x1eff || code in 0xab30..0xab6f) {
                 count++
             }
         }

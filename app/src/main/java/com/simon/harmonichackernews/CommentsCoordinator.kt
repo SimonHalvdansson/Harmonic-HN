@@ -23,6 +23,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
 import androidx.webkit.WebViewFeature
 import com.simon.harmonichackernews.network.RequestQueue
@@ -30,15 +31,15 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.CommentsWebViewController.PageTextCallback
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.PollOption
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
-import com.simon.harmonichackernews.network.AlgoliaFallbackManager
-import com.simon.harmonichackernews.network.AlgoliaFallbackManager.FallbackListener
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.ApiDecodingException
+import com.simon.harmonichackernews.network.CommentThreadLoadResult
+import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.CommentThreadSource
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
 import com.simon.harmonichackernews.network.JSONParser
@@ -50,21 +51,22 @@ import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.PlatformServices
-import com.simon.harmonichackernews.presentation.CommentsSessionState
+import com.simon.harmonichackernews.presentation.CommentsAction
+import com.simon.harmonichackernews.presentation.CommentsPresenter
+import com.simon.harmonichackernews.presentation.CommentThreadStore
+import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.utils.AccountUtils
-import com.simon.harmonichackernews.utils.CommentSorter
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ShareUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
+import com.simon.harmonichackernews.utils.StoryTitlePolicy
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.ViewUtils
-import com.simon.harmonichackernews.network.HttpResponse as ActionHttpResponse
 import java.io.IOException
-import java.util.regex.Pattern
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
@@ -78,16 +80,23 @@ import kotlinx.coroutines.launch
 class CommentsCoordinator(
     private val activity: MainActivity,
     private val destination: StoryDestination,
+    sessionKey: Int,
     savedInstanceState: Bundle?,
     private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
     private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
 ) {
     private val userSettings = AndroidUserSettings(activity)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val screenStateViewModel = ViewModelProvider(activity)[ScreenStateViewModel::class.java]
+    private val sessionState = screenStateViewModel.commentsStateFor(sessionKey, destination.storyId)
+    private val restoringSession = sessionState.initialized
+    private val scrollProgress = sessionState.scrollProgress
+    private var restoringStoredProgress = scrollProgress.initialized
     private var callback: CommentsPaneCallback?
     private var started = false
     private var destroyed = false
-    private val sessionState = CommentsSessionState()
+    private val commentsPresenter = CommentsPresenter(coroutineScope, sessionState)
+    private val commentThread: CommentThreadStore = commentsPresenter.thread
     private var comments by sessionState::comments
     private var allComments by sessionState::allComments
     private var queue: RequestQueue? = null
@@ -120,13 +129,45 @@ class CommentsCoordinator(
     private var closeWebViewOnBack = false
     private var topInset = 0
     private var lastLoaded by sessionState::lastLoaded
-    private var commentsLoaded by sessionState::commentsLoaded
-    private var commentsRefreshing by sessionState::refreshInProgress
-    private var loadingFailed by sessionState::loadingFailed
-    private var loadingFailedServerError by sessionState::loadingFailedServerError
-    private var showUpdate by sessionState::showUpdate
-    private var storyVoteLoading by sessionState::storyVoteLoading
-    private var storyFavoriteLoading by sessionState::storyFavoriteLoading
+    private var commentsLoaded: Boolean
+        get() = commentsPresenter.state.value.loaded
+        set(value) = commentsPresenter.dispatch(CommentsAction.SetLoaded(value))
+    private var commentsRefreshing: Boolean
+        get() = commentsPresenter.state.value.refreshing
+        set(value) = commentsPresenter.dispatch(CommentsAction.SetRefreshing(value))
+    private var loadingFailed: Boolean
+        get() = commentsPresenter.state.value.failure != null
+        set(value) {
+            val current = commentsPresenter.state.value.failure
+            commentsPresenter.dispatch(
+                CommentsAction.SetFailure(
+                    if (value) current ?: StoryLoadFailure.GENERAL else null,
+                ),
+            )
+        }
+    private var loadingFailedServerError: Boolean
+        get() = commentsPresenter.state.value.failure == StoryLoadFailure.NOT_FOUND
+        set(value) {
+            val current = commentsPresenter.state.value.failure
+            commentsPresenter.dispatch(
+                CommentsAction.SetFailure(
+                    when {
+                        value -> StoryLoadFailure.NOT_FOUND
+                        current == StoryLoadFailure.NOT_FOUND -> StoryLoadFailure.GENERAL
+                        else -> current
+                    },
+                ),
+            )
+        }
+    private var showUpdate: Boolean
+        get() = commentsPresenter.state.value.showUpdate
+        set(value) = commentsPresenter.dispatch(CommentsAction.SetShowUpdate(value))
+    private var storyVoteLoading: Boolean
+        get() = commentsPresenter.state.value.storyVoteLoading
+        set(value) = commentsPresenter.dispatch(CommentsAction.SetStoryVoteLoading(value))
+    private var storyFavoriteLoading: Boolean
+        get() = commentsPresenter.state.value.storyFavoriteLoading
+        set(value) = commentsPresenter.dispatch(CommentsAction.SetStoryFavoriteLoading(value))
     private var hasAccountDetails = false
     private var displaySettings: CommentDisplaySettings? = null
     private var backPressedCallback: OnBackPressedCallback? = null
@@ -134,7 +175,8 @@ class CommentsCoordinator(
     private var story by sessionState::story
     private var filteredUsers: MutableSet<String>? = null
     private var scrollToCommentId by sessionState::scrollToCommentId
-    private var byOpFilterActive by sessionState::commentsByOpFilterActive
+    private val byOpFilterActive: Boolean
+        get() = commentThread.state.value.commentsByOp
     private var originalStatusBarColor = Color.TRANSPARENT
     private var originalStatusBarColorCaptured = false
     private var commentsPaneStatusBarColor = Color.TRANSPARENT
@@ -143,11 +185,18 @@ class CommentsCoordinator(
     private var appliedStatusBarProtectionKnown = false
     private var appliedStatusBarProtectionEnabled = false
     private var appliedStatusBarProtectionColor = Color.TRANSPARENT
-    private var commentSorting by sessionState::currentCommentSorting
+    private var commentSorting: String?
+        get() = commentThread.state.value.sorting
+        set(value) {
+            commentsPresenter.dispatch(CommentsAction.SetSorting(value.orEmpty()))
+        }
     private var composeController: CommentsComposeController? = null
 
-    // Clean fallback management
-    private var fallbackManager: AlgoliaFallbackManager? = null
+    private val commentThreadRepository = CommentThreadRepository(
+        NetworkComponent.algoliaRepository,
+        NetworkComponent.hackerNewsRepository,
+    )
+    private var commentThreadLoadJob: Job? = null
 
     private class PendingCommentsParse(
         val loadGeneration: Int,
@@ -202,6 +251,10 @@ class CommentsCoordinator(
 
     private fun initializeStory() {
         filteredUsers = Utils.getFilteredUsers(requireContext())
+
+        if (restoringSession) {
+            return
+        }
 
         story = Story()
 
@@ -275,10 +328,12 @@ class CommentsCoordinator(
             adBlockDisabledForSession = savedInstanceState.getBoolean(
                 STATE_ADBLOCK_DISABLED_FOR_SESSION, false
             )
-            commentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING)
+            if (!restoringSession) {
+                commentSorting = savedInstanceState.getString(STATE_COMMENT_SORTING)
+            }
         }
 
-        if (TextUtils.isEmpty(commentSorting)) {
+        if (!restoringSession && (savedInstanceState == null || TextUtils.isEmpty(commentSorting))) {
             commentSorting = userSettings.comments.sorting
         }
 
@@ -550,11 +605,15 @@ class CommentsCoordinator(
         // cold theme/preference/resource lookups on the comments-open frame.
         webViewController!!.setContainerBackgroundColor(commentsPaneStatusBarColor)
 
-        comments = ArrayList<Comment>()
-        val headerComment = Comment()
-        comments!!.add(headerComment) // header
-        allComments = ArrayList<Comment>()
-        allComments!!.add(headerComment)
+        if (!restoringSession) {
+            val headerComment = Comment()
+            commentsPresenter.dispatch(
+                CommentsAction.ResetThread(story, headerComment, getCurrentCommentSorting()),
+            )
+        }
+        comments = commentThread.displayedComments
+        allComments = commentThread.allComments
+        sessionState.initialized = true
 
         username = AccountUtils.getAccountUsername(requireContext())
         hasAccountDetails = AccountUtils.hasAccountDetails(requireContext())
@@ -567,14 +626,16 @@ class CommentsCoordinator(
         // Navigation Compose owns the screen transition. Do not hold the first frame
         // behind the old inset-gated postponed transition; render the header skeleton immediately
         // and start loading on the next main-loop turn.
-        view.post(object : Runnable {
-            override fun run() {
-                if (this@CommentsCoordinator.view !== view || !this@CommentsCoordinator.isAdded) {
-                    return
+        if (!commentsLoaded) {
+            view.post(object : Runnable {
+                override fun run() {
+                    if (this@CommentsCoordinator.view !== view || !this@CommentsCoordinator.isAdded) {
+                        return
+                    }
+                    loadInitialStoryAndComments(restoreScrollFromCache)
                 }
-                loadInitialStoryAndComments(restoreScrollFromCache)
-            }
-        })
+            })
+        }
         if (shouldInitializeWebViewInBackground && webViewController != null) {
             view.postDelayed(
                 webViewController!!.initializeRunnable,
@@ -678,6 +739,14 @@ class CommentsCoordinator(
                     toggleCommentExpanded(comment, position)
                 }
 
+                override fun onScrollPositionChanged(commentId: Int, offset: Int) {
+                    if (restoringStoredProgress) return
+                    scrollProgress.initialized = true
+                    scrollProgress.storyId = story?.id ?: destination.storyId
+                    scrollProgress.topCommentId = commentId
+                    scrollProgress.topCommentOffset = -offset
+                }
+
                 override fun onCommentAction(comment: Comment, action: Int) {
                     handleComposeCommentAction(comment, action)
                 }
@@ -736,6 +805,11 @@ class CommentsCoordinator(
                     selectComposeSearchResult(comment)
                 }
 
+                override fun onSearchQueryChanged(query: String) {
+                    commentsPresenter.dispatch(CommentsAction.SetSearchQuery(query))
+                    syncComposeState()
+                }
+
                 override fun onSortComments(sortType: String) {
                     changeCommentSorting(sortType)
                 }
@@ -786,6 +860,9 @@ class CommentsCoordinator(
         requireActivity().attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
+        if (restoringSession && restoringStoredProgress) {
+            restoreScrollProgress()
+        }
         syncOnBackPressedCallbackEnabledState()
     }
 
@@ -793,6 +870,14 @@ class CommentsCoordinator(
         val controller = composeController
         if (controller == null || story == null || comments == null) {
             return
+        }
+        if (!restoringStoredProgress) {
+            scrollProgress.initialized = true
+            scrollProgress.storyId = story!!.id
+            scrollProgress.collapsedIDs.clear()
+            comments!!.asSequence()
+                .filter { !it.expanded }
+                .mapTo(scrollProgress.collapsedIDs) { it.id }
         }
         val readerAvailable =
             webViewController != null && webViewController!!.isReaderModeAvailable
@@ -821,7 +906,9 @@ class CommentsCoordinator(
             commentsContentInsetLeft,
             commentsContentInsetRight,
             storyVoteLoading,
-            storyFavoriteLoading
+            storyFavoriteLoading,
+            commentThread.state.value.searchQuery,
+            commentThread.state.value.searchResults,
         )
     }
 
@@ -1005,7 +1092,7 @@ class CommentsCoordinator(
             UserActions.setFavorite(
                 ctx, comment.id, newFavorited,
                 object : ActionCallback {
-                    override fun onSuccess(response: ActionHttpResponse) {
+                    override fun onSuccess() {
                         if (composeController != null) {
                             composeController!!.setCommentActionFavoriteLoading(
                                 comment.id, false
@@ -1042,7 +1129,7 @@ class CommentsCoordinator(
                 && composeController!!.isCommentActionDownvoted(comment.id)
         composeController!!.setCommentActionVoteLoading(comment.id, action)
         val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: ActionHttpResponse) {
+            override fun onSuccess() {
                 val upvoted = action == CommentsComposeController.COMMENT_ACTION_UPVOTE
                 val downvoted = action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE
                 Utils.setUpvoted(ctx, comment.id, true, upvoted)
@@ -1229,7 +1316,7 @@ class CommentsCoordinator(
         if (comments == null) {
             return
         }
-        comment.expanded = !comment.expanded
+        commentsPresenter.dispatch(CommentsAction.ToggleExpanded(comment.id))
         syncComposeState()
     }
 
@@ -1313,22 +1400,6 @@ class CommentsCoordinator(
     fun onStop() {
         if (!started) return
         started = false
-
-        if (composeController == null || story == null) {
-            return
-        }
-        if (MainActivity.commentsScrollProgresses == null) {
-            MainActivity.commentsScrollProgresses = ArrayList()
-        }
-        val recordedProgress = recordScrollProgress()
-        for (i in MainActivity.commentsScrollProgresses.indices) {
-            val scrollProgress = MainActivity.commentsScrollProgresses.get(i)
-            if (scrollProgress.storyId == story!!.id) {
-                MainActivity.commentsScrollProgresses.set(i, recordedProgress)
-                return
-            }
-        }
-        MainActivity.commentsScrollProgresses.add(recordedProgress)
     }
 
     fun onSaveInstanceState(outState: Bundle) {
@@ -1361,37 +1432,20 @@ class CommentsCoordinator(
         outState.putString(STATE_COMMENT_SORTING, getCurrentCommentSorting())
     }
 
-    private fun recordScrollProgress(): CommentsScrollProgress {
-        val scrollProgress = CommentsScrollProgress()
-
-        scrollProgress.storyId = story!!.id
-        if (composeController != null) {
-            scrollProgress.topCommentId = composeController!!.firstVisibleCommentId
-            // LazyColumn exposes how far the first visible item has scrolled past the top.
-            scrollProgress.topCommentOffset = -composeController!!.firstVisibleCommentOffset
-        }
-
-        scrollProgress.collapsedIDs = HashSet()
-
-        for (c in comments!!) {
-            if (!c.expanded) {
-                scrollProgress.collapsedIDs.add(c.id)
-            }
-        }
-
-        return scrollProgress
-    }
-
-    private fun restoreScrollProgress(scrollProgress: CommentsScrollProgress) {
+    private fun restoreScrollProgress() {
+        val collapsedIds = scrollProgress.collapsedIDs.toSet()
+        val topCommentId = scrollProgress.topCommentId
+        val topCommentOffset = scrollProgress.topCommentOffset
         for (i in comments!!.indices) {
             val c = comments!!.get(i)
-            c.expanded = !scrollProgress.collapsedIDs.contains(c.id)
+            c.expanded = !collapsedIds.contains(c.id)
         }
+        restoringStoredProgress = false
         if (composeController != null) {
             syncComposeState()
             composeController!!.scrollToComment(
-                scrollProgress.topCommentId,
-                scrollProgress.topCommentOffset,
+                topCommentId,
+                topCommentOffset,
                 false
             )
         }
@@ -1495,9 +1549,12 @@ class CommentsCoordinator(
         }
         commentsLoadGeneration++
         cancelPendingCommentsParse()
+        commentsRefreshing = false
+        storyVoteLoading = false
+        storyFavoriteLoading = false
         coroutineScope.cancel()
-        fallbackManager?.dispose()
-        fallbackManager = null
+        commentThreadLoadJob?.cancel()
+        commentThreadLoadJob = null
         if (webViewController != null) {
             webViewController!!.onDestroyView(rootView)
         }
@@ -1646,157 +1703,38 @@ class CommentsCoordinator(
             notifyHeaderChanged()
         }
 
-        // Initialize fallback manager
-        fallbackManager?.dispose()
-        fallbackManager = AlgoliaFallbackManager(
-            userSettings,
-            filteredUsers ?: HashSet(),
-            object : FallbackListener {
-                override fun onAlgoliaSuccess(response: String?) {
-                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                        Log.w(TAG, "Ignoring stale Algolia success for storyId=" + id)
-                        return
-                    }
-                    Log.d(
-                        TAG, ("Algolia comments load succeeded for storyId=" + id
-                                + ", responseLength=" + (if (response == null) 0 else response.length))
-                    )
-                    if (TextUtils.isEmpty(oldCachedResponse) || oldCachedResponse != response) {
-                        val parseLiveResponse = Runnable {
-                            handleJsonResponse(
-                                id,
-                                response!!,
-                                true,
-                                oldCachedResponse == null,
-                                false,
-                                loadGeneration,
-                                Runnable { finishCommentsRefresh(loadGeneration, id) })
-                        }
-                        if (!deferUntilPendingParseFinishes(
-                                loadGeneration,
-                                id,
-                                parseLiveResponse
-                            )
-                        ) {
-                            parseLiveResponse.run()
-                        }
-                    } else if (!attachCompletionToPendingParse(
-                            loadGeneration,
-                            id,
-                            Runnable { finishCommentsRefresh(loadGeneration, id) })
-                    ) {
-                        finishCommentsRefresh(loadGeneration, id)
-                    }
-                }
+        commentThreadLoadJob?.cancel()
+        commentThreadLoadJob = coroutineScope.launch {
+            val result = commentThreadRepository.load(
+                storyId = id,
+                useAlgolia = userSettings.reading.useAlgoliaApi,
+                filteredUsers = filteredUsers ?: emptySet(),
+            )
+            if (!isCurrentCommentsLoad(loadGeneration, id)) {
+                Log.w(TAG, "Ignoring stale comments result for storyId=$id")
+                return@launch
+            }
 
-                override fun onAlgoliaFailed(noInternet: Boolean) {
-                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                        Log.w(TAG, "Ignoring stale Algolia failure for storyId=" + id)
-                        return
-                    }
-                    Log.w(
-                        TAG,
-                        "Algolia comments load failed for storyId=" + id + ", noInternet=" + noInternet
-                    )
-                    loadingFailed = true
-                    loadingFailedServerError = !noInternet
-                    commentsLoaded = true
-                    setCommentsRefreshInProgress(false)
-                    notifyHeaderChanged()
-                }
+            when (result) {
+                is CommentThreadLoadResult.Algolia -> onAlgoliaThreadLoaded(
+                    id,
+                    loadGeneration,
+                    oldCachedResponse,
+                    result.response,
+                )
 
-                override fun onUsingFallback() {
-                    val context: Context? = this@CommentsCoordinator.context
-                    if (context != null && isCurrentCommentsLoad(loadGeneration, id)) {
-                        Toast.makeText(
-                            context,
-                            "Algolia API failed, using official HN API",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                is CommentThreadLoadResult.Official -> onOfficialThreadLoaded(
+                    id,
+                    loadGeneration,
+                    result,
+                )
 
-                override fun onHNAPIStoryLoaded(loadedStory: Story) {
-                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                        return
-                    }
-                    // Update story data
-                    story!!.title = loadedStory.title
-                    story!!.by = loadedStory.by
-                    story!!.score = loadedStory.score
-                    story!!.time = loadedStory.time
-                    story!!.url = loadedStory.url
-                    story!!.isLink = loadedStory.isLink
-                    story!!.isComment = loadedStory.isComment
-                    story!!.text = loadedStory.text
-                    story!!.kids = loadedStory.kids
-                    story!!.pollOptions = loadedStory.pollOptions
-                    story!!.descendants = loadedStory.descendants
-                    story!!.parentId = loadedStory.parentId
-                    story!!.loaded = true
-
-                    // Reset comments
-                    if (allComments != null && allComments!!.size > 1) {
-                        allComments!!.subList(1, allComments!!.size).clear()
-                    }
-                    val oldSize = comments!!.size
-                    if (oldSize > 1) {
-                        comments!!.subList(1, oldSize).clear()
-                    }
-
-                    loadingFailed = false
-                    loadingFailedServerError = false
-                    if (linkPreviewController != null) {
-                        linkPreviewController!!.loadNetworkPreviews(context)
-                    }
-                    refreshHeaderAfterStoryLoad()
-                    maybeLoadPollOptions()
-                }
-
-                override fun onHNAPIFailed() {
-                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                        Log.w(TAG, "Ignoring stale HN API failure for storyId=" + id)
-                        return
-                    }
-                    Log.w(TAG, "HN API comments load failed for storyId=" + id)
-                    loadingFailed = true
-                    loadingFailedServerError = false
-                    commentsLoaded = true
-                    setCommentsRefreshInProgress(false)
-                    notifyHeaderChanged()
-                }
-
-                override fun onAllCommentsLoaded(loadedComments: MutableList<Comment>) {
-                    if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                        Log.w(
-                            TAG, ("Ignoring stale loaded comments for storyId=" + id
-                                    + ", loadedCount=" + loadedComments.size)
-                        )
-                        return
-                    }
-                    Log.d(
-                        TAG, ("Loaded comments from fallback path for storyId=" + id
-                                + ", loadedCount=" + loadedComments.size)
-                    )
-                    val revealComments = Runnable {
-                        if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                            return@Runnable
-                        }
-                        // Add all comments at once in proper tree order. Compose animates the loading
-                        // row removal and item insertion from the immutable list snapshot.
-                        allComments!!.addAll(loadedComments)
-                        updateDefaultCommentSortOrder(allComments!!)
-                        CommentSorter.sort(allComments!!, getCurrentCommentSorting())
-                        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(allComments!!))
-                        completeCommentsLoad(false)
-                        setCommentsRefreshInProgress(false)
-                    }
-
-                    revealComments.run()
-                }
-            })
-
-        fallbackManager!!.loadComments(id, oldCachedResponse)
+                is CommentThreadLoadResult.Failure -> onCommentThreadLoadFailed(
+                    id,
+                    result,
+                )
+            }
+        }
 
         maybeLoadPollOptions()
 
@@ -1804,6 +1742,121 @@ class CommentsCoordinator(
             linkPreviewController!!.loadNetworkPreviews(context)
         }
         return loadGeneration
+    }
+
+    private fun onAlgoliaThreadLoaded(
+        storyId: Int,
+        loadGeneration: Int,
+        oldCachedResponse: String?,
+        response: String,
+    ) {
+        Log.d(
+            TAG,
+            "Algolia comments load succeeded for storyId=$storyId, responseLength=${response.length}",
+        )
+        if (oldCachedResponse.isNullOrEmpty() || oldCachedResponse != response) {
+            val parseLiveResponse = Runnable {
+                handleJsonResponse(
+                    storyId,
+                    response,
+                    true,
+                    oldCachedResponse == null,
+                    false,
+                    loadGeneration,
+                    Runnable { finishCommentsRefresh(loadGeneration, storyId) },
+                )
+            }
+            if (!deferUntilPendingParseFinishes(loadGeneration, storyId, parseLiveResponse)) {
+                parseLiveResponse.run()
+            }
+        } else if (!attachCompletionToPendingParse(
+                loadGeneration,
+                storyId,
+                Runnable { finishCommentsRefresh(loadGeneration, storyId) },
+            )
+        ) {
+            finishCommentsRefresh(loadGeneration, storyId)
+        }
+    }
+
+    private fun onOfficialThreadLoaded(
+        storyId: Int,
+        loadGeneration: Int,
+        result: CommentThreadLoadResult.Official,
+    ) {
+        if (result.usedAsFallback) {
+            context?.let {
+                Toast.makeText(
+                    it,
+                    "Algolia API failed, using official HN API",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+
+        val loadedStory = result.story
+        story!!.apply {
+            title = loadedStory.title
+            by = loadedStory.by
+            score = loadedStory.score
+            time = loadedStory.time
+            url = loadedStory.url
+            isLink = loadedStory.isLink
+            isComment = loadedStory.isComment
+            text = loadedStory.text
+            kids = loadedStory.kids
+            pollOptions = loadedStory.pollOptions
+            descendants = loadedStory.descendants
+            parentId = loadedStory.parentId
+            loaded = true
+        }
+
+        if (allComments != null && allComments!!.size > 1) {
+            allComments!!.subList(1, allComments!!.size).clear()
+        }
+        if (comments!!.size > 1) {
+            comments!!.subList(1, comments!!.size).clear()
+        }
+        loadingFailed = false
+        loadingFailedServerError = false
+        linkPreviewController?.loadNetworkPreviews(context)
+        refreshHeaderAfterStoryLoad()
+        maybeLoadPollOptions()
+
+        Log.d(
+            TAG,
+            "Loaded comments from official API for storyId=$storyId, loadedCount=${result.comments.size}",
+        )
+        if (!isCurrentCommentsLoad(loadGeneration, storyId)) return
+        commentsPresenter.dispatch(
+            CommentsAction.AppendLoadedComments(
+                story,
+                result.comments,
+                getCurrentCommentSorting(),
+                userSettings.comments.collapseTopLevel,
+            ),
+        )
+        syncCommentThreadReferences()
+        updateNavigationVisibility()
+        syncComposeState()
+        completeCommentsLoad(false)
+        setCommentsRefreshInProgress(false)
+    }
+
+    private fun onCommentThreadLoadFailed(
+        storyId: Int,
+        result: CommentThreadLoadResult.Failure,
+    ) {
+        Log.w(
+            TAG,
+            "${result.source} comments load failed for storyId=$storyId, noInternet=${result.noInternet}",
+            result.cause,
+        )
+        loadingFailed = true
+        loadingFailedServerError = result.source == CommentThreadSource.ALGOLIA && !result.noInternet
+        commentsLoaded = true
+        setCommentsRefreshInProgress(false)
+        notifyHeaderChanged()
     }
 
     private fun onLinkPreviewChanged() {
@@ -1832,9 +1885,9 @@ class CommentsCoordinator(
             return
         }
 
-        if (pollOptionsLookupStarted || story!!.id <= 0 || TextUtils.isEmpty(story!!.title) || !POLL_TITLE_PATTERN.matcher(
-                story!!.title
-            ).find()
+        if (
+            pollOptionsLookupStarted || story!!.id <= 0 ||
+            !StoryTitlePolicy.mayDescribePoll(story!!.title)
         ) {
             return
         }
@@ -2020,16 +2073,9 @@ class CommentsCoordinator(
             applyParsedComments(parsedResponse.comments)
 
             if (!cache && restoreScroll) {
-                // If we're not caching the result, this means we just loaded an old cache.
-                // Let's see if we can recover the scroll position.
-                if (MainActivity.commentsScrollProgresses != null && !MainActivity.commentsScrollProgresses.isEmpty()) {
-                    // We check all of the caches to see if one has the same story ID
-                    for (scrollProgress in MainActivity.commentsScrollProgresses) {
-                        if (scrollProgress.storyId == story!!.id) {
-                            // Jackpot! Let's restore the state
-                            restoreScrollProgress(scrollProgress)
-                        }
-                    }
+                // The live per-story session state replaces the old teardown-time snapshot.
+                if (restoringStoredProgress && scrollProgress.storyId == story!!.id) {
+                    restoreScrollProgress()
                 }
             }
             completeCommentsLoad(updateHeaderAfterLoad)
@@ -2161,40 +2207,17 @@ class CommentsCoordinator(
     }
 
     private fun applyParsedComments(parsedComments: MutableList<Comment>) {
-        val existingCommentsById = HashMap<Int, Comment>()
-        val sourceComments = allCommentsSource
-        for (i in 1..<sourceComments.size) {
-            val comment = sourceComments[i]
-            existingCommentsById[comment.id] = comment
-        }
-
-        val nextComments = ArrayList<Comment>(parsedComments.size + 1)
-        nextComments.add(sourceComments[0])
-        for (parsedComment in parsedComments) {
-            val existingComment = existingCommentsById[parsedComment.id]
-            if (existingComment != null) {
-                CommentListDiff.updateExistingComment(existingComment, parsedComment)
-                nextComments.add(existingComment)
-            } else {
-                nextComments.add(parsedComment)
-            }
-        }
-
-        updateDefaultCommentSortOrder(nextComments)
-        CommentSorter.sort(nextComments, getCurrentCommentSorting())
-
-        if (userSettings.comments.collapseTopLevel) {
-            for (comment in nextComments) {
-                if (comment.depth == 0) {
-                    comment.expanded = false
-                }
-            }
-        }
-
-        val currentAllComments = checkNotNull(allComments)
-        currentAllComments.clear()
-        currentAllComments.addAll(nextComments)
-        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(currentAllComments))
+        commentsPresenter.dispatch(
+            CommentsAction.ReplaceParsedComments(
+                story,
+                parsedComments,
+                getCurrentCommentSorting(),
+                userSettings.comments.collapseTopLevel,
+            ),
+        )
+        syncCommentThreadReferences()
+        updateNavigationVisibility()
+        syncComposeState()
     }
 
     private val allCommentsSource: MutableList<Comment>
@@ -2210,75 +2233,39 @@ class CommentsCoordinator(
         return commentSorting.orEmpty()
     }
 
-    private fun updateDefaultCommentSortOrder(commentsWithHeader: MutableList<Comment>) {
-        for (i in 1..<commentsWithHeader.size) {
-            commentsWithHeader[i].sortOrder = i
-        }
-    }
-
     private fun changeCommentSorting(sortType: String) {
         if (!this.isCommentsViewActive) {
             return
         }
 
-        commentSorting = sortType
-        val sourceComments = allCommentsSource
-        CommentSorter.sort(sourceComments, sortType)
-        applyDisplayedComments(getDisplayedCommentsForCurrentFilter(sourceComments))
+        commentsPresenter.dispatch(CommentsAction.SetSorting(sortType))
+        syncCommentThreadReferences()
+        updateNavigationVisibility()
+        syncComposeState()
     }
 
     private fun showCommentsByOp() {
-        val sourceComments = allCommentsSource
-        if (!CommentThreadFilter.hasCommentsByOp(story, sourceComments)) {
-            return
-        }
-
-        setCommentsByOpFilterActive(true)
-        applyDisplayedComments(
-            CommentThreadFilter.buildCommentsByOpThreadList(
-                story,
-                sourceComments
-            )
-        )
+        if (!commentThread.state.value.hasCommentsByOp) return
+        commentsPresenter.dispatch(CommentsAction.ShowCommentsByOp)
+        syncCommentThreadReferences()
+        updateNavigationVisibility()
+        syncComposeState()
     }
 
     private fun resetCommentsByOpFilter() {
-        if (!byOpFilterActive) {
-            return
-        }
-
-        setCommentsByOpFilterActive(false)
-        applyDisplayedComments(ArrayList(allCommentsSource))
-    }
-
-    private fun setCommentsByOpFilterActive(active: Boolean) {
-        byOpFilterActive = active
-    }
-
-    private fun getDisplayedCommentsForCurrentFilter(
-        sourceComments: List<Comment>
-    ): MutableList<Comment> {
-        if (byOpFilterActive) {
-            if (CommentThreadFilter.hasCommentsByOp(story, sourceComments)) {
-                return CommentThreadFilter.buildCommentsByOpThreadList(story, sourceComments)
-            }
-            setCommentsByOpFilterActive(false)
-        }
-        return ArrayList(sourceComments)
+        commentsPresenter.dispatch(CommentsAction.ResetCommentsByOp)
+        syncCommentThreadReferences()
+        updateNavigationVisibility()
+        syncComposeState()
     }
 
     private fun hasCommentsByOp(): Boolean {
-        return CommentThreadFilter.hasCommentsByOp(story, allCommentsSource)
+        return commentThread.state.value.hasCommentsByOp
     }
 
-    private fun applyDisplayedComments(
-        nextComments: List<Comment>
-    ) {
-        val displayedComments = checkNotNull(comments)
-        displayedComments.clear()
-        displayedComments.addAll(nextComments)
-        updateNavigationVisibility()
-        syncComposeState()
+    private fun syncCommentThreadReferences() {
+        comments = commentThread.displayedComments
+        allComments = commentThread.allComments
     }
 
     fun clickBrowser() {
@@ -2370,7 +2357,7 @@ class CommentsCoordinator(
         syncComposeState()
 
         val cb: ActionCallback = object : ActionCallback {
-            override fun onSuccess(response: ActionHttpResponse) {
+            override fun onSuccess() {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted)
                 storyVoteLoading = false
                 syncComposeState()
@@ -2406,7 +2393,7 @@ class CommentsCoordinator(
         storyFavoriteLoading = true
         syncComposeState()
         UserActions.setFavorite(ctx, storyId, newFavorited, object : ActionCallback {
-            override fun onSuccess(response: ActionHttpResponse) {
+            override fun onSuccess() {
                 Utils.setFavorite(ctx, storyId, newFavorited)
                 storyFavoriteLoading = false
                 syncComposeState()
@@ -2586,9 +2573,6 @@ class CommentsCoordinator(
             "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_TITLE"
         private const val STATE_PREVIEW_IMAGE_DIALOG_URL =
             "com.simon.harmonichackernews.STATE_PREVIEW_IMAGE_DIALOG_URL"
-        private val POLL_TITLE_PATTERN: Pattern =
-            Pattern.compile("\\bpoll\\b", Pattern.CASE_INSENSITIVE)
-
         // Keep WebView startup clear of the comments entrance transition. WebView process and
         // renderer initialization can otherwise land on the same frames as the shared transition
         // on physical devices, which makes opening a story feel much heavier than it is.

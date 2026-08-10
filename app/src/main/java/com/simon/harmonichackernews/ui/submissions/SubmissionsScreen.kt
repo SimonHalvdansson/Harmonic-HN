@@ -127,13 +127,6 @@ class SubmissionsComposeController internal constructor(
     internal var scrollRestoreRequest by mutableStateOf<ScrollRestoreRequest?>(null)
         private set
 
-    var firstVisibleStoryPosition: Int = 0
-        private set
-    var firstVisibleStoryTop: Int = 0
-        private set
-    var appBarCollapsed: Boolean = false
-        private set
-
     fun updateContent(
         submissions: List<Story>,
         selectedFilter: SubmissionFilter,
@@ -188,13 +181,15 @@ class SubmissionsComposeController internal constructor(
 
     internal fun updateScrollState(state: LazyListState) {
         val listIndex = state.firstVisibleItemIndex
-        firstVisibleStoryPosition = (listIndex - 1).coerceAtLeast(0)
-        firstVisibleStoryTop = if (listIndex == 0) {
-            0
-        } else {
-            -state.firstVisibleItemScrollOffset
-        }
-        appBarCollapsed = listIndex > 0 || state.firstVisibleItemScrollOffset > 0
+        listener.onScrollStateChanged(
+            firstVisibleStoryPosition = (listIndex - 1).coerceAtLeast(0),
+            firstVisibleStoryTop = if (listIndex == 0) {
+                0
+            } else {
+                -state.firstVisibleItemScrollOffset
+            },
+            appBarCollapsed = listIndex > 0 || state.firstVisibleItemScrollOffset > 0,
+        )
     }
 
     internal data class ScrollRestoreRequest(
@@ -211,6 +206,11 @@ class SubmissionsComposeController internal constructor(
         fun onCommentStoryClick(story: Story)
         fun onCommentRepliesClick(story: Story)
         fun onLoadMore()
+        fun onScrollStateChanged(
+            firstVisibleStoryPosition: Int,
+            firstVisibleStoryTop: Int,
+            appBarCollapsed: Boolean,
+        ) {}
     }
 
     companion object {
@@ -605,8 +605,8 @@ private fun rememberStoryItemUiModel(
         domainWithoutTopLevel = shortDomain.orEmpty(),
         age = story.timeFormatted,
         commentCount = story.descendants,
-        faviconRes = R.drawable.ic_public,
-        previewImageRes = null,
+        faviconFallback = Res.drawable.ic_public,
+        previewImageFallback = null,
         faviconUrl = faviconUrl,
         previewImageUrl = previewUrl,
         faviconTintArgb = faviconTintArgb,

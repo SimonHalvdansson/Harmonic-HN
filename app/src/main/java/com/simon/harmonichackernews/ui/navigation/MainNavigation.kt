@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -111,6 +110,7 @@ import com.simon.harmonichackernews.ui.stories.StoriesScreen
 import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
@@ -155,7 +155,7 @@ internal data class MainSubmissionsRequest(
 
 internal data class MainCaptchaRequest(
     val serial: Int,
-    val challenge: UserActions.CaptchaChallenge,
+    val challenge: HackerNewsCaptchaChallenge,
     val callback: CaptchaResultCallback,
 )
 
@@ -400,7 +400,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     fun showCaptchaDialog(
-        challenge: UserActions.CaptchaChallenge,
+        challenge: HackerNewsCaptchaChallenge,
         callback: CaptchaResultCallback,
     ) {
         captchaRequest?.callback?.onCaptchaCancelled()
@@ -644,7 +644,7 @@ object MainNavigationHost {
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
         val controller = MainNavigationController(savedState)
         val composeView = ComposeView(activity).apply {
-            id = View.generateViewId()
+            id = R.id.main_navigation_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 HarmonicTheme {
@@ -1199,6 +1199,7 @@ private fun MainNavigation(
                         val coordinator = remember(request.serial) {
                             SubmissionsCoordinator(
                                 activity = activity,
+                                sessionKey = request.serial,
                                 userName = request.userName,
                                 navigator = SubmissionsCoordinator.Navigator { story, showWebsite ->
                                     controller.prepareToOpenStoryFromSubmissions()
@@ -1511,6 +1512,7 @@ private fun CommentsPane(
         val activeCoordinator = CommentsCoordinator(
             activity,
             request.destination,
+            request.serial,
             controller.consumeCommentsSavedState(request.serial),
         )
         coordinator = activeCoordinator

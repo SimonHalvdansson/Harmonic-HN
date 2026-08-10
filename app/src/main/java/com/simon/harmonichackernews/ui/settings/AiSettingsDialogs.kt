@@ -87,8 +87,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import com.simon.harmonichackernews.network.HttpCall
 import org.jetbrains.compose.resources.Font
 
 private val AiMonoFontFamily: FontFamily
@@ -97,8 +97,6 @@ private val AiMonoFontFamily: FontFamily
         val bold = Font(Res.font.jetbrains_mono_bold, FontWeight.Bold)
         return remember(regular, bold) { FontFamily(regular, bold) }
     }
-
-private val AiFreeTitleSuffix = Regex("\\s*\\(free\\)\\s*$", RegexOption.IGNORE_CASE)
 
 @Composable
 fun AiSummaryTextDialog(
@@ -412,8 +410,8 @@ fun AiModelSelectorDialog(
     var priceState by remember {
         mutableStateOf<AiModelPriceState>(AiModelPriceState.Empty)
     }
-    val catalogCall = remember { arrayOfNulls<HttpCall>(1) }
-    val priceCall = remember { arrayOfNulls<HttpCall>(1) }
+    val catalogCall = remember { arrayOfNulls<Job>(1) }
+    val priceCall = remember { arrayOfNulls<Job>(1) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -862,11 +860,7 @@ private fun AiModelRow(
                     .padding(start = 10.dp),
             ) {
                 Text(
-                    text = if (model.isFree) {
-                        model.name.replace(AiFreeTitleSuffix, "")
-                    } else {
-                        model.name
-                    },
+                    text = model.displayName(),
                     color = HarmonicTheme.colors.storyNormal,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,

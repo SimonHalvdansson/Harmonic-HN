@@ -11,6 +11,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.target.Target
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.adapters.StoryDisplayState
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
 import com.simon.harmonichackernews.network.LinkSummaryLoader
@@ -43,36 +44,36 @@ class StoryListState(
     private val stories: MutableList<Story>,
     settings: StoryDisplaySettings,
     wantedType: Int,
-) {
+) : StoryDisplayState {
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
     private val tintExtractor = PreviewImageTintExtractor()
     private var changedListener: ((Story?) -> Unit)? = null
 
-    var showPoints: Boolean = false
-    var compactPoints: Boolean = false
-    var includeTopLevelDomain: Boolean = false
-    var showCommentsCount: Boolean = false
-    var compactView: Boolean = false
-    var thumbnails: Boolean = false
-    var previewImageMode: String = SettingsUtils.STORY_PREVIEW_IMAGE_OFF
-    var borderlessLargePreviewImage: Boolean = false
-    var showSummary: Boolean = false
-    var storyTextSize: Float = 0f
-    var showIndex: Boolean = false
-    var compactHeader: Boolean = false
-    var leftAlign: Boolean = false
-    var cardStyle: Boolean = false
-    var tintCardUsingPreview: Boolean = false
-    var paletteTintMode: String = ""
-    var faviconProvider: String = SettingsUtils.FAVICON_PROVIDER_GOOGLE
-    var hotness: Int = 0
+    override var showPoints: Boolean = false
+    override var compactPoints: Boolean = false
+    override var includeTopLevelDomain: Boolean = false
+    override var showCommentsCount: Boolean = false
+    override var compactView: Boolean = false
+    override var thumbnails: Boolean = false
+    override var previewImageMode: String = SettingsUtils.STORY_PREVIEW_IMAGE_OFF
+    override var borderlessLargePreviewImage: Boolean = false
+    override var showSummary: Boolean = false
+    override var storyTextSize: Float = 0f
+    override var showIndex: Boolean = false
+    override var compactHeader: Boolean = false
+    override var leftAlign: Boolean = false
+    override var cardStyle: Boolean = false
+    override var tintCardUsingPreview: Boolean = false
+    override var paletteTintMode: String = ""
+    override var faviconProvider: String = SettingsUtils.FAVICON_PROVIDER_GOOGLE
+    override var hotness: Int = 0
     var type: Int
-    var font: String = "googlesansflexrounded"
-    var commentTextSize: Float = 0f
+    override var font: String = "googlesansflexrounded"
+    override var commentTextSize: Float = 0f
     var allowCommentRows: Boolean = false
     var disableClickedEffects: Boolean = false
-    var grayOutClicked: Boolean = false
+    override var grayOutClicked: Boolean = false
 
     var paginationMode: Boolean = false
     var showLoadMoreButton: Boolean = false
@@ -153,7 +154,7 @@ class StoryListState(
         notifyChanged()
     }
 
-    fun invalidateTypography() {
+    override fun invalidateTypography() {
         // Compose typography is derived from StoryDisplaySettings on recomposition.
     }
 

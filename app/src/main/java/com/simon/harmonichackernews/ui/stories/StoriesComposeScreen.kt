@@ -24,7 +24,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -49,10 +48,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -65,7 +62,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -74,11 +70,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.TooltipAnchorPosition
@@ -111,15 +104,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
@@ -128,7 +117,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
@@ -148,6 +136,7 @@ import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
+import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -1073,8 +1062,11 @@ private fun StoriesList(
         modifier = modifier.fillMaxSize(),
     ) {
         Box(Modifier.fillMaxSize()) {
-            LazyColumn(
+            SharedLazyContentList(
+                items = visibleStories,
                 state = listState,
+                key = { story -> "${if (searchMode) "search" else "main"}-${story.id}" },
+                contentType = { story -> if (story.isComment) "comment" else "story" },
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(userScrollConnection),
@@ -1084,12 +1076,27 @@ private fun StoriesList(
                     end = safeEnd,
                     bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
                 ),
-            ) {
-                itemsIndexed(
-                    items = visibleStories,
-                    key = { _, story -> "${if (searchMode) "search" else "main"}-${story.id}" },
-                    contentType = { _, story -> if (story.isComment) "comment" else "story" },
-                ) { index, story ->
+                footerKey = "${if (searchMode) "search" else "main"}-load-more",
+                footer = if (controller.showLoadMore) {
+                    {
+                        Box(
+                            Modifier.fillMaxWidth().padding(20.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (controller.loadMoreLoading) {
+                                LoadingIndicator(modifier = Modifier.size(40.dp))
+                            } else {
+                                OutlinedButton(
+                                    onClick = controller.listener::onLoadMore,
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Load more") }
+                            }
+                        }
+                    }
+                } else {
+                    null
+                },
+            ) { index, story ->
                     val itemBoundsModifier = Modifier.onGloballyPositioned { bounds ->
                         controller.updateStoryItemHeight(story.id, bounds.size.height)
                     }
@@ -1147,29 +1154,6 @@ private fun StoriesList(
                             )
                         }
                     }
-                }
-
-                if (controller.showLoadMore) {
-                    item(key = "${if (searchMode) "search" else "main"}-load-more") {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (controller.loadMoreLoading) {
-                                LoadingIndicator(modifier = Modifier.size(40.dp))
-                            } else {
-                                OutlinedButton(
-                                    onClick = controller.listener::onLoadMore,
-                                    shapes = ButtonDefaults.shapes(),
-                                ) {
-                                    Text("Load more")
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             StoriesHeader(
@@ -1509,133 +1493,34 @@ private fun SearchHeader(
     sideStart: androidx.compose.ui.unit.Dp,
     sideEnd: androidx.compose.ui.unit.Dp,
 ) {
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(controller.searching, controller.suppressSearchAutoFocus) {
-        if (controller.searching && !controller.suppressSearchAutoFocus) {
-            focusRequester.requestFocus()
-            keyboard?.show()
-        } else {
-            keyboard?.hide()
-            focusManager.clearFocus(force = true)
-        }
-    }
-    Column {
-        Row(
-            modifier = Modifier.padding(start = sideStart, end = sideEnd),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextField(
-                value = controller.searchDraft,
-                onValueChange = controller::updateSearchDraft,
-                placeholder = { Text("Search posts") },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
-                    controller.listener.onSearch(controller.searchDraft)
-                    keyboard?.hide()
-                    focusManager.clearFocus()
-                }),
-                shape = RoundedCornerShape(32.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .weight(1f)
-                    .focusRequester(focusRequester),
-            )
-            IconButton(
-                onClick = {
-                    keyboard?.hide()
-                    focusManager.clearFocus()
-                    controller.listener.onCloseSearch()
-                },
-                shapes = IconButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_close),
-                    "Close search",
-                    tint = HarmonicTheme.colors.drawable,
-                )
-            }
-        }
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item {
-                SearchOptionChip(controller.searchSortLabel, controller.searchSortLabels) {
-                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_SORT, it)
-                }
-            }
-            item {
-                SearchOptionChip(controller.searchDateLabel, controller.searchDateLabels) {
-                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_DATE, it)
-                }
-            }
-            item {
-                SearchOptionChip(controller.searchPointsLabel, controller.searchPointsLabels) {
-                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_POINTS, it)
-                }
-            }
-            item {
-                SearchOptionChip(controller.searchCommentsLabel, controller.searchCommentsLabels) {
-                    controller.listener.onSearchOption(StoriesComposeController.SEARCH_OPTION_COMMENTS, it)
-                }
-            }
-            item {
-                FilterChip(
-                    selected = controller.searchOnlyClicked,
-                    onClick = controller.listener::onToggleOnlyClicked,
-                    label = { Text("From history") },
-                    leadingIcon = { Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp)) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchOptionChip(label: String, labels: List<String>, onSelected: (Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier.animateContentSize(tween(220, easing = StoriesEasing)),
-    ) {
-        FilterChip(
-            selected = false,
-            onClick = { expanded = true },
-            label = { Text(label) },
-            border = BorderStroke(1.dp, HarmonicTheme.colors.drawable),
-        )
-        HarmonicDropdownMenu(
-            expanded = expanded,
-            onDismiss = { expanded = false },
-            modifier = Modifier.width(196.dp),
-        ) {
-            labels.forEachIndexed { index, option ->
-                DropdownMenuItem(
-                    text = { HarmonicMenuText(option) },
-                    onClick = {
-                        expanded = false
-                        onSelected(index)
-                    },
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    trailingIcon = {
-                        RadioButton(
-                            selected = option == label,
-                            onClick = null,
-                        )
-                    },
-                )
-            }
-        }
-    }
+    val colors = HarmonicTheme.colors
+    SharedStorySearchHeader(
+        state = StorySearchPresentationState(
+            active = controller.searching,
+            draft = controller.searchDraft,
+            suppressAutoFocus = controller.suppressSearchAutoFocus,
+            sortLabel = controller.searchSortLabel,
+            dateLabel = controller.searchDateLabel,
+            pointsLabel = controller.searchPointsLabel,
+            commentsLabel = controller.searchCommentsLabel,
+            sortLabels = controller.searchSortLabels,
+            dateLabels = controller.searchDateLabels,
+            pointsLabels = controller.searchPointsLabels,
+            commentsLabels = controller.searchCommentsLabels,
+            onlyClicked = controller.searchOnlyClicked,
+        ),
+        sideStart = sideStart,
+        sideEnd = sideEnd,
+        iconColor = colors.drawable,
+        menuColor = colors.popupMenuBackground,
+        menuTextColor = colors.textPrimary,
+        fontFamily = ProductSansFontFamily,
+        onDraftChanged = controller::updateSearchDraft,
+        onSearch = controller.listener::onSearch,
+        onClose = controller.listener::onCloseSearch,
+        onOptionSelected = controller.listener::onSearchOption,
+        onToggleOnlyClicked = controller.listener::onToggleOnlyClicked,
+    )
 }
 
 @Composable
@@ -1699,103 +1584,26 @@ private fun SavedFilterButton(
 
 @Composable
 private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boolean) {
-    AnimatedVisibility(
-        visible = controller.loading,
-        enter = fadeIn(tween(180, easing = StoriesEasing)),
-        exit = fadeOut(tween(140, easing = StoriesEasing)),
-    ) {
-        Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
-            LoadingIndicator(modifier = Modifier.size(48.dp))
-        }
-    }
-    AnimatedVisibility(
-        visible = controller.loadingFailed || controller.loadingFailedServerError,
-        enter = fadeIn(tween(180, easing = StoriesEasing)),
-        exit = fadeOut(tween(140, easing = StoriesEasing)),
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(40.dp))
-            Text(
-                if (controller.loadingFailedServerError) "Server error" else controller.loadingFailedMessage,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = controller.listener::onRefresh,
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text("Retry") }
-                if (controller.showCachedAction && !searchMode) {
-                    OutlinedButton(
-                        onClick = controller.listener::onShowCached,
-                        shapes = ButtonDefaults.shapes(),
-                    ) { Text("Show cached") }
-                }
-            }
-        }
-    }
-    AnimatedVisibility(
-        visible = !searchMode && controller.showEmptySavedList,
-        enter = fadeIn(tween(180, easing = StoriesEasing)),
-        exit = fadeOut(tween(140, easing = StoriesEasing)),
-    ) {
-        SavedEmptyState(controller.emptySavedListText, controller.emptySavedListIcon)
-    }
-    AnimatedVisibility(
-        visible = searchMode && controller.showEmptySearch,
-        enter = fadeIn(tween(180, easing = StoriesEasing)),
-        exit = fadeOut(tween(140, easing = StoriesEasing)),
-    ) {
-        EmptyState("No stories found", Res.drawable.ic_search)
-    }
-}
-
-@Composable
-private fun SavedEmptyState(text: String, icon: DrawableResource) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 56.dp, bottom = 36.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = HarmonicTheme.colors.storyNormal,
-        )
-        Text(
-            text = text,
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun EmptyState(text: String, icon: DrawableResource) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = HarmonicTheme.colors.storyDisabled,
-        )
-        Text(
-            text,
-            color = HarmonicTheme.colors.storyDisabled,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
+    val colors = HarmonicTheme.colors
+    SharedStoryListStatus(
+        state = StoryListStatusState(
+            loading = controller.loading,
+            loadingFailed = controller.loadingFailed,
+            serverError = controller.loadingFailedServerError,
+            failureMessage = controller.loadingFailedMessage,
+            showCachedAction = controller.showCachedAction,
+            showEmptySavedList = controller.showEmptySavedList,
+            emptySavedListText = controller.emptySavedListText,
+            emptySavedListIcon = controller.emptySavedListIcon,
+            showEmptySearch = controller.showEmptySearch,
+        ),
+        searchMode = searchMode,
+        normalColor = colors.storyNormal,
+        disabledColor = colors.storyDisabled,
+        fontFamily = ProductSansFontFamily,
+        onRetry = controller.listener::onRefresh,
+        onShowCached = controller.listener::onShowCached,
+    )
 }
 
 @Composable
@@ -1888,8 +1696,8 @@ private fun Story.toUiModel(
         domainWithoutTopLevel = shortDomain,
         age = timeFormatted,
         commentCount = descendants,
-        faviconRes = R.drawable.ic_public,
-        previewImageRes = null,
+        faviconFallback = Res.drawable.ic_public,
+        previewImageFallback = null,
         faviconUrl = favicon,
         previewImageUrl = previewImageUrl,
         previewImageLoadFailed = previewImageLoadFailed,

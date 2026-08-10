@@ -57,18 +57,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.network.DefaultRetryPolicy
-import com.simon.harmonichackernews.network.QueueRequest as Request
-import com.simon.harmonichackernews.network.StringRequest
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.RepliesChecker
+import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
 import java.util.Calendar
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -105,37 +102,24 @@ fun UserSettingsDialog(
     var isBlocked by remember(userName) {
         mutableStateOf(userName in Utils.getFilteredUsers(context))
     }
-    val requestTag = remember(userName, reload) { Any() }
-
     DisposableEffect(userName, reload, monthNames) {
-        val queue = NetworkComponent.getRequestQueueInstance(context)
         state = ComposeUserState.Loading
-        val request = StringRequest(
-            Request.Method.GET,
-            "https://hacker-news.firebaseio.com/v0/user/${Uri.encode(userName)}.json",
-            { response ->
+        val job = NetworkComponent.launchCallbackRequest(
+            request = {
+                NetworkComponent.hackerNewsApi.getUser(userName)
+                    ?: error("Hacker News user not found")
+            },
+            onSuccess = { user ->
                 state = runCatching {
-                    parseComposeUser(monthNames, response.orEmpty())
+                    user.toComposeUser(monthNames)
                 }.fold(
                     onSuccess = ComposeUserState::Loaded,
                     onFailure = { ComposeUserState.Error },
                 )
             },
-            {
-                state = ComposeUserState.Error
-            },
-        ).apply {
-            retryPolicy = DefaultRetryPolicy(
-                15_000,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT,
-            )
-            tag = requestTag
-        }
-        queue.add(request)
-        onDispose {
-            queue.cancelAll(requestTag)
-        }
+            onFailure = { state = ComposeUserState.Error },
+        )
+        onDispose { job.cancel() }
     }
 
     SettingsAlertDialog(
@@ -515,25 +499,23 @@ private fun UserTextAction(
     }
 }
 
-private fun parseComposeUser(months: List<String>, response: String): ComposeUserInfo {
-    val json = JSONObject(response)
-    val created = json.getLong("created")
+private fun HackerNewsUserDto.toComposeUser(months: List<String>): ComposeUserInfo {
     val calendar = Calendar.getInstance().apply {
         time = Date(created * 1_000L)
     }
     val month = months[calendar[Calendar.MONTH]]
-    val karma = Utils.getThousandSeparatedString(json.getInt("karma"))
-    val about = if (json.has("about")) {
+    val formattedKarma = Utils.getThousandSeparatedString(karma)
+    val formattedAbout = if (about != null) {
         @Suppress("DEPRECATION")
-        Html.fromHtml(json.optString("about", "")).toString().trim()
+        Html.fromHtml(about.orEmpty()).toString().trim()
     } else {
         ""
     }
     return ComposeUserInfo(
-        id = json.getString("id"),
-        meta = "$karma karma since $month ${calendar[Calendar.DAY_OF_MONTH]}, " +
+        id = id,
+        meta = "$formattedKarma karma since $month ${calendar[Calendar.DAY_OF_MONTH]}, " +
             calendar[Calendar.YEAR],
-        about = about,
-        hasSubmissions = (json.optJSONArray("submitted")?.length() ?: 0) > 0,
+        about = formattedAbout,
+        hasSubmissions = submitted.isNotEmpty(),
     )
 }

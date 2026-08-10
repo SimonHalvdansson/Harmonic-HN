@@ -15,13 +15,12 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.simon.harmonichackernews.CommentsCoordinator.CommentsPaneCallback
 import com.simon.harmonichackernews.StoriesCoordinator.StoryClickListener
-import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
-import com.simon.harmonichackernews.network.UserActions.CaptchaChallenge
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
@@ -56,7 +55,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         // A singleTask can be recreated with saved navigation state while also receiving a new
         // deep link or feature intent. Always apply that launch intent after restoring state so
         // the newly requested destination wins.
-        openCommentsFromIntent(getIntent())
+        consumeLaunchIntent(getIntent())
 
         val shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this)
         val justUpdated = Utils.justUpdated(this)
@@ -91,7 +90,15 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        openCommentsFromIntent(intent)
+        consumeLaunchIntent(intent)
+    }
+
+    private fun consumeLaunchIntent(intent: Intent?) {
+        if (openCommentsFromIntent(intent)) {
+            // Navigation now owns the destination. Keeping the one-shot action as the Activity's
+            // current intent would apply it again during a configuration-driven recreation.
+            setIntent(Intent(this, MainActivity::class.java))
+        }
     }
 
     protected override fun onSaveInstanceState(outState: Bundle) {
@@ -132,7 +139,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     fun showCaptchaDialog(
-        challenge: CaptchaChallenge,
+        challenge: HackerNewsCaptchaChallenge,
         callback: CaptchaResultCallback
     ) {
         val controller = mainNavigationController
@@ -418,7 +425,6 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         const val ACTION_OPEN_SETTINGS: String = "com.simon.harmonichackernews.action.OPEN_SETTINGS"
         const val EXTRA_SETTINGS_SECTION: String =
             "com.simon.harmonichackernews.extra.SETTINGS_SECTION"
-        var commentsScrollProgresses: ArrayList<CommentsScrollProgress> = ArrayList()
         private val searchBackStateListeners: MutableSet<SearchBackStateListener> =
             Collections.newSetFromMap(WeakHashMap())
         private var currentMainActivity = WeakReference<MainActivity?>(null)

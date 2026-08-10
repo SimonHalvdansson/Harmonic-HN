@@ -2,6 +2,9 @@ package com.simon.harmonichackernews
 
 import android.content.Context
 import com.simon.harmonichackernews.data.Bookmark
+import com.simon.harmonichackernews.data.SavedItemCodec
+import com.simon.harmonichackernews.data.SavedItemSnapshot
+import com.simon.harmonichackernews.data.SavedItemSnapshots
 import com.simon.harmonichackernews.utils.Utils
 
 internal object UserItemListRepository {
@@ -9,8 +12,7 @@ internal object UserItemListRepository {
         itemIds: List<Int>,
         commentIds: List<Int>
     ): Snapshot {
-        val normalizedItemIds = normalizeItemIds(itemIds)
-        return Snapshot(normalizedItemIds, normalizeCommentIds(normalizedItemIds, commentIds))
+        return SavedItemSnapshots.normalize(itemIds, commentIds).toAndroidSnapshot()
     }
 
     fun loadCachedSnapshot(context: Context?, source: Source): Snapshot {
@@ -41,8 +43,10 @@ internal object UserItemListRepository {
         val cachedItems = loadCache(context, source)
         val cachedCommentIds = loadCommentIds(context, source)
 
-        return cachedItems.map(Bookmark::id) == snapshot.itemIds &&
-            cachedCommentIds == snapshot.commentIds
+        return snapshot.toShared().matches(
+            SavedItemCodec.fromBookmarks(cachedItems),
+            cachedCommentIds,
+        )
     }
 
     fun saveIds(
@@ -68,21 +72,14 @@ internal object UserItemListRepository {
             Source.FAVORITES -> Utils.loadFavoriteCommentIds(context)
         }
 
-    private fun normalizeItemIds(itemIds: List<Int>): List<Int> =
-        itemIds.distinct().sortedDescending()
-
-    private fun normalizeCommentIds(
-        itemIds: List<Int>,
-        commentIds: List<Int>
-    ): Set<Int> {
-        val itemIdSet = itemIds.toHashSet()
-        return commentIds.filterTo(mutableSetOf()) { it in itemIdSet }
-    }
-
     internal enum class Source {
         FAVORITES,
         UPVOTED
     }
 
-    internal data class Snapshot(val itemIds: List<Int>, val commentIds: Set<Int>)
+    internal data class Snapshot(val itemIds: List<Int>, val commentIds: Set<Int>) {
+        fun toShared(): SavedItemSnapshot = SavedItemSnapshot(itemIds, commentIds)
+    }
+
+    private fun SavedItemSnapshot.toAndroidSnapshot(): Snapshot = Snapshot(itemIds, commentIds)
 }

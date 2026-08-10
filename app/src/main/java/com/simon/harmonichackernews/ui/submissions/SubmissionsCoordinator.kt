@@ -1,12 +1,15 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.ScreenStateViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.presentation.SubmissionFilter
+import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.presentation.SubmissionsStore
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -23,6 +26,7 @@ import kotlinx.coroutines.launch
 /** Networking and filtering state for a Compose submissions destination.  */
 class SubmissionsCoordinator(
     private val activity: MainActivity,
+    sessionKey: Int,
     private val userName: String,
     private val navigator: Navigator,
     private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
@@ -31,7 +35,10 @@ class SubmissionsCoordinator(
         fun openStory(story: Story, showWebsite: Boolean)
     }
 
-    private val store = SubmissionsStore(userName, algoliaRepository)
+    private val sessionState: SubmissionsSessionState =
+        ViewModelProvider(activity)[ScreenStateViewModel::class.java]
+            .submissionsStateFor(sessionKey, userName, algoliaRepository)
+    private val store: SubmissionsStore = sessionState.submissions
     private var submissions: List<Story> = emptyList()
     private val hackerNewsRepository = NetworkComponent.hackerNewsRepository
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -79,18 +86,40 @@ class SubmissionsCoordinator(
                 override fun onLoadMore() {
                     loadSubmissions(false)
                 }
+
+                override fun onScrollStateChanged(
+                    firstVisibleStoryPosition: Int,
+                    firstVisibleStoryTop: Int,
+                    appBarCollapsed: Boolean,
+                ) {
+                    sessionState.firstVisibleStoryPosition = firstVisibleStoryPosition
+                    sessionState.firstVisibleStoryTop = firstVisibleStoryTop
+                    sessionState.appBarCollapsed = appBarCollapsed
+                }
             })
         composeController.updateDisplaySettings(
             StoryDisplaySettings.from(AndroidUserSettings(activity).story).withShowIndex(false)
         )
+        if (sessionState.initialized) {
+            composeController.restoreScrollState(
+                firstVisiblePosition = sessionState.firstVisibleStoryPosition,
+                firstVisibleTop = sessionState.firstVisibleStoryTop,
+                appBarCollapsed = sessionState.appBarCollapsed,
+            )
+        } else {
+            sessionState.initialized = true
+        }
         coroutineScope.launch {
             store.state.collect(::render)
         }
-        loadSubmissions(true)
+        if (!store.state.value.loadedSuccessfully && !store.state.value.loading) {
+            loadSubmissions(true)
+        }
     }
 
     fun close() {
         cancelSubmissionsLoad()
+        store.cancelLoad()
         coroutineScope.cancel()
     }
 

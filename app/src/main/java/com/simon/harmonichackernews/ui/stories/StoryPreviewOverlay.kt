@@ -108,6 +108,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -762,21 +763,10 @@ private fun DescriptionShimmer() {
 
 private fun extractTextStorySummary(html: String?): String {
     if (html.isNullOrBlank()) return ""
-    val summary = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY)
-        .toString()
-        .replace('\u00a0', ' ')
-        .replace("\r\n", "\n")
-        .replace('\r', '\n')
-        .replace(Regex("[\\t\\u000B\\f ]+"), " ")
-        .replace(Regex(" *\\n *"), "\n")
-        .replace(Regex("\\n{3,}"), "\n\n")
-        .trim()
-    if (summary.length <= TextStorySummaryMaxChars) return summary
-    val minimumBoundary = (TextStorySummaryMaxChars * 0.75f).toInt()
-    val end = (TextStorySummaryMaxChars - 1 downTo minimumBoundary)
-        .firstOrNull { summary[it].isWhitespace() }
-        ?: TextStorySummaryMaxChars
-    return summary.substring(0, end).trim() + "…"
+    return HtmlTextUtils.normalizeAndTruncatePlainText(
+        Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString(),
+        TextStorySummaryMaxChars,
+    )
 }
 
 @Preview(name = "Story preview phone", device = Devices.PHONE, showBackground = true)

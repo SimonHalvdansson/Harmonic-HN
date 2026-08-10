@@ -1,34 +1,34 @@
 package com.simon.harmonichackernews.utils
 
-import android.content.Context
 import com.simon.harmonichackernews.data.Comment
 import kotlin.math.max
 
 object CommentSorter {
-    fun sort(ctx: Context, comments: MutableList<Comment>) {
-        sort(comments, SettingsUtils.getPreferredCommentSorting(ctx))
-    }
+    const val DEFAULT = "Default"
+    const val REPLY_COUNT = "Reply count"
+    const val NEWEST_FIRST = "Newest first"
+    const val OLDEST_FIRST = "Oldest first"
 
     fun sort(comments: MutableList<Comment>, sortType: String) {
         when (sortType) {
-            "Default" -> {
+            DEFAULT -> {
                 if (isInDefaultOrder(comments)) return
                 sortComments(comments, compareBy(Comment::sortOrder), false)
             }
 
-            "Reply count" -> sortComments(
+            REPLY_COUNT -> sortComments(
                 comments,
                 compareByDescending(Comment::totalReplies),
                 true,
             )
 
-            "Newest first" -> sortComments(
+            NEWEST_FIRST -> sortComments(
                 comments,
                 compareByDescending(Comment::time),
                 false,
             )
 
-            "Oldest first" -> sortComments(comments, compareBy(Comment::time), false)
+            OLDEST_FIRST -> sortComments(comments, compareBy(Comment::time), false)
         }
     }
 
@@ -38,17 +38,13 @@ object CommentSorter {
     private fun sortComments(
         comments: MutableList<Comment>,
         comparator: Comparator<Comment>,
-        updateReplyCounts: Boolean
+        updateReplyCounts: Boolean,
     ) {
         if (comments.size <= 1) return
 
         val header = comments.first()
         val commentsWithChildren = buildCommentTree(comments)
-
-        if (updateReplyCounts) {
-            updateTotalReplies(commentsWithChildren)
-        }
-
+        if (updateReplyCounts) updateTotalReplies(commentsWithChildren)
         sortCommentsRecursive(commentsWithChildren, comparator)
 
         comments.clear()
@@ -58,56 +54,39 @@ object CommentSorter {
 
     private fun sortCommentsRecursive(
         commentsWithChildren: MutableList<Comment>,
-        comparator: Comparator<Comment>
+        comparator: Comparator<Comment>,
     ) {
         commentsWithChildren.sortWith(comparator)
-
-        for (comment in commentsWithChildren) {
-            sortCommentsRecursive(comment.childComments, comparator)
-        }
+        commentsWithChildren.forEach { sortCommentsRecursive(it.childComments, comparator) }
     }
 
     private fun buildCommentTree(comments: List<Comment>): MutableList<Comment> {
-        val commentsWithChildren = mutableListOf<Comment>()
+        val roots = mutableListOf<Comment>()
         val parentsByDepth = mutableListOf<Comment>()
-
-        for (i in 1..<comments.size) {
-            val comment = comments[i]
+        for (index in 1..<comments.size) {
+            val comment = comments[index]
             comment.childComments = mutableListOf()
             val depth = max(0, comment.depth)
-
-            while (parentsByDepth.size > depth) {
-                parentsByDepth.removeAt(parentsByDepth.lastIndex)
-            }
-
+            while (parentsByDepth.size > depth) parentsByDepth.removeAt(parentsByDepth.lastIndex)
             if (depth == 0 || parentsByDepth.isEmpty()) {
-                commentsWithChildren.add(comment)
+                roots.add(comment)
             } else {
                 parentsByDepth.last().childComments.add(comment)
             }
-
             parentsByDepth.add(comment)
         }
-
-        return commentsWithChildren
+        return roots
     }
 
-    private fun flattenComments(
-        comments: MutableList<Comment>,
-        flatComments: MutableList<Comment>
-    ) {
-        for (comment in comments) {
-            flatComments.add(comment)
-            if (comment.childComments.isNotEmpty()) {
-                flattenComments(comment.childComments, flatComments)
-            }
+    private fun flattenComments(comments: List<Comment>, destination: MutableList<Comment>) {
+        comments.forEach { comment ->
+            destination.add(comment)
+            flattenComments(comment.childComments, destination)
         }
     }
 
-    private fun updateTotalReplies(comments: MutableList<Comment>) {
-        for (comment in comments) {
-            updateTotalReplies(comment)
-        }
+    private fun updateTotalReplies(comments: List<Comment>) {
+        comments.forEach(::updateTotalReplies)
     }
 
     private fun updateTotalReplies(comment: Comment): Int {

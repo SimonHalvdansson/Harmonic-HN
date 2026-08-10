@@ -52,6 +52,14 @@ class SubmissionsStore(
         load(refreshing = false)
     }
 
+    fun cancelLoad() {
+        mutableState.value = mutableState.value.copy(
+            loading = false,
+            showInitialLoading = false,
+            refreshing = false,
+        )
+    }
+
     private suspend fun load(refreshing: Boolean) {
         val showInitialLoading = !initialLoadFinished
         mutableState.value = mutableState.value.copy(

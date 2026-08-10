@@ -24,7 +24,9 @@ import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Bookmark
+import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StoryCacheIndex
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.SummaryManager
@@ -40,27 +42,9 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.regex.Matcher
-import java.util.regex.Pattern
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
-import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.parser.Parser
+import com.simon.harmonichackernews.settings.UserTagCodec
 
 object Utils {
-    private val HN_ITEM_URL_PATTERN: Pattern = Pattern.compile(
-        "https?://news\\.ycombinator\\.com/item\\?[^\\s<>\"']+",
-        Pattern.CASE_INSENSITIVE
-    )
-    private val LINKIFY_ANCHOR_PATTERN: Pattern =
-        Pattern.compile("(?is)<a\\b[^>]*>.*?</a>")
-    private val LINKIFY_URL_PATTERN: Pattern = Pattern.compile(
-        ("(https?:(?:/{1}|(?:&#x2F;)|(?:&#47;))"
-                + "(?:/{1}|(?:&#x2F;)|(?:&#47;))"
-                + "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)")
-    )
-    private const val LINKIFY_TRAILING_PUNCTUATION = ".,;:!?)"
-
     const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
     const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET: String =
@@ -324,12 +308,17 @@ object Utils {
             ctx,
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        addCachedStoryIndexEntry(
+        val cacheUpdate = StoryCacheIndex.record(
             cachedStories,
             id,
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+            MAX_CACHED_STORIES,
         )
-        evictOldCachedStories(ctx, cachedStories)
+        cachedStories = cacheUpdate.encodedEntries.toMutableSet()
+        cacheUpdate.evictedStoryIds.forEach { evictedId ->
+            deleteCachedStoryFiles(ctx, evictedId)
+            deleteCachedArticleSnapshot(ctx, evictedId)
+        }
 
         sharedPreferences.edit()
             .putStringSet(
@@ -472,11 +461,11 @@ object Utils {
                 GLOBAL_SHARED_PREFERENCES_KEY,
                 Context.MODE_PRIVATE
             )
-        val cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
+        var cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
             ctx,
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        removeCachedStoryIndexEntry(cachedStories, id)
+        cachedStories = StoryCacheIndex.remove(cachedStories, id).toMutableSet()
 
         sharedPreferences.edit()
             .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
@@ -502,13 +491,7 @@ object Utils {
             ctx,
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        cachedStories?.forEach { cachedStory ->
-                val id =
-                    getCachedStoryIndexEntryId(cachedStory)
-                if (id > 0) {
-                    cachedPostIds.add(id)
-                }
-        }
+        cachedPostIds.addAll(StoryCacheIndex.storyIds(cachedStories))
 
         val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
             GLOBAL_SHARED_PREFERENCES_KEY,
@@ -545,69 +528,6 @@ object Utils {
 
         return cachedPostIds
     }
-
-    private fun addCachedStoryIndexEntry(
-        cachedStories: MutableSet<String>,
-        id: Int,
-        time: Long
-    ) {
-        removeCachedStoryIndexEntry(cachedStories, id)
-        cachedStories.add("$id-$time")
-    }
-
-    private fun removeCachedStoryIndexEntry(
-        cachedStories: MutableSet<String>?,
-        id: Int
-    ) {
-        cachedStories?.removeAll { cached ->
-            val cachedId = getCachedStoryIndexEntryId(cached)
-            cachedId <= 0 || cachedId == id
-        }
-    }
-
-    private fun evictOldCachedStories(
-        ctx: Context,
-        cachedStories: MutableSet<String>
-    ) {
-        while (cachedStories.size > MAX_CACHED_STORIES) {
-            var oldestEntry: String? = null
-            var oldestTime: Long = -1
-            var oldestId = -1
-
-            for (cachedStory in cachedStories) {
-                val id =
-                    getCachedStoryIndexEntryId(cachedStory)
-                val time = getCachedStoryIndexEntryTime(
-                    cachedStory
-                )
-                if (id <= 0 || time < 0) {
-                    oldestEntry = cachedStory
-                    break
-                }
-                if (oldestTime == -1L || time < oldestTime) {
-                    oldestTime = time
-                    oldestId = id
-                    oldestEntry = cachedStory
-                }
-            }
-
-            if (oldestEntry == null) {
-                break
-            }
-
-            cachedStories.remove(oldestEntry)
-            if (oldestId > 0) {
-                deleteCachedStoryFiles(ctx, oldestId)
-                deleteCachedArticleSnapshot(ctx, oldestId)
-            }
-        }
-    }
-
-    private fun getCachedStoryIndexEntryId(entry: String?): Int =
-        entry?.split('-')?.takeIf { it.size == 2 }?.first()?.toIntOrNull() ?: -1
-
-    private fun getCachedStoryIndexEntryTime(entry: String?): Long =
-        entry?.split('-')?.takeIf { it.size == 2 }?.last()?.toLongOrNull() ?: -1
 
     private fun addCachedPostIdsFromStoryCacheDir(
         cachedPostIds: MutableSet<Int>,
@@ -857,10 +777,9 @@ object Utils {
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
         val limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000
-        return cached.any { entry ->
-            val id = getCachedStoryIndexEntryId(entry)
-            val time = getCachedStoryIndexEntryTime(entry)
-            id > 0 && time >= limit && loadCachedStoryForStoriesList(ctx, id) != null
+        return StoryCacheIndex.entries(cached).any { entry ->
+            entry.cachedAtMillis >= limit &&
+                loadCachedStoryForStoriesList(ctx, entry.storyId) != null
         }
     }
 
@@ -874,13 +793,9 @@ object Utils {
 
         val orderedIds = mutableListOf<Pair<Long, Int>>()
 
-        for (entry in cached) {
-            val id = getCachedStoryIndexEntryId(entry)
-            val time = getCachedStoryIndexEntryTime(entry)
-            if (id <= 0 || time < 0) continue
-            if (time < limit) continue
-
-            orderedIds += time to id
+        for (entry in StoryCacheIndex.entries(cached)) {
+            if (entry.cachedAtMillis < limit) continue
+            orderedIds += entry.cachedAtMillis to entry.storyId
         }
 
         orderedIds.sortBy { it.first }
@@ -928,32 +843,7 @@ object Utils {
         sorted: Boolean,
         bookmarksString: String?
     ): ArrayList<Bookmark> {
-        /* Format is {{ID}}q{{TIME}}-{{ID}}q{{TIME}}... */
-
-        val bookmarks = ArrayList<Bookmark>()
-
-        if (bookmarksString == null || bookmarksString.isEmpty()) {
-            return bookmarks
-        }
-
-        val pairs =
-            bookmarksString.split("-".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        for (pair in pairs) {
-            val info = pair.split("q".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-
-            if (info.size == 2) {
-                bookmarks += Bookmark().apply {
-                    id = info[0].toInt()
-                    created = info[1].toLong()
-                }
-            }
-        }
-
-        if (sorted) {
-            bookmarks.sortByDescending { it.created }
-        }
-
-        return bookmarks
+        return SavedItemCodec.toBookmarks(SavedItemCodec.decode(bookmarksString, sorted))
     }
 
     fun isBookmarked(ctx: Context, id: Int): Boolean {
@@ -976,34 +866,19 @@ object Utils {
         key: String?,
         bookmarks: List<Bookmark>
     ) {
-        val value = bookmarks.joinToString("-") { bookmark ->
-            "${bookmark.id}q${bookmark.created}"
-        }
+        val value = SavedItemCodec.encode(SavedItemCodec.fromBookmarks(bookmarks))
         SettingsUtils.saveStringToSharedPreferences(ctx, key, value)
     }
 
     fun addBookmark(ctx: Context, id: Int) {
-        if (isBookmarked(ctx, id)) {
-            return
-        }
-
-        val bookmarks = loadBookmarks(ctx, false)
-        bookmarks += Bookmark().apply {
-            this.id = id
-            created = System.currentTimeMillis()
-        }
-        saveBookmarks(ctx, bookmarks)
+        val current = SavedItemCodec.fromBookmarks(loadBookmarks(ctx, false))
+        val updated = SavedItemCodec.add(current, id, System.currentTimeMillis())
+        if (updated != current) saveBookmarks(ctx, SavedItemCodec.toBookmarks(updated))
     }
 
     fun removeBookmark(ctx: Context, id: Int) {
-        val bookmarks = loadBookmarks(ctx, false)
-
-        val index = bookmarks.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            bookmarks.removeAt(index)
-        }
-
-        saveBookmarks(ctx, bookmarks)
+        val current = SavedItemCodec.fromBookmarks(loadBookmarks(ctx, false))
+        saveBookmarks(ctx, SavedItemCodec.toBookmarks(SavedItemCodec.remove(current, id)))
     }
 
     fun loadFavorites(
@@ -1123,35 +998,17 @@ object Utils {
         key: String?,
         ids: List<Int>
     ) {
-        val items = ArrayList<Bookmark>()
-        val seenIds = mutableSetOf<Int>()
-        val now = System.currentTimeMillis()
-
-        for (id in ids) {
-            if (!seenIds.add(id)) {
-                continue
-            }
-
-            items += Bookmark().apply {
-                this.id = id
-                created = now - items.size
-            }
-        }
-
-        saveBookmarkList(ctx, key, items)
+        saveBookmarkList(
+            ctx,
+            key,
+            SavedItemCodec.toBookmarks(SavedItemCodec.fromIds(ids, System.currentTimeMillis())),
+        )
     }
 
     fun addFavorite(ctx: Context, id: Int) {
-        if (isFavorited(ctx, id)) {
-            return
-        }
-
-        val favorites = loadFavorites(ctx, false)
-        favorites += Bookmark().apply {
-            this.id = id
-            created = System.currentTimeMillis()
-        }
-        saveFavorites(ctx, favorites)
+        val current = SavedItemCodec.fromBookmarks(loadFavorites(ctx, false))
+        val updated = SavedItemCodec.add(current, id, System.currentTimeMillis())
+        if (updated != current) saveFavorites(ctx, SavedItemCodec.toBookmarks(updated))
     }
 
     fun setFavorite(ctx: Context, id: Int, favorite: Boolean) {
@@ -1163,14 +1020,8 @@ object Utils {
     }
 
     fun removeFavorite(ctx: Context, id: Int) {
-        val favorites = loadFavorites(ctx, false)
-
-        val index = favorites.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            favorites.removeAt(index)
-        }
-
-        saveFavorites(ctx, favorites)
+        val current = SavedItemCodec.fromBookmarks(loadFavorites(ctx, false))
+        saveFavorites(ctx, SavedItemCodec.toBookmarks(SavedItemCodec.remove(current, id)))
     }
 
     fun setUpvoted(
@@ -1191,29 +1042,18 @@ object Utils {
             return
         }
 
-        val upvotedItems = loadUpvoted(ctx, false)
-        val existingIndex = upvotedItems.indexOfFirst { it.id == id }
-        if (existingIndex >= 0) {
-            if (!upvoted) {
-                upvotedItems.removeAt(existingIndex)
-                saveBookmarkList(
-                    ctx,
-                    KEY_SHARED_PREFERENCES_UPVOTED,
-                    upvotedItems
-                )
-            }
-            return
-        }
-
-        if (upvoted) {
-            upvotedItems += Bookmark().apply {
-                this.id = id
-                created = System.currentTimeMillis()
-            }
+        val current = SavedItemCodec.fromBookmarks(loadUpvoted(ctx, false))
+        val updated = SavedItemCodec.setMembership(
+            current,
+            id,
+            upvoted,
+            System.currentTimeMillis(),
+        )
+        if (updated != current) {
             saveBookmarkList(
                 ctx,
                 KEY_SHARED_PREFERENCES_UPVOTED,
-                upvotedItems
+                SavedItemCodec.toBookmarks(updated),
             )
         }
     }
@@ -1351,63 +1191,38 @@ object Utils {
         ctx: Context,
         normalizeUsernames: Boolean
     ): MutableMap<String, String> {
-        val jsonString = SettingsUtils.readStringFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_USER_TAGS
+        return UserTagCodec.decode(
+            SettingsUtils.readStringFromSharedPreferences(
+                ctx,
+                KEY_SHARED_PREFERENCES_USER_TAGS,
+            ),
+            normalizeUsernames,
         )
-        val map = mutableMapOf<String, String>()
-        if (!jsonString.isNullOrEmpty()) {
-            try {
-                val obj = JSONObject(jsonString)
-                val keys = obj.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val value = obj.optString(key, "")
-                    val username = key.trim { it <= ' ' }
-                    val normalizedUsername = if (normalizeUsernames) {
-                        username.lowercase(Locale.getDefault())
-                    } else {
-                        username
-                    }
-                    map[normalizedUsername] = value
-                }
-            } catch (e: JSONException) {
-                // Invalid JSON in prefs; just start fresh
-                e.printStackTrace()
-            }
-        }
-        return map
     }
 
     fun getUserTag(ctx: Context, username: String?): String {
-        val normalizedUsername = username
-            ?.takeUnless(String::isEmpty)
-            ?.lowercase(Locale.getDefault())
-            ?.trim { it <= ' ' }
-            ?: return ""
-        return getUserTags(ctx)[normalizedUsername].orEmpty()
+        return UserTagCodec.tagFor(
+            SettingsUtils.readStringFromSharedPreferences(
+                ctx,
+                KEY_SHARED_PREFERENCES_USER_TAGS,
+            ),
+            username,
+        )
     }
 
     fun setUserTag(ctx: Context, username: String?, tag: String?) {
-        val key = username?.takeUnless(String::isEmpty)?.trim { it <= ' ' } ?: return
-        val map = getUserTagsWithOriginalUsernames(ctx)
-        map.keys.removeAll { savedUsername -> savedUsername.equals(key, ignoreCase = true) }
-        if (!tag.isNullOrEmpty()) {
-            map[key] = tag.trim { it <= ' ' }
-        }
-        // Convert back to JSON
-        val obj = JSONObject()
-        for ((savedUsername, savedTag) in map) {
-            try {
-                obj.put(savedUsername, savedTag)
-            } catch (ex: JSONException) {
-                ex.printStackTrace()
-            }
-        }
+        val serialized = UserTagCodec.update(
+            SettingsUtils.readStringFromSharedPreferences(
+                ctx,
+                KEY_SHARED_PREFERENCES_USER_TAGS,
+            ),
+            username,
+            tag,
+        ) ?: return
         SettingsUtils.saveStringToSharedPreferences(
             ctx,
             KEY_SHARED_PREFERENCES_USER_TAGS,
-            obj.toString()
+            serialized,
         )
     }
 
@@ -1708,11 +1523,11 @@ object Utils {
     }
 
     fun timeInSecondsMoreThanTwoWeeksAgo(time: Int): Boolean {
-        return System.currentTimeMillis() - time.toLong() * 1_000 > TimeUnit.DAYS.toMillis(14)
+        return AgePolicy.isOlderThan(time, System.currentTimeMillis(), TimeUnit.DAYS.toMillis(14))
     }
 
     fun timeInSecondsMoreThanTwoHoursAgo(time: Int): Boolean {
-        return System.currentTimeMillis() - time.toLong() * 1_000 > TimeUnit.HOURS.toMillis(2)
+        return AgePolicy.isOlderThan(time, System.currentTimeMillis(), TimeUnit.HOURS.toMillis(2))
     }
 
     fun pxFromDp(resources: Resources, dp: Float): Float {
@@ -1732,77 +1547,21 @@ object Utils {
             return
         }
 
-        val uri = Uri.parse(href)
-
-        // Validate the scheme (http or https)
-        val scheme = uri.scheme
-        if ("http".equals(scheme, ignoreCase = true) || "https".equals(scheme, ignoreCase = true)) {
-            // Validate the host and path
-            if ("news.ycombinator.com".equals(
-                    uri.host,
-                    ignoreCase = true
-                ) && "/item" == uri.path
-            ) {
-                val id = parseHackerNewsItemId(
-                    uri.getQueryParameter("id")
-                )
-                if (id > 0) {
-                    var scrollToCommentId = -1
-                    val parsedFragment =
-                        parseHackerNewsItemId(uri.fragment)
-                    if (parsedFragment > 0) {
-                        scrollToCommentId = parsedFragment
-                    }
-                    openCommentsActivity(
-                        id,
-                        scrollToCommentId,
-                        context
-                    )
-                    return
-                }
-            }
+        HackerNewsLinks.parseItemLink(href)?.let { link ->
+            openCommentsActivity(link.itemId, link.scrollToCommentId, context)
+            return
         }
 
         launchCustomTab(context, href)
     }
 
-    private fun parseHackerNewsItemId(value: String?): Int =
-        value?.takeIf(TextUtils::isDigitsOnly)?.toIntOrNull()?.takeIf { it > 0 } ?: -1
-
     fun getHackerNewsItemUriFromText(text: String?): Uri? {
-        if (text == null) return null
-
-        val matcher = HN_ITEM_URL_PATTERN.matcher(text)
-        while (matcher.find()) {
-            val url =
-                trimTrailingUrlPunctuation(matcher.group())
-            val uri = Uri.parse(url)
-            if (isHackerNewsItemUri(uri)) {
-                return uri
-            }
-        }
-
-        return null
+        return HackerNewsLinks.findItemLink(text)?.url?.let(Uri::parse)
     }
 
     fun isHackerNewsItemUri(uri: Uri?): Boolean {
-        if (uri == null) return false
-
-        val scheme = uri.scheme
-        if (!"http".equals(scheme, ignoreCase = true) && !"https".equals(
-                scheme,
-                ignoreCase = true
-            )
-        ) return false
-        if (!"news.ycombinator.com".equals(uri.host, ignoreCase = true)) return false
-        if ("/item" != uri.path) return false
-
-        val sId = uri.getQueryParameter("id")
-        return !sId.isNullOrEmpty() && TextUtils.isDigitsOnly(sId)
+        return HackerNewsLinks.parseItemLink(uri?.toString()) != null
     }
-
-    private fun trimTrailingUrlPunctuation(url: String): String =
-        url.trimEnd { it in ".,;:)]" }
 
     fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: Context) {
         if (context is MainActivity && context.openCommentsItem(id, scrollToCommentId)) {
@@ -1859,105 +1618,10 @@ object Utils {
     }
 
     fun linkify(input: String?): String? {
-        if (input.isNullOrEmpty()) return input
-        if (!input.contains("http:") && !input.contains("https:")) return input
-
-        // Existing <a>...</a> blocks: keep as-is
-        val out = StringBuilder(input.length)
-        val a = LINKIFY_ANCHOR_PATTERN.matcher(input)
-        var idx = 0
-
-        // Helper-like inline blocks only
-        while (a.find()) {
-            val segment = input.substring(idx, a.start())
-            val m = LINKIFY_URL_PATTERN.matcher(segment)
-            val sb = StringBuffer(segment.length)
-
-            while (m.find()) {
-                val rep = createLinkReplacement(
-                    m,
-                    LINKIFY_TRAILING_PUNCTUATION
-                )
-                m.appendReplacement(sb, Matcher.quoteReplacement(rep))
-            }
-            m.appendTail(sb)
-            out.append(sb)
-
-            // Keep existing anchor untouched
-            out.append(a.group())
-            idx = a.end()
-        }
-
-        // Tail after last <a>
-        val segment = input.substring(idx)
-        val m = LINKIFY_URL_PATTERN.matcher(segment)
-        val sb = StringBuffer(segment.length)
-        while (m.find()) {
-            val rep = createLinkReplacement(
-                m,
-                LINKIFY_TRAILING_PUNCTUATION
-            )
-            m.appendReplacement(sb, Matcher.quoteReplacement(rep))
-        }
-        m.appendTail(sb)
-        out.append(sb)
-
-        return out.toString()
-    }
-
-    private fun createLinkReplacement(matcher: Matcher, trailing: String): String {
-        val url = matcher.group()
-
-        // Trim common trailing punctuation
-        var end = url.length
-        while (end > 0 && url[end - 1] in trailing) end--
-
-        // Balance unmatched ')'
-        if (end > 0 && url[end - 1] == ')') {
-            var opens = 0
-            var closes = 0
-            for (i in 0..<end) {
-                val c = url[i]
-                if (c == '(') opens++
-                else if (c == ')') closes++
-            }
-            if (closes > opens) end--
-        }
-
-        val core = url.substring(0, end)
-        val rest = url.substring(end)
-
-        // Normalize HTML-escaped slashes in the URL for href and text
-        val normalized = core
-            .replace("&#x2F;", "/")
-            .replace("&#47;", "/")
-
-        return "<a href=\"$normalized\">$normalized</a>$rest"
+        return HtmlTextUtils.linkify(input)
     }
 
     fun expandShortenedAnchorText(inputHtml: String?): String? {
-        if (inputHtml.isNullOrEmpty() || !inputHtml.contains("<a")) {
-            return inputHtml
-        }
-
-        val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
-        val links = document.select("a[href]")
-
-        for (link in links) {
-            val href = link.attr("href")
-            val linkText = link.text()
-
-            val decodedHref = Ksoup.parse(href).text()
-            val decodedLinkText = Ksoup.parse(linkText).text()
-
-            if (decodedLinkText.endsWith("...")) {
-                val linkTextPrefix = decodedLinkText.substring(0, decodedLinkText.length - 3)
-                if (decodedHref.startsWith(linkTextPrefix)) {
-                    link.text(decodedHref)
-                }
-            }
-        }
-
-        return document.body().html()
+        return HtmlTextUtils.expandShortenedAnchorText(inputHtml)
     }
 }

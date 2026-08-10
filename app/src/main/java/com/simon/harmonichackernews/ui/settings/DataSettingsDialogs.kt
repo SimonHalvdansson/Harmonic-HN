@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.HackerNewsActionMessages
 import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -60,7 +61,6 @@ import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
-import com.simon.harmonichackernews.network.HttpResponse
 import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs
@@ -73,8 +73,6 @@ private data class BookmarkFavoriteResult(
     val successful: Boolean,
     val message: String,
 )
-
-private val ConsecutiveWhitespace = Regex("\\s+")
 
 @Composable
 fun AddBookmarksToFavoritesDialog(
@@ -366,26 +364,25 @@ private suspend fun addBookmarkToFavorites(
     id: Int,
     initialTitle: String,
 ): BookmarkFavoriteResult = suspendCancellableCoroutine { continuation ->
-    var title = initialTitle
+    var itemTitle = initialTitle
     UserActions.setFavorite(
         activity,
         id,
         true,
         object : UserActions.ActionCallback {
-            override fun onItemTitleLoaded(itemId: Int, loadedTitle: String?) {
-                if (itemId == id && !loadedTitle.isNullOrBlank()) {
-                    title = loadedTitle
+            override fun onItemTitleLoaded(itemId: Int, title: String?) {
+                if (itemId == id && !title.isNullOrBlank()) {
+                    itemTitle = title
                 }
             }
 
-            override fun onSuccess(response: HttpResponse) {
-                response.close()
+            override fun onSuccess() {
                 Utils.setFavorite(activity, id, true)
                 if (continuation.isActive) {
                     continuation.resume(
                         BookmarkFavoriteResult(
                             id = id,
-                            title = title,
+                            title = itemTitle,
                             successful = true,
                             message = "In HN favorites",
                         ),
@@ -398,29 +395,13 @@ private suspend fun addBookmarkToFavorites(
                     continuation.resume(
                         BookmarkFavoriteResult(
                             id = id,
-                            title = title,
+                            title = itemTitle,
                             successful = false,
-                            message = formatFavoriteFailure(summary, response),
+                            message = HackerNewsActionMessages.favoriteFailure(summary, response),
                         ),
                     )
                 }
             }
         },
     )
-}
-
-private fun formatFavoriteFailure(summary: String?, response: String?): String {
-    val safeSummary = summary?.trim()?.takeIf(String::isNotEmpty)
-        ?: "Couldn't add to favorites"
-    val safeResponse = response?.trim().orEmpty()
-    if (safeResponse.isEmpty() || safeResponse == safeSummary) {
-        return safeSummary
-    }
-    val compactResponse = safeResponse.replace('\n', ' ').replace(ConsecutiveWhitespace, " ")
-    val displayedResponse = if (compactResponse.length > 160) {
-        compactResponse.take(157) + "…"
-    } else {
-        compactResponse
-    }
-    return "$safeSummary: $displayedResponse"
 }
