@@ -22,11 +22,12 @@ public class AccountUtils {
 
 
     public static String getAccountUsername(Context ctx) {
-        return SettingsUtils.readStringFromSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME);
+        String username = SettingsUtils.readStringFromSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME);
+        return username == null ? null : username.trim();
     }
 
     public static void setAccountUsername(Context ctx, String username) {
-        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME, username);
+        SettingsUtils.saveStringToSharedPreferences(ctx, KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME, username == null ? null : username.trim());
     }
 
     public static boolean hasAccountDetails(Context ctx) {
