@@ -114,6 +114,12 @@ import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.MainEditorRequest
+import com.simon.harmonichackernews.navigation.MainNavigationRestoration
+import com.simon.harmonichackernews.navigation.MainNavigationState
+import com.simon.harmonichackernews.navigation.MainSettingsRequest
+import com.simon.harmonichackernews.navigation.MainStoryRequest
+import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -129,28 +135,6 @@ private data object StoriesDestination : NavKey
 private data class CommentsDestination(
     val request: MainStoryRequest,
 ) : NavKey
-
-internal data class MainStoryRequest(
-    val serial: Int,
-    val destination: StoryDestination,
-) {
-    val storyId: Int = destination.storyId
-}
-
-internal data class MainSettingsRequest(
-    val serial: Int,
-    val initialSectionRoute: String?,
-)
-
-internal data class MainEditorRequest(
-    val serial: Int,
-    val destination: EditorDestination,
-)
-
-internal data class MainSubmissionsRequest(
-    val serial: Int,
-    val userName: String,
-)
 
 internal data class MainCaptchaRequest(
     val serial: Int,
@@ -218,16 +202,41 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     internal var closeRequest by mutableIntStateOf(0)
         private set
 
-    private var requestSerial = 0
-    private var settingsRequestSerial = 0
-    private var editorRequestSerial = 0
-    private var submissionsRequestSerial = 0
     private var captchaRequestSerial = 0
     private var userRequestSerial = 0
     private var failureRequestSerial = 0
-    private var currentSettingsSectionRoute: String? = null
-    private var settingsThemeChangedRequestSerial = -1
-    private var settingsNeedsRestart = false
+    private val navigationState = MainNavigationState(
+        MainNavigationRestoration(
+            storyDestination = savedState?.getBundle(STATE_STORY_ARGUMENTS)
+                ?.toStoryDestinationOrNull(),
+            storyRequestSerial = savedState?.getInt(STATE_REQUEST_SERIAL, 0) ?: 0,
+            settingsOpen = savedState?.getBoolean(STATE_SETTINGS_OPEN, false) == true,
+            settingsRequestSerial = savedState?.getInt(STATE_SETTINGS_REQUEST_SERIAL, 0) ?: 0,
+            settingsSectionRoute = savedState?.getString(STATE_SETTINGS_SECTION),
+            settingsNeedsRestart =
+                savedState?.getBoolean(STATE_SETTINGS_NEEDS_RESTART, false) == true,
+            welcomeDialogVisible =
+                savedState?.getBoolean(STATE_WELCOME_DIALOG_VISIBLE, false) == true,
+            changelogDialogVisible =
+                savedState?.getBoolean(STATE_CHANGELOG_DIALOG_VISIBLE, false) == true,
+            cacheStoriesDialogVisible =
+                savedState?.getBoolean(STATE_CACHE_STORIES_DIALOG_VISIBLE, false) == true,
+            loginDialogVisible =
+                savedState?.getBoolean(STATE_LOGIN_DIALOG_VISIBLE, false) == true,
+            editorDestination = savedState?.getBundle(STATE_EDITOR_ARGUMENTS)
+                ?.toEditorDestination(),
+            editorRequestSerial = savedState?.getInt(STATE_EDITOR_REQUEST_SERIAL, 0) ?: 0,
+            submissionsUserName = savedState?.getString(STATE_SUBMISSIONS_USER),
+            submissionsRequestSerial =
+                savedState?.getInt(STATE_SUBMISSIONS_REQUEST_SERIAL, 0) ?: 0,
+            storyOpenedFromSubmissions =
+                savedState?.getBoolean(STATE_STORY_OPENED_FROM_SUBMISSIONS, false) == true,
+            storyOpenedFromSettings =
+                savedState?.getBoolean(STATE_STORY_OPENED_FROM_SETTINGS, false) == true,
+            coulombGasVisible =
+                savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true,
+        ),
+    )
     private var storiesCoordinator: StoriesCoordinator? = null
     private var commentsCoordinator: CommentsCoordinator? = null
     private var restoredCommentsState: Bundle? = savedState?.getBundle(STATE_COMMENTS_STATE)
@@ -241,161 +250,98 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var adaptiveFoldable = false
 
     init {
-        val restoredDestination = savedState?.getBundle(STATE_STORY_ARGUMENTS)
-            ?.toStoryDestinationOrNull()
-        if (restoredDestination != null) {
-            requestSerial = savedState.getInt(STATE_REQUEST_SERIAL, 1).coerceAtLeast(1)
-            MainStoryRequest(requestSerial, restoredDestination).also {
-                storyRequest = it
-                lastStoryRequest = it
-            }
-        }
-        if (savedState?.getBoolean(STATE_SETTINGS_OPEN, false) == true) {
-            settingsRequestSerial = savedState.getInt(STATE_SETTINGS_REQUEST_SERIAL, 1)
-                .coerceAtLeast(1)
-            currentSettingsSectionRoute = savedState.getString(STATE_SETTINGS_SECTION)
-            MainSettingsRequest(
-                serial = settingsRequestSerial,
-                initialSectionRoute = currentSettingsSectionRoute,
-            ).also {
-                settingsRequest = it
-                lastSettingsRequest = it
-            }
-            settingsNeedsRestart = savedState.getBoolean(STATE_SETTINGS_NEEDS_RESTART, false)
-        }
-        welcomeDialogVisible = savedState?.getBoolean(STATE_WELCOME_DIALOG_VISIBLE, false) == true
-        changelogDialogVisible = savedState?.getBoolean(STATE_CHANGELOG_DIALOG_VISIBLE, false) == true
-        cacheStoriesDialogVisible =
-            savedState?.getBoolean(STATE_CACHE_STORIES_DIALOG_VISIBLE, false) == true
-        loginDialogVisible = savedState?.getBoolean(STATE_LOGIN_DIALOG_VISIBLE, false) == true
+        syncNavigationState()
         savedState?.getString(STATE_USER_DIALOG_NAME)?.let { userName ->
             userRequestSerial = savedState.getInt(STATE_USER_DIALOG_SERIAL, 1).coerceAtLeast(1)
             userRequest = MainUserRequest(userRequestSerial, userName, null)
         }
-        savedState?.getBundle(STATE_EDITOR_ARGUMENTS)?.let { arguments ->
-            editorRequestSerial = savedState.getInt(STATE_EDITOR_REQUEST_SERIAL, 1)
-                .coerceAtLeast(1)
-            MainEditorRequest(editorRequestSerial, arguments.toEditorDestination()).also {
-                editorRequest = it
-                lastEditorRequest = it
-            }
-        }
-        savedState?.getString(STATE_SUBMISSIONS_USER)?.let { userName ->
-            submissionsRequestSerial = savedState.getInt(STATE_SUBMISSIONS_REQUEST_SERIAL, 1)
-                .coerceAtLeast(1)
-            MainSubmissionsRequest(submissionsRequestSerial, userName).also {
-                submissionsRequest = it
-                lastSubmissionsRequest = it
-            }
-        }
-        storyOpenedFromSubmissions =
-            savedState?.getBoolean(STATE_STORY_OPENED_FROM_SUBMISSIONS, false) == true &&
-                storyRequest != null && submissionsRequest != null
-        storyOpenedFromSettings =
-            savedState?.getBoolean(STATE_STORY_OPENED_FROM_SETTINGS, false) == true &&
-                storyRequest != null && settingsRequest != null
-        coulombGasVisible = savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true
     }
 
     fun openStory(destination: StoryDestination) {
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
-        if (settingsRequest != null) {
-            storyOpenedFromSettings = true
-            settingsRequest = null
-        }
-        if (!storyOpenedFromSubmissions) {
-            submissionsRequest = null
-        }
-        editorRequest = null
-        coulombGasVisible = false
-        MainStoryRequest(++requestSerial, destination).also {
-            lastStoryRequest = it
-            storyRequest = it
-        }
+        navigationState.openStory(destination)
+        syncNavigationState()
     }
 
     fun closeStory() {
-        closeRequest++
+        navigationState.requestCloseStory()
+        syncNavigationState()
     }
 
     fun openSettings(sectionRoute: String?) {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        editorRequest = null
-        coulombGasVisible = false
-        currentSettingsSectionRoute = sectionRoute
-        MainSettingsRequest(++settingsRequestSerial, sectionRoute).also {
-            settingsRequest = it
-            lastSettingsRequest = it
-        }
+        navigationState.openSettings(sectionRoute)
+        syncNavigationState()
     }
 
     internal fun closeSettings() {
-        settingsRequest = null
+        navigationState.closeSettings()
+        syncNavigationState()
     }
 
     internal fun updateSettingsSection(section: SettingsSection) {
-        currentSettingsSectionRoute = section.route
+        navigationState.updateSettingsSection(section.route)
     }
 
     internal fun getInitialSettingsSectionRoute(request: MainSettingsRequest): String? =
-        if (settingsThemeChangedRequestSerial == request.serial) {
-            currentSettingsSectionRoute
-        } else {
-            request.initialSectionRoute
-        }
+        navigationState.initialSettingsSectionRoute(request)
 
     internal fun onSettingsThemeChanged() {
-        settingsThemeChangedRequestSerial = settingsRequest?.serial ?: -1
-        settingsNeedsRestart = true
-        settingsThemeRevision++
+        navigationState.onSettingsThemeChanged()
+        syncNavigationState()
     }
 
     internal fun requestSettingsRestart() {
-        settingsNeedsRestart = true
+        navigationState.requestSettingsRestart()
     }
 
-    internal fun consumeSettingsRestartRequest(): Boolean = settingsNeedsRestart.also {
-        settingsNeedsRestart = false
-    }
+    internal fun consumeSettingsRestartRequest(): Boolean =
+        navigationState.consumeSettingsRestartRequest()
 
     fun showWelcomeDialog() {
-        welcomeDialogVisible = true
+        navigationState.showWelcomeDialog()
+        syncNavigationState()
     }
 
     internal fun dismissWelcomeDialog() {
-        welcomeDialogVisible = false
+        navigationState.dismissWelcomeDialog()
+        syncNavigationState()
     }
 
     fun showChangelogDialog() {
-        changelogDialogVisible = true
+        navigationState.showChangelogDialog()
+        syncNavigationState()
     }
 
     internal fun dismissChangelogDialog() {
-        changelogDialogVisible = false
+        navigationState.dismissChangelogDialog()
+        syncNavigationState()
     }
 
     fun showCacheStoriesDialog() {
-        cacheStoriesDialogVisible = true
+        navigationState.showCacheStoriesDialog()
+        syncNavigationState()
     }
 
     internal fun dismissCacheStoriesDialog() {
-        cacheStoriesDialogVisible = false
+        navigationState.dismissCacheStoriesDialog()
+        syncNavigationState()
     }
 
     internal fun confirmCacheStories(storyCount: Int) {
-        cacheStoriesDialogVisible = false
+        navigationState.dismissCacheStoriesDialog()
+        syncNavigationState()
         storiesComposeController?.cacheStories(storyCount)
     }
 
     fun showLoginDialog() {
-        loginDialogVisible = true
+        navigationState.showLoginDialog()
+        syncNavigationState()
     }
 
     internal fun dismissLoginDialog() {
-        loginDialogVisible = false
+        navigationState.dismissLoginDialog()
+        syncNavigationState()
     }
 
     fun showCaptchaDialog(
@@ -449,50 +395,38 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     fun openEditor(destination: EditorDestination) {
-        settingsRequest = null
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        coulombGasVisible = false
-        MainEditorRequest(++editorRequestSerial, destination).also {
-            editorRequest = it
-            lastEditorRequest = it
-        }
+        navigationState.openEditor(destination)
+        syncNavigationState()
     }
 
     internal fun closeEditor() {
-        editorRequest = null
+        navigationState.closeEditor()
+        syncNavigationState()
     }
 
     fun openSubmissions(userName: String) {
-        editorRequest = null
-        coulombGasVisible = false
-        MainSubmissionsRequest(++submissionsRequestSerial, userName).also {
-            submissionsRequest = it
-            lastSubmissionsRequest = it
-        }
+        navigationState.openSubmissions(userName)
+        syncNavigationState()
     }
 
     internal fun closeSubmissions() {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
+        navigationState.closeSubmissions()
+        syncNavigationState()
     }
 
     internal fun prepareToOpenStoryFromSubmissions() {
-        if (submissionsRequest != null) {
-            storyOpenedFromSubmissions = true
-        }
+        navigationState.prepareToOpenStoryFromSubmissions()
+        syncNavigationState()
     }
 
     fun openCoulombGas() {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        editorRequest = null
-        coulombGasVisible = true
+        navigationState.openCoulombGas()
+        syncNavigationState()
     }
 
     internal fun closeCoulombGas() {
-        coulombGasVisible = false
+        navigationState.closeCoulombGas()
+        syncNavigationState()
     }
 
     fun switchOpenStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean =
@@ -547,14 +481,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     internal fun detailRemovedFromBackStack() {
-        val restoreSettings = storyOpenedFromSettings
-        val restoreSettingsSection = currentSettingsSectionRoute
-        storyRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        if (restoreSettings) {
-            openSettings(restoreSettingsSection)
-        }
+        navigationState.detailRemovedFromBackStack()
+        syncNavigationState()
         // Keep the outgoing detail content alive until AnimatedVisibility has finished its
         // exit. Clearing the Compose controller here leaves the WebView's white surface as
         // the only outgoing layer for a frame, which flashes over Stories during back.
@@ -565,6 +493,26 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         adaptiveTwoPane = twoPane
         adaptiveFoldable = foldable
         commentsCoordinator?.onAdaptiveLayoutChanged()
+    }
+
+    private fun syncNavigationState() {
+        storyRequest = navigationState.storyRequest
+        lastStoryRequest = navigationState.lastStoryRequest
+        settingsRequest = navigationState.settingsRequest
+        lastSettingsRequest = navigationState.lastSettingsRequest
+        settingsThemeRevision = navigationState.settingsThemeRevision
+        welcomeDialogVisible = navigationState.welcomeDialogVisible
+        changelogDialogVisible = navigationState.changelogDialogVisible
+        cacheStoriesDialogVisible = navigationState.cacheStoriesDialogVisible
+        loginDialogVisible = navigationState.loginDialogVisible
+        editorRequest = navigationState.editorRequest
+        lastEditorRequest = navigationState.lastEditorRequest
+        submissionsRequest = navigationState.submissionsRequest
+        lastSubmissionsRequest = navigationState.lastSubmissionsRequest
+        storyOpenedFromSubmissions = navigationState.storyOpenedFromSubmissions
+        storyOpenedFromSettings = navigationState.storyOpenedFromSettings
+        coulombGasVisible = navigationState.coulombGasVisible
+        closeRequest = navigationState.closeRequest
     }
 
     fun saveState(outState: Bundle) {
@@ -580,9 +528,18 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         }
         if (settingsRequest != null || storyOpenedFromSettings) {
             outState.putBoolean(STATE_SETTINGS_OPEN, true)
-            outState.putInt(STATE_SETTINGS_REQUEST_SERIAL, settingsRequestSerial)
-            outState.putString(STATE_SETTINGS_SECTION, currentSettingsSectionRoute)
-            outState.putBoolean(STATE_SETTINGS_NEEDS_RESTART, settingsNeedsRestart)
+            outState.putInt(
+                STATE_SETTINGS_REQUEST_SERIAL,
+                navigationState.settingsRequestSerial,
+            )
+            outState.putString(
+                STATE_SETTINGS_SECTION,
+                navigationState.currentSettingsSectionRoute,
+            )
+            outState.putBoolean(
+                STATE_SETTINGS_NEEDS_RESTART,
+                navigationState.settingsNeedsRestart,
+            )
         }
         outState.putBoolean(STATE_WELCOME_DIALOG_VISIBLE, welcomeDialogVisible)
         outState.putBoolean(STATE_CHANGELOG_DIALOG_VISIBLE, changelogDialogVisible)

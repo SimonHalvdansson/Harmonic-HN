@@ -147,6 +147,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.presentation.VisibleComment
 import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
@@ -184,6 +185,8 @@ class CommentsComposeController private constructor(
     internal var story by mutableStateOf(initialStory)
         private set
     internal var comments by mutableStateOf<List<Comment>>(emptyList())
+        private set
+    internal var visibleComments by mutableStateOf<List<VisibleComment>>(emptyList())
         private set
     internal var displaySettings by mutableStateOf<CommentDisplaySettings?>(null)
         private set
@@ -331,6 +334,7 @@ class CommentsComposeController private constructor(
         storyFavoriteLoading: Boolean,
         searchQuery: String,
         searchResults: List<Comment>,
+        visibleComments: List<VisibleComment>,
     ) {
         this.story = story
         this.comments = comments.toList()
@@ -355,6 +359,7 @@ class CommentsComposeController private constructor(
         this.storyFavoriteLoading = storyFavoriteLoading
         this.searchQuery = searchQuery
         this.searchResults = searchResults.toList()
+        this.visibleComments = visibleComments.toList()
         contentVersion++
     }
 
@@ -1004,12 +1009,6 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
     }
 }
 
-private data class VisibleComment(
-    val sourceIndex: Int,
-    val comment: Comment,
-    val hiddenReplyCount: Int,
-)
-
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
 
 private suspend fun LazyListState.animateToCommentNavigationTarget(
@@ -1082,10 +1081,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
     }
 
     val listState = rememberLazyListState()
-    val sourceComments = controller.comments
-    val visibleComments = remember(sourceComments, controller.contentVersion) {
-        buildVisibleComments(sourceComments)
-    }
+    val visibleComments = controller.visibleComments
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     val density = LocalDensity.current
     val topInsetPx = WindowInsets.statusBars.getTop(density)
@@ -1483,35 +1479,6 @@ internal fun EmptyCommentsScreen() {
             fontWeight = FontWeight.Bold,
         )
     }
-}
-
-private fun buildVisibleComments(source: List<Comment>): List<VisibleComment> {
-    if (source.size <= 1) return emptyList()
-    val byId = source.associateBy { it.id }
-    return source.mapIndexedNotNull { index, comment ->
-        if (index == 0 || !isCommentVisible(comment, byId)) return@mapIndexedNotNull null
-        var lastChild = index
-        for (candidate in index + 1 until source.size) {
-            if (source[candidate].depth <= comment.depth) break
-            lastChild = candidate
-        }
-        VisibleComment(
-            sourceIndex = index,
-            comment = comment,
-            hiddenReplyCount = lastChild - index,
-        )
-    }
-}
-
-private fun isCommentVisible(comment: Comment, byId: Map<Int, Comment>): Boolean {
-    var current = comment
-    repeat(byId.size) {
-        if (current.parent == -1) return true
-        val parent = byId[current.parent] ?: return true
-        if (!parent.expanded) return false
-        current = parent
-    }
-    return true
 }
 
 private fun findNavigationTarget(

@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.network
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -18,14 +17,11 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.SettingsUtils
-import kotlinx.coroutines.CancellationException
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
 object RepliesChecker {
     const val CHANNEL_ID: String = "reply_notifications"
 
-    private const val KEY_USERNAME = "reply_notifications_username"
-    private const val KEY_LAST_SEEN_ITEM_ID = "reply_notifications_last_seen_item_id"
     private const val NOTIFICATION_GROUP_KEY = "com.simon.harmonichackernews.REPLY_NOTIFICATIONS"
     private const val GROUP_NOTIFICATION_ID = 98373
 
@@ -47,12 +43,7 @@ object RepliesChecker {
 
     fun disable(ctx: Context) {
         val appContext = ctx.applicationContext
-        SettingsUtils.saveStringToSharedPreferences(appContext, RepliesChecker.KEY_USERNAME, null)
-        SettingsUtils.saveStringToSharedPreferences(
-            appContext,
-            RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
-            "0"
-        )
+        useCase(appContext).disable()
 
         val scheduler: JobScheduler? =
             appContext.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
@@ -76,11 +67,11 @@ object RepliesChecker {
     }
 
     fun notificationsAreActive(ctx: Context): Boolean {
-        return RepliesChecker.getConfiguredUsername(ctx).isNotBlank()
+        return useCase(ctx).isEnabled
     }
 
     fun getConfiguredUsername(ctx: Context): String {
-        return SettingsUtils.readStringFromSharedPreferences(ctx, RepliesChecker.KEY_USERNAME, "").orEmpty()
+        return useCase(ctx).configuredUsername
     }
 
     fun createNotificationChannel(ctx: Context) {
@@ -102,54 +93,32 @@ object RepliesChecker {
         ctx: Context,
         username: String
     ): Boolean {
-        try {
-            val baseline = NetworkComponent.replyScanner.initialize(username) ?: return false
-
-            RepliesChecker.createNotificationChannel(ctx)
-            SettingsUtils.saveStringToSharedPreferences(
-                ctx,
-                RepliesChecker.KEY_USERNAME,
-                baseline.username,
-            )
-            SettingsUtils.saveStringToSharedPreferences(
-                ctx,
-                RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
-                baseline.lastSeenItemId.toString(),
-            )
-            RepliesChecker.scheduleJob(ctx)
-            return true
-        } catch (error: CancellationException) {
-            throw error
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
+        return when (val result = useCase(ctx).enable(username)) {
+            is ReplySubscriptionResult.Enabled -> {
+                RepliesChecker.createNotificationChannel(ctx)
+                RepliesChecker.scheduleJob(ctx)
+                true
+            }
+            ReplySubscriptionResult.UserNotFound -> false
+            is ReplySubscriptionResult.Failed -> {
+                result.cause.printStackTrace()
+                false
+            }
         }
     }
 
     private suspend fun checkNowInternal(ctx: Context): Boolean {
-        val username = RepliesChecker.getConfiguredUsername(ctx)
-        if (username.isBlank()) {
-            return true
-        }
-
-        try {
-            val result = NetworkComponent.replyScanner.scan(
-                username,
-                RepliesChecker.getLastSeenItemId(ctx),
-            )
-            if (!result.userFound) return false
-            RepliesChecker.showNotifications(ctx, result.replies)
-            SettingsUtils.saveStringToSharedPreferences(
-                ctx,
-                RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
-                result.lastSeenItemId.toString(),
-            )
-            return true
-        } catch (error: CancellationException) {
-            throw error
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
+        return when (val result = useCase(ctx).check()) {
+            ReplyCheckResult.Disabled -> true
+            is ReplyCheckResult.Success -> {
+                RepliesChecker.showNotifications(ctx, result.replies)
+                true
+            }
+            ReplyCheckResult.UserNotFound -> false
+            is ReplyCheckResult.Failed -> {
+                result.cause.printStackTrace()
+                false
+            }
         }
     }
 
@@ -157,22 +126,18 @@ object RepliesChecker {
         ctx: Context,
         username: String
     ): DebugNotificationResult {
-        try {
-            val result = NetworkComponent.replyScanner.findLatestReply(username)
-            val reply = result.reply ?: return if (result.userFound) {
-                DebugNotificationResult.NO_RECENT_REPLY
-            } else {
-                DebugNotificationResult.USER_NOT_FOUND
+        return when (val result = useCase(ctx).findLatest(username)) {
+            is LatestReplyLookupResult.Found -> {
+                RepliesChecker.createNotificationChannel(ctx)
+                showNotification(ctx, result.reply)
+                DebugNotificationResult.SENT
             }
-
-            RepliesChecker.createNotificationChannel(ctx)
-            showNotification(ctx, reply)
-            return DebugNotificationResult.SENT
-        } catch (error: CancellationException) {
-            throw error
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return DebugNotificationResult.FAILED
+            LatestReplyLookupResult.NoRecentReply -> DebugNotificationResult.NO_RECENT_REPLY
+            LatestReplyLookupResult.UserNotFound -> DebugNotificationResult.USER_NOT_FOUND
+            is LatestReplyLookupResult.Failed -> {
+                result.cause.printStackTrace()
+                DebugNotificationResult.FAILED
+            }
         }
     }
 
@@ -355,17 +320,10 @@ object RepliesChecker {
         scheduler.schedule(builder.build())
     }
 
-    private fun getLastSeenItemId(ctx: Context): Int {
-        try {
-            return SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                RepliesChecker.KEY_LAST_SEEN_ITEM_ID,
-                "0"
-            ).orEmpty().toInt()
-        } catch (e: NumberFormatException) {
-            return 0
-        }
-    }
+    private fun useCase(ctx: Context): ReplyNotificationUseCase = ReplyNotificationUseCase(
+        NetworkComponent.replyScanner,
+        AndroidKeyValueStore.global(ctx.applicationContext),
+    )
 
     enum class DebugNotificationResult {
         SENT,

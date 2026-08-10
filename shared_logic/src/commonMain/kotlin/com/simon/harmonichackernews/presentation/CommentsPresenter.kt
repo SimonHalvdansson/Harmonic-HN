@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -44,6 +45,7 @@ sealed interface CommentsAction {
     ) : CommentsAction
     data class SetSorting(val sorting: String) : CommentsAction
     data class ToggleExpanded(val commentId: Int) : CommentsAction
+    data class ExpandParents(val commentId: Int) : CommentsAction
     data object ShowCommentsByOp : CommentsAction
     data object ResetCommentsByOp : CommentsAction
     data class SetSearchQuery(val query: String) : CommentsAction
@@ -59,7 +61,9 @@ sealed interface CommentsAction {
         val storyId: Int,
         val useAlgolia: Boolean,
         val filteredUsers: Set<String>,
+        val topLevelCommentIds: List<Int>,
         val previousResponse: String?,
+        val restoreScrollFromCache: Boolean,
     ) : CommentsAction
     data object CancelThreadLoad : CommentsAction
 }
@@ -71,6 +75,13 @@ sealed interface CommentsEffect {
         val storyId: Int,
         val result: CommentThreadLoadResult,
         val previousResponse: String?,
+    ) : CommentsEffect
+    data class CachedThreadParsed(
+        val requestId: Int,
+        val storyId: Int,
+        val response: String,
+        val parsed: AlgoliaCommentsResponse,
+        val restoreScroll: Boolean,
     ) : CommentsEffect
 }
 
@@ -123,6 +134,7 @@ class CommentsPresenter(
             )
             is CommentsAction.SetSorting -> thread.setSorting(action.sorting)
             is CommentsAction.ToggleExpanded -> thread.toggleExpanded(action.commentId)
+            is CommentsAction.ExpandParents -> thread.expandParents(action.commentId)
             CommentsAction.ShowCommentsByOp -> thread.showCommentsByOp()
             CommentsAction.ResetCommentsByOp -> thread.resetCommentsByOp()
             is CommentsAction.SetSearchQuery -> thread.setSearchQuery(action.query)
@@ -145,10 +157,30 @@ class CommentsPresenter(
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
         threadLoadJob = scope.launch {
+            action.previousResponse?.let { cachedResponse ->
+                runCatching {
+                    commentThreadRepository.parseAlgolia(
+                        cachedResponse,
+                        action.topLevelCommentIds,
+                        action.filteredUsers,
+                    )
+                }.getOrNull()?.let { parsed ->
+                    mutableEffects.emit(
+                        CommentsEffect.CachedThreadParsed(
+                            action.requestId,
+                            action.storyId,
+                            cachedResponse,
+                            parsed,
+                            action.restoreScrollFromCache,
+                        ),
+                    )
+                }
+            }
             val result = commentThreadRepository.load(
                 storyId = action.storyId,
                 useAlgolia = action.useAlgolia,
                 filteredUsers = action.filteredUsers,
+                topLevelCommentIds = action.topLevelCommentIds,
             )
             mutableEffects.emit(
                 CommentsEffect.ThreadLoaded(

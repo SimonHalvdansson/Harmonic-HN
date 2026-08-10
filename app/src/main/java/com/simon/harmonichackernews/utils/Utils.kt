@@ -42,6 +42,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import com.simon.harmonichackernews.settings.UserTagCodec
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.data.SavedItemKeys
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
 
 object Utils {
     const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
@@ -60,7 +64,7 @@ object Utils {
         "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY"
 
     const val KEY_SHARED_PREFERENCES_BOOKMARKS: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_BOOKMARKS"
+        SavedItemKeys.BOOKMARKS
     const val KEY_SHARED_PREFERENCES_USER_TAGS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS"
     const val KEY_SHARED_PREFERENCES_FIRST_TIME: String =
@@ -70,13 +74,13 @@ object Utils {
     const val KEY_SHARED_PREFERENCES_LAST_VERSION: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
     const val KEY_SHARED_PREFERENCES_FAVORITES: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITES"
+        SavedItemKeys.FAVORITES
     const val KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS"
+        SavedItemKeys.FAVORITE_COMMENTS
     const val KEY_SHARED_PREFERENCES_UPVOTED: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_UPVOTED"
+        SavedItemKeys.UPVOTED
     const val KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS"
+        SavedItemKeys.UPVOTED_COMMENTS
 
     const val KEY_NIGHTTIME_FROM_HOUR: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
@@ -684,12 +688,8 @@ object Utils {
         ctx: Context,
         sorted: Boolean
     ): ArrayList<Bookmark> {
-        return loadBookmarks(
-            sorted,
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_SHARED_PREFERENCES_BOOKMARKS
-            )
+        return SavedItemCodec.toBookmarks(
+            savedItems(ctx).loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = sorted),
         )
     }
 
@@ -701,119 +701,98 @@ object Utils {
     }
 
     fun isBookmarked(ctx: Context, id: Int): Boolean {
-        return loadBookmarks(ctx, false).any { it.id == id }
+        return savedItems(ctx).contains(SavedItemSource.BOOKMARKS, id)
     }
 
     fun saveBookmarks(
         ctx: Context,
         bookmarks: ArrayList<Bookmark>
     ) {
-        saveBookmarkList(
-            ctx,
-            KEY_SHARED_PREFERENCES_BOOKMARKS,
-            bookmarks
+        savedItems(ctx).saveItems(
+            SavedItemSource.BOOKMARKS,
+            SavedItemCodec.fromBookmarks(bookmarks),
         )
     }
 
-    private fun saveBookmarkList(
-        ctx: Context,
-        key: String?,
-        bookmarks: List<Bookmark>
-    ) {
-        val value = SavedItemCodec.encode(SavedItemCodec.fromBookmarks(bookmarks))
-        SettingsUtils.saveStringToSharedPreferences(ctx, key, value)
-    }
-
     fun addBookmark(ctx: Context, id: Int) {
-        val current = SavedItemCodec.fromBookmarks(loadBookmarks(ctx, false))
-        val updated = SavedItemCodec.add(current, id, System.currentTimeMillis())
-        if (updated != current) saveBookmarks(ctx, SavedItemCodec.toBookmarks(updated))
+        savedItems(ctx).setMembership(
+            SavedItemSource.BOOKMARKS,
+            id,
+            present = true,
+            createdAtMillis = System.currentTimeMillis(),
+        )
     }
 
     fun removeBookmark(ctx: Context, id: Int) {
-        val current = SavedItemCodec.fromBookmarks(loadBookmarks(ctx, false))
-        saveBookmarks(ctx, SavedItemCodec.toBookmarks(SavedItemCodec.remove(current, id)))
+        savedItems(ctx).setMembership(
+            SavedItemSource.BOOKMARKS,
+            id,
+            present = false,
+            createdAtMillis = System.currentTimeMillis(),
+        )
     }
 
     fun loadFavorites(
         ctx: Context,
         sorted: Boolean
     ): ArrayList<Bookmark> {
-        return loadSavedItemList(
-            ctx,
-            KEY_SHARED_PREFERENCES_FAVORITES,
-            sorted
-        )
+        return loadSavedItemList(ctx, SavedItemSource.FAVORITES, sorted)
     }
 
     fun loadUpvoted(
         ctx: Context,
         sorted: Boolean
     ): ArrayList<Bookmark> {
-        return loadSavedItemList(
-            ctx,
-            KEY_SHARED_PREFERENCES_UPVOTED,
-            sorted
-        )
+        return loadSavedItemList(ctx, SavedItemSource.UPVOTED, sorted)
     }
 
     fun loadFavoriteCommentIds(ctx: Context): MutableSet<Int> {
-        return SettingsUtils.readIntSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS
-        )
+        return savedItems(ctx).loadCommentIds(SavedItemSource.FAVORITES).toMutableSet()
     }
 
     fun loadUpvotedCommentIds(ctx: Context): MutableSet<Int> {
-        return SettingsUtils.readIntSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS
-        )
+        return savedItems(ctx).loadCommentIds(SavedItemSource.UPVOTED).toMutableSet()
     }
 
     private fun loadSavedItemList(
         ctx: Context,
-        key: String?,
+        source: SavedItemSource,
         sorted: Boolean
     ): ArrayList<Bookmark> {
-        val items = loadBookmarks(
-            false,
-            SettingsUtils.readStringFromSharedPreferences(ctx, key)
-        )
-        if (sorted) {
-            items.sortByDescending { it.id }
+        val items = if (sorted) {
+            savedItems(ctx).loadItemsByDescendingId(source)
+        } else {
+            savedItems(ctx).loadItems(source)
         }
-        return items
+        return SavedItemCodec.toBookmarks(items)
     }
 
     fun isFavorited(ctx: Context, id: Int): Boolean {
-        return loadFavorites(ctx, false).any { it.id == id }
+        return savedItems(ctx).contains(SavedItemSource.FAVORITES, id)
     }
 
     fun isUpvoted(ctx: Context, id: Int, comment: Boolean): Boolean {
         if (comment) {
-            return loadUpvotedCommentIds(ctx).contains(id)
+            return id in savedItems(ctx).loadCommentIds(SavedItemSource.UPVOTED)
         }
-
-        return loadUpvoted(ctx, false).any { it.id == id }
+        return savedItems(ctx).contains(SavedItemSource.UPVOTED, id)
     }
 
     fun saveFavorites(
         ctx: Context,
         favorites: ArrayList<Bookmark>
     ) {
-        saveBookmarkList(
-            ctx,
-            KEY_SHARED_PREFERENCES_FAVORITES,
-            favorites
+        savedItems(ctx).saveItems(
+            SavedItemSource.FAVORITES,
+            SavedItemCodec.fromBookmarks(favorites),
         )
     }
 
     fun saveFavoriteIds(ctx: Context, ids: List<Int>) {
-        saveSavedItemIds(
-            ctx,
-            KEY_SHARED_PREFERENCES_FAVORITES,
-            ids
+        savedItems(ctx).saveIds(
+            SavedItemSource.FAVORITES,
+            ids,
+            System.currentTimeMillis(),
         )
     }
 
@@ -821,18 +800,14 @@ object Utils {
         ctx: Context,
         ids: Set<Int>
     ) {
-        SettingsUtils.saveIntSetToSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS,
-            ids
-        )
+        savedItems(ctx).saveCommentIds(SavedItemSource.FAVORITES, ids)
     }
 
     fun saveUpvotedIds(ctx: Context, ids: List<Int>) {
-        saveSavedItemIds(
-            ctx,
-            KEY_SHARED_PREFERENCES_UPVOTED,
-            ids
+        savedItems(ctx).saveIds(
+            SavedItemSource.UPVOTED,
+            ids,
+            System.currentTimeMillis(),
         )
     }
 
@@ -840,29 +815,16 @@ object Utils {
         ctx: Context,
         ids: Set<Int>
     ) {
-        SettingsUtils.saveIntSetToSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS,
-            ids
-        )
-    }
-
-    private fun saveSavedItemIds(
-        ctx: Context,
-        key: String?,
-        ids: List<Int>
-    ) {
-        saveBookmarkList(
-            ctx,
-            key,
-            SavedItemCodec.toBookmarks(SavedItemCodec.fromIds(ids, System.currentTimeMillis())),
-        )
+        savedItems(ctx).saveCommentIds(SavedItemSource.UPVOTED, ids)
     }
 
     fun addFavorite(ctx: Context, id: Int) {
-        val current = SavedItemCodec.fromBookmarks(loadFavorites(ctx, false))
-        val updated = SavedItemCodec.add(current, id, System.currentTimeMillis())
-        if (updated != current) saveFavorites(ctx, SavedItemCodec.toBookmarks(updated))
+        savedItems(ctx).setMembership(
+            SavedItemSource.FAVORITES,
+            id,
+            present = true,
+            createdAtMillis = System.currentTimeMillis(),
+        )
     }
 
     fun setFavorite(ctx: Context, id: Int, favorite: Boolean) {
@@ -874,8 +836,12 @@ object Utils {
     }
 
     fun removeFavorite(ctx: Context, id: Int) {
-        val current = SavedItemCodec.fromBookmarks(loadFavorites(ctx, false))
-        saveFavorites(ctx, SavedItemCodec.toBookmarks(SavedItemCodec.remove(current, id)))
+        savedItems(ctx).setMembership(
+            SavedItemSource.FAVORITES,
+            id,
+            present = false,
+            createdAtMillis = System.currentTimeMillis(),
+        )
     }
 
     fun setUpvoted(
@@ -885,32 +851,19 @@ object Utils {
         upvoted: Boolean
     ) {
         if (comment) {
-            val upvotedCommentIds =
-                loadUpvotedCommentIds(ctx)
-            if (upvoted) {
-                upvotedCommentIds.add(id)
-            } else {
-                upvotedCommentIds.remove(id)
-            }
-            saveUpvotedCommentIds(ctx, upvotedCommentIds)
+            savedItems(ctx).setCommentMembership(SavedItemSource.UPVOTED, id, upvoted)
             return
         }
-
-        val current = SavedItemCodec.fromBookmarks(loadUpvoted(ctx, false))
-        val updated = SavedItemCodec.setMembership(
-            current,
+        savedItems(ctx).setMembership(
+            SavedItemSource.UPVOTED,
             id,
-            upvoted,
-            System.currentTimeMillis(),
+            present = upvoted,
+            createdAtMillis = System.currentTimeMillis(),
         )
-        if (updated != current) {
-            saveBookmarkList(
-                ctx,
-                KEY_SHARED_PREFERENCES_UPVOTED,
-                SavedItemCodec.toBookmarks(updated),
-            )
-        }
     }
+
+    private fun savedItems(ctx: Context): SavedItemsRepository =
+        SavedItemsRepository(AndroidKeyValueStore.global(ctx))
 
     fun getThousandSeparatedString(n: Int): String {
         val bd = BigDecimal(n)

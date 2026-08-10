@@ -22,6 +22,10 @@ import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.RequestQueue
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.SavedItemSnapshot
+import com.simon.harmonichackernews.data.SavedItemSnapshots
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
@@ -42,9 +46,14 @@ import com.simon.harmonichackernews.presentation.StoryListStore
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.presentation.StorySearchMode
 import com.simon.harmonichackernews.presentation.StorySearchUiState
+import com.simon.harmonichackernews.presentation.StoryFeedLoadSession
+import com.simon.harmonichackernews.presentation.StoryVisibilityConfig
+import com.simon.harmonichackernews.presentation.StoryVisibilityPolicy
+import com.simon.harmonichackernews.presentation.PreviewPrefetchPlanner
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
@@ -140,11 +149,8 @@ class StoriesCoordinator(
     private val userItemListCommentIds = sessionState.userItemListCommentIds
     private var queue: RequestQueue? = null
     private val requestTag = Any()
-    private val loadingStoryStartTimes = mutableMapOf<Int, Long>()
-    private var filterWords: java.util.ArrayList<String>? = null
-    private var filterDomains: java.util.ArrayList<String>? = null
-    private var filteredUsers: MutableSet<String>? = null
-    private var hideJobs = false
+    private val storyFeedLoadSession = StoryFeedLoadSession(STORY_LOAD_STALE_TIMEOUT_MS)
+    private val storyVisibilityPolicy = StoryVisibilityPolicy()
     private var alwaysOpenComments = false
     private var hideClicked = false
     private var historiesChangeVersion = -1L
@@ -192,7 +198,8 @@ class StoriesCoordinator(
         set(value) {
             storiesPresenter.dispatch(StoriesAction.SetSearchDraft(value.orEmpty()))
         }
-    private var storyListGeneration = 0
+    private val storyListGeneration: Int
+        get() = storyFeedLoadSession.generation
     private val pendingStoryRowChangeGenerations = mutableMapOf<Int, Int>()
     private val pendingStoryRemovals = mutableMapOf<Int, PendingStoryRemoval>()
     private var algoliaLoading = false
@@ -213,8 +220,6 @@ class StoriesCoordinator(
             activeStoryListStore.markLoadedThrough(value)
         }
     private var paginationMode = false
-    private val paginationLoadMoreStoryIds: MutableSet<Int> = HashSet<Int>()
-    private var paginationLoadMoreGeneration = -1
 
     private class PendingStoryRemoval(val generation: Int, var updateHeader: Boolean)
 
@@ -245,20 +250,16 @@ class StoriesCoordinator(
             }
         }
     private val previewImagePrefetchHandler = Handler(Looper.getMainLooper())
-    private val previewImagePrefetchQueue = java.util.ArrayList<Story>()
-    private val queuedPreviewImagePrefetchStoryIds: MutableSet<Int> = HashSet<Int>()
-    private val requestedPreviewImagePrefetchStoryIds: MutableSet<Int> = HashSet<Int>()
+    private val previewPrefetchPlanner = PreviewPrefetchPlanner(
+        batchSize = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE,
+        visibleThreshold = STORY_VISIBLE_PREFETCH_THRESHOLD,
+    )
     private val previewImagePrefetchRampRunnable: Runnable = object : Runnable {
         override fun run() {
-            previewImagePrefetchRampScheduled = false
-            previewImagePrefetchRampSlotsRemaining = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE
+            previewPrefetchPlanner.startNextBatch()
             drainPreviewImagePrefetchQueue()
         }
     }
-    private var previewImagePrefetchRampScheduled = false
-    private var previewImagePrefetchRampComplete = false
-    private var previewImagePrefetchRampSlotsRemaining: Int = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE
-    private var previewImagePrefetchRampTargetIndex = -1
 
     var lastLoaded by sessionState::lastLoaded
     var lastClick: Long = 0
@@ -336,11 +337,8 @@ class StoriesCoordinator(
         storyCacheController = createStoryCacheController()
 
         stories = mainStories
-        filterWords = Utils.getFilterWords(requireContext())
-        filterDomains = Utils.getFilterDomains(requireContext())
-        filteredUsers = Utils.getFilteredUsers(requireContext())
         val storyPreferences = userSettings.story
-        hideJobs = storyPreferences.hideJobs
+        updateStoryVisibilityPolicy(storyPreferences.hideJobs)
         hideClicked = storyPreferences.hideClicked
         alwaysOpenComments = storyPreferences.alwaysOpenComments
         userItemListsDropdownVisible = shouldShowUserItemLists(requireContext())
@@ -1280,32 +1278,22 @@ class StoriesCoordinator(
     }
 
     private fun startPaginationLoadMore(targetIndex: Int, loadGeneration: Int) {
-        paginationLoadMoreStoryIds.clear()
-        paginationLoadMoreGeneration = loadGeneration
-        val firstIndex = max(0, loadedTo + 1)
-        val lastIndex = min(targetIndex, stories!!.size - 1)
-        for (i in firstIndex..lastIndex) {
-            val story = stories!!.get(i)
-            if (story != null && !story.loaded) {
-                paginationLoadMoreStoryIds.add(story.id)
-            }
-        }
+        storyFeedLoadSession.beginPagination(
+            stories = stories.orEmpty(),
+            loadedThroughIndex = loadedTo,
+            targetIndex = targetIndex,
+            requestGeneration = loadGeneration,
+        )
     }
 
     private fun finishPaginationLoadMoreStory(story: Story?, loadGeneration: Int) {
-        if (story == null || loadGeneration != paginationLoadMoreGeneration) {
-            return
-        }
-
-        paginationLoadMoreStoryIds.remove(story.id)
-        if (paginationLoadMoreStoryIds.isEmpty()) {
+        if (story != null && storyFeedLoadSession.finishPaginationStory(story.id, loadGeneration)) {
             clearPaginationLoadMoreState()
         }
     }
 
     private fun clearPaginationLoadMoreState() {
-        paginationLoadMoreStoryIds.clear()
-        paginationLoadMoreGeneration = -1
+        storyFeedLoadSession.clearPagination()
         if (adapter != null) {
             adapter!!.setLoadMoreLoading(false)
         }
@@ -1638,7 +1626,7 @@ class StoriesCoordinator(
             adapter!!.setLoadMoreLoading(true)
             adapter!!.loadNextPage()
             activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
-            if (paginationLoadMoreStoryIds.isEmpty()) {
+            if (!storyFeedLoadSession.hasPendingPaginationStories()) {
                 clearPaginationLoadMoreState()
             }
             loadStoriesThroughIndex(newLoadedTo, storyListGeneration)
@@ -1879,11 +1867,10 @@ class StoriesCoordinator(
     }
 
     fun onResume() {
-        filterWords = Utils.getFilterWords(requireContext())
-        filterDomains = Utils.getFilterDomains(requireContext())
-        filteredUsers = Utils.getFilteredUsers(requireContext())
         val storyPreferences = userSettings.story
         val newHideJobs = storyPreferences.hideJobs
+        val hideJobsChanged = storyVisibilityPolicy.config.hideJobs != newHideJobs
+        updateStoryVisibilityPolicy(newHideJobs)
         hideClicked = storyPreferences.hideClicked
         alwaysOpenComments = storyPreferences.alwaysOpenComments
         refreshTypeSpinnerItemsIfNeeded()
@@ -1946,14 +1933,22 @@ class StoriesCoordinator(
             }
         }
 
-        if (hideJobs != newHideJobs) {
-            hideJobs = newHideJobs
+        if (hideJobsChanged) {
             attemptRefresh()
         }
 
         syncInactiveStoryAdapterDisplaySettings()
         syncStoriesWithHistoriesIfNeeded()
         syncComposeState()
+    }
+
+    private fun updateStoryVisibilityPolicy(hideJobs: Boolean) {
+        storyVisibilityPolicy.config = StoryVisibilityConfig(
+            filteredWords = Utils.getFilterWords(requireContext()),
+            filteredDomains = Utils.getFilterDomains(requireContext()),
+            filteredUsers = Utils.getFilteredUsers(requireContext()),
+            hideJobs = hideJobs,
+        )
     }
 
     private fun refreshBookmarksIfNeeded() {
@@ -2112,8 +2107,7 @@ class StoriesCoordinator(
         if (mainAdapter != null) mainAdapter!!.dispose()
         if (searchAdapter != null) searchAdapter!!.dispose()
         if (queue != null) {
-            storyListGeneration++
-            clearLoadingStoryState()
+            storyFeedLoadSession.beginGeneration()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -2239,78 +2233,23 @@ class StoriesCoordinator(
     }
 
     private fun shouldFilterLoadedStory(story: Story?): Boolean {
-        if (story == null) {
-            return false
-        }
-
-        val author = story.by
-        if (filteredUsers != null && !TextUtils.isEmpty(author) && filteredUsers!!.contains(
-                author!!.lowercase(
-                    Locale.getDefault()
-                ).trim { it <= ' ' })
-        ) {
-            return true
-        }
-
-        val storyTitle = story.title
-        if (filterWords != null && storyTitle != null) {
-            val title = storyTitle.lowercase(Locale.getDefault())
-            for (phrase in filterWords) {
-                if (!TextUtils.isEmpty(phrase) && title.contains(phrase.lowercase(Locale.getDefault()))) {
-                    return true
-                }
-            }
-        }
-
-        val storyUrl = story.url
-        if (filterDomains != null && storyUrl != null) {
-            try {
-                val domain = story.getDisplayDomain(true).orEmpty().lowercase(Locale.getDefault())
-                for (phrase in filterDomains) {
-                    if (!TextUtils.isEmpty(phrase)
-                        && domain.contains(phrase!!.lowercase(Locale.getDefault()))
-                    ) {
-                        return true
-                    }
-                }
-            } catch (ignored: Exception) {
-                // Invalid URLs cannot match a domain filter.
-            }
-        }
-
-        return shouldHideStoryAsJob(story)
+        return story?.let { storyVisibilityPolicy.shouldHide(it, currentStoryType) } == true
     }
 
     private fun isStoryLoadInProgress(story: Story?): Boolean {
-        if (story == null) {
-            return false
-        }
-
-        val startedAt = loadingStoryStartTimes[story.id]
-        if (startedAt == null) {
-            return false
-        }
-
-        if (System.currentTimeMillis() - startedAt > STORY_LOAD_STALE_TIMEOUT_MS) {
-            loadingStoryStartTimes.remove(story.id)
-            return false
-        }
-
-        return true
+        return story?.let {
+            storyFeedLoadSession.isStoryInProgress(it.id, clock.now().toEpochMilliseconds())
+        } == true
     }
 
     private fun markStoryLoadStarted(story: Story?): Long {
-        val startedAt = System.currentTimeMillis()
-        if (story != null) {
-            loadingStoryStartTimes[story.id] = startedAt
-        }
+        val startedAt = clock.now().toEpochMilliseconds()
+        story?.let { storyFeedLoadSession.markStoryStarted(it.id, startedAt) }
         return startedAt
     }
 
     private fun clearStoryLoadState(story: Story?) {
-        if (story != null) {
-            loadingStoryStartTimes.remove(story.id)
-        }
+        story?.let { storyFeedLoadSession.clearStory(it.id) }
     }
 
     private fun clearStoryLoadState(story: Story?, startedAt: Long) {
@@ -2318,10 +2257,7 @@ class StoriesCoordinator(
             return
         }
 
-        val currentStartedAt = loadingStoryStartTimes[story.id]
-        if (currentStartedAt != null && currentStartedAt == startedAt) {
-            loadingStoryStartTimes.remove(story.id)
-        }
+        storyFeedLoadSession.clearStory(story.id, startedAt)
     }
 
     private fun isCurrentStoryLoad(story: Story?, startedAt: Long): Boolean {
@@ -2329,12 +2265,11 @@ class StoriesCoordinator(
             return false
         }
 
-        val currentStartedAt = loadingStoryStartTimes[story.id]
-        return currentStartedAt != null && currentStartedAt == startedAt
+        return storyFeedLoadSession.isCurrentStoryLoad(story.id, startedAt)
     }
 
     private fun clearLoadingStoryState() {
-        loadingStoryStartTimes.clear()
+        storyFeedLoadSession.clearStoryLoads()
     }
 
     private fun loadStory(story: Story, attempt: Int, loadGeneration: Int = storyListGeneration) {
@@ -2396,7 +2331,7 @@ class StoriesCoordinator(
                 Log.w(TAG, "Failed to load story id=${story.id}, attempt=$attempt", error)
                 story.loadingFailed = true
                 if (attempt >= 2) finishPaginationLoadMoreStory(story, loadGeneration)
-                updatePreviewImagePrefetchRampCompletion()
+                drainPreviewImagePrefetchQueue()
                 if (stories?.indexOf(story) != -1) {
                     enqueueStoryRowChange(story, loadGeneration)
                     loadStory(story, attempt + 1, loadGeneration)
@@ -2419,8 +2354,7 @@ class StoriesCoordinator(
     }
 
     private fun beginStoryListRefresh(): Int {
-        storyListGeneration++
-        clearLoadingStoryState()
+        storyFeedLoadSession.beginGeneration()
         resetPreviewImagePrefetchRamp()
         resetScrapedFrontpagePaginationState()
         invalidateAlgoliaLoad()
@@ -2438,7 +2372,7 @@ class StoriesCoordinator(
     }
 
     private fun isCurrentStoryListGeneration(generation: Int): Boolean {
-        return generation == storyListGeneration
+        return storyFeedLoadSession.isCurrent(generation)
     }
 
     private fun attemptRefresh(
@@ -2524,8 +2458,9 @@ class StoriesCoordinator(
             val hasCachedUserItemList = if (shouldLoadCachedUserItemList)
                 loadUserItemListCache()
             else
-                !UserItemListRepository.loadCache(this.context, this.currentUserItemListSource)
-                    .isEmpty()
+                savedItemsRepository(this.context)
+                    ?.loadItems(this.currentUserItemListSource)
+                    ?.isNotEmpty() == true
             if (!shouldLoadCachedUserItemList) {
                 resumeInterruptedStoryLoads()
             }
@@ -2942,10 +2877,7 @@ class StoriesCoordinator(
         loadingFailedRateLimited = false
         userItemListInitialLoadInProgress = false
 
-        val snapshot = UserItemListRepository.loadCachedSnapshot(
-            this.context,
-            this.currentUserItemListSource
-        )
+        val snapshot = loadCachedUserItemSnapshot()
         replaceUserItemListStoriesWithIds(snapshot.itemIds, snapshot.commentIds)
         return !snapshot.itemIds.isEmpty()
     }
@@ -2970,7 +2902,7 @@ class StoriesCoordinator(
         }
 
         val syncSource = this.currentUserItemListSource
-        val upvotedTypeForSync = syncSource == UserItemListRepository.Source.UPVOTED
+        val upvotedTypeForSync = syncSource == SavedItemSource.UPVOTED
         userItemListInitialLoadInProgress = stories!!.isEmpty() && !showSwipeRefreshIndicator
         this.isRefreshIndicatorShowing = showSwipeRefreshIndicator
         updateHeader()
@@ -3009,9 +2941,14 @@ class StoriesCoordinator(
                     return@launch
                 }
 
-                val snapshot = UserItemListRepository.normalizeSnapshot(itemIds, commentIds)
-                if (!UserItemListRepository.idsMatchCache(currentContext, syncSource, snapshot)) {
-                    UserItemListRepository.saveIds(currentContext, syncSource, snapshot)
+                val snapshot = SavedItemSnapshots.normalize(itemIds, commentIds)
+                val savedItems = savedItemsRepository(currentContext)
+                if (savedItems != null && savedItems.loadSnapshot(syncSource) != snapshot) {
+                    savedItems.saveSnapshot(
+                        syncSource,
+                        snapshot,
+                        clock.now().toEpochMilliseconds(),
+                    )
                 }
                 syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds)
 
@@ -3050,12 +2987,16 @@ class StoriesCoordinator(
             return
         }
 
-        val snapshot = UserItemListRepository.loadCachedSnapshot(
-            this.context,
-            this.currentUserItemListSource
-        )
+        val snapshot = loadCachedUserItemSnapshot()
         syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds)
     }
+
+    private fun loadCachedUserItemSnapshot(): SavedItemSnapshot =
+        savedItemsRepository(context)?.loadSnapshot(currentUserItemListSource)
+            ?: SavedItemSnapshot(emptyList(), emptySet())
+
+    private fun savedItemsRepository(context: Context?): SavedItemsRepository? =
+        context?.let { SavedItemsRepository(AndroidKeyValueStore.global(it)) }
 
     private fun syncUserItemListStoriesToIds(
         itemIds: List<Int>,
@@ -3156,152 +3097,44 @@ class StoriesCoordinator(
     }
 
     private fun beginPreviewImagePrefetchRamp(targetIndex: Int) {
-        if (targetIndex < 0 || adapter == null || SettingsUtils.STORY_PREVIEW_IMAGE_OFF == adapter!!.previewImageMode
-            || previewImagePrefetchRampComplete
-        ) {
-            return
-        }
-
-        previewImagePrefetchRampTargetIndex = max(previewImagePrefetchRampTargetIndex, targetIndex)
-    }
-
-    private fun requestPreviewImagePrefetch(context: Context?, story: Story?) {
-        if (context == null || adapter == null || story == null || !story.loaded || story.loadingFailed) {
-            return
-        }
-
-        if (previewImagePrefetchRampComplete || previewImagePrefetchRampTargetIndex < 0) {
-            adapter!!.prefetchPreviewImage(context, story)
-            return
-        }
-
-        if (story.id > 0) {
-            if (requestedPreviewImagePrefetchStoryIds.contains(story.id)
-                || !queuedPreviewImagePrefetchStoryIds.add(story.id)
-            ) {
-                return
-            }
-        }
-
-        previewImagePrefetchQueue.add(story)
-        drainPreviewImagePrefetchQueue()
-    }
-
-    private fun drainPreviewImagePrefetchQueue() {
-        if (previewImagePrefetchRampScheduled) {
-            return
-        }
-
-        val context = this.context
-        if (context == null || adapter == null) {
-            return
-        }
-
-        while (previewImagePrefetchRampSlotsRemaining > 0 && !previewImagePrefetchQueue.isEmpty()) {
-            val story = removeNextPreviewImagePrefetchStory()
-            if (story == null) {
-                break
-            }
-
-            if (story.id > 0) {
-                requestedPreviewImagePrefetchStoryIds.add(story.id)
-            }
-            previewImagePrefetchRampSlotsRemaining--
-            adapter!!.prefetchPreviewImage(context, story)
-        }
-
-        updatePreviewImagePrefetchRampCompletion()
-        if (!previewImagePrefetchRampComplete && previewImagePrefetchRampSlotsRemaining <= 0) {
-            scheduleNextPreviewImagePrefetchRampBatch()
-        }
-    }
-
-    private fun removeNextPreviewImagePrefetchStory(): Story? {
-        var bestQueueIndex = -1
-        var bestStoryIndex = Int.MAX_VALUE
-        var i = 0
-        while (i < previewImagePrefetchQueue.size) {
-            val story = previewImagePrefetchQueue.get(i)
-            val storyIndex = if (stories == null) -1 else stories!!.indexOf(story)
-            if (storyIndex < 0 || !story.loaded || story.loadingFailed) {
-                previewImagePrefetchQueue.removeAt(i)
-                if (story.id > 0) {
-                    queuedPreviewImagePrefetchStoryIds.remove(story.id)
-                }
-                i--
-                i++
-                continue
-            }
-
-            if (storyIndex < bestStoryIndex) {
-                bestStoryIndex = storyIndex
-                bestQueueIndex = i
-            }
-            i++
-        }
-
-        if (bestQueueIndex < 0) {
-            return null
-        }
-
-        val story = previewImagePrefetchQueue.removeAt(bestQueueIndex)
-        if (story.id > 0) {
-            queuedPreviewImagePrefetchStoryIds.remove(story.id)
-        }
-        return story
-    }
-
-    private fun scheduleNextPreviewImagePrefetchRampBatch() {
-        if (previewImagePrefetchRampScheduled) {
-            return
-        }
-
-        previewImagePrefetchRampScheduled = true
-        previewImagePrefetchHandler.postDelayed(
-            previewImagePrefetchRampRunnable,
-            PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS
+        previewPrefetchPlanner.begin(
+            targetIndex,
+            enabled = adapter != null &&
+                SettingsUtils.STORY_PREVIEW_IMAGE_OFF != adapter!!.previewImageMode,
         )
     }
 
-    private fun updatePreviewImagePrefetchRampCompletion() {
-        if (previewImagePrefetchRampComplete
-            || previewImagePrefetchRampTargetIndex < 0 || !previewImagePrefetchQueue.isEmpty() || !arePreviewImagePrefetchRampStoriesSettled()
-        ) {
-            return
+    private fun requestPreviewImagePrefetch(context: Context?, story: Story?) {
+        val currentStories = stories
+        if (context == null || adapter == null || story == null || currentStories == null) return
+        previewPrefetchPlanner.enqueue(story, currentStories).forEach {
+            adapter!!.prefetchPreviewImage(context, it)
         }
-
-        previewImagePrefetchRampComplete = true
-        previewImagePrefetchRampTargetIndex = -1
-        previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable)
-        previewImagePrefetchRampScheduled = false
-        queuedPreviewImagePrefetchStoryIds.clear()
-        requestedPreviewImagePrefetchStoryIds.clear()
+        scheduleNextPreviewImagePrefetchRampBatch()
     }
 
-    private fun arePreviewImagePrefetchRampStoriesSettled(): Boolean {
-        if (stories == null || stories!!.isEmpty()) {
-            return true
+    private fun drainPreviewImagePrefetchQueue() {
+        val context = this.context
+        val currentStories = stories
+        if (context == null || adapter == null || currentStories == null) return
+        previewPrefetchPlanner.drain(currentStories).forEach {
+            adapter!!.prefetchPreviewImage(context, it)
         }
+        scheduleNextPreviewImagePrefetchRampBatch()
+    }
 
-        val targetIndex = min(previewImagePrefetchRampTargetIndex, stories!!.size - 1)
-        for (i in 0..targetIndex) {
-            val story = stories!!.get(i)
-            if (!story.loaded && !story.loadingFailed) {
-                return false
-            }
+    private fun scheduleNextPreviewImagePrefetchRampBatch() {
+        if (previewPrefetchPlanner.requestNextBatchSchedule()) {
+            previewImagePrefetchHandler.postDelayed(
+                previewImagePrefetchRampRunnable,
+                PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS,
+            )
         }
-        return true
     }
 
     private fun resetPreviewImagePrefetchRamp() {
         previewImagePrefetchHandler.removeCallbacks(previewImagePrefetchRampRunnable)
-        previewImagePrefetchQueue.clear()
-        queuedPreviewImagePrefetchStoryIds.clear()
-        requestedPreviewImagePrefetchStoryIds.clear()
-        previewImagePrefetchRampScheduled = false
-        previewImagePrefetchRampComplete = false
-        previewImagePrefetchRampSlotsRemaining = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE
-        previewImagePrefetchRampTargetIndex = -1
+        previewPrefetchPlanner.reset()
     }
 
     private fun scheduleLoadedPreviewImagePrefetchNearViewport() {
@@ -3318,20 +3151,17 @@ class StoriesCoordinator(
         if (context == null || currentAdapter == null || currentStories.isNullOrEmpty()) return
         if (SettingsUtils.STORY_PREVIEW_IMAGE_OFF == currentAdapter.previewImageMode) return
 
-        val firstIndex = if (firstVisibleItem == NO_POSITION) 0 else max(0, firstVisibleItem)
-        var lastIndex = if (lastVisibleItem == NO_POSITION) min(
-            initialLoadCount - 1, currentStories.size - 1
-        ) else min(lastVisibleItem + STORY_VISIBLE_PREFETCH_THRESHOLD, currentStories.size - 1)
-        if (currentAdapter.paginationMode) {
-            lastIndex = min(lastIndex, currentAdapter.visibleStoryCount - 1)
-        }
+        val range = previewPrefetchPlanner.prefetchRange(
+            storyCount = currentStories.size,
+            initialLoadCount = initialLoadCount,
+            firstVisibleItem = firstVisibleItem,
+            lastVisibleItem = lastVisibleItem,
+            paginationVisibleCount = currentAdapter.visibleStoryCount
+                .takeIf { currentAdapter.paginationMode },
+        ) ?: return
 
-        if (lastIndex < firstIndex) {
-            return
-        }
-
-        beginPreviewImagePrefetchRamp(lastIndex)
-        for (i in firstIndex..lastIndex) {
+        beginPreviewImagePrefetchRamp(range.last)
+        for (i in range) {
             requestPreviewImagePrefetch(context, currentStories[i])
         }
     }
@@ -3348,8 +3178,7 @@ class StoriesCoordinator(
             saveStoriesBeforeSearch()
 
             // cancel all ongoing
-            storyListGeneration++
-            clearLoadingStoryState()
+            storyFeedLoadSession.beginGeneration()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3366,8 +3195,7 @@ class StoriesCoordinator(
                     && storiesBeforeSearch != null && storiesBeforeSearch!!.isEmpty()
             loadPendingBeforeSearch = false
 
-            storyListGeneration++
-            clearLoadingStoryState()
+            storyFeedLoadSession.beginGeneration()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3565,11 +3393,11 @@ class StoriesCoordinator(
         return if (upvotedType) isUpvotedType(type) else isFavoritesType(type)
     }
 
-    private val currentUserItemListSource: UserItemListRepository.Source
+    private val currentUserItemListSource: SavedItemSource
         get() = if (isUpvotedType(adapter!!.type))
-            UserItemListRepository.Source.UPVOTED
+            SavedItemSource.UPVOTED
         else
-            UserItemListRepository.Source.FAVORITES
+            SavedItemSource.FAVORITES
 
     private fun currentTypeUsesCommentRows(): Boolean = currentStoryType.usesCommentRows()
 
@@ -3627,12 +3455,6 @@ class StoriesCoordinator(
         targetAdapter.disableClickedEffects =
             targetAdapter.allowCommentRows || isHistoryType(targetAdapter.type)
         updateAdapterPaginationMode(targetAdapter)
-    }
-
-    private fun shouldHideStoryAsJob(story: Story): Boolean {
-        return hideJobs
-                && this.currentStoryType != StoryType.HN_JOBS && (story.isJob
-                || "whoishiring" == story.by)
     }
 
     fun exitSearch(): Boolean {

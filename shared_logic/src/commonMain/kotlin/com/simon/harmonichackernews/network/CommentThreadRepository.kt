@@ -15,11 +15,13 @@ import kotlinx.coroutines.coroutineScope
 class CommentThreadRepository(
     private val algoliaRepository: AlgoliaRepository,
     private val hackerNewsRepository: HackerNewsRepository,
+    private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
 ) {
     suspend fun load(
         storyId: Int,
         useAlgolia: Boolean,
         filteredUsers: Set<String> = emptySet(),
+        topLevelCommentIds: List<Int> = emptyList(),
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
@@ -28,7 +30,11 @@ class CommentThreadRepository(
         }
 
         return try {
-            CommentThreadLoadResult.Algolia(algoliaRepository.getItemJson(storyId))
+            val response = algoliaRepository.getItemJson(storyId)
+            CommentThreadLoadResult.Algolia(
+                response,
+                parseAlgolia(response, topLevelCommentIds, filteredUsers),
+            )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -43,6 +49,16 @@ class CommentThreadRepository(
             }
         }
     }
+
+    suspend fun parseAlgolia(
+        response: String,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): AlgoliaCommentsResponse = algoliaCommentsParser.parse(
+        response,
+        topLevelCommentIds,
+        filteredUsers,
+    )
 
     private suspend fun loadFromOfficialApi(
         storyId: Int,
@@ -121,7 +137,10 @@ enum class CommentThreadSource {
 }
 
 sealed interface CommentThreadLoadResult {
-    data class Algolia(val response: String) : CommentThreadLoadResult
+    data class Algolia(
+        val response: String,
+        val parsed: AlgoliaCommentsResponse,
+    ) : CommentThreadLoadResult
 
     data class Official(
         val story: Story,

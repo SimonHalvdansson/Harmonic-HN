@@ -3,13 +3,13 @@ package com.simon.harmonichackernews.utils
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.res.Resources
 import android.net.Uri
 import android.os.BatteryManager
 import android.text.TextUtils
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.FaviconPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -19,7 +19,6 @@ import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils.sanitizeMode
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils.clearTintColorCaches
-import com.simon.harmonichackernews.utils.Utils.GLOBAL_SHARED_PREFERENCES_KEY
 import java.util.ArrayList
 import java.util.HashSet
 import java.util.List
@@ -150,67 +149,42 @@ object SettingsUtils {
     }
 
     fun readIntSetFromSharedPreferences(ctx: Context, key: String?): MutableSet<Int> {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        val emptyBackup: MutableSet<String> = HashSet<String>()
-        var stringSet = sharedPref.getStringSet(key, emptyBackup)
-        if (stringSet == null) {
-            stringSet = emptyBackup
-        } else {
-            stringSet = HashSet<String>(stringSet)
-        }
-
-        val intSet: MutableSet<Int> = HashSet(stringSet.size)
-        for (string in stringSet) {
-            intSet.add(string.toInt())
-        }
-        return intSet
+        if (key == null) return mutableSetOf()
+        return AndroidKeyValueStore.global(ctx).getStringSet(key)
+            .mapNotNullTo(mutableSetOf(), String::toIntOrNull)
     }
 
     fun saveIntSetToSharedPreferences(ctx: Context, key: String?, set: Set<Int>) {
-        val stringSet: MutableSet<String> = HashSet<String>(set.size)
-
-        for (integer in set) {
-            stringSet.add(integer.toString())
-        }
-
-        saveStringSetToSharedPreferences(ctx, key, stringSet)
+        if (key == null) return
+        AndroidKeyValueStore.global(ctx).putStringSet(
+            key,
+            set.mapTo(mutableSetOf(), Int::toString),
+        )
     }
 
     fun readStringSetFromSharedPreferences(ctx: Context, key: String?): MutableSet<String> {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        val emptyBackup: MutableSet<String> = HashSet<String>()
-        val stringSet = sharedPref.getStringSet(key, emptyBackup) ?: emptyBackup
-        return HashSet(stringSet)
+        if (key == null) return mutableSetOf()
+        return AndroidKeyValueStore.global(ctx).getStringSet(key).toMutableSet()
     }
 
     fun saveStringSetToSharedPreferences(ctx: Context, key: String?, set: MutableSet<String>?) {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        val editor = sharedPref.edit()
-
-        editor.putStringSet(key, if (set == null) null else HashSet<String?>(set)).apply()
+        if (key == null) return
+        AndroidKeyValueStore.global(ctx).putStringSet(key, set)
     }
 
     fun saveStringToSharedPreferences(ctx: Context, key: String?, text: String?) {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        val editor = sharedPref.edit()
-
-        editor.putString(key, text).apply()
+        if (key == null) return
+        AndroidKeyValueStore.global(ctx).putString(key, text)
     }
 
     fun readStringFromSharedPreferences(ctx: Context, key: String?): String? {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        return sharedPref.getString(key, null)
+        if (key == null) return null
+        return AndroidKeyValueStore.global(ctx).getString(key)
     }
 
     fun readStringFromSharedPreferences(ctx: Context, key: String?, fallback: String?): String? {
-        val sharedPref =
-            ctx.getSharedPreferences(Utils.GLOBAL_SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        return sharedPref.getString(key, fallback)
+        if (key == null) return fallback
+        return AndroidKeyValueStore.global(ctx).getString(key, fallback)
     }
 
     fun shouldShowPoints(ctx: Context): Boolean {

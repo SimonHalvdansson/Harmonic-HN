@@ -33,9 +33,7 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
-import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
-import com.simon.harmonichackernews.network.ApiDecodingException
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.CommentThreadSource
@@ -49,7 +47,6 @@ import com.simon.harmonichackernews.network.showLoginPromptIfCredentialsMissing
 import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
-import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
@@ -87,7 +84,6 @@ class CommentsCoordinator(
     sessionKey: Int,
     savedInstanceState: Bundle?,
     private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
-    private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
 ) {
     private val userSettings = AndroidUserSettings(activity)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -117,7 +113,6 @@ class CommentsCoordinator(
     private var queue: RequestQueue? = null
     private val requestTag = Any()
     private var commentsLoadGeneration = 0
-    private var pendingCommentsParse: PendingCommentsParse? = null
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
@@ -206,15 +201,6 @@ class CommentsCoordinator(
             commentsPresenter.dispatch(CommentsAction.SetSorting(value.orEmpty()))
         }
     private var composeController: CommentsComposeController? = null
-
-    private class PendingCommentsParse(
-        val loadGeneration: Int,
-        val storyId: Int,
-        var completion: Runnable?
-    ) {
-        var followUp: Runnable? = null
-        var job: Job? = null
-    }
 
     init {
         coroutineScope.launch {
@@ -926,6 +912,7 @@ class CommentsCoordinator(
             storyFavoriteLoading,
             commentThread.state.value.searchQuery,
             commentThread.state.value.searchResults,
+            commentThread.state.value.visibleComments,
         )
     }
 
@@ -1476,32 +1463,10 @@ class CommentsCoordinator(
     }
 
     private fun expandParentsForComment(comment: Comment) {
-        var expandedAny = false
-        var parentId = comment.parent
-
-        while (parentId > 0) {
-            var parent: Comment? = null
-            for (i in 1..<comments!!.size) {
-                val c = comments!!.get(i)
-                if (c.id == parentId) {
-                    parent = c
-                    break
-                }
-            }
-
-            if (parent == null) {
-                break
-            }
-
-            if (!parent.expanded) {
-                parent.expanded = true
-                expandedAny = true
-            }
-
-            parentId = parent.parent
-        }
-
-        if (expandedAny) {
+        val previousRevision = commentThread.state.value.revision
+        commentsPresenter.dispatch(CommentsAction.ExpandParents(comment.id))
+        if (commentThread.state.value.revision != previousRevision) {
+            syncCommentThreadReferences()
             syncComposeState()
         }
     }
@@ -1553,7 +1518,6 @@ class CommentsCoordinator(
             queue!!.cancelAll(requestTag)
         }
         commentsLoadGeneration++
-        cancelPendingCommentsParse()
         commentsRefreshing = false
         storyVoteLoading = false
         storyFavoriteLoading = false
@@ -1639,13 +1603,6 @@ class CommentsCoordinator(
             )
             return
         }
-        if (pendingCommentsParse != null) {
-            Log.d(
-                TAG, "Retry ignored while comments are still being parsed for storyId="
-                        + story!!.id
-            )
-            return
-        }
         Log.d(TAG, "Retry requested for storyId=" + story!!.id)
         setCommentsRefreshInProgress(true)
         loadStoryAndComments(story!!.id, null)
@@ -1667,22 +1624,14 @@ class CommentsCoordinator(
         queue = NetworkComponent.getRequestQueueInstance(context)
         val cachedResponse = Utils.loadCachedStory(context, story!!.id)
 
-        val loadGeneration = loadStoryAndComments(story!!.id, cachedResponse)
-
-        if (cachedResponse != null && loadGeneration >= 0) {
-            handleJsonResponse(
-                story!!.id,
-                cachedResponse,
-                false,
-                false,
-                restoreScrollFromCache,
-                loadGeneration,
-                null
-            )
-        }
+        loadStoryAndComments(story!!.id, cachedResponse, restoreScrollFromCache)
     }
 
-    private fun loadStoryAndComments(id: Int, oldCachedResponse: String?): Int {
+    private fun loadStoryAndComments(
+        id: Int,
+        oldCachedResponse: String?,
+        restoreScrollFromCache: Boolean = false,
+    ): Int {
         val context = this.context
         if (context == null || queue == null || !this.isCommentsViewActive) {
             Log.w(
@@ -1695,7 +1644,6 @@ class CommentsCoordinator(
         }
 
         val loadGeneration = ++commentsLoadGeneration
-        cancelPendingCommentsParse()
         Log.d(
             TAG,
             "Loading comments for storyId=" + id + ", hasCachedResponse=" + (oldCachedResponse != null)
@@ -1712,7 +1660,9 @@ class CommentsCoordinator(
                 storyId = id,
                 useAlgolia = userSettings.reading.useAlgoliaApi,
                 filteredUsers = filteredUsers ?: emptySet(),
+                topLevelCommentIds = story?.kids?.toList().orEmpty(),
                 previousResponse = oldCachedResponse,
+                restoreScrollFromCache = restoreScrollFromCache,
             ),
         )
 
@@ -1728,6 +1678,19 @@ class CommentsCoordinator(
         when (effect) {
             is CommentsEffect.ShowCommentActions ->
                 composeController?.showCommentActions(effect.comment)
+            is CommentsEffect.CachedThreadParsed -> {
+                if (!isCurrentCommentsLoad(effect.requestId, effect.storyId)) return
+                applyParsedJsonResponse(
+                    id = effect.storyId,
+                    response = effect.response,
+                    cache = false,
+                    forceHeaderRefresh = false,
+                    restoreScroll = effect.restoreScroll,
+                    loadGeneration = effect.requestId,
+                    oldCommentCount = allCommentsSource.size,
+                    parsedResponse = effect.parsed,
+                )
+            }
             is CommentsEffect.ThreadLoaded -> {
                 if (!isCurrentCommentsLoad(effect.requestId, effect.storyId)) {
                     Log.w(TAG, "Ignoring stale comments result for storyId=${effect.storyId}")
@@ -1738,7 +1701,7 @@ class CommentsCoordinator(
                         effect.storyId,
                         effect.requestId,
                         effect.previousResponse,
-                        result.response,
+                        result,
                     )
                     is CommentThreadLoadResult.Official -> onOfficialThreadLoaded(
                         effect.storyId,
@@ -1758,35 +1721,26 @@ class CommentsCoordinator(
         storyId: Int,
         loadGeneration: Int,
         oldCachedResponse: String?,
-        response: String,
+        result: CommentThreadLoadResult.Algolia,
     ) {
+        val response = result.response
         Log.d(
             TAG,
             "Algolia comments load succeeded for storyId=$storyId, responseLength=${response.length}",
         )
         if (oldCachedResponse.isNullOrEmpty() || oldCachedResponse != response) {
-            val parseLiveResponse = Runnable {
-                handleJsonResponse(
-                    storyId,
-                    response,
-                    true,
-                    oldCachedResponse == null,
-                    false,
-                    loadGeneration,
-                    Runnable { finishCommentsRefresh(loadGeneration, storyId) },
-                )
-            }
-            if (!deferUntilPendingParseFinishes(loadGeneration, storyId, parseLiveResponse)) {
-                parseLiveResponse.run()
-            }
-        } else if (!attachCompletionToPendingParse(
-                loadGeneration,
-                storyId,
-                Runnable { finishCommentsRefresh(loadGeneration, storyId) },
+            applyParsedJsonResponse(
+                id = storyId,
+                response = response,
+                cache = true,
+                forceHeaderRefresh = oldCachedResponse == null,
+                restoreScroll = false,
+                loadGeneration = loadGeneration,
+                oldCommentCount = allCommentsSource.size,
+                parsedResponse = result.parsed,
             )
-        ) {
-            finishCommentsRefresh(loadGeneration, storyId)
         }
+        finishCommentsRefresh(loadGeneration, storyId)
     }
 
     private fun onOfficialThreadLoaded(
@@ -1953,75 +1907,6 @@ class CommentsCoordinator(
         }
     }
 
-    private fun handleJsonResponse(
-        id: Int,
-        response: String,
-        cache: Boolean,
-        forceHeaderRefresh: Boolean,
-        restoreScroll: Boolean,
-        loadGeneration: Int,
-        completion: Runnable?
-    ) {
-        if (!isCurrentCommentsLoad(loadGeneration, id)) {
-            return
-        }
-
-        val oldCommentCount = this.allCommentsSource.size
-        // This is what we get if the Algolia API has not indexed the post,
-        // we should attempt to show the user an option to switch API:s in this
-        // server error case
-        // Actually, the response being a 404 should be captured by another part
-        // so this should never be called. Not that I dare remove it...
-        if (response == JSONParser.ALGOLIA_ERROR_STRING) {
-            loadingFailed = true
-            loadingFailedServerError = true
-            notifyHeaderChanged()
-        }
-
-        val topLevelCommentIds = story!!.kids?.clone()
-        val filteredUsersSnapshot: MutableSet<String>? =
-            filteredUsers?.let { HashSet(it) }
-        cancelPendingCommentsParse()
-        val pendingParse =
-            PendingCommentsParse(loadGeneration, id, completion)
-        pendingCommentsParse = pendingParse
-        pendingParse.job = coroutineScope.launch {
-            try {
-                val parsedResponse = algoliaCommentsParser.parse(
-                    response,
-                    topLevelCommentIds?.toList().orEmpty(),
-                    filteredUsersSnapshot.orEmpty(),
-                )
-                if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
-                pendingCommentsParse = null
-                applyParsedJsonResponse(
-                    id,
-                    response,
-                    cache,
-                    forceHeaderRefresh,
-                    restoreScroll,
-                    loadGeneration,
-                    oldCommentCount,
-                    parsedResponse,
-                )
-                runPendingParseCompletion(pendingParse)
-                runPendingParseFollowUp(pendingParse)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: ApiDecodingException) {
-                if (!isCurrentPendingCommentsParse(pendingParse)) return@launch
-                pendingCommentsParse = null
-                error.printStackTrace()
-                loadingFailed = true
-                loadingFailedServerError = false
-                notifyHeaderChanged()
-                completeCommentsLoad(false)
-                runPendingParseCompletion(pendingParse)
-                runPendingParseFollowUp(pendingParse)
-            }
-        }
-    }
-
     private fun applyParsedJsonResponse(
         id: Int,
         response: String?,
@@ -2078,74 +1963,11 @@ class CommentsCoordinator(
         revealComments.run()
     }
 
-    private fun attachCompletionToPendingParse(
-        loadGeneration: Int,
-        storyId: Int,
-        completion: Runnable?
-    ): Boolean {
-        val pendingParse = pendingCommentsParse
-        if (pendingParse == null || pendingParse.loadGeneration != loadGeneration || pendingParse.storyId != storyId) {
-            return false
-        }
-        pendingParse.completion = completion
-        return true
-    }
-
-    private fun runPendingParseCompletion(pendingParse: PendingCommentsParse) {
-        val completion = pendingParse.completion
-        pendingParse.completion = null
-        if (completion != null) {
-            completion.run()
-        }
-    }
-
-    private fun deferUntilPendingParseFinishes(
-        loadGeneration: Int,
-        storyId: Int,
-        followUp: Runnable
-    ): Boolean {
-        val pendingParse = pendingCommentsParse
-        if (pendingParse == null || pendingParse.loadGeneration != loadGeneration || pendingParse.storyId != storyId) {
-            return false
-        }
-        val previousFollowUp = pendingParse.followUp
-        pendingParse.followUp = if (previousFollowUp == null)
-            followUp
-        else
-            Runnable {
-                previousFollowUp.run()
-                followUp.run()
-            }
-        return true
-    }
-
-    private fun runPendingParseFollowUp(pendingParse: PendingCommentsParse) {
-        val followUp = pendingParse.followUp
-        pendingParse.followUp = null
-        if (followUp != null
-            && isCurrentCommentsLoad(pendingParse.loadGeneration, pendingParse.storyId)
-        ) {
-            followUp.run()
-        }
-    }
-
     private fun finishCommentsRefresh(loadGeneration: Int, storyId: Int) {
         if (!isCurrentCommentsLoad(loadGeneration, storyId)) {
             return
         }
         setCommentsRefreshInProgress(false)
-    }
-
-    private fun isCurrentPendingCommentsParse(pendingParse: PendingCommentsParse): Boolean {
-        return pendingCommentsParse == pendingParse
-                && isCurrentCommentsLoad(pendingParse.loadGeneration, pendingParse.storyId)
-    }
-
-    private fun cancelPendingCommentsParse() {
-        val pendingParse = pendingCommentsParse
-        pendingCommentsParse = null
-        pendingParse?.job?.cancel()
-        pendingParse?.job = null
     }
 
     private fun completeCommentsLoad(updateHeaderAfterLoad: Boolean) {
@@ -2429,21 +2251,7 @@ class CommentsCoordinator(
     }
 
     private fun findCommentById(commentId: Int): Comment? {
-        if (comments != null) {
-            for (comment in comments) {
-                if (comment.id == commentId) {
-                    return comment
-                }
-            }
-        }
-        if (allComments != null) {
-            for (comment in allComments) {
-                if (comment.id == commentId) {
-                    return comment
-                }
-            }
-        }
-        return null
+        return commentThread.findComment(commentId)
     }
 
     private fun updateUserTags() {

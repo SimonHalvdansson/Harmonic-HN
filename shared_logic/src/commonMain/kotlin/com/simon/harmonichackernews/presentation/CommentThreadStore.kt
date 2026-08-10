@@ -19,7 +19,14 @@ data class CommentThreadUiState(
     val hasCommentsByOp: Boolean = false,
     val searchQuery: String = "",
     val searchResults: List<Comment> = emptyList(),
+    val visibleComments: List<VisibleComment> = emptyList(),
     val revision: Long = 0,
+)
+
+data class VisibleComment(
+    val sourceIndex: Int,
+    val comment: Comment,
+    val hiddenReplyCount: Int,
 )
 
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
@@ -96,6 +103,27 @@ class CommentThreadStore {
         publish()
         return comment.expanded
     }
+
+    fun expandParents(commentId: Int): Boolean {
+        val byId = allComments.associateBy(Comment::id)
+        var parentId = byId[commentId]?.parent ?: return false
+        var expandedAny = false
+        val visited = mutableSetOf<Int>()
+        while (parentId > 0 && visited.add(parentId)) {
+            val parent = byId[parentId] ?: break
+            if (!parent.expanded) {
+                parent.expanded = true
+                expandedAny = true
+            }
+            parentId = parent.parent
+        }
+        if (expandedAny) publish()
+        return expandedAny
+    }
+
+    fun findComment(commentId: Int): Comment? =
+        displayedComments.firstOrNull { it.id == commentId }
+            ?: allComments.firstOrNull { it.id == commentId }
 
     fun showCommentsByOp(): Boolean {
         val story = state.value.story
@@ -186,8 +214,34 @@ class CommentThreadStore {
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
             searchResults = searchResults(searchQuery),
+            visibleComments = buildVisibleComments(displayedComments),
             revision = state.value.revision + 1,
         )
+    }
+
+    private fun buildVisibleComments(source: List<Comment>): List<VisibleComment> {
+        if (source.size <= 1) return emptyList()
+        val byId = source.associateBy(Comment::id)
+        return source.mapIndexedNotNull { index, comment ->
+            if (index == 0 || !isVisible(comment, byId)) return@mapIndexedNotNull null
+            var lastChild = index
+            for (candidate in index + 1 until source.size) {
+                if (source[candidate].depth <= comment.depth) break
+                lastChild = candidate
+            }
+            VisibleComment(index, comment, lastChild - index)
+        }
+    }
+
+    private fun isVisible(comment: Comment, byId: Map<Int, Comment>): Boolean {
+        var current = comment
+        repeat(byId.size) {
+            if (current.parent == -1) return true
+            val parent = byId[current.parent] ?: return true
+            if (!parent.expanded) return false
+            current = parent
+        }
+        return true
     }
 
     private data class SearchableCommentText(val source: String, val text: String)
