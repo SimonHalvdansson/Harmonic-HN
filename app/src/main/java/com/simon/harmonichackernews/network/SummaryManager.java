@@ -385,7 +385,7 @@ public class SummaryManager {
                 JSONArray choices = event.optJSONArray("choices");
                 JSONObject choice = choices == null ? null : choices.optJSONObject(0);
                 JSONObject delta = choice == null ? null : choice.optJSONObject("delta");
-                chunk = delta == null ? "" : delta.optString("content", "");
+                chunk = (delta == null || delta.isNull("content")) ? "" : delta.optString("content", "");
             }
 
             appendSummaryChunk(summary, chunk, callback);
@@ -412,7 +412,7 @@ public class SummaryManager {
             JSONArray choices = response.optJSONArray("choices");
             JSONObject choice = choices == null ? null : choices.optJSONObject(0);
             JSONObject message = choice == null ? null : choice.optJSONObject("message");
-            return message == null ? "" : message.optString("content", "");
+            return (message == null || message.isNull("content")) ? "" : message.optString("content", "");
         } catch (JSONException e) {
             throw new IOException("Invalid API response", e);
         }
