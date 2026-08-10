@@ -57,6 +57,7 @@ import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.utils.FileDownloader
 import com.simon.harmonichackernews.utils.FileDownloader.FileDownloaderCallback
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.io.BufferedReader
@@ -766,7 +767,7 @@ internal class CommentsWebViewController(
     }
 
     private fun getReaderModeSystemFontFamily(font: String?): String {
-        when (SettingsUtils.sanitizeReaderModeFont(font.orEmpty())) {
+        when (TextPreferences.sanitizeFont(font)) {
             "productsans", "googlesansflexrounded", "googlesans", "verdana" -> return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
             "robotoslab", "georgia" -> return "Georgia, 'Times New Roman', serif"
             "jetbrainsmono", "googlesanscode" -> return "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace"
@@ -778,7 +779,7 @@ internal class CommentsWebViewController(
     private fun getReaderModeFontFaceCss(context: Context, font: String?): String {
         val regularFontResource: Int
         val boldFontResource: Int
-        when (SettingsUtils.sanitizeReaderModeFont(font.orEmpty())) {
+        when (TextPreferences.sanitizeFont(font)) {
             "productsans" -> {
                 regularFontResource = R.font.product_sans_regular
                 boldFontResource = R.font.product_sans_bold

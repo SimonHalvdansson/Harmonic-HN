@@ -11,18 +11,16 @@ internal object UserItemListRepository {
     fun normalizeSnapshot(
         itemIds: List<Int>,
         commentIds: List<Int>
-    ): Snapshot {
-        return SavedItemSnapshots.normalize(itemIds, commentIds).toAndroidSnapshot()
-    }
+    ): SavedItemSnapshot = SavedItemSnapshots.normalize(itemIds, commentIds)
 
-    fun loadCachedSnapshot(context: Context?, source: Source): Snapshot {
-        if (context == null) return Snapshot(emptyList(), emptySet())
+    fun loadCachedSnapshot(context: Context?, source: Source): SavedItemSnapshot {
+        if (context == null) return SavedItemSnapshot(emptyList(), emptySet())
 
         val itemIds = loadCache(context, source)
             .map(Bookmark::id)
             .distinct()
             .sortedDescending()
-        return Snapshot(itemIds, loadCommentIds(context, source))
+        return SavedItemSnapshot(itemIds, loadCommentIds(context, source))
     }
 
     fun loadCache(context: Context?, source: Source): ArrayList<Bookmark> {
@@ -38,12 +36,12 @@ internal object UserItemListRepository {
     fun idsMatchCache(
         context: Context,
         source: Source,
-        snapshot: Snapshot
+        snapshot: SavedItemSnapshot
     ): Boolean {
         val cachedItems = loadCache(context, source)
         val cachedCommentIds = loadCommentIds(context, source)
 
-        return snapshot.toShared().matches(
+        return snapshot.matches(
             SavedItemCodec.fromBookmarks(cachedItems),
             cachedCommentIds,
         )
@@ -52,7 +50,7 @@ internal object UserItemListRepository {
     fun saveIds(
         context: Context,
         source: Source,
-        snapshot: Snapshot
+        snapshot: SavedItemSnapshot
     ) {
         when (source) {
             Source.UPVOTED -> {
@@ -77,9 +75,4 @@ internal object UserItemListRepository {
         UPVOTED
     }
 
-    internal data class Snapshot(val itemIds: List<Int>, val commentIds: Set<Int>) {
-        fun toShared(): SavedItemSnapshot = SavedItemSnapshot(itemIds, commentIds)
-    }
-
-    private fun SavedItemSnapshot.toAndroidSnapshot(): Snapshot = Snapshot(itemIds, commentIds)
 }

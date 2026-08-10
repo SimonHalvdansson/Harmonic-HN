@@ -42,6 +42,10 @@ object NetworkComponent {
         DefaultHackerNewsRepository(hackerNewsApi)
     }
 
+    val pollOptionsRepository: PollOptionsRepository by lazy {
+        PollOptionsRepository(hackerNewsApi)
+    }
+
     val replyScanner: ReplyScanner by lazy {
         DefaultReplyScanner(hackerNewsApi)
     }
@@ -58,8 +62,16 @@ object NetworkComponent {
         KtorLinkSummaryRepository(transportClient, linkPreviewRepository)
     }
 
+    val previewContentCoordinator: PreviewContentCoordinator by lazy {
+        PreviewContentCoordinator(networkScope)
+    }
+
     val cloudSummaryRepository: CloudSummaryRepository by lazy {
         KtorCloudSummaryRepository(httpClientInstance)
+    }
+
+    val summaryUseCase: SummaryUseCase by lazy {
+        SummaryUseCase(cloudSummaryRepository)
     }
 
     val aiModelCatalogRepository: AiModelCatalogRepository by lazy {
@@ -73,6 +85,17 @@ object NetworkComponent {
     val hackerNewsWebRepository: HackerNewsWebRepository by lazy {
         KtorHackerNewsWebRepository(transportClient)
     }
+
+    val hackerNewsSession: HackerNewsAuthenticatedSession =
+        object : HackerNewsAuthenticatedSession {
+            override val actions: HackerNewsActionRepository
+                get() = hackerNewsActionRepository
+            override val authenticatedWeb: HackerNewsWebRepository
+                get() = authenticatedHackerNewsWebRepository
+            override val publicWeb: HackerNewsWebRepository
+                get() = hackerNewsWebRepository
+            override fun reset() = resetHttpClientCookieInstance()
+        }
 
     /** Callback bridge for Android callers while shared repositories remain suspend-first. */
     fun <T> launchCallbackRequest(

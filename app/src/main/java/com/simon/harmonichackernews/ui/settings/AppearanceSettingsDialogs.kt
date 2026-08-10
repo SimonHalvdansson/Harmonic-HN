@@ -84,7 +84,8 @@ import androidx.core.graphics.ColorUtils
 import com.kmpalette.extensions.resource.rememberResourcePaletteState
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.network.AiModelCatalog
+import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -608,7 +609,9 @@ fun WelcomeSettingsDialog(
                 SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
         )
     }
-    AiModelCatalog.ensureInitialDefault(context)
+    LaunchedEffect(Unit) {
+        AndroidAiModelDefaults.ensureInitialDefault(context)
+    }
 
     SettingsAlertDialog(
         onDismissRequest = {
@@ -973,10 +976,10 @@ fun PaletteTintDialog(
     ) {
         resetAnimation?.cancel()
         resetAnimation = null
-        mode = SettingsUtils.sanitizePaletteTintMode(newMode)
-        strength = SettingsUtils.clampPaletteTintStrength(newStrength)
-        colorfulness = SettingsUtils.clampPaletteTintColorfulness(newColorfulness)
-        tone = SettingsUtils.clampPaletteTintTone(newTone)
+        mode = PaletteTintPreferences.sanitizeMode(newMode)
+        strength = PaletteTintPreferences.clampStrength(newStrength)
+        colorfulness = PaletteTintPreferences.clampColorfulness(newColorfulness)
+        tone = PaletteTintPreferences.clampTone(newTone)
         SettingsUtils.setPreferredPaletteTintSettings(
             context,
             mode,
@@ -986,7 +989,7 @@ fun PaletteTintDialog(
         )
     }
 
-    val configKey = SettingsUtils.buildPaletteTintConfigKey(
+    val configKey = PaletteTintPreferences.configKey(
         mode,
         strength,
         colorfulness,

@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
-import com.simon.harmonichackernews.network.LinkSummaryLoader.isYoutubeVideoUrl
 import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -14,33 +13,12 @@ import kotlinx.coroutines.Job
 
 object StoryPreviewImageLoader {
     private const val MAX_CACHE_SIZE = 300
-    private const val MAX_MISS_CACHE_SIZE = 1000
-    private const val MAX_DISK_CACHE_SIZE = 1000
     private const val LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE = 8
-    private const val PREVIEW_IMAGE_TINT_CACHE_VERSION = "3"
     private const val PREVIEW_IMAGE_CACHE_PREFERENCES =
         "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES"
-    private const val KEY_PREVIEW_IMAGE_CACHE_ORDER =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_CACHE_ORDER"
-    private const val KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER"
-    private const val KEY_LINK_SUMMARY_CACHE_ORDER =
-        "com.simon.harmonichackernews.KEY_LINK_SUMMARY_CACHE_ORDER"
-    private const val KEY_PREVIEW_IMAGE_URL = "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL"
-    private const val KEY_PREVIEW_IMAGE_URL_LOADED =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL_LOADED"
-    private const val KEY_PREVIEW_IMAGE_TINT_COLOR =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_COLOR"
-    private const val KEY_LINK_SUMMARY = "com.simon.harmonichackernews.KEY_LINK_SUMMARY"
-    private const val YOUTUBE_OEMBED_CACHE_SUFFIX = "youtube_oembed"
     private val MAIN_HANDLER = Handler(Looper.getMainLooper())
-    private val IMAGE_CACHE: MutableMap<String?, String?> = HashMap<String?, String?>()
-    private val LINK_SUMMARY_CACHE: MutableMap<String?, LinkSummaryLoader.Result?> =
-        HashMap<String?, LinkSummaryLoader.Result?>()
+    private val LINK_SUMMARY_CACHE: MutableMap<String?, LinkSummary?> = HashMap()
     private val CACHE_ORDERS: MutableMap<String, List<String>> = HashMap()
-    private val MISS_CACHE: MutableSet<String?> = LinkedHashSet<String?>()
-    private val PENDING_CALLBACKS: MutableMap<String?, PendingPreviewImageBatch?> =
-        HashMap<String?, PendingPreviewImageBatch?>()
     private val HEX_DIGITS = "0123456789abcdef".toCharArray()
     fun loadPreviewImageUrl(pageUrl: String?, callback: PreviewImageCallback): PreviewImageRequest {
         return loadPreviewImageUrl(null, 0, pageUrl, callback)
@@ -68,7 +46,7 @@ object StoryPreviewImageLoader {
             pageUrl,
             false,
             forceRefresh,
-            PreviewContentCallback { imageUrl: String?, summary: LinkSummaryLoader.Result? ->
+            PreviewContentCallback { imageUrl: String?, summary: LinkSummary? ->
                 callback.onPreviewImageUrlLoaded(
                     imageUrl
                 )
@@ -101,12 +79,8 @@ object StoryPreviewImageLoader {
         callback: PreviewContentCallback
     ): PreviewImageRequest {
         val appContext = context?.applicationContext
-        val previewImageRequest = PendingPreviewImageRequest(
-            appContext,
-            storyId,
-            callback
-        )
-        val normalizedPageUrl = normalizeHttpUrl(pageUrl)
+        val previewImageRequest = PendingPreviewImageRequest(callback)
+        val normalizedPageUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
         if (normalizedPageUrl.isNullOrEmpty()) {
             postResult(previewImageRequest, null, null)
             return previewImageRequest
@@ -137,71 +111,49 @@ object StoryPreviewImageLoader {
             }
         }
 
-        if (StoryPreviewImageLoader.isLikelyImageUrl(normalizedPageUrl)) {
+        if (LinkSummaryParser.isLikelyImageUrl(normalizedPageUrl)) {
             saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, normalizedPageUrl)
             postResult(previewImageRequest, normalizedPageUrl, null)
             return previewImageRequest
         }
 
-        var pendingBatch: PendingPreviewImageBatch?
-        synchronized(StoryPreviewImageLoader::class.java) {
-            if (!forceRefresh) {
-                val cachedImageUrl = IMAGE_CACHE.get(normalizedPageUrl)
-                if (!requireSummary && !TextUtils.isEmpty(cachedImageUrl)) {
-                    saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, cachedImageUrl)
-                    postResult(previewImageRequest, cachedImageUrl, null)
-                    return previewImageRequest
-                }
-
-                if (!requireSummary && MISS_CACHE.contains(normalizedPageUrl)) {
-                    postResult(previewImageRequest, null, null)
-                    return previewImageRequest
-                }
-            }
-            pendingBatch = PENDING_CALLBACKS.get(normalizedPageUrl)
-            if (pendingBatch != null) {
-                previewImageRequest.attach(normalizedPageUrl, pendingBatch)
-                pendingBatch.requests.add(previewImageRequest)
-                return previewImageRequest
-            }
-
-            pendingBatch = PendingPreviewImageBatch()
-            previewImageRequest.attach(normalizedPageUrl, pendingBatch)
-            pendingBatch.requests.add(previewImageRequest)
-            PENDING_CALLBACKS.put(normalizedPageUrl, pendingBatch)
-        }
-
-        val requestBatch = pendingBatch
         val job = NetworkComponent.launchCallbackRequest(
             request = {
-                NetworkComponent.linkSummaryRepository.load(normalizedPageUrl)
+                NetworkComponent.previewContentCoordinator.load(
+                    pageUrl = normalizedPageUrl,
+                    requireSummary = requireSummary,
+                    forceRefresh = forceRefresh,
+                ) {
+                    NetworkComponent.linkSummaryRepository.load(normalizedPageUrl)
+                }
             },
-            onSuccess = { sharedSummary ->
-                val summary = LinkSummaryLoader.fromShared(sharedSummary)
-                StoryPreviewImageLoader.finish(
-                    normalizedPageUrl,
-                    requestBatch!!,
-                    summary.imageUrl,
-                    summary,
-                )
+            onSuccess = { content ->
+                if (!previewImageRequest.isCancelled) {
+                    saveCachedPreviewImageUrl(
+                        appContext,
+                        previewImageCacheEntryId,
+                        content.imageUrl,
+                    )
+                    content.summary?.let {
+                        saveCachedLinkSummary(appContext, normalizedPageUrl, it)
+                    }
+                    callback.onPreviewContentLoaded(content.imageUrl, content.summary)
+                }
             },
             onFailure = {
-                StoryPreviewImageLoader.finish(normalizedPageUrl, requestBatch!!, null, null)
+                if (!previewImageRequest.isCancelled) {
+                    saveCachedPreviewImageUrl(appContext, previewImageCacheEntryId, null)
+                    callback.onPreviewContentLoaded(null, null)
+                }
             },
         )
-        synchronized(StoryPreviewImageLoader::class.java) {
-            if (PENDING_CALLBACKS.get(normalizedPageUrl) === requestBatch) {
-                requestBatch!!.call = job
-            } else {
-                job.cancel()
-            }
-        }
+        previewImageRequest.attach(job)
         return previewImageRequest
     }
 
     fun getCachedPreviewImageUrl(context: Context?, storyId: Int, pageUrl: String?): String? {
         val appContext = if (context == null) null else context.getApplicationContext()
-        val normalizedPageUrl = normalizeHttpUrl(pageUrl)
+        val normalizedPageUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
         if (TextUtils.isEmpty(normalizedPageUrl)) {
             return null
         }
@@ -212,7 +164,7 @@ object StoryPreviewImageLoader {
 
     fun isCachedPreviewImageUrlLoaded(context: Context?, storyId: Int, pageUrl: String?): Boolean {
         val appContext = if (context == null) null else context.getApplicationContext()
-        val normalizedPageUrl = normalizeHttpUrl(pageUrl)
+        val normalizedPageUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
         if (TextUtils.isEmpty(normalizedPageUrl)) {
             return false
         }
@@ -221,104 +173,10 @@ object StoryPreviewImageLoader {
         return loadCachedPreviewImageUrl(appContext, previewImageCacheEntryId, false).loaded
     }
 
-    private fun normalizeHttpUrl(url: String?): String? {
-        if (TextUtils.isEmpty(url)) {
-            return null
-        }
-
-        val parsedUrl: NetworkUrl? = url?.toNetworkUrlOrNull()
-        if (parsedUrl == null || !isHttpScheme(parsedUrl)) {
-            return null
-        }
-        return parsedUrl.toString()
-    }
-
-    private fun isHttpScheme(url: NetworkUrl): Boolean {
-        return "http" == url.scheme || "https" == url.scheme
-    }
-
-    private fun isLikelyImageUrl(url: String): Boolean {
-        val parsedUrl: NetworkUrl? = url.toNetworkUrlOrNull()
-        if (parsedUrl == null) {
-            return false
-        }
-
-        val path = parsedUrl.encodedPath.lowercase()
-        return path.endsWith(".jpg")
-                || path.endsWith(".jpeg")
-                || path.endsWith(".png")
-                || path.endsWith(".gif")
-                || path.endsWith(".webp")
-                || path.endsWith(".avif")
-    }
-
-    private fun finish(
-        pageUrl: String?,
-        batch: PendingPreviewImageBatch,
-        imageUrl: String?,
-        summary: LinkSummaryLoader.Result?
-    ) {
-        val pendingRequests: MutableList<PendingPreviewImageRequest>?
-        synchronized(StoryPreviewImageLoader::class.java) {
-            if (PENDING_CALLBACKS.get(pageUrl) !== batch) {
-                return
-            }
-            PENDING_CALLBACKS.remove(pageUrl)
-            pendingRequests = ArrayList<PendingPreviewImageRequest>(batch.requests)
-            for (pendingRequest in pendingRequests) {
-                pendingRequest.detach(batch)
-            }
-            if (TextUtils.isEmpty(imageUrl)) {
-                cacheMiss(pageUrl)
-            } else {
-                if (IMAGE_CACHE.size >= MAX_CACHE_SIZE) {
-                    IMAGE_CACHE.clear()
-                    MISS_CACHE.clear()
-                }
-                IMAGE_CACHE.put(pageUrl, imageUrl)
-            }
-        }
-
-        if (pendingRequests == null) {
-            return
-        }
-
-        for (pendingRequest in pendingRequests) {
-            if (!pendingRequest.isCancelled) {
-                saveCachedPreviewImageUrl(
-                    pendingRequest.context,
-                    getPreviewImageCacheEntryId(pendingRequest.storyId, pageUrl),
-                    imageUrl
-                )
-                if (summary != null) {
-                    saveCachedLinkSummary(pendingRequest.context, pageUrl, summary)
-                }
-            }
-        }
-
-        MAIN_HANDLER.post(Runnable {
-            for (pendingRequest in pendingRequests) {
-                if (!pendingRequest.isCancelled) {
-                    pendingRequest.callback.onPreviewContentLoaded(imageUrl, summary)
-                }
-            }
-        })
-    }
-
-    private fun cacheMiss(pageUrl: String?) {
-        MISS_CACHE.remove(pageUrl)
-        MISS_CACHE.add(pageUrl)
-        while (MISS_CACHE.size > MAX_MISS_CACHE_SIZE) {
-            val iterator = MISS_CACHE.iterator()
-            iterator.next()
-            iterator.remove()
-        }
-    }
-
     private fun postResult(
         request: PendingPreviewImageRequest,
         imageUrl: String?,
-        summary: LinkSummaryLoader.Result?
+        summary: LinkSummary?
     ) {
         MAIN_HANDLER.post(Runnable {
             if (!request.isCancelled) {
@@ -336,13 +194,13 @@ object StoryPreviewImageLoader {
             val preferences = getPreviewImageCachePreferences(context)
             val editor = preferences.edit()
             for (key in preferences.getAll().keys) {
-                if (KEY_PREVIEW_IMAGE_CACHE_ORDER == key
-                    || KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER == key
-                    || KEY_LINK_SUMMARY_CACHE_ORDER == key
-                    || key.startsWith(KEY_PREVIEW_IMAGE_URL)
-                    || key.startsWith(KEY_PREVIEW_IMAGE_URL_LOADED)
-                    || key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)
-                    || key.startsWith(KEY_LINK_SUMMARY)
+                if (PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY == key
+                    || PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY == key
+                    || PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY == key
+                    || key.startsWith(PreviewCachePolicy.PREVIEW_IMAGE_URL_PREFIX)
+                    || key.startsWith(PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX)
+                    || key.startsWith(PreviewCachePolicy.PREVIEW_TINT_PREFIX)
+                    || key.startsWith(PreviewCachePolicy.LINK_SUMMARY_PREFIX)
                 ) {
                     editor.remove(key)
                 }
@@ -389,9 +247,10 @@ object StoryPreviewImageLoader {
 
         synchronized(StoryPreviewImageLoader::class.java) {
             val preferences = getPreviewImageCachePreferences(context)
-            val orderedIds = readPreviewImageCacheOrder(preferences)
-            orderedIds.remove(previewImageCacheEntryId)
-            orderedIds.add(previewImageCacheEntryId!!)
+            val orderUpdate = PreviewCachePolicy.touch(
+                readPreviewImageCacheOrder(preferences),
+                previewImageCacheEntryId!!,
+            )
 
             val editor = preferences.edit()
                 .putBoolean(
@@ -409,12 +268,15 @@ object StoryPreviewImageLoader {
                 )
             }
 
-            while (orderedIds.size > MAX_DISK_CACHE_SIZE) {
-                val oldestId = orderedIds.removeAt(0)
+            for (oldestId in orderUpdate.evicted) {
                 editor.remove(getPreviewImageUrlKey(oldestId))
                 editor.remove(getPreviewImageUrlLoadedKey(oldestId))
             }
-            putCacheOrder(editor, KEY_PREVIEW_IMAGE_CACHE_ORDER, orderedIds).apply()
+            putCacheOrder(
+                editor,
+                PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
+                orderUpdate.order,
+            ).apply()
         }
     }
 
@@ -442,20 +304,23 @@ object StoryPreviewImageLoader {
                     break
                 }
                 val orderedKey = iterator.next()
-                if (!isCurrentPreviewImageTintColorKey(orderedKey)) {
+                if (!PreviewCachePolicy.isCurrentTintKey(orderedKey)) {
                     iterator.remove()
                     editor.remove(orderedKey)
                     legacyKeysRemoved++
                 }
             }
-            orderedKeys.remove(tintColorKey)
-            orderedKeys.add(tintColorKey)
+            val orderUpdate = PreviewCachePolicy.touch(orderedKeys.filterNotNull(), tintColorKey)
 
             editor.putInt(tintColorKey, tintColor)
-            while (orderedKeys.size > MAX_DISK_CACHE_SIZE) {
-                editor.remove(orderedKeys.removeAt(0))
+            for (evictedKey in orderUpdate.evicted) {
+                editor.remove(evictedKey)
             }
-            putCacheOrder(editor, KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER, orderedKeys).apply()
+            putCacheOrder(
+                editor,
+                PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY,
+                orderUpdate.order,
+            ).apply()
         }
     }
 
@@ -492,26 +357,27 @@ object StoryPreviewImageLoader {
         preferences: SharedPreferences,
         previewImageCacheEntryId: String?
     ) {
-        val orderedIds = readPreviewImageCacheOrder(preferences)
-        orderedIds.remove(previewImageCacheEntryId)
-        orderedIds.add(previewImageCacheEntryId!!)
+        val orderUpdate = PreviewCachePolicy.touch(
+            readPreviewImageCacheOrder(preferences),
+            previewImageCacheEntryId!!,
+        )
         putCacheOrder(
             preferences.edit(),
-            KEY_PREVIEW_IMAGE_CACHE_ORDER,
-            orderedIds,
+            PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
+            orderUpdate.order,
         ).apply()
     }
 
     private fun readPreviewImageCacheOrder(preferences: SharedPreferences): MutableList<String> {
-        return readCacheOrder(preferences, KEY_PREVIEW_IMAGE_CACHE_ORDER)
+        return readCacheOrder(preferences, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY)
     }
 
     private fun readPreviewImageTintCacheOrder(preferences: SharedPreferences): MutableList<String> {
-        return readCacheOrder(preferences, KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)
+        return readCacheOrder(preferences, PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)
     }
 
     private fun readLinkSummaryCacheOrder(preferences: SharedPreferences): MutableList<String> {
-        return readCacheOrder(preferences, KEY_LINK_SUMMARY_CACHE_ORDER)
+        return readCacheOrder(preferences, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY)
     }
 
     private fun readCacheOrder(
@@ -520,19 +386,7 @@ object StoryPreviewImageLoader {
     ): MutableList<String> {
         CACHE_ORDERS[orderKey]?.let { return ArrayList(it) }
 
-        val orderedIds = ArrayList<String>()
-        val seenIds = HashSet<String>()
-        val order = preferences.getString(orderKey, "").orEmpty()
-        if (order.isEmpty()) {
-            CACHE_ORDERS[orderKey] = emptyList()
-            return orderedIds
-        }
-
-        for (storyId in order.split(',')) {
-            if (storyId.isNotEmpty() && seenIds.add(storyId)) {
-                orderedIds.add(storyId)
-            }
-        }
+        val orderedIds = PreviewCachePolicy.decodeOrder(preferences.getString(orderKey, ""))
         CACHE_ORDERS[orderKey] = ArrayList(orderedIds)
         return orderedIds
     }
@@ -543,20 +397,21 @@ object StoryPreviewImageLoader {
         order: List<String>,
     ): SharedPreferences.Editor {
         CACHE_ORDERS[orderKey] = ArrayList(order)
-        return editor.putString(orderKey, TextUtils.join(",", order))
+        return editor.putString(orderKey, PreviewCachePolicy.encodeOrder(order))
     }
 
     private fun movePreviewImageTintCacheKeyToEnd(
         preferences: SharedPreferences,
         tintColorKey: String?
     ) {
-        val orderedKeys = readPreviewImageTintCacheOrder(preferences)
-        orderedKeys.remove(tintColorKey)
-        orderedKeys.add(tintColorKey!!)
+        val orderUpdate = PreviewCachePolicy.touch(
+            readPreviewImageTintCacheOrder(preferences),
+            tintColorKey!!,
+        )
         putCacheOrder(
             preferences.edit(),
-            KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER,
-            orderedKeys,
+            PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY,
+            orderUpdate.order,
         ).apply()
     }
 
@@ -567,15 +422,15 @@ object StoryPreviewImageLoader {
 
         synchronized(StoryPreviewImageLoader::class.java) {
             val preferences = getPreviewImageCachePreferences(context)
-            if (!preferences.contains(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)) {
+            if (!preferences.contains(PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)) {
                 return
             }
 
             val editor = preferences.edit()
-                .remove(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)
-            CACHE_ORDERS.remove(KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER)
+                .remove(PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)
+            CACHE_ORDERS.remove(PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)
             for (key in preferences.getAll().keys) {
-                if (key.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
+                if (key.startsWith(PreviewCachePolicy.PREVIEW_TINT_PREFIX)) {
                     editor.remove(key)
                 }
             }
@@ -600,22 +455,15 @@ object StoryPreviewImageLoader {
     }
 
     private fun getPreviewImageCacheEntryId(storyId: Int, pageUrl: String?): String? {
-        if (storyId <= 0) {
-            return null
-        }
-
-        if (isYoutubeVideoUrl(pageUrl)) {
-            return storyId.toString() + ":" + YOUTUBE_OEMBED_CACHE_SUFFIX
-        }
-        return storyId.toString()
+        return PreviewCachePolicy.previewEntryId(storyId, pageUrl)
     }
 
     private fun getPreviewImageUrlKey(previewImageCacheEntryId: String): String {
-        return KEY_PREVIEW_IMAGE_URL + previewImageCacheEntryId
+        return PreviewCachePolicy.PREVIEW_IMAGE_URL_PREFIX + previewImageCacheEntryId
     }
 
     private fun getPreviewImageUrlLoadedKey(previewImageCacheEntryId: String): String {
-        return KEY_PREVIEW_IMAGE_URL_LOADED + previewImageCacheEntryId
+        return PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX + previewImageCacheEntryId
     }
 
     private fun getPreviewImageTintColorKey(
@@ -623,15 +471,15 @@ object StoryPreviewImageLoader {
         imageUrl: String,
         baseColor: Int
     ): String {
-        return (KEY_PREVIEW_IMAGE_TINT_COLOR
+        return (PreviewCachePolicy.PREVIEW_TINT_PREFIX
                 + getPreviewImageTintColorCacheId(storyId, imageUrl, baseColor))
     }
 
     fun getCachedLinkSummary(
         context: Context?,
         pageUrl: String?
-    ): LinkSummaryLoader.Result? {
-        val normalizedUrl = normalizeHttpUrl(pageUrl)
+    ): LinkSummary? {
+        val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
         if (TextUtils.isEmpty(normalizedUrl)) {
             return null
         }
@@ -649,13 +497,14 @@ object StoryPreviewImageLoader {
             val result = deserializeLinkSummary(serialized)
             if (result != null) {
                 LINK_SUMMARY_CACHE.put(normalizedUrl, result)
-                val order = readLinkSummaryCacheOrder(preferences)
-                order.remove(key)
-                order.add(key)
+                val orderUpdate = PreviewCachePolicy.touch(
+                    readLinkSummaryCacheOrder(preferences),
+                    key,
+                )
                 putCacheOrder(
                     preferences.edit(),
-                    KEY_LINK_SUMMARY_CACHE_ORDER,
-                    order,
+                    PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY,
+                    orderUpdate.order,
                 ).apply()
             }
             return result
@@ -665,9 +514,9 @@ object StoryPreviewImageLoader {
     fun saveCachedLinkSummary(
         context: Context?,
         pageUrl: String?,
-        result: LinkSummaryLoader.Result?
+        result: LinkSummary?
     ) {
-        val normalizedUrl = normalizeHttpUrl(pageUrl)
+        val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
         if (TextUtils.isEmpty(normalizedUrl) || result == null) {
             return
         }
@@ -681,31 +530,34 @@ object StoryPreviewImageLoader {
             }
             val preferences = getPreviewImageCachePreferences(context)
             val key = StoryPreviewImageLoader.getLinkSummaryKey(normalizedUrl!!)
-            val order = readLinkSummaryCacheOrder(preferences)
-            order.remove(key)
-            order.add(key)
+            val orderUpdate = PreviewCachePolicy.touch(
+                readLinkSummaryCacheOrder(preferences),
+                key,
+            )
             val editor = preferences.edit()
                 .putString(key, serializeLinkSummary(result))
-            while (order.size > MAX_DISK_CACHE_SIZE) {
-                editor.remove(order.removeAt(0))
+            for (evictedKey in orderUpdate.evicted) {
+                editor.remove(evictedKey)
             }
-            putCacheOrder(editor, KEY_LINK_SUMMARY_CACHE_ORDER, order).apply()
+            putCacheOrder(
+                editor,
+                PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY,
+                orderUpdate.order,
+            ).apply()
         }
     }
 
     private fun getLinkSummaryKey(pageUrl: String): String {
-        return KEY_LINK_SUMMARY + sha256Hex(pageUrl)
+        return PreviewCachePolicy.LINK_SUMMARY_PREFIX + sha256Hex(pageUrl)
     }
 
-    private fun serializeLinkSummary(result: LinkSummaryLoader.Result): String {
-        return LinkSummaryCodec.encode(LinkSummaryLoader.toShared(result))
-    }
+    private fun serializeLinkSummary(result: LinkSummary): String = LinkSummaryCodec.encode(result)
 
-    private fun deserializeLinkSummary(serialized: String?): LinkSummaryLoader.Result? {
+    private fun deserializeLinkSummary(serialized: String?): LinkSummary? {
         if (serialized.isNullOrEmpty()) {
             return null
         }
-        return LinkSummaryCodec.decode(serialized)?.let(LinkSummaryLoader::fromShared)
+        return LinkSummaryCodec.decode(serialized)
     }
 
     private fun getPreviewImageTintColorCacheId(
@@ -718,25 +570,9 @@ object StoryPreviewImageLoader {
                 + ":"
                 + baseColor
                 + ":"
-                + PREVIEW_IMAGE_TINT_CACHE_VERSION
+                + PreviewCachePolicy.TINT_VERSION
                 + ":"
                 + sha256Hex(imageUrl))
-    }
-
-    private fun isCurrentPreviewImageTintColorKey(key: String?): Boolean {
-        if (TextUtils.isEmpty(key) || !key!!.startsWith(KEY_PREVIEW_IMAGE_TINT_COLOR)) {
-            return false
-        }
-
-        val cacheId = key.substring(KEY_PREVIEW_IMAGE_TINT_COLOR.length)
-        val parts = cacheId.split(':', limit = 4)
-        if (parts.size != 4
-            || parts[2] != PREVIEW_IMAGE_TINT_CACHE_VERSION
-            || parts[3].isEmpty()
-        ) {
-            return false
-        }
-        return parts[0].toIntOrNull() != null && parts[1].toIntOrNull() != null
     }
 
     private fun sha256Hex(value: String): String {
@@ -762,7 +598,7 @@ object StoryPreviewImageLoader {
     fun interface PreviewContentCallback {
         fun onPreviewContentLoaded(
             imageUrl: String?,
-            summary: LinkSummaryLoader.Result?
+            summary: LinkSummary?
         )
     }
 
@@ -772,55 +608,33 @@ object StoryPreviewImageLoader {
         val isCancelled: Boolean
     }
 
-    private class PendingPreviewImageBatch {
-        val requests: MutableList<PendingPreviewImageRequest> = ArrayList()
-        var call: Job? = null
-    }
-
     private class PendingPreviewImageRequest(
-        val context: Context?,
-        val storyId: Int,
         val callback: PreviewContentCallback
     ) : PreviewImageRequest {
         private var cancelled = false
-        private var pageUrl: String? = null
-        private var batch: PendingPreviewImageBatch? = null
+        private var call: Job? = null
 
-        fun attach(pageUrl: String?, batch: PendingPreviewImageBatch?) {
-            this.pageUrl = pageUrl
-            this.batch = batch
-        }
-
-        fun detach(detachedBatch: PendingPreviewImageBatch?) {
-            if (batch === detachedBatch) {
-                pageUrl = null
-                batch = null
+        fun attach(job: Job) {
+            synchronized(this) {
+                if (cancelled) {
+                    job.cancel()
+                } else {
+                    call = job
+                }
             }
         }
 
         override fun cancel() {
-            synchronized(StoryPreviewImageLoader::class.java) {
-                if (cancelled) {
-                    return
-                }
+            synchronized(this) {
+                if (cancelled) return
                 cancelled = true
-                val attachedPageUrl = pageUrl ?: return
-                val attachedBatch = batch ?: return
-
-                attachedBatch.requests.remove(this)
-                if (attachedBatch.requests.isEmpty() &&
-                    PENDING_CALLBACKS[attachedPageUrl] === attachedBatch
-                ) {
-                    PENDING_CALLBACKS.remove(attachedPageUrl)
-                    attachedBatch.call?.cancel()
-                }
-                pageUrl = null
-                batch = null
+                call?.cancel()
+                call = null
             }
         }
 
         override val isCancelled: Boolean
-            get() = synchronized(StoryPreviewImageLoader::class.java) { cancelled }
+            get() = synchronized(this) { cancelled }
     }
 
     private class CachedPreviewImageUrl(val loaded: Boolean, val imageUrl: String?)

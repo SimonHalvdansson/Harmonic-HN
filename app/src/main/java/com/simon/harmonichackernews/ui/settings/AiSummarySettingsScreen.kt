@@ -32,11 +32,11 @@ import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.network.AiModelCatalog
 import com.simon.harmonichackernews.network.AiSummaryProviders
-import com.simon.harmonichackernews.network.SummaryManager
+import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelManager
+import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 
 private const val KeyAiEnabled = "pref_ai_summary_enabled"
@@ -66,15 +66,15 @@ fun AiSummarySettingsScreen(
     val preferenceRefresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }
     var localAvailable by remember {
-        mutableStateOf(SummaryManager.canAttemptLocalSummarization())
+        mutableStateOf(LocalSummaryManager.canAttemptLocalSummarization())
     }
     var nanoAvailabilityResolved by remember { mutableStateOf(false) }
     var nanoAvailable by remember { mutableStateOf(false) }
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        AiModelCatalog.ensureInitialDefault(context)
-        if (!SummaryManager.canAttemptLocalSummarization()) {
+        AndroidAiModelDefaults.ensureInitialDefault(context)
+        if (!LocalSummaryManager.canAttemptLocalSummarization()) {
             prefs.edit()
                 .putString(KeyAiMode, AiModeCloud)
                 .apply()
@@ -93,8 +93,8 @@ fun AiSummarySettingsScreen(
             LocalAiRuntimeManager.addStatusListener(context, runtimeListener)
 
             var disposed = false
-            if (SummaryManager.canAttemptLocalSummarization()) {
-                SummaryManager.checkLocalSummaryAvailability(context) {
+            if (LocalSummaryManager.canAttemptLocalSummarization()) {
+                LocalSummaryManager.checkLocalSummaryAvailability(context) {
                         available,
                         fallbackRequired,
                         _,
@@ -138,7 +138,7 @@ fun AiSummarySettingsScreen(
     val configurationComplete = if (cloudMode) {
         cloudConfigurationComplete(context)
     } else {
-        SummaryManager.isLocalSummaryReady(context)
+        LocalSummaryManager.isLocalSummaryReady(context)
     }
     val enabled = prefs.getBoolean(KeyAiEnabled, configurationComplete)
     val baseUrl = prefs.getString(
@@ -181,7 +181,7 @@ fun AiSummarySettingsScreen(
 
         item {
             SettingsCard {
-                if (SummaryManager.canAttemptLocalSummarization()) {
+                if (LocalSummaryManager.canAttemptLocalSummarization()) {
                     SegmentedSetting(
                         title = "Summarization mode",
                         options = listOf(

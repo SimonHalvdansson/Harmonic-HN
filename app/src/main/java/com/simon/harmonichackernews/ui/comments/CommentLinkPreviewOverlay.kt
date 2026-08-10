@@ -91,13 +91,15 @@ import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.FaviconLoader
-import com.simon.harmonichackernews.network.LinkSummaryLoader
+import com.simon.harmonichackernews.network.LinkSummary
+import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlin.math.max
@@ -263,7 +265,7 @@ private fun ReferencePreviewCard(
     val initialCached = remember(state.originalUrl) {
         StoryPreviewImageLoader.getCachedLinkSummary(context, state.originalUrl)?.takeIf { cached ->
             !Utils.isHackerNewsItemUri(Uri.parse(state.originalUrl)) ||
-                LinkSummaryLoader.isHackerNewsItemResult(cached)
+                cached.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
         }
     }
     var summary by remember(state) {
@@ -279,39 +281,31 @@ private fun ReferencePreviewCard(
         )
     }
 
-    DisposableEffect(state, attempt) {
+    LaunchedEffect(state, attempt) {
         if (attempt == 0 && initialCached != null) {
-            initialCached.finalUrl?.let {
+            initialCached.finalUrl.takeIf(String::isNotBlank)?.let {
                 controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
             }
-            onDispose { }
         } else {
             if (attempt > 0) summary = summary.copy(retrying = true)
-            val request = LinkSummaryLoader.load(
-                context,
-                state.originalUrl,
-                state.fallbackTitle,
-                object : LinkSummaryLoader.Callback {
-                    override fun onSuccess(result: LinkSummaryLoader.Result) {
-                        controller.updateLinkPreviewVisibleUrl(state.originalUrl, result.finalUrl)
-                        summary = ReferenceSummaryUiState(result = result)
-                    }
-
-                    override fun onFailure(message: String) {
-                        summary = when {
-                            message.trim().equals(PdfContentTypeError, ignoreCase = true) ->
-                                ReferenceSummaryUiState(showFallback = true)
-                            attempt == 0 && !state.resolvedTitle.isNullOrBlank() ->
-                                ReferenceSummaryUiState(showFallback = true)
-                            else -> ReferenceSummaryUiState(
-                                showFallback = true,
-                                error = message,
-                            )
-                        }
-                    }
-                },
-            )
-            onDispose(request::cancel)
+            try {
+                val result = NetworkComponent.linkSummaryRepository.load(
+                    state.originalUrl,
+                    state.fallbackTitle,
+                )
+                StoryPreviewImageLoader.saveCachedLinkSummary(context, state.originalUrl, result)
+                controller.updateLinkPreviewVisibleUrl(state.originalUrl, result.finalUrl)
+                summary = ReferenceSummaryUiState(result = result)
+            } catch (error: Throwable) {
+                val message = error.message ?: "The page could not be read"
+                summary = when {
+                    message.trim().equals(PdfContentTypeError, ignoreCase = true) ->
+                        ReferenceSummaryUiState(showFallback = true)
+                    attempt == 0 && !state.resolvedTitle.isNullOrBlank() ->
+                        ReferenceSummaryUiState(showFallback = true)
+                    else -> ReferenceSummaryUiState(showFallback = true, error = message)
+                }
+            }
         }
     }
 
@@ -353,12 +347,13 @@ private fun ReferenceCardContent(
     val title = firstNotBlank(result?.title, fallbackTitle, url)
     val description = result?.description?.takeIf(String::isNotBlank)
     val domain = if (
-        result != null && LinkSummaryLoader.isHackerNewsItemResult(result) &&
-        !result.siteName.isNullOrBlank()
+        result != null &&
+        result.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
+        result.siteName.isNotBlank()
     ) {
         result.siteName
     } else {
-        runCatching { Utils.getDomainName(url) }.getOrDefault(url)
+        DomainNamePolicy.fromUrl(url) ?: url
     }
     val favicon = remember(url, faviconProvider) {
         runCatching { FaviconLoader.getFaviconUrl(url, faviconProvider) }.getOrNull()
@@ -793,7 +788,7 @@ private fun LinkPreviewShimmer(modifier: Modifier = Modifier) {
 private data class ReferenceSummaryUiState(
     val loading: Boolean = false,
     val showFallback: Boolean = false,
-    val result: LinkSummaryLoader.Result? = null,
+    val result: LinkSummary? = null,
     val error: String? = null,
     val retrying: Boolean = false,
 )

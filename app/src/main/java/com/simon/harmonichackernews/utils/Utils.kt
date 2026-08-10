@@ -29,14 +29,13 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheIndex
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
-import com.simon.harmonichackernews.network.SummaryManager
+import com.simon.harmonichackernews.network.LocalSummaryManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.math.BigDecimal
-import java.net.URI
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -124,151 +123,6 @@ object Utils {
         Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
     }
 
-    @Throws(Exception::class)
-    fun getDomainName(url: String): String {
-        val commonHttpDomain = getCommonHttpDomain(url)
-        if (commonHttpDomain != null) {
-            return commonHttpDomain
-        }
-
-        val domain = URI(url.removeSuffix("#")).host
-        return if (domain.startsWith("www.")) domain.substring(4) else domain
-    }
-
-    private fun getCommonHttpDomain(url: String?): String? {
-        // Story URLs overwhelmingly use this shape. Keep uncommon authorities and malformed
-        // URLs on the URI parser so the fast path does not broaden the accepted input.
-        url ?: return null
-
-        val hostStart = when {
-            url.startsWith("https://") -> 8
-            url.startsWith("http://") -> 7
-            else -> return null
-        }
-
-        val length = url.length
-        if (hostStart >= length || !hasOnlyCommonUriCharacters(url)) {
-            return null
-        }
-
-        var authorityEnd = length
-        for (i in hostStart..<length) {
-            val character = url[i]
-            if (character == '/' || character == '?' || character == '#') {
-                authorityEnd = i
-                break
-            }
-        }
-        if (authorityEnd <= hostStart) {
-            return null
-        }
-
-        var hostEnd = authorityEnd
-        for (i in hostStart..<authorityEnd) {
-            val character = url[i]
-            if (character == '@' || character == '[' || character == ']') {
-                return null
-            }
-            if (character == ':') {
-                hostEnd = i
-                if (i + 1 >= authorityEnd) {
-                    return null
-                }
-                for (portIndex in i + 1..<authorityEnd) {
-                    val portCharacter = url[portIndex]
-                    if (portCharacter !in '0'..'9') {
-                        return null
-                    }
-                }
-                break
-            }
-        }
-        if (hostEnd <= hostStart) {
-            return null
-        }
-
-        var labelStart = hostStart
-        var containsLetter = false
-        for (i in hostStart..<hostEnd) {
-            val character = url[i]
-            if (character == '.') {
-                if (i == labelStart || url[i - 1] == '-') {
-                    return null
-                }
-                labelStart = i + 1
-                continue
-            }
-
-            val isLetter = character in 'a'..'z' || character in 'A'..'Z'
-            val isDigit = character in '0'..'9'
-            if (!isLetter && !isDigit && character != '-') {
-                return null
-            }
-            if (i == labelStart && character == '-') {
-                return null
-            }
-            containsLetter = containsLetter || isLetter
-        }
-
-        val finalHostCharacter = url[hostEnd - 1]
-        if (finalHostCharacter == '-' || !containsLetter) {
-            return null
-        }
-
-        val domain = url.substring(hostStart, hostEnd)
-        return if (domain.startsWith("www.")) domain.substring(4) else domain
-    }
-
-    private fun hasOnlyCommonUriCharacters(url: String): Boolean {
-        var sawFragment = false
-        var i = 0
-        while (i < url.length) {
-            val character = url[i]
-            val unreserved = character in 'a'..'z'
-                    || character in 'A'..'Z'
-                    || character in '0'..'9'
-                    || character in "-._~"
-            if (unreserved
-                || character == ':' || character == '/' || character == '?' || character == '@' || character == '!' || character == '$' || character == '&' || character == '\'' || character == '(' || character == ')' || character == '*' || character == '+' || character == ',' || character == ';' || character == '='
-            ) {
-                i++
-                continue
-            }
-            if (character == '#' && !sawFragment) {
-                sawFragment = true
-                i++
-                continue
-            }
-            if (character != '%' || i + 2 >= url.length || !isHexDigit(
-                    url[i + 1]
-                ) || !isHexDigit(url[i + 2])
-            ) {
-                return false
-            }
-            i += 3
-        }
-        return true
-    }
-
-    private fun isHexDigit(character: Char): Boolean =
-        character in '0'..'9' || character in 'a'..'f' || character in 'A'..'F'
-
-    fun formatDomainNameForDisplay(
-        domain: String?,
-        includeTopLevelDomain: Boolean
-    ): String? {
-        if (includeTopLevelDomain || domain.isNullOrEmpty()) {
-            return domain
-        }
-
-        val lastDotIndex = domain.lastIndexOf('.')
-        if (lastDotIndex <= 0) {
-            return domain
-        }
-
-        return domain.substring(0, lastDotIndex)
-    }
-
     fun loadAdservers(resources: Resources) {
         if (!adservers.isEmpty || !adserversLoading.compareAndSet(
                 false,
@@ -279,13 +133,13 @@ object Utils {
         }
         backgroundExecutor.execute {
             try {
-                val blocklist = AdHostBlocklist.read(
-                    resources.openRawResource(R.raw.adblockserverlist)
-                )
+                val blocklist = resources.openRawResource(R.raw.adblockserverlist).use { input ->
+                    AdHostBlocklist.decode(input.readBytes())
+                }
                 if (!blocklist.isEmpty) {
                     adservers = blocklist
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", e)
             } finally {
                 adserversLoading.set(false)
@@ -1442,32 +1296,6 @@ object Utils {
         }
     }
 
-    /**
-     * Check if time represented as minutes since midnight is between two other times.
-     * 
-     * 
-     * If `initialTime` is after `finalTime`, then `currentTime` must be between
-     * last day's `initialTime` and this day's `finalTime` or this day's `initialTime`
-     * and next day's `finalTime`
-     */
-    fun isTimeBetweenTwoTimes(
-        initialTime: Long,
-        finalTime: Long,
-        currentTime: Long
-    ): Boolean {
-        var normalizedFinalTime = finalTime
-        var normalizedCurrentTime = currentTime
-        if (normalizedFinalTime < initialTime) {
-            normalizedFinalTime += TimeUnit.DAYS.toMinutes(1)
-        }
-
-        if (normalizedCurrentTime < initialTime) {
-            normalizedCurrentTime += TimeUnit.DAYS.toMinutes(1)
-        }
-
-        return normalizedCurrentTime in initialTime..<normalizedFinalTime
-    }
-
     fun setNighttimeHours(
         fromHour: Int,
         fromMinute: Int,
@@ -1592,7 +1420,7 @@ object Utils {
         }
         val mode = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud"
         if (mode == "local") {
-            return SummaryManager.canAttemptLocalSummarization()
+            return LocalSummaryManager.canAttemptLocalSummarization()
         }
         return AiSummaryApiKeyStore.hasApiKey(ctx)
     }
@@ -1606,7 +1434,7 @@ object Utils {
     }
 
     private fun isAiSummaryEnabledByDefault(ctx: Context): Boolean =
-        SummaryManager.canAttemptLocalSummarization() || AiSummaryApiKeyStore.hasApiKey(ctx)
+        LocalSummaryManager.canAttemptLocalSummarization() || AiSummaryApiKeyStore.hasApiKey(ctx)
 
     fun isNetworkAvailable(context: Context): Boolean {
         val connectivityManager =

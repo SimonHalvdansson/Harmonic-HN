@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
+import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
@@ -29,23 +30,40 @@ import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class AndroidAiCredentialStore(context: Context) : CredentialStore {
+class AndroidCredentialStore(context: Context) : CredentialStore {
     private val appContext = context.applicationContext
 
     override fun read(id: String): String? = when (id) {
-        AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
+        CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
+        CredentialIds.HACKER_NEWS_USERNAME -> AccountUtils.getAccountUsername(appContext)
+        CredentialIds.HACKER_NEWS_PASSWORD -> AccountUtils.getAccountDetails(appContext).second
         else -> null
     }
 
     override fun write(id: String, value: String): Boolean =
-        id == AI_SUMMARY_API_KEY && AiSummaryApiKeyStore.setApiKey(appContext, value)
+        when (id) {
+            CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.setApiKey(appContext, value)
+            CredentialIds.HACKER_NEWS_USERNAME -> {
+                AccountUtils.setAccountUsername(appContext, value)
+                true
+            }
+            CredentialIds.HACKER_NEWS_PASSWORD -> {
+                val username = AccountUtils.getAccountUsername(appContext)
+                AccountUtils.setAccountDetails(appContext, username, value)
+                true
+            }
+            else -> false
+        }
 
     override fun remove(id: String): Boolean =
-        id == AI_SUMMARY_API_KEY && AiSummaryApiKeyStore.clearApiKey(appContext)
-
-    companion object {
-        const val AI_SUMMARY_API_KEY = "ai_summary_api_key"
-    }
+        when (id) {
+            CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.clearApiKey(appContext)
+            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD -> {
+                AccountUtils.deleteAccountDetails(appContext)
+                true
+            }
+            else -> false
+        }
 }
 
 class AndroidBookmarkStore(context: Context) : BookmarkStore {
@@ -257,7 +275,7 @@ class AndroidLocalSummaryEngine(context: Context) : LocalSummaryEngine {
 
 object AndroidPlatformServices {
     fun create(context: Context): PlatformServices = PlatformServices(
-        credentials = AndroidAiCredentialStore(context),
+        credentials = AndroidCredentialStore(context),
         bookmarks = AndroidBookmarkStore(context),
         history = AndroidHistoryStore(context),
         cache = AndroidCacheStore(context),

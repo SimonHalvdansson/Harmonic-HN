@@ -128,6 +128,8 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryCachePreferences
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
@@ -417,7 +419,7 @@ class StoriesComposeController private constructor(
 
     fun cacheStories(storyCount: Int) {
         listener.onCacheStoriesConfirmed(
-            SettingsUtils.sanitizeStoriesToCache(storyCount),
+            StoryCachePreferences.sanitizeCount(storyCount),
         )
     }
 
@@ -1678,7 +1680,7 @@ private fun Story.toUiModel(
     val shortDomain = runCatching { getDisplayDomain(false) }.getOrNull().orEmpty()
     val favicon = runCatching { FaviconLoader.getFaviconUrl(url, settings.faviconProvider) }.getOrNull()
     val tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context)
-    val paletteTintMode = SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
+    val paletteTintMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     val currentPreviewTint = PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
         this,
         tintBaseColor,

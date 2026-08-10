@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.data
 
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
-import io.ktor.http.Url
 import kotlin.time.Clock
 
 class Story {
@@ -133,14 +133,15 @@ class Story {
             }
             if (cachedDomainNameWithoutTopLevelDomain == null) {
                 cachedDomainNameWithoutTopLevelDomain =
-                    formatDomainNameForDisplay(cachedDomainName, false)
+                    DomainNamePolicy.formatForDisplay(cachedDomainName, false)
             }
             return cachedDomainNameWithoutTopLevelDomain
         }
 
         if (currentUrl == null) return null
-        val parsedHost = Url(currentUrl.removeSuffix("#")).host
-        val domainName = parsedHost.removePrefix("www.")
+        val domainName = requireNotNull(DomainNamePolicy.fromUrl(currentUrl)) {
+            "Invalid story URL: $currentUrl"
+        }
         cachedDomainName = domainName
         cachedDomainNameWithoutTopLevelDomain = null
         cachedDomainUrl = currentUrl
@@ -148,7 +149,7 @@ class Story {
             return domainName
         }
         cachedDomainNameWithoutTopLevelDomain =
-            formatDomainNameForDisplay(domainName, false)
+            DomainNamePolicy.formatForDisplay(domainName, false)
         return cachedDomainNameWithoutTopLevelDomain
     }
 
@@ -205,13 +206,5 @@ class Story {
             return !value.isNullOrEmpty()
         }
 
-        private fun formatDomainNameForDisplay(
-            domain: String?,
-            includeTopLevelDomain: Boolean,
-        ): String? {
-            if (includeTopLevelDomain || domain.isNullOrEmpty()) return domain
-            val lastDotIndex = domain.lastIndexOf('.')
-            return if (lastDotIndex <= 0) domain else domain.substring(0, lastDotIndex)
-        }
     }
 }

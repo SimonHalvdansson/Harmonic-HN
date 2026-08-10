@@ -14,7 +14,7 @@ import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.adapters.StoryDisplayState
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
-import com.simon.harmonichackernews.network.LinkSummaryLoader
+import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.PreviewContentCallback
@@ -25,6 +25,7 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader.isCachedPrev
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadCachedPreviewImageTintColor
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadPreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.saveCachedPreviewImageTintColor
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.utils.PreviewImageTintExtractor
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -215,7 +216,7 @@ class StoryListState(
                 story.id,
                 story.url,
                 showSummary,
-                PreviewContentCallback { imageUrl: String?, summary: LinkSummaryLoader.Result? ->
+                PreviewContentCallback { imageUrl: String?, summary: LinkSummary? ->
                     previewRequests.remove(story)
                     story.previewImageUrlLoading = false
                     story.linkSummaryLoading = false
@@ -272,7 +273,7 @@ class StoryListState(
         leftAlign = settings.leftAlign
         cardStyle = settings.cardStyle
         tintCardUsingPreview = settings.tintCardUsingPreview
-        paletteTintMode = SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
+        paletteTintMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
         grayOutClicked = settings.grayOutClicked
         hotness = settings.hotness
         faviconProvider = settings.faviconProvider
@@ -404,7 +405,7 @@ class StoryListState(
         if (!thumbnails || !story.previewImageUrl.isNullOrEmpty()) return
         val faviconUrl = getFaviconUrl(story)?.takeIf(String::isNotEmpty) ?: return
         val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
-        val mode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        val mode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         if (story.faviconTintColorLoading
             || (story.faviconTintColorLoaded
                 && story.faviconTintSourceUrl == faviconUrl
@@ -468,7 +469,7 @@ class StoryListState(
         } else {
             PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
         }
-        val mode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        val mode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         tintExtractor.request(
             story,
             sourceUrl,

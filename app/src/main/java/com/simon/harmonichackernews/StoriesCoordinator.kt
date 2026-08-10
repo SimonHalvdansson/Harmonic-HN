@@ -23,12 +23,13 @@ import com.simon.harmonichackernews.network.RequestQueue
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
+import com.simon.harmonichackernews.network.HackerNewsUserService
+import com.simon.harmonichackernews.network.failureDetails
+import com.simon.harmonichackernews.network.StoryFeedRepository
+import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.dto.applyTo
-import com.simon.harmonichackernews.network.UserActions
-import com.simon.harmonichackernews.network.UserActions.ActionCallback
-import com.simon.harmonichackernews.network.UserActions.StoryListCallback
-import com.simon.harmonichackernews.network.UserActions.StoryRowsCallback
-import com.simon.harmonichackernews.network.UserActions.UserItemListCallback
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PlatformServices
@@ -80,12 +81,20 @@ class StoriesCoordinator(
     private val hackerNewsRepository: HackerNewsRepository =
         NetworkComponent.hackerNewsRepository,
     private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
+    private val storyFeedRepository: StoryFeedRepository = StoryFeedRepository(
+        hackerNewsRepository,
+        NetworkComponent.hackerNewsWebRepository,
+    ),
     private val clock: Clock = Clock.System,
 ) {
     private val connectivity = platformServices.connectivity
     private val externalLinks = platformServices.externalLinks
     private val historyStore = platformServices.history
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val hackerNewsUserService = HackerNewsUserService(
+        NetworkComponent.hackerNewsSession,
+        platformServices.credentials,
+    )
     private val storiesViewModel = ViewModelProvider(activity)[StoriesViewModel::class.java]
     private val sessionState = storiesViewModel.state
     private var storyClickListener: StoryClickListener?
@@ -392,12 +401,6 @@ class StoriesCoordinator(
         return StoryCacheController(object : StoryCacheController.Callbacks {
             override val context: Context?
                 get() = this@StoriesCoordinator.context
-
-            override val requestQueue: RequestQueue?
-                get() = queue
-
-            override val requestTag: Any
-                get() = this@StoriesCoordinator.requestTag
 
             override val userSettings
                 get() = this@StoriesCoordinator.userSettings
@@ -1773,29 +1776,30 @@ class StoriesCoordinator(
         if (currentPosition >= 0) {
             adapter!!.notifyItemChanged(currentPosition)
         }
-        val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess() {
+        coroutineScope.launch {
+            val result = hackerNewsUserService.vote(
+                story.id.toString(),
+                if (newUpvoted) "up" else "un",
+            )
+            if (result is HackerNewsActionResult.Success) {
                 completion.run()
+                return@launch
             }
-
-            override fun onFailure(summary: String?, response: String?) {
-                Utils.setUpvoted(context, story.id, false, currentlyUpvoted)
-                if (isCurrentStoryActionContext(
-                        actionGeneration, actionAdapter, actionStories
-                    )
-                ) {
-                    val restoredPosition = stories!!.indexOf(story)
-                    if (restoredPosition >= 0) {
-                        adapter!!.notifyItemChanged(restoredPosition)
-                    }
+            Utils.setUpvoted(context, story.id, false, currentlyUpvoted)
+            if (isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
+                val restoredPosition = stories!!.indexOf(story)
+                if (restoredPosition >= 0) {
+                    adapter!!.notifyItemChanged(restoredPosition)
                 }
-                completion.run()
             }
-        }
-        if (newUpvoted) {
-            UserActions.upvote(context, story.id, callback)
-        } else {
-            UserActions.unvote(context, story.id, callback)
+            val (summary, detail) = result.failureDetails()
+            MainActivity.showFailureDetailForActiveUi(summary, detail)
+            Toast.makeText(
+                context,
+                "Vote unsuccessful, see dialog for response",
+                Toast.LENGTH_SHORT,
+            ).show()
+            completion.run()
         }
     }
 
@@ -1823,36 +1827,29 @@ class StoriesCoordinator(
                 adapter!!.notifyItemChanged(optimisticIndex)
             }
         }
-        UserActions.setFavorite(
-            context, story.id, newFavorited,
-            object : ActionCallback {
-                override fun onSuccess() {
-                    completion.run()
-                }
-
-                override fun onFailure(summary: String?, response: String?) {
-                    Utils.setFavorite(context, story.id, currentlyFavorited)
-                    if (!isCurrentStoryActionContext(
-                            actionGeneration, actionAdapter, actionStories
-                        )
-                    ) {
-                        completion.run()
-                        return
-                    }
-                    val currentIndex = stories!!.indexOf(story)
-                    if (currentlyFavorited && actionIsFavoritesList && currentIndex == -1) {
-                        val restoreIndex =
-                            if (optimisticIndex >= 0) min(optimisticIndex, stories!!.size) else
-                                0
-                        activeStoryListStore.mutateStories { add(restoreIndex, story) }
-                        adapter!!.notifyItemInserted(restoreIndex)
-                        updateHeader()
-                    } else if (currentIndex >= 0) {
-                        adapter!!.notifyItemChanged(currentIndex)
-                    }
-                    completion.run()
-                }
-            })
+        coroutineScope.launch {
+            val result = hackerNewsUserService.setFavorite(story.id, newFavorited)
+            if (result is HackerNewsActionResult.Success) {
+                completion.run()
+                return@launch
+            }
+            Utils.setFavorite(context, story.id, currentlyFavorited)
+            if (!isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
+                completion.run()
+                return@launch
+            }
+            val currentIndex = stories!!.indexOf(story)
+            if (currentlyFavorited && actionIsFavoritesList && currentIndex == -1) {
+                val restoreIndex =
+                    if (optimisticIndex >= 0) min(optimisticIndex, stories!!.size) else 0
+                activeStoryListStore.mutateStories { add(restoreIndex, story) }
+                adapter!!.notifyItemInserted(restoreIndex)
+                updateHeader()
+            } else if (currentIndex >= 0) {
+                adapter!!.notifyItemChanged(currentIndex)
+            }
+            completion.run()
+        }
     }
 
     private fun isCurrentStoryActionContext(
@@ -2567,7 +2564,7 @@ class StoriesCoordinator(
         updateHeader()
         coroutineScope.launch {
             try {
-                val itemIds = hackerNewsRepository.getStoryIds(storyType)
+                val itemIds = (storyFeedRepository.load(storyType) as StoryFeedResult.ItemIds).ids
                 if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
                 isRefreshIndicatorShowing = false
                 showingCached = false
@@ -2635,97 +2632,95 @@ class StoriesCoordinator(
                 )
             }
         }, 15000)
-        UserActions.fetchStoryListIds(
-            ctx,
-            storyType.hackerNewsPath,
-            storyType.label.lowercase(),
-            storyType.usesCommentRows(),
-            frontDay,
-            object : StoryListCallback {
-                override fun onSuccess(
-                    itemIds: MutableList<Int>,
-                    commentIds: MutableList<Int>,
-                    nextPageUrl: String?
-                ) {
-                    callbackReceived[0] = true
-                    if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                            refreshGeneration
-                        )
-                    ) {
-                        Log.d(
-                            TAG,
-                            ("Ignoring stale scraped frontpage success for type=" + storyType.label
-                                    + ", generation=" + refreshGeneration
-                                    + ", currentGeneration=" + storyListGeneration
-                                    + ", isAdded=" + this@StoriesCoordinator.isAdded
-                                    + ", adapterPresent=" + (adapter != null)
-                                    + ", currentType=" + this@StoriesCoordinator.currentStoryType.label)
-                        )
-                        return
-                    }
-
-                    this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                    loadingFailed = itemIds.isEmpty()
-                    loadingFailedServerError = false
-                    loadingFailedRateLimited = false
-                    showingCached = false
-                    scrapedFrontpageStoryType = storyType
-                    scrapedFrontpageNextPageUrl = nextPageUrl
-                    scrapedFrontpageNextPageLoading = false
-                    Log.d(
-                        TAG, ("Scraped frontpage success for type=" + storyType.label
-                                + ", generation=" + refreshGeneration
-                                + ", itemCount=" + itemIds.size
-                                + ", commentIdCount=" + commentIds.size
-                                + ", hasNextPage=" + !TextUtils.isEmpty(nextPageUrl) + ", loadingFailed=" + loadingFailed)
+        coroutineScope.launch {
+            try {
+                val page = (
+                    storyFeedRepository.load(storyType, frontDay) as StoryFeedResult.Scraped
+                ).page
+                val itemIds = page.itemIds
+                val commentIds = page.commentIds
+                val nextPageUrl = page.nextPageUrl
+                callbackReceived[0] = true
+                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
+                        refreshGeneration
                     )
-
-                    if (!loadingFailed) {
-                        replaceStories(
-                            createLoadingStoriesFromIds(itemIds, HashSet<Int>(commentIds)),
-                            false,
-                            !TextUtils.isEmpty(scrapedFrontpageNextPageUrl)
-                        )
-                    }
-
-                    updateHeader()
-                    loadInitialVisibleStories(refreshGeneration)
+                ) {
+                    Log.d(
+                        TAG,
+                        ("Ignoring stale scraped frontpage success for type=" + storyType.label
+                                + ", generation=" + refreshGeneration
+                                + ", currentGeneration=" + storyListGeneration
+                                + ", isAdded=" + this@StoriesCoordinator.isAdded
+                                + ", adapterPresent=" + (adapter != null)
+                                + ", currentType=" + this@StoriesCoordinator.currentStoryType.label)
+                    )
+                    return@launch
                 }
 
-                override fun onFailure(summary: String?, response: String?) {
-                    callbackReceived[0] = true
-                    if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                            refreshGeneration
-                        )
-                    ) {
-                        Log.d(
-                            TAG,
-                            ("Ignoring stale scraped frontpage failure for type=" + storyType.label
-                                    + ", generation=" + refreshGeneration
-                                    + ", currentGeneration=" + storyListGeneration
-                                    + ", isAdded=" + this@StoriesCoordinator.isAdded
-                                    + ", adapterPresent=" + (adapter != null)
-                                    + ", currentType=" + this@StoriesCoordinator.currentStoryType.label
-                                    + ", summary=" + summary
-                                    + ", response=" + response)
-                        )
-                        return
-                    }
+                this@StoriesCoordinator.isRefreshIndicatorShowing = false
+                loadingFailed = itemIds.isEmpty()
+                loadingFailedServerError = false
+                loadingFailedRateLimited = false
+                showingCached = false
+                scrapedFrontpageStoryType = storyType
+                scrapedFrontpageNextPageUrl = nextPageUrl
+                scrapedFrontpageNextPageLoading = false
+                Log.d(
+                    TAG, ("Scraped frontpage success for type=" + storyType.label
+                            + ", generation=" + refreshGeneration
+                            + ", itemCount=" + itemIds.size
+                            + ", commentIdCount=" + commentIds.size
+                            + ", hasNextPage=" + !TextUtils.isEmpty(nextPageUrl) + ", loadingFailed=" + loadingFailed)
+                )
 
-                    this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                    loadingFailed = true
-                    loadingFailedServerError = false
-                    loadingFailedRateLimited = isRateLimitedResponse(summary, response)
-                    Log.w(
-                        TAG, ("Scraped frontpage request failed for type=" + storyType.label
-                                + ", path=" + storyType.hackerNewsPath
+                if (!loadingFailed) {
+                    replaceStories(
+                        createLoadingStoriesFromIds(itemIds, HashSet<Int>(commentIds)),
+                        false,
+                        !TextUtils.isEmpty(scrapedFrontpageNextPageUrl)
+                    )
+                }
+
+                updateHeader()
+                loadInitialVisibleStories(refreshGeneration)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                callbackReceived[0] = true
+                val summary = "Couldn't fetch ${storyType.label.lowercase()}"
+                val response = error.message
+                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
+                        refreshGeneration
+                    )
+                ) {
+                    Log.d(
+                        TAG,
+                        ("Ignoring stale scraped frontpage failure for type=" + storyType.label
                                 + ", generation=" + refreshGeneration
+                                + ", currentGeneration=" + storyListGeneration
+                                + ", isAdded=" + this@StoriesCoordinator.isAdded
+                                + ", adapterPresent=" + (adapter != null)
+                                + ", currentType=" + this@StoriesCoordinator.currentStoryType.label
                                 + ", summary=" + summary
                                 + ", response=" + response)
                     )
-                    updateHeader()
+                    return@launch
                 }
-            })
+
+                this@StoriesCoordinator.isRefreshIndicatorShowing = false
+                loadingFailed = true
+                loadingFailedServerError = false
+                loadingFailedRateLimited = isRateLimitedResponse(summary, response)
+                Log.w(
+                    TAG, ("Scraped frontpage request failed for type=" + storyType.label
+                            + ", path=" + storyType.hackerNewsPath
+                            + ", generation=" + refreshGeneration
+                            + ", summary=" + summary
+                            + ", response=" + response)
+                )
+                updateHeader()
+            }
+        }
 
         updateHeader()
     }
@@ -2744,56 +2739,53 @@ class StoriesCoordinator(
         scrapedFrontpageNextPageLoading = true
         adapter!!.setLoadMoreLoading(true)
         val nextPageUrl = scrapedFrontpageNextPageUrl
-        UserActions.fetchStoryListPage(
-            ctx,
-            nextPageUrl,
-            storyType.label.lowercase(),
-            storyType.usesCommentRows(),
-            object : StoryListCallback {
-                override fun onSuccess(
-                    itemIds: MutableList<Int>,
-                    commentIds: MutableList<Int>,
-                    nextPageUrl: String?
+        coroutineScope.launch {
+            try {
+                val page = storyFeedRepository.loadNextScrapedPage(
+                    storyType,
+                    checkNotNull(nextPageUrl),
+                )
+                val itemIds = page.itemIds
+                val commentIds = page.commentIds
+                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
+                        refreshGeneration
+                    )
                 ) {
-                    if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
-                            refreshGeneration
-                        )
-                    ) {
-                        return
-                    }
-
-                    scrapedFrontpageNextPageLoading = false
-                    adapter!!.setLoadMoreLoading(false)
-                    scrapedFrontpageNextPageUrl = nextPageUrl
-                    val newStories =
-                        createNewLoadingStoriesFromIds(itemIds, HashSet(commentIds))
-                    activeStoryListStore.mutateStories { addAll(newStories) }
-                    setCanLoadMore(adapter!!, !TextUtils.isEmpty(scrapedFrontpageNextPageUrl))
-                    if (adapter!!.paginationMode && !newStories.isEmpty()) {
-                        adapter!!.visibleStoryCount =
-                            min(adapter!!.visibleStoryCount + newStories.size, stories!!.size)
-                    }
-                    activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
-                    adapter!!.notifyDataSetChanged()
-                    loadVisibleStories(refreshGeneration)
-                    updateHeader()
+                    return@launch
                 }
 
-                override fun onFailure(summary: String?, response: String?) {
-                    if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
-                            refreshGeneration
-                        )
-                    ) {
-                        return
-                    }
-
-                    scrapedFrontpageNextPageLoading = false
-                    adapter!!.setLoadMoreLoading(false)
-                    setCanLoadMore(adapter!!, true)
-                    adapter!!.notifyDataSetChanged()
-                    updateHeader()
+                scrapedFrontpageNextPageLoading = false
+                adapter!!.setLoadMoreLoading(false)
+                scrapedFrontpageNextPageUrl = page.nextPageUrl
+                val newStories =
+                    createNewLoadingStoriesFromIds(itemIds.toMutableList(), HashSet(commentIds))
+                activeStoryListStore.mutateStories { addAll(newStories) }
+                setCanLoadMore(adapter!!, !TextUtils.isEmpty(scrapedFrontpageNextPageUrl))
+                if (adapter!!.paginationMode && !newStories.isEmpty()) {
+                    adapter!!.visibleStoryCount =
+                        min(adapter!!.visibleStoryCount + newStories.size, stories!!.size)
                 }
-            })
+                activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
+                adapter!!.notifyDataSetChanged()
+                loadVisibleStories(refreshGeneration)
+                updateHeader()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
+                        refreshGeneration
+                    )
+                ) {
+                    return@launch
+                }
+
+                scrapedFrontpageNextPageLoading = false
+                adapter!!.setLoadMoreLoading(false)
+                setCanLoadMore(adapter!!, true)
+                adapter!!.notifyDataSetChanged()
+                updateHeader()
+            }
+        }
     }
 
     private fun loadFrontpageLinkRows(storyType: StoryType?, refreshGeneration: Int) {
@@ -2807,13 +2799,17 @@ class StoriesCoordinator(
             return
         }
 
-        UserActions.fetchHackerNewsListLinks(ctx, object : StoryRowsCallback {
-            override fun onSuccess(linkRows: MutableList<Story>) {
+        coroutineScope.launch {
+            try {
+                val linkRows = (
+                    storyFeedRepository.load(requireNotNull(storyType)) as
+                        StoryFeedResult.LinkDirectory
+                ).stories
                 if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
                         refreshGeneration
                     )
                 ) {
-                    return
+                    return@launch
                 }
 
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
@@ -2823,28 +2819,28 @@ class StoriesCoordinator(
                 showingCached = false
 
                 if (!loadingFailed) {
-                    replaceStories(linkRows)
+                    replaceStories(linkRows.toMutableList())
                     loadedTo = stories!!.size - 1
                 }
 
                 updateHeader()
-            }
-
-            override fun onFailure(summary: String?, response: String?) {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
                 if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
                         refreshGeneration
                     )
                 ) {
-                    return
+                    return@launch
                 }
 
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 loadingFailed = true
                 loadingFailedServerError = false
-                loadingFailedRateLimited = isRateLimitedResponse(summary, response)
+                loadingFailedRateLimited = error is HttpStatusException && error.statusCode == 429
                 updateHeader()
             }
-        })
+        }
 
         updateHeader()
     }
@@ -2980,19 +2976,37 @@ class StoriesCoordinator(
         updateHeader()
 
         val syncGeneration = storyListGeneration
-        val callback: UserItemListCallback = object : UserItemListCallback {
-            override fun onSuccess(itemIds: MutableList<Int>, commentIds: MutableList<Int>) {
+        coroutineScope.launch {
+            try {
+                val path = if (upvotedTypeForSync) "upvoted" else "favorites"
+                val userItems = when (
+                    val result = hackerNewsUserService.getUserItems(
+                        path,
+                        loginRequired = upvotedTypeForSync,
+                    )
+                ) {
+                    is HackerNewsUserItemsResult.Success -> result.items
+                    is HackerNewsUserItemsResult.Failure ->
+                        throw UserItemSyncException(result.summary, result.detail)
+                    is HackerNewsUserItemsResult.Captcha ->
+                        throw UserItemSyncException(
+                            "Captcha required",
+                            "HN asked for a captcha before syncing $path.",
+                        )
+                }
+                val itemIds = userItems.itemIds
+                val commentIds = userItems.commentIds
                 if (!this@StoriesCoordinator.isAdded || adapter == null || !isSameUserItemListType(
                         adapter!!.type,
                         upvotedTypeForSync
                     ) || !isCurrentStoryListGeneration(syncGeneration)
                 ) {
-                    return
+                    return@launch
                 }
 
                 val currentContext: Context? = this@StoriesCoordinator.context
                 if (currentContext == null) {
-                    return
+                    return@launch
                 }
 
                 val snapshot = UserItemListRepository.normalizeSnapshot(itemIds, commentIds)
@@ -3007,17 +3021,20 @@ class StoriesCoordinator(
                 loadingFailedRateLimited = false
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 updateHeader()
-            }
-
-            override fun onFailure(summary: String?, response: String?) {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
                 if (!this@StoriesCoordinator.isAdded || adapter == null || !isSameUserItemListType(
                         adapter!!.type,
                         upvotedTypeForSync
                     ) || !isCurrentStoryListGeneration(syncGeneration)
                 ) {
-                    return
+                    return@launch
                 }
 
+                val summary = (error as? UserItemSyncException)?.summary
+                    ?: "Couldn't sync ${if (upvotedTypeForSync) "upvoted" else "favorites"}"
+                val response = (error as? UserItemSyncException)?.detail ?: error.message
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 userItemListInitialLoadInProgress = false
                 loadingFailed = stories!!.isEmpty()
@@ -3025,12 +3042,6 @@ class StoriesCoordinator(
                 updateHeader()
                 Toast.makeText(requireContext(), summary, Toast.LENGTH_SHORT).show()
             }
-        }
-
-        if (upvotedTypeForSync) {
-            UserActions.fetchUpvoted(ctx, callback)
-        } else {
-            UserActions.fetchFavorites(ctx, callback)
         }
     }
 
@@ -3717,6 +3728,11 @@ class StoriesCoordinator(
     interface StoryClickListener {
         fun openStory(story: Story?, pos: Int, showWebsite: Boolean)
     }
+
+    private class UserItemSyncException(
+        val summary: String,
+        val detail: String?,
+    ) : Exception(detail ?: summary)
 
     companion object {
         private const val TAG = "StoriesCoordinator"

@@ -1,21 +1,16 @@
 package com.simon.harmonichackernews.linkpreview
 
 import android.content.Context
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.text.TextUtils
 import android.webkit.WebView
-import androidx.annotation.Nullable
-import com.simon.harmonichackernews.data.ArxivInfo
-import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.NitterInfo
-import com.simon.harmonichackernews.data.RepoInfo
-import com.simon.harmonichackernews.data.StackExchangeInfo
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.WikipediaInfo
-import com.simon.harmonichackernews.linkpreview.GitLabInfoGetter.getInfo
-import com.simon.harmonichackernews.linkpreview.GitLabInfoGetter.isValidGitLabUrl
+import com.simon.harmonichackernews.network.LinkPreviewData
+import com.simon.harmonichackernews.network.LinkPreviewPreferences
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
+import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.NitterPreview
 import com.simon.harmonichackernews.utils.SettingsUtils
 import kotlin.math.min
 
@@ -35,92 +30,37 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
             return
         }
 
-        if (ArxivAbstractGetter.isValidArxivUrl(url) && SettingsUtils.shouldUseLinkPreviewArxiv(
-                context
-            )
-        ) {
-            setLinkPreviewLoading(true)
-            ArxivAbstractGetter.getAbstract(
-                url,
-                context,
-                object : ArxivAbstractGetter.GetterCallback {
-                    override fun onSuccess(arxivInfo: ArxivInfo) {
-                        currentStory.arxivInfo = arxivInfo
-                        setLinkPreviewLoading(false)
-                    }
+        val useCase = LinkPreviewUseCase(NetworkComponent.linkPreviewRepository)
+        val provider = useCase.selectProvider(
+            url,
+            LinkPreviewPreferences(
+                arxiv = SettingsUtils.shouldUseLinkPreviewArxiv(context),
+                github = SettingsUtils.shouldUseLinkPreviewGithub(context),
+                gitLab = SettingsUtils.shouldUseLinkPreviewGitLab(context),
+                stackExchange = SettingsUtils.shouldUseLinkPreviewStackExchange(context),
+                wikipedia = SettingsUtils.shouldUseLinkPreviewWikipedia(context),
+            ),
+        ) ?: return
 
-                    override fun onFailure(reason: String) {
-                        setLinkPreviewLoading(false)
-                    }
-                })
-        } else if (GitHubInfoGetter.isValidGitHubUrl(url) && SettingsUtils.shouldUseLinkPreviewGithub(
-                context
-            )
-        ) {
-            setLinkPreviewLoading(true)
-            GitHubInfoGetter.getInfo(
-                url,
-                context,
-                object : GitHubInfoGetter.GetterCallback {
-                    override fun onSuccess(repoInfo: RepoInfo) {
-                        currentStory.repoInfo = repoInfo
-                        setLinkPreviewLoading(false)
-                    }
-
-                    override fun onFailure(reason: String) {
-                        setLinkPreviewLoading(false)
-                    }
-                })
-        } else if (isValidGitLabUrl(url) && SettingsUtils.shouldUseLinkPreviewGitLab(context)) {
-            setLinkPreviewLoading(true)
-            getInfo(url, context, object : GitLabInfoGetter.GetterCallback {
-                override fun onSuccess(gitLabInfo: GitLabInfo) {
-                    currentStory.gitLabInfo = gitLabInfo
-                    setLinkPreviewLoading(false)
+        setLinkPreviewLoading(true)
+        NetworkComponent.launchCallbackRequest(
+            request = { useCase.load(provider, url) },
+            onSuccess = { preview ->
+                when (preview) {
+                    is LinkPreviewData.Arxiv -> currentStory.arxivInfo = preview.value
+                    is LinkPreviewData.GitHub -> currentStory.repoInfo = preview.value
+                    is LinkPreviewData.GitLab -> currentStory.gitLabInfo = preview.value
+                    is LinkPreviewData.StackExchange -> currentStory.stackExchangeInfo = preview.value
+                    is LinkPreviewData.Wikipedia -> currentStory.wikiInfo = preview.value
                 }
-
-                override fun onFailure(reason: String) {
-                    setLinkPreviewLoading(false)
-                }
-            })
-        } else if (StackExchangeGetter.isValidStackExchangeUrl(url) && SettingsUtils.shouldUseLinkPreviewStackExchange(
-                context
-            )
-        ) {
-            setLinkPreviewLoading(true)
-            StackExchangeGetter.getInfo(
-                url,
-                context,
-                object : StackExchangeGetter.GetterCallback {
-                    override fun onSuccess(stackExchangeInfo: StackExchangeInfo) {
-                        currentStory.stackExchangeInfo = stackExchangeInfo
-                        setLinkPreviewLoading(false)
-                    }
-
-                    override fun onFailure(reason: String) {
-                        setLinkPreviewLoading(false)
-                    }
-                })
-        } else if (WikipediaGetter.isValidWikipediaUrl(url) && SettingsUtils.shouldUseLinkPreviewWikipedia(
-                context
-            )
-        ) {
-            setLinkPreviewLoading(true)
-            WikipediaGetter.getInfo(url, context, object : WikipediaGetter.GetterCallback {
-                override fun onSuccess(wikipediaInfo: WikipediaInfo) {
-                    currentStory.wikiInfo = wikipediaInfo
-                    setLinkPreviewLoading(false)
-                }
-
-                override fun onFailure(reason: String) {
-                    setLinkPreviewLoading(false)
-                }
-            })
-        }
+                setLinkPreviewLoading(false)
+            },
+            onFailure = { setLinkPreviewLoading(false) },
+        )
     }
 
     fun shouldInitializeWebViewForPreview(context: Context?): Boolean {
-        return context != null && story != null && NitterGetter.isConvertibleToNitter(story.url)
+        return context != null && story != null && NitterPreview.isConvertibleUrl(story.url)
                 && SettingsUtils.shouldUseLinkPreviewX(context)
     }
 
@@ -131,8 +71,8 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
             return url
         }
 
-        if (NitterGetter.isConvertibleToNitter(url) && SettingsUtils.shouldRedirectNitter(context)) {
-            url = NitterGetter.convertToNitterUrl(url)
+        if (NitterPreview.isConvertibleUrl(url) && SettingsUtils.shouldRedirectNitter(context)) {
+            url = NitterPreview.convertUrl(url)
         }
 
         activeNitterPreviewWebView = webView
@@ -175,14 +115,14 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
 
     private fun shouldLoadNitterLinkPreview(context: Context?, url: String?): Boolean {
         return shouldReadNitterLinkPreview(context, url)
-                || (NitterGetter.isConvertibleToNitter(url)
+                || (NitterPreview.isConvertibleUrl(url)
                 && context != null
                 && SettingsUtils.shouldRedirectNitter(context)
                 && SettingsUtils.shouldUseLinkPreviewX(context))
     }
 
     private fun shouldReadNitterLinkPreview(context: Context?, url: String?): Boolean {
-        return NitterGetter.isValidNitterUrl(url)
+        return NitterPreview.isNitterUrl(url)
                 && context != null
                 && SettingsUtils.shouldUseLinkPreviewX(context)
     }
@@ -291,71 +231,17 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
         url: String?,
         generation: Int
     ): Boolean {
-        return generation == nitterLinkPreviewGeneration && view != null && view === activeNitterPreviewWebView && story != null && story.nitterInfo == null && NitterGetter.isValidNitterUrl(
+        return generation == nitterLinkPreviewGeneration && view != null && view === activeNitterPreviewWebView && story != null && story.nitterInfo == null && NitterPreview.isNitterUrl(
             url
         )
     }
 
     private fun isWebViewAtNitterLinkPreviewUrl(view: WebView, expectedUrl: String?): Boolean {
-        val currentUrl = view.getUrl()
-        if (TextUtils.isEmpty(currentUrl) || !NitterGetter.isValidNitterUrl(currentUrl)) {
+        val currentUrl = view.url
+        if (currentUrl.isNullOrEmpty() || !NitterPreview.isNitterUrl(currentUrl)) {
             return false
         }
-
-        val expectedStatusId = getNitterStatusId(expectedUrl)
-        val currentStatusId = getNitterStatusId(currentUrl)
-        if (!TextUtils.isEmpty(expectedStatusId) && !TextUtils.isEmpty(currentStatusId)) {
-            return expectedStatusId == currentStatusId
-        }
-
-        return areSameNitterPage(currentUrl, expectedUrl)
-    }
-
-    private fun getNitterStatusId(url: String?): String? {
-        try {
-            val segments = Uri.parse(url).getPathSegments()
-            for (i in 0..<segments.size - 1) {
-                if ("status" == segments.get(i)) {
-                    return segments.get(i + 1)
-                }
-            }
-        } catch (ignored: Exception) {
-        }
-        return null
-    }
-
-    private fun areSameNitterPage(firstUrl: String?, secondUrl: String?): Boolean {
-        try {
-            val first = Uri.parse(firstUrl)
-            val second = Uri.parse(secondUrl)
-            return TextUtils.equals(normalizeHost(first.getHost()), normalizeHost(second.getHost()))
-                    && TextUtils.equals(
-                trimTrailingSlash(first.getPath()),
-                trimTrailingSlash(second.getPath())
-            )
-        } catch (ignored: Exception) {
-            return TextUtils.equals(firstUrl, secondUrl)
-        }
-    }
-
-    private fun normalizeHost(host: String?): String {
-        var host = host
-        if (host == null) {
-            return ""
-        }
-        host = host.lowercase()
-        return if (host.startsWith("www.")) host.substring(4) else host
-    }
-
-    private fun trimTrailingSlash(path: String?): String {
-        var path = path
-        if (TextUtils.isEmpty(path) || "/" == path) {
-            return ""
-        }
-        while (path!!.endsWith("/")) {
-            path = path.substring(0, path.length - 1)
-        }
-        return path
+        return NitterPreview.isSamePage(currentUrl, expectedUrl)
     }
 
     private fun setLinkPreviewLoading(loading: Boolean) {

@@ -7,23 +7,21 @@ import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.text.TextUtils
-import androidx.core.graphics.ColorUtils
 import com.kmpalette.palette.graphics.Palette
-import com.kmpalette.palette.graphics.Palette.Swatch
 import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.clearCachedPreviewImageTintColors
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.PreviewTintPalette
+import com.simon.harmonichackernews.settings.PreviewTintPolicy
+import com.simon.harmonichackernews.settings.PreviewTintSwatch
 import kotlin.math.max
 import kotlin.math.min
 
 object PreviewImageTintUtils {
-    private const val TINT_RESULT_VERSION = "worker-v4-kmpalette"
     private const val TINT_SAMPLE_SIZE = 96
-    private const val MIN_CHROMATIC_SOURCE_SATURATION = 0.05f
-    private const val CARD_TINT_ALPHA_LIGHT = 0.24f
-    private const val CARD_TINT_ALPHA_DARK = 0.34f
 
     fun calculateCardTint(context: Context, drawable: Drawable?): Int {
         val baseColor = getTintBaseColor(context)
@@ -92,41 +90,11 @@ object PreviewImageTintUtils {
     }
 
     fun calculateCardTint(baseColor: Int, palette: Palette?, paletteTintMode: String?): Int {
-        if (palette == null) {
-            return baseColor
-        }
-
-        val paletteTintConfigKey = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
-        val swatch = chooseCardTintSwatch(palette, paletteTintConfigKey)
-        if (swatch == null) {
-            return baseColor
-        }
-
-        val darkBase = ColorUtils.calculateLuminance(baseColor) < 0.5
-        val tintAlpha = clamp01(
-            (if (darkBase) CARD_TINT_ALPHA_DARK else CARD_TINT_ALPHA_LIGHT)
-                    * SettingsUtils.getPaletteTintStrengthMultiplier(paletteTintConfigKey)
+        return PreviewTintPolicy.calculateCardTint(
+            baseColor,
+            palette?.toPreviewTintPalette(),
+            paletteTintMode,
         )
-        val hsl = swatch.hsl
-        var targetSaturation = clamp01(
-            hsl[1] * SettingsUtils.getPaletteTintColorfulnessMultiplier(paletteTintConfigKey)
-        )
-        if (hsl[1] >= MIN_CHROMATIC_SOURCE_SATURATION
-            && (SettingsUtils.getPaletteTintColorfulness(paletteTintConfigKey)
-                    >= SettingsUtils.DEFAULT_PALETTE_TINT_COLORFULNESS)
-        ) {
-            targetSaturation = max(0.25f, targetSaturation)
-        }
-        val targetLuminance = clamp(
-            (if (darkBase) 0.42f else 0.66f) + SettingsUtils.getPaletteTintToneOffset(
-                paletteTintConfigKey
-            ),
-            0.05f,
-            0.95f
-        )
-        val tintColor =
-            ColorUtils.HSLToColor(floatArrayOf(hsl[0], targetSaturation, targetLuminance))
-        return ColorUtils.blendARGB(baseColor, tintColor, tintAlpha)
     }
 
     fun updateStoryPreviewImageTintColor(
@@ -155,7 +123,7 @@ object PreviewImageTintUtils {
             return false
         }
 
-        val safePaletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        val safePaletteTintMode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         val cachedTintColor = StoryPreviewImageMemoryCache.getTintColor(
             story.id,
             imageUrl,
@@ -199,7 +167,7 @@ object PreviewImageTintUtils {
             return false
         }
 
-        val safePaletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        val safePaletteTintMode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         if (isStoryPreviewImageTintColorCurrent(story, baseColor, safePaletteTintMode)) {
             return true
         }
@@ -234,7 +202,7 @@ object PreviewImageTintUtils {
             return false
         }
 
-        val safePaletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+        val safePaletteTintMode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, tintColor)
         return setCurrentStoryPreviewImageTintColor(
             story,
@@ -268,7 +236,7 @@ object PreviewImageTintUtils {
         storedMode == storedTintMode(paletteTintMode)
 
     fun storedTintMode(paletteTintMode: String?): String =
-        SettingsUtils.getPaletteTintConfigKey(paletteTintMode) + ":" + TINT_RESULT_VERSION
+        PreviewTintPolicy.storedMode(paletteTintMode)
 
     fun clearStoryPreviewImageTintColor(story: Story?) {
         if (story == null) {
@@ -311,66 +279,18 @@ object PreviewImageTintUtils {
         return true
     }
 
-    private fun chooseCardTintSwatch(palette: Palette, paletteTintMode: String?): Swatch? {
-        when (SettingsUtils.sanitizePaletteTintMode(paletteTintMode)) {
-            SettingsUtils.PALETTE_TINT_VIBRANT -> return firstSwatch(
-                palette.vibrantSwatch,
-                palette.lightVibrantSwatch,
-                palette.darkVibrantSwatch,
-                palette.dominantSwatch,
-                palette.mutedSwatch,
-                palette.lightMutedSwatch,
-                palette.darkMutedSwatch
-            )
+    private fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
+        vibrant = vibrantSwatch?.toPreviewTintSwatch(),
+        lightVibrant = lightVibrantSwatch?.toPreviewTintSwatch(),
+        darkVibrant = darkVibrantSwatch?.toPreviewTintSwatch(),
+        dominant = dominantSwatch?.toPreviewTintSwatch(),
+        muted = mutedSwatch?.toPreviewTintSwatch(),
+        lightMuted = lightMutedSwatch?.toPreviewTintSwatch(),
+        darkMuted = darkMutedSwatch?.toPreviewTintSwatch(),
+    )
 
-            SettingsUtils.PALETTE_TINT_DOMINANT -> return firstSwatch(
-                palette.dominantSwatch,
-                palette.mutedSwatch,
-                palette.vibrantSwatch,
-                palette.lightMutedSwatch,
-                palette.lightVibrantSwatch,
-                palette.darkMutedSwatch,
-                palette.darkVibrantSwatch
-            )
-
-            SettingsUtils.PALETTE_TINT_DEFAULT -> return firstSwatch(
-                palette.mutedSwatch,
-                palette.lightMutedSwatch,
-                palette.darkMutedSwatch,
-                palette.vibrantSwatch,
-                palette.lightVibrantSwatch,
-                palette.darkVibrantSwatch,
-                palette.dominantSwatch
-            )
-
-            else -> return firstSwatch(
-                palette.mutedSwatch,
-                palette.lightMutedSwatch,
-                palette.darkMutedSwatch,
-                palette.vibrantSwatch,
-                palette.lightVibrantSwatch,
-                palette.darkVibrantSwatch,
-                palette.dominantSwatch
-            )
-        }
-    }
-
-    private fun firstSwatch(vararg swatches: Swatch?): Swatch? {
-        for (swatch in swatches) {
-            if (swatch != null) {
-                return swatch
-            }
-        }
-        return null
-    }
-
-    private fun clamp01(value: Float): Float {
-        return clamp(value, 0f, 1f)
-    }
-
-    private fun clamp(value: Float, min: Float, max: Float): Float {
-        return max(min, min(max, value))
-    }
+    private fun Palette.Swatch.toPreviewTintSwatch(): PreviewTintSwatch =
+        PreviewTintSwatch(hue = hsl[0], saturation = hsl[1])
 
     fun renderDrawableToSampleBitmap(drawable: Drawable?): Bitmap? {
         if (drawable == null) {

@@ -7,6 +7,7 @@ import android.util.TypedValue
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.TextPreferences
 import kotlin.math.max
 
 object FontUtils {
@@ -58,9 +59,9 @@ object FontUtils {
         storyTextSize: Float,
         commentTextSize: Float
     ): Typography {
-        val resolvedFont = SettingsUtils.sanitizeFont(preferredFont)
-        val clampedStoryTextSize = SettingsUtils.clampStoryTextSize(storyTextSize)
-        val clampedCommentTextSize = SettingsUtils.clampCommentTextSize(commentTextSize)
+        val resolvedFont = TextPreferences.sanitizeFont(preferredFont)
+        val clampedStoryTextSize = TextPreferences.clampStoryTextSize(storyTextSize)
+        val clampedCommentTextSize = TextPreferences.clampCommentTextSize(commentTextSize)
         val storyTextDelta =
             clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE
         val storyTextScale =
@@ -88,7 +89,7 @@ object FontUtils {
     }
 
     fun getRegularTypeface(ctx: Context, font: String?): Typeface? {
-        when (SettingsUtils.sanitizeFont(font)) {
+        when (TextPreferences.sanitizeFont(font)) {
             "productsans" -> return ResourcesCompat.getFont(ctx, R.font.product_sans)
             "googlesansflexrounded" -> return ResourcesCompat.getFont(
                 ctx,
@@ -107,7 +108,7 @@ object FontUtils {
     }
 
     fun getBoldTypeface(ctx: Context, font: String?): Typeface? {
-        when (SettingsUtils.sanitizeFont(font)) {
+        when (TextPreferences.sanitizeFont(font)) {
             "productsans" -> return ResourcesCompat.getFont(ctx, R.font.product_sans_bold)
             "googlesansflexrounded" -> return ResourcesCompat.getFont(
                 ctx,
@@ -145,19 +146,19 @@ object FontUtils {
 
     fun setStoryTitleTypeface(textView: TextView, storyTextSize: Float) {
         val titleDelta =
-            SettingsUtils.clampStoryTextSize(storyTextSize) - SettingsUtils.DEFAULT_STORY_TEXT_SIZE
+            TextPreferences.clampStoryTextSize(storyTextSize) - TextPreferences.DEFAULT_STORY_TEXT_SIZE
         setTypeface(textView, true, STORY_TITLE_SIZES.plus(titleDelta))
     }
 
     fun setStoryMetaTypeface(textView: TextView, storyTextSize: Float) {
         val metaScale =
-            SettingsUtils.clampStoryTextSize(storyTextSize) / SettingsUtils.DEFAULT_STORY_TEXT_SIZE
+            TextPreferences.clampStoryTextSize(storyTextSize) / TextPreferences.DEFAULT_STORY_TEXT_SIZE
         setTypeface(textView, false, STORY_META_SIZES.times(metaScale))
     }
 
     fun setStoryCommentCountTypeface(textView: TextView, storyTextSize: Float) {
         val countScale =
-            SettingsUtils.clampStoryTextSize(storyTextSize) / SettingsUtils.DEFAULT_STORY_TEXT_SIZE
+            TextPreferences.clampStoryTextSize(storyTextSize) / TextPreferences.DEFAULT_STORY_TEXT_SIZE
         setTypeface(textView, true, STORY_COMMENT_COUNT_SIZES.times(countScale))
     }
 
@@ -249,13 +250,13 @@ object FontUtils {
     }
 
     private fun getCommentTextSizes(commentTextSize: Float): FontSizes {
-        val textDelta = (SettingsUtils.clampCommentTextSize(commentTextSize)
-                - SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE)
+        val textDelta = (TextPreferences.clampCommentTextSize(commentTextSize)
+                - TextPreferences.DEFAULT_COMMENT_TEXT_SIZE)
         return COMMENT_TEXT_SIZES.plus(textDelta)
     }
 
     fun getAdjustedTextSize(font: String?, size: Float): Float {
-        if ("googlesansflexrounded" == SettingsUtils.sanitizeFont(font)) {
+        if ("googlesansflexrounded" == TextPreferences.sanitizeFont(font)) {
             return adjustedGoogleSansFlexRoundedSize(size)
         }
         return size
@@ -388,7 +389,7 @@ object FontUtils {
         }
 
         fun get(font: String?): Float {
-            when (SettingsUtils.sanitizeFont(font)) {
+            when (TextPreferences.sanitizeFont(font)) {
                 "googlesansflexrounded" -> return googleSansFlexRounded
                 "googlesans" -> return googleSans
                 "devicedefault" -> return deviceDefault

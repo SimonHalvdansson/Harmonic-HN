@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.CommentThreadLoadResult
+import com.simon.harmonichackernews.network.CommentThreadRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -51,16 +54,31 @@ sealed interface CommentsAction {
     data class SetStoryVoteLoading(val loading: Boolean) : CommentsAction
     data class SetStoryFavoriteLoading(val loading: Boolean) : CommentsAction
     data class RequestCommentActions(val comment: Comment) : CommentsAction
+    data class LoadThread(
+        val requestId: Int,
+        val storyId: Int,
+        val useAlgolia: Boolean,
+        val filteredUsers: Set<String>,
+        val previousResponse: String?,
+    ) : CommentsAction
+    data object CancelThreadLoad : CommentsAction
 }
 
 sealed interface CommentsEffect {
     data class ShowCommentActions(val comment: Comment) : CommentsEffect
+    data class ThreadLoaded(
+        val requestId: Int,
+        val storyId: Int,
+        val result: CommentThreadLoadResult,
+        val previousResponse: String?,
+    ) : CommentsEffect
 }
 
 /** Portable comments-screen presentation owner; the platform shell handles emitted effects. */
 class CommentsPresenter(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val sessionState: CommentsSessionState,
+    private val commentThreadRepository: CommentThreadRepository,
 ) {
     val thread: CommentThreadStore = sessionState.commentThread
     private val mutableState = MutableStateFlow(
@@ -82,6 +100,7 @@ class CommentsPresenter(
 
     private val mutableEffects = MutableSharedFlow<CommentsEffect>(extraBufferCapacity = 8)
     val effects: SharedFlow<CommentsEffect> = mutableEffects.asSharedFlow()
+    private var threadLoadJob: Job? = null
 
     init {
         scope.launch { thread.state.collect { publish(thread = it) } }
@@ -115,6 +134,30 @@ class CommentsPresenter(
             is CommentsAction.SetStoryFavoriteLoading -> publish(storyFavoriteLoading = action.loading)
             is CommentsAction.RequestCommentActions ->
                 mutableEffects.tryEmit(CommentsEffect.ShowCommentActions(action.comment))
+            is CommentsAction.LoadThread -> loadThread(action)
+            CommentsAction.CancelThreadLoad -> {
+                threadLoadJob?.cancel()
+                threadLoadJob = null
+            }
+        }
+    }
+
+    private fun loadThread(action: CommentsAction.LoadThread) {
+        threadLoadJob?.cancel()
+        threadLoadJob = scope.launch {
+            val result = commentThreadRepository.load(
+                storyId = action.storyId,
+                useAlgolia = action.useAlgolia,
+                filteredUsers = action.filteredUsers,
+            )
+            mutableEffects.emit(
+                CommentsEffect.ThreadLoaded(
+                    action.requestId,
+                    action.storyId,
+                    result,
+                    action.previousResponse,
+                )
+            )
         }
     }
 

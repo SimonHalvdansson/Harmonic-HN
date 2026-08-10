@@ -10,6 +10,12 @@ interface CredentialStore {
     fun remove(id: String): Boolean
 }
 
+object CredentialIds {
+    const val AI_SUMMARY_API_KEY = "ai_summary_api_key"
+    const val HACKER_NEWS_USERNAME = "hacker_news_username"
+    const val HACKER_NEWS_PASSWORD = "hacker_news_password"
+}
+
 interface BookmarkStore {
     fun load(): List<Bookmark>
     fun add(id: Int)

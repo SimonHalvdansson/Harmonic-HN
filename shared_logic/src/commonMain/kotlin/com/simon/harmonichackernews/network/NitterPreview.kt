@@ -27,6 +27,25 @@ object NitterPreview {
         return builder.host("nitter.net").build().toString()
     }
 
+    fun statusId(url: String?): String? {
+        val segments = url?.toNetworkUrlOrNull()?.pathSegments.orEmpty()
+        val statusIndex = segments.indexOf("status")
+        return segments.getOrNull(statusIndex + 1)?.takeIf(String::isNotEmpty)
+    }
+
+    fun isSamePage(firstUrl: String?, secondUrl: String?): Boolean {
+        val first = firstUrl?.toNetworkUrlOrNull()
+        val second = secondUrl?.toNetworkUrlOrNull()
+        if (first == null || second == null) return firstUrl == secondUrl
+        val firstStatus = statusId(firstUrl)
+        val secondStatus = statusId(secondUrl)
+        if (!firstStatus.isNullOrEmpty() && !secondStatus.isNullOrEmpty()) {
+            return firstStatus == secondStatus
+        }
+        return normalizeHost(first.host) == normalizeHost(second.host) &&
+            trimTrailingSlash(first.encodedPath) == trimTrailingSlash(second.encodedPath)
+    }
+
     fun parseJavascriptResult(json: String): NitterInfo {
         val value = JsonObject(json)
         return NitterInfo().apply {
@@ -50,5 +69,12 @@ object NitterPreview {
     private fun JsonObject.nullableString(key: String): String? {
         val value: String? = optString(key, null)
         return value?.takeUnless { it.isEmpty() || it == "null" }
+    }
+
+    private fun normalizeHost(host: String): String = host.lowercase().removePrefix("www.")
+
+    private fun trimTrailingSlash(path: String): String = when {
+        path.isEmpty() || path == "/" -> ""
+        else -> path.trimEnd('/')
     }
 }

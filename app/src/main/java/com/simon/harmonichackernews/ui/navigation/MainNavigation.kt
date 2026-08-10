@@ -109,7 +109,6 @@ import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesScreen
 import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.network.UserActions
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toEditorDestination

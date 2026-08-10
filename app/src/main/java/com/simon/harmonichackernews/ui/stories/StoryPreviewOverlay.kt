@@ -100,7 +100,7 @@ import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
-import com.simon.harmonichackernews.network.LinkSummaryLoader
+import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
@@ -108,6 +108,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -393,7 +394,7 @@ private fun StoryPreviewCard(
         ?: story.title.orEmpty()
     val domain = if (story.isLink) {
         val storyUrl = story.url
-        if (storyUrl == null) null else runCatching { Utils.getDomainName(storyUrl) }.getOrDefault(storyUrl)
+        if (storyUrl == null) null else DomainNamePolicy.fromUrl(storyUrl) ?: storyUrl
     } else story.by
     val meta = buildString {
         append(story.score)
@@ -661,7 +662,7 @@ private data class StoryPreviewActionVisual(
 
 private data class StorySummaryState(
     val loading: Boolean,
-    val result: LinkSummaryLoader.Result? = null,
+    val result: LinkSummary? = null,
 )
 
 @Composable
@@ -690,27 +691,21 @@ private fun rememberStorySummary(
             controller.invalidateStory(story.id)
         }
     }
-    DisposableEffect(story.id, story.url) {
+    LaunchedEffect(story.id, story.url) {
         if (!story.isLink || story.url.isNullOrBlank() || state.result != null) {
-            onDispose { }
+            return@LaunchedEffect
         } else {
             val requestedUrl = story.url
-            val request = LinkSummaryLoader.load(
-                context,
-                requestedUrl.orEmpty(),
-                story.title.orEmpty(),
-                object : LinkSummaryLoader.Callback {
-                    override fun onSuccess(result: LinkSummaryLoader.Result) {
-                        if (story.url != requestedUrl) return
-                        state = StorySummaryState(false, result)
-                    }
-
-                    override fun onFailure(message: String) {
-                        if (story.url == requestedUrl) state = StorySummaryState(false)
-                    }
-                },
-            )
-            onDispose(request::cancel)
+            try {
+                val result = NetworkComponent.linkSummaryRepository.load(
+                    requestedUrl.orEmpty(),
+                    story.title.orEmpty(),
+                )
+                StoryPreviewImageLoader.saveCachedLinkSummary(context, requestedUrl, result)
+                if (story.url == requestedUrl) state = StorySummaryState(false, result)
+            } catch (_: Throwable) {
+                if (story.url == requestedUrl) state = StorySummaryState(false)
+            }
         }
     }
     return state

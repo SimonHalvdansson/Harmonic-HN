@@ -141,6 +141,8 @@ import coil3.asDrawable
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
@@ -1577,7 +1579,7 @@ private fun CommentsHeader(
         PreviewImageTintUtils.getTintBaseColor(context)
     }
     val paletteTintMode = remember(context, settings.paletteTintMode) {
-        SettingsUtils.getPaletteTintConfigKey(settings.paletteTintMode)
+        PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     }
     val faviconTintSource = remember(story.url, settings.faviconProvider) {
         runCatching { FaviconLoader.getFaviconUrl(story.url, settings.faviconProvider) }.getOrNull()
@@ -2444,7 +2446,7 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
     val context = LocalContext.current
     val info = story.arxivInfo ?: return
     val typography = rememberContentTypography(preferredFont = settings.font)
-    val abstractTextSize = if (SettingsUtils.sanitizeFont(settings.font) == "googlesansflexrounded") {
+    val abstractTextSize = if (TextPreferences.sanitizeFont(settings.font) == "googlesansflexrounded") {
         14.5f
     } else {
         15f

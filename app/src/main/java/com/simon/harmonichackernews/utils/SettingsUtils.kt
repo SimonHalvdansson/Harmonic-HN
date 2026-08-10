@@ -10,8 +10,11 @@ import android.os.BatteryManager
 import android.text.TextUtils
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.FaviconPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryCachePreferences
+import com.simon.harmonichackernews.settings.WebViewPreferences
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils.sanitizeMode
@@ -279,7 +282,7 @@ object SettingsUtils {
 
     fun getPreferredPaletteTintMode(ctx: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return sanitizePaletteTintMode(
+        return PaletteTintPreferences.sanitizeMode(
             prefs.getString(
                 PREF_PALETTE_TINT_MODE,
                 PALETTE_TINT_DEFAULT
@@ -288,7 +291,7 @@ object SettingsUtils {
     }
 
     fun getPreferredPaletteTintConfigKey(ctx: Context): String {
-        return buildPaletteTintConfigKey(
+        return PaletteTintPreferences.configKey(
             getPreferredPaletteTintMode(ctx),
             getPreferredPaletteTintStrength(ctx),
             getPreferredPaletteTintColorfulness(ctx),
@@ -298,12 +301,12 @@ object SettingsUtils {
 
     fun setPreferredPaletteTintMode(ctx: Context, mode: String?) {
         val previousConfig = getPreferredPaletteTintConfigKey(ctx)
-        val sanitizedMode = sanitizePaletteTintMode(mode)
+        val sanitizedMode = PaletteTintPreferences.sanitizeMode(mode)
         PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
             .putString(PREF_PALETTE_TINT_MODE, sanitizedMode)
             .apply()
-        val updatedConfig = buildPaletteTintConfigKey(
+        val updatedConfig = PaletteTintPreferences.configKey(
             sanitizedMode,
             getPreferredPaletteTintStrength(ctx),
             getPreferredPaletteTintColorfulness(ctx),
@@ -322,13 +325,16 @@ object SettingsUtils {
         tone: Int
     ) {
         val previousConfig = getPreferredPaletteTintConfigKey(ctx)
-        val updatedConfig = buildPaletteTintConfigKey(mode, strength, colorfulness, tone)
+        val updatedConfig = PaletteTintPreferences.configKey(mode, strength, colorfulness, tone)
         PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
-            .putString(PREF_PALETTE_TINT_MODE, sanitizePaletteTintMode(mode))
-            .putInt(PREF_PALETTE_TINT_STRENGTH, clampPaletteTintStrength(strength))
-            .putInt(PREF_PALETTE_TINT_COLORFULNESS, clampPaletteTintColorfulness(colorfulness))
-            .putInt(PREF_PALETTE_TINT_TONE, clampPaletteTintTone(tone))
+            .putString(PREF_PALETTE_TINT_MODE, PaletteTintPreferences.sanitizeMode(mode))
+            .putInt(PREF_PALETTE_TINT_STRENGTH, PaletteTintPreferences.clampStrength(strength))
+            .putInt(
+                PREF_PALETTE_TINT_COLORFULNESS,
+                PaletteTintPreferences.clampColorfulness(colorfulness)
+            )
+            .putInt(PREF_PALETTE_TINT_TONE, PaletteTintPreferences.clampTone(tone))
             .apply()
         if (!TextUtils.equals(previousConfig, updatedConfig)) {
             clearTintColorCaches(ctx)
@@ -344,7 +350,7 @@ object SettingsUtils {
             .remove(PREF_PALETTE_TINT_COLORFULNESS)
             .remove(PREF_PALETTE_TINT_TONE)
             .apply()
-        val defaultConfig = buildPaletteTintConfigKey(
+        val defaultConfig = PaletteTintPreferences.configKey(
             PALETTE_TINT_DEFAULT,
             DEFAULT_PALETTE_TINT_STRENGTH,
             DEFAULT_PALETTE_TINT_COLORFULNESS,
@@ -357,7 +363,7 @@ object SettingsUtils {
 
     fun getPreferredPaletteTintStrength(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return clampPaletteTintStrength(
+        return PaletteTintPreferences.clampStrength(
             prefs.getInt(
                 PREF_PALETTE_TINT_STRENGTH,
                 DEFAULT_PALETTE_TINT_STRENGTH
@@ -367,7 +373,7 @@ object SettingsUtils {
 
     fun getPreferredPaletteTintColorfulness(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return clampPaletteTintColorfulness(
+        return PaletteTintPreferences.clampColorfulness(
             prefs.getInt(
                 PREF_PALETTE_TINT_COLORFULNESS,
                 DEFAULT_PALETTE_TINT_COLORFULNESS
@@ -377,53 +383,12 @@ object SettingsUtils {
 
     fun getPreferredPaletteTintTone(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return clampPaletteTintTone(
+        return PaletteTintPreferences.clampTone(
             prefs.getInt(
                 PREF_PALETTE_TINT_TONE,
                 DEFAULT_PALETTE_TINT_TONE
             )
         )
-    }
-
-    fun sanitizePaletteTintMode(mode: String?): String {
-        return PaletteTintPreferences.sanitizeMode(mode)
-    }
-
-    fun buildPaletteTintConfigKey(
-        mode: String?,
-        strength: Int,
-        colorfulness: Int,
-        tone: Int
-    ): String {
-        return PaletteTintPreferences.configKey(mode, strength, colorfulness, tone)
-    }
-
-    fun getPaletteTintConfigKey(modeOrConfigKey: String?): String {
-        return PaletteTintPreferences.normalizeConfigKey(modeOrConfigKey)
-    }
-
-    fun getPaletteTintStrength(modeOrConfigKey: String?): Int {
-        return PaletteTintPreferences.strength(modeOrConfigKey)
-    }
-
-    fun getPaletteTintColorfulness(modeOrConfigKey: String?): Int {
-        return PaletteTintPreferences.colorfulness(modeOrConfigKey)
-    }
-
-    fun getPaletteTintTone(modeOrConfigKey: String?): Int {
-        return PaletteTintPreferences.tone(modeOrConfigKey)
-    }
-
-    fun getPaletteTintStrengthMultiplier(modeOrConfigKey: String?): Float {
-        return PaletteTintPreferences.strengthMultiplier(modeOrConfigKey)
-    }
-
-    fun getPaletteTintColorfulnessMultiplier(modeOrConfigKey: String?): Float {
-        return PaletteTintPreferences.colorfulnessMultiplier(modeOrConfigKey)
-    }
-
-    fun getPaletteTintToneOffset(modeOrConfigKey: String?): Float {
-        return PaletteTintPreferences.toneOffset(modeOrConfigKey)
     }
 
     fun isDefaultPaletteTintTuning(ctx: Context): Boolean {
@@ -433,27 +398,11 @@ object SettingsUtils {
     }
 
     fun getPreferredPaletteTintSummary(ctx: Context): String {
-        val label = getPaletteTintModeLabel(getPreferredPaletteTintMode(ctx))
+        val label = PaletteTintPreferences.modeLabel(getPreferredPaletteTintMode(ctx))
         if (isDefaultPaletteTintTuning(ctx)) {
             return label
         }
         return label + ", adjusted"
-    }
-
-    fun getPaletteTintModeLabel(mode: String?): String {
-        return PaletteTintPreferences.modeLabel(mode)
-    }
-
-    fun clampPaletteTintStrength(strength: Int): Int {
-        return PaletteTintPreferences.clampStrength(strength)
-    }
-
-    fun clampPaletteTintColorfulness(colorfulness: Int): Int {
-        return PaletteTintPreferences.clampColorfulness(colorfulness)
-    }
-
-    fun clampPaletteTintTone(tone: Int): Int {
-        return PaletteTintPreferences.clampTone(tone)
     }
 
     fun shouldShowNavigationButtons(ctx: Context): Boolean {
@@ -479,13 +428,13 @@ object SettingsUtils {
         }
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return SettingsUtils.sanitizeFont(prefs.getString(PREF_FONT, "googlesansflexrounded")!!)
+        return TextPreferences.sanitizeFont(prefs.getString(PREF_FONT, "googlesansflexrounded"))
     }
 
     fun setPreferredFont(ctx: Context, font: String) {
         PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
-            .putString(PREF_FONT, sanitizeFont(font))
+            .putString(PREF_FONT, TextPreferences.sanitizeFont(font))
             .apply()
     }
 
@@ -494,7 +443,7 @@ object SettingsUtils {
     }
 
     fun getFontLabel(ctx: Context, font: String): String? {
-        val sanitizedFont = sanitizeFont(font)
+        val sanitizedFont = TextPreferences.sanitizeFont(font)
         val entries = ctx.getResources().getStringArray(R.array.font_entries)
         val values = ctx.getResources().getStringArray(R.array.font_values)
         for (i in 0..<min(entries.size, values.size)) {
@@ -507,7 +456,7 @@ object SettingsUtils {
 
     fun getPreferredReaderModeFont(ctx: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return SettingsUtils.sanitizeReaderModeFont(
+        return TextPreferences.sanitizeFont(
             prefs.getString(
                 PREF_WEBVIEW_READER_MODE_FONT,
                 "googlesansflexrounded"
@@ -518,7 +467,7 @@ object SettingsUtils {
     fun setPreferredReaderModeFont(ctx: Context, font: String) {
         PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
-            .putString(PREF_WEBVIEW_READER_MODE_FONT, sanitizeReaderModeFont(font))
+            .putString(PREF_WEBVIEW_READER_MODE_FONT, TextPreferences.sanitizeFont(font))
             .apply()
     }
 
@@ -527,27 +476,7 @@ object SettingsUtils {
     }
 
     fun getReaderModeFontLabel(ctx: Context, font: String): String? {
-        return getFontLabel(ctx, sanitizeReaderModeFont(font))
-    }
-
-    fun sanitizeFont(font: String?): String {
-        return TextPreferences.sanitizeFont(font)
-    }
-
-    fun sanitizeReaderModeFont(font: String): String {
-        if ("georgia" == font
-            || "productsans" == font
-            || "googlesansflexrounded" == font
-            || "googlesans" == font
-            || "verdana" == font
-            || "robotoslab" == font
-            || "googlesanscode" == font
-            || "jetbrainsmono" == font
-            || "devicedefault" == font
-        ) {
-            return font
-        }
-        return "googlesansflexrounded"
+        return getFontLabel(ctx, TextPreferences.sanitizeFont(font))
     }
 
     fun shouldUseExternalBrowser(ctx: Context): Boolean {
@@ -594,7 +523,7 @@ object SettingsUtils {
 
     fun shouldPreloadWebView(ctx: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return SettingsUtils.sanitizePreloadWebViewMode(
+        return WebViewPreferences.sanitizePreloadMode(
             prefs.getString(
                 PREF_PRELOAD_WEBVIEW,
                 PRELOAD_WEBVIEW_NEVER
@@ -604,7 +533,7 @@ object SettingsUtils {
 
     fun getPreloadWebViewMinimumBattery(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return clampPercent(
+        return WebViewPreferences.clampBatteryPercent(
             prefs.getInt(
                 PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY,
                 DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY
@@ -614,18 +543,20 @@ object SettingsUtils {
 
     fun getStoriesToCache(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return sanitizeStoriesToCache(prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE))
+        return StoryCachePreferences.sanitizeCount(
+            prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE)
+        )
     }
 
     fun setStoriesToCache(ctx: Context, value: Int) {
         PreferenceManager.getDefaultSharedPreferences(ctx)
             .edit()
-            .putInt(PREF_STORIES_TO_CACHE, sanitizeStoriesToCache(value))
+            .putInt(PREF_STORIES_TO_CACHE, StoryCachePreferences.sanitizeCount(value))
             .apply()
     }
 
     fun hasEnoughBatteryForWebViewPreload(ctx: Context, minimumBattery: Int): Boolean {
-        val clampedMinimumBattery = clampPercent(minimumBattery)
+        val clampedMinimumBattery = WebViewPreferences.clampBatteryPercent(minimumBattery)
         if (clampedMinimumBattery <= DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY) {
             return true
         }
@@ -643,22 +574,6 @@ object SettingsUtils {
 
         val batteryPercent = Math.round(level * 100f / scale)
         return batteryPercent >= clampedMinimumBattery
-    }
-
-    fun sanitizePreloadWebViewMode(mode: String): String {
-        if (PRELOAD_WEBVIEW_ALWAYS == mode || PRELOAD_WEBVIEW_ONLY_WIFI == mode) {
-            return mode
-        }
-        return PRELOAD_WEBVIEW_NEVER
-    }
-
-    private fun clampPercent(value: Int): Int {
-        return max(0, min(100, value))
-    }
-
-    fun sanitizeStoriesToCache(value: Int): Int {
-        val clampedValue = max(MIN_STORIES_TO_CACHE, min(MAX_STORIES_TO_CACHE, value))
-        return Math.round(clampedValue / STORIES_TO_CACHE_STEP.toFloat()) * STORIES_TO_CACHE_STEP
     }
 
     fun shouldMatchWebViewTheme(ctx: Context): Boolean {
@@ -679,16 +594,12 @@ object SettingsUtils {
 
     fun getReaderModeFontSize(ctx: Context): Int {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return clampReaderModeFontSize(
+        return TextPreferences.clampReaderModeFontSize(
             prefs.getInt(
                 PREF_WEBVIEW_READER_MODE_FONT_SIZE,
                 DEFAULT_READER_MODE_FONT_SIZE
             )
         )
-    }
-
-    fun clampReaderModeFontSize(textSize: Int): Int {
-        return max(MIN_READER_MODE_FONT_SIZE, min(MAX_READER_MODE_FONT_SIZE, textSize))
     }
 
     fun shouldCloseWebViewOnBack(ctx: Context): Boolean {
@@ -734,43 +645,23 @@ object SettingsUtils {
     fun getPreferredStoryTextSize(ctx: Context): Float {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         try {
-            return clampStoryTextSize(
+            return TextPreferences.clampStoryTextSize(
                 prefs.getString(
                     SettingsUtils.PREF_STORY_TEXT_SIZE,
                     SettingsUtils.DEFAULT_STORY_TEXT_SIZE.toString()
                 )!!.toFloat()
             )
         } catch (e: ClassCastException) {
-            return clampStoryTextSize(prefs.getFloat(PREF_STORY_TEXT_SIZE, DEFAULT_STORY_TEXT_SIZE))
+            return TextPreferences.clampStoryTextSize(
+                prefs.getFloat(PREF_STORY_TEXT_SIZE, DEFAULT_STORY_TEXT_SIZE)
+            )
         } catch (e: NumberFormatException) {
             return DEFAULT_STORY_TEXT_SIZE
         }
     }
 
-    fun clampStoryTextSize(textSize: Float): Float {
-        return TextPreferences.clampStoryTextSize(textSize)
-    }
-
-    fun getStoryTextSizeOffset(textSize: Float): Int {
-        return max(
-            MIN_STORY_TEXT_SIZE_OFFSET,
-            min(
-                MAX_STORY_TEXT_SIZE_OFFSET,
-                Math.round(
-                    (clampStoryTextSize(textSize) - DEFAULT_STORY_TEXT_SIZE)
-                            / STORY_TEXT_SIZE_OFFSET_STEP
-                )
-            )
-        )
-    }
-
-    fun getStoryTextSizeForOffset(offset: Int): Float {
-        val clampedOffset = max(MIN_STORY_TEXT_SIZE_OFFSET, min(MAX_STORY_TEXT_SIZE_OFFSET, offset))
-        return clampStoryTextSize(DEFAULT_STORY_TEXT_SIZE + clampedOffset * STORY_TEXT_SIZE_OFFSET_STEP)
-    }
-
     fun getStoryMetaTextSize(storyTextSize: Float): Float {
-        val scale = clampStoryTextSize(storyTextSize) / DEFAULT_STORY_TEXT_SIZE
+        val scale = TextPreferences.clampStoryTextSize(storyTextSize) / DEFAULT_STORY_TEXT_SIZE
         return DEFAULT_STORY_META_TEXT_SIZE * scale
     }
 
@@ -872,15 +763,11 @@ object SettingsUtils {
 
     fun getArchiveRedirectDomains(ctx: Context): ArrayList<String> {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return parseArchiveRedirectDomains(prefs.getString(PREF_ARCHIVE_REDIRECT_DOMAINS, ""))
-    }
-
-    fun parseArchiveRedirectDomains(value: String?): ArrayList<String> {
-        return ArrayList(ArchiveRedirectPolicy.parseDomains(value))
-    }
-
-    fun normalizeArchiveRedirectDomain(value: String?): String {
-        return ArchiveRedirectPolicy.normalizeDomain(value)
+        return ArrayList(
+            ArchiveRedirectPolicy.parseDomains(
+                prefs.getString(PREF_ARCHIVE_REDIRECT_DOMAINS, "")
+            )
+        )
     }
 
     fun getArchiveRedirectUrl(ctx: Context, url: String?): String? {
@@ -924,7 +811,7 @@ object SettingsUtils {
     fun getPreferredCommentTextSize(ctx: Context): Float {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         try {
-            return clampCommentTextSize(
+            return TextPreferences.clampCommentTextSize(
                 prefs.getString(
                     SettingsUtils.PREF_COMMENT_TEXT_SIZE,
                     SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE.toString()
@@ -932,14 +819,14 @@ object SettingsUtils {
             )
         } catch (e: ClassCastException) {
             try {
-                return clampCommentTextSize(
+                return TextPreferences.clampCommentTextSize(
                     prefs.getFloat(
                         PREF_COMMENT_TEXT_SIZE,
                         DEFAULT_COMMENT_TEXT_SIZE
                     )
                 )
             } catch (ignored: ClassCastException) {
-                return clampCommentTextSize(
+                return TextPreferences.clampCommentTextSize(
                     prefs.getInt(
                         PREF_COMMENT_TEXT_SIZE, Math.round(
                             DEFAULT_COMMENT_TEXT_SIZE
@@ -952,35 +839,12 @@ object SettingsUtils {
         }
     }
 
-    fun clampCommentTextSize(textSize: Float): Float {
-        return TextPreferences.clampCommentTextSize(textSize)
-    }
-
-    fun getCommentTextSizeOffset(textSize: Float): Int {
-        return max(
-            MIN_COMMENT_TEXT_SIZE_OFFSET,
-            min(
-                MAX_COMMENT_TEXT_SIZE_OFFSET,
-                Math.round(
-                    (clampCommentTextSize(textSize) - DEFAULT_COMMENT_TEXT_SIZE)
-                            / COMMENT_TEXT_SIZE_OFFSET_STEP
-                )
-            )
-        )
-    }
-
-    fun getCommentTextSizeForOffset(offset: Int): Float {
-        val clampedOffset =
-            max(MIN_COMMENT_TEXT_SIZE_OFFSET, min(MAX_COMMENT_TEXT_SIZE_OFFSET, offset))
-        return clampCommentTextSize(DEFAULT_COMMENT_TEXT_SIZE + clampedOffset * COMMENT_TEXT_SIZE_OFFSET_STEP)
-    }
-
     fun getPreferredStoryType(ctx: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         val startingPage: String = prefs.getString("pref_default_story_type", "Top Stories")!!
         if ("Bookmarks" == startingPage
             || "History" == startingPage
-            || (isAdditionalFrontpageLabel(startingPage) && !isAdditionalFrontpageEnabled(
+            || (AdditionalFrontpagePreferences.isLabel(startingPage) && !isAdditionalFrontpageEnabled(
                 ctx,
                 startingPage
             ))
@@ -990,70 +854,15 @@ object SettingsUtils {
         return startingPage
     }
 
-    val additionalFrontpageLabels: Array<String>
-        get() = arrayOf<String>(
-            FRONT_PAGE_CLASSIC,
-            FRONT_PAGE_BEST_COMMENTS,
-            FRONT_PAGE_HIGHLIGHTS,
-            FRONT_PAGE_ACTIVE,
-            FRONT_PAGE_FRONT
-        )
-
-    fun isAdditionalFrontpageLabel(label: String?): Boolean {
-        for (frontpage in additionalFrontpageLabels) {
-            if (frontpage == label) {
-                return true
-            }
-        }
-        return false
-    }
-
     fun getEnabledAdditionalFrontpages(ctx: Context): MutableSet<String> {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         val enabled: MutableSet<String> =
             prefs.getStringSet(PREF_ADDITIONAL_FRONTPAGES, HashSet<String>())!!
-        return sanitizeAdditionalFrontpages(enabled)
+        return HashSet(AdditionalFrontpagePreferences.sanitize(enabled))
     }
 
     fun isAdditionalFrontpageEnabled(ctx: Context, label: String?): Boolean {
         return getEnabledAdditionalFrontpages(ctx).contains(label)
-    }
-
-    fun sanitizeAdditionalFrontpages(enabled: Set<String>?): MutableSet<String> {
-        val sanitized = HashSet<String>()
-        if (enabled == null) {
-            return sanitized
-        }
-
-        for (frontpage in additionalFrontpageLabels) {
-            if (enabled.contains(frontpage)) {
-                sanitized.add(frontpage)
-            }
-        }
-        return sanitized
-    }
-
-    fun summarizeAdditionalFrontpages(ctx: Context): String {
-        return summarizeAdditionalFrontpages(getEnabledAdditionalFrontpages(ctx))
-    }
-
-    fun summarizeAdditionalFrontpages(enabled: MutableSet<String>?): String {
-        val sanitized = sanitizeAdditionalFrontpages(enabled)
-        if (sanitized.isEmpty()) {
-            return "Off"
-        }
-
-        val summary = StringBuilder()
-        for (frontpage in additionalFrontpageLabels) {
-            if (!sanitized.contains(frontpage)) {
-                continue
-            }
-            if (summary.length > 0) {
-                summary.append(", ")
-            }
-            summary.append(frontpage)
-        }
-        return summary.toString()
     }
 
     fun getPreferredCommentSorting(ctx: Context): String {
@@ -1063,7 +872,7 @@ object SettingsUtils {
 
     fun getPreferredFaviconProvider(ctx: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return SettingsUtils.sanitizeFaviconProvider(
+        return FaviconPreferences.sanitizeProvider(
             prefs.getString(
                 PREF_FAVICON_PROVIDER,
                 FAVICON_PROVIDER_GOOGLE
@@ -1071,12 +880,8 @@ object SettingsUtils {
         )
     }
 
-    fun sanitizeFaviconProvider(provider: String?): String {
-        return FaviconPreferences.sanitizeProvider(provider)
-    }
-
     fun getFaviconProviderIconResource(provider: String): Int {
-        when (sanitizeFaviconProvider(provider)) {
+        when (FaviconPreferences.sanitizeProvider(provider)) {
             FAVICON_PROVIDER_DUCKDUCKGO -> return R.drawable.ic_favicon_provider_duckduckgo
             FAVICON_PROVIDER_TWENTY -> return R.drawable.ic_favicon_provider_twenty
             FAVICON_PROVIDER_GOOGLE -> return R.drawable.ic_favicon_provider_google

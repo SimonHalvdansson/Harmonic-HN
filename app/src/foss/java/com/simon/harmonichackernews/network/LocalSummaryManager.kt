@@ -1,10 +1,6 @@
 package com.simon.harmonichackernews.network
 
 import android.content.Context
-import com.simon.harmonichackernews.network.SummaryManager.LocalSummaryAvailabilityCallback
-import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
-import com.simon.harmonichackernews.network.SummaryManager.postFailure
-import com.simon.harmonichackernews.network.SummaryManager.postLocalAvailability
 
 /** Fail-closed local summarization boundary for the FOSS distribution.  */
 internal object LocalSummaryManager {
@@ -16,23 +12,23 @@ internal object LocalSummaryManager {
         context: Context?,
         callback: LocalSummaryAvailabilityCallback?,
     ) {
-        postLocalAvailability(callback, false, false, UNAVAILABLE_MESSAGE)
+        LocalSummaryCallbacks.availability(callback, false, false, UNAVAILABLE_MESSAGE)
     }
 
     fun summarizeArticle(
         context: Context?,
         articleUrl: String?,
-        callback: SummaryCallback?,
+        callback: LocalSummaryCallback?,
     ) {
-        postFailure(callback, UNAVAILABLE_MESSAGE)
+        LocalSummaryCallbacks.failure(callback, UNAVAILABLE_MESSAGE)
     }
 
     fun summarizeText(
         context: Context?,
         text: String?,
-        callback: SummaryCallback?,
+        callback: LocalSummaryCallback?,
     ) {
-        postFailure(callback, UNAVAILABLE_MESSAGE)
+        LocalSummaryCallbacks.failure(callback, UNAVAILABLE_MESSAGE)
     }
 
     fun isLocalSummaryReady(context: Context?): Boolean = false

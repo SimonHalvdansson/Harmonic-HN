@@ -114,3 +114,29 @@ object AgePolicy {
     fun isOlderThan(epochSeconds: Int, nowEpochMillis: Long, ageMillis: Long): Boolean =
         nowEpochMillis - epochSeconds.toLong() * 1_000L > ageMillis
 }
+
+object DomainNamePolicy {
+    fun fromUrl(url: String?): String? {
+        val host = url?.removeSuffix("#")?.toNetworkUrlOrNull()?.host.orEmpty()
+        return host.takeIf(String::isNotEmpty)?.removePrefix("www.")
+    }
+
+    fun formatForDisplay(domain: String?, includeTopLevelDomain: Boolean): String? {
+        if (includeTopLevelDomain || domain.isNullOrEmpty()) return domain
+        val lastDotIndex = domain.lastIndexOf('.')
+        return if (lastDotIndex <= 0) domain else domain.substring(0, lastDotIndex)
+    }
+}
+
+object TimeWindowPolicy {
+    private const val MINUTES_PER_DAY = 24L * 60L
+
+    /** Returns whether [currentTime] is in the half-open interval, including overnight ranges. */
+    fun containsMinutes(initialTime: Long, finalTime: Long, currentTime: Long): Boolean {
+        var normalizedFinalTime = finalTime
+        var normalizedCurrentTime = currentTime
+        if (normalizedFinalTime < initialTime) normalizedFinalTime += MINUTES_PER_DAY
+        if (normalizedCurrentTime < initialTime) normalizedCurrentTime += MINUTES_PER_DAY
+        return normalizedCurrentTime in initialTime..<normalizedFinalTime
+    }
+}

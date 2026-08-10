@@ -1,16 +1,20 @@
 package com.simon.harmonichackernews.ui.editor
 
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.network.UserActions
-import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsUserService
+import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.platform.AndroidCredentialStore
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
+import kotlinx.coroutines.launch
 
 /** Owns submission side effects while the editor itself is a MainActivity Compose destination.  */
 class ComposeEditorCoordinator(
@@ -26,6 +30,10 @@ class ComposeEditorCoordinator(
     val user: String? = destination.userName
     private var submitting = false
     private var controller: ComposeEditorController? = null
+    private val hackerNewsUserService = HackerNewsUserService(
+        NetworkComponent.hackerNewsSession,
+        AndroidCredentialStore(activity),
+    )
 
     fun attachController(controller: ComposeEditorController) {
         this.controller = controller
@@ -78,120 +86,118 @@ class ComposeEditorCoordinator(
     }
 
     private fun submitPost(title: String, text: String, url: String) {
-        UserActions.submit(
-            title,
-            text,
-            url,
-            activity,
-            object : ActionCallback {
-                override fun onSuccess() {
-                    Toast.makeText(
-                        activity,
-                        "Post submitted, it might take a minute to show up",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    onFinished()
-                }
-
-                override fun onFailure(summary: String?, response: String?) {
-                    setSubmitting(false)
-                    showSubmissionFailure(summary, response, null)
-                }
-
-                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
-                    val callback: ActionCallback = this
-                    activity.showCaptchaDialog(
-                        challenge,
-                        object : CaptchaResultCallback {
-                            override fun onCaptchaResponse(
-                                captchaChallenge: HackerNewsCaptchaChallenge,
-                                captchaResponse: String,
-                            ) {
-                                if (captchaChallenge.isLoginChallenge) {
-                                    UserActions.submitAfterLoginCaptcha(
-                                        title,
-                                        text,
-                                        url,
-                                        activity,
-                                        captchaChallenge,
-                                        captchaResponse,
-                                        callback,
-                                    )
-                                } else {
-                                    UserActions.continueCaptchaAction(
-                                        activity,
-                                        captchaChallenge,
-                                        captchaResponse,
-                                        callback,
-                                    )
-                                }
-                            }
-
-                            override fun onCaptchaCancelled() {
-                                setSubmitting(false)
-                                Toast.makeText(
-                                    activity,
-                                    "Post submission requires completing the HN captcha",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        },
-                    )
-                }
-            },
-        )
+        activity.lifecycleScope.launch {
+            handlePostResult(hackerNewsUserService.submit(title, text, url), title, text, url)
+        }
     }
 
     private fun submitComment(commentText: String) {
-        UserActions.comment(
-            id.toString(),
-            commentText,
-            activity,
-            object : ActionCallback {
-                override fun onSuccess() {
-                    Toast.makeText(
-                        activity,
-                        "Comment posted, it might take a minute to show up",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    onFinished()
-                }
+        activity.lifecycleScope.launch {
+            handleCommentResult(hackerNewsUserService.comment(id.toString(), commentText), commentText)
+        }
+    }
 
-                override fun onFailure(summary: String?, response: String?) {
-                    setSubmitting(false)
-                    showSubmissionFailure(summary, response, commentText)
-                }
-
-                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
-                    val callback: ActionCallback = this
-                    activity.showCaptchaDialog(
-                        challenge,
-                        object : CaptchaResultCallback {
-                            override fun onCaptchaResponse(
-                                captchaChallenge: HackerNewsCaptchaChallenge,
-                                captchaResponse: String,
-                            ) {
-                                UserActions.continueCaptchaAction(
-                                    activity,
+    private fun handlePostResult(
+        result: HackerNewsActionResult,
+        title: String,
+        text: String,
+        url: String,
+    ) {
+        when (result) {
+            is HackerNewsActionResult.Success -> {
+                Toast.makeText(
+                    activity,
+                    "Post submitted, it might take a minute to show up",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                onFinished()
+            }
+            is HackerNewsActionResult.Failure -> {
+                setSubmitting(false)
+                showSubmissionFailure(result.summary, result.detail, null)
+            }
+            is HackerNewsActionResult.Captcha -> activity.showCaptchaDialog(
+                result.challenge,
+                object : CaptchaResultCallback {
+                    override fun onCaptchaResponse(
+                        captchaChallenge: HackerNewsCaptchaChallenge,
+                        captchaResponse: String,
+                    ) {
+                        activity.lifecycleScope.launch {
+                            val continued = if (captchaChallenge.isLoginChallenge) {
+                                hackerNewsUserService.submitAfterLoginCaptcha(
                                     captchaChallenge,
                                     captchaResponse,
-                                    callback,
+                                    title,
+                                    text,
+                                    url,
+                                )
+                            } else {
+                                hackerNewsUserService.continueCaptchaAction(
+                                    captchaChallenge,
+                                    captchaResponse,
                                 )
                             }
+                            handlePostResult(continued, title, text, url)
+                        }
+                    }
 
-                            override fun onCaptchaCancelled() {
-                                setSubmitting(false)
-                                Toast.makeText(
-                                    activity,
-                                    "Comment posting requires completing the HN captcha",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        },
-                    )
-                }
-            },
-        )
+                    override fun onCaptchaCancelled() {
+                        setSubmitting(false)
+                        Toast.makeText(
+                            activity,
+                            "Post submission requires completing the HN captcha",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun handleCommentResult(result: HackerNewsActionResult, commentText: String) {
+        when (result) {
+            is HackerNewsActionResult.Success -> {
+                Toast.makeText(
+                    activity,
+                    "Comment posted, it might take a minute to show up",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                onFinished()
+            }
+            is HackerNewsActionResult.Failure -> {
+                setSubmitting(false)
+                showSubmissionFailure(result.summary, result.detail, commentText)
+            }
+            is HackerNewsActionResult.Captcha -> activity.showCaptchaDialog(
+                result.challenge,
+                object : CaptchaResultCallback {
+                    override fun onCaptchaResponse(
+                        captchaChallenge: HackerNewsCaptchaChallenge,
+                        captchaResponse: String,
+                    ) {
+                        activity.lifecycleScope.launch {
+                            handleCommentResult(
+                                hackerNewsUserService.continueCaptchaAction(
+                                    captchaChallenge,
+                                    captchaResponse,
+                                ),
+                                commentText,
+                            )
+                        }
+                    }
+
+                    override fun onCaptchaCancelled() {
+                        setSubmitting(false)
+                        Toast.makeText(
+                            activity,
+                            "Comment posting requires completing the HN captcha",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+            )
+        }
     }
 
     private fun setSubmitting(value: Boolean) {

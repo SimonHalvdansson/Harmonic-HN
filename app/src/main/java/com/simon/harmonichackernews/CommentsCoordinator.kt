@@ -31,7 +31,6 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.CommentsWebViewController.PageTextCallback
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.data.PollOption
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
@@ -40,18 +39,23 @@ import com.simon.harmonichackernews.network.ApiDecodingException
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.CommentThreadSource
+import com.simon.harmonichackernews.network.CloudSummaryEvent
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsUserService
+import com.simon.harmonichackernews.network.LocalSummaryCallback
+import com.simon.harmonichackernews.network.LocalSummaryManager
+import com.simon.harmonichackernews.network.failureDetails
+import com.simon.harmonichackernews.network.showLoginPromptIfCredentialsMissing
+import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.SummaryManager
-import com.simon.harmonichackernews.network.SummaryManager.SummaryCallback
-import com.simon.harmonichackernews.network.UserActions
-import com.simon.harmonichackernews.network.UserActions.ActionCallback
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.PlatformServices
 import com.simon.harmonichackernews.presentation.CommentsAction
+import com.simon.harmonichackernews.presentation.CommentsEffect
 import com.simon.harmonichackernews.presentation.CommentsPresenter
 import com.simon.harmonichackernews.presentation.CommentThreadStore
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
@@ -66,7 +70,6 @@ import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.ViewUtils
-import java.io.IOException
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
@@ -75,6 +78,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class CommentsCoordinator(
@@ -87,6 +91,10 @@ class CommentsCoordinator(
 ) {
     private val userSettings = AndroidUserSettings(activity)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val hackerNewsUserService = HackerNewsUserService(
+        NetworkComponent.hackerNewsSession,
+        platformServices.credentials,
+    )
     private val screenStateViewModel = ViewModelProvider(activity)[ScreenStateViewModel::class.java]
     private val sessionState = screenStateViewModel.commentsStateFor(sessionKey, destination.storyId)
     private val restoringSession = sessionState.initialized
@@ -95,7 +103,14 @@ class CommentsCoordinator(
     private var callback: CommentsPaneCallback?
     private var started = false
     private var destroyed = false
-    private val commentsPresenter = CommentsPresenter(coroutineScope, sessionState)
+    private val commentsPresenter = CommentsPresenter(
+        coroutineScope,
+        sessionState,
+        CommentThreadRepository(
+            NetworkComponent.algoliaRepository,
+            NetworkComponent.hackerNewsRepository,
+        ),
+    )
     private val commentThread: CommentThreadStore = commentsPresenter.thread
     private var comments by sessionState::comments
     private var allComments by sessionState::allComments
@@ -192,12 +207,6 @@ class CommentsCoordinator(
         }
     private var composeController: CommentsComposeController? = null
 
-    private val commentThreadRepository = CommentThreadRepository(
-        NetworkComponent.algoliaRepository,
-        NetworkComponent.hackerNewsRepository,
-    )
-    private var commentThreadLoadJob: Job? = null
-
     private class PendingCommentsParse(
         val loadGeneration: Int,
         val storyId: Int,
@@ -208,6 +217,9 @@ class CommentsCoordinator(
     }
 
     init {
+        coroutineScope.launch {
+            commentsPresenter.effects.collect(::handleCommentsEffect)
+        }
         callback = activity
         initializeStory()
         webViewHost = CommentsWebViewHost(activity)
@@ -854,7 +866,12 @@ class CommentsCoordinator(
                 }
 
                 override fun onPollOption(optionId: Int) {
-                    UserActions.votePollOption(requireContext(), optionId)
+                    performVote(
+                        requireContext(),
+                        optionId,
+                        "up",
+                        successMessage = "Poll vote successful",
+                    )
                 }
             })
         requireActivity().attachCommentsComposeController(composeController!!)
@@ -1089,32 +1106,24 @@ class CommentsCoordinator(
             val oldFavorited = Utils.isFavorited(ctx, comment.id)
             val newFavorited = !oldFavorited
             composeController!!.setCommentActionFavoriteLoading(comment.id, true)
-            UserActions.setFavorite(
-                ctx, comment.id, newFavorited,
-                object : ActionCallback {
-                    override fun onSuccess() {
-                        if (composeController != null) {
-                            composeController!!.setCommentActionFavoriteLoading(
-                                comment.id, false
-                            )
-                        }
-                    }
-
-                    override fun onFailure(summary: String?, response: String?) {
-                        Utils.setFavorite(ctx, comment.id, oldFavorited)
-                        if (composeController != null) {
-                            composeController!!.setCommentActionFavoriteLoading(
-                                comment.id, false
-                            )
-                        }
-                        requireActivity().showFailureDetailDialog(summary, response)
-                        Toast.makeText(
-                            ctx,
-                            "Couldn't update favorite",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                })
+            performFavorite(
+                ctx = ctx,
+                id = comment.id,
+                favorite = newFavorited,
+                onSuccess = {
+                    composeController?.setCommentActionFavoriteLoading(comment.id, false)
+                },
+                onFailure = { summary, response ->
+                    Utils.setFavorite(ctx, comment.id, oldFavorited)
+                    composeController?.setCommentActionFavoriteLoading(comment.id, false)
+                    requireActivity().showFailureDetailDialog(summary, response)
+                    Toast.makeText(
+                        ctx,
+                        "Couldn't update favorite",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                },
+            )
             return
         }
 
@@ -1128,8 +1137,7 @@ class CommentsCoordinator(
         val wasDownvoted = !wasUpvoted
                 && composeController!!.isCommentActionDownvoted(comment.id)
         composeController!!.setCommentActionVoteLoading(comment.id, action)
-        val callback: ActionCallback = object : ActionCallback {
-            override fun onSuccess() {
+        val onSuccess = {
                 val upvoted = action == CommentsComposeController.COMMENT_ACTION_UPVOTE
                 val downvoted = action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE
                 Utils.setUpvoted(ctx, comment.id, true, upvoted)
@@ -1137,21 +1145,18 @@ class CommentsCoordinator(
                     composeController!!.finishCommentActionVote(comment.id, downvoted)
                 }
             }
-
-            override fun onFailure(summary: String?, response: String?) {
+        val onFailure = { _: String?, _: String? ->
                 Utils.setUpvoted(ctx, comment.id, true, wasUpvoted)
                 if (composeController != null) {
                     composeController!!.finishCommentActionVote(comment.id, wasDownvoted)
                 }
             }
+        val direction = when (action) {
+            CommentsComposeController.COMMENT_ACTION_UPVOTE -> "up"
+            CommentsComposeController.COMMENT_ACTION_DOWNVOTE -> "down"
+            else -> "un"
         }
-        if (action == CommentsComposeController.COMMENT_ACTION_UPVOTE) {
-            UserActions.upvote(ctx, comment.id, callback)
-        } else if (action == CommentsComposeController.COMMENT_ACTION_DOWNVOTE) {
-            UserActions.downvote(ctx, comment.id, callback)
-        } else {
-            UserActions.unvote(ctx, comment.id, callback)
-        }
+        performVote(ctx, comment.id, direction, onSuccess = onSuccess, onFailure = onFailure)
     }
 
     private fun syncOnBackPressedCallbackEnabledState() {
@@ -1553,8 +1558,6 @@ class CommentsCoordinator(
         storyVoteLoading = false
         storyFavoriteLoading = false
         coroutineScope.cancel()
-        commentThreadLoadJob?.cancel()
-        commentThreadLoadJob = null
         if (webViewController != null) {
             webViewController!!.onDestroyView(rootView)
         }
@@ -1703,38 +1706,15 @@ class CommentsCoordinator(
             notifyHeaderChanged()
         }
 
-        commentThreadLoadJob?.cancel()
-        commentThreadLoadJob = coroutineScope.launch {
-            val result = commentThreadRepository.load(
+        commentsPresenter.dispatch(
+            CommentsAction.LoadThread(
+                requestId = loadGeneration,
                 storyId = id,
                 useAlgolia = userSettings.reading.useAlgoliaApi,
                 filteredUsers = filteredUsers ?: emptySet(),
-            )
-            if (!isCurrentCommentsLoad(loadGeneration, id)) {
-                Log.w(TAG, "Ignoring stale comments result for storyId=$id")
-                return@launch
-            }
-
-            when (result) {
-                is CommentThreadLoadResult.Algolia -> onAlgoliaThreadLoaded(
-                    id,
-                    loadGeneration,
-                    oldCachedResponse,
-                    result.response,
-                )
-
-                is CommentThreadLoadResult.Official -> onOfficialThreadLoaded(
-                    id,
-                    loadGeneration,
-                    result,
-                )
-
-                is CommentThreadLoadResult.Failure -> onCommentThreadLoadFailed(
-                    id,
-                    result,
-                )
-            }
-        }
+                previousResponse = oldCachedResponse,
+            ),
+        )
 
         maybeLoadPollOptions()
 
@@ -1742,6 +1722,36 @@ class CommentsCoordinator(
             linkPreviewController!!.loadNetworkPreviews(context)
         }
         return loadGeneration
+    }
+
+    private fun handleCommentsEffect(effect: CommentsEffect) {
+        when (effect) {
+            is CommentsEffect.ShowCommentActions ->
+                composeController?.showCommentActions(effect.comment)
+            is CommentsEffect.ThreadLoaded -> {
+                if (!isCurrentCommentsLoad(effect.requestId, effect.storyId)) {
+                    Log.w(TAG, "Ignoring stale comments result for storyId=${effect.storyId}")
+                    return
+                }
+                when (val result = effect.result) {
+                    is CommentThreadLoadResult.Algolia -> onAlgoliaThreadLoaded(
+                        effect.storyId,
+                        effect.requestId,
+                        effect.previousResponse,
+                        result.response,
+                    )
+                    is CommentThreadLoadResult.Official -> onOfficialThreadLoaded(
+                        effect.storyId,
+                        effect.requestId,
+                        result,
+                    )
+                    is CommentThreadLoadResult.Failure -> onCommentThreadLoadFailed(
+                        effect.storyId,
+                        result,
+                    )
+                }
+            }
+        }
     }
 
     private fun onAlgoliaThreadLoaded(
@@ -1896,17 +1906,16 @@ class CommentsCoordinator(
         val storyId = story!!.id
         pollOptionsLoadJob = coroutineScope.launch {
             try {
-                val item = NetworkComponent.hackerNewsApi.getItem(storyId)
+                val optionIds = NetworkComponent.pollOptionsRepository.findOptionIds(storyId)
                 if (!isCommentsViewActive || story?.id != storyId) return@launch
 
-                val optionIds = item?.parts.orEmpty()
                 if (optionIds.isNotEmpty()) {
-                    story!!.pollOptions = optionIds.toIntArray()
+                    story!!.pollOptions = optionIds
                     loadPollOptions()
                 }
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: IOException) {
+            } catch (error: Throwable) {
                 if (isCommentsViewActive && story?.id == storyId) {
                     pollOptionsLookupStarted = false
                     Log.w(TAG, "Poll lookup failed for id=$storyId", error)
@@ -1921,39 +1930,24 @@ class CommentsCoordinator(
         }
 
         pollOptionsLoadStarted = true
-        story!!.pollOptionArrayList = ArrayList()
         val pollOptionIds = story!!.pollOptions ?: intArrayOf()
-        for (optionId in pollOptionIds) {
-            val pollOption = PollOption()
-            pollOption.loaded = false
-            pollOption.loadFailed = false
-            pollOption.id = optionId
-            story!!.pollOptionArrayList!!.add(pollOption)
-        }
+        story!!.pollOptionArrayList = ArrayList(
+            NetworkComponent.pollOptionsRepository.placeholders(pollOptionIds)
+        )
 
         val storyId = story!!.id
         pollOptionsLoadJob = coroutineScope.launch {
-            for (optionId in pollOptionIds) {
-                if (!isCommentsViewActive || story?.id != storyId) return@launch
+            NetworkComponent.pollOptionsRepository.loadOptions(pollOptionIds).collect { loaded ->
+                if (!isCommentsViewActive || story?.id != storyId) return@collect
 
                 val pollOption = story?.pollOptionArrayList
-                    ?.firstOrNull { it.id == optionId }
-                    ?: continue
-                try {
-                    val item = NetworkComponent.hackerNewsApi.getItem(optionId)
-                    val text = JSONParser.preprocessHtml(item?.text)
-                    if (item == null || text.isNullOrBlank()) {
-                        throw IOException("Poll option response was invalid")
-                    }
-                    pollOption.points = item.score
-                    pollOption.text = text
-                    pollOption.loaded = true
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: IOException) {
-                    pollOption.loadFailed = true
-                    Log.w(TAG, "Poll option request failed for id=$optionId", error)
-                }
+                    ?.firstOrNull { it.id == loaded.id }
+                    ?: return@collect
+                pollOption.points = loaded.points
+                pollOption.text = loaded.text
+                pollOption.loaded = loaded.loaded
+                pollOption.loadFailed = loaded.loadFailed
+                if (loaded.loadFailed) Log.w(TAG, "Poll option request failed for id=${loaded.id}")
                 notifyHeaderChanged()
             }
         }
@@ -2356,25 +2350,23 @@ class CommentsCoordinator(
         storyVoteLoading = true
         syncComposeState()
 
-        val cb: ActionCallback = object : ActionCallback {
-            override fun onSuccess() {
+        val onSuccess = {
                 Utils.setUpvoted(ctx, storyId, storyIsComment, newUpvoted)
                 storyVoteLoading = false
                 syncComposeState()
             }
-
-            override fun onFailure(summary: String?, response: String?) {
+        val onFailure = { _: String?, _: String? ->
                 Utils.setUpvoted(ctx, storyId, storyIsComment, wasUpvoted)
                 storyVoteLoading = false
                 syncComposeState()
             }
-        }
-
-        if (newUpvoted) {
-            UserActions.upvote(ctx, storyId, cb)
-        } else {
-            UserActions.unvote(ctx, storyId, cb)
-        }
+        performVote(
+            ctx,
+            storyId,
+            if (newUpvoted) "up" else "un",
+            onSuccess = onSuccess,
+            onFailure = onFailure,
+        )
     }
 
     fun clickFavorite() {
@@ -2392,14 +2384,16 @@ class CommentsCoordinator(
         val newFavorited = !wasFavorited
         storyFavoriteLoading = true
         syncComposeState()
-        UserActions.setFavorite(ctx, storyId, newFavorited, object : ActionCallback {
-            override fun onSuccess() {
+        performFavorite(
+            ctx = ctx,
+            id = storyId,
+            favorite = newFavorited,
+            onSuccess = {
                 Utils.setFavorite(ctx, storyId, newFavorited)
                 storyFavoriteLoading = false
                 syncComposeState()
-            }
-
-            override fun onFailure(summary: String?, response: String?) {
+            },
+            onFailure = { summary, response ->
                 Utils.setFavorite(ctx, storyId, wasFavorited)
                 storyFavoriteLoading = false
                 syncComposeState()
@@ -2409,8 +2403,8 @@ class CommentsCoordinator(
                     requireActivity().showFailureDetailDialog(summary, response)
                     Toast.makeText(ctx, "Couldn't update favorite", Toast.LENGTH_SHORT).show()
                 }
-            }
-        })
+            },
+        )
     }
 
     @JvmOverloads
@@ -2456,6 +2450,55 @@ class CommentsCoordinator(
         composeController?.refreshContent()
     }
 
+    private fun performVote(
+        context: Context,
+        id: Int,
+        direction: String,
+        successMessage: String? = null,
+        onSuccess: () -> Unit = {},
+        onFailure: (String?, String?) -> Unit = { _, _ -> },
+    ) {
+        coroutineScope.launch {
+            val result = hackerNewsUserService.vote(id.toString(), direction)
+            if (result is HackerNewsActionResult.Success) {
+                successMessage?.let {
+                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                }
+                onSuccess()
+                return@launch
+            }
+            result.showLoginPromptIfCredentialsMissing(context)
+            val (summary, detail) = result.failureDetails()
+            MainActivity.showFailureDetailForActiveUi(summary, detail)
+            Toast.makeText(
+                context,
+                "Vote unsuccessful, see dialog for response",
+                Toast.LENGTH_SHORT,
+            ).show()
+            onFailure(summary, detail)
+        }
+    }
+
+    private fun performFavorite(
+        ctx: Context,
+        id: Int,
+        favorite: Boolean,
+        onSuccess: () -> Unit,
+        onFailure: (String?, String?) -> Unit,
+    ) {
+        coroutineScope.launch {
+            val result = hackerNewsUserService.setFavorite(id, favorite)
+            if (result is HackerNewsActionResult.Success) {
+                Utils.setFavorite(ctx, id, favorite)
+                onSuccess()
+                return@launch
+            }
+            result.showLoginPromptIfCredentialsMissing(ctx)
+            val (summary, detail) = result.failureDetails()
+            onFailure(summary, detail)
+        }
+    }
+
     fun onRequest(onUpdate: Runnable, onDone: Runnable) {
         if (story == null || TextUtils.isEmpty(story!!.url)) {
             onDone.run()
@@ -2467,8 +2510,7 @@ class CommentsCoordinator(
         }
 
         val context = requireContext()
-        val mode: String = PreferenceManager.getDefaultSharedPreferences(context)
-            .getString("pref_ai_summary_mode", "cloud")!!
+        val mode = AndroidAiSummarySettings.mode(context)
 
         if (webViewController != null) {
             webViewController!!.getLoadedPageText(
@@ -2488,15 +2530,15 @@ class CommentsCoordinator(
     }
 
     private fun summarizeStory(
-        context: Context?,
-        mode: String?,
+        context: Context,
+        mode: String,
         articleText: String?,
         onUpdate: Runnable,
         onDone: Runnable
     ) {
         val hasArticleText = !TextUtils.isEmpty(articleText)
-        if ("local" == mode) {
-            val callback: SummaryCallback = object : SummaryCallback {
+        if (mode == AndroidAiSummarySettings.MODE_LOCAL) {
+            val callback = object : LocalSummaryCallback {
                 override fun onDebugInfo(debugInfo: String?) {
                     onUpdate.run()
                 }
@@ -2519,37 +2561,41 @@ class CommentsCoordinator(
                 }
             }
             if (hasArticleText) {
-                SummaryManager.summarizeTextWithGeminiNano(context, articleText, callback)
+                LocalSummaryManager.summarizeText(context, articleText, callback)
             } else {
-                SummaryManager.summarizeArticleWithGeminiNano(context, story!!.url, callback)
+                LocalSummaryManager.summarizeArticle(context, story!!.url, callback)
             }
         } else {
-            val callback: SummaryCallback = object : SummaryCallback {
-                override fun onDebugInfo(debugInfo: String?) {
-                    onUpdate.run()
-                }
-
-                override fun onProgress(summary: String?) {
-                    story!!.summary = summary
-                    onUpdate.run()
-                }
-
-                override fun onSuccess(summary: String?) {
-                    story!!.summary = summary
-                    story!!.summaryGeneratedSuccessfully = true
-                    onDone.run()
-                }
-
-                override fun onFailure(error: String?) {
-                    story!!.summary = "Failed to generate summary: " + error
+            val config = AndroidAiSummarySettings.cloudConfig(context)
+            val summaryFlow = if (hasArticleText) {
+                NetworkComponent.summaryUseCase.summarizeText(config, articleText)
+            } else {
+                NetworkComponent.summaryUseCase.summarizeArticle(config, story!!.url.orEmpty())
+            }
+            coroutineScope.launch {
+                try {
+                    summaryFlow.collect { event ->
+                        when (event) {
+                            is CloudSummaryEvent.DebugInfo -> onUpdate.run()
+                            is CloudSummaryEvent.Progress -> {
+                                story!!.summary = event.summary
+                                onUpdate.run()
+                            }
+                            is CloudSummaryEvent.Success -> {
+                                story!!.summary = event.summary
+                                story!!.summaryGeneratedSuccessfully = true
+                                onDone.run()
+                            }
+                        }
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    story!!.summary = "Failed to generate summary: " +
+                        (error.message?.takeUnless(String::isEmpty) ?: "Unknown error")
                     story!!.summaryGeneratedSuccessfully = false
                     onDone.run()
                 }
-            }
-            if (hasArticleText) {
-                SummaryManager.summarizeText(requireContext(), queue, articleText, callback)
-            } else {
-                SummaryManager.summarizeArticle(requireContext(), queue, story!!.url.orEmpty(), callback)
             }
         }
     }

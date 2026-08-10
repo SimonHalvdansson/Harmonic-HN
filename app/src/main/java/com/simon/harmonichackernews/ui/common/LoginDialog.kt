@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,14 +42,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.platform.AndroidCredentialStore
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
+import kotlinx.coroutines.launch
 
 private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
 
@@ -67,6 +72,10 @@ fun LoginDialog(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var captchaChallenge by remember { mutableStateOf<HackerNewsCaptchaChallenge?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val hackerNewsUserService = remember(context) {
+        HackerNewsUserService(NetworkComponent.hackerNewsSession, AndroidCredentialStore(context))
+    }
     val loginFailure = stringResource(Res.string.login_dialog_failure)
     val loginSuccess = stringResource(Res.string.login_dialog_success)
     val captchaCancelled = stringResource(Res.string.login_dialog_captcha_cancelled)
@@ -85,24 +94,25 @@ fun LoginDialog(
         error = message
     }
 
+    fun handleLoginResult(result: HackerNewsActionResult) {
+        when (result) {
+            is HackerNewsActionResult.Success -> finishLogin()
+            is HackerNewsActionResult.Failure -> failLogin()
+            is HackerNewsActionResult.Captcha -> {
+                loading = false
+                captchaChallenge = result.challenge
+            }
+        }
+    }
+
     fun continueLogin(challenge: HackerNewsCaptchaChallenge, response: String) {
         captchaChallenge = null
         loading = true
-        UserActions.continueLoginWithCaptcha(
-            context,
-            challenge,
-            response,
-            object : UserActions.ActionCallback {
-                override fun onSuccess() = finishLogin()
-
-                override fun onFailure(summary: String?, response: String?) = failLogin()
-
-                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
-                    loading = false
-                    captchaChallenge = challenge
-                }
-            },
-        )
+        coroutineScope.launch {
+            handleLoginResult(
+                hackerNewsUserService.continueLoginWithCaptcha(challenge, response)
+            )
+        }
     }
 
     fun attemptLogin() {
@@ -110,19 +120,7 @@ fun LoginDialog(
         error = null
         loading = true
         AccountUtils.setAccountDetails(context, username.trim(), password)
-        UserActions.login(
-            context,
-            object : UserActions.ActionCallback {
-                override fun onSuccess() = finishLogin()
-
-                override fun onFailure(summary: String?, response: String?) = failLogin()
-
-                override fun onCaptchaRequired(challenge: HackerNewsCaptchaChallenge) {
-                    loading = false
-                    captchaChallenge = challenge
-                }
-            },
-        )
+        coroutineScope.launch { handleLoginResult(hackerNewsUserService.login()) }
     }
 
     SettingsAlertDialog(

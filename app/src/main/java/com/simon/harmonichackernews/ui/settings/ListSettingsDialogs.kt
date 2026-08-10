@@ -69,6 +69,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.FontUtils
+import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.utils.SettingsUtils
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringArrayResource
@@ -314,7 +315,7 @@ fun ArchiveRedirectDomainsDialog(
             domains.none { it.equals(suggestion, ignoreCase = true) }
         },
         suggestionsLabel = "Suggested domains",
-        parseInput = { SettingsUtils.parseArchiveRedirectDomains(it).toList() },
+        parseInput = ArchiveRedirectPolicy::parseDomains,
         emptyInputError = "Enter a domain",
         onItemsChanged = ::save,
         onDismiss = onDismiss,

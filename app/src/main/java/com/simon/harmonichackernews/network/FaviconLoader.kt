@@ -16,6 +16,7 @@ import coil3.request.target
 import coil3.target.ImageViewTarget
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.Utils
 
 object FaviconLoader {
@@ -27,12 +28,8 @@ object FaviconLoader {
         faviconProvider: String?,
         fadeIn: Boolean = false
     ) {
-        try {
-            loadFaviconForHost(
-                Utils.getDomainName(url ?: return), into, ctx, faviconProvider, fadeIn
-            )
-        } catch (ignored: Exception) {
-        }
+        val host = DomainNamePolicy.fromUrl(url) ?: return
+        loadFaviconForHost(host, into, ctx, faviconProvider, fadeIn)
     }
 
     @JvmOverloads

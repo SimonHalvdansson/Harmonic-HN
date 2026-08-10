@@ -162,6 +162,6 @@ object ThemeUtils {
             Calendar.MINUTE
         )
 
-        return Utils.isTimeBetweenTwoTimes(startTime, endTime, currentTime)
+        return TimeWindowPolicy.containsMinutes(startTime, endTime, currentTime)
     }
 }

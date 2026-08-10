@@ -365,6 +365,11 @@ object LinkSummaryParser {
         return parsed.takeIf(::isHttpScheme)?.toString()
     }
 
+    fun isLikelyImageUrl(url: String?): Boolean {
+        val path = url?.toNetworkUrlOrNull()?.encodedPath?.lowercase() ?: return false
+        return imageExtensions.any(path::endsWith)
+    }
+
     fun clean(value: String?): String = value.orEmpty()
         .replace('\u00a0', ' ')
         .replace("\\s+".toRegex(), " ")
@@ -438,4 +443,6 @@ object LinkSummaryParser {
         value?.all(Char::isDigit) == true && (value.toIntOrNull() ?: 0) > 0
 
     private fun isHttpScheme(url: NetworkUrl): Boolean = url.scheme == "http" || url.scheme == "https"
+
+    private val imageExtensions = listOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")
 }

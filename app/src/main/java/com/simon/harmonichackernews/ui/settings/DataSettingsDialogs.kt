@@ -53,15 +53,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsActionMessages
-import com.simon.harmonichackernews.network.UserActions
+import com.simon.harmonichackernews.network.HackerNewsUserService
+import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.platform.AndroidCredentialStore
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -363,45 +364,32 @@ private suspend fun addBookmarkToFavorites(
     activity: ComponentActivity,
     id: Int,
     initialTitle: String,
-): BookmarkFavoriteResult = suspendCancellableCoroutine { continuation ->
-    var itemTitle = initialTitle
-    UserActions.setFavorite(
-        activity,
-        id,
-        true,
-        object : UserActions.ActionCallback {
-            override fun onItemTitleLoaded(itemId: Int, title: String?) {
-                if (itemId == id && !title.isNullOrBlank()) {
-                    itemTitle = title
-                }
-            }
-
-            override fun onSuccess() {
-                Utils.setFavorite(activity, id, true)
-                if (continuation.isActive) {
-                    continuation.resume(
-                        BookmarkFavoriteResult(
-                            id = id,
-                            title = itemTitle,
-                            successful = true,
-                            message = "In HN favorites",
-                        ),
-                    )
-                }
-            }
-
-            override fun onFailure(summary: String?, response: String?) {
-                if (continuation.isActive) {
-                    continuation.resume(
-                        BookmarkFavoriteResult(
-                            id = id,
-                            title = itemTitle,
-                            successful = false,
-                            message = HackerNewsActionMessages.favoriteFailure(summary, response),
-                        ),
-                    )
-                }
-            }
-        },
+): BookmarkFavoriteResult {
+    val service = HackerNewsUserService(
+        NetworkComponent.hackerNewsSession,
+        AndroidCredentialStore(activity),
     )
+    return when (val result = service.setFavorite(id, true)) {
+        is HackerNewsActionResult.Success -> {
+            Utils.setFavorite(activity, id, true)
+            BookmarkFavoriteResult(
+                id = id,
+                title = result.itemTitle?.takeIf(String::isNotBlank) ?: initialTitle,
+                successful = true,
+                message = "In HN favorites",
+            )
+        }
+        is HackerNewsActionResult.Failure -> BookmarkFavoriteResult(
+            id = id,
+            title = initialTitle,
+            successful = false,
+            message = HackerNewsActionMessages.favoriteFailure(result.summary, result.detail),
+        )
+        is HackerNewsActionResult.Captcha -> BookmarkFavoriteResult(
+            id = id,
+            title = initialTitle,
+            successful = false,
+            message = "HN requires a captcha before adding this favorite",
+        )
+    }
 }

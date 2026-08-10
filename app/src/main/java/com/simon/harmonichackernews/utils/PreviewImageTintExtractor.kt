@@ -7,6 +7,7 @@ import android.os.Looper
 import android.os.Process
 import androidx.annotation.MainThread
 import androidx.annotation.Nullable
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import java.util.Objects
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
@@ -197,7 +198,7 @@ class PreviewImageTintExtractor {
         val paletteTintMode: String
 
         init {
-            this.paletteTintMode = SettingsUtils.getPaletteTintConfigKey(paletteTintMode)
+            this.paletteTintMode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
         }
 
         override fun equals(`object`: Any?): Boolean {

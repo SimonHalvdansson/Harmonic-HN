@@ -78,16 +78,17 @@ import coil3.request.crossfade
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.network.AiModelCatalog
+import com.simon.harmonichackernews.network.AiModel
+import com.simon.harmonichackernews.network.AiModelCatalogSort
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.OpenRouterProviderIconLoader
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 
@@ -243,7 +244,7 @@ fun AiSummaryBaseUrlDialog(
     var url by remember {
         mutableStateOf(
             prefs.getString(
-                AiModelCatalog.PREF_BASE_URL,
+                AndroidAiModelDefaults.PREF_BASE_URL,
                 AiSummaryProviders.defaultBaseUrl,
             ) ?: AiSummaryProviders.defaultBaseUrl,
         )
@@ -260,12 +261,12 @@ fun AiSummaryBaseUrlDialog(
         }
         val oldProvider = AiSummaryProviders.getProviderForBaseUrl(
             prefs.getString(
-                AiModelCatalog.PREF_BASE_URL,
+                AndroidAiModelDefaults.PREF_BASE_URL,
                 AiSummaryProviders.defaultBaseUrl,
             ),
         )
         val newProvider = AiSummaryProviders.getProviderForBaseUrl(savedUrl)
-        val editor = prefs.edit().putString(AiModelCatalog.PREF_BASE_URL, savedUrl)
+        val editor = prefs.edit().putString(AndroidAiModelDefaults.PREF_BASE_URL, savedUrl)
         if (newProvider != null && newProvider.id != oldProvider?.id) {
             val translated = if (oldProvider == null) {
                 ""
@@ -273,18 +274,18 @@ fun AiSummaryBaseUrlDialog(
                 AiSummaryProviders.translateModelId(
                     oldProvider,
                     newProvider,
-                    prefs.getString(AiModelCatalog.PREF_MODEL, ""),
+                    prefs.getString(AndroidAiModelDefaults.PREF_MODEL, ""),
                 )
             }
             if (translated.isNullOrEmpty()) {
-                editor.remove(AiModelCatalog.PREF_MODEL)
+                editor.remove(AndroidAiModelDefaults.PREF_MODEL)
             } else {
-                editor.putString(AiModelCatalog.PREF_MODEL, translated)
+                editor.putString(AndroidAiModelDefaults.PREF_MODEL, translated)
             }
         }
         editor.apply()
-        if (newProvider != null && !prefs.contains(AiModelCatalog.PREF_MODEL)) {
-            AiModelCatalog.ensureProviderDefault(context, newProvider)
+        if (newProvider != null && !prefs.contains(AndroidAiModelDefaults.PREF_MODEL)) {
+            AndroidAiModelDefaults.ensureProviderDefault(context, newProvider)
         }
         onDismiss()
     }
@@ -371,14 +372,14 @@ private enum class AiModelFilter {
 
 private sealed interface AiModelCatalogState {
     data object Loading : AiModelCatalogState
-    data class Loaded(val models: List<AiModelCatalog.Model>) : AiModelCatalogState
+    data class Loaded(val models: List<AiModel>) : AiModelCatalogState
     data class Error(val message: String) : AiModelCatalogState
 }
 
 private sealed interface AiModelPriceState {
     data object Empty : AiModelPriceState
     data object Loading : AiModelPriceState
-    data class Resolved(val model: AiModelCatalog.Model) : AiModelPriceState
+    data class Resolved(val model: AiModel) : AiModelPriceState
     data class Error(val message: String) : AiModelPriceState
 }
 
@@ -391,14 +392,14 @@ fun AiModelSelectorDialog(
         PreferenceManager.getDefaultSharedPreferences(context)
     }
     val baseUrl = prefs.getString(
-        AiModelCatalog.PREF_BASE_URL,
+        AndroidAiModelDefaults.PREF_BASE_URL,
         AiSummaryProviders.defaultBaseUrl,
     ) ?: AiSummaryProviders.defaultBaseUrl
     val provider = AiSummaryProviders.getProviderForBaseUrl(baseUrl)
         ?: AiSummaryProviders.defaultProvider
     val initialModel = AiSummaryProviders.getModelForRequest(
         baseUrl,
-        prefs.getString(AiModelCatalog.PREF_MODEL, ""),
+        prefs.getString(AndroidAiModelDefaults.PREF_MODEL, ""),
     )
     var modelInput by remember { mutableStateOf(initialModel) }
     var modelError by remember { mutableStateOf<String?>(null) }
@@ -410,8 +411,6 @@ fun AiModelSelectorDialog(
     var priceState by remember {
         mutableStateOf<AiModelPriceState>(AiModelPriceState.Empty)
     }
-    val catalogCall = remember { arrayOfNulls<Job>(1) }
-    val priceCall = remember { arrayOfNulls<Job>(1) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -426,7 +425,7 @@ fun AiModelSelectorDialog(
         }
         prefs.edit()
             .putString(
-                AiModelCatalog.PREF_MODEL,
+                AndroidAiModelDefaults.PREF_MODEL,
                 AiSummaryProviders.toProviderModelId(provider, selected),
             )
             .apply()
@@ -454,50 +453,24 @@ fun AiModelSelectorDialog(
         }
     }
 
-    DisposableEffect(provider, filter, catalogReload) {
-        var disposed = false
+    LaunchedEffect(provider, filter, catalogReload) {
         catalogState = AiModelCatalogState.Loading
         val sort = if (filter == AiModelFilter.Price) {
-            AiModelCatalog.Sort.PRICE_LOW_TO_HIGH
+            AiModelCatalogSort.PRICE_LOW_TO_HIGH
         } else {
-            AiModelCatalog.Sort.POPULAR
+            AiModelCatalogSort.POPULAR
         }
-        catalogCall[0]?.cancel()
-        catalogCall[0] = AiModelCatalog.fetchModels(
-            provider,
-            sort,
-            object : AiModelCatalog.ModelsCallback {
-                override fun onSuccess(models: List<AiModelCatalog.Model>) {
-                    if (disposed) return
-                    val safeModels = models.toList()
-                    catalogState = AiModelCatalogState.Loaded(
-                        if (filter == AiModelFilter.Free) {
-                            safeModels.filter(AiModelCatalog.Model::isFree)
-                        } else {
-                            safeModels
-                        },
-                    )
-                }
-
-                override fun onError(message: String?) {
-                    if (!disposed) {
-                        catalogState = AiModelCatalogState.Error(
-                            message ?: "Could not load models",
-                        )
-                    }
-                }
-            },
-        )
-        onDispose {
-            disposed = true
-            catalogCall[0]?.cancel()
-            catalogCall[0] = null
+        catalogState = try {
+            val models = NetworkComponent.aiModelCatalogRepository.fetchModels(provider, sort)
+            AiModelCatalogState.Loaded(
+                if (filter == AiModelFilter.Free) models.filter(AiModel::isFree) else models,
+            )
+        } catch (error: Throwable) {
+            AiModelCatalogState.Error(error.message ?: "Could not load models")
         }
     }
 
     LaunchedEffect(modelInput) {
-        priceCall[0]?.cancel()
-        priceCall[0] = null
         val requestedModel = modelInput.trim()
         if (requestedModel.isEmpty()) {
             priceState = AiModelPriceState.Empty
@@ -505,31 +478,14 @@ fun AiModelSelectorDialog(
         }
         priceState = AiModelPriceState.Loading
         delay(400)
-        priceCall[0] = AiModelCatalog.resolveModel(
-            provider,
-            requestedModel,
-            object : AiModelCatalog.ModelCallback {
-                override fun onSuccess(model: AiModelCatalog.Model) {
-                    if (requestedModel == modelInput.trim()) {
-                        priceState = AiModelPriceState.Resolved(model)
-                    }
-                }
-
-                override fun onError(message: String?) {
-                    if (requestedModel == modelInput.trim()) {
-                        priceState = AiModelPriceState.Error(
-                            message ?: "Price unavailable",
-                        )
-                    }
-                }
-            },
-        )
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            catalogCall[0]?.cancel()
-            priceCall[0]?.cancel()
+        priceState = try {
+            val model = NetworkComponent.aiModelCatalogRepository.resolveModel(
+                provider,
+                requestedModel,
+            )
+            AiModelPriceState.Resolved(model)
+        } catch (error: Throwable) {
+            AiModelPriceState.Error(error.message ?: "Price unavailable")
         }
     }
 
@@ -702,7 +658,7 @@ fun AiModelSelectorDialog(
                         ) {
                             items(
                                 state.models,
-                                key = AiModelCatalog.Model::openRouterId,
+                                key = AiModel::openRouterId,
                             ) { model ->
                                 AiModelRow(
                                     model = model,
@@ -818,7 +774,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
 
 @Composable
 private fun AiModelRow(
-    model: AiModelCatalog.Model,
+    model: AiModel,
     selected: Boolean,
     onClick: () -> Unit,
 ) {

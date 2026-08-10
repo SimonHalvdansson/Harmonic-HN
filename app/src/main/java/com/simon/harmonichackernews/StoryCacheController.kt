@@ -1,61 +1,51 @@
 package com.simon.harmonichackernews
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import com.simon.harmonichackernews.network.QueueRequest as Request
-import com.simon.harmonichackernews.network.RequestQueue
-import com.simon.harmonichackernews.network.QueueResponse as Response
-import com.simon.harmonichackernews.network.StringRequest
+import com.simon.harmonichackernews.cache.StoryCacheOutcome
+import com.simon.harmonichackernews.cache.StoryCacheRequest
+import com.simon.harmonichackernews.cache.StoryCacheSink
+import com.simon.harmonichackernews.cache.StoryCacheUseCase
+import com.simon.harmonichackernews.network.HttpCall
+import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
-import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader.DownloadCallback
 import com.simon.harmonichackernews.utils.Utils
-import java.util.ArrayDeque
+import kotlin.coroutines.resume
 import kotlin.math.max
-import kotlin.math.min
-import com.simon.harmonichackernews.data.StoryCachePayloadParser
-import com.simon.harmonichackernews.network.HttpCall
-import com.simon.harmonichackernews.serialization.JsonException as JSONException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
+/** Android lifecycle and persistence adapter for the shared story-cache workflow. */
 internal class StoryCacheController(private val callbacks: Callbacks) {
     internal interface Callbacks {
         val context: Context?
-
-        val requestQueue: RequestQueue?
-
-        val requestTag: Any
-
         val userSettings: UserSettings
-
         fun onCacheProgressChanged()
     }
 
-    private val progressHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var cacheJob: Job? = null
+    private var visibilityJob: Job? = null
     var isCachingStories: Boolean = false
         private set
     var isProgressVisible: Boolean = false
         private set
-    private var progressAnimationGeneration = 0
     private var cacheStoriesTotal = 1
     var progress: Int = 0
         private set
     private var progressStatus: String = CACHE_PROGRESS_STATUS_CACHING
-    private val pendingArticleDownloads = ArrayDeque<ArticleDownload>()
-    private val activeArticleDownloads = HashSet<HttpCall>()
-    private var articleSnapshotDownloader: ArticleSnapshotDownloader? = null
-    private var articleDownloadGeneration = 0
 
     fun dispose() {
-        articleDownloadGeneration++
-        pendingArticleDownloads.clear()
-        for (call in activeArticleDownloads) {
-            call.cancel()
-        }
-        activeArticleDownloads.clear()
-        articleSnapshotDownloader = null
-        progressAnimationGeneration++
-        progressHandler.removeCallbacksAndMessages(null)
+        scope.cancel()
+        cacheJob = null
+        visibilityJob = null
         isCachingStories = false
         isProgressVisible = false
         resetProgressState()
@@ -64,86 +54,42 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
     val progressMax: Int
         get() = max(cacheStoriesTotal, 1)
 
-    fun getProgressStatus(): String {
-        return if (isCachingStories) cachingStatus else progressStatus
-    }
+    fun getProgressStatus(): String = if (isCachingStories) cachingStatus else progressStatus
 
     fun cacheStories() {
-        if (isCachingStories) {
-            return
+        if (isCachingStories) return
+        val context = callbacks.context?.applicationContext ?: return
+        val preferences = callbacks.userSettings.cache
+        startProgress(preferences.storiesToCache)
+
+        val useCase = StoryCacheUseCase(
+            hackerNewsRepository = NetworkComponent.hackerNewsRepository,
+            algoliaRepository = NetworkComponent.algoliaRepository,
+            sink = AndroidStoryCacheSink(context),
+        )
+        cacheJob = scope.launch {
+            val outcome = useCase.execute(
+                StoryCacheRequest(
+                    storyCount = preferences.storiesToCache,
+                    cacheArticleSnapshots = preferences.cacheArticleSnapshots,
+                ),
+            ) { cacheProgress ->
+                cacheStoriesTotal = max(cacheProgress.total, 1)
+                progress = cacheProgress.completed.coerceAtMost(cacheStoriesTotal)
+                callbacks.onCacheProgressChanged()
+            }
+            finishProgress(
+                when (outcome) {
+                    StoryCacheOutcome.FINISHED -> CACHE_PROGRESS_STATUS_FINISHED
+                    StoryCacheOutcome.EMPTY -> CACHE_PROGRESS_STATUS_EMPTY
+                    StoryCacheOutcome.FAILED -> CACHE_PROGRESS_STATUS_FAILED
+                },
+            )
         }
-
-        val context = callbacks.context
-        val queue = callbacks.requestQueue
-        if (context == null || queue == null) {
-            return
-        }
-
-        val cachePreferences = callbacks.userSettings.cache
-        val storiesToCache = cachePreferences.storiesToCache
-        startProgress(storiesToCache)
-        val cacheArticles = cachePreferences.cacheArticleSnapshots
-        articleSnapshotDownloader = if (cacheArticles)
-            ArticleSnapshotDownloader(context)
-        else
-            null
-        val request = StringRequest(
-            Request.Method.GET, Utils.URL_TOP,
-            Response.Listener { response: String? ->
-                try {
-                    val storyCount = storiesToCache
-                    if (storyCount == 0) {
-                        finishProgress(CACHE_PROGRESS_STATUS_EMPTY)
-                        return@Listener
-                    }
-
-                    val storyIds = StoryCachePayloadParser.storyIds(response, storyCount)
-                    if (storyIds.isEmpty()) {
-                        finishProgress(CACHE_PROGRESS_STATUS_EMPTY)
-                        return@Listener
-                    }
-
-                    val remaining = intArrayOf(storyIds.size)
-                    val articleFailures = intArrayOf(0)
-                    for (id in storyIds) {
-                        val url = "https://hn.algolia.com/api/v1/items/" + id
-                        val storyRequest = StringRequest(
-                            Request.Method.GET,
-                            url,
-                            Response.Listener { storyResponse: String? ->
-                                val storyJson = storyResponse.orEmpty()
-                                Utils.cacheStory(context, id, storyJson)
-                                if (cacheArticles) {
-                                    cacheStoryArticleSnapshot(
-                                        id,
-                                        storyJson,
-                                        articleFailures,
-                                        { onCacheStoryFinished(remaining) })
-                                } else {
-                                    onCacheStoryFinished(remaining)
-                                }
-                            },
-                            Response.ErrorListener {
-                                onCacheStoryFinished(remaining)
-                            })
-                        storyRequest.tag = callbacks.requestTag
-                        queue.add(storyRequest)
-                    }
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                    finishProgress(CACHE_PROGRESS_STATUS_FAILED)
-                }
-            }, Response.ErrorListener {
-                finishProgress(CACHE_PROGRESS_STATUS_FAILED)
-            })
-
-        request.tag = callbacks.requestTag
-        queue.add(request)
     }
 
     private fun startProgress(total: Int) {
-        progressHandler.removeCallbacksAndMessages(null)
-        progressAnimationGeneration++
+        visibilityJob?.cancel()
         isCachingStories = true
         isProgressVisible = true
         cacheStoriesTotal = max(total, 1)
@@ -152,28 +98,16 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         callbacks.onCacheProgressChanged()
     }
 
-    private fun incrementProgress() {
-        progress = min(progress + 1, cacheStoriesTotal)
-        callbacks.onCacheProgressChanged()
-    }
-
-    private fun finishProgress(status: String = CACHE_PROGRESS_STATUS_FINISHED) {
+    private fun finishProgress(status: String) {
         isCachingStories = false
         isProgressVisible = true
         progressStatus = status
         callbacks.onCacheProgressChanged()
-
-        val animationGeneration = ++progressAnimationGeneration
-        progressHandler.postDelayed(Runnable progressTask@ {
-            if (progressAnimationGeneration != animationGeneration) {
-                return@progressTask
-            }
+        visibilityJob = scope.launch {
+            delay(CACHE_PROGRESS_FINISHED_HOLD_MS)
             isProgressVisible = false
-            // Keep the completed status while AnimatedVisibility runs its exit animation. The
-            // content remains composed during that animation, so resetting it here would briefly
-            // replace "Finished" with "Caching stories" before the progress block is hidden.
             callbacks.onCacheProgressChanged()
-        }, CACHE_PROGRESS_FINISHED_HOLD_MS)
+        }
     }
 
     private fun resetProgressState() {
@@ -186,95 +120,32 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         get() = "Caching $cacheStoriesTotal" +
             if (cacheStoriesTotal == 1) " story" else " stories"
 
-    private fun onCacheStoryFinished(remaining: IntArray) {
-        incrementProgress()
-        remaining[0]--
-        if (remaining[0] > 0) {
-            return
+    private class AndroidStoryCacheSink(context: Context) : StoryCacheSink {
+        private val appContext = context.applicationContext
+        private val articleDownloader = ArticleSnapshotDownloader(appContext)
+
+        override suspend fun cacheStory(id: Int, payload: String) {
+            withContext(Dispatchers.IO) { Utils.cacheStory(appContext, id, payload) }
         }
 
-        finishProgress()
+        override suspend fun cacheArticle(id: Int, url: String): Boolean =
+            suspendCancellableCoroutine { continuation ->
+                val call: HttpCall? = articleDownloader.download(id, url) { _, success ->
+                    if (continuation.isActive) continuation.resume(success)
+                }
+                if (call == null) {
+                    continuation.resume(false)
+                } else {
+                    continuation.invokeOnCancellation { call.cancel() }
+                }
+            }
     }
 
-    private fun cacheStoryArticleSnapshot(
-        id: Int,
-        storyJson: String,
-        articleFailures: IntArray,
-        onComplete: () -> Unit
-    ) {
-        if (articleSnapshotDownloader == null) {
-            onComplete()
-            return
-        }
-
-        try {
-            val articleUrl = StoryCachePayloadParser.externalArticleUrl(storyJson)
-            if (articleUrl == null) {
-                onComplete()
-                return
-            }
-
-            pendingArticleDownloads.add(
-                ArticleDownload(
-                    id, articleUrl, articleFailures, onComplete, articleDownloadGeneration
-                )
-            )
-            startPendingArticleDownloads()
-        } catch (e: JSONException) {
-            e.printStackTrace()
-            articleFailures[0]++
-            onComplete()
-        }
-    }
-
-    private fun startPendingArticleDownloads() {
-        val downloader = articleSnapshotDownloader ?: return
-
-        while (activeArticleDownloads.size < MAX_CONCURRENT_ARTICLE_DOWNLOADS
-            && pendingArticleDownloads.isNotEmpty()
-        ) {
-            val download = pendingArticleDownloads.removeFirst()
-            if (download.generation != articleDownloadGeneration) {
-                continue
-            }
-
-            val call = downloader.download(
-                download.storyId,
-                download.articleUrl,
-                DownloadCallback downloadCallback@ { completedCall: HttpCall, success: Boolean ->
-                    if (download.generation != articleDownloadGeneration) {
-                        return@downloadCallback
-                    }
-                    activeArticleDownloads.remove(completedCall)
-                    if (!success) {
-                        download.articleFailures[0]++
-                    }
-                    download.onComplete()
-                    startPendingArticleDownloads()
-                })
-            if (call == null) {
-                download.articleFailures[0]++
-                download.onComplete()
-                continue
-            }
-            activeArticleDownloads.add(call)
-        }
-    }
-
-    private class ArticleDownload(
-        val storyId: Int,
-        val articleUrl: String,
-        val articleFailures: IntArray,
-        val onComplete: () -> Unit,
-        val generation: Int
-    )
-
-    companion object {
-        private const val CACHE_PROGRESS_FINISHED_HOLD_MS: Long = 1000
-        private const val CACHE_PROGRESS_STATUS_CACHING = "Caching stories"
-        private const val CACHE_PROGRESS_STATUS_FINISHED = "Finished"
-        private const val CACHE_PROGRESS_STATUS_FAILED = "Caching failed"
-        private const val CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache"
-        private const val MAX_CONCURRENT_ARTICLE_DOWNLOADS = 4
+    private companion object {
+        const val CACHE_PROGRESS_FINISHED_HOLD_MS = 1_000L
+        const val CACHE_PROGRESS_STATUS_CACHING = "Caching stories"
+        const val CACHE_PROGRESS_STATUS_FINISHED = "Finished"
+        const val CACHE_PROGRESS_STATUS_FAILED = "Caching failed"
+        const val CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache"
     }
 }

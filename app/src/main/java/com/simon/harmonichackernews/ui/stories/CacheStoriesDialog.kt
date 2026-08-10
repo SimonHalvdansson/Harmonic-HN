@@ -29,6 +29,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.StoryCachePreferences
 
 /**
  * Compose replacement for the former `cache_stories_dialog.xml` hierarchy. The selected value
@@ -45,9 +46,9 @@ fun CacheStoriesDialog(
     val maximum = SettingsUtils.MAX_STORIES_TO_CACHE
     val step = SettingsUtils.STORIES_TO_CACHE_STEP
     var storyCount by rememberSaveable(initialStoryCount) {
-        mutableFloatStateOf(SettingsUtils.sanitizeStoriesToCache(initialStoryCount).toFloat())
+        mutableFloatStateOf(StoryCachePreferences.sanitizeCount(initialStoryCount).toFloat())
     }
-    val sanitizedStoryCount = SettingsUtils.sanitizeStoriesToCache(storyCount.toInt())
+    val sanitizedStoryCount = StoryCachePreferences.sanitizeCount(storyCount.toInt())
     val sliderDescription = stringResource(Res.string.cache_stories_slider_content_description)
 
     SettingsAlertDialog(
@@ -97,7 +98,7 @@ fun CacheStoriesDialog(
                 Slider(
                     value = storyCount,
                     onValueChange = {
-                        storyCount = SettingsUtils.sanitizeStoriesToCache(it.toInt()).toFloat()
+                        storyCount = StoryCachePreferences.sanitizeCount(it.toInt()).toFloat()
                     },
                     modifier = Modifier
                         .fillMaxWidth()

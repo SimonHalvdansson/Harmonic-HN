@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.TextPreferences
 
 @Composable
 fun CommentsSettingsScreen(
@@ -32,7 +33,7 @@ fun CommentsSettingsScreen(
     val displayStyle = SettingsUtils.getPreferredCommentDisplayStyle(context)
     val showBorder = prefs.getBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, true)
     val textSize = SettingsUtils.getPreferredCommentTextSize(context)
-    val textSizeOffset = SettingsUtils.getCommentTextSizeOffset(textSize)
+    val textSizeOffset = TextPreferences.commentTextSizeOffset(textSize)
     val collectLinks = prefs.getBoolean(SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS, true)
     val emphasizeMeta = prefs.getBoolean(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META, false)
     val depthMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(context)
@@ -106,7 +107,7 @@ fun CommentsSettingsScreen(
                     steps = SettingsUtils.MAX_COMMENT_TEXT_SIZE_OFFSET -
                         SettingsUtils.MIN_COMMENT_TEXT_SIZE_OFFSET - 1,
                     onValueChange = {
-                        val size = SettingsUtils.getCommentTextSizeForOffset(it.toInt())
+                        val size = TextPreferences.commentTextSizeForOffset(it.toInt())
                         prefs.edit()
                             .putString(
                                 SettingsUtils.PREF_COMMENT_TEXT_SIZE,

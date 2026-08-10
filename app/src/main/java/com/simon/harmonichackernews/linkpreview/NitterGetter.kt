@@ -8,19 +8,6 @@ import com.simon.harmonichackernews.network.NitterPreview
 import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 object NitterGetter {
-    fun isValidNitterUrl(url: String?): Boolean {
-        return NitterPreview.isNitterUrl(url)
-    }
-
-    fun isConvertibleToNitter(url: String?): Boolean {
-        return NitterPreview.isConvertibleUrl(url)
-    }
-
-
-    fun convertToNitterUrl(url: String): String {
-        return NitterPreview.convertUrl(url)
-    }
-
     fun getInfo(webView: WebView, ctx: Context?, callback: GetterCallback) {
         webView.evaluateJavascript(
             "(function() { " +

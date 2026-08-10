@@ -89,3 +89,45 @@ object FaviconPreferences {
         else -> GOOGLE
     }
 }
+
+object WebViewPreferences {
+    const val PRELOAD_ALWAYS = "always"
+    const val PRELOAD_WIFI_ONLY = "onlywifi"
+    const val PRELOAD_NEVER = "never"
+
+    fun sanitizePreloadMode(mode: String?): String = when (mode) {
+        PRELOAD_ALWAYS, PRELOAD_WIFI_ONLY -> mode
+        else -> PRELOAD_NEVER
+    }
+
+    fun clampBatteryPercent(value: Int): Int = value.coerceIn(0, 100)
+}
+
+object StoryCachePreferences {
+    const val DEFAULT_COUNT = 20
+    const val MIN_COUNT = 5
+    const val MAX_COUNT = 200
+    const val STEP = 5
+
+    fun sanitizeCount(value: Int): Int {
+        val clamped = value.coerceIn(MIN_COUNT, MAX_COUNT)
+        return ((clamped + STEP / 2) / STEP) * STEP
+    }
+}
+
+object AdditionalFrontpagePreferences {
+    const val CLASSIC = "Classic"
+    const val BEST_COMMENTS = "Best Comments"
+    const val HIGHLIGHTS = "Highlights"
+    const val ACTIVE = "Active"
+    const val FRONT = "Front"
+    val labels = listOf(CLASSIC, BEST_COMMENTS, HIGHLIGHTS, ACTIVE, FRONT)
+
+    fun isLabel(value: String?): Boolean = value in labels
+
+    fun sanitize(enabled: Set<String>?): Set<String> =
+        labels.filterTo(linkedSetOf()) { it in enabled.orEmpty() }
+
+    fun summary(enabled: Set<String>?): String =
+        sanitize(enabled).takeIf(Set<String>::isNotEmpty)?.joinToString(", ") ?: "Off"
+}

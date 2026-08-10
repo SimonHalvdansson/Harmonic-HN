@@ -27,6 +27,8 @@ import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
+import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
+import com.simon.harmonichackernews.settings.TextPreferences
 import java.util.Locale
 
 private const val KeyCompactView = "pref_compact_view"
@@ -65,9 +67,9 @@ fun StoriesSettingsScreen(
     val tint = prefs.getBoolean(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, true)
     val displayStyle = SettingsUtils.getPreferredStoryDisplayStyle(context)
     val textSize = SettingsUtils.getPreferredStoryTextSize(context)
-    val textSizeOffset = SettingsUtils.getStoryTextSizeOffset(textSize)
+    val textSizeOffset = TextPreferences.storyTextSizeOffset(textSize)
     val hideClicked = prefs.getBoolean(SettingsUtils.PREF_HIDE_CLICKED, false)
-    val additionalFrontpages = SettingsUtils.sanitizeAdditionalFrontpages(
+    val additionalFrontpages = AdditionalFrontpagePreferences.sanitize(
         prefs.getStringSet(SettingsUtils.PREF_ADDITIONAL_FRONTPAGES, emptySet())
             ?: emptySet(),
     )
@@ -162,7 +164,7 @@ fun StoriesSettingsScreen(
                     steps = SettingsUtils.MAX_STORY_TEXT_SIZE_OFFSET -
                         SettingsUtils.MIN_STORY_TEXT_SIZE_OFFSET - 1,
                     onValueChange = { value ->
-                        val size = SettingsUtils.getStoryTextSizeForOffset(value.toInt())
+                        val size = TextPreferences.storyTextSizeForOffset(value.toInt())
                         prefs.edit()
                             .putString(
                                 SettingsUtils.PREF_STORY_TEXT_SIZE,
@@ -313,7 +315,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Additional frontpages",
-                    summary = SettingsUtils.summarizeAdditionalFrontpages(
+                    summary = AdditionalFrontpagePreferences.summary(
                         additionalFrontpages,
                     ),
                     icon = Res.drawable.ic_library_books,
@@ -427,7 +429,7 @@ fun StoriesSettingsScreen(
                 prefs.edit()
                     .putStringSet(
                         SettingsUtils.PREF_ADDITIONAL_FRONTPAGES,
-                        SettingsUtils.sanitizeAdditionalFrontpages(it).toSet(),
+                        AdditionalFrontpagePreferences.sanitize(it),
                     )
                     .apply()
                 onRequestRestart()
