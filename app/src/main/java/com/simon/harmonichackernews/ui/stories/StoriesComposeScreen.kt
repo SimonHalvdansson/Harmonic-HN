@@ -1601,6 +1601,7 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
         normalColor = colors.storyNormal,
         disabledColor = colors.storyDisabled,
         fontFamily = ProductSansFontFamily,
+        loadingIndicator = { LoadingIndicator(Modifier.size(48.dp)) },
         onRetry = controller.listener::onRefresh,
         onShowCached = controller.listener::onShowCached,
     )
@@ -1703,6 +1704,7 @@ private fun Story.toUiModel(
         previewImageLoadFailed = previewImageLoadFailed,
         faviconTintArgb = faviconTintColor.takeIf { currentFaviconTint },
         previewImageTintArgb = previewImageTintColor.takeIf { currentPreviewTint },
+        tintFallbackArgb = tintBaseColor,
     )
 }
 

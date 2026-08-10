@@ -905,6 +905,8 @@ private fun MainNavigation(
         controller.closeSettings()
         if (needsRestart) {
             activity.restartAfterSettingsChange()
+        } else {
+            activity.applySettingsChanges()
         }
     }
 

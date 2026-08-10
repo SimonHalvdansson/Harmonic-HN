@@ -1014,7 +1014,9 @@ fun PaletteTintDialog(
                             .padding(top = 8.dp),
                         contentPadding = PaddingValues(horizontal = 24.dp),
                     ) {
-                        items(PalettePreviewSamples, key = { it.drawable }) { sample ->
+                        // Lazy layout keys must be Bundle-saveable on Android. DrawableResource
+                        // is not, and using it here crashed as soon as the dialog was measured.
+                        items(PalettePreviewSamples, key = { it.title }) { sample ->
                             PalettePreviewCard(
                                 sample = sample,
                                 configKey = configKey,
@@ -1247,7 +1249,7 @@ private fun PalettePreviewCard(
     val paletteState = rememberResourcePaletteState {
         maximumColorCount(16)
     }
-    LaunchedEffect(sample.drawable) {
+    LaunchedEffect(sample.title) {
         paletteState.generate(sample.drawable)
     }
     val palette = paletteState.palette

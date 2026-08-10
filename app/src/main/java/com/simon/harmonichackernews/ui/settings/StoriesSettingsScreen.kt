@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryType
@@ -22,6 +23,7 @@ import com.simon.harmonichackernews.StoryTypeAndroid
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
@@ -71,6 +73,23 @@ fun StoriesSettingsScreen(
     )
     val hotness = prefs.getString("pref_hotness", "-1") ?: "-1"
     val preferredFont = SettingsUtils.getPreferredFont(context)
+    val paletteTintConfigKey = SettingsUtils.getPreferredPaletteTintConfigKey(context)
+    val previewModel = remember(context, paletteTintConfigKey) {
+        val tintFallback = PreviewImageTintUtils.getTintBaseColor(context)
+        SettingsStoryPreviewModel.copy(
+            faviconTintArgb = PreviewImageTintUtils.calculateCardTint(
+                tintFallback,
+                AppCompatResources.getDrawable(context, R.drawable.quanta),
+                paletteTintConfigKey,
+            ),
+            previewImageTintArgb = PreviewImageTintUtils.calculateCardTint(
+                tintFallback,
+                AppCompatResources.getDrawable(context, R.drawable.web_preview),
+                paletteTintConfigKey,
+            ),
+            tintFallbackArgb = tintFallback,
+        )
+    }
 
     SettingsPage(
         title = "Stories",
@@ -79,7 +98,7 @@ fun StoriesSettingsScreen(
         contentVersion = refresh + localRefresh,
         pinnedContent = {
             StoryItem(
-                model = SettingsStoryPreviewModel,
+                model = previewModel,
                 style = StoryItemStyle(
                     previewImageMode = previewImageMode,
                     borderlessLargeImage = borderlessLarge,
@@ -97,6 +116,7 @@ fun StoriesSettingsScreen(
                     useHotnessIcon = hotness != "-1",
                     preferredFont = preferredFont,
                     textSize = textSize,
+                    paletteTintConfigKey = paletteTintConfigKey,
                 ),
             )
         },

@@ -5,10 +5,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -34,20 +37,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -108,10 +111,14 @@ fun CommentItem(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
     )
+    val bodySize by animateFloatAsState(
+        targetValue = typography.commentTextSize,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment preview text size",
+    )
     SharedCommentSurface(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
         style = style,
-        depth = 0,
         showIndicator = style.depthIndicatorMode != "none",
         indicatorColor = depthColors().first(),
         highlighted = false,
@@ -128,15 +135,20 @@ fun CommentItem(
             hiddenReplyCount = null,
             emphasized = style.emphasizeMeta,
             fontFamily = typography.family,
+            animateChanges = style.animateChanges,
         )
         Text(
             text = model.body,
             color = HarmonicTheme.colors.storyNormal,
             fontFamily = typography.family,
-            fontSize = typography.commentTextSize.sp,
+            fontSize = bodySize.sp,
             style = animatedCommentTextStyle,
         )
-        if (style.collectLinks) {
+        AnimatedVisibility(
+            visible = style.collectLinks,
+            enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+            exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+        ) {
             ReferenceRow(
                 marker = model.referenceMarker,
                 label = model.referenceUrl,
@@ -178,6 +190,11 @@ fun CommentItem(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
     )
+    val bodySize by animateFloatAsState(
+        targetValue = typography.commentTextSize,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "runtime comment text size",
+    )
     val effectiveDepth = if (flattenHierarchy) 0 else comment.depth
     val showIndicator = !flattenHierarchy && style.depthIndicatorMode != "none" &&
         (effectiveDepth > 0 || showTopLevelIndicator)
@@ -188,8 +205,18 @@ fun CommentItem(
     }
     val bodyHtml = references?.takeIf(CollectedReferenceLinks.Result::hasLinks)?.bodyHtml
         ?: comment.expandedAnchorText.orEmpty()
-    val body = remember(bodyHtml, colors.link) {
-        htmlAnnotatedString(bodyHtml, colors.link)
+    val linkGestureState = remember { AnnotatedLinkGestureState() }
+    val linkListener = remember(linkGestureState, onLinkClick) {
+        LinkInteractionListener { annotation ->
+            if (annotation is LinkAnnotation.Url &&
+                !linkGestureState.consumeSuppressedLinkClick()
+            ) {
+                onLinkClick(annotation.url)
+            }
+        }
+    }
+    val body = remember(bodyHtml, colors.link, linkListener) {
+        htmlAnnotatedString(bodyHtml, colors.link, linkListener)
     }
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
     val displayedBody = remember(body, searchTerm, markedColor) {
@@ -204,13 +231,21 @@ fun CommentItem(
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
+        val shadowPadding = if (style.cardStyle) 4.dp else 0.dp
+        val top = if (style.cardStyle) {
+            if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
+        } else if (effectiveDepth > 0 && !collapseParent) {
+            10.dp
+        } else {
+            6.dp
+        }
+        val bottom = if (style.cardStyle) 0.dp else 6.dp
         SharedCommentSurface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = start, end = 16.dp)
-                .padding(vertical = if (style.cardStyle) 2.dp else 6.dp),
+                .padding(start = (start - shadowPadding).coerceAtLeast(0.dp), end = 16.dp)
+                .padding(top = top, bottom = bottom),
             style = style,
-            depth = effectiveDepth,
             showIndicator = showIndicator,
             indicatorColor = depthColors()[indicatorIndex],
             highlighted = highlighted,
@@ -224,28 +259,33 @@ fun CommentItem(
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
                 hiddenPreview = hiddenPreview.takeIf { textCollapsed },
-                hiddenReplyCount = hiddenReplyCount.takeIf { textCollapsed },
+                hiddenReplyCount = hiddenReplyCount.takeIf { it > 0 && textCollapsed },
                 emphasized = style.emphasizeMeta,
                 fontFamily = typography.family,
+                animateChanges = style.animateChanges,
             )
-            AnimatedVisibility(!textCollapsed) {
+            AnimatedVisibility(
+                visible = !textCollapsed,
+                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+            ) {
                 Column {
                     Text(
                         text = displayedBody,
                         modifier = Modifier
                             .fillMaxWidth()
                             .onGloballyPositioned { textCoordinates = it }
-                            .detectAnnotatedLinkGestures(
+                            .detectAnnotatedLinkLongPress(
                                 text = displayedBody,
                                 layoutResult = { textLayout },
                                 coordinates = { textCoordinates },
-                                onClick = onLinkClick,
+                                linkGestureState = linkGestureState,
                                 onLongPress = onLinkLongClick,
                             ),
                         onTextLayout = { textLayout = it },
                         color = colors.storyNormal,
                         fontFamily = typography.family,
-                        fontSize = typography.commentTextSize.sp,
+                        fontSize = bodySize.sp,
                         style = animatedCommentTextStyle,
                     )
                     references?.links?.forEach { link ->
@@ -272,7 +312,6 @@ fun CommentItem(
 private fun SharedCommentSurface(
     modifier: Modifier,
     style: CommentItemStyle,
-    depth: Int,
     showIndicator: Boolean,
     indicatorColor: Color,
     highlighted: Boolean,
@@ -281,21 +320,85 @@ private fun SharedCommentSurface(
     content: @Composable () -> Unit,
 ) {
     val colors = HarmonicTheme.colors
-    val shape = if (style.cardStyle) RoundedCornerShape(8.dp) else RectangleShape
+    val shapeRadius by animateDpAsState(
+        if (style.cardStyle) 8.dp else 0.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment corner radius",
+    )
+    val shape = RoundedCornerShape(shapeRadius)
     val baseBackground = if (style.cardStyle) colors.surfaceContainerHigh else colors.background
     val overlayAlpha = if (highlighted) {
         if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
     } else 0f
-    val background = colors.storyNormal.copy(alpha = overlayAlpha).compositeOver(baseBackground)
+    val targetBackground = colors.storyNormal.copy(alpha = overlayAlpha).compositeOver(baseBackground)
+    val background by animateColorAsState(
+        targetValue = targetBackground,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment background",
+    )
     val shadowPadding by animateDpAsState(
         if (style.cardStyle) 4.dp else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment card padding",
     )
+    val cardProgress by animateFloatAsState(
+        if (style.cardStyle) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment card progress",
+    )
+    val borderAlpha by animateFloatAsState(
+        if (style.cardStyle && style.showCardBorder) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment border",
+    )
     val indicatorAlpha by animateFloatAsState(
         if (showIndicator) 1f else 0f,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment indicator",
+    )
+    val indicatorWidth by animateDpAsState(
+        if (showIndicator || style.cardStyle) {
+            if (style.cardStyle) 3.5.dp else 2.5.dp
+        } else 0.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment indicator width",
+    )
+    val indicatorMargin by animateDpAsState(
+        if (showIndicator || style.cardStyle) {
+            if (style.cardStyle) 4.dp else 8.dp
+        } else 0.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment indicator margin",
+    )
+    val contentStartPadding by animateDpAsState(
+        if (style.cardStyle) 4.5.dp else 5.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment content start padding",
+    )
+    val contentEndPadding by animateDpAsState(
+        if (style.cardStyle) 8.dp else 4.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment content end padding",
+    )
+    val contentVerticalPadding by animateDpAsState(
+        if (style.cardStyle) 7.dp else 5.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment content vertical padding",
+    )
+    val dividerInset by animateDpAsState(
+        if (style.cardStyle) 8.dp else 4.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment divider inset",
+    )
+    val dividerHeight by animateDpAsState(
+        if (style.showDivider) 4.dp else 0.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment divider height",
+    )
+    val dividerAlpha by animateFloatAsState(
+        if (style.showDivider) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment divider alpha",
     )
     Column(modifier) {
         Row(
@@ -303,33 +406,39 @@ private fun SharedCommentSurface(
                 .fillMaxWidth()
                 .padding(shadowPadding)
                 .height(IntrinsicSize.Min)
-                .shadow(if (style.cardStyle) 1.dp else 0.dp, shape, clip = false)
+                .shadow((cardProgress * 1f).dp, shape, clip = false)
                 .clip(shape)
                 .background(background)
                 .border(
-                    if (style.cardStyle && style.showCardBorder) 1.dp else 0.dp,
-                    colors.commentDivider,
+                    1.dp,
+                    colors.commentDivider.copy(alpha = borderAlpha),
                     shape,
                 )
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         ) {
             Box(
                 Modifier
-                    .width(if (style.cardStyle) 3.5.dp else 2.5.dp)
+                    .width(indicatorWidth)
                     .fillMaxHeight()
                     .graphicsLayer(alpha = indicatorAlpha)
                     .background(indicatorColor),
             )
+            Box(Modifier.width(indicatorMargin))
             Column(
                 Modifier.weight(1f).padding(
-                    horizontal = if (style.cardStyle) 8.dp else 5.dp,
-                    vertical = if (style.cardStyle) 7.dp else 5.dp,
+                    start = contentStartPadding,
+                    top = contentVerticalPadding,
+                    end = contentEndPadding,
+                    bottom = contentVerticalPadding,
                 ),
             ) { content() }
         }
-        AnimatedVisibility(style.showDivider) {
+        Box(
+            Modifier.fillMaxWidth().height(dividerHeight).padding(horizontal = dividerInset),
+            contentAlignment = Alignment.Center,
+        ) {
             Box(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(1.dp)
+                Modifier.fillMaxWidth().height(1.dp).graphicsLayer(alpha = dividerAlpha)
                     .background(colors.commentDivider),
             )
         }
@@ -347,6 +456,7 @@ private fun CommentMeta(
     hiddenReplyCount: Int?,
     emphasized: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
+    animateChanges: Boolean,
 ) {
     val colors = HarmonicTheme.colors
     val metaColor = when {
@@ -355,27 +465,56 @@ private fun CommentMeta(
         emphasized -> colors.storyNormal
         else -> colors.storyDisabled
     }
+    val metaRadius by animateDpAsState(
+        if (emphasized) 12.dp else 0.dp,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "comment meta radius",
+    )
+    val metaHorizontalPadding by animateDpAsState(
+        if (emphasized) 7.dp else 0.dp,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "comment meta horizontal padding",
+    )
+    val metaVerticalPadding by animateDpAsState(
+        if (emphasized) 2.dp else 0.dp,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "comment meta vertical padding",
+    )
+    val metaBackground by animateColorAsState(
+        if (emphasized) colors.surfaceContainerHighest else Color.Transparent,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "comment meta background",
+    )
+    val metaBorderAlpha by animateFloatAsState(
+        if (emphasized) 1f else 0f,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "comment meta border",
+    )
+    val metaShape = RoundedCornerShape(metaRadius)
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(if (emphasized) 12.dp else 0.dp))
-                .background(if (emphasized) colors.surfaceContainerHighest else Color.Transparent)
-                .padding(horizontal = if (emphasized) 7.dp else 0.dp),
+                .clip(metaShape)
+                .background(metaBackground)
+                .border(1.dp, colors.commentDivider.copy(alpha = metaBorderAlpha), metaShape)
+                .padding(horizontal = metaHorizontalPadding, vertical = metaVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(author, color = metaColor, fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             if (byOp) {
                 Text(
                     "OP",
-                    modifier = Modifier.padding(start = 3.dp).clip(RoundedCornerShape(3.dp))
+                    modifier = Modifier.padding(start = 3.dp).height(14.dp).clip(RoundedCornerShape(3.dp))
                         .background(metaColor.copy(alpha = 0.14f)).padding(horizontal = 3.dp),
                     color = metaColor,
                     fontFamily = fontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
+                    lineHeight = 10.sp,
+                    style = compactCommentTextStyle,
                 )
             }
             Text(age, modifier = Modifier.padding(start = 4.dp), color = metaColor, fontFamily = fontFamily, fontSize = 13.sp)
@@ -452,6 +591,7 @@ private fun ReferenceRow(
 private fun htmlAnnotatedString(
     html: String,
     linkColor: Color,
+    linkListener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
     val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
     val plainText = document.body().wholeText().trim()
@@ -465,12 +605,20 @@ private fun htmlAnnotatedString(
                 val start = plainText.indexOf(label, cursor)
                 if (start >= 0) {
                     val end = start + label.length
-                    addStyle(
-                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                    addLink(
+                        LinkAnnotation.Url(
+                            url = url,
+                            styles = TextLinkStyles(
+                                style = SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
+                            ),
+                            linkInteractionListener = linkListener,
+                        ),
                         start,
                         end,
                     )
-                    addStringAnnotation(URL_ANNOTATION, url, start, end)
                     cursor = end
                 }
             }
@@ -506,74 +654,6 @@ private fun highlightSearchMatches(
     }
 }
 
-private fun Modifier.detectAnnotatedLinkGestures(
-    text: AnnotatedString,
-    layoutResult: () -> TextLayoutResult?,
-    coordinates: () -> LayoutCoordinates?,
-    onClick: (url: String) -> Unit,
-    onLongPress: (url: String, label: String, bounds: Rect) -> Unit,
-): Modifier = pointerInput(text, onClick, onLongPress) {
-    detectTapGestures(
-        onTap = { position ->
-            val layout = layoutResult() ?: return@detectTapGestures
-            if (text.isEmpty()) return@detectTapGestures
-            val offset = layout.getOffsetForPosition(position).coerceIn(0, text.length - 1)
-            text.getStringAnnotations(
-                URL_ANNOTATION,
-                offset,
-                (offset + 1).coerceAtMost(text.length),
-            ).firstOrNull()?.let { onClick(it.item) }
-        },
-        onLongPress = { position ->
-            val layout = layoutResult() ?: return@detectTapGestures
-            if (text.isEmpty()) return@detectTapGestures
-            val offset = layout.getOffsetForPosition(position).coerceIn(0, text.length - 1)
-            val range = text.getStringAnnotations(
-                URL_ANNOTATION,
-                offset,
-                (offset + 1).coerceAtMost(text.length),
-            ).firstOrNull() ?: return@detectTapGestures
-            val bounds = annotatedRangeBoundsInWindow(
-                range.start,
-                range.end,
-                text.length,
-                layout,
-                coordinates(),
-            ) ?: return@detectTapGestures
-            onLongPress(
-                range.item,
-                text.text.substring(range.start, range.end).trim().ifBlank { range.item },
-                bounds,
-            )
-        },
-    )
-}
-
-private fun annotatedRangeBoundsInWindow(
-    start: Int,
-    end: Int,
-    textLength: Int,
-    layout: TextLayoutResult,
-    coordinates: LayoutCoordinates?,
-): Rect? {
-    if (coordinates == null || !coordinates.isAttached || textLength <= 0) return null
-    val first = start.coerceIn(0, textLength - 1)
-    val lastExclusive = end.coerceIn(first + 1, textLength)
-    var localBounds = layout.getBoundingBox(first)
-    for (offset in (first + 1) until lastExclusive) {
-        val other = layout.getBoundingBox(offset)
-        localBounds = Rect(
-            minOf(localBounds.left, other.left),
-            minOf(localBounds.top, other.top),
-            maxOf(localBounds.right, other.right),
-            maxOf(localBounds.bottom, other.bottom),
-        )
-    }
-    val topLeft = coordinates.localToWindow(Offset(localBounds.left, localBounds.top))
-    val bottomRight = coordinates.localToWindow(Offset(localBounds.right, localBounds.bottom))
-    return Rect(topLeft, bottomRight)
-}
-
 private fun depthColors(): List<Color> = listOf(
     Color(0xff5e97f6),
     Color(0xff9ccc65),
@@ -588,4 +668,6 @@ private val animatedCommentTextStyle = TextStyle(
     textMotion = TextMotion.Animated,
 )
 
-private const val URL_ANNOTATION = "url"
+private val compactCommentTextStyle = TextStyle(
+    textMotion = TextMotion.Static,
+)

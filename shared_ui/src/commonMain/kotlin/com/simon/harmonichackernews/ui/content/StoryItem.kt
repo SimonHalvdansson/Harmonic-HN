@@ -2,12 +2,18 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,6 +51,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,9 +62,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_comment
-import com.simon.harmonichackernews.resources.ic_image
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_whatshot
+import com.simon.harmonichackernews.resources.quanta
+import com.simon.harmonichackernews.resources.web_preview
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -75,12 +84,14 @@ data class StoryItemUiModel(
     val age: String,
     val commentCount: Int,
     val faviconFallback: DrawableResource = Res.drawable.ic_public,
+    val tintFaviconFallback: Boolean = true,
     val previewImageFallback: DrawableResource? = null,
     val faviconUrl: String? = null,
     val previewImageUrl: String? = null,
     val previewImageLoadFailed: Boolean = false,
     val faviconTintArgb: Int? = null,
     val previewImageTintArgb: Int? = null,
+    val tintFallbackArgb: Int? = null,
 )
 
 @Immutable
@@ -114,8 +125,9 @@ val SettingsStoryPreviewModel = StoryItemUiModel(
     domainWithoutTopLevel = "science",
     age = "2h",
     commentCount = 18,
-    faviconFallback = Res.drawable.ic_public,
-    previewImageFallback = Res.drawable.ic_image,
+    faviconFallback = Res.drawable.quanta,
+    tintFaviconFallback = false,
+    previewImageFallback = Res.drawable.web_preview,
 )
 
 /**
@@ -145,89 +157,121 @@ fun StoryItem(
         animationSpec = tween(if (animate) 180 else 0),
         label = "story dim alpha",
     )
-    val cardPadding by animateDpAsState(
-        targetValue = if (style.cardStyle) 4.dp else 0.dp,
-        animationSpec = tween(if (animate) ContentAnimationDuration else 0),
-        label = "story card padding",
+    val cardProgress by animateFloatAsState(
+        targetValue = if (style.cardStyle) 1f else 0f,
+        animationSpec = if (animate) contentTween() else snap(),
+        label = "story card style",
     )
-    val cardShape = RoundedCornerShape(if (style.cardStyle) 8.dp else 0.dp)
-    val tint = model.previewImageTintArgb?.let(::Color)
-    val background = when {
-        style.tintCard && tint != null -> tint
-        style.cardStyle -> colors.surfaceContainerHigh
-        else -> colors.background
-    }
+    val cardShape = RoundedCornerShape(8.dp)
     var previewFailed by remember(model.previewImageUrl, model.previewImageLoadFailed) {
         mutableStateOf(model.previewImageLoadFailed)
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
+    val tint = model.previewImageTintArgb
+        .takeIf { style.previewImageMode != "off" && hasPreview }
+        ?.let(::Color)
+        ?: model.faviconTintArgb?.let(::Color)
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerHigh
+    val targetBackground = when {
+        style.tintCard -> tint ?: tintFallback
+        style.cardStyle -> colors.surfaceContainerHigh
+        else -> colors.background
+    }
+    // Image palette extraction finishes after a list row is first composed. Preserve the old
+    // blend so an arriving preview/favicon tint does not flash into place.
+    val background by animateColorAsState(
+        targetValue = targetBackground,
+        animationSpec = contentTween(),
+        label = "story card tint",
+    )
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = cardPadding)
-            .onGloballyPositioned { onBoundsChanged?.invoke(it.boundsInWindow()) }
-            .shadow(
-                elevation = if (style.cardStyle) 1.dp else 0.dp,
-                shape = cardShape,
-                clip = false,
-            )
-            .clip(cardShape)
-            .background(background)
-            .border(
-                width = if (style.cardStyle) 1.dp else 0.dp,
-                color = colors.outlineVariant.copy(alpha = if (style.cardStyle) 1f else 0f),
-                shape = cardShape,
+            .padding(
+                horizontal = if (listItem) 0.dp else 8.dp,
+                vertical = if (listItem) 0.dp else 10.dp,
             ),
     ) {
-        Column {
-            if (style.previewImageMode == "large" && hasPreview) {
-                StoryPreviewImage(
-                    model = model,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(176.dp)
-                        .then(
-                            if (style.borderlessLargeImage) Modifier
-                            else Modifier.padding(start = 10.dp, top = 10.dp, end = 10.dp),
-                        )
-                        .clip(RoundedCornerShape(if (style.borderlessLargeImage) 0.dp else 8.dp))
-                        .graphicsLayer(alpha = dimAlpha),
-                    onLoadFailed = {
-                        previewFailed = true
-                        onPreviewLoadFailed?.invoke()
-                    },
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                verticalAlignment = Alignment.CenterVertically,
+        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { onBoundsChanged?.invoke(it.boundsInWindow()) }
+                    .shadow(
+                        elevation = (cardProgress * 1f).dp,
+                        shape = cardShape,
+                        clip = false,
+                    )
+                    .clip(cardShape)
+                    .background(background)
+                    .border(
+                        width = 1.dp,
+                        color = colors.outlineVariant.copy(alpha = cardProgress),
+                        shape = cardShape,
+                    ),
             ) {
-                val comments: @Composable () -> Unit = {
-                    StoryCommentRail(
+                AnimatedVisibility(
+                    visible = style.previewImageMode == "large" && hasPreview,
+                    enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+                ) {
+                    val imageInset by animateDpAsState(
+                        targetValue = if (style.borderlessLargeImage) 0.dp else 10.dp,
+                        animationSpec = if (animate) contentTween() else snap(),
+                        label = "large story image inset",
+                    )
+                    val imageRadius by animateDpAsState(
+                        targetValue = if (style.borderlessLargeImage) 0.dp else 8.dp,
+                        animationSpec = if (animate) contentTween() else snap(),
+                        label = "large story image radius",
+                    )
+                    StoryPreviewImage(
                         model = model,
-                        style = style,
-                        fontFamily = typography.family,
-                        onClick = onCommentClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(176.dp)
+                            .padding(start = imageInset, top = imageInset, end = imageInset)
+                            .clip(RoundedCornerShape(imageRadius))
+                            .graphicsLayer(alpha = dimAlpha),
+                        onLoadFailed = {
+                            previewFailed = true
+                            onPreviewLoadFailed?.invoke()
+                        },
                     )
                 }
-                if (style.commentsOnLeft) comments()
-                StoryMainContent(
-                    model = model,
-                    style = style,
-                    typography = typography,
-                    hasSmallPreview = hasPreview && style.previewImageMode == "small",
-                    dimAlpha = dimAlpha,
-                    onLinkClick = onLinkClick,
-                    onLinkLongClick = onLinkLongClick,
-                    onPreviewLoadFailed = {
-                        previewFailed = true
-                        onPreviewLoadFailed?.invoke()
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-                if (!style.commentsOnLeft) comments()
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val comments: @Composable () -> Unit = {
+                        StoryCommentRail(
+                            model = model,
+                            style = style,
+                            fontFamily = typography.family,
+                            onClick = onCommentClick,
+                            animateChanges = animate,
+                        )
+                    }
+                    if (style.commentsOnLeft) comments()
+                    StoryMainContent(
+                        model = model,
+                        style = style,
+                        typography = typography,
+                        hasSmallPreview = hasPreview && style.previewImageMode == "small",
+                        dimAlpha = dimAlpha,
+                        onLinkClick = onLinkClick,
+                        onLinkLongClick = onLinkLongClick,
+                        onPreviewLoadFailed = {
+                            previewFailed = true
+                            onPreviewLoadFailed?.invoke()
+                        },
+                        animateChanges = animate,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (!style.commentsOnLeft) comments()
+                }
             }
         }
     }
@@ -243,8 +287,20 @@ private fun StoryMainContent(
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
     onPreviewLoadFailed: () -> Unit,
+    animateChanges: Boolean,
     modifier: Modifier,
 ) {
+    val titleSize by animateFloatAsState(
+        targetValue = typography.storyTitleSize,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story title size",
+    )
+    val summarySize by animateFloatAsState(
+        targetValue = typography.storySummarySize,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story summary size",
+    )
+    val indexSize = with(LocalDensity.current) { 16.dp.toSp() }
     Row(
         modifier = modifier
             .combinedClickable(
@@ -262,7 +318,7 @@ private fun StoryMainContent(
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
-                fontSize = 16.sp,
+                fontSize = indexSize,
                 textAlign = TextAlign.Center,
                 style = legacyTextStyle,
             )
@@ -274,7 +330,7 @@ private fun StoryMainContent(
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
-                fontSize = typography.storyTitleSize.sp,
+                fontSize = titleSize.sp,
                 style = legacyTextStyle,
             )
             AnimatedVisibility(style.showSummary && model.summary.isNotBlank()) {
@@ -283,7 +339,7 @@ private fun StoryMainContent(
                     modifier = Modifier.padding(top = 3.dp),
                     color = HarmonicTheme.colors.storyDisabled,
                     fontFamily = typography.family,
-                    fontSize = typography.storySummarySize.sp,
+                    fontSize = summarySize.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     style = legacyTextStyle,
@@ -295,11 +351,17 @@ private fun StoryMainContent(
                     style = style,
                     typography = typography,
                     dimAlpha = dimAlpha,
+                    animateChanges = animateChanges,
                     modifier = Modifier.padding(top = 3.dp),
                 )
             }
         }
-        if (hasSmallPreview) {
+        AnimatedVisibility(
+            visible = hasSmallPreview,
+            modifier = Modifier.align(Alignment.CenterVertically),
+            enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+            exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+        ) {
             StoryPreviewImage(
                 model = model,
                 modifier = Modifier
@@ -320,11 +382,22 @@ private fun StoryPreviewImage(
     onLoadFailed: () -> Unit,
 ) {
     if (model.previewImageUrl != null) {
+        var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
+        val loadProgress by animateFloatAsState(
+            targetValue = if (loaded) 1f else 0f,
+            animationSpec = tween(240, easing = ContentMotionEasing),
+            label = "story image load",
+        )
         AsyncImage(
             model = model.previewImageUrl,
             contentDescription = null,
-            modifier = modifier,
+            modifier = modifier.graphicsLayer {
+                alpha = loadProgress
+                scaleX = 0.94f + 0.06f * loadProgress
+                scaleY = 0.94f + 0.06f * loadProgress
+            },
             contentScale = ContentScale.Crop,
+            onSuccess = { loaded = true },
             onError = { onLoadFailed() },
         )
     } else {
@@ -345,8 +418,14 @@ private fun StoryMeta(
     style: StoryItemStyle,
     typography: ContentTypography,
     dimAlpha: Float,
+    animateChanges: Boolean,
     modifier: Modifier,
 ) {
+    val metaSize by animateFloatAsState(
+        targetValue = typography.storyMetaSize,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story meta size",
+    )
     val metaText = remember(model, style.showPoints, style.compactPoints, style.includeTopLevelDomain) {
         buildString {
             if (style.showPoints) {
@@ -360,25 +439,56 @@ private fun StoryMeta(
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(style.showFavicon) {
             if (model.faviconUrl != null) {
-                AsyncImage(
-                    model = model.faviconUrl,
-                    placeholder = painterResource(model.faviconFallback),
-                    fallback = painterResource(model.faviconFallback),
-                    error = painterResource(model.faviconFallback),
-                    contentDescription = null,
+                var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
+                var failed by remember(model.faviconUrl) { mutableStateOf(false) }
+                val loadAlpha by animateFloatAsState(
+                    targetValue = if (loaded) 1f else 0f,
+                    animationSpec = contentTween(),
+                    label = "story favicon load",
+                )
+                Box(
                     modifier = Modifier
                         .padding(end = 4.dp)
                         .size(17.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .graphicsLayer(alpha = dimAlpha),
-                )
+                        .clip(RoundedCornerShape(3.dp)),
+                ) {
+                    Icon(
+                        painter = painterResource(model.faviconFallback),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                alpha = dimAlpha * if (failed) 1f else 1f - loadAlpha,
+                            ),
+                    )
+                    if (!failed) {
+                        AsyncImage(
+                            model = model.faviconUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(alpha = dimAlpha * loadAlpha),
+                            onSuccess = { loaded = true },
+                            onError = { failed = true },
+                        )
+                    }
+                }
             } else {
-                Icon(
-                    painter = painterResource(model.faviconFallback),
-                    contentDescription = null,
-                    tint = model.faviconTintArgb?.let(::Color) ?: HarmonicTheme.colors.drawable,
-                    modifier = Modifier.padding(end = 4.dp).size(17.dp),
-                )
+                if (model.tintFaviconFallback) {
+                    Icon(
+                        painter = painterResource(model.faviconFallback),
+                        contentDescription = null,
+                        tint = HarmonicTheme.colors.drawable,
+                        modifier = Modifier.padding(end = 4.dp).size(17.dp),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(model.faviconFallback),
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 4.dp).size(17.dp),
+                    )
+                }
             }
         }
         AnimatedContent(metaText, transitionSpec = { fadeIn().togetherWith(fadeOut()) }) { text ->
@@ -386,7 +496,7 @@ private fun StoryMeta(
                 text = text,
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = typography.family,
-                fontSize = typography.storyMetaSize.sp,
+                fontSize = metaSize.sp,
                 style = legacyTextStyle,
             )
         }
@@ -399,7 +509,13 @@ private fun StoryCommentRail(
     style: StoryItemStyle,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     onClick: (() -> Unit)?,
+    animateChanges: Boolean,
 ) {
+    val countSize by animateFloatAsState(
+        targetValue = 14f,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story comment count size",
+    )
     Column(
         modifier = Modifier
             .width(60.dp)
@@ -424,7 +540,7 @@ private fun StoryCommentRail(
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = countSize.sp,
                 textAlign = TextAlign.Center,
                 style = legacyTextStyle,
             )

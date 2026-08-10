@@ -224,12 +224,15 @@ fun SharedStoryListStatus(
     normalColor: Color,
     disabledColor: Color,
     fontFamily: FontFamily,
+    loadingIndicator: @Composable () -> Unit = {
+        CircularProgressIndicator(modifier = Modifier.size(48.dp))
+    },
     onRetry: () -> Unit,
     onShowCached: () -> Unit,
 ) {
     AnimatedVisibility(state.loading, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
         Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+            loadingIndicator()
         }
     }
     AnimatedVisibility(

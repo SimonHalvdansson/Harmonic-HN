@@ -611,6 +611,7 @@ private fun rememberStoryItemUiModel(
         previewImageUrl = previewUrl,
         faviconTintArgb = faviconTintArgb,
         previewImageTintArgb = previewTintArgb,
+        tintFallbackArgb = tintBaseColor,
     )
 }
 

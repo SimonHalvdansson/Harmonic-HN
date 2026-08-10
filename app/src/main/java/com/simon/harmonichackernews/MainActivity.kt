@@ -387,6 +387,16 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         startActivity(launchIntent)
     }
 
+    /** Apply preference changes when the in-app settings overlay closes.
+     *
+     * Settings used to be a separate Activity, so returning to the story list naturally called
+     * [onResume]. The Compose overlay keeps this Activity resumed and must explicitly run the same
+     * refresh path.
+     */
+    fun applySettingsChanges() {
+        storiesCoordinator?.onResume()
+    }
+
     fun setImmersiveContentEnabled(enabled: Boolean) {
         val insetsController = WindowCompat.getInsetsController(
             window,
