@@ -26,12 +26,12 @@ kotlin {
         commonMain.dependencies {
             api(project(":shared_logic"))
             api(project(":shared_resources"))
-            implementation(compose.runtime)
-            implementation(compose.ui)
-            implementation(compose.foundation)
-            implementation(compose.animation)
-            implementation(compose.material3)
-            implementation(compose.components.resources)
+            implementation(libs.compose.multiplatform.runtime)
+            implementation(libs.compose.multiplatform.ui)
+            implementation(libs.compose.multiplatform.foundation)
+            implementation(libs.compose.multiplatform.animation)
+            implementation(libs.compose.multiplatform.material3)
+            implementation(libs.compose.multiplatform.resources)
             implementation(libs.coil.compose)
             implementation(libs.ksoup)
         }

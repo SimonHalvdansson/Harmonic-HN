@@ -16,10 +16,10 @@ kotlin {
     sourceSets {
         getByName("desktopMain").dependencies {
             implementation(project(":shared_ui"))
-            implementation(compose.runtime)
-            implementation(compose.ui)
-            implementation(compose.foundation)
-            implementation(compose.material3)
+            implementation(libs.compose.multiplatform.runtime)
+            implementation(libs.compose.multiplatform.ui)
+            implementation(libs.compose.multiplatform.foundation)
+            implementation(libs.compose.multiplatform.material3)
             implementation(compose.desktop.currentOs)
         }
     }
