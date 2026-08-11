@@ -203,31 +203,15 @@ fun CommentItem(
     val references = remember(comment.expandedAnchorText, style.collectLinks) {
         if (style.collectLinks) CollectedReferenceLinks.parse(comment.expandedAnchorText) else null
     }
-    val bodyHtml = references?.takeIf(CollectedReferenceLinks.Result::hasLinks)?.bodyHtml
-        ?: comment.expandedAnchorText.orEmpty()
-    val linkGestureState = remember { AnnotatedLinkGestureState() }
-    val linkListener = remember(linkGestureState, onLinkClick) {
-        LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url &&
-                !linkGestureState.consumeSuppressedLinkClick()
-            ) {
-                onLinkClick(annotation.url)
-            }
-        }
-    }
-    val body = remember(bodyHtml, colors.link, linkListener) {
-        htmlAnnotatedString(bodyHtml, colors.link, linkListener)
-    }
+    val contentBlocks = references
+        ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
+        ?.contentBlocks
+        ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
-    val displayedBody = remember(body, searchTerm, markedColor) {
-        highlightSearchMatches(body, searchTerm, markedColor)
-    }
     val hiddenPreview = remember(comment.text) {
         Ksoup.parse(comment.text.orEmpty().take(240)).text().replace('\n', ' ').take(120)
     }
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
-    var textLayout by remember(comment.id, body) { mutableStateOf<TextLayoutResult?>(null) }
-    var textCoordinates by remember(comment.id) { mutableStateOf<LayoutCoordinates?>(null) }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
@@ -270,41 +254,90 @@ fun CommentItem(
                 exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
             ) {
                 Column {
-                    Text(
-                        text = displayedBody,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { textCoordinates = it }
-                            .detectAnnotatedLinkLongPress(
-                                text = displayedBody,
-                                layoutResult = { textLayout },
-                                coordinates = { textCoordinates },
-                                linkGestureState = linkGestureState,
-                                onLongPress = onLinkLongClick,
-                            ),
-                        onTextLayout = { textLayout = it },
-                        color = colors.storyNormal,
-                        fontFamily = typography.family,
-                        fontSize = bodySize.sp,
-                        style = animatedCommentTextStyle,
-                    )
-                    references?.links?.forEach { link ->
-                        var bounds by remember(link.url) { mutableStateOf(Rect.Zero) }
-                        ReferenceRow(
-                            marker = link.markerLabel.orEmpty(),
-                            label = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
-                            modifier = Modifier.onGloballyPositioned { bounds = it.boundsInWindow() },
-                            onClick = { link.url?.let(onLinkClick) },
-                            onLongClick = {
-                                if (bounds.width > 0f && bounds.height > 0f) {
-                                    onReferenceLongClick(link, bounds)
-                                }
-                            },
-                        )
+                    contentBlocks.forEach { block ->
+                        val link = block.getLink()
+                        if (link == null) {
+                            CommentBodyText(
+                                html = block.bodyHtml.orEmpty(),
+                                searchTerm = searchTerm,
+                                markedColor = markedColor,
+                                fontFamily = typography.family,
+                                fontSize = bodySize,
+                                onLinkClick = onLinkClick,
+                                onLinkLongClick = onLinkLongClick,
+                            )
+                        } else {
+                            var bounds by remember(link.url) { mutableStateOf(Rect.Zero) }
+                            ReferenceRow(
+                                marker = link.markerLabel.orEmpty(),
+                                label = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                                modifier = Modifier.onGloballyPositioned {
+                                    bounds = it.boundsInWindow()
+                                },
+                                onClick = { link.url?.let(onLinkClick) },
+                                onLongClick = {
+                                    if (bounds.width > 0f && bounds.height > 0f) {
+                                        onReferenceLongClick(link, bounds)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CommentBodyText(
+    html: String,
+    searchTerm: String,
+    markedColor: Color,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    fontSize: Float,
+    onLinkClick: (String) -> Unit,
+    onLinkLongClick: (String, String, Rect) -> Unit,
+) {
+    val colors = HarmonicTheme.colors
+    val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
+    val linkListener = remember(linkGestureState, onLinkClick) {
+        LinkInteractionListener { annotation ->
+            if (annotation is LinkAnnotation.Url &&
+                !linkGestureState.consumeSuppressedLinkClick()
+            ) {
+                onLinkClick(annotation.url)
+            }
+        }
+    }
+    val body = remember(html, colors.link, linkListener) {
+        htmlAnnotatedString(html, colors.link, linkListener)
+    }
+    val displayedBody = remember(body, searchTerm, markedColor) {
+        highlightSearchMatches(body, searchTerm, markedColor)
+    }
+    var textLayout by remember(body) { mutableStateOf<TextLayoutResult?>(null) }
+    var textCoordinates by remember(body) { mutableStateOf<LayoutCoordinates?>(null) }
+
+    if (displayedBody.isNotEmpty()) {
+        Text(
+            text = displayedBody,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { textCoordinates = it }
+                .detectAnnotatedLinkLongPress(
+                    text = displayedBody,
+                    layoutResult = { textLayout },
+                    coordinates = { textCoordinates },
+                    linkGestureState = linkGestureState,
+                    onLongPress = onLinkLongClick,
+                ),
+            onTextLayout = { textLayout = it },
+            color = colors.storyNormal,
+            fontFamily = fontFamily,
+            fontSize = fontSize.sp,
+            style = animatedCommentTextStyle,
+        )
     }
 }
 
@@ -588,7 +621,7 @@ private fun ReferenceRow(
     }
 }
 
-internal fun htmlAnnotatedString(
+fun htmlAnnotatedString(
     html: String,
     linkColor: Color,
     linkListener: LinkInteractionListener,

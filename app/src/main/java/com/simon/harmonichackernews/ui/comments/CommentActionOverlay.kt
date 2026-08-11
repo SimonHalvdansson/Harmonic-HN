@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,16 +65,13 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.input.pointer.pointerInput
 import org.jetbrains.compose.resources.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.fromHtml
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -81,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -167,20 +166,22 @@ internal fun CommentActionOverlay(
         HarmonicTheme.colors.background
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Color.Black.copy(
-                    alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Color.Black.copy(
+                        alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
+                    ),
+                )
+                .blockGesturesBehindModal()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = controller::requestDismissCommentActions,
                 ),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = controller::requestDismissCommentActions,
-            ),
-    ) {
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -216,6 +217,7 @@ internal fun CommentActionOverlay(
                             pivotFractionY = 0.5f,
                         )
                     }
+                    .blockGesturesBehindModal()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -232,6 +234,15 @@ internal fun CommentActionOverlay(
                 )
             }
         }
+    }
+}
+
+private fun Modifier.blockGesturesBehindModal(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        do {
+            val event = awaitPointerEvent()
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }
 
@@ -262,24 +273,19 @@ private fun CommentActionCardContent(
         append(comment.by?.takeIf(String::isNotBlank) ?: "Unknown user")
         if (comment.by == controller.story.by) append(" (OP)")
     }
-    val linkStyles = TextLinkStyles(
-        style = androidx.compose.ui.text.SpanStyle(
-            color = HarmonicTheme.colors.link,
-            textDecoration = TextDecoration.Underline,
-        ),
-    )
-    val linkListener = LinkInteractionListener { link ->
-        val url = (link as? LinkAnnotation.Url)?.url ?: return@LinkInteractionListener
-        Utils.openLinkMaybeHN(context, url)
+    val linkListener = remember(context) {
+        LinkInteractionListener { link ->
+            val url = (link as? LinkAnnotation.Url)?.url ?: return@LinkInteractionListener
+            Utils.openLinkMaybeHN(context, url)
+        }
     }
-    val body = remember(comment.text) {
-        runCatching {
-            AnnotatedString.fromHtml(
-                comment.expandedAnchorText.orEmpty(),
-                linkStyles,
-                linkListener,
-            )
-        }.getOrElse { AnnotatedString(android.text.Html.fromHtml(comment.text.orEmpty(), 0).toString()) }
+    val linkColor = HarmonicTheme.colors.link
+    val body = remember(comment.expandedAnchorText, linkColor, linkListener) {
+        htmlAnnotatedString(
+            comment.expandedAnchorText.orEmpty(),
+            linkColor,
+            linkListener,
+        )
     }
 
     Column(

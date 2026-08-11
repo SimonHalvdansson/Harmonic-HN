@@ -2053,8 +2053,6 @@ private fun HeaderStoryBody(
     onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     if (story.text.isNullOrBlank()) return
-    val context = LocalContext.current
-    val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
@@ -2062,13 +2060,52 @@ private fun HeaderStoryBody(
     val references = remember(story.text, settings.collectReferenceLinks) {
         if (settings.collectReferenceLinks) CollectedReferenceLinks.parse(story.text) else null
     }
-    val bodyHtml = if (references?.hasLinks() == true) references.bodyHtml else story.text
+    val contentBlocks = references
+        ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
+        ?.contentBlocks
+        ?: listOf(CollectedReferenceLinks.ContentBlock.text(story.text))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp, bottom = 3.dp),
+    ) {
+        contentBlocks.forEach { block ->
+            val link = block.getLink()
+            if (link == null) {
+                HeaderStoryTextBlock(
+                    bodyHtml = block.bodyHtml.orEmpty(),
+                    fontFamily = typography.family,
+                    fontSize = typography.commentTextSize,
+                    onLinkLongClick = onLinkLongClick,
+                )
+            } else {
+                HeaderReferenceRow(
+                    link = link,
+                    settings = settings,
+                    suppressed = link.url == suppressedReferenceUrl,
+                    onLongClick = onReferenceLongClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderStoryTextBlock(
+    bodyHtml: String,
+    fontFamily: FontFamily,
+    fontSize: Float,
+    onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
+) {
+    val context = LocalContext.current
+    val colors = HarmonicTheme.colors
     val linkStyles = remember(colors.link) {
         TextLinkStyles(
             style = SpanStyle(colors.link, textDecoration = TextDecoration.Underline),
         )
     }
-    val linkGestureState = remember { AnnotatedLinkGestureState() }
+    val linkGestureState = remember(bodyHtml) { AnnotatedLinkGestureState() }
     val linkListener = remember(context, linkGestureState) {
         LinkInteractionListener { link ->
             if (link is LinkAnnotation.Url &&
@@ -2079,43 +2116,29 @@ private fun HeaderStoryBody(
         }
     }
     val annotated = remember(bodyHtml, linkStyles, linkListener) {
-        htmlToAnnotated(bodyHtml.orEmpty(), linkStyles, linkListener)
+        htmlToAnnotated(bodyHtml, linkStyles, linkListener)
     }
     var textLayout by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
     var textCoordinates by remember(annotated) { mutableStateOf<LayoutCoordinates?>(null) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 4.dp, bottom = 3.dp),
-    ) {
-        if (annotated.isNotEmpty()) {
-            Text(
-                text = annotated,
-                modifier = Modifier
-                    .onGloballyPositioned { textCoordinates = it }
-                    .detectAnnotatedLinkLongPress(
-                        text = annotated,
-                        layoutResult = { textLayout },
-                        coordinates = { textCoordinates },
-                        linkGestureState = linkGestureState,
-                        onLongPress = onLinkLongClick,
-                    ),
-                color = colors.storyNormal,
-                fontFamily = typography.family,
-                fontSize = typography.commentTextSize.sp,
-                style = legacyTextStyle,
-                onTextLayout = { textLayout = it },
-            )
-        }
-        references?.links.orEmpty().forEach { link ->
-            HeaderReferenceRow(
-                link = link,
-                settings = settings,
-                suppressed = link.url == suppressedReferenceUrl,
-                onLongClick = onReferenceLongClick,
-            )
-        }
+
+    if (annotated.isNotEmpty()) {
+        Text(
+            text = annotated,
+            modifier = Modifier
+                .onGloballyPositioned { textCoordinates = it }
+                .detectAnnotatedLinkLongPress(
+                    text = annotated,
+                    layoutResult = { textLayout },
+                    coordinates = { textCoordinates },
+                    linkGestureState = linkGestureState,
+                    onLongPress = onLinkLongClick,
+                ),
+            color = colors.storyNormal,
+            fontFamily = fontFamily,
+            fontSize = fontSize.sp,
+            style = legacyTextStyle,
+            onTextLayout = { textLayout = it },
+        )
     }
 }
 

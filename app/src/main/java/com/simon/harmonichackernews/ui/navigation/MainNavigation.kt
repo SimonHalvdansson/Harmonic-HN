@@ -1011,6 +1011,8 @@ private fun MainNavigation(
         currentInfo = SceneInfo(sceneState.currentScene),
     )
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    val storyFromSettingsDestinationReady = storyOpenedFromSettings &&
+        (backStack.lastOrNull() as? CommentsDestination)?.request?.serial == storyRequest?.serial
 
     Box(
         modifier = Modifier
@@ -1081,13 +1083,19 @@ private fun MainNavigation(
         }
 
         AnimatedVisibility(
-            visible = settingsRequest != null,
+            // Keep Settings composed while its story is open so returning reveals the existing
+            // settings back stack instead of briefly rendering Stories and recreating Settings.
+            visible = settingsRequest != null || storyOpenedFromSettings,
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(if (storyOpenedFromSettings) -1f else 5f)
+                // openStory updates the navigation state before NavDisplay receives its new
+                // destination. Keep Settings above Stories during that one-frame handoff, then
+                // move it behind the normal Comments transition once the destination is ready.
+                .zIndex(if (storyFromSettingsDestinationReady) -1f else 5f)
                 .then(
                     if (
                         (settingsRequest != null && !storyOpenedFromSettings) ||
+                        storyFromSettingsDestinationReady ||
                         submissionsRequest != null ||
                         editorRequest != null ||
                         coulombGasVisible
@@ -1105,7 +1113,11 @@ private fun MainNavigation(
                 settingsPopExit(settingsTransitionOffsetPx)
             },
         ) {
-            if (settingsRequest != null || !completedSettingsPredictiveBack) {
+            if (
+                settingsRequest != null ||
+                storyOpenedFromSettings ||
+                !completedSettingsPredictiveBack
+            ) {
                 controller.lastSettingsRequest?.let { request ->
                     key(request.serial, controller.settingsThemeRevision) {
                         HarmonicTheme {
