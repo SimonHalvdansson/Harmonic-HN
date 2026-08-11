@@ -67,6 +67,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 
 private data class BookmarkFavoriteResult(
     val id: Int,
@@ -137,7 +138,7 @@ fun AddBookmarksToFavoritesDialog(
             results = completed.toList()
             currentIndex = index + 1
             if (index < bookmarkIds.lastIndex) {
-                delay(1_000)
+                delay(1_000.milliseconds)
             }
         }
         finished = true
