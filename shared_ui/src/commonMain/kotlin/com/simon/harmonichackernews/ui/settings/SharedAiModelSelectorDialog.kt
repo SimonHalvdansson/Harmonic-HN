@@ -30,7 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -279,7 +279,7 @@ fun SharedAiModelSelectorDialog(
                         AiModelCatalogState.Loading -> Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            CircularProgressIndicator()
+                            HarmonicLoadingIndicator()
                             Text("Loading models…", modifier = Modifier.padding(top = 12.dp))
                         }
 
@@ -368,7 +368,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
                     fontSize = 13.sp,
                 )
                 AiModelPriceState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                    HarmonicLoadingIndicator(modifier = Modifier.size(22.dp))
                     Text(
                         text = "Resolving price…",
                         modifier = Modifier.padding(start = 8.dp),

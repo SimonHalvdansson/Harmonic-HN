@@ -23,7 +23,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -320,7 +320,7 @@ private fun RowScope.CommentActionIcon(
             label = "comment action icon",
         ) { visual ->
             if (visual.loading) {
-                CircularProgressIndicator(Modifier.size(28.dp))
+                HarmonicLoadingIndicator(Modifier.size(28.dp))
             } else {
                 IconButton(onClick = onClick, enabled = enabled) {
                     Icon(

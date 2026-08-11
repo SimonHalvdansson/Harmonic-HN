@@ -32,7 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -437,7 +437,7 @@ private fun ReferenceErrorContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (retrying) {
-                    CircularProgressIndicator(
+                    HarmonicLoadingIndicator(
                         modifier = Modifier
                             .size(32.dp)
                             .semantics { contentDescription = retryingDescription },

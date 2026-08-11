@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.settings
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,16 +47,6 @@ fun StoriesSettingsScreen(
     val previewModel = remember(context, paletteTintConfigKey) {
         val tintFallback = PreviewImageTintUtils.getTintBaseColor(context)
         SettingsStoryPreviewModel.copy(
-            faviconTintArgb = PreviewImageTintUtils.calculateCardTint(
-                tintFallback,
-                AppCompatResources.getDrawable(context, R.drawable.quanta),
-                paletteTintConfigKey,
-            ),
-            previewImageTintArgb = PreviewImageTintUtils.calculateCardTint(
-                tintFallback,
-                AppCompatResources.getDrawable(context, R.drawable.web_preview),
-                paletteTintConfigKey,
-            ),
             tintFallbackArgb = tintFallback,
         )
     }

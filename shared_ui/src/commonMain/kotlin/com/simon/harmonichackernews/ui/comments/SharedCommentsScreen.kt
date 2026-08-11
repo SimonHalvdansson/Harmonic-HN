@@ -28,7 +28,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -143,7 +143,7 @@ fun SharedCommentsScreen(
                 .background(HarmonicTheme.colors.background),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(Modifier.size(42.dp))
+            HarmonicLoadingIndicator(Modifier.size(42.dp))
         }
         return
     }

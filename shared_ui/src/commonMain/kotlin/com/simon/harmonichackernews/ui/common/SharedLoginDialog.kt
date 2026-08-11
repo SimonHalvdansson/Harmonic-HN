@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -235,7 +234,7 @@ fun SharedLoginDialog(
                         modifier = Modifier.padding(top = HarmonicDimens.login_dialog_section_spacing),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CircularProgressIndicator(
+                        HarmonicLoadingIndicator(
                             modifier = Modifier.size(HarmonicDimens.login_dialog_loading_indicator_size),
                         )
                         Spacer(Modifier.width(HarmonicDimens.cache_stories_value_start_spacing))
@@ -321,7 +320,7 @@ fun SharedCaptchaDialogLayout(
                 ) {
                     webContent()
                     if (loading) {
-                        CircularProgressIndicator(
+                        HarmonicLoadingIndicator(
                             modifier = Modifier.size(
                                 HarmonicDimens.captcha_dialog_loading_indicator_size,
                             ),

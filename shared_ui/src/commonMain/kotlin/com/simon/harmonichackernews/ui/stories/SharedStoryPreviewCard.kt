@@ -32,7 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -371,7 +371,7 @@ private fun RowScope.StoryPreviewActionIcon(
             label = "story preview action",
         ) { visual ->
             if (visual.loading) {
-                CircularProgressIndicator(Modifier.size(28.dp))
+                HarmonicLoadingIndicator(Modifier.size(28.dp))
             } else {
                 IconButton(onClick = onClick) {
                     Icon(

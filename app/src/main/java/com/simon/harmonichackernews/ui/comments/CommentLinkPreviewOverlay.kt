@@ -27,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import coil3.asDrawable
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -198,9 +197,9 @@ private fun ReferencePreviewImage(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                 onSuccess = { success ->
-                    val drawable = success.result.image.asDrawable(context.resources)
-                    if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
-                        onImageRatio(drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight)
+                    val image = success.result.image
+                    if (image.width > 0 && image.height > 0) {
+                        onImageRatio(image.width.toFloat() / image.height)
                     }
                 },
             )
@@ -235,9 +234,9 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
                 .aspectRatio(imageRatio.coerceIn(0.35f, 4f)),
             contentScale = ContentScale.Fit,
             onSuccess = { success ->
-                val drawable = success.result.image.asDrawable(context.resources)
-                if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
-                    imageRatio = drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight
+                val image = success.result.image
+                if (image.width > 0 && image.height > 0) {
+                    imageRatio = image.width.toFloat() / image.height
                 }
             },
         )

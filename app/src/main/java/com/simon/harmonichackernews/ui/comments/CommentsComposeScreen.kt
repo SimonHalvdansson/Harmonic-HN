@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.comments
 
-import android.graphics.drawable.Drawable
 import android.text.Html
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
@@ -57,7 +56,6 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.asDrawable
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -69,6 +67,7 @@ import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.content.rememberCoilPaletteTint
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -279,6 +278,7 @@ private fun CommentsHeader(
             visible = settings.showHeaderPreviewImage,
             suppressed = controller.headerPreviewSuppressed,
             tintBaseColor = tintBaseColor,
+            paletteTintConfigKey = paletteTintMode,
             onTintLoaded = onTintLoaded,
             onPreviewLoaded = controller.listener::onHeaderPreviewLoaded,
             onPreviewLoadFailed = controller.listener::onHeaderPreviewLoadFailed,
@@ -307,6 +307,7 @@ private fun HeaderPreviewImage(
     visible: Boolean,
     suppressed: Boolean,
     tintBaseColor: Int,
+    paletteTintConfigKey: String,
     onTintLoaded: (Int) -> Unit,
     onPreviewLoaded: () -> Unit,
     onPreviewLoadFailed: () -> Unit,
@@ -317,6 +318,18 @@ private fun HeaderPreviewImage(
     var previewUrl by remember(story.id, story.previewImageUrl) { mutableStateOf(story.previewImageUrl) }
     var previewLoadFailed by remember(story.id, story.previewImageUrl) {
         mutableStateOf(story.previewImageLoadFailed)
+    }
+    var loadedImage by remember(story.id, story.previewImageUrl) {
+        mutableStateOf<coil3.Image?>(null)
+    }
+    val extractedTint = rememberCoilPaletteTint(
+        image = loadedImage,
+        baseColorArgb = tintBaseColor,
+        paletteTintConfigKey = paletteTintConfigKey,
+        enabled = visible,
+    )
+    LaunchedEffect(extractedTint) {
+        extractedTint?.let(onTintLoaded)
     }
     var bounds by remember(story.id) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     DisposableEffect(story.id, story.url, visible, story.previewImageLoadFailed) {
@@ -360,11 +373,7 @@ private fun HeaderPreviewImage(
                 previewLoadFailed = false
                 story.previewImageLoadFailed = false
                 onPreviewLoaded()
-                calculateTint(
-                    state.result.image.asDrawable(context.resources),
-                    context,
-                    tintBaseColor,
-                )?.let(onTintLoaded)
+                loadedImage = state.result.image
             },
             onError = {
                 previewLoadFailed = true
@@ -374,18 +383,6 @@ private fun HeaderPreviewImage(
         )
     }
 }
-
-private fun calculateTint(
-    drawable: Drawable,
-    context: android.content.Context,
-    baseColor: Int,
-): Int? = runCatching {
-    PreviewImageTintUtils.calculateCardTint(
-        baseColor,
-        drawable,
-        SettingsUtils.getPreferredPaletteTintConfigKey(context),
-    )
-}.getOrNull()
 
 private fun htmlToAnnotated(
     html: String,

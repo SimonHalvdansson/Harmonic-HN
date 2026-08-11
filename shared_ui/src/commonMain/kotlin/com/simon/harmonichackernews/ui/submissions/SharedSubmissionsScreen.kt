@@ -31,7 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.presentation.SubmissionFilter
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.StoryItem
@@ -267,7 +268,7 @@ fun SharedSubmissionsScreen(
         )
 
         if (controller.showInitialLoading) {
-            CircularProgressIndicator(
+            HarmonicLoadingIndicator(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(42.dp),
@@ -350,6 +351,32 @@ private fun SubmissionsList(
                         listItem = true,
                         onLinkClick = { listener.onStoryLinkClick(story) },
                         onCommentClick = { listener.onStoryCommentsClick(story) },
+                        onPreviewTintExtracted = { tintColor ->
+                            val sourceUrl = model.previewImageUrl
+                            val baseColor = model.tintFallbackArgb
+                            if (sourceUrl != null && baseColor != null) {
+                                StoryPreviewTintState.applyPreview(
+                                    story,
+                                    sourceUrl,
+                                    baseColor,
+                                    displaySettings.paletteTintMode,
+                                    tintColor,
+                                )
+                            }
+                        },
+                        onFaviconTintExtracted = { tintColor ->
+                            val sourceUrl = model.faviconUrl
+                            val baseColor = model.tintFallbackArgb
+                            if (sourceUrl != null && baseColor != null) {
+                                StoryPreviewTintState.applyFavicon(
+                                    story,
+                                    sourceUrl,
+                                    baseColor,
+                                    displaySettings.paletteTintMode,
+                                    tintColor,
+                                )
+                            }
+                        },
                     )
                 }
             }
@@ -740,7 +767,7 @@ private fun LoadMoreButton(
             )
         }
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+            HarmonicLoadingIndicator(modifier = Modifier.size(32.dp))
         }
     }
 }

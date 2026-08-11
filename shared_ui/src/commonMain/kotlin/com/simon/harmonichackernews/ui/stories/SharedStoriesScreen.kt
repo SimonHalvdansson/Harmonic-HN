@@ -62,7 +62,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -123,6 +123,7 @@ import com.simon.harmonichackernews.presentation.StoryPreviewOverlayState
 import com.simon.harmonichackernews.presentation.StoryScrollRequest
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.settings.StoryCachePreferences
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.StoryItem
@@ -147,6 +148,14 @@ fun SharedStoriesScreen(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    onStoryTintExtracted: (
+        story: Story,
+        sourceUrl: String,
+        baseColor: Int,
+        paletteTintConfigKey: String,
+        tintColor: Int,
+        favicon: Boolean,
+    ) -> Unit = { _, _, _, _, _, _ -> },
 ) {
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
@@ -200,6 +209,7 @@ fun SharedStoriesScreen(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                onStoryTintExtracted = onStoryTintExtracted,
             )
         },
         searchLayer = {
@@ -214,6 +224,7 @@ fun SharedStoriesScreen(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                onStoryTintExtracted = onStoryTintExtracted,
             )
         },
         overlay = {
@@ -323,6 +334,14 @@ private fun StoriesList(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    onStoryTintExtracted: (
+        story: Story,
+        sourceUrl: String,
+        baseColor: Int,
+        paletteTintConfigKey: String,
+        tintColor: Int,
+        favicon: Boolean,
+    ) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val visibleCount = if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
@@ -395,7 +414,7 @@ private fun StoriesList(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (controller.loadMoreLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(40.dp))
+                                HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
                             } else {
                                 OutlinedButton(
                                     onClick = controller.listener::onLoadMore,
@@ -460,6 +479,56 @@ private fun StoriesList(
                                     if (!story.previewImageLoadFailed) {
                                         story.previewImageLoadFailed = true
                                         controller.invalidateStory(story.id)
+                                    }
+                                },
+                                onPreviewTintExtracted = { tintColor ->
+                                    val sourceUrl = model.previewImageUrl
+                                    val baseColor = model.tintFallbackArgb
+                                    if (
+                                        sourceUrl != null &&
+                                        baseColor != null &&
+                                        StoryPreviewTintState.applyPreview(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                        )
+                                    ) {
+                                        controller.invalidateStory(story.id)
+                                        onStoryTintExtracted(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                            false,
+                                        )
+                                    }
+                                },
+                                onFaviconTintExtracted = { tintColor ->
+                                    val sourceUrl = model.faviconUrl
+                                    val baseColor = model.tintFallbackArgb
+                                    if (
+                                        sourceUrl != null &&
+                                        baseColor != null &&
+                                        StoryPreviewTintState.applyFavicon(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                        )
+                                    ) {
+                                        controller.invalidateStory(story.id)
+                                        onStoryTintExtracted(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                            true,
+                                        )
                                     }
                                 },
                             )
@@ -919,7 +988,7 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
         normalColor = colors.storyNormal,
         disabledColor = colors.storyDisabled,
         fontFamily = ProductSansFontFamily,
-        loadingIndicator = { CircularProgressIndicator(Modifier.size(48.dp)) },
+        loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
         onRetry = controller.listener::onRefresh,
         onShowCached = controller.listener::onShowCached,
     )

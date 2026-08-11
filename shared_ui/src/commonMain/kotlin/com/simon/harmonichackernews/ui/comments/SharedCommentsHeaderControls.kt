@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -96,7 +96,7 @@ fun PollOptions(options: List<PollOptionUi>?, onVote: (Int) -> Unit) {
                     color = HarmonicTheme.colors.textSecondary,
                 )
             } else {
-                CircularProgressIndicator(
+                HarmonicLoadingIndicator(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .size(42.dp),
@@ -377,7 +377,7 @@ private fun HeaderActionButton(
                 label = "${action.label} loading transition",
             ) { visual ->
                 if (visual.loading) {
-                    CircularProgressIndicator(
+                    HarmonicLoadingIndicator(
                         modifier = Modifier
                             .size(28.dp)
                             .semantics { contentDescription = visual.label },
@@ -672,7 +672,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     .fillMaxWidth()
                     .padding(top = if (controller.commentsLoaded) 16.dp else 44.dp, bottom = 18.dp),
                 contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator(Modifier.size(42.dp)) }
+            ) { HarmonicLoadingIndicator(Modifier.size(42.dp)) }
             HeaderStatusState.Failed -> Column(
                 Modifier
                     .fillMaxWidth()

@@ -152,7 +152,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
@@ -438,7 +438,7 @@ fun LinkPreviewContent(
                         .padding(top = 12.dp, bottom = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(Modifier.size(44.dp))
+                    HarmonicLoadingIndicator(Modifier.size(44.dp))
                 }
             }
         }

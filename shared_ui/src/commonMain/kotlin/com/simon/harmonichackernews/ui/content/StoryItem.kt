@@ -37,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -131,8 +133,8 @@ val SettingsStoryPreviewModel = StoryItemUiModel(
 )
 
 /**
- * Complete platform-neutral story row. Platforms provide URLs and already-resolved palette tints;
- * image fetching is handled by Coil's multiplatform Compose integration.
+ * Complete platform-neutral story row. Image fetching and palette extraction use Coil's and
+ * KMPalette's multiplatform Compose integrations; platforms only persist resolved tint state.
  */
 @Composable
 fun StoryItem(
@@ -145,6 +147,8 @@ fun StoryItem(
     onCommentClick: (() -> Unit)? = null,
     onBoundsChanged: ((Rect) -> Unit)? = null,
     onPreviewLoadFailed: (() -> Unit)? = null,
+    onPreviewTintExtracted: ((Int) -> Unit)? = null,
+    onFaviconTintExtracted: ((Int) -> Unit)? = null,
 ) {
     val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(
@@ -168,11 +172,24 @@ fun StoryItem(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
-    val tint = model.previewImageTintArgb
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerHigh
+    val tintBaseColorArgb = tintFallback.toArgb()
+    var extractedPreviewTint by remember(
+        model.previewImageUrl,
+        model.previewImageFallback,
+        tintBaseColorArgb,
+        style.paletteTintConfigKey,
+    ) { mutableStateOf<Int?>(null) }
+    var extractedFaviconTint by remember(
+        model.faviconUrl,
+        model.faviconFallback,
+        tintBaseColorArgb,
+        style.paletteTintConfigKey,
+    ) { mutableStateOf<Int?>(null) }
+    val tint = (model.previewImageTintArgb ?: extractedPreviewTint)
         .takeIf { style.previewImageMode != "off" && hasPreview }
         ?.let(::Color)
-        ?: model.faviconTintArgb?.let(::Color)
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerHigh
+        ?: (model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.cardStyle -> colors.surfaceContainerHigh
@@ -239,6 +256,13 @@ fun StoryItem(
                             previewFailed = true
                             onPreviewLoadFailed?.invoke()
                         },
+                        tintBaseColorArgb = tintBaseColorArgb,
+                        paletteTintConfigKey = style.paletteTintConfigKey,
+                        extractTint = style.tintCard && model.previewImageTintArgb == null,
+                        onTintExtracted = { tintColor ->
+                            extractedPreviewTint = tintColor
+                            onPreviewTintExtracted?.invoke(tintColor)
+                        },
                     )
                 }
                 Row(
@@ -267,6 +291,18 @@ fun StoryItem(
                             previewFailed = true
                             onPreviewLoadFailed?.invoke()
                         },
+                        tintBaseColorArgb = tintBaseColorArgb,
+                        paletteTintConfigKey = style.paletteTintConfigKey,
+                        extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
+                        onPreviewTintExtracted = { tintColor ->
+                            extractedPreviewTint = tintColor
+                            onPreviewTintExtracted?.invoke(tintColor)
+                        },
+                        extractFaviconTint = style.tintCard && model.faviconTintArgb == null,
+                        onFaviconTintExtracted = { tintColor ->
+                            extractedFaviconTint = tintColor
+                            onFaviconTintExtracted?.invoke(tintColor)
+                        },
                         animateChanges = animate,
                         modifier = Modifier.weight(1f),
                     )
@@ -287,6 +323,12 @@ private fun StoryMainContent(
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
     onPreviewLoadFailed: () -> Unit,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractPreviewTint: Boolean,
+    onPreviewTintExtracted: (Int) -> Unit,
+    extractFaviconTint: Boolean,
+    onFaviconTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
@@ -351,6 +393,10 @@ private fun StoryMainContent(
                     style = style,
                     typography = typography,
                     dimAlpha = dimAlpha,
+                    tintBaseColorArgb = tintBaseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                    extractTint = extractFaviconTint,
+                    onTintExtracted = onFaviconTintExtracted,
                     animateChanges = animateChanges,
                     modifier = Modifier.padding(top = 3.dp),
                 )
@@ -370,6 +416,10 @@ private fun StoryMainContent(
                     .clip(RoundedCornerShape(6.dp))
                     .graphicsLayer(alpha = dimAlpha),
                 onLoadFailed = onPreviewLoadFailed,
+                tintBaseColorArgb = tintBaseColorArgb,
+                paletteTintConfigKey = paletteTintConfigKey,
+                extractTint = extractPreviewTint,
+                onTintExtracted = onPreviewTintExtracted,
             )
         }
     }
@@ -380,9 +430,23 @@ private fun StoryPreviewImage(
     model: StoryItemUiModel,
     modifier: Modifier,
     onLoadFailed: () -> Unit,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractTint: Boolean,
+    onTintExtracted: (Int) -> Unit,
 ) {
     if (model.previewImageUrl != null) {
         var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
+        var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
+        val extractedTint = rememberCoilPaletteTint(
+            image = loadedImage,
+            baseColorArgb = tintBaseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            enabled = extractTint,
+        )
+        LaunchedEffect(extractedTint) {
+            extractedTint?.let(onTintExtracted)
+        }
         val loadProgress by animateFloatAsState(
             targetValue = if (loaded) 1f else 0f,
             animationSpec = tween(240, easing = ContentMotionEasing),
@@ -397,13 +461,26 @@ private fun StoryPreviewImage(
                 scaleY = 0.94f + 0.06f * loadProgress
             },
             contentScale = ContentScale.Crop,
-            onSuccess = { loaded = true },
+            onSuccess = { success ->
+                loaded = true
+                loadedImage = success.result.image
+            },
             onError = { onLoadFailed() },
         )
     } else {
-        model.previewImageFallback?.let {
+        model.previewImageFallback?.let { fallback ->
+            val painter = painterResource(fallback)
+            val extractedTint = rememberPainterPaletteTint(
+                painter = painter,
+                baseColorArgb = tintBaseColorArgb,
+                paletteTintConfigKey = paletteTintConfigKey,
+                enabled = extractTint,
+            )
+            LaunchedEffect(extractedTint) {
+                extractedTint?.let(onTintExtracted)
+            }
             Image(
-                painter = painterResource(it),
+                painter = painter,
                 contentDescription = null,
                 modifier = modifier,
                 contentScale = ContentScale.Crop,
@@ -418,6 +495,10 @@ private fun StoryMeta(
     style: StoryItemStyle,
     typography: ContentTypography,
     dimAlpha: Float,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractTint: Boolean,
+    onTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
@@ -441,6 +522,16 @@ private fun StoryMeta(
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
                 var failed by remember(model.faviconUrl) { mutableStateOf(false) }
+                var loadedImage by remember(model.faviconUrl) { mutableStateOf<coil3.Image?>(null) }
+                val extractedTint = rememberCoilPaletteTint(
+                    image = loadedImage,
+                    baseColorArgb = tintBaseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                    enabled = extractTint,
+                )
+                LaunchedEffect(extractedTint) {
+                    extractedTint?.let(onTintExtracted)
+                }
                 val loadAlpha by animateFloatAsState(
                     targetValue = if (loaded) 1f else 0f,
                     animationSpec = contentTween(),
@@ -469,22 +560,35 @@ private fun StoryMeta(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer(alpha = dimAlpha * loadAlpha),
-                            onSuccess = { loaded = true },
+                            onSuccess = { success ->
+                                loaded = true
+                                loadedImage = success.result.image
+                            },
                             onError = { failed = true },
                         )
                     }
                 }
             } else {
+                val fallbackPainter = painterResource(model.faviconFallback)
+                val extractedTint = rememberPainterPaletteTint(
+                    painter = fallbackPainter,
+                    baseColorArgb = tintBaseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                    enabled = extractTint && !model.tintFaviconFallback,
+                )
+                LaunchedEffect(extractedTint) {
+                    extractedTint?.let(onTintExtracted)
+                }
                 if (model.tintFaviconFallback) {
                     Icon(
-                        painter = painterResource(model.faviconFallback),
+                        painter = fallbackPainter,
                         contentDescription = null,
                         tint = HarmonicTheme.colors.drawable,
                         modifier = Modifier.padding(end = 4.dp).size(17.dp),
                     )
                 } else {
                     Image(
-                        painter = painterResource(model.faviconFallback),
+                        painter = fallbackPainter,
                         contentDescription = null,
                         modifier = Modifier.padding(end = 4.dp).size(17.dp),
                     )

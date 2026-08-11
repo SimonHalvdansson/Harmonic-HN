@@ -35,6 +35,9 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.ksoup)
         }
+        androidMain.dependencies {
+            implementation(libs.androidx.compose.material3)
+        }
     }
 }
 

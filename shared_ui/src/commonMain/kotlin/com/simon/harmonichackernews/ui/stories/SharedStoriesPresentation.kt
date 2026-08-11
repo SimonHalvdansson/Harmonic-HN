@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -334,7 +334,7 @@ fun SharedStoryListStatus(
     disabledColor: Color,
     fontFamily: FontFamily,
     loadingIndicator: @Composable () -> Unit = {
-        CircularProgressIndicator(modifier = Modifier.size(48.dp))
+        HarmonicLoadingIndicator(modifier = Modifier.size(48.dp))
     },
     onRetry: () -> Unit,
     onShowCached: () -> Unit,

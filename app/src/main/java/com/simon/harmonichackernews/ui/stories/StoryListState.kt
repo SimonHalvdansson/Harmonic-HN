@@ -2,13 +2,10 @@ package com.simon.harmonichackernews.ui.stories
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import coil3.Image
-import coil3.asDrawable
 import coil3.imageLoader
 import coil3.request.Disposable
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
 import coil3.target.Target
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.adapters.StoryDisplayState
@@ -26,10 +23,8 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadCachedPr
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadPreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.saveCachedPreviewImageTintColor
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.utils.PreviewImageTintExtractor
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
-import com.simon.harmonichackernews.utils.StoryPreviewImageMemoryCache
 import com.simon.harmonichackernews.utils.Utils
 import java.util.IdentityHashMap
 import kotlin.math.min
@@ -48,7 +43,6 @@ class StoryListState(
 ) : StoryDisplayState {
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
-    private val tintExtractor = PreviewImageTintExtractor()
     private var changedListener: ((Story?) -> Unit)? = null
 
     override var showPoints: Boolean = false
@@ -84,7 +78,6 @@ class StoryListState(
     init {
         applyInitialSettings(settings)
         type = wantedType
-        tintExtractor.attach()
     }
 
     fun setChangedListener(listener: ((Story?) -> Unit)?) {
@@ -193,7 +186,6 @@ class StoryListState(
         // the custom story-card attribute as transparent, which made otherwise-correct worker
         // results incompatible with the colors read by Compose.
         hydrateCachedPreviewState(context, story)
-        if (tintCardUsingPreview) prefetchFaviconTint(context, story)
 
         val previewEnabled = SettingsUtils.STORY_PREVIEW_IMAGE_OFF != previewImageMode
         if (!previewEnabled && !showSummary) return
@@ -254,7 +246,6 @@ class StoryListState(
             story.previewImageLoading = false
         }
         imagePrefetches.clear()
-        tintExtractor.detach()
     }
 
     private fun applyInitialSettings(settings: StoryDisplaySettings) {
@@ -332,26 +323,7 @@ class StoryListState(
             return
         }
         val imageUrl = story.previewImageUrl?.takeIf(String::isNotEmpty) ?: return
-        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
-        val tintIsCurrent = tintCardUsingPreview &&
-            PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
-                story,
-                baseColor,
-                paletteTintMode,
-            )
-        if (story.previewImageLoaded && (!tintCardUsingPreview || tintIsCurrent)) {
-            return
-        }
-
-        // A Compose row may have already loaded the image before the background prefetcher gets
-        // its turn. Reuse that software drawable to finish the off-main palette extraction rather
-        // than treating previewImageLoaded as proof that the tint was also produced.
-        StoryPreviewImageMemoryCache.get(story.id, imageUrl)?.let { cachedDrawable ->
-            story.previewImageLoaded = true
-            story.previewImageLoadFailed = false
-            requestTint(context, story, imageUrl, cachedDrawable, false)
-            return
-        }
+        if (story.previewImageLoaded) return
 
         story.previewImageLoading = true
         val width = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
@@ -369,7 +341,6 @@ class StoryListState(
             .data(imageUrl)
             .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
             .size(width, height)
-            .allowHardware(!tintCardUsingPreview)
             .target(object : Target {
                 override fun onError(error: Image?) {
                     imagePrefetches.remove(story)
@@ -383,13 +354,10 @@ class StoryListState(
                 }
 
                 override fun onSuccess(result: Image) {
-                    val drawable = result.asDrawable(context.resources)
                     imagePrefetches.remove(story)
                     story.previewImageLoading = false
                     story.previewImageLoaded = true
                     story.previewImageLoadFailed = false
-                    StoryPreviewImageMemoryCache.put(story.id, imageUrl, drawable)
-                    requestTint(context, story, imageUrl, drawable, false)
                     cachePreviewState(context, story)
                     notifyChanged(story)
                 }
@@ -399,134 +367,6 @@ class StoryListState(
         if (story.previewImageLoading) {
             imagePrefetches[story] = disposable
         }
-    }
-
-    private fun prefetchFaviconTint(context: Context, story: Story) {
-        if (!thumbnails || !story.previewImageUrl.isNullOrEmpty()) return
-        val faviconUrl = getFaviconUrl(story)?.takeIf(String::isNotEmpty) ?: return
-        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
-        val mode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
-        if (story.faviconTintColorLoading
-            || (story.faviconTintColorLoaded
-                && story.faviconTintSourceUrl == faviconUrl
-                && story.faviconTintBaseColor == baseColor
-                && PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, mode))
-        ) {
-            return
-        }
-        story.faviconTintSourceUrl = faviconUrl
-        story.faviconTintColorLoading = true
-        val cachedTint = loadCachedPreviewImageTintColor(
-            context, story.id, faviconUrl, baseColor
-        )
-        if (cachedTint != null) {
-            applyTint(context, story, faviconUrl, baseColor, cachedTint, true)
-            return
-        }
-        val size = Utils.pxFromDpInt(context.resources, FAVICON_TINT_SIZE_DP.toFloat())
-        val request = ImageRequest.Builder(context)
-            .data(faviconUrl)
-            .size(size, size)
-            .allowHardware(false)
-            .target(object : Target {
-                override fun onError(error: Image?) {
-                    story.faviconTintColorLoading = false
-                    story.faviconTintColorLoadFailed = true
-                }
-
-                override fun onSuccess(result: Image) {
-                    requestTint(
-                        context,
-                        story,
-                        faviconUrl,
-                        result.asDrawable(context.resources),
-                        true,
-                    )
-                }
-            })
-            .build()
-        context.imageLoader.enqueue(request)
-    }
-
-    private fun requestTint(
-        context: Context,
-        story: Story,
-        sourceUrl: String?,
-        drawable: Drawable,
-        favicon: Boolean,
-    ) {
-        if (!tintCardUsingPreview) return
-        val baseColor = PreviewImageTintUtils.getTintBaseColor(context)
-        val cached = StoryPreviewImageMemoryCache.getTintColor(story.id, sourceUrl, baseColor)
-        if (cached != null) {
-            applyTint(context, story, sourceUrl, baseColor, cached, favicon)
-            return
-        }
-        if (favicon) {
-            story.faviconTintColorLoaded = false
-            story.faviconTintBaseColor = Color.TRANSPARENT
-            story.faviconTintMode = null
-        } else {
-            PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
-        }
-        val mode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
-        tintExtractor.request(
-            story,
-            sourceUrl,
-            baseColor,
-            mode,
-            if (favicon) {
-                PreviewImageTintExtractor.Source.FAVICON
-            } else {
-                PreviewImageTintExtractor.Source.PREVIEW_IMAGE
-            },
-            drawable,
-            object : PreviewImageTintExtractor.Callback {
-                override fun onTintReady(tintColor: Int) {
-                    applyTint(context, story, sourceUrl, baseColor, tintColor, favicon)
-                }
-
-                override fun onTintFailed() {
-                    if (favicon) {
-                        story.faviconTintColorLoading = false
-                        story.faviconTintColorLoadFailed = true
-                    }
-                }
-
-                override fun onTintCancelled() {
-                    if (favicon) story.faviconTintColorLoading = false
-                }
-            })
-    }
-
-    private fun applyTint(
-        context: Context,
-        story: Story,
-        sourceUrl: String?,
-        baseColor: Int,
-        tintColor: Int,
-        favicon: Boolean,
-    ) {
-        if (favicon) {
-            if (story.faviconTintSourceUrl != sourceUrl) return
-            story.faviconTintColor = tintColor
-            story.faviconTintColorLoaded = true
-            story.faviconTintColorLoading = false
-            story.faviconTintColorLoadFailed = false
-            story.faviconTintBaseColor = baseColor
-            story.faviconTintMode = PreviewImageTintUtils.storedTintMode(paletteTintMode)
-        } else if (!PreviewImageTintUtils.applyCachedStoryPreviewImageTintColor(
-                story,
-                sourceUrl,
-                baseColor,
-                paletteTintMode,
-                tintColor,
-            )
-        ) {
-            return
-        }
-        cachePreviewState(context, story)
-        notifyChanged(story)
     }
 
     private fun cachePreviewState(context: Context, story: Story) {
@@ -581,6 +421,5 @@ class StoryListState(
     companion object {
         const val PAGINATION_PAGE_SIZE = 30
         private const val LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176
-        private const val FAVICON_TINT_SIZE_DP = 64
     }
 }

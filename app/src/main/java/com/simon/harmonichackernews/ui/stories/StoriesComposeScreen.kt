@@ -63,7 +63,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -123,6 +122,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
@@ -145,6 +145,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
+import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 
@@ -167,6 +168,16 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
         extraCompactSelectedText =
             booleanResource(R.bool.extra_compact_stories_dropdown_selected_text),
         compactSelectedText = booleanResource(R.bool.compact_stories_dropdown_selected_text),
+        onStoryTintExtracted = { story, sourceUrl, baseColor, _, tintColor, _ ->
+            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
+                context,
+                story.id,
+                sourceUrl,
+                baseColor,
+                tintColor,
+            )
+            Utils.cacheStoryPreviewState(context, story)
+        },
     )
 }
 

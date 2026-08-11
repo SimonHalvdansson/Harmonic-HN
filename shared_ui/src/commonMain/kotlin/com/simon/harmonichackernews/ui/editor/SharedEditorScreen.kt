@@ -36,7 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -644,10 +644,9 @@ private fun SubmitButton(
                 label = "editor submitting",
             ) { loading ->
                 if (loading) {
-                    CircularProgressIndicator(
+                    HarmonicLoadingIndicator(
                         modifier = Modifier.size(30.dp),
                         color = content,
-                        strokeWidth = 3.dp,
                     )
                 } else {
                     Icon(

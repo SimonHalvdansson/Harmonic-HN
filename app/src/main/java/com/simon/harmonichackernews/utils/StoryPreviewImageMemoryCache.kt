@@ -1,28 +1,11 @@
 package com.simon.harmonichackernews.utils
 
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.Drawable.ConstantState
 import android.util.LruCache
 
 object StoryPreviewImageMemoryCache {
     private const val MAX_ENTRIES = 48
     private const val TINT_CACHE_VERSION = "3"
-    private val cache = LruCache<String, ConstantState>(MAX_ENTRIES)
     private val tintCache = LruCache<String, Int>(MAX_ENTRIES)
-
-    fun put(storyId: Int, imageUrl: String?, drawable: Drawable?) {
-        if (storyId <= 0 || imageUrl.isNullOrEmpty() || drawable == null) return
-        drawable.constantState?.let { constantState ->
-            synchronized(cache) {
-                cache.put(getKey(storyId, imageUrl), constantState)
-            }
-        }
-    }
-
-    fun get(storyId: Int, imageUrl: String?): Drawable? {
-        if (storyId <= 0 || imageUrl.isNullOrEmpty()) return null
-        return synchronized(cache) { cache.get(getKey(storyId, imageUrl)) }?.newDrawable()
-    }
 
     fun putTintColor(storyId: Int, imageUrl: String?, baseColor: Int, tintColor: Int) {
         if (storyId <= 0 || imageUrl.isNullOrEmpty()) return
