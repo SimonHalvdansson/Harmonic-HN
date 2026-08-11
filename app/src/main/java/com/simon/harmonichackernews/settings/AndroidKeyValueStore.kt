@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.settings
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.utils.Utils
 
 /** Android adapter that preserves the app's existing SharedPreferences storage. */
 class AndroidKeyValueStore private constructor(
@@ -48,7 +47,7 @@ class AndroidKeyValueStore private constructor(
     companion object {
         fun global(context: Context): AndroidKeyValueStore = AndroidKeyValueStore(
             context.applicationContext.getSharedPreferences(
-                Utils.GLOBAL_SHARED_PREFERENCES_KEY,
+                AppLaunchPreferenceKeys.STORE_NAME,
                 Context.MODE_PRIVATE,
             ),
         )

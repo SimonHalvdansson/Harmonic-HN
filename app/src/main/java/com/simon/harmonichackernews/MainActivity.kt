@@ -2,9 +2,7 @@ package com.simon.harmonichackernews
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
-import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.widget.Toast
@@ -30,6 +28,8 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.utils.HackerNewsItemLink
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.lang.ref.WeakReference
@@ -327,33 +327,26 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         }
 
         val arguments = intent.extras?.let(::Bundle) ?: Bundle()
-        var hackerNewsUri: Uri? = null
+        var hackerNewsLink: HackerNewsItemLink? = null
         var commentsIntent = false
 
         if (Intent.ACTION_VIEW.equals(intent.action, ignoreCase = true)) {
             commentsIntent = true
-            hackerNewsUri = intent.data
+            hackerNewsLink = HackerNewsLinks.parseItemLink(intent.data?.toString())
         } else if (Intent.ACTION_SEND.equals(intent.action, ignoreCase = true)) {
             commentsIntent = true
             val sharedText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)
-            hackerNewsUri = Utils.getHackerNewsItemUriFromText(
-                sharedText?.toString()
-            )
+            hackerNewsLink = HackerNewsLinks.findItemLink(sharedText?.toString())
         }
 
         var itemId = arguments.getInt(CommentsContract.EXTRA_ID, -1)
-        if (hackerNewsUri != null && Utils.isHackerNewsItemUri(hackerNewsUri)) {
-            try {
-                itemId = checkNotNull(hackerNewsUri.getQueryParameter("id")).toInt()
-                val fragment = hackerNewsUri.fragment
-                if (!fragment.isNullOrEmpty() && TextUtils.isDigitsOnly(fragment)) {
-                    arguments.putInt(
-                        CommentsContract.EXTRA_SCROLL_TO_COMMENT,
-                        fragment.toInt()
-                    )
-                }
-            } catch (ignored: RuntimeException) {
-                itemId = -1
+        hackerNewsLink?.let { link ->
+            itemId = link.itemId
+            if (link.scrollToCommentId > 0) {
+                arguments.putInt(
+                    CommentsContract.EXTRA_SCROLL_TO_COMMENT,
+                    link.scrollToCommentId,
+                )
             }
         }
 

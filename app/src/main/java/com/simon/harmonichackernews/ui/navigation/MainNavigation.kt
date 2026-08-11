@@ -64,7 +64,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -100,6 +103,8 @@ import com.simon.harmonichackernews.ui.settings.DefaultActivityPredictiveBackAni
 import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsShell
+import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
+import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.UserSettingsDialog
 import com.simon.harmonichackernews.ui.settings.WelcomeSettingsDialog
 import com.simon.harmonichackernews.ui.submissions.SubmissionsCoordinator
@@ -1121,18 +1126,37 @@ private fun MainNavigation(
                 controller.lastSettingsRequest?.let { request ->
                     key(request.serial, controller.settingsThemeRevision) {
                         HarmonicTheme {
-                            SettingsShell(
-                                initialSection = controller
-                                    .getInitialSettingsSectionRoute(request)
-                                    ?.let(SettingsSection::fromRoute),
-                                onBackFromSettings = ::closeSettings,
-                                onSectionChanged = controller::updateSettingsSection,
-                                onThemeChanged = {
-                                    ThemeUtils.setupTheme(activity)
-                                    controller.onSettingsThemeChanged()
-                                },
-                                onRequestRestart = controller::requestSettingsRestart,
-                            )
+                            ProvideSettingsPlatformStyle(
+                                style = SettingsPlatformStyle(
+                                    topBarHeight = dimensionResource(
+                                        R.dimen.compose_settings_toolbar_height,
+                                    ),
+                                    topBarNavigationHeight = dimensionResource(
+                                        R.dimen.detail_toolbar_navigation_height,
+                                    ),
+                                    topBarNavigationInset = dimensionResource(
+                                        R.dimen.detail_toolbar_navigation_inset,
+                                    ),
+                                    textStyle = TextStyle(
+                                        platformStyle = PlatformTextStyle(
+                                            includeFontPadding = true,
+                                        ),
+                                    ),
+                                ),
+                            ) {
+                                SettingsShell(
+                                    initialSection = controller
+                                        .getInitialSettingsSectionRoute(request)
+                                        ?.let(SettingsSection::fromRoute),
+                                    onBackFromSettings = ::closeSettings,
+                                    onSectionChanged = controller::updateSettingsSection,
+                                    onThemeChanged = {
+                                        ThemeUtils.setupTheme(activity)
+                                        controller.onSettingsThemeChanged()
+                                    },
+                                    onRequestRestart = controller::requestSettingsRestart,
+                                )
+                            }
                         }
                     }
                 }

@@ -28,6 +28,10 @@ import com.simon.harmonichackernews.data.StoryCacheIndex
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.LocalSummaryManager
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
+import com.simon.harmonichackernews.settings.AppLaunchStateStore
+import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -35,7 +39,6 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import com.simon.harmonichackernews.settings.UserTagCodec
 
 object Utils {
     const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
@@ -50,17 +53,7 @@ object Utils {
     private const val STORY_CACHE_FULL_DIR = "full"
     private const val STORY_CACHE_SUMMARY_DIR = "summary"
     private const val STORY_CACHE_FILE_SUFFIX = ".json"
-    const val GLOBAL_SHARED_PREFERENCES_KEY: String =
-        "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY"
-
-    const val KEY_SHARED_PREFERENCES_USER_TAGS: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS"
-    const val KEY_SHARED_PREFERENCES_FIRST_TIME: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_FIRST_TIME"
-    const val KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN"
-    const val KEY_SHARED_PREFERENCES_LAST_VERSION: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
+    const val GLOBAL_SHARED_PREFERENCES_KEY: String = AppLaunchPreferenceKeys.STORE_NAME
 
     const val KEY_NIGHTTIME_FROM_HOUR: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
@@ -664,92 +657,17 @@ object Utils {
         return story
     }
 
-    fun getUserTags(ctx: Context): MutableMap<String, String> {
-        return readUserTags(ctx, true)
-    }
-
-    fun getUserTagsWithOriginalUsernames(ctx: Context): MutableMap<String, String> {
-        return readUserTags(ctx, false)
-    }
-
-    private fun readUserTags(
-        ctx: Context,
-        normalizeUsernames: Boolean
-    ): MutableMap<String, String> {
-        return UserTagCodec.decode(
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_SHARED_PREFERENCES_USER_TAGS,
-            ),
-            normalizeUsernames,
-        )
-    }
-
-    fun getUserTag(ctx: Context, username: String?): String {
-        return UserTagCodec.tagFor(
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_SHARED_PREFERENCES_USER_TAGS,
-            ),
-            username,
-        )
-    }
-
-    fun setUserTag(ctx: Context, username: String?, tag: String?) {
-        val serialized = UserTagCodec.update(
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_SHARED_PREFERENCES_USER_TAGS,
-            ),
-            username,
-            tag,
-        ) ?: return
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_USER_TAGS,
-            serialized,
-        )
-    }
-
     fun shouldShowWelcomeDialog(ctx: Context): Boolean {
-        val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        return !sharedPref.getBoolean(
-            KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
-            false
-        )
+        return AppLaunchStateStore(AndroidKeyValueStore.global(ctx)).shouldShowWelcomeDialog
     }
 
     fun markWelcomeDialogShown(ctx: Context) {
-        val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        sharedPref.edit().putBoolean(
-            KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN,
-            true
-        ).apply()
+        AppLaunchStateStore(AndroidKeyValueStore.global(ctx)).markWelcomeDialogShown()
     }
 
     fun justUpdated(ctx: Context): Boolean {
-        val sharedPref: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        if (BuildConfig.VERSION_CODE > sharedPref.getInt(
-                KEY_SHARED_PREFERENCES_LAST_VERSION,
-                -1
-            )
-        ) {
-            sharedPref.edit().putInt(
-                KEY_SHARED_PREFERENCES_LAST_VERSION,
-                BuildConfig.VERSION_CODE
-            ).apply()
-            return true
-        }
-        return false
+        return AppLaunchStateStore(AndroidKeyValueStore.global(ctx))
+            .consumeVersionUpgrade(BuildConfig.VERSION_CODE)
     }
 
     fun isOnWiFi(ctx: Context): Boolean {
@@ -986,14 +904,6 @@ object Utils {
         launchCustomTab(context, href)
     }
 
-    fun getHackerNewsItemUriFromText(text: String?): Uri? {
-        return HackerNewsLinks.findItemLink(text)?.url?.let(Uri::parse)
-    }
-
-    fun isHackerNewsItemUri(uri: Uri?): Boolean {
-        return HackerNewsLinks.parseItemLink(uri?.toString()) != null
-    }
-
     fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: Context) {
         if (context is MainActivity && context.openCommentsItem(id, scrollToCommentId)) {
             return
@@ -1016,28 +926,32 @@ object Utils {
 
     fun canProvideSummary(ctx: Context): Boolean {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        if (prefs.contains("pref_ai_summary_enabled")
-            && !prefs.getBoolean("pref_ai_summary_enabled", false)
-        ) {
-            return false
+        val explicitlyEnabled = if (prefs.contains("pref_ai_summary_enabled")) {
+            prefs.getBoolean("pref_ai_summary_enabled", false)
+        } else {
+            null
         }
-        val mode = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud"
-        if (mode == "local") {
-            return LocalSummaryManager.canAttemptLocalSummarization()
-        }
-        return AiSummaryApiKeyStore.hasApiKey(ctx)
+        return AiSummaryAvailabilityPolicy.canProvideSummary(
+            explicitlyEnabled = explicitlyEnabled,
+            mode = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud",
+            localAvailable = LocalSummaryManager.canAttemptLocalSummarization(),
+            cloudApiKeyAvailable = AiSummaryApiKeyStore.hasApiKey(ctx),
+        )
     }
 
     fun isAiSummaryEnabled(ctx: Context): Boolean {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        if (prefs.contains("pref_ai_summary_enabled")) {
-            return prefs.getBoolean("pref_ai_summary_enabled", false)
+        val explicitlyEnabled = if (prefs.contains("pref_ai_summary_enabled")) {
+            prefs.getBoolean("pref_ai_summary_enabled", false)
+        } else {
+            null
         }
-        return isAiSummaryEnabledByDefault(ctx)
+        return AiSummaryAvailabilityPolicy.isEnabled(
+            explicitlyEnabled = explicitlyEnabled,
+            localAvailable = LocalSummaryManager.canAttemptLocalSummarization(),
+            cloudApiKeyAvailable = AiSummaryApiKeyStore.hasApiKey(ctx),
+        )
     }
-
-    private fun isAiSummaryEnabledByDefault(ctx: Context): Boolean =
-        LocalSummaryManager.canAttemptLocalSummarization() || AiSummaryApiKeyStore.hasApiKey(ctx)
 
     fun isNetworkAvailable(context: Context): Boolean {
         val connectivityManager =

@@ -1,13 +1,8 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.simon.harmonichackernews.ui.settings
 
 import org.jetbrains.compose.resources.DrawableResource
-
-
 import com.simon.harmonichackernews.resources.*
 
-import android.view.WindowManager
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -18,6 +13,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -48,10 +44,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -62,9 +56,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -73,13 +65,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource as androidPainterResource
 import org.jetbrains.compose.resources.painterResource
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -91,11 +79,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.BuildConfig
-import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
+import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
@@ -117,7 +101,7 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
-internal fun SettingsAlertDialog(
+fun SettingsAlertDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -130,43 +114,26 @@ internal fun SettingsAlertDialog(
     separateDismissButton: Boolean = false,
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = false,
-    keepImeVisible: Boolean = false,
 ) {
-    val configuration = LocalConfiguration.current
-    val shortEdge = minOf(configuration.screenWidthDp, configuration.screenHeightDp)
-    val longEdge = maxOf(configuration.screenWidthDp, configuration.screenHeightDp)
-    val usesTabletDialogWidth = configuration.smallestScreenWidthDp >= 600 &&
-        longEdge >= shortEdge * 1.3f
-    val dialogMaxWidth = if (usesTabletDialogWidth) {
-        HarmonicDimens.compose_settings_dialog_tablet_max_width
-    } else {
-        HarmonicDimens.compose_settings_dialog_max_width
-    }
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = properties.dismissOnBackPress,
             dismissOnClickOutside = properties.dismissOnClickOutside,
-            securePolicy = properties.securePolicy,
             usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
         ),
     ) {
-        val dialogView = LocalView.current
-        DisposableEffect(dialogView, keepImeVisible) {
-            val window = (dialogView.parent as? DialogWindowProvider)?.window
-            if (keepImeVisible) {
-                window?.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
-            }
-            onDispose {
-                if (keepImeVisible) {
-                    window?.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
-                }
-            }
-        }
-        Box(
+        BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
         ) {
+            val shortEdge = minOf(maxWidth, maxHeight)
+            val longEdge = maxOf(maxWidth, maxHeight)
+            val usesTabletDialogWidth = shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f
+            val dialogMaxWidth = if (usesTabletDialogWidth) {
+                HarmonicDimens.compose_settings_dialog_tablet_max_width
+            } else {
+                HarmonicDimens.compose_settings_dialog_max_width
+            }
             if (properties.dismissOnClickOutside) {
                 Box(
                     modifier = Modifier
@@ -280,7 +247,7 @@ internal fun SettingsAlertDialog(
 }
 
 @Composable
-internal fun SettingsRadioButton(
+fun SettingsRadioButton(
     selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -316,9 +283,26 @@ private fun SettingsCheckbox(
 }
 
 @Composable
+private fun SettingsTopAppBar(
+    title: String,
+    onBack: (() -> Unit)?,
+) {
+    val platformStyle = LocalSettingsPlatformStyle.current
+    SharedHarmonicTopAppBar(
+        title = title,
+        onBack = onBack,
+        toolbarHeight = platformStyle.topBarHeight,
+        navigationHeight = platformStyle.topBarNavigationHeight,
+        navigationInset = platformStyle.topBarNavigationInset,
+        platformTextStyle = platformStyle.textStyle,
+    )
+}
+
+@Composable
 fun SettingsListScreen(
     selectedSection: SettingsSection,
     showSelection: Boolean,
+    showDebugSettings: Boolean,
     onBack: () -> Unit,
     onSectionSelected: (SettingsSection) -> Unit,
     modifier: Modifier = Modifier,
@@ -327,7 +311,7 @@ fun SettingsListScreen(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
     val visibleEntries = MainSettingsEntries.filter {
-        it.section != SettingsSection.Debug || BuildConfig.DEBUG_SETTINGS_ENABLED
+        it.section != SettingsSection.Debug || showDebugSettings
     }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -342,7 +326,7 @@ fun SettingsListScreen(
                 ),
             ),
     ) {
-        HarmonicTopAppBar(
+        SettingsTopAppBar(
             title = "Settings",
             onBack = onBack,
         )
@@ -455,7 +439,7 @@ fun SettingsPage(
                 ),
             ),
     ) {
-        HarmonicTopAppBar(
+        SettingsTopAppBar(
             title = title,
             onBack = onBack.takeIf { showNavigation },
         )
@@ -591,7 +575,7 @@ fun SettingRow(
     title: String,
     summary: String? = null,
     icon: DrawableResource?,
-    @androidx.annotation.DrawableRes androidIcon: Int? = null,
+    iconPainter: Painter? = null,
     summaryFontSizeSp: Float = 14f,
     summaryLineHeightSp: Float = 18f,
     summaryMaxLines: Int = Int.MAX_VALUE,
@@ -602,10 +586,9 @@ fun SettingRow(
     iconTint: Color? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val iconPainter = when {
+    val resolvedIconPainter = when {
         icon != null -> painterResource(icon)
-        androidIcon != null -> androidPainterResource(androidIcon)
-        else -> null
+        else -> iconPainter
     }
     Row(
         modifier = Modifier
@@ -636,9 +619,9 @@ fun SettingRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (iconPainter != null) {
+        if (resolvedIconPainter != null) {
             Icon(
-                painter = iconPainter,
+                painter = resolvedIconPainter,
                 contentDescription = null,
                 modifier = Modifier.size(
                     HarmonicDimens.compose_settings_row_icon_size,
@@ -717,9 +700,8 @@ fun SwitchSettingRow(
     )
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun SettingsDialogTextButton(
+fun SettingsDialogTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -729,15 +711,13 @@ internal fun SettingsDialogTextButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        shapes = ButtonDefaults.shapes(),
         contentPadding = PaddingValues(horizontal = 24.dp),
         content = content,
     )
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun SettingsDialogOutlinedButton(
+fun SettingsDialogOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -747,7 +727,6 @@ internal fun SettingsDialogOutlinedButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        shapes = ButtonDefaults.shapes(),
         content = content,
     )
 }
@@ -1160,7 +1139,7 @@ fun MessageActionDialog(
 }
 
 @Composable
-internal fun SettingsDialogTitle(title: String) {
+fun SettingsDialogTitle(title: String) {
     Text(
         text = title,
         color = HarmonicTheme.colors.textPrimary,
@@ -1266,7 +1245,6 @@ fun EditableStringListDialog(
                                 )
                                 IconButton(
                                     onClick = { items = items - item },
-                                    shapes = IconButtonDefaults.shapes(),
                                 ) {
                                     Icon(
                                         painter = painterResource(Res.drawable.ic_close),
@@ -1340,27 +1318,6 @@ fun TextEntryDialog(
         },
     )
 }
-
-@Composable
-fun rememberPreferenceRefresh(): Int {
-    val context = LocalContext.current
-    val preferences = remember(context) {
-        PreferenceManager.getDefaultSharedPreferences(context)
-    }
-    var refresh by remember { mutableIntStateOf(0) }
-    DisposableEffect(preferences) {
-        val listener =
-            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-                refresh++
-            }
-        preferences.registerOnSharedPreferenceChangeListener(listener)
-        onDispose {
-            preferences.unregisterOnSharedPreferenceChangeListener(listener)
-        }
-    }
-    return refresh
-}
-
 
 object SimpleMessageDialogController {
     private var state by mutableStateOf<Pair<String, String>?>(null)

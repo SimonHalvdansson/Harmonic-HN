@@ -92,149 +92,74 @@ fun DataSettingsScreen(
         }
     }
 
-    val bookmarksEnabled = prefs.getBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, true)
     val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
-    val hasBookmarks = bookmarkCount > 0
-    val loggedIn = AccountUtils.hasAccountDetails(context)
-
-    SettingsPage(
-        title = "Data",
+    SharedDataSettingsScreen(
+        state = DataSettingsUiState(
+            bookmarksEnabled = prefs.getBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, true),
+            bookmarkCount = bookmarkCount,
+            loggedIn = AccountUtils.hasAccountDetails(context),
+            historyCount = HistoriesUtils.loadHistories(context, false).size,
+            postCacheCount = Utils.getCachedPostCount(context),
+            tintCacheCount = StoryPreviewImageLoader
+                .getCachedPreviewImageTintColorCount(context),
+            showChangelog = prefs.getBoolean("pref_show_changelog", true),
+        ),
         showNavigation = showNavigation,
         onBack = onBack,
-        contentVersion = refresh + localRefresh,
-    ) {
-        item {
-            SettingsCategory("Bookmarks") {
-                SwitchSettingRow(
-                    title = "Enable bookmarks",
-                    icon = Res.drawable.ic_bookmark,
-                    checked = bookmarksEnabled,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Add all bookmarks to HN favorites",
-                    summary = when {
-                        !hasBookmarks -> "No bookmarks"
-                        !loggedIn -> "Login needed"
-                        else -> formatBookmarkCount(bookmarkCount)
-                    },
-                    icon = Res.drawable.ic_star,
-                    enabled = bookmarksEnabled && hasBookmarks && loggedIn,
-                    onClick = {
-                        favoriteIds = savedItems.loadItems(
-                            SavedItemSource.BOOKMARKS,
-                            sortedByCreated = true,
+        onBookmarksEnabledChanged = {
+            prefs.edit().putBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, it).apply()
+        },
+        onShowChangelogChanged = {
+            prefs.edit().putBoolean("pref_show_changelog", it).apply()
+        },
+        onAction = { action ->
+            when (action) {
+                DataSettingsAction.AddBookmarksToFavorites -> {
+                    favoriteIds = savedItems.loadItems(
+                        SavedItemSource.BOOKMARKS,
+                        sortedByCreated = true,
+                    ).map { it.id }.toIntArray()
+                }
+                DataSettingsAction.ExportBookmarks -> {
+                    if (bookmarkCount == 0) {
+                        Toast.makeText(context, "No bookmarks to export", Toast.LENGTH_SHORT).show()
+                    } else {
+                        exportLauncher.launch(bookmarksFilename())
+                    }
+                }
+                DataSettingsAction.ImportBookmarks -> dialog = "import"
+                DataSettingsAction.ClearHistory -> {
+                    val oldCount = HistoriesUtils.loadHistories(context, false).size
+                    HistoriesUtils.clearHistories(context)
+                    localRefresh++
+                    if (oldCount > 0) {
+                        Utils.toast(
+                            "Cleared $oldCount ${if (oldCount == 1) "entry" else "entries"}",
+                            context,
                         )
-                            .map { it.id }
-                            .toIntArray()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Export bookmarks",
-                    summary = "Save newline separated .txt file with IDs",
-                    icon = Res.drawable.ic_bookmark,
-                    enabled = bookmarksEnabled,
-                    onClick = {
-                        if (!hasBookmarks) {
-                            Toast.makeText(
-                                context,
-                                "No bookmarks to export",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        } else {
-                            exportLauncher.launch(bookmarksFilename())
-                        }
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Import bookmarks",
-                    icon = Res.drawable.ic_bookmark_filled,
-                    enabled = bookmarksEnabled,
-                    onClick = { dialog = "import" },
-                )
+                    }
+                }
+                DataSettingsAction.ClearPostCache -> {
+                    val oldCount = Utils.clearPostCache(context)
+                    localRefresh++
+                    if (oldCount > 0) {
+                        Utils.toast(
+                            "Cleared $oldCount cached ${if (oldCount == 1) "post" else "posts"}",
+                            context,
+                        )
+                    }
+                }
+                DataSettingsAction.ClearTintCache -> {
+                    PreviewImageTintUtils.clearTintColorCaches(context)
+                    localRefresh++
+                    Utils.toast("Tint cache cleared", context)
+                }
+                DataSettingsAction.OpenLinksSettings -> dialog = "links"
+                DataSettingsAction.ResetSettings -> dialog = "reset"
             }
-        }
-
-        item {
-            SettingsCategory("Storage") {
-                SettingRow(
-                    title = "Clear clicked stories (${HistoriesUtils.loadHistories(context, false).size})",
-                    icon = Res.drawable.ic_close,
-                    onClick = {
-                        val oldCount = HistoriesUtils.loadHistories(context, false).size
-                        HistoriesUtils.clearHistories(context)
-                        localRefresh++
-                        if (oldCount > 0) {
-                            Utils.toast(
-                                "Cleared $oldCount ${if (oldCount == 1) "entry" else "entries"}",
-                                context,
-                            )
-                        }
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Clear post cache (${Utils.getCachedPostCount(context)})",
-                    icon = Res.drawable.ic_cached,
-                    onClick = {
-                        val oldCount = Utils.clearPostCache(context)
-                        localRefresh++
-                        if (oldCount > 0) {
-                            Utils.toast(
-                                "Cleared $oldCount cached " +
-                                    if (oldCount == 1) "post" else "posts",
-                                context,
-                            )
-                        }
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Clear tint cache (" +
-                        StoryPreviewImageLoader.getCachedPreviewImageTintColorCount(context) +
-                        ")",
-                    icon = Res.drawable.ic_palette,
-                    onClick = {
-                        PreviewImageTintUtils.clearTintColorCaches(context)
-                        localRefresh++
-                        Utils.toast("Tint cache cleared", context)
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Other") {
-                SettingRow(
-                    title = "Open Hacker News links in Harmonic",
-                    icon = Res.drawable.ic_web_asset,
-                    onClick = { dialog = "links" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Reset all settings",
-                    icon = Res.drawable.ic_refresh,
-                    onClick = { dialog = "reset" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Show update changelogs",
-                    icon = Res.drawable.ic_system_update_alt,
-                    checked = prefs.getBoolean("pref_show_changelog", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_show_changelog", it).apply()
-                    },
-                )
-            }
-        }
-    }
+        },
+        contentVersion = refresh + localRefresh,
+    )
 
     when (dialog) {
         "import" -> ItemsDialog(
@@ -333,9 +258,6 @@ private fun resetAllSettings(context: Context) {
         .apply()
     Utils.toast("Settings reset", context)
 }
-
-private fun formatBookmarkCount(count: Int): String =
-    if (count == 1) "1 bookmark" else "$count bookmarks"
 
 private fun bookmarksFilename(): String {
     val calendar = Calendar.getInstance()

@@ -1,9 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import org.jetbrains.compose.resources.DrawableResource
-
-import com.simon.harmonichackernews.resources.*
-
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,291 +8,86 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.SettingsUtils
 
 @Composable
-fun WebLinksSettingsScreen(
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-) {
+fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
-    val integratedWebView = prefs.getBoolean("pref_webview", true)
-    val readerModeEnabled = prefs.getBoolean(
-        SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED,
-        true,
+    var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
+    val state = WebLinksSettingsUiState(
+        integratedWebView = prefs.getBoolean("pref_webview", true),
+        closeWebViewOnBack = prefs.getBoolean("pref_close_webview_on_back", false),
+        preloadSummary = preloadSummary(context),
+        matchWebViewTheme = prefs.getBoolean("pref_webview_match_theme", false),
+        blockWebViewAds = prefs.getBoolean("pref_webview_adblock", false),
+        readerModeEnabled = prefs.getBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED, true),
+        readerModeDefault = prefs.getBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT, false),
+        readerModeFontLabel = SettingsUtils.getPreferredReaderModeFontLabel(context).orEmpty(),
+        readerModeFontSize = SettingsUtils.getReaderModeFontSize(context),
+        readerModeFontSizeDefault = SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE,
+        readerModeFontSizeRange = SettingsUtils.MIN_READER_MODE_FONT_SIZE..
+            SettingsUtils.MAX_READER_MODE_FONT_SIZE,
+        externalBrowser = prefs.getBoolean("pref_external_browser", false),
+        redirectNitter = prefs.getBoolean("pref_redirect_nitter", false),
+        archiveDomainCount = SettingsUtils.getArchiveRedirectDomains(context).size,
+        previewArxiv = prefs.getBoolean("pref_link_preview_arxiv", true),
+        previewGithub = prefs.getBoolean("pref_link_preview_github", true),
+        previewGitlab = prefs.getBoolean("pref_link_preview_gitlab", true),
+        previewStackExchange = prefs.getBoolean("pref_link_preview_stack_exchange", true),
+        previewWikipedia = prefs.getBoolean("pref_link_preview_wikipedia", true),
+        previewX = prefs.getBoolean("pref_link_preview_x", false),
     )
-    val readerControlsEnabled = integratedWebView && readerModeEnabled
-    val readerModeFontSize = SettingsUtils.getReaderModeFontSize(context)
-    val archiveDomains = SettingsUtils.getArchiveRedirectDomains(context)
-
-    SettingsPage(
-        title = "Web and links",
+    SharedWebLinksSettingsScreen(
+        state = state,
         showNavigation = showNavigation,
         onBack = onBack,
+        onBooleanChanged = { setting, value ->
+            prefs.edit().putBoolean(setting.preferenceKey, value).apply()
+        },
+        onReaderFontSizeChanged = {
+            prefs.edit().putInt(SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT_SIZE, it).apply()
+        },
+        onDialogRequested = { dialog = it },
         contentVersion = refresh,
-    ) {
-        item {
-            SettingsCategory("WebView") {
-                SwitchSettingRow(
-                    title = "Integrated WebView",
-                    summary = "Opens websites in the app which has a hit on performance",
-                    icon = Res.drawable.ic_web_asset,
-                    checked = integratedWebView,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_webview", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Go back to comments",
-                    summary = "Back navigation closes integrated WebView",
-                    icon = Res.drawable.ic_arrow_back,
-                    checked = prefs.getBoolean("pref_close_webview_on_back", false),
-                    enabled = integratedWebView,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_close_webview_on_back", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Preload websites",
-                    summary = preloadSummary(context),
-                    icon = Res.drawable.ic_cached,
-                    enabled = integratedWebView,
-                    onClick = { dialog = "preload" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Match WebView dark mode to theme",
-                    icon = Res.drawable.ic_invert_colors,
-                    checked = prefs.getBoolean("pref_webview_match_theme", false),
-                    enabled = integratedWebView,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_webview_match_theme", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Block WebView ads",
-                    summary = "May cause some sites to stop working and has a small performance penalty",
-                    icon = Res.drawable.ic_block,
-                    checked = prefs.getBoolean("pref_webview_adblock", false),
-                    enabled = integratedWebView,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_webview_adblock", it).apply()
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Reader mode") {
-                SwitchSettingRow(
-                    title = "Enable reader mode",
-                    icon = Res.drawable.ic_chrome_reader_mode,
-                    checked = readerModeEnabled,
-                    enabled = integratedWebView,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Reader mode on by default",
-                    icon = Res.drawable.ic_chrome_reader_mode,
-                    checked = prefs.getBoolean(
-                        SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT,
-                        false,
-                    ),
-                    enabled = readerControlsEnabled,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Font",
-                    summary = SettingsUtils.getPreferredReaderModeFontLabel(context),
-                    icon = Res.drawable.ic_font_download,
-                    enabled = readerControlsEnabled,
-                    onClick = { dialog = "reader_font" },
-                )
-                SettingsDivider()
-                SliderSetting(
-                    title = "Text size",
-                    valueLabel = buildString {
-                        append("${readerModeFontSize}px")
-                        if (readerModeFontSize == SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE) {
-                            append(" (default)")
-                        }
-                    },
-                    value = readerModeFontSize.toFloat(),
-                    valueRange = SettingsUtils.MIN_READER_MODE_FONT_SIZE.toFloat()..
-                        SettingsUtils.MAX_READER_MODE_FONT_SIZE.toFloat(),
-                    steps = SettingsUtils.MAX_READER_MODE_FONT_SIZE -
-                        SettingsUtils.MIN_READER_MODE_FONT_SIZE - 1,
-                    enabled = readerControlsEnabled,
-                    onValueChange = {
-                        prefs.edit()
-                            .putInt(
-                                SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT_SIZE,
-                                it.toInt(),
-                            )
-                            .apply()
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Browser and links") {
-                SwitchSettingRow(
-                    title = "Use external browser",
-                    summary = "In place of custom tabs",
-                    icon = Res.drawable.ic_open_in_browser,
-                    checked = prefs.getBoolean("pref_external_browser", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_external_browser", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Redirect Twitter/X to Nitter",
-                    icon = Res.drawable.ic_shuffle,
-                    checked = prefs.getBoolean("pref_redirect_nitter", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_redirect_nitter", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Redirect to archive version",
-                    summary = when (archiveDomains.size) {
-                        0 -> "No domains"
-                        1 -> "1 domain"
-                        else -> "${archiveDomains.size} domains"
-                    },
-                    icon = Res.drawable.ic_shuffle,
-                    onClick = { dialog = "archive_domains" },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Link previews") {
-                LinkPreviewSwitch(
-                    title = "ArXiV",
-                    icon = Res.drawable.ic_link_preview_arxiv,
-                    checked = prefs.getBoolean("pref_link_preview_arxiv", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_link_preview_arxiv", it).apply()
-                    },
-                )
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "GitHub",
-                    icon = Res.drawable.ic_link_preview_github,
-                    checked = prefs.getBoolean("pref_link_preview_github", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_link_preview_github", it).apply()
-                    },
-                )
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "GitLab",
-                    icon = Res.drawable.ic_link_preview_gitlab,
-                    checked = prefs.getBoolean("pref_link_preview_gitlab", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_link_preview_gitlab", it).apply()
-                    },
-                )
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "Stack Exchange",
-                    icon = Res.drawable.ic_link_preview_stack_exchange,
-                    checked = prefs.getBoolean("pref_link_preview_stack_exchange", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_link_preview_stack_exchange", it).apply()
-                    },
-                )
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "Wikipedia",
-                    icon = Res.drawable.ic_link_preview_wikipedia,
-                    checked = prefs.getBoolean("pref_link_preview_wikipedia", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_link_preview_wikipedia", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Twitter/X (unstable)",
-                    summary = "Enables Nitter redirect automatically",
-                    icon = Res.drawable.ic_link_preview_x,
-                    checked = prefs.getBoolean("pref_link_preview_x", false),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean("pref_link_preview_x", it)
-                            .apply()
-                        if (it) {
-                            prefs.edit().putBoolean("pref_redirect_nitter", true).apply()
-                        }
-                    },
-                )
-            }
-        }
-    }
+    )
 
     when (dialog) {
-        "preload" -> PreloadWebViewDialog(onDismiss = { dialog = null })
-        "reader_font" -> FontSelectionDialog(
+        WebLinksSettingsDialog.Preload -> PreloadWebViewDialog(onDismiss = { dialog = null })
+        WebLinksSettingsDialog.ReaderFont -> FontSelectionDialog(
             readerMode = true,
             onDismiss = { dialog = null },
         )
-        "archive_domains" -> ArchiveRedirectDomainsDialog(
+        WebLinksSettingsDialog.ArchiveDomains -> ArchiveRedirectDomainsDialog(
             onDismiss = { dialog = null },
         )
+        null -> Unit
     }
 }
 
-@Composable
-private fun LinkPreviewSwitch(
-    title: String,
-    icon: DrawableResource,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    SwitchSettingRow(
-        title = title,
-        icon = icon,
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-    )
-}
+private val WebLinksBooleanSetting.preferenceKey: String
+    get() = when (this) {
+        WebLinksBooleanSetting.IntegratedWebView -> "pref_webview"
+        WebLinksBooleanSetting.CloseWebViewOnBack -> "pref_close_webview_on_back"
+        WebLinksBooleanSetting.MatchWebViewTheme -> "pref_webview_match_theme"
+        WebLinksBooleanSetting.BlockWebViewAds -> "pref_webview_adblock"
+        WebLinksBooleanSetting.ReaderModeEnabled -> SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED
+        WebLinksBooleanSetting.ReaderModeDefault -> SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT
+        WebLinksBooleanSetting.ExternalBrowser -> "pref_external_browser"
+        WebLinksBooleanSetting.RedirectNitter -> "pref_redirect_nitter"
+        WebLinksBooleanSetting.PreviewArxiv -> "pref_link_preview_arxiv"
+        WebLinksBooleanSetting.PreviewGithub -> "pref_link_preview_github"
+        WebLinksBooleanSetting.PreviewGitlab -> "pref_link_preview_gitlab"
+        WebLinksBooleanSetting.PreviewStackExchange -> "pref_link_preview_stack_exchange"
+        WebLinksBooleanSetting.PreviewWikipedia -> "pref_link_preview_wikipedia"
+        WebLinksBooleanSetting.PreviewX -> "pref_link_preview_x"
+    }
 
 private fun preloadSummary(context: Context): String {
     val mode = SettingsUtils.shouldPreloadWebView(context)
     val battery = SettingsUtils.getPreloadWebViewMinimumBattery(context)
-    if (mode == SettingsUtils.PRELOAD_WEBVIEW_NEVER) {
-        return "Never"
-    }
-    val modeLabel = if (mode == SettingsUtils.PRELOAD_WEBVIEW_ALWAYS) {
-        "Always"
-    } else {
-        "Only on WiFi"
-    }
-    return if (battery <= 0) {
-        "$modeLabel, any battery level"
-    } else {
-        "$modeLabel, battery at least $battery%"
-    }
+    if (mode == SettingsUtils.PRELOAD_WEBVIEW_NEVER) return "Never"
+    val modeLabel = if (mode == SettingsUtils.PRELOAD_WEBVIEW_ALWAYS) "Always" else "Only on WiFi"
+    return if (battery <= 0) "$modeLabel, any battery level" else "$modeLabel, battery at least $battery%"
 }

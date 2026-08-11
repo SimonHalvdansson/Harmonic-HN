@@ -16,7 +16,6 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.BackEventCompat
-import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
@@ -51,6 +50,7 @@ import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.PlatformServices
 import com.simon.harmonichackernews.presentation.CommentsAction
@@ -273,41 +273,7 @@ class CommentsCoordinator(
             return
         }
 
-        story = Story()
-
-        story!!.title = destination.title
-        story!!.pdfTitle = destination.pdfTitle
-        story!!.videoTitle = destination.videoTitle
-        story!!.by = destination.author
-        story!!.url = destination.url
-        story!!.previewImageUrl = destination.previewImageUrl
-        story!!.previewImageUrlLoaded = destination.previewImageUrlLoaded ||
-            !destination.previewImageUrl.isNullOrEmpty()
-        story!!.previewImageLoadFailed = destination.previewImageLoadFailed
-        story!!.previewImageTintColorLoaded = destination.previewImageTintColorLoaded
-        story!!.previewImageTintColor = destination.previewImageTintColor
-        story!!.previewImageTintSourceUrl = destination.previewImageTintSourceUrl
-        story!!.previewImageTintBaseColor = destination.previewImageTintBaseColor
-        story!!.previewImageTintMode = destination.previewImageTintMode
-        story!!.faviconTintColorLoaded = destination.faviconTintColorLoaded
-        story!!.faviconTintColor = destination.faviconTintColor
-        story!!.faviconTintSourceUrl = destination.faviconTintSourceUrl
-        story!!.faviconTintBaseColor = destination.faviconTintBaseColor
-        story!!.faviconTintMode = destination.faviconTintMode
-        story!!.time = destination.createdAtEpochSeconds
-        story!!.kids = destination.childIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
-        story!!.pollOptions = destination.pollOptionIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
-        story!!.descendants = destination.descendantCount
-        story!!.id = destination.storyId
-        story!!.score = destination.score
-        story!!.text = destination.text
-        story!!.isLink = destination.isLink
-        story!!.isComment = destination.isComment
-        story!!.parentId = destination.parentId
-        story!!.commentMasterId = destination.commentMasterId
-        story!!.commentMasterTitle = destination.commentMasterTitle
-        story!!.commentMasterUrl = destination.commentMasterUrl
-        story!!.loaded = destination.author != null
+        story = destination.toStory()
         showWebsite = destination.showWebsite
         scrollToCommentId = destination.scrollToCommentId
     }
@@ -747,7 +713,7 @@ class CommentsCoordinator(
             return
         }
         composeController = CommentsComposeController.create(
-            requireActivity() as ComponentActivity,
+            { SettingsUtils.shouldSmoothScrollComments(requireActivity()) },
             story!!,
             showWebsite,
             username,
@@ -1419,7 +1385,7 @@ class CommentsCoordinator(
         if (composeController != null && composeController!!.isLinkPreviewReferenceShowing()) {
             outState.putString(
                 STATE_REFERENCE_LINK_SUMMARY_URL,
-                composeController!!.getLinkPreviewVisibleUrl()
+                composeController!!.linkPreviewVisibleUrl
             )
             outState.putString(
                 STATE_REFERENCE_LINK_SUMMARY_TITLE,
@@ -1428,7 +1394,7 @@ class CommentsCoordinator(
         } else if (composeController != null && composeController!!.isLinkPreviewImageShowing()) {
             outState.putString(
                 STATE_PREVIEW_IMAGE_DIALOG_URL,
-                composeController!!.getLinkPreviewVisibleUrl()
+                composeController!!.linkPreviewVisibleUrl
             )
         }
 
@@ -1503,7 +1469,7 @@ class CommentsCoordinator(
             getActivity() != null && requireActivity().isChangingConfigurations()
                     && composeController != null && composeController!!.isLinkPreviewImageShowing()
         pendingReferenceLinkSummaryUrl = if (preserveReferenceSummary)
-            composeController!!.getLinkPreviewVisibleUrl()
+            composeController!!.linkPreviewVisibleUrl
         else
             null
         pendingReferenceLinkSummaryTitle = if (preserveReferenceSummary)
@@ -1511,7 +1477,7 @@ class CommentsCoordinator(
         else
             null
         pendingPreviewImageDialogUrl = if (preservePreviewImage)
-            composeController!!.getLinkPreviewVisibleUrl()
+            composeController!!.linkPreviewVisibleUrl
         else
             null
         if (composeController != null) {

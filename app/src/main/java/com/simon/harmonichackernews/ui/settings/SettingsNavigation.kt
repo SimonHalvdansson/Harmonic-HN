@@ -59,6 +59,7 @@ import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -68,28 +69,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-enum class SettingsSection(
-    val route: String,
-    val title: String,
-) {
-    Appearance("appearance", "Appearance"),
-    Stories("stories", "Stories"),
-    Comments("comments", "Comments"),
-    WebLinks("web_links", "Web and links"),
-    FiltersTags("filters_tags", "Filters and tags"),
-    AiSummary("ai_summary", "AI summarization"),
-    Data("data", "Data"),
-    Debug("debug", "Debug"),
-    About("about", "About"),
-    Licenses("licenses", "Third-party licenses"),
-    ;
-
-    companion object {
-        fun fromRoute(route: String): SettingsSection? =
-            entries.firstOrNull { it.route == route }
-    }
-}
 
 private data object SettingsListDestination : NavKey
 
@@ -408,6 +387,7 @@ fun SettingsShell(
             SettingsListScreen(
                 selectedSection = selectedSection,
                 showSelection = !currentShowDetailNavigation,
+                showDebugSettings = BuildConfig.DEBUG_SETTINGS_ENABLED,
                 onBack = onBackFromSettings,
                 onSectionSelected = { navigateTo(it) },
             )

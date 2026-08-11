@@ -1,351 +1,49 @@
 package com.simon.harmonichackernews.ui.common
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsUserService
-import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.platform.AndroidCredentialStore
-import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
-import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.login_dialog_success
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
-import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
 
-/** Compose replacement for the XML login dialog and its nested CAPTCHA flow. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoginDialog(
     onDismiss: () -> Unit,
     onAccountStateChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    var showInformation by rememberSaveable { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var captchaChallenge by remember { mutableStateOf<HackerNewsCaptchaChallenge?>(null) }
-    val coroutineScope = rememberCoroutineScope()
+    val loginSuccess = stringResource(Res.string.login_dialog_success)
     val hackerNewsUserService = remember(context) {
         HackerNewsUserService(NetworkComponent.hackerNewsSession, AndroidCredentialStore(context))
     }
-    val loginFailure = stringResource(Res.string.login_dialog_failure)
-    val loginSuccess = stringResource(Res.string.login_dialog_success)
-    val captchaCancelled = stringResource(Res.string.login_dialog_captcha_cancelled)
-    val credentialsValid = username.isNotBlank() && password.isNotEmpty()
-
-    fun finishLogin() {
-        loading = false
-        Utils.toast(loginSuccess, context)
-        onAccountStateChanged()
-        onDismiss()
-    }
-
-    fun failLogin(message: String = loginFailure) {
-        AccountUtils.deleteAccountDetails(context)
-        loading = false
-        error = message
-    }
-
-    fun handleLoginResult(result: HackerNewsActionResult) {
-        when (result) {
-            is HackerNewsActionResult.Success -> finishLogin()
-            is HackerNewsActionResult.Failure -> failLogin()
-            is HackerNewsActionResult.Captcha -> {
-                loading = false
-                captchaChallenge = result.challenge
-            }
-        }
-    }
-
-    fun continueLogin(challenge: HackerNewsCaptchaChallenge, response: String) {
-        captchaChallenge = null
-        loading = true
-        coroutineScope.launch {
-            handleLoginResult(
-                hackerNewsUserService.continueLoginWithCaptcha(challenge, response)
+    SharedLoginDialog(
+        onDismiss = onDismiss,
+        attemptLogin = { username, password ->
+            AccountUtils.setAccountDetails(context, username, password)
+            hackerNewsUserService.login()
+        },
+        continueLogin = hackerNewsUserService::continueLoginWithCaptcha,
+        onLoginSucceeded = {
+            Utils.toast(loginSuccess, context)
+            onAccountStateChanged()
+            onDismiss()
+        },
+        onLoginFailed = { AccountUtils.deleteAccountDetails(context) },
+        onCreateAccount = { Utils.launchInExternalBrowser(context, HackerNewsLoginUrl) },
+        captchaDialog = { challenge, dismiss, response ->
+            CaptchaDialog(
+                challenge = challenge,
+                onDismiss = dismiss,
+                onCaptchaResponse = response,
             )
-        }
-    }
-
-    fun attemptLogin() {
-        if (!credentialsValid || loading) return
-        error = null
-        loading = true
-        AccountUtils.setAccountDetails(context, username.trim(), password)
-        coroutineScope.launch { handleLoginResult(hackerNewsUserService.login()) }
-    }
-
-    SettingsAlertDialog(
-        onDismissRequest = {
-            if (!loading && captchaChallenge == null) onDismiss()
-        },
-        title = {
-            Text(
-                text = stringResource(Res.string.login_dialog_title),
-                color = HarmonicTheme.colors.textPrimary,
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 27.sp,
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            top = HarmonicDimens.login_dialog_section_spacing,
-                        ),
-                    enabled = !loading,
-                    label = { Text(stringResource(Res.string.login_dialog_username)) },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next,
-                    ),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            top = HarmonicDimens.login_dialog_field_spacing,
-                        ),
-                    enabled = !loading,
-                    label = { Text(stringResource(Res.string.login_dialog_password)) },
-                    visualTransformation = if (passwordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { passwordVisible = !passwordVisible },
-                            shapes = IconButtonDefaults.shapes(),
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    if (passwordVisible) {
-                                        Res.drawable.ic_visibility_off
-                                    } else {
-                                        Res.drawable.ic_visibility
-                                    },
-                                ),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onDone = { attemptLogin() },
-                    ),
-                    singleLine = true,
-                )
-                Text(
-                    text = stringResource(Res.string.login_dialog_local_information),
-                    modifier = Modifier.padding(
-                        top = HarmonicDimens.login_dialog_section_spacing,
-                        bottom = HarmonicDimens.login_dialog_small_spacing,
-                    ),
-                    color = HarmonicTheme.colors.textPrimary,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                )
-                AnimatedVisibility(visible = !showInformation) {
-                    OutlinedButton(
-                        onClick = { showInformation = true },
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_info),
-                            contentDescription = null,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(Res.string.login_dialog_how_it_works),
-                            lineHeight = 16.sp,
-                        )
-                    }
-                }
-                AnimatedVisibility(visible = showInformation) {
-                    Column {
-                        Text(
-                            text = stringResource(Res.string.login_dialog_information),
-                            modifier = Modifier.padding(
-                                top = HarmonicDimens.login_dialog_small_spacing,
-                            ),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 13.sp,
-                        )
-                        Text(
-                            text = stringResource(Res.string.login_dialog_troubleshooting),
-                            modifier = Modifier.padding(
-                                top = HarmonicDimens.login_dialog_info_spacing,
-                            ),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 13.sp,
-                        )
-                    }
-                }
-                Text(
-                    text = stringResource(Res.string.login_dialog_create_account_explanation),
-                    modifier = Modifier.padding(
-                        top = HarmonicDimens.login_dialog_info_spacing,
-                        bottom = HarmonicDimens.login_dialog_small_spacing,
-                    ),
-                    color = HarmonicTheme.colors.textPrimary,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                )
-                OutlinedButton(
-                    onClick = { Utils.launchInExternalBrowser(context, HackerNewsLoginUrl) },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_open_in_browser),
-                        contentDescription = null,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Res.string.login_dialog_create_account))
-                }
-                AnimatedVisibility(visible = loading) {
-                    Row(
-                        modifier = Modifier.padding(
-                            top = HarmonicDimens.login_dialog_section_spacing,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        LoadingIndicator(
-                            modifier = Modifier.size(
-                                HarmonicDimens.login_dialog_loading_indicator_size,
-                            ),
-                        )
-                        Spacer(
-                            Modifier.width(
-                                HarmonicDimens.cache_stories_value_start_spacing,
-                            ),
-                        )
-                        Text(
-                            text = stringResource(Res.string.login_dialog_loading),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 14.sp,
-                        )
-                    }
-                }
-                error?.let { message ->
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(
-                            top = HarmonicDimens.login_dialog_section_spacing,
-                        ),
-                        color = MaterialTheme.colorScheme.error,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                    )
-                }
-            }
-        },
-        scrollableContent = true,
-        dismissButton = {
-            SettingsDialogTextButton(
-                onClick = onDismiss,
-                enabled = !loading,
-            ) {
-                Text(stringResource(Res.string.common_cancel))
-            }
-        },
-        confirmButton = {
-            SettingsDialogTextButton(
-                onClick = { attemptLogin() },
-                enabled = credentialsValid && !loading,
-            ) {
-                Text(stringResource(Res.string.login_dialog_action))
-            }
         },
     )
-
-    captchaChallenge?.let { challenge ->
-        CaptchaDialog(
-            challenge = challenge,
-            onDismiss = {
-                captchaChallenge = null
-                failLogin(captchaCancelled)
-            },
-            onCaptchaResponse = { response ->
-                continueLogin(challenge, response)
-            },
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LoginDialogPreview() {
-    HarmonicTheme {
-        LoginDialog(
-            onDismiss = {},
-            onAccountStateChanged = {},
-        )
-    }
 }

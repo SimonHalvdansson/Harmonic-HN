@@ -22,6 +22,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.random.Random
+import kotlin.time.TimeSource
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -44,7 +46,7 @@ private data class GasFrame(
 
 /** Compose Canvas version of the full-screen Ginibre log-gas Easter egg. */
 @Composable
-internal fun CoulombGasScreen() {
+fun CoulombGasScreen() {
     val colors = HarmonicTheme.colors
     val lightTheme = colors.background.luminance() > colors.onSurface.luminance()
     val density = LocalDensity.current.density
@@ -59,13 +61,13 @@ internal fun CoulombGasScreen() {
     LaunchedEffect(simulation) {
         val activeSimulation = simulation ?: return@LaunchedEffect
         while (isActive) {
-            val frameStart = System.nanoTime()
+            val frameStart = TimeSource.Monotonic.markNow()
             val nextFrame = withContext(Dispatchers.Default) {
                 activeSimulation.step()
                 activeSimulation.snapshot()
             }
             frame = nextFrame
-            val elapsedMillis = (System.nanoTime() - frameStart) / 1_000_000L
+            val elapsedMillis = frameStart.elapsedNow().inWholeMilliseconds
             delay((16L - elapsedMillis).coerceAtLeast(1L))
         }
     }
@@ -130,9 +132,7 @@ private class CoulombGasSimulation(size: IntSize) {
     private val accelerationX = FloatArray(ParticleCount)
     private val accelerationY = FloatArray(ParticleCount)
     private val colorIndices = IntArray(ParticleCount)
-    private val touchLock = Any()
-    private val touchX = FloatArray(MaxTouchCharges)
-    private val touchY = FloatArray(MaxTouchCharges)
+    private val touchUpdates = Channel<List<Offset>>(Channel.CONFLATED)
     private val simulationTouchX = FloatArray(MaxTouchCharges)
     private val simulationTouchY = FloatArray(MaxTouchCharges)
     private var touchCount = 0
@@ -149,7 +149,7 @@ private class CoulombGasSimulation(size: IntSize) {
         }
     }
 
-    fun step() {
+    suspend fun step() {
         val confinement = -2f * ParticleCount
         repeat(ParticleCount) { index ->
             accelerationX[index] = confinement * x[index]
@@ -172,11 +172,14 @@ private class CoulombGasSimulation(size: IntSize) {
             }
         }
 
-        val activeTouchCount = synchronized(touchLock) {
-            touchX.copyInto(simulationTouchX, endIndex = touchCount)
-            touchY.copyInto(simulationTouchY, endIndex = touchCount)
-            touchCount
+        touchUpdates.tryReceive().getOrNull()?.let { positions ->
+            touchCount = min(positions.size, MaxTouchCharges)
+            repeat(touchCount) { index ->
+                simulationTouchX[index] = positions[index].x
+                simulationTouchY[index] = positions[index].y
+            }
         }
+        val activeTouchCount = touchCount
         repeat(activeTouchCount) { charge ->
             repeat(ParticleCount) { index ->
                 val dx = x[index] - simulationTouchX[charge]
@@ -222,16 +225,18 @@ private class CoulombGasSimulation(size: IntSize) {
     fun setTouchCharges(positions: List<Offset>, size: IntSize) {
         val scale = min(size.width, size.height) * WorldToView
         if (scale <= 0f) return
-        synchronized(touchLock) {
-            touchCount = min(positions.size, MaxTouchCharges)
-            repeat(touchCount) { index ->
-                touchX[index] = (positions[index].x - size.width * 0.5f) / scale
-                touchY[index] = (size.height * 0.5f - positions[index].y) / scale
-            }
-        }
+        val count = min(positions.size, MaxTouchCharges)
+        touchUpdates.trySend(
+            List(count) { index ->
+                Offset(
+                    x = (positions[index].x - size.width * 0.5f) / scale,
+                    y = (size.height * 0.5f - positions[index].y) / scale,
+                )
+            },
+        )
     }
 
     fun clearTouchCharges() {
-        synchronized(touchLock) { touchCount = 0 }
+        touchUpdates.trySend(emptyList())
     }
 }

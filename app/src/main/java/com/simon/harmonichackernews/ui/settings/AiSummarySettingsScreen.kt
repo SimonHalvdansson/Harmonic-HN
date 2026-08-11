@@ -3,20 +3,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 
-import com.simon.harmonichackernews.resources.*
-
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -26,14 +15,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import org.jetbrains.compose.resources.painterResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource as androidPainterResource
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.LocalSummaryManager
+import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.LocalModelPresentationAction
+import com.simon.harmonichackernews.summary.LocalModelPresentationInput
+import com.simon.harmonichackernews.summary.LocalModelPresentationPolicy
+import com.simon.harmonichackernews.summary.LocalModelTransferState
+import com.simon.harmonichackernews.summary.LocalModelTransferStatus
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
@@ -70,7 +64,7 @@ fun AiSummarySettingsScreen(
     }
     var nanoAvailabilityResolved by remember { mutableStateOf(false) }
     var nanoAvailable by remember { mutableStateOf(false) }
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
 
     LaunchedEffect(Unit) {
         AndroidAiModelDefaults.ensureInitialDefault(context)
@@ -162,118 +156,52 @@ fun AiSummarySettingsScreen(
         }
     }
 
-    SettingsPage(
-        title = "AI summarization",
+    SharedAiSummarySettingsScreen(
+        state = AiSummarySettingsUiState(
+            enabled = enabled,
+            configurationComplete = configurationComplete,
+            localSummarizationSupported = LocalSummaryManager.canAttemptLocalSummarization(),
+            mode = mode,
+            localModeValue = AiModeLocal,
+            cloudModeValue = AiModeCloud,
+            baseUrl = baseUrl,
+            apiKeyPreview = if (apiKey.isBlank()) "Not set" else apiKey.take(8) + "…",
+            model = model,
+            systemPrompt = systemPrompt,
+            streamResponses = prefs.getBoolean(KeyAiStream, true),
+        ),
         showNavigation = showNavigation,
-        onBack = onBack,
         contentVersion = preferenceRefresh + localRefresh,
-    ) {
-        item {
-            SettingsMainToggle(
-                title = "Use AI summarization",
-                checked = enabled && configurationComplete,
-                enabled = configurationComplete,
-                onCheckedChange = {
-                    prefs.edit().putBoolean(KeyAiEnabled, it).apply()
-                },
-            )
-        }
-
-        item {
-            SettingsCard {
-                if (LocalSummaryManager.canAttemptLocalSummarization()) {
-                    SegmentedSetting(
-                        title = "Summarization mode",
-                        options = listOf(
-                            AiModeLocal to "Local",
-                            AiModeCloud to "Cloud",
-                        ),
-                        selected = mode,
-                        onSelected = { selected ->
-                            if (
-                                selected == AiModeLocal &&
-                                !localAvailable
-                            ) {
-                                Toast.makeText(
-                                    context,
-                                    "Local summarization is unavailable on this device",
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            } else {
-                                prefs.edit().putString(KeyAiMode, selected).apply()
-                            }
-                        },
-                    )
-
-                    AnimatedVisibility(
-                        visible = mode == AiModeLocal,
-                    ) {
-                        LocalModelsPanel(
-                            nanoAvailabilityResolved = nanoAvailabilityResolved,
-                            nanoAvailable = nanoAvailable,
-                            refresh = localRefresh,
-                            onRefresh = { localRefresh++ },
-                        )
-                    }
-                    SettingsDivider()
-                }
-                SettingRow(
-                    title = "Base URL",
-                    summary = baseUrl,
-                    icon = Res.drawable.ic_link,
-                    enabled = cloudMode,
-                    onClick = { dialog = "base_url" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "API Key",
-                    summary = if (apiKey.isBlank()) {
-                        "Not set"
-                    } else {
-                        apiKey.take(8) + "…"
-                    },
-                    icon = Res.drawable.ic_key,
-                    enabled = cloudMode,
-                    onClick = { dialog = "api_key" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Model",
-                    summary = model.ifBlank { "Finding a recommended model…" },
-                    icon = Res.drawable.ic_hard_drive,
-                    enabled = cloudMode,
-                    onClick = { dialog = "model" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "System prompt",
-                    summary = systemPrompt,
-                    icon = Res.drawable.ic_subject,
-                    summaryFontSizeSp = 13f,
-                    summaryLineHeightSp = 17f,
-                    summaryMaxLines = 10,
-                    enabled = cloudMode,
-                    onClick = { dialog = "system_prompt" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Stream responses",
-                    icon = Res.drawable.ic_stream,
-                    checked = prefs.getBoolean(KeyAiStream, true),
-                    enabled = cloudMode,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean(KeyAiStream, it).apply()
-                    },
-                )
+        onBack = onBack,
+        onEnabledChanged = { prefs.edit().putBoolean(KeyAiEnabled, it).apply() },
+        onModeSelected = { selected ->
+            if (selected == AiModeLocal && !localAvailable) {
+                Toast.makeText(
+                    context,
+                    "Local summarization is unavailable on this device",
+                    Toast.LENGTH_LONG,
+                ).show()
+            } else {
+                prefs.edit().putString(KeyAiMode, selected).apply()
             }
-        }
-    }
+        },
+        onStreamChanged = { prefs.edit().putBoolean(KeyAiStream, it).apply() },
+        onDialogRequested = { dialog = it },
+        localModelsContent = {
+            LocalModelsPanel(
+                nanoAvailabilityResolved = nanoAvailabilityResolved,
+                nanoAvailable = nanoAvailable,
+                refresh = localRefresh,
+                onRefresh = { localRefresh++ },
+            )
+        },
+    )
 
     when (dialog) {
-        "base_url" -> AiSummaryBaseUrlDialog(
+        AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(
             onDismiss = { dialog = null },
         )
-        "api_key" -> AiSummaryTextDialog(
+        AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
             preferenceKey = AiSummaryApiKeyStore.PREF_API_KEY,
             title = "API Key",
             hint = "API Key",
@@ -287,10 +215,10 @@ fun AiSummarySettingsScreen(
             onDismiss = { dialog = null },
             onSaved = { localRefresh++ },
         )
-        "model" -> AiModelSelectorDialog(
+        AiSummarySettingsDialog.Model -> AiModelSelectorDialog(
             onDismiss = { dialog = null },
         )
-        "system_prompt" -> AiSummaryTextDialog(
+        AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
             preferenceKey = KeyAiSystemPrompt,
             title = "System prompt",
             hint = "System prompt",
@@ -304,6 +232,7 @@ fun AiSummarySettingsScreen(
             onDismiss = { dialog = null },
             onSaved = { localRefresh++ },
         )
+        null -> Unit
     }
 }
 
@@ -315,232 +244,101 @@ private fun LocalModelsPanel(
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
-    val selectedModel = remember(context, refresh) {
-        LocalModelManager.getSelectedModel(context)
+    val selectedModelId = remember(context, refresh) {
+        LocalModelManager.getSelectedModel(context).id
+    }
+    val rows = LocalModelCatalog.models.map { definition ->
+        val model = LocalModelManager.getModel(definition.id)
+        val supported = LocalModelManager.isModelSupported(model)
+        val runtimeInstalled = LocalAiRuntimeManager.isRuntimeInstalled(context, model.runtime)
+        LocalModelRowUiState(
+            model = definition,
+            presentation = LocalModelPresentationPolicy.present(
+                LocalModelPresentationInput(
+                    model = definition,
+                    supported = supported,
+                    unsupportedReason = LocalModelManager.getModelUnsupportedReason(model),
+                    selected = selectedModelId == model.id,
+                    nanoAvailabilityResolved = nanoAvailabilityResolved,
+                    nanoAvailable = nanoAvailable,
+                    transferStatus = LocalModelManager.getStatus(context, model).toShared(),
+                    runtimeStatus = LocalAiRuntimeManager.getStatus(
+                        context,
+                        model.runtime,
+                    ).toShared(),
+                    runtimeInstalled = runtimeInstalled,
+                ),
+            ),
+        )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-    ) {
-        LocalModelManager.models.forEachIndexed { index, model ->
-            if (index > 0) {
-                SettingsDivider()
-            }
-            val isNano = model.id == LocalModelManager.MODEL_GEMINI_NANO
-            val supported = LocalModelManager.isModelSupported(model)
-            val modelStatus = LocalModelManager.getStatus(context, model)
-            val runtimeStatus = LocalAiRuntimeManager.getStatus(context, model.runtime)
-            val downloaded = modelStatus.state == LocalModelManager.State.DOWNLOADED
-            val runtimeInstalled =
-                LocalAiRuntimeManager.isRuntimeInstalled(context, model.runtime)
-            val selectable = if (isNano) {
-                nanoAvailabilityResolved && nanoAvailable
-            } else {
-                supported && downloaded && runtimeInstalled
-            }
-            val summary = localModelSummary(
-                model = model,
-                nanoAvailabilityResolved = nanoAvailabilityResolved,
-                nanoAvailable = nanoAvailable,
-                modelStatus = modelStatus,
-                runtimeStatus = runtimeStatus,
-                runtimeInstalled = runtimeInstalled,
-            )
-
-            SettingRow(
-                title = model.displayName,
-                summary = summary,
-                icon = null,
-                androidIcon = model.iconResId,
-                enabled = supported && (!isNano || nanoAvailabilityResolved),
-                onClick = {
-                    if (selectable) {
-                        LocalModelManager.selectModel(context, model.id)
-                        onRefresh()
-                    }
-                },
-                trailing = {
-                    if (isNano) {
-                        if (selectable && selectedModel.id == model.id) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_check),
-                                contentDescription = "Selected",
-                            )
-                        }
+    SharedLocalModelsPanel(
+        models = rows,
+        modelIconPainter = { definition ->
+            androidPainterResource(LocalModelManager.getModel(definition.id).iconResId)
+        },
+        onModelSelected = { modelId ->
+            LocalModelManager.selectModel(context, modelId)
+            onRefresh()
+        },
+        onAction = { modelId, action ->
+            val model = LocalModelManager.getModel(modelId)
+            when (action) {
+                LocalModelPresentationAction.CANCEL_DOWNLOAD -> {
+                    val runtimeStatus = LocalAiRuntimeManager.getStatus(context, model.runtime)
+                    if (runtimeStatus.isActive && runtimeStatus.pendingModelId == model.id) {
+                        LocalAiRuntimeManager.cancelRuntimeInstall(context, model.runtime)
                     } else {
-                        LocalModelAction(
-                            model = model,
-                            modelStatus = modelStatus,
-                            runtimeStatus = runtimeStatus,
-                            runtimeInstalled = runtimeInstalled,
-                            selected = selectable && selectedModel.id == model.id,
-                            onRefresh = onRefresh,
-                        )
-                    }
-                },
-            )
-
-            val modelProgress = when {
-                runtimeStatus.isActive &&
-                    runtimeStatus.pendingModelId == model.id &&
-                    runtimeStatus.totalBytes > 0L ->
-                    runtimeStatus.progressPercent / 100f
-
-                modelStatus.state == LocalModelManager.State.DOWNLOADING ->
-                    modelStatus.progressPercent / 100f
-
-                else -> null
-            }
-            if (modelProgress != null) {
-                LinearProgressIndicator(
-                    progress = { modelProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocalModelAction(
-    model: LocalModelManager.ModelInfo,
-    modelStatus: LocalModelManager.Status,
-    runtimeStatus: LocalAiRuntimeManager.Status,
-    runtimeInstalled: Boolean,
-    selected: Boolean,
-    onRefresh: () -> Unit,
-) {
-    val context = LocalContext.current
-    val runtimeActiveForModel =
-        runtimeStatus.isActive && runtimeStatus.pendingModelId == model.id
-    val modelDownloadActive =
-        modelStatus.state == LocalModelManager.State.DOWNLOADING ||
-            modelStatus.state == LocalModelManager.State.WAITING
-    val icon = when {
-        runtimeActiveForModel || modelDownloadActive -> Res.drawable.ic_close
-        modelStatus.state == LocalModelManager.State.DOWNLOADED &&
-            runtimeInstalled -> Res.drawable.ic_delete
-
-        else -> Res.drawable.ic_file_download
-    }
-    val description = when (icon) {
-        Res.drawable.ic_close -> "Cancel download"
-        Res.drawable.ic_delete -> "Delete model"
-        else -> "Download model"
-    }
-
-    Column {
-        if (selected) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_check),
-                contentDescription = "Selected",
-            )
-        }
-        IconButton(
-            onClick = {
-                when {
-                    runtimeActiveForModel -> {
-                        LocalAiRuntimeManager.cancelRuntimeInstall(
-                            context,
-                            model.runtime,
-                        )
-                    }
-
-                    modelDownloadActive -> {
                         LocalModelManager.cancelDownload(context, model.id)
                     }
-
-                    modelStatus.state == LocalModelManager.State.DOWNLOADED &&
-                        runtimeInstalled -> {
-                        LocalModelManager.removeModel(context, model.id)
-                    }
-
-                    else -> {
-                        val error = LocalAiRuntimeManager
-                            .requestRuntimeAndModelDownload(context, model.id)
-                        if (!error.isNullOrBlank()) {
-                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                        }
+                }
+                LocalModelPresentationAction.DELETE_MODEL ->
+                    LocalModelManager.removeModel(context, model.id)
+                LocalModelPresentationAction.DOWNLOAD_MODEL -> {
+                    val error = LocalAiRuntimeManager.requestRuntimeAndModelDownload(
+                        context,
+                        model.id,
+                    )
+                    if (!error.isNullOrBlank()) {
+                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                     }
                 }
-                onRefresh()
-            },
-            shapes = IconButtonDefaults.shapes(),
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = description,
-            )
-        }
-    }
-}
-
-private fun localModelSummary(
-    model: LocalModelManager.ModelInfo,
-    nanoAvailabilityResolved: Boolean,
-    nanoAvailable: Boolean,
-    modelStatus: LocalModelManager.Status,
-    runtimeStatus: LocalAiRuntimeManager.Status,
-    runtimeInstalled: Boolean,
-): String {
-    if (model.id == LocalModelManager.MODEL_GEMINI_NANO) {
-        return when {
-            !nanoAvailabilityResolved -> "Checking availability…"
-            nanoAvailable -> "Available · system managed"
-            else -> "Not available"
-        }
-    }
-    if (!LocalModelManager.isModelSupported(model)) {
-        return LocalModelManager.getModelUnsupportedReason(model)
-    }
-
-    val description = listOf(
-        model.parameterSize,
-        model.quantization,
-        LocalModelManager.formatBytes(model.sizeBytes),
-        if (model.runtime == LocalModelManager.Runtime.LITERT_LM) {
-            "LiteRT-LM"
-        } else {
-            "llama.cpp"
-        },
-    ).filter(String::isNotBlank).joinToString(" · ")
-
-    val state = when {
-        runtimeStatus.isActive && runtimeStatus.pendingModelId == model.id -> {
-            if (
-                runtimeStatus.state == LocalAiRuntimeManager.State.DOWNLOADING &&
-                runtimeStatus.totalBytes > 0L
-            ) {
-                "Installing runtime · ${runtimeStatus.progressPercent}%"
-            } else {
-                "Preparing local AI runtime…"
             }
-        }
-
-        modelStatus.state == LocalModelManager.State.DOWNLOADING ->
-            "${modelStatus.progressPercent}% downloaded"
-
-        modelStatus.state == LocalModelManager.State.WAITING ->
-            "Waiting for a network connection…"
-
-        modelStatus.state == LocalModelManager.State.PARTIALLY_DOWNLOADED ->
-            "${LocalModelManager.formatBytes(modelStatus.receivedBytes)} downloaded · tap to resume"
-
-        modelStatus.state == LocalModelManager.State.FAILED ->
-            modelStatus.error.ifBlank { "Download failed · tap to retry" }
-
-        modelStatus.state == LocalModelManager.State.DOWNLOADED && !runtimeInstalled ->
-            "${LocalAiRuntimeManager.getRuntimeLabel(model.runtime)} required"
-
-        modelStatus.state == LocalModelManager.State.DOWNLOADED -> "Downloaded"
-        else -> "Not downloaded"
-    }
-    return "$description\n$state"
+            onRefresh()
+        },
+    )
 }
+
+private fun LocalModelManager.Status.toShared(): LocalModelTransferStatus =
+    LocalModelTransferStatus(
+        state = when (state) {
+            LocalModelManager.State.NOT_DOWNLOADED -> LocalModelTransferState.NOT_DOWNLOADED
+            LocalModelManager.State.PARTIALLY_DOWNLOADED ->
+                LocalModelTransferState.PARTIALLY_DOWNLOADED
+            LocalModelManager.State.WAITING -> LocalModelTransferState.WAITING
+            LocalModelManager.State.DOWNLOADING -> LocalModelTransferState.DOWNLOADING
+            LocalModelManager.State.DOWNLOADED -> LocalModelTransferState.DOWNLOADED
+            LocalModelManager.State.FAILED -> LocalModelTransferState.FAILED
+        },
+        receivedBytes = receivedBytes,
+        error = error,
+    )
+
+private fun LocalAiRuntimeManager.Status.toShared(): LocalRuntimeInstallStatus =
+    LocalRuntimeInstallStatus(
+        state = when (state) {
+            LocalAiRuntimeManager.State.NOT_INSTALLED -> LocalRuntimeInstallState.NOT_INSTALLED
+            LocalAiRuntimeManager.State.PENDING -> LocalRuntimeInstallState.PENDING
+            LocalAiRuntimeManager.State.DOWNLOADING -> LocalRuntimeInstallState.DOWNLOADING
+            LocalAiRuntimeManager.State.INSTALLING -> LocalRuntimeInstallState.INSTALLING
+            LocalAiRuntimeManager.State.INSTALLED -> LocalRuntimeInstallState.INSTALLED
+            LocalAiRuntimeManager.State.FAILED -> LocalRuntimeInstallState.FAILED
+            LocalAiRuntimeManager.State.CANCELED -> LocalRuntimeInstallState.CANCELED
+        },
+        pendingModelId = pendingModelId,
+        downloadedBytes = bytesDownloaded,
+        totalBytes = totalBytes,
+    )
 
 private fun cloudConfigurationComplete(context: Context): Boolean {
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)

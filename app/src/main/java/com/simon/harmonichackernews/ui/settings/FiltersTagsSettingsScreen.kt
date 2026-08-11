@@ -1,14 +1,5 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.simon.harmonichackernews.ui.settings
 
-
-import com.simon.harmonichackernews.resources.*
-
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -17,151 +8,57 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import org.jetbrains.compose.resources.painterResource
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.UserTagsRepository
 
 @Composable
-fun FiltersTagsSettingsScreen(
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-) {
+fun FiltersTagsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    val userTags = remember(context) {
+        UserTagsRepository(AndroidKeyValueStore.defaults(context))
+    }
     val refresh = rememberPreferenceRefresh()
     var tagRefresh by remember { mutableIntStateOf(0) }
-    var filterDialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var filterDialog by rememberSaveable { mutableStateOf<ContentFilterDialog?>(null) }
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
     var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
+    val tags = userTags.tags(normalizeUsernames = false)
+        .map { TaggedUserUi(it.key, it.value) }
+        .sortedBy { it.username.lowercase() }
 
-    val tags = Utils.getUserTagsWithOriginalUsernames(context)
-        .entries
-        .sortedBy { it.key.lowercase() }
-
-    SettingsPage(
-        title = "Filters and tags",
+    SharedFiltersTagsSettingsScreen(
+        tags = tags,
+        hideJobs = prefs.getBoolean("pref_hide_jobs", false),
         showNavigation = showNavigation,
         onBack = onBack,
+        onHideJobsChanged = { prefs.edit().putBoolean("pref_hide_jobs", it).apply() },
+        onFilterRequested = { filterDialog = it },
+        onProfileRequested = { profileUser = it },
+        onTagEditRequested = { tagDialogUser = it },
+        onTagDeleteRequested = {
+            userTags.setTag(it, "")
+            tagRefresh++
+        },
         contentVersion = refresh + tagRefresh,
-    ) {
-        item {
-            SettingsCategory("Filters") {
-                SettingRow(
-                    title = "Filter by story title",
-                    icon = Res.drawable.ic_title,
-                    onClick = { filterDialog = "title" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Filter by domain",
-                    icon = Res.drawable.ic_public,
-                    onClick = { filterDialog = "domain" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Blocked users",
-                    icon = Res.drawable.ic_person,
-                    onClick = { filterDialog = "users" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Hide job posts",
-                    summary = "Includes \"Who is hiring\" posts",
-                    icon = Res.drawable.ic_action_work_off,
-                    checked = prefs.getBoolean("pref_hide_jobs", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_hide_jobs", it).apply()
-                    },
-                )
-            }
-        }
+    )
 
-        item {
-            SettingsCategory("Tagged users") {
-                if (tags.isEmpty()) {
-                    SettingRow(
-                        title = "No user with tags",
-                        icon = null,
-                        enabled = false,
-                        onClick = {},
-                    )
-                } else {
-                    tags.forEachIndexed { index, entry ->
-                        SettingRow(
-                            title = if (entry.value.isBlank()) {
-                                entry.key
-                            } else {
-                                "${entry.key} (${entry.value})"
-                            },
-                            icon = Res.drawable.ic_person,
-                            onClick = { profileUser = entry.key },
-                            trailing = {
-                                Row {
-                                    IconButton(
-                                        onClick = { tagDialogUser = entry.key },
-                                        shapes = IconButtonDefaults.shapes(),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.ic_edit),
-                                            contentDescription = "Edit tag",
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            Utils.setUserTag(context, entry.key, "")
-                                            tagRefresh++
-                                        },
-                                        shapes = IconButtonDefaults.shapes(),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.ic_delete),
-                                            contentDescription = "Delete tag",
-                                        )
-                                    }
-                                }
-                            },
-                        )
-                        if (index != tags.lastIndex) {
-                            SettingsDivider()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    when (filterDialog) {
-        "title" -> FilterListDialog(
-            preferenceKey = "pref_filter",
-            title = "Filter by story title",
-            subtitle = "Hide stories containing these words or phrases in the title",
-            inputLabel = "Word or phrase",
-            emptyMessage = "No story title filters",
-            onDismiss = { filterDialog = null },
-        )
-        "domain" -> FilterListDialog(
-            preferenceKey = "pref_filter_domains",
-            title = "Filter by domain",
-            subtitle = "Hide stories from these domains",
-            inputLabel = "Domain",
-            emptyMessage = "No domain filters",
-            onDismiss = { filterDialog = null },
-        )
-        "users" -> FilterListDialog(
-            preferenceKey = "pref_filter_users",
-            title = "Blocked users",
-            subtitle = "Hide stories and comments posted by these users",
-            inputLabel = "Username",
-            emptyMessage = "No blocked users",
+    filterDialog?.let { type ->
+        val content = type.filterDialogContent
+        FilterListDialog(
+            preferenceKey = content.preferenceKey,
+            title = content.title,
+            subtitle = content.subtitle,
+            inputLabel = content.inputLabel,
+            emptyMessage = content.emptyMessage,
             onDismiss = { filterDialog = null },
         )
     }
-
     tagDialogUser?.let { userName ->
         UserTagDialog(
             userName = userName,
-            currentTag = Utils.getUserTag(context, userName),
+            currentTag = userTags.tagFor(userName),
             onDismiss = { tagDialogUser = null },
             onSaved = {
                 tagRefresh++
@@ -169,7 +66,6 @@ fun FiltersTagsSettingsScreen(
             },
         )
     }
-
     profileUser?.let { userName ->
         UserSettingsDialog(
             userName = userName,
@@ -178,3 +74,36 @@ fun FiltersTagsSettingsScreen(
         )
     }
 }
+
+private data class FilterDialogContent(
+    val preferenceKey: String,
+    val title: String,
+    val subtitle: String,
+    val inputLabel: String,
+    val emptyMessage: String,
+)
+
+private val ContentFilterDialog.filterDialogContent: FilterDialogContent
+    get() = when (this) {
+        ContentFilterDialog.StoryTitle -> FilterDialogContent(
+            "pref_filter",
+            "Filter by story title",
+            "Hide stories containing these words or phrases in the title",
+            "Word or phrase",
+            "No story title filters",
+        )
+        ContentFilterDialog.Domain -> FilterDialogContent(
+            "pref_filter_domains",
+            "Filter by domain",
+            "Hide stories from these domains",
+            "Domain",
+            "No domain filters",
+        )
+        ContentFilterDialog.User -> FilterDialogContent(
+            "pref_filter_users",
+            "Blocked users",
+            "Hide stories and comments posted by these users",
+            "Username",
+            "No blocked users",
+        )
+    }

@@ -1,388 +1,158 @@
 package com.simon.harmonichackernews.ui.settings
 
-import com.simon.harmonichackernews.resources.*
-import org.jetbrains.compose.resources.stringArrayResource
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
-import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
-import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.comment_sorting
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.utils.SettingsUtils
+import org.jetbrains.compose.resources.stringArrayResource
 
 @Composable
-fun CommentsSettingsScreen(
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-) {
+fun CommentsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
-    val resources = LocalResources.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
+    var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val displayStyle = SettingsUtils.getPreferredCommentDisplayStyle(context)
-    val showBorder = prefs.getBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, true)
     val textSize = SettingsUtils.getPreferredCommentTextSize(context)
     val textSizeOffset = TextPreferences.commentTextSizeOffset(textSize)
-    val collectLinks = prefs.getBoolean(SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS, true)
-    val emphasizeMeta = prefs.getBoolean(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META, false)
     val depthMode = SettingsUtils.getPreferredCommentDepthIndicatorMode(context)
-    val showDividers = prefs.getBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, false)
-    val preferredFont = SettingsUtils.getPreferredFont(context)
-    val storyTintEnabled = SettingsUtils.shouldTintCardUsingPreview(context)
-    val storyPreviewEnabled =
-        SettingsUtils.getPreferredStoryPreviewImageMode(context) !=
-            SettingsUtils.STORY_PREVIEW_IMAGE_OFF
-    val swapTap = prefs.getBoolean("pref_comments_swap_long", false)
-
-    SettingsPage(
-        title = "Comments",
+    val state = CommentsSettingsUiState(
+        displayStyle = displayStyle,
+        cardStyleValue = SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
+        standardStyleValue = SettingsUtils.COMMENT_DISPLAY_STYLE_STANDARD,
+        showBorder = prefs.getBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, true),
+        textSize = textSize,
+        textSizeOffset = textSizeOffset,
+        minTextSizeOffset = SettingsUtils.MIN_COMMENT_TEXT_SIZE_OFFSET,
+        maxTextSizeOffset = SettingsUtils.MAX_COMMENT_TEXT_SIZE_OFFSET,
+        collectLinks = prefs.getBoolean(SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS, true),
+        emphasizeMetadata = prefs.getBoolean(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META, false),
+        depthMode = depthMode,
+        depthModeLabel = CommentDepthPreferences.modeLabel(depthMode),
+        showDividers = prefs.getBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, false),
+        preferredFont = SettingsUtils.getPreferredFont(context),
+        topLevelIndicators = prefs.getBoolean("pref_top_level_thread_indicators", false),
+        showScrollbar = prefs.getBoolean("pref_comments_scrollbar", false),
+        animateChanges = prefs.getBoolean("pref_comments_animation", true),
+        storyTintEnabled = SettingsUtils.shouldTintCardUsingPreview(context),
+        headerTint = prefs.getBoolean(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT, true),
+        storyPreviewEnabled = SettingsUtils.getPreferredStoryPreviewImageMode(context) !=
+            SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
+        headerPreviewImage = prefs.getBoolean(
+            SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE,
+            true,
+        ),
+        collapseParent = prefs.getBoolean("pref_collapse_parent", false),
+        collapseTopLevel = prefs.getBoolean("pref_collapse_top_level", false),
+        swapTap = prefs.getBoolean("pref_comments_swap_long", false),
+        sortingLabel = prefs.getString("pref_comment_sorting", "Default") ?: "Default",
+        providerLabel = if (prefs.getString("pref_comments_provider", "algolia") == "official") {
+            "Official Hacker News API"
+        } else {
+            "Algolia API"
+        },
+        showNavigationButtons = prefs.getBoolean("pref_scroll_navigation", false),
+        volumeNavigationLabel = when (
+            prefs.getString("pref_comments_volume_navigation", "disabled")
+        ) {
+            "top_level" -> "Top level comments"
+            "all" -> "All comments"
+            else -> "Disabled"
+        },
+        smoothScroll = prefs.getBoolean("pref_comments_animation_navigation", true),
+    )
+    SharedCommentsSettingsScreen(
+        state = state,
         showNavigation = showNavigation,
         onBack = onBack,
-        contentVersion = refresh,
-        pinnedContent = {
-            CommentItem(
-                model = SettingsCommentPreviewModel,
-                style = CommentItemStyle(
-                    cardStyle = displayStyle == SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
-                    showCardBorder = showBorder,
-                    textSize = textSize,
-                    collectLinks = collectLinks,
-                    emphasizeMeta = emphasizeMeta,
-                    depthIndicatorMode = depthMode,
-                    showDivider = showDividers,
-                    preferredFont = preferredFont,
-                ),
-            )
+        onDisplayStyleChanged = {
+            prefs.edit().putString(SettingsUtils.PREF_COMMENT_DISPLAY_STYLE, it).apply()
         },
-    ) {
-        item {
-            SettingsCategory("Comments display") {
-                SegmentedSetting(
-                    title = "Display style",
-                    options = listOf(
-                        SettingsUtils.COMMENT_DISPLAY_STYLE_STANDARD to "Standard",
-                        SettingsUtils.COMMENT_DISPLAY_STYLE_CARD to "Card",
-                    ),
-                    selected = displayStyle,
-                    onSelected = {
-                        prefs.edit()
-                            .putString(SettingsUtils.PREF_COMMENT_DISPLAY_STYLE, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Border",
-                    icon = Res.drawable.ic_select,
-                    checked = showBorder,
-                    enabled = displayStyle == SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_COMMENT_CARD_BORDER, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SliderSetting(
-                    title = "Text size",
-                    valueLabel = if (textSizeOffset >= 0) {
-                        "+$textSizeOffset"
-                    } else {
-                        "$textSizeOffset"
-                    },
-                    value = textSizeOffset.toFloat(),
-                    valueRange = SettingsUtils.MIN_COMMENT_TEXT_SIZE_OFFSET.toFloat()..
-                        SettingsUtils.MAX_COMMENT_TEXT_SIZE_OFFSET.toFloat(),
-                    steps = SettingsUtils.MAX_COMMENT_TEXT_SIZE_OFFSET -
-                        SettingsUtils.MIN_COMMENT_TEXT_SIZE_OFFSET - 1,
-                    onValueChange = {
-                        val size = TextPreferences.commentTextSizeForOffset(it.toInt())
-                        prefs.edit()
-                            .putString(
-                                SettingsUtils.PREF_COMMENT_TEXT_SIZE,
-                                if (size == size.toInt().toFloat()) {
-                                    size.toInt().toString()
-                                } else {
-                                    size.toString()
-                                },
-                            )
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Collect links in comments",
-                    icon = Res.drawable.ic_link,
-                    checked = prefs.getBoolean(
-                        SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS,
-                        true,
-                    ),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Emphasize meta",
-                    icon = Res.drawable.ic_dropdown_menu,
-                    checked = emphasizeMeta,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_HIGHLIGHT_COMMENT_META, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Thread depth indicators",
-                    summary = CommentDepthIndicatorUtils.getModeLabel(depthMode),
-                    icon = Res.drawable.ic_palette,
-                    onClick = { dialog = "thread_depth" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Dividers",
-                    icon = Res.drawable.ic_horizontal_rule,
-                    checked = prefs.getBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, false),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_COMMENT_DIVIDERS, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Show top level thread indicators",
-                    summary = "Makes it easier to separate top level comments",
-                    icon = Res.drawable.ic_format_align_left,
-                    checked = prefs.getBoolean("pref_top_level_thread_indicators", false),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean("pref_top_level_thread_indicators", it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Show scrollbar",
-                    icon = Res.drawable.ic_swipe_vertical,
-                    checked = prefs.getBoolean("pref_comments_scrollbar", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_comments_scrollbar", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Animate comment expand/collapse",
-                    icon = Res.drawable.ic_animation,
-                    checked = prefs.getBoolean("pref_comments_animation", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_comments_animation", it).apply()
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Header display") {
-                SwitchSettingRow(
-                    title = "Background tint",
-                    summary = if (storyTintEnabled) null else "Disabled because story tint is off",
-                    icon = Res.drawable.ic_palette,
-                    checked = prefs.getBoolean(
-                        SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT,
-                        true,
-                    ),
-                    enabled = storyTintEnabled,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT, it)
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Preview image",
-                    icon = Res.drawable.ic_image,
-                    checked = prefs.getBoolean(
-                        SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE,
-                        true,
-                    ),
-                    enabled = storyPreviewEnabled,
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean(
-                                SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE,
-                                it,
-                            )
-                            .apply()
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Interactions") {
-                SwitchSettingRow(
-                    title = "Hide text of collapsed comments",
-                    icon = Res.drawable.ic_comment,
-                    checked = prefs.getBoolean("pref_collapse_parent", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_collapse_parent", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Auto-collapse top level comments",
-                    icon = Res.drawable.ic_minimize,
-                    checked = prefs.getBoolean("pref_collapse_top_level", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_collapse_top_level", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SegmentedSetting(
-                    title = "Comment tap action",
-                    summary = if (swapTap) {
-                        "Long press: Toggle visibility"
-                    } else {
-                        "Long press: Details"
-                    },
-                    options = listOf(
-                        "visibility" to "Toggle visibility",
-                        "details" to "Details",
-                    ),
-                    selected = if (swapTap) "details" else "visibility",
-                    onSelected = {
-                        prefs.edit()
-                            .putBoolean("pref_comments_swap_long", it == "details")
-                            .apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Comment sorting",
-                    summary = prefs.getString("pref_comment_sorting", "Default"),
-                    icon = Res.drawable.ic_filter_list,
-                    onClick = { dialog = "sorting" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Comments provider",
-                    summary = when (
-                        prefs.getString("pref_comments_provider", "algolia")
-                    ) {
-                        "official" -> "Official Hacker News API"
-                        else -> "Algolia API"
-                    },
-                    icon = Res.drawable.ic_api,
-                    onClick = { dialog = "provider" },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Navigation") {
-                SwitchSettingRow(
-                    title = "Show navigation buttons",
-                    summary = "Navigate between top level comments",
-                    icon = Res.drawable.ic_explore,
-                    checked = prefs.getBoolean("pref_scroll_navigation", false),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_scroll_navigation", it).apply()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Volume buttons for navigation",
-                    summary = when (
-                        prefs.getString("pref_comments_volume_navigation", "disabled")
-                    ) {
-                        "top_level" -> "Top level comments"
-                        "all" -> "All comments"
-                        else -> "Disabled"
-                    },
-                    icon = Res.drawable.ic_swipe_vertical,
-                    onClick = { dialog = "volume" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Smooth scroll comments",
-                    icon = Res.drawable.ic_comments_animation_navigation,
-                    checked = prefs.getBoolean(
-                        "pref_comments_animation_navigation",
-                        true,
-                    ),
-                    onCheckedChange = {
-                        prefs.edit()
-                            .putBoolean("pref_comments_animation_navigation", it)
-                            .apply()
-                    },
-                )
-            }
-        }
-    }
+        onTextSizeOffsetChanged = { offset ->
+            val size = TextPreferences.commentTextSizeForOffset(offset)
+            val value = if (size == size.toInt().toFloat()) size.toInt().toString() else size.toString()
+            prefs.edit().putString(SettingsUtils.PREF_COMMENT_TEXT_SIZE, value).apply()
+        },
+        onBooleanChanged = { setting, value ->
+            prefs.edit().putBoolean(setting.preferenceKey, value).apply()
+        },
+        onDialogRequested = { dialog = it },
+        contentVersion = refresh,
+    )
 
     when (dialog) {
-        "sorting" -> SingleChoiceDialog(
+        CommentsSettingsDialog.Sorting -> ChoiceDialog(
             title = "Comment sorting",
-            options = stringArrayResource(Res.array.comment_sorting)
-                .map { it to it },
-            selected = prefs.getString("pref_comment_sorting", "Default") ?: "Default",
+            options = stringArrayResource(Res.array.comment_sorting).map { it to it },
+            selected = state.sortingLabel,
             onDismiss = { dialog = null },
-            onSelected = {
-                prefs.edit().putString("pref_comment_sorting", it).apply()
-                dialog = null
-            },
+            onSelected = { prefs.edit().putString("pref_comment_sorting", it).apply() },
         )
-
-        "provider" -> SingleChoiceDialog(
+        CommentsSettingsDialog.Provider -> ChoiceDialog(
             title = "Comments provider",
-            options = listOf(
-                "algolia" to "Algolia API",
-                "official" to "Official Hacker News API",
-            ),
+            options = listOf("algolia" to "Algolia API", "official" to "Official Hacker News API"),
             selected = prefs.getString("pref_comments_provider", "algolia") ?: "algolia",
             onDismiss = { dialog = null },
-            onSelected = {
-                prefs.edit().putString("pref_comments_provider", it).apply()
-                dialog = null
-            },
+            onSelected = { prefs.edit().putString("pref_comments_provider", it).apply() },
         )
-
-        "volume" -> SingleChoiceDialog(
+        CommentsSettingsDialog.VolumeNavigation -> ChoiceDialog(
             title = "Volume buttons for navigation",
             options = listOf(
                 "disabled" to "Disabled",
                 "top_level" to "Top level comments",
                 "all" to "All comments",
             ),
-            selected = prefs.getString(
-                "pref_comments_volume_navigation",
-                "disabled",
-            ) ?: "disabled",
+            selected = prefs.getString("pref_comments_volume_navigation", "disabled") ?: "disabled",
             onDismiss = { dialog = null },
-            onSelected = {
-                prefs.edit().putString("pref_comments_volume_navigation", it).apply()
-                dialog = null
-            },
+            onSelected = { prefs.edit().putString("pref_comments_volume_navigation", it).apply() },
         )
-
-        "thread_depth" -> ThreadDepthIndicatorsDialog(
+        CommentsSettingsDialog.ThreadDepth -> ThreadDepthIndicatorsDialog(
             onDismiss = { dialog = null },
         )
+        null -> Unit
     }
 }
+
+@Composable
+internal fun ChoiceDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onDismiss: () -> Unit,
+    onSelected: (String) -> Unit,
+) = SingleChoiceDialog(
+    title = title,
+    options = options,
+    selected = selected,
+    onDismiss = onDismiss,
+    onSelected = {
+        onSelected(it)
+        onDismiss()
+    },
+)
+
+private val CommentsBooleanSetting.preferenceKey: String
+    get() = when (this) {
+        CommentsBooleanSetting.Border -> SettingsUtils.PREF_COMMENT_CARD_BORDER
+        CommentsBooleanSetting.CollectLinks -> SettingsUtils.PREF_COLLECT_LINKS_IN_COMMENTS
+        CommentsBooleanSetting.EmphasizeMetadata -> SettingsUtils.PREF_HIGHLIGHT_COMMENT_META
+        CommentsBooleanSetting.Dividers -> SettingsUtils.PREF_COMMENT_DIVIDERS
+        CommentsBooleanSetting.TopLevelIndicators -> "pref_top_level_thread_indicators"
+        CommentsBooleanSetting.Scrollbar -> "pref_comments_scrollbar"
+        CommentsBooleanSetting.AnimateChanges -> "pref_comments_animation"
+        CommentsBooleanSetting.HeaderTint -> SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_TINT
+        CommentsBooleanSetting.HeaderPreviewImage -> SettingsUtils.PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE
+        CommentsBooleanSetting.CollapseParent -> "pref_collapse_parent"
+        CommentsBooleanSetting.CollapseTopLevel -> "pref_collapse_top_level"
+        CommentsBooleanSetting.SwapTap -> "pref_comments_swap_long"
+        CommentsBooleanSetting.NavigationButtons -> "pref_scroll_navigation"
+        CommentsBooleanSetting.SmoothScroll -> "pref_comments_animation_navigation"
+    }

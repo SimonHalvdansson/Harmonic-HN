@@ -109,3 +109,39 @@ fun Story.toDestination(
     showWebsite = showWebsite,
     scrollToCommentId = scrollToCommentId,
 )
+
+/** Rebuilds the mutable legacy model at the platform boundary without duplicating field mapping. */
+fun StoryDestination.toStory(): Story = Story().also { story ->
+    story.title = title
+    story.pdfTitle = pdfTitle
+    story.videoTitle = videoTitle
+    story.by = author
+    story.url = url
+    story.previewImageUrl = previewImageUrl
+    story.previewImageUrlLoaded = previewImageUrlLoaded || !previewImageUrl.isNullOrEmpty()
+    story.previewImageLoadFailed = previewImageLoadFailed
+    story.previewImageTintColorLoaded = previewImageTintColorLoaded
+    story.previewImageTintColor = previewImageTintColor
+    story.previewImageTintSourceUrl = previewImageTintSourceUrl
+    story.previewImageTintBaseColor = previewImageTintBaseColor
+    story.previewImageTintMode = previewImageTintMode
+    story.faviconTintColorLoaded = faviconTintColorLoaded
+    story.faviconTintColor = faviconTintColor
+    story.faviconTintSourceUrl = faviconTintSourceUrl
+    story.faviconTintBaseColor = faviconTintBaseColor
+    story.faviconTintMode = faviconTintMode
+    story.time = createdAtEpochSeconds
+    story.kids = childIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+    story.pollOptions = pollOptionIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+    story.descendants = descendantCount
+    story.id = storyId
+    story.score = score
+    story.text = text
+    story.isLink = isLink
+    story.isComment = isComment
+    story.parentId = parentId
+    story.commentMasterId = commentMasterId
+    story.commentMasterTitle = commentMasterTitle
+    story.commentMasterUrl = commentMasterUrl
+    story.loaded = author != null
+}

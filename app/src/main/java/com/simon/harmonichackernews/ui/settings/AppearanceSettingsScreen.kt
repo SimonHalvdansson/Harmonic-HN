@@ -1,15 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
-import com.simon.harmonichackernews.resources.*
-
 import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -32,171 +27,81 @@ fun AppearanceSettingsScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    var refreshToken by remember { mutableIntStateOf(0) }
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-
-    DisposableEffect(prefs) {
-        val listener =
-            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-                refreshToken++
-            }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
+    val refresh = rememberPreferenceRefresh()
+    var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
     val theme = prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME)
         ?: SettingsUtils.DEFAULT_THEME
     val nighttimeTheme = prefs.getString(
         SettingsUtils.PREF_THEME_NIGHTTIME,
         SettingsUtils.DEFAULT_NIGHTTIME_THEME,
     ) ?: SettingsUtils.DEFAULT_NIGHTTIME_THEME
-    val specialNighttime = prefs.getBoolean("pref_special_nighttime", false)
-    val compactHeader = prefs.getBoolean("pref_compact_header", false)
-    val transparentStatusBar = prefs.getBoolean("pref_transparent_status_bar", false)
-
-    SettingsPage(
-        title = "Appearance",
+    val tintEnabled = SettingsUtils.shouldTintCardUsingPreview(context)
+    val state = AppearanceSettingsUiState(
+        themeLabel = composeThemeLabel(theme),
+        specialNighttime = prefs.getBoolean("pref_special_nighttime", false),
+        nighttimeRangeLabel = formatNighttimeRange(context),
+        nighttimeThemeLabel = composeThemeLabel(
+            nighttimeTheme,
+            SettingsUtils.DEFAULT_NIGHTTIME_THEME,
+        ),
+        fontLabel = SettingsUtils.getPreferredFontLabel(context).orEmpty(),
+        paletteTintSummary = if (tintEnabled) {
+            SettingsUtils.getPreferredPaletteTintSummary(context)
+        } else {
+            "Enable in Stories settings"
+        },
+        paletteTintEnabled = tintEnabled,
+        showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
+        transparentStatusBar = prefs.getBoolean("pref_transparent_status_bar", false),
+        compactHeader = prefs.getBoolean("pref_compact_header", false),
+    )
+    SharedAppearanceSettingsScreen(
+        state = state,
         showNavigation = showNavigation,
         onBack = onBack,
-        contentVersion = refreshToken,
-    ) {
-        item {
-            SettingsCategory("Theme") {
-                SettingRow(
-                    title = "Theme",
-                    summary = composeThemeLabel(theme),
-                    icon = Res.drawable.ic_style,
-                    onClick = { dialog = "theme" },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Special nighttime theme",
-                    icon = Res.drawable.ic_nights_stay,
-                    checked = specialNighttime,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_special_nighttime", it).apply()
-                        onThemeChanged()
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Timed range",
-                    summary = formatNighttimeRange(context),
-                    icon = Res.drawable.ic_schedule,
-                    enabled = specialNighttime,
-                    onClick = { dialog = "nighttime_range" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Nighttime theme",
-                    summary = composeThemeLabel(
-                        nighttimeTheme,
-                        SettingsUtils.DEFAULT_NIGHTTIME_THEME,
-                    ),
-                    icon = Res.drawable.ic_dark_mode,
-                    enabled = specialNighttime,
-                    onClick = { dialog = "nighttime_theme" },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Visual") {
-                SettingRow(
-                    title = "Title and comment font",
-                    summary = SettingsUtils.getPreferredFontLabel(context),
-                    icon = Res.drawable.ic_font_download,
-                    onClick = { dialog = "font" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Palette tint",
-                    summary = if (SettingsUtils.shouldTintCardUsingPreview(context)) {
-                        SettingsUtils.getPreferredPaletteTintSummary(context)
-                    } else {
-                        "Enable in Stories settings"
-                    },
-                    icon = Res.drawable.ic_palette,
-                    enabled = SettingsUtils.shouldTintCardUsingPreview(context),
-                    onClick = { dialog = "palette_tint" },
-                )
-                if (resources.getBoolean(R.bool.before_android_15)) {
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Transparent status bar",
-                        icon = Res.drawable.ic_visibility,
-                        checked = transparentStatusBar,
-                        onCheckedChange = {
-                            prefs.edit()
-                                .putBoolean("pref_transparent_status_bar", it)
-                                .apply()
-                            onThemeChanged()
-                        },
-                    )
-                }
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Compact header",
-                    summary = "Smaller margins for 'Top stories' header",
-                    icon = Res.drawable.ic_horizontal_split,
-                    checked = compactHeader,
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("pref_compact_header", it).apply()
-                    },
-                )
-            }
-        }
-
-        item {
-            SettingsCategory("Style") {
-                SettingRow(
-                    title = "General style",
-                    icon = Res.drawable.ic_design_services,
-                    onClick = { dialog = "style" },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Stories settings",
-                    icon = Res.drawable.ic_open_in_new,
-                    onClick = { onNavigate(SettingsSection.Stories) },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Comments settings",
-                    icon = Res.drawable.ic_open_in_new,
-                    onClick = { onNavigate(SettingsSection.Comments) },
-                )
-            }
-        }
-    }
+        onNavigate = onNavigate,
+        onBooleanChanged = { setting, value ->
+            prefs.edit().putBoolean(setting.preferenceKey, value).apply()
+            if (setting != AppearanceBooleanSetting.CompactHeader) onThemeChanged()
+        },
+        onDialogRequested = { dialog = it },
+        contentVersion = refresh,
+    )
 
     when (dialog) {
-        "theme" -> ThemeSelectionDialog(
+        AppearanceSettingsDialog.Theme -> ThemeSelectionDialog(
             nighttime = false,
             onDismiss = { dialog = null },
             onThemeChanged = onThemeChanged,
         )
-        "nighttime_theme" -> ThemeSelectionDialog(
+        AppearanceSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
             nighttime = true,
             onDismiss = { dialog = null },
             onThemeChanged = onThemeChanged,
         )
-        "nighttime_range" -> NighttimeRangeDialog(
+        AppearanceSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
             onDismiss = { dialog = null },
             onRangeSelected = onThemeChanged,
         )
-        "font" -> FontSelectionDialog(
+        AppearanceSettingsDialog.Font -> FontSelectionDialog(
             readerMode = false,
             onDismiss = { dialog = null },
         )
-        "style" -> WelcomeSettingsDialog(
+        AppearanceSettingsDialog.Style -> WelcomeSettingsDialog(
             styleChooser = true,
             onDismiss = { dialog = null },
         )
-        "palette_tint" -> PaletteTintDialog(
-            onDismiss = { dialog = null },
-        )
+        AppearanceSettingsDialog.PaletteTint -> PaletteTintDialog(onDismiss = { dialog = null })
+        null -> Unit
     }
 }
+
+private val AppearanceBooleanSetting.preferenceKey: String
+    get() = when (this) {
+        AppearanceBooleanSetting.SpecialNighttime -> "pref_special_nighttime"
+        AppearanceBooleanSetting.TransparentStatusBar -> "pref_transparent_status_bar"
+        AppearanceBooleanSetting.CompactHeader -> "pref_compact_header"
+    }
 
 private fun formatNighttimeRange(context: Context): String {
     val hours = Utils.getNighttimeHours(context)
@@ -213,6 +118,7 @@ private fun formatNighttimeRange(context: Context): String {
     val formatter = SimpleDateFormat("h:mm a", Locale.getDefault())
     @Suppress("DEPRECATION")
     val start = formatter.format(Date(0, 0, 0, hours[0], hours[1]))
+    @Suppress("DEPRECATION")
     val end = formatter.format(Date(0, 0, 0, hours[2], hours[3]))
     return "$start - $end"
 }

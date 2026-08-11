@@ -8,6 +8,38 @@ import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
     @Test
+    fun storyDestinationRoundTripsAllHeaderAndPreviewState() {
+        val source = StoryDestination(
+            storyId = 42,
+            title = "Title",
+            author = "author",
+            url = "https://example.com",
+            previewImageUrl = "https://example.com/image.png",
+            previewImageTintColorLoaded = true,
+            previewImageTintColor = 123,
+            childIds = listOf(1, 2),
+            pollOptionIds = listOf(3, 4),
+            descendantCount = 8,
+            score = 9,
+            isLink = true,
+        )
+
+        val story = source.toStory()
+
+        assertEquals(42, story.id)
+        assertEquals("Title", story.title)
+        assertEquals("author", story.by)
+        assertTrue(story.loaded)
+        assertTrue(story.previewImageUrlLoaded)
+        assertEquals(123, story.previewImageTintColor)
+        assertEquals(listOf(1, 2), story.kids?.toList())
+        assertEquals(listOf(3, 4), story.pollOptions?.toList())
+        assertEquals(8, story.descendants)
+        assertEquals(9, story.score)
+        assertTrue(story.isLink)
+    }
+
+    @Test
     fun closingAStoryOpenedFromSettingsRestoresTheSettingsSection() {
         val state = MainNavigationState()
         state.openSettings("appearance")

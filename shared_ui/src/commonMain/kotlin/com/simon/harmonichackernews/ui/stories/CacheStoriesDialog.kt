@@ -15,20 +15,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.dimensionResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 
 /**
@@ -42,9 +38,9 @@ fun CacheStoriesDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
-    val minimum = SettingsUtils.MIN_STORIES_TO_CACHE
-    val maximum = SettingsUtils.MAX_STORIES_TO_CACHE
-    val step = SettingsUtils.STORIES_TO_CACHE_STEP
+    val minimum = StoryCachePreferences.MIN_COUNT
+    val maximum = StoryCachePreferences.MAX_COUNT
+    val step = StoryCachePreferences.STEP
     var storyCount by rememberSaveable(initialStoryCount) {
         mutableFloatStateOf(StoryCachePreferences.sanitizeCount(initialStoryCount).toFloat())
     }
@@ -126,14 +122,4 @@ fun CacheStoriesDialog(
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun CacheStoriesDialogPreview() {
-    HarmonicTheme {
-        CacheStoriesDialog(
-            initialStoryCount = SettingsUtils.DEFAULT_STORIES_TO_CACHE,
-            onDismiss = {},
-            onConfirm = {},
-        )
-    }
-}
+

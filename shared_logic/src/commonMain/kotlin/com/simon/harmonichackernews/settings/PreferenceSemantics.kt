@@ -4,6 +4,12 @@ object PaletteTintPreferences {
     const val DEFAULT = "default"
     const val VIBRANT = "vibrant"
     const val DOMINANT = "dominant"
+    const val MIN_STRENGTH = 0
+    const val MAX_STRENGTH = 200
+    const val MIN_COLORFULNESS = 0
+    const val MAX_COLORFULNESS = 200
+    const val MIN_TONE = -20
+    const val MAX_TONE = 20
     const val DEFAULT_STRENGTH = 100
     const val DEFAULT_COLORFULNESS = 110
     const val DEFAULT_TONE = 0
@@ -47,9 +53,11 @@ object PaletteTintPreferences {
         else -> "Muted"
     }
 
-    fun clampStrength(value: Int): Int = value.coerceIn(0, 200)
-    fun clampColorfulness(value: Int): Int = value.coerceIn(0, 200)
-    fun clampTone(value: Int): Int = value.coerceIn(-20, 20)
+    fun clampStrength(value: Int): Int = value.coerceIn(MIN_STRENGTH, MAX_STRENGTH)
+    fun clampColorfulness(value: Int): Int =
+        value.coerceIn(MIN_COLORFULNESS, MAX_COLORFULNESS)
+
+    fun clampTone(value: Int): Int = value.coerceIn(MIN_TONE, MAX_TONE)
 
     private fun modePart(value: String?): String = value.orEmpty().substringBefore('|')
     private fun configInt(value: String?, index: Int, default: Int): Int =

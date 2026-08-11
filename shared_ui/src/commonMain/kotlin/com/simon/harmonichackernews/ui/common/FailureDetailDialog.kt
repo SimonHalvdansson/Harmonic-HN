@@ -7,7 +7,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
@@ -17,7 +16,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 /** Compose replacement for the selectable message in the legacy Android failure dialog. */
 @Composable
-internal fun FailureDetailDialog(
+fun FailureDetailDialog(
     title: String?,
     message: String?,
     showCopyComment: Boolean,
@@ -61,18 +60,4 @@ internal fun FailureDetailDialog(
         },
         scrollableContent = message != null,
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FailureDetailDialogPreview() {
-    HarmonicTheme {
-        FailureDetailDialog(
-            title = "Couldn't post comment",
-            message = "Hacker News returned an unexpected response.",
-            showCopyComment = true,
-            onCopyComment = {},
-            onDismiss = {},
-        )
-    }
 }

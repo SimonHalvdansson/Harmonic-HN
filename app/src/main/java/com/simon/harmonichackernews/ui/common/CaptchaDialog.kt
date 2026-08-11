@@ -105,7 +105,7 @@ fun CaptchaDialog(
         }
     }
 
-    CaptchaDialogLayout(
+    SharedCaptchaDialogLayout(
         loading = loading,
         error = error,
         onDismiss = onDismiss,
@@ -132,68 +132,6 @@ fun CaptchaDialog(
     )
 }
 
-@Composable
-private fun CaptchaDialogLayout(
-    loading: Boolean,
-    error: String?,
-    onDismiss: () -> Unit,
-    onContinue: () -> Unit,
-    webContent: @Composable () -> Unit,
-) {
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(Res.string.captcha_dialog_title),
-                color = HarmonicTheme.colors.textPrimary,
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-            )
-        },
-        text = {
-            Column(Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(HarmonicDimens.captcha_dialog_content_height),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    webContent()
-                    if (loading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(
-                                HarmonicDimens.captcha_dialog_loading_indicator_size,
-                            ),
-                        )
-                    }
-                }
-                error?.let { message ->
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(
-                            top = HarmonicDimens.captcha_dialog_error_top_spacing,
-                        ),
-                        color = MaterialTheme.colorScheme.error,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                    )
-                }
-            }
-        },
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.common_cancel))
-            }
-        },
-        confirmButton = {
-            SettingsDialogTextButton(onClick = onContinue) {
-                Text(stringResource(Res.string.captcha_dialog_continue))
-            }
-        },
-    )
-}
-
 private fun decodeJavascriptString(value: String?): String {
     return JsonStringCodec.decodeJavascriptString(value).orEmpty()
 }
@@ -202,7 +140,7 @@ private fun decodeJavascriptString(value: String?): String {
 @Composable
 private fun CaptchaDialogPreview() {
     HarmonicTheme {
-        CaptchaDialogLayout(
+        SharedCaptchaDialogLayout(
             loading = false,
             error = null,
             onDismiss = {},

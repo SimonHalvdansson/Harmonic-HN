@@ -1,50 +1,18 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.simon.harmonichackernews.ui.comments
 
-import android.net.Uri
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,108 +20,42 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import coil3.asDrawable
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.FaviconLoader
-import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
-import com.simon.harmonichackernews.ui.common.SharedTransformOverlay
-import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.network.networkHeader
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.link_summary_collapse_image
+import com.simon.harmonichackernews.resources.link_summary_expand_image
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.Utils
-private const val ReferenceContentDurationMillis = 240
-private const val ReferenceImageDurationMillis = 360
+import org.jetbrains.compose.resources.stringResource
+
 private const val PdfContentTypeError = "This link contains application/pdf, not a web page"
 
 @Composable
 internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
-    val state = controller.linkPreviewOverlay ?: return
     val context = LocalContext.current
-    val predictiveProgressAnimation = remember(state) { Animatable(0f) }
-    val settleRequest = controller.linkPreviewPredictiveBackSettleRequest
-
-    LaunchedEffect(controller.linkPreviewPredictiveBackProgress, settleRequest) {
-        if (settleRequest == null) {
-            predictiveProgressAnimation.snapTo(
-                controller.linkPreviewPredictiveBackProgress.coerceIn(0f, 1f),
-            )
-        }
-    }
-    LaunchedEffect(settleRequest?.serial) {
-        val request = settleRequest ?: return@LaunchedEffect
-        predictiveProgressAnimation.animateTo(
-            request.target,
-            tween(180, easing = FastOutSlowInEasing),
-        )
-        controller.finishLinkPreviewPredictiveBackSettle(request)
-    }
-
-    val tablet = controller.displaySettings?.isTablet == true || Utils.isTablet(context.resources)
-    val imageOnly = state is CommentLinkPreviewOverlayState.Image
-    SharedTransformOverlay(
-        contentKey = state,
-        sourceBounds = state.sourceBounds,
-        dismissRequestVersion = controller.linkPreviewDismissRequest,
-        predictiveBackProgress = predictiveProgressAnimation.value,
-        predictiveBackEdge = controller.linkPreviewPredictiveBackEdge,
-        maxWidth = if (tablet) {
-            HarmonicDimens.compose_comment_action_tablet_max_width
-        } else {
-            HarmonicDimens.compose_comment_action_max_width
-        },
-        horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
-        verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
-        shape = RoundedCornerShape(28.dp),
-        containerColor = if (imageOnly) {
-            Color.Transparent
-        } else {
-            HarmonicTheme.colors.surfaceContainerHigh
-        },
-        shadowElevation = if (imageOnly) 0.dp else 8.dp,
-        keepContentOpaqueWithSource = imageOnly,
-        consumeAllGestures = false,
-        onDismissRequest = controller::requestDismissLinkPreview,
-        onDismissAnimationFinished = controller::completeLinkPreviewDismiss,
-    ) {
-        when (state) {
-            is CommentLinkPreviewOverlayState.Reference -> ReferencePreviewCard(
-                controller = controller,
-                state = state,
-            )
-            is CommentLinkPreviewOverlayState.Image -> ImageOnlyPreviewCard(state)
-        }
-    }
+    SharedCommentLinkPreviewOverlay(
+        controller = controller,
+        tablet = controller.displaySettings?.isTablet == true || Utils.isTablet(context.resources),
+        referenceContent = { state -> ReferencePreviewCard(controller, state) },
+        imageContent = ::ImageOnlyPreviewCard,
+    )
 }
 
 @Composable
@@ -165,7 +67,7 @@ private fun ReferencePreviewCard(
     var attempt by remember(state) { mutableIntStateOf(0) }
     val initialCached = remember(state.originalUrl) {
         StoryPreviewImageLoader.getCachedLinkSummary(context, state.originalUrl)?.takeIf { cached ->
-            !Utils.isHackerNewsItemUri(Uri.parse(state.originalUrl)) ||
+            HackerNewsLinks.parseItemLink(state.originalUrl) == null ||
                 cached.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
         }
     }
@@ -211,209 +113,40 @@ private fun ReferencePreviewCard(
     }
 
     val currentUrl = controller.linkPreviewVisibleUrl ?: state.originalUrl
-    ReferenceCardContent(
+    val preferredFont = controller.displaySettings?.font ?: SettingsUtils.getPreferredFont(context)
+    val commentTextSize = controller.displaySettings?.preferredTextSize
+        ?: SettingsUtils.getPreferredCommentTextSize(context)
+    val faviconProvider = controller.displaySettings?.faviconProvider
+        ?: SettingsUtils.getPreferredFaviconProvider(context)
+    val favicon = remember(currentUrl, faviconProvider) {
+        runCatching { FaviconLoader.getFaviconUrl(currentUrl, faviconProvider) }.getOrNull()
+    }
+    val offline = summary.error != null && !Utils.isNetworkAvailable(context)
+    SharedReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
         summary = summary,
-        preferredFont = controller.displaySettings?.font
-            ?: SettingsUtils.getPreferredFont(context),
-        commentTextSize = controller.displaySettings?.preferredTextSize
-            ?: SettingsUtils.getPreferredCommentTextSize(context),
-        faviconProvider = controller.displaySettings?.faviconProvider
-            ?: SettingsUtils.getPreferredFaviconProvider(context),
+        preferredFont = preferredFont,
+        commentTextSize = commentTextSize,
+        favicon = favicon,
+        offline = offline,
+        textStyle = linkPreviewTextStyle,
+        referenceImage = { imageUrl, loading, expanded, ratio, onRatio, onClick, modifier ->
+            ReferencePreviewImage(
+                imageUrl = imageUrl,
+                loading = loading,
+                expanded = expanded,
+                imageRatio = ratio,
+                onImageRatio = onRatio,
+                onClick = onClick,
+                modifier = modifier,
+            )
+        },
         onOpen = { Utils.openLinkMaybeHN(context, currentUrl) },
         onRetry = {
             if (Utils.isNetworkAvailable(context) && !summary.retrying) attempt++
         },
     )
-}
-
-@Composable
-private fun ReferenceCardContent(
-    url: String,
-    fallbackTitle: String,
-    summary: ReferenceSummaryUiState,
-    preferredFont: String,
-    commentTextSize: Float,
-    faviconProvider: String,
-    onOpen: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    val context = LocalContext.current
-    val typography = rememberContentTypography(
-        preferredFont = preferredFont,
-        commentTextSize = commentTextSize,
-    )
-    val result = summary.result
-    val title = firstNotBlank(result?.title, fallbackTitle, url)
-    val description = result?.description?.takeIf(String::isNotBlank)
-    val domain = if (
-        result != null &&
-        result.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
-        result.siteName.isNotBlank()
-    ) {
-        result.siteName
-    } else {
-        DomainNamePolicy.fromUrl(url) ?: url
-    }
-    val favicon = remember(url, faviconProvider) {
-        runCatching { FaviconLoader.getFaviconUrl(url, faviconProvider) }.getOrNull()
-    }
-    val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
-    var imageExpanded by remember(url, imageUrl) { mutableStateOf(false) }
-    var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }
-    val offline = summary.error != null && !Utils.isNetworkAvailable(context)
-    val retryable = summary.error?.let(::isRetryableReferenceError) == true
-    val offlineMessage = stringResource(Res.string.link_summary_offline_message)
-    val genericErrorMessage = stringResource(Res.string.link_summary_error_message)
-    val errorMessage = summary.error?.let {
-        referenceErrorMessage(offline, it, offlineMessage, genericErrorMessage)
-    }
-    val showImage = (summary.loading && !summary.showFallback) || imageUrl != null
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 720.dp)
-            .verticalScroll(rememberScrollState())
-            .animateContentSize(tween(ReferenceContentDurationMillis, easing = FastOutSlowInEasing)),
-    ) {
-        AnimatedContent(
-            targetState = imageExpanded && imageUrl != null,
-            transitionSpec = {
-                (fadeIn(tween(140)) togetherWith fadeOut(tween(70))).using(
-                    SizeTransform(clip = false) {
-                            _, _ -> tween(ReferenceImageDurationMillis, easing = FastOutSlowInEasing)
-                    },
-                )
-            },
-            label = "reference image expansion",
-        ) { expanded ->
-            if (expanded) {
-                Column {
-                    ReferencePreviewImage(
-                        imageUrl = imageUrl,
-                        loading = false,
-                        expanded = true,
-                        imageRatio = imageRatio,
-                        onImageRatio = { imageRatio = it },
-                        onClick = { imageExpanded = false },
-                    )
-                    ReferenceMetadata(
-                        domain = domain,
-                        favicon = favicon,
-                        title = title,
-                        loading = false,
-                        fontFamily = typography.family,
-                        metaSize = typography.storyMetaSize,
-                        titleSize = typography.storyTitleSize + 0.5f,
-                        modifier = Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp),
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    if (showImage) {
-                        ReferencePreviewImage(
-                            imageUrl = imageUrl,
-                            loading = summary.loading,
-                            expanded = false,
-                            imageRatio = imageRatio,
-                            onImageRatio = { imageRatio = it },
-                            onClick = { if (imageUrl != null) imageExpanded = true },
-                            modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 16.dp),
-                        )
-                    }
-                    ReferenceMetadata(
-                        domain = domain,
-                        favicon = favicon,
-                        title = title,
-                        loading = summary.loading && !summary.showFallback,
-                        fontFamily = typography.family,
-                        metaSize = typography.storyMetaSize,
-                        titleSize = typography.storyTitleSize + 0.5f,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(
-                                start = if (showImage) 0.dp else 20.dp,
-                                top = 20.dp,
-                                end = 20.dp,
-                            ),
-                    )
-                }
-            }
-        }
-
-        Column(
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 18.dp),
-        ) {
-            AnimatedContent(
-                targetState = Triple(description, summary.loading, summary.error),
-                transitionSpec = {
-                    (fadeIn(tween(ReferenceContentDurationMillis)) togetherWith
-                        fadeOut(tween(ReferenceContentDurationMillis))).using(
-                        SizeTransform(clip = false) {
-                                _, _ -> tween(ReferenceContentDurationMillis, easing = FastOutSlowInEasing)
-                        },
-                    )
-                },
-                label = "reference summary state",
-            ) { (currentDescription, loading, error) ->
-                when {
-                    !currentDescription.isNullOrBlank() -> SelectionContainer {
-                        Text(
-                            text = currentDescription,
-                            color = HarmonicTheme.colors.storyNormal,
-                            fontFamily = typography.family,
-                            fontSize = typography.commentTextSize.sp,
-                            lineHeight = (typography.commentTextSize + 2f).sp,
-                            style = TextStyle(
-                                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                            ),
-                        )
-                    }
-                    loading && !summary.showFallback -> ReferenceDescriptionShimmer()
-                    error != null -> ReferenceErrorContent(
-                        offline = offline,
-                        message = errorMessage.orEmpty(),
-                        retryVisible = offline || retryable,
-                        retrying = summary.retrying,
-                        fontFamily = typography.family,
-                        errorTextSize = typography.commentTextSize - 1f,
-                        onRetry = onRetry,
-                    )
-                    else -> Spacer(Modifier.height(0.dp))
-                }
-            }
-
-            ElevatedButton(
-                onClick = onOpen,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 18.dp)
-                    .height(52.dp),
-                shapes = ButtonDefaults.shapes(),
-                colors = ButtonDefaults.elevatedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    contentColor = HarmonicTheme.colors.storyNormal,
-                ),
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_link),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(Res.string.link_summary_open_short),
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
 }
 
 @Composable
@@ -445,14 +178,9 @@ private fun ReferencePreviewImage(
             )
             .clip(shape)
             .background(HarmonicTheme.colors.surfaceContainerHighest)
-            .clickable(
-                enabled = imageUrl != null,
-                onClick = onClick,
-            ),
+            .clickable(enabled = imageUrl != null, onClick = onClick),
     ) {
-        if (loading) {
-            LinkPreviewShimmer(Modifier.fillMaxSize())
-        }
+        if (loading) SharedLinkPreviewShimmer(Modifier.fillMaxSize())
         if (imageUrl != null) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
@@ -476,149 +204,6 @@ private fun ReferencePreviewImage(
                     }
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun ReferenceMetadata(
-    domain: String,
-    favicon: String?,
-    title: String,
-    loading: Boolean,
-    fontFamily: FontFamily,
-    metaSize: Float,
-    titleSize: Float,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = favicon,
-                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                contentDescription = null,
-                modifier = Modifier.size(17.dp),
-            )
-            Text(
-                text = domain,
-                modifier = Modifier.padding(start = 6.dp),
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = fontFamily,
-                fontSize = metaSize.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (loading) {
-            Column(
-                modifier = Modifier.padding(top = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                LinkPreviewShimmer(Modifier.fillMaxWidth().height(18.dp).clip(RoundedCornerShape(6.dp)))
-                LinkPreviewShimmer(Modifier.width(140.dp).height(18.dp).clip(RoundedCornerShape(6.dp)))
-            }
-        } else {
-            SelectionContainer {
-                Text(
-                    text = title,
-                    modifier = Modifier.padding(top = 5.dp),
-                    color = HarmonicTheme.colors.storyNormal,
-                    fontFamily = fontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = titleSize.sp,
-                    lineHeight = (titleSize + 3f).sp,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReferenceDescriptionShimmer() {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        LinkPreviewShimmer(Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(6.dp)))
-        LinkPreviewShimmer(Modifier.fillMaxWidth(0.65f).height(16.dp).clip(RoundedCornerShape(6.dp)))
-    }
-}
-
-@Composable
-private fun ReferenceErrorContent(
-    offline: Boolean,
-    message: String,
-    retryVisible: Boolean,
-    retrying: Boolean,
-    fontFamily: FontFamily,
-    errorTextSize: Float,
-    onRetry: () -> Unit,
-) {
-    val retryingDescription = stringResource(Res.string.link_summary_retrying)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painterResource(Res.drawable.ic_cloud_off),
-            contentDescription = null,
-            modifier = Modifier.size(44.dp),
-            tint = HarmonicTheme.colors.drawable,
-        )
-        Text(
-            text = stringResource(
-                if (offline) Res.string.link_summary_offline_title else Res.string.link_summary_error_title,
-            ),
-            modifier = Modifier.padding(top = 12.dp),
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = fontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = (errorTextSize + 4f).sp,
-        )
-        Text(
-            text = message,
-            modifier = Modifier.padding(top = 6.dp),
-            color = HarmonicTheme.colors.storyDisabled,
-            fontFamily = fontFamily,
-            fontSize = errorTextSize.sp,
-            lineHeight = (errorTextSize + 2f).sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        if (retryVisible) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .height(48.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (retrying) {
-                    LoadingIndicator(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .semantics {
-                                contentDescription = retryingDescription
-                            },
-                    )
-                } else {
-                    OutlinedButton(
-                        onClick = onRetry,
-                        modifier = Modifier.height(48.dp),
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_refresh),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            stringResource(Res.string.link_summary_retry),
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -659,87 +244,6 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
     }
 }
 
-@Composable
-private fun LinkPreviewShimmer(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "link preview shimmer")
-    val progress by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "link preview shimmer progress",
-    )
-    val base = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.15f)
-    val highlight = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.22f)
-    Box(
-        modifier.background(
-            Brush.horizontalGradient(
-                colorStops = arrayOf(
-                    0f to base,
-                    progress.coerceIn(0f, 1f) to highlight,
-                    1f to base,
-                ),
-            ),
-        ),
-    )
-}
-
-private data class ReferenceSummaryUiState(
-    val loading: Boolean = false,
-    val showFallback: Boolean = false,
-    val result: LinkSummary? = null,
-    val error: String? = null,
-    val retrying: Boolean = false,
+private val linkPreviewTextStyle = TextStyle(
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
 )
-
-private fun isRetryableReferenceError(message: String): Boolean =
-    !message.startsWith("This link contains ")
-
-private fun referenceErrorMessage(
-    offline: Boolean,
-    loaderMessage: String,
-    offlineMessage: String,
-    genericErrorMessage: String,
-): String {
-    if (offline) {
-        return offlineMessage
-    }
-    return if (
-        loaderMessage.startsWith("The page returned HTTP ") ||
-        loaderMessage.startsWith("This link contains ") ||
-        loaderMessage.startsWith("This link does not use ") ||
-        loaderMessage.startsWith("The page is too large ")
-    ) {
-        loaderMessage
-    } else {
-        genericErrorMessage
-    }
-}
-
-private fun firstNotBlank(vararg values: String?): String =
-    values.firstOrNull { !it.isNullOrBlank() }.orEmpty()
-
-@Preview(name = "Reference link preview", device = Devices.PHONE, showBackground = true)
-@Composable
-private fun ReferencePreviewCardPreview() {
-    HarmonicTheme {
-        Surface(
-            modifier = Modifier.padding(20.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = HarmonicTheme.colors.surfaceContainerHigh,
-        ) {
-            ReferenceCardContent(
-                url = "https://example.com/article",
-                fallbackTitle = "An article linked from a comment",
-                summary = ReferenceSummaryUiState(showFallback = true),
-                preferredFont = "productsans",
-                commentTextSize = SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE,
-                faviconProvider = SettingsUtils.FAVICON_PROVIDER_GOOGLE,
-                onOpen = {},
-                onRetry = {},
-            )
-        }
-    }
-}

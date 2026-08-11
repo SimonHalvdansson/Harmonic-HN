@@ -28,6 +28,7 @@ import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemKeys
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.network.NetworkErrorUtils
 import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.failureDetails
@@ -54,6 +55,13 @@ import com.simon.harmonichackernews.presentation.StoryFeedSource
 import com.simon.harmonichackernews.presentation.StoryVisibilityConfig
 import com.simon.harmonichackernews.presentation.StoryVisibilityPolicy
 import com.simon.harmonichackernews.presentation.PreviewPrefetchPlanner
+import com.simon.harmonichackernews.presentation.FrontPageDayState
+import com.simon.harmonichackernews.presentation.SavedListKind
+import com.simon.harmonichackernews.presentation.SavedListPresentationPolicy
+import com.simon.harmonichackernews.presentation.SavedItemStoryReconciler
+import com.simon.harmonichackernews.presentation.StoryRowMergePolicy
+import com.simon.harmonichackernews.presentation.StoriesShellPresentationInput
+import com.simon.harmonichackernews.presentation.StoriesShellPresentationPolicy
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
@@ -70,13 +78,10 @@ import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import com.simon.harmonichackernews.utils.Utils
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -286,18 +291,10 @@ class StoriesCoordinator(
     private var userItemListsDropdownVisible = false
     private var userItemListInitialLoadInProgress = false
     private var userItemListFilter by sessionState::userItemListFilter
-    private var frontPageDayUtc: Calendar? = sessionState.frontPageDayUtcMillis
-        .takeIf { it >= 0L }
-        ?.let { millis ->
-            Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-                timeInMillis = millis
-                clearTime(this)
-            }
-        }
-        set(value) {
-            field = value
-            sessionState.frontPageDayUtcMillis = value?.timeInMillis ?: -1L
-        }
+    private val frontPageDay = FrontPageDayState(
+        restoredMillis = sessionState.frontPageDayUtcMillis,
+        nowMillis = clock.now().toEpochMilliseconds(),
+    )
     private var scrapedFrontpageNextPageUrl by sessionState::scrapedFrontpageNextPageUrl
     private var scrapedFrontpageNextPageLoading = false
     private var scrapedFrontpageStoryType: StoryType? = StoryType.UNKNOWN
@@ -385,26 +382,8 @@ class StoriesCoordinator(
             if (story == null || stories == null || adapter == null) {
                 return@StoryUpdateListener
             }
-            for (index in stories!!.indices) {
-                val oldStory = stories!!.get(index)
-                if (oldStory != null && story.id == oldStory.id) {
-                    if (!TextUtils.equals(
-                            oldStory.title,
-                            story.title
-                        ) || oldStory.descendants != story.descendants || oldStory.score != story.score || oldStory.time != story.time || !TextUtils.equals(
-                            oldStory.url,
-                            story.url
-                        )
-                    ) {
-                        oldStory.title = story.title
-                        oldStory.descendants = story.descendants
-                        oldStory.score = story.score
-                        oldStory.time = story.time
-                        oldStory.url = story.url
-                    }
-                    break
-                }
-            }
+            stories!!.firstOrNull { it.id == story.id }
+                ?.let { StoryRowMergePolicy.mergeSummaryFields(it, story) }
             syncComposeState()
         }
         StoryUpdate.setStoryUpdatedListener(storyUpdateListener)
@@ -431,7 +410,7 @@ class StoriesCoordinator(
         }
 
         composeController = create(
-            activity,
+            (96f * activity.resources.displayMetrics.density).roundToInt(),
             savedItemActions,
             object : StoriesComposeController.Listener {
                 override fun onTypeSelected(index: Int) {
@@ -596,9 +575,7 @@ class StoriesCoordinator(
                     }
                 }
             })
-        if (requireActivity() is MainActivity) {
-            requireActivity().attachStoriesComposeController(composeController!!)
-        }
+        requireActivity().attachStoriesComposeController(composeController!!)
         syncComposeState()
     }
 
@@ -635,8 +612,8 @@ class StoriesCoordinator(
         val positionArray = IntArray(sourcePositions.size)
         val colorArray = IntArray(cardColors.size)
         for (index in sourcePositions.indices) {
-            positionArray[index] = sourcePositions.get(index)!!
-            colorArray[index] = cardColors.get(index)!!
+            positionArray[index] = sourcePositions[index]
+            colorArray[index] = cardColors[index]
         }
         controller.showStoryPreview(previewStories, positionArray, colorArray, openedStory.id)
     }
@@ -702,9 +679,7 @@ class StoriesCoordinator(
     }
 
     private fun showCacheStoriesDialog() {
-        if (requireActivity() is MainActivity) {
-            requireActivity().showCacheStoriesDialog()
-        }
+        requireActivity().showCacheStoriesDialog()
     }
 
     private fun syncComposeState() {
@@ -714,10 +689,7 @@ class StoriesCoordinator(
         }
         val context = requireContext()
         val labels = buildTypeAdapterList(context)
-        val stringLabels = java.util.ArrayList<String>(labels.size)
-        for (label in labels) {
-            stringLabels.add(if (label == null) "" else label.toString())
-        }
+        val stringLabels = java.util.ArrayList(labels.map(CharSequence::toString))
 
         val bookmarksType = isBookmarksType(adapter!!.type)
         val historyType = isHistoryType(adapter!!.type)
@@ -725,28 +697,7 @@ class StoriesCoordinator(
         val upvotedType = isUpvotedType(adapter!!.type)
         val userItemListType = favoritesType || upvotedType
         val savedItemSourceHasItems = currentSavedItemSourceHasItems()
-        val hasSubmittedSearch = !TextUtils.isEmpty(lastSearch!!.trim { it <= ' ' })
-        val showEmptySearch = searching
-                && hasSubmittedSearch
-                && stories!!.isEmpty()
-                && !algoliaLoading && !loadingFailed && !loadingFailedServerError
-        val showEmptySaved = !searching && stories!!.isEmpty()
-                && !loadingFailed && !loadingFailedServerError && (bookmarksType
-                || historyType
-                || (userItemListType && !userItemListInitialLoadInProgress && !this.isRefreshIndicatorShowing))
-        val showLoading = if (searching)
-            algoliaLoading
-        else
-            (stories!!.isEmpty()
-                    && !loadingFailed && !loadingFailedServerError && !bookmarksType && !historyType && (!userItemListType || userItemListInitialLoadInProgress))
-        val loadingMessage: String?
-        if (loadingFailedRateLimited) {
-            loadingMessage = "Rate limited"
-        } else if (!connectivity.isOnline()) {
-            loadingMessage = "No internet connection"
-        } else {
-            loadingMessage = "Loading failed"
-        }
+        val online = connectivity.isOnline()
         val lastUpdated = if (shouldShowLastUpdatedHeader())
             "Last updated: " + DateFormat.getTimeFormat(context)
                 .format(Date(lastLoaded))
@@ -764,9 +715,26 @@ class StoriesCoordinator(
             "Caching stories"
         else
             storyCacheController!!.getProgressStatus()
-        val hasVisibleStories = adapter!!.visibleStoryItemCount > 0
-        val canCache = hasVisibleStories
-                && !showingCached && !cacheInProgress && connectivity.isOnline()
+        val shellPresentation = StoriesShellPresentationPolicy.present(
+            StoriesShellPresentationInput(
+                searching = searching,
+                submittedSearch = lastSearch.orEmpty().trim().isNotEmpty(),
+                storyCount = stories!!.size,
+                searchLoading = algoliaLoading,
+                loadingFailed = loadingFailed,
+                notFound = loadingFailedServerError,
+                rateLimited = loadingFailedRateLimited,
+                online = online,
+                bookmarks = bookmarksType,
+                history = historyType,
+                userItems = userItemListType,
+                userItemsInitialLoadInProgress = userItemListInitialLoadInProgress,
+                refreshIndicatorShowing = isRefreshIndicatorShowing,
+                showingCached = showingCached,
+                cacheInProgress = cacheInProgress,
+                visibleStoryCount = adapter!!.visibleStoryItemCount,
+            ),
+        )
 
         controller.updateContent(
             mainStories,
@@ -785,19 +753,19 @@ class StoriesCoordinator(
             StorySearchController.minimumPointsLabels,
             StorySearchController.minimumCommentsLabels,
             searchStore.state.value.options.onlyClicked,
-            showLoading,
+            shellPresentation.showLoading,
             this.isRefreshIndicatorShowing,
             loadingFailed,
             loadingFailedServerError,
-            loadingMessage,
+            shellPresentation.loadingFailureMessage,
             showingCached,
             loadingFailed && !searching && Utils.hasCachedStories(context),
-            showEmptySaved,
+            shellPresentation.showEmptySavedList,
             getEmptySavedListText(
                 historyType, favoritesType, upvotedType, savedItemSourceHasItems
             ),
             getEmptySavedListIcon(historyType, favoritesType, upvotedType),
-            showEmptySearch,
+            shellPresentation.showEmptySearch,
             updateButtonShowing,
             lastUpdated,
             adapter!!.hasLoadMoreButton(),
@@ -808,10 +776,10 @@ class StoriesCoordinator(
             userItemListFilter,
             !searching && currentTypeIsFront(),
             this.frontPageDayParameter,
-            getFrontPageDayUtc().after(this.earliestFrontPageDayUtc),
-            getFrontPageDayUtc().before(this.latestFrontPageDayUtc),
+            frontPageDay.selectedMillis > frontPageDay.earliestMillis,
+            frontPageDay.selectedMillis < frontPageDay.latestMillis,
             !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity())),
-            canCache,
+            shellPresentation.canCacheStories,
             isHistoryType(adapter!!.type) && historyStore.size > 0,
             cacheProgressVisible,
             cacheProgress,
@@ -906,7 +874,7 @@ class StoriesCoordinator(
     }
 
     private fun shouldShowUserItemLists(ctx: Context): Boolean {
-        return ctx != null && AccountUtils.hasAccountDetails(ctx)
+        return AccountUtils.hasAccountDetails(ctx)
     }
 
     private fun refreshTypeSpinnerItemsIfNeeded() {
@@ -1052,61 +1020,12 @@ class StoriesCoordinator(
     private val splitStoriesContentPaddingStart: Int
         get() = resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
 
-    private fun getFrontPageDayUtc(): Calendar {
-        if (frontPageDayUtc == null) {
-            frontPageDayUtc = this.latestFrontPageDayUtc
-        }
-        return frontPageDayUtc!!
-    }
-
-    private val latestFrontPageDayUtc: Calendar
-        get() {
-            val latest =
-                Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-            latest.add(Calendar.DAY_OF_MONTH, -1)
-            clearTime(latest)
-            return latest
-        }
-
-    private val earliestFrontPageDayUtc: Calendar
-        get() {
-            val earliest =
-                Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-            earliest.set(Calendar.YEAR, 2007)
-            earliest.set(Calendar.MONTH, Calendar.FEBRUARY)
-            earliest.set(Calendar.DAY_OF_MONTH, 19)
-            clearTime(earliest)
-            return earliest
-        }
-
-    private fun clearTime(calendar: Calendar) {
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-    }
-
     private val frontPageDayParameter: String
-        get() {
-            val format =
-                SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            format.setTimeZone(TimeZone.getTimeZone("UTC"))
-            return format.format(getFrontPageDayUtc().getTime())
-        }
+        get() = frontPageDay.requestParameter
 
     private fun shiftFrontPageDay(days: Int) {
-        var day = getFrontPageDayUtc().clone() as Calendar
-        day.add(Calendar.DAY_OF_MONTH, days)
-        val latest = this.latestFrontPageDayUtc
-        if (day.after(latest)) {
-            day = latest
-        }
-        val earliest = this.earliestFrontPageDayUtc
-        if (day.before(earliest)) {
-            day = earliest
-        }
-        clearTime(day)
-        frontPageDayUtc = day
+        frontPageDay.shift(days)
+        sessionState.frontPageDayUtcMillis = frontPageDay.selectedMillis
         if (currentTypeIsFront()) {
             attemptStoryTypeRefresh()
         }
@@ -1117,25 +1036,15 @@ class StoriesCoordinator(
             return
         }
         composeController!!.showFrontDatePicker(
-            getFrontPageDayUtc().getTimeInMillis(),
-            this.earliestFrontPageDayUtc.getTimeInMillis(),
-            this.latestFrontPageDayUtc.getTimeInMillis()
+            frontPageDay.selectedMillis,
+            frontPageDay.earliestMillis,
+            frontPageDay.latestMillis,
         )
     }
 
     private fun selectFrontPageDay(selection: Long) {
-        var selectedDay = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        selectedDay.setTimeInMillis(selection)
-        clearTime(selectedDay)
-        val latest = this.latestFrontPageDayUtc
-        if (selectedDay.after(latest)) {
-            selectedDay = latest
-        }
-        val earliest = this.earliestFrontPageDayUtc
-        if (selectedDay.before(earliest)) {
-            selectedDay = earliest
-        }
-        frontPageDayUtc = selectedDay
+        frontPageDay.select(selection)
+        sessionState.frontPageDayUtcMillis = frontPageDay.selectedMillis
         if (currentTypeIsFront()) {
             attemptStoryTypeRefresh()
         }
@@ -1146,45 +1055,16 @@ class StoriesCoordinator(
         favoritesType: Boolean,
         upvotedType: Boolean,
         savedItemSourceHasItems: Boolean
-    ): String {
-        if (historyType) {
-            return "No history"
-        }
-        if (favoritesType) {
-            if (!savedItemSourceHasItems) {
-                return "No favorites"
-            }
-            if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
-                return "No favorite stories"
-            }
-            if (userItemListFilter == USER_ITEM_LIST_FILTER_COMMENTS) {
-                return "No favorite comments"
-            }
-            return "No favorites"
-        }
-        if (upvotedType) {
-            if (!savedItemSourceHasItems) {
-                return "No upvoted items"
-            }
-            if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
-                return "No upvoted stories"
-            }
-            if (userItemListFilter == USER_ITEM_LIST_FILTER_COMMENTS) {
-                return "No upvoted comments"
-            }
-            return "No upvoted items"
-        }
-        if (!savedItemSourceHasItems) {
-            return "No bookmarks"
-        }
-        if (userItemListFilter == USER_ITEM_LIST_FILTER_STORIES) {
-            return "No bookmarked stories"
-        }
-        if (userItemListFilter == USER_ITEM_LIST_FILTER_COMMENTS) {
-            return "No bookmarked comments"
-        }
-        return "No bookmarks"
-    }
+    ): String = SavedListPresentationPolicy.emptyMessage(
+        kind = when {
+            historyType -> SavedListKind.HISTORY
+            favoritesType -> SavedListKind.FAVORITES
+            upvotedType -> SavedListKind.UPVOTED
+            else -> SavedListKind.BOOKMARKS
+        },
+        filter = currentSavedItemFilter,
+        sourceHasItems = savedItemSourceHasItems,
+    )
 
     private fun getEmptySavedListIcon(
         historyType: Boolean,
@@ -1317,7 +1197,7 @@ class StoriesCoordinator(
         val cappedTargetIndex = min(targetIndex, stories!!.size - 1)
         for (i in 0..cappedTargetIndex) {
             val story = stories!!.get(i)
-            if (story != null && !story.loaded && !story.loadingFailed && !isStoryLoadInProgress(
+            if (!story.loaded && !story.loadingFailed && !isStoryLoadInProgress(
                     story
                 )
             ) {
@@ -2085,7 +1965,7 @@ class StoriesCoordinator(
         val visibleStoryId = if (composeController == null)
             NO_PENDING_LINK_SUMMARY_STORY_ID
         else
-            composeController!!.getVisibleStoryPreviewId()
+            composeController!!.visibleStoryPreviewId
         if (visibleStoryId != NO_PENDING_LINK_SUMMARY_STORY_ID) {
             outState.putInt(STATE_LINK_SUMMARY_STORY_ID, visibleStoryId)
         }
@@ -2630,7 +2510,7 @@ class StoriesCoordinator(
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 loadingFailed = true
                 loadingFailedServerError = false
-                loadingFailedRateLimited = isRateLimitedResponse(summary, response)
+                loadingFailedRateLimited = NetworkErrorUtils.isRateLimitedText(summary, response)
                 Log.w(
                     TAG, ("Scraped frontpage request failed for type=" + storyType.label
                             + ", path=" + storyType.hackerNewsPath
@@ -2765,16 +2645,6 @@ class StoriesCoordinator(
         updateHeader()
     }
 
-    private fun isRateLimitedResponse(summary: String?, response: String?): Boolean {
-        return containsHttp429(summary) || containsHttp429(response)
-    }
-
-    private fun containsHttp429(text: String?): Boolean {
-        return text != null
-                && (text.contains("429")
-                || text.lowercase().contains("too many requests"))
-    }
-
     private fun createNewLoadingStoriesFromIds(
         itemIds: MutableList<Int>,
         commentIds: MutableSet<Int>
@@ -2863,7 +2733,7 @@ class StoriesCoordinator(
         userItemListInitialLoadInProgress = false
 
         val snapshot = loadCachedUserItemSnapshot()
-        replaceUserItemListStoriesWithIds(snapshot.itemIds, snapshot.commentIds)
+        syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds)
         return !snapshot.itemIds.isEmpty()
     }
 
@@ -2958,7 +2828,7 @@ class StoriesCoordinator(
                 this@StoriesCoordinator.isRefreshIndicatorShowing = false
                 userItemListInitialLoadInProgress = false
                 loadingFailed = stories!!.isEmpty()
-                loadingFailedRateLimited = isRateLimitedResponse(summary, response)
+                loadingFailedRateLimited = NetworkErrorUtils.isRateLimitedText(summary, response)
                 updateHeader()
                 Toast.makeText(requireContext(), summary, Toast.LENGTH_SHORT).show()
             }
@@ -2982,49 +2852,26 @@ class StoriesCoordinator(
         itemIds: List<Int>,
         commentIds: Set<Int>
     ): Boolean {
-        if (itemIdsMatchUserItemListStories(itemIds, commentIds)) {
-            return false
+        val currentStories = if (userItemListStories.isEmpty()) {
+            stories.orEmpty()
+        } else {
+            userItemListStories
         }
-
-        replaceUserItemListStoriesWithIds(itemIds, commentIds)
+        val reconciliation = SavedItemStoryReconciler.reconcile(
+            currentStories = currentStories,
+            currentCommentIds = userItemListCommentIds,
+            itemIds = itemIds,
+            commentIds = commentIds,
+        )
+        if (!reconciliation.changed) return false
+        replaceUserItemListStories(reconciliation.stories, commentIds)
         return true
     }
 
-    private fun itemIdsMatchUserItemListStories(
-        itemIds: List<Int>,
-        commentIds: Set<Int>
-    ): Boolean {
-        if (userItemListStories.size != itemIds.size || userItemListCommentIds != commentIds) {
-            return false
-        }
-
-        for (i in userItemListStories.indices) {
-            if (userItemListStories[i].id != itemIds[i]) {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    private fun replaceUserItemListStoriesWithIds(
-        itemIds: List<Int>,
+    private fun replaceUserItemListStories(
+        refreshedStories: List<Story>,
         commentIds: Set<Int>
     ) {
-        val existingStories: MutableMap<Int, Story> = HashMap<Int, Story>()
-        for (story in (if (userItemListStories.isEmpty()) stories else userItemListStories)!!) {
-            existingStories.put(story.id, story)
-        }
-
-        val refreshedStories = java.util.ArrayList<Story>()
-        for (id in itemIds) {
-            val story = existingStories[id] ?: Story("Loading...", id, false, false)
-            if (commentIds.contains(id)) {
-                story.isComment = true
-            }
-            refreshedStories.add(story)
-        }
-
         queue!!.cancelAll(requestTag)
         clearLoadingStoryState()
         userItemListStories.clear()
