@@ -53,11 +53,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsActionMessages
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.platform.AndroidCredentialStore
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
@@ -372,7 +375,12 @@ private suspend fun addBookmarkToFavorites(
     )
     return when (val result = service.setFavorite(id, true)) {
         is HackerNewsActionResult.Success -> {
-            Utils.setFavorite(activity, id, true)
+            SavedItemsRepository(AndroidKeyValueStore.global(activity)).setMembership(
+                SavedItemSource.FAVORITES,
+                id,
+                present = true,
+                createdAtMillis = System.currentTimeMillis(),
+            )
             BookmarkFavoriteResult(
                 id = id,
                 title = result.itemTitle?.takeIf(String::isNotBlank) ?: initialTitle,

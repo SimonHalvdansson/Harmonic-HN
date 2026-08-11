@@ -25,6 +25,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.SavedItemSnapshot
 import com.simon.harmonichackernews.data.SavedItemSnapshots
 import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemKeys
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
@@ -172,7 +173,7 @@ class StoriesCoordinator(
     private var bookmarksChanged = false
     private val bookmarkPreferenceChangeListener =
         OnSharedPreferenceChangeListener { sharedPreferences: SharedPreferences?, key: String? ->
-            if (Utils.KEY_SHARED_PREFERENCES_BOOKMARKS == key) {
+            if (SavedItemKeys.BOOKMARKS == key) {
                 bookmarksChanged = true
                 refreshBookmarksIfNeeded()
             }
@@ -431,6 +432,7 @@ class StoriesCoordinator(
 
         composeController = create(
             activity,
+            savedItemActions,
             object : StoriesComposeController.Listener {
                 override fun onTypeSelected(index: Int) {
                     useMainStoryList()
@@ -2440,7 +2442,10 @@ class StoriesCoordinator(
                 val refreshedStories = java.util.ArrayList<Story>()
                 showingCached = false
                 bookmarksChanged = false
-                val bookmarks = Utils.loadBookmarks(requireContext(), true)
+                val bookmarks = savedItems.loadItems(
+                    SavedItemSource.BOOKMARKS,
+                    sortedByCreated = true,
+                )
                 for (bookmark in bookmarks) {
                     refreshedStories.add(Story("Loading...", bookmark.id, false, false))
                 }

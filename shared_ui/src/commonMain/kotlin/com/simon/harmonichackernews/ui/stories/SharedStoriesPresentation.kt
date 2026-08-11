@@ -5,15 +5,22 @@ package com.simon.harmonichackernews.ui.stories
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -50,6 +59,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_close
 import com.simon.harmonichackernews.resources.ic_cloud_off
@@ -72,6 +82,105 @@ data class StorySearchPresentationState(
     val commentsLabels: List<String>,
     val onlyClicked: Boolean,
 )
+
+private val StoriesRootEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/** Shared root transition between a primary story feed and its search results. */
+@Composable
+fun SharedStoriesRoot(
+    searching: Boolean,
+    suppressSearchAutoFocus: Boolean,
+    predictiveBackActive: Boolean,
+    predictiveBackProgress: Float,
+    backgroundColor: Color,
+    mainLayer: @Composable () -> Unit,
+    searchLayer: @Composable () -> Unit,
+    overlay: @Composable BoxScope.() -> Unit = {},
+) {
+    val standardSearchProgress by animateFloatAsState(
+        targetValue = if (searching) 1f else 0f,
+        animationSpec = if (!searching && suppressSearchAutoFocus) {
+            snap()
+        } else {
+            tween(180, easing = StoriesRootEasing)
+        },
+        label = "stories search transition",
+    )
+    val progress = predictiveBackProgress.coerceIn(0f, 1f)
+    val predictiveSearchFade = (progress / 0.5f).coerceIn(0f, 1f)
+    val predictiveMainFade = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
+    val searchAlpha = if (predictiveBackActive) {
+        1f - predictiveSearchFade
+    } else {
+        standardSearchProgress
+    }
+    val mainAlpha = if (predictiveBackActive) {
+        predictiveMainFade
+    } else {
+        1f - standardSearchProgress
+    }
+    val mainActive = !predictiveBackActive && !searching
+    val searchActive = !predictiveBackActive && searching
+
+    Box(Modifier.fillMaxSize().background(backgroundColor)) {
+        StableStoryLayer(
+            active = mainActive,
+            modifier = Modifier
+                .matchParentSize()
+                .zIndex(if (mainActive) 1f else 0f)
+                .graphicsLayer {
+                    alpha = mainAlpha
+                    translationY = if (predictiveBackActive) {
+                        24.dp.toPx() * (1f - predictiveMainFade)
+                    } else {
+                        24.dp.toPx() * standardSearchProgress
+                    }
+                },
+            content = mainLayer,
+        )
+        StableStoryLayer(
+            active = searchActive,
+            modifier = Modifier
+                .matchParentSize()
+                .zIndex(if (searchActive) 1f else 0f)
+                .graphicsLayer {
+                    alpha = searchAlpha
+                    translationY = if (predictiveBackActive) {
+                        24.dp.toPx() * predictiveSearchFade
+                    } else {
+                        24.dp.toPx() * (1f - standardSearchProgress)
+                    }
+                },
+            content = searchLayer,
+        )
+        overlay()
+    }
+}
+
+@Composable
+private fun StableStoryLayer(
+    active: Boolean,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier) {
+        content()
+        if (!active) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
+        }
+    }
+}
 
 @Composable
 fun SharedStorySearchHeader(

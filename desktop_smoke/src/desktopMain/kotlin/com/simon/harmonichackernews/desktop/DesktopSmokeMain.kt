@@ -29,6 +29,7 @@ import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.editor.SharedEditorScreen
+import com.simon.harmonichackernews.ui.stories.SharedStoriesRoot
 import com.simon.harmonichackernews.ui.theme.HarmonicColors
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
@@ -59,6 +60,7 @@ private fun DesktopSmokeContent() {
     var cardStyle by remember { mutableStateOf(true) }
     var compact by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var searchMode by remember { mutableStateOf(false) }
     val refreshSource = remember {
         StoryFeedRefreshPolicy.plan(
             searching = false,
@@ -83,54 +85,74 @@ private fun DesktopSmokeContent() {
         return
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text("Shared stories smoke host", style = MaterialTheme.typography.headlineMedium)
-        Text("Refresh policy selected: $refreshSource")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { cardStyle = !cardStyle }) {
-                Text(if (cardStyle) "Use standard row" else "Use card row")
-            }
-            Button(onClick = { compact = !compact }) {
-                Text(if (compact) "Use comfortable spacing" else "Use compact spacing")
-            }
-            Button(onClick = { menuExpanded = true }) { Text("Shared menu") }
-            Button(onClick = { showEditor = true }) { Text("Shared editor") }
-            HarmonicDropdownMenu(
-                expanded = menuExpanded,
-                onDismiss = { menuExpanded = false },
+    SharedStoriesRoot(
+        searching = searchMode,
+        suppressSearchAutoFocus = false,
+        predictiveBackActive = false,
+        predictiveBackProgress = 0f,
+        backgroundColor = desktopColors.background,
+        mainLayer = {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                HarmonicMenuText(
-                    text = "Desktop target compiled this menu",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                Text("Shared stories smoke host", style = MaterialTheme.typography.headlineMedium)
+                Text("Refresh policy selected: $refreshSource")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { cardStyle = !cardStyle }) {
+                        Text(if (cardStyle) "Use standard row" else "Use card row")
+                    }
+                    Button(onClick = { compact = !compact }) {
+                        Text(if (compact) "Use comfortable spacing" else "Use compact spacing")
+                    }
+                    Button(onClick = { menuExpanded = true }) { Text("Shared menu") }
+                    Button(onClick = { showEditor = true }) { Text("Shared editor") }
+                    Button(onClick = { searchMode = true }) { Text("Shared search root") }
+                    HarmonicDropdownMenu(
+                        expanded = menuExpanded,
+                        onDismiss = { menuExpanded = false },
+                    ) {
+                        HarmonicMenuText(
+                            text = "Desktop target compiled this menu",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                }
+                StoryItem(
+                    model = SettingsStoryPreviewModel,
+                    style = StoryItemStyle(
+                        previewImageMode = "large",
+                        borderlessLargeImage = false,
+                        compact = compact,
+                        showSummary = true,
+                        showFavicon = true,
+                        showPoints = true,
+                        compactPoints = false,
+                        includeTopLevelDomain = true,
+                        showCommentCount = true,
+                        showIndex = true,
+                        commentsOnLeft = false,
+                        tintCard = true,
+                        cardStyle = cardStyle,
+                        useHotnessIcon = false,
+                        preferredFont = "googlesansflexrounded",
+                        textSize = 17.5f,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-        StoryItem(
-            model = SettingsStoryPreviewModel,
-            style = StoryItemStyle(
-                previewImageMode = "large",
-                borderlessLargeImage = false,
-                compact = compact,
-                showSummary = true,
-                showFavicon = true,
-                showPoints = true,
-                compactPoints = false,
-                includeTopLevelDomain = true,
-                showCommentCount = true,
-                showIndex = true,
-                commentsOnLeft = false,
-                tintCard = true,
-                cardStyle = cardStyle,
-                useHotnessIcon = false,
-                preferredFont = "googlesansflexrounded",
-                textSize = 17.5f,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+        },
+        searchLayer = {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text("Shared search layer", style = MaterialTheme.typography.headlineMedium)
+                Text("This verifies the portable stories root on the desktop target.")
+                Button(onClick = { searchMode = false }) { Text("Back to stories") }
+            }
+        },
+    )
 }
 
 private val desktopColors = HarmonicColors(

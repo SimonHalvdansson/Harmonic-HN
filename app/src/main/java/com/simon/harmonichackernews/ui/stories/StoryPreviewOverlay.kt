@@ -368,9 +368,9 @@ private fun StoryPreviewCard(
     val contentVersion = controller.contentVersion
     val hasAccount = remember(contentVersion) { AccountUtils.hasAccountDetails(context) }
     val bookmarksEnabled = remember(contentVersion) { SettingsUtils.shouldUseBookmarks(context) }
-    val upvoted = remember(contentVersion, story.id) { Utils.isUpvoted(context, story.id, false) }
-    val bookmarked = remember(contentVersion, story.id) { Utils.isBookmarked(context, story.id) }
-    val favorited = remember(contentVersion, story.id) { Utils.isFavorited(context, story.id) }
+    val upvoted = remember(contentVersion, story.id) { controller.isUpvoted(story.id) }
+    val bookmarked = remember(contentVersion, story.id) { controller.isBookmarked(story.id) }
+    val favorited = remember(contentVersion, story.id) { controller.isFavorited(story.id) }
     val voteLoading = controller.storyPreviewVoteLoadingId == story.id
     val favoriteLoading = controller.storyPreviewFavoriteLoadingId == story.id
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)

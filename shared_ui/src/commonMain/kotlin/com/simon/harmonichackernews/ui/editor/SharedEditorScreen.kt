@@ -81,9 +81,9 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.formatEditorCodeBlock
+import com.simon.harmonichackernews.presentation.formatEditorItalic
 import com.simon.harmonichackernews.presentation.validate
-import kotlin.math.max
-import kotlin.math.min
 
 private enum class EditorDialog {
     Information,
@@ -663,73 +663,19 @@ private fun SubmitButton(
 }
 
 private fun applyItalicFormatting(value: TextFieldValue): TextFieldValue {
-    val start = min(value.selection.start, value.selection.end).coerceIn(0, value.text.length)
-    val end = max(value.selection.start, value.selection.end).coerceIn(0, value.text.length)
-    return if (start == end) {
-        value.copy(
-            text = value.text.substring(0, start) + "**" + value.text.substring(start),
-            selection = TextRange(start + 1),
-        )
-    } else {
-        value.copy(
-            text = value.text.substring(0, start) + "*" +
-                value.text.substring(start, end) + "*" + value.text.substring(end),
-            selection = TextRange(start + 1, end + 1),
-        )
-    }
-}
-
-private fun applyCodeBlockFormatting(value: TextFieldValue): TextFieldValue {
-    val start = min(value.selection.start, value.selection.end).coerceIn(0, value.text.length)
-    val end = max(value.selection.start, value.selection.end).coerceIn(0, value.text.length)
-    if (start == end) {
-        val prefix = codeBlockPrefix(value.text, start)
-        val suffix = codeBlockSuffix(value.text, start)
-        val snippet = prefix + "  code" + suffix
-        return value.copy(
-            text = value.text.substring(0, start) + snippet + value.text.substring(start),
-            selection = TextRange(start + prefix.length + 2, start + prefix.length + 6),
-        )
-    }
-
-    val lineStart = value.text.lastIndexOf('\n', startIndex = start - 1).let {
-        if (it < 0) 0 else it + 1
-    }
-    val nextNewline = value.text.indexOf('\n', startIndex = end)
-    val lineEnd = if (nextNewline < 0) value.text.length else nextNewline
-    val prefix = codeBlockPrefix(value.text, lineStart)
-    val indented = value.text.substring(lineStart, lineEnd)
-        .split('\n')
-        .joinToString("\n") { "  $it" }
-    val suffix = codeBlockSuffix(value.text, lineEnd)
+    val edit = formatEditorItalic(value.text, value.selection.start, value.selection.end)
     return value.copy(
-        text = value.text.substring(0, lineStart) + prefix + indented + suffix +
-            value.text.substring(lineEnd),
-        selection = TextRange(
-            lineStart + prefix.length,
-            lineStart + prefix.length + indented.length,
-        ),
+        text = edit.text,
+        selection = TextRange(edit.selectionStart, edit.selectionEnd),
     )
 }
 
-private fun codeBlockPrefix(text: String, position: Int): String {
-    if (position == 0) return ""
-    val newlines = text.substring(0, position).takeLastWhile { it == '\n' }.length
-    return when {
-        newlines >= 2 -> ""
-        newlines == 1 -> "\n"
-        else -> "\n\n"
-    }
-}
-
-private fun codeBlockSuffix(text: String, position: Int): String {
-    if (position >= text.length) return ""
-    val newlines = text.substring(position).takeWhile { it == '\n' }.length
-    return when {
-        newlines >= 2 -> ""
-        newlines == 1 -> "\n"
-        else -> "\n\n"
-    }
+private fun applyCodeBlockFormatting(value: TextFieldValue): TextFieldValue {
+    val edit = formatEditorCodeBlock(value.text, value.selection.start, value.selection.end)
+    return value.copy(
+        text = edit.text,
+        selection = TextRange(edit.selectionStart, edit.selectionEnd),
+    )
 }
 
 private fun informationMessage(isPost: Boolean): String = buildString {

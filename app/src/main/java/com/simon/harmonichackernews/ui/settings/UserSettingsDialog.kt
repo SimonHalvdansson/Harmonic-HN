@@ -68,6 +68,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.GroupedNumberFormatter
 import java.util.Calendar
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -513,7 +514,7 @@ private fun HackerNewsUserDto.toComposeUser(months: List<String>): ComposeUserIn
         time = Date(created * 1_000L)
     }
     val month = months[calendar[Calendar.MONTH]]
-    val formattedKarma = Utils.getThousandSeparatedString(karma)
+    val formattedKarma = GroupedNumberFormatter.format(karma)
     val formattedAbout = if (about != null) {
         @Suppress("DEPRECATION")
         Html.fromHtml(about.orEmpty()).toString().trim()

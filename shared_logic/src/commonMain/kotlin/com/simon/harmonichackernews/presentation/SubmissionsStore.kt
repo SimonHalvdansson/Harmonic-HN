@@ -75,6 +75,9 @@ class SubmissionsStore(
             publish(
                 canLoadMore = loaded.size >= resultLimit,
                 loadedSuccessfully = true,
+                loading = false,
+                showInitialLoading = false,
+                refreshing = false,
             )
         } catch (error: CancellationException) {
             throw error
@@ -92,6 +95,9 @@ class SubmissionsStore(
         filter: SubmissionFilter = mutableState.value.filter,
         canLoadMore: Boolean = mutableState.value.canLoadMore,
         loadedSuccessfully: Boolean = mutableState.value.loadedSuccessfully,
+        loading: Boolean = mutableState.value.loading,
+        showInitialLoading: Boolean = mutableState.value.showInitialLoading,
+        refreshing: Boolean = mutableState.value.refreshing,
     ) {
         val visibleItems = allItems.filter { item ->
             when (filter) {
@@ -100,12 +106,15 @@ class SubmissionsStore(
                 SubmissionFilter.BOTH -> true
             }
         }
-        mutableState.value = SubmissionsUiState(
+        mutableState.value = mutableState.value.copy(
             items = visibleItems,
             filter = filter,
             hasUnfilteredItems = allItems.isNotEmpty(),
             canLoadMore = canLoadMore,
             loadedSuccessfully = loadedSuccessfully,
+            loading = loading,
+            showInitialLoading = showInitialLoading,
+            refreshing = refreshing,
             emptyText = when {
                 allItems.isEmpty() -> "No submissions"
                 filter == SubmissionFilter.STORIES -> "No stories"

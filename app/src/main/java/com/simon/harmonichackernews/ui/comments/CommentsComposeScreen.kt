@@ -148,6 +148,14 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.presentation.VisibleComment
+import com.simon.harmonichackernews.presentation.CommentNavigationEdge
+import com.simon.harmonichackernews.presentation.CommentNavigationRequest
+import com.simon.harmonichackernews.presentation.CommentScrollRequest
+import com.simon.harmonichackernews.presentation.CommentSheetRequest
+import com.simon.harmonichackernews.presentation.CommentLinkPreview
+import com.simon.harmonichackernews.presentation.CommentPredictiveBackSettleRequest
+import com.simon.harmonichackernews.presentation.CommentsInteractionStore
+import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
@@ -177,7 +185,8 @@ import kotlin.math.roundToInt
  * surface is Compose; immutable list snapshots turn controller updates into normal state changes.
  */
 class CommentsComposeController private constructor(
-    private val shouldSmoothScroll: () -> Boolean,
+    shouldSmoothScroll: () -> Boolean,
+    private val savedItemState: SavedItemStateReader,
     initialStory: Story,
     internal val initialShowWebsite: Boolean,
     internal val accountUser: String?,
@@ -215,10 +224,6 @@ class CommentsComposeController private constructor(
         private set
     internal var readerModeEnabled by mutableStateOf(false)
         private set
-    internal var sheetSlideOffset by mutableFloatStateOf(if (initialShowWebsite) 0f else 1f)
-        private set
-    internal var topInsetPx by mutableIntStateOf(0)
-        private set
     internal var statusBarHeaderColor by mutableStateOf<Color?>(null)
         private set
     internal var statusBarHeaderCoverage by mutableFloatStateOf(0f)
@@ -231,85 +236,105 @@ class CommentsComposeController private constructor(
         private set
     internal var currentSorting by mutableStateOf("Default")
         private set
-    internal var navigationRequest by mutableStateOf<NavigationRequest?>(null)
-        private set
-    internal var showWebsiteRequest by mutableIntStateOf(0)
-        private set
-    internal var scrollToCommentRequest by mutableStateOf<ScrollToCommentRequest?>(null)
-        private set
-    internal var stopScrollRequest by mutableIntStateOf(0)
-        private set
-    internal var highlightedCommentId by mutableIntStateOf(-1)
-        private set
-    internal var searchScrollTopTargetId by mutableIntStateOf(-1)
-        private set
-    internal var predictiveBackActive by mutableStateOf(false)
-        private set
-    internal var predictiveBackProgress by mutableFloatStateOf(0f)
-        private set
     internal var storyVoteLoading by mutableStateOf(false)
         private set
     internal var storyFavoriteLoading by mutableStateOf(false)
         private set
     internal var storySummaryLoading by mutableStateOf(false)
         private set
-    internal var suppressedCommentIds by mutableStateOf<Set<Int>>(emptySet())
-        private set
     internal var headerPreviewSuppressed by mutableStateOf(false)
         private set
     internal var suppressedHeaderReferenceUrl by mutableStateOf<String?>(null)
-        private set
-    internal var searchDialogVisible by mutableStateOf(false)
         private set
     internal var searchQuery by mutableStateOf("")
         private set
     internal var searchResults by mutableStateOf<List<Comment>>(emptyList())
         private set
-    internal var sheetRequest by mutableStateOf<SheetRequest?>(null)
-        private set
     internal var webViewFullscreen by mutableStateOf(false)
         private set
-    internal var commentActionOverlay by mutableStateOf<CommentActionOverlayState?>(null)
-        private set
-    internal var commentActionDismissRequest by mutableIntStateOf(0)
-        private set
-    internal var commentActionPredictiveBackProgress by mutableFloatStateOf(0f)
-        private set
-    internal var commentActionPredictiveBackEdge by mutableIntStateOf(0)
-        private set
-    internal var commentActionPredictiveBackTouchY by mutableFloatStateOf(0f)
-        private set
-    internal var commentActionFavoriteLoadingId by mutableIntStateOf(-1)
-        private set
-    internal var commentActionVoteLoadingId by mutableIntStateOf(-1)
-        private set
-    internal var commentActionVoteLoadingAction by mutableIntStateOf(-1)
-        private set
-    internal var commentActionDownvotedIds by mutableStateOf<Set<Int>>(emptySet())
-        private set
-    internal var linkPreviewOverlay by mutableStateOf<CommentLinkPreviewOverlayState?>(null)
-        private set
-    internal var linkPreviewDismissRequest by mutableIntStateOf(0)
-        private set
-    internal var linkPreviewPredictiveBackProgress by mutableFloatStateOf(0f)
-        private set
-    internal var linkPreviewPredictiveBackEdge by mutableIntStateOf(0)
-        private set
-    internal var linkPreviewPredictiveBackTouchY by mutableFloatStateOf(0f)
-        private set
-    internal var linkPreviewPredictiveBackSettleRequest by
-        mutableStateOf<PredictiveBackSettleRequest?>(null)
-        private set
-    internal var linkPreviewVisibleUrl by mutableStateOf<String?>(null)
-        private set
-
     var firstVisibleCommentId: Int = 0
         private set
     var firstVisibleCommentOffset: Int = 0
         private set
 
-    private var requestSerial = 0
+    private val interactionStore = CommentsInteractionStore(initialShowWebsite, shouldSmoothScroll)
+    private var interactionState by mutableStateOf(interactionStore.state)
     private val commentBounds = mutableMapOf<Int, androidx.compose.ui.geometry.Rect>()
+    private var commentActionSourceBounds: androidx.compose.ui.geometry.Rect? = null
+    private var linkPreviewSourceBounds by
+        mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+
+    internal val sheetSlideOffset: Float get() = interactionState.sheetSlideOffset
+    internal val topInsetPx: Int get() = interactionState.topInsetPx
+    internal val sheetRequest: CommentSheetRequest? get() = interactionState.sheetRequest
+    internal val navigationRequest: CommentNavigationRequest?
+        get() = interactionState.navigationRequest
+    internal val showWebsiteRequest: Int get() = interactionState.websiteRequestVersion
+    internal val scrollToCommentRequest: CommentScrollRequest? get() = interactionState.scrollRequest
+    internal val stopScrollRequest: Int get() = interactionState.stopScrollRequestVersion
+    internal val highlightedCommentId: Int get() = interactionState.highlightedCommentId
+    internal val searchScrollTopTargetId: Int get() = interactionState.searchScrollTopTargetId
+    internal val predictiveBackActive: Boolean get() = interactionState.predictiveBackActive
+    internal val predictiveBackProgress: Float get() = interactionState.predictiveBackProgress
+    internal val suppressedCommentIds: Set<Int> get() = interactionState.suppressedCommentIds
+    internal val searchDialogVisible: Boolean get() = interactionState.searchDialogVisible
+    internal val commentActionOverlay: CommentActionOverlayState?
+        get() = interactionState.commentAction?.let {
+            CommentActionOverlayState(it, commentActionSourceBounds)
+        }
+    internal val commentActionDismissRequest: Int
+        get() = interactionState.commentActionDismissRequestVersion
+    internal val commentActionPredictiveBackProgress: Float
+        get() = interactionState.commentActionPredictiveBackProgress
+    internal val commentActionPredictiveBackEdge: Int
+        get() = interactionState.commentActionPredictiveBackEdge
+    internal val commentActionFavoriteLoadingId: Int
+        get() = interactionState.commentActionFavoriteLoadingId
+    internal val commentActionVoteLoadingId: Int
+        get() = interactionState.commentActionVoteLoadingId
+    internal val commentActionVoteLoadingAction: Int
+        get() = interactionState.commentActionVoteLoadingAction
+    internal val commentActionDownvotedIds: Set<Int>
+        get() = interactionState.commentActionDownvotedIds
+    internal val linkPreviewOverlay: CommentLinkPreviewOverlayState?
+        get() = when (val preview = interactionState.linkPreview) {
+            is CommentLinkPreview.Reference -> CommentLinkPreviewOverlayState.Reference(
+                originalUrl = preview.originalUrl,
+                fallbackTitle = preview.fallbackTitle,
+                resolvedTitle = preview.resolvedTitle,
+                sourceBounds = linkPreviewSourceBounds,
+                sourceCommentId = preview.sourceCommentId,
+                headerReference = preview.headerReference,
+            )
+            is CommentLinkPreview.Image -> CommentLinkPreviewOverlayState.Image(
+                imageUrl = preview.imageUrl,
+                description = preview.description,
+                sourceBounds = linkPreviewSourceBounds,
+                backgroundColor = preview.backgroundColor,
+            )
+            null -> null
+        }
+    internal val linkPreviewDismissRequest: Int
+        get() = interactionState.linkPreviewDismissRequestVersion
+    internal val linkPreviewPredictiveBackProgress: Float
+        get() = interactionState.linkPreviewPredictiveBackProgress
+    internal val linkPreviewPredictiveBackEdge: Int
+        get() = interactionState.linkPreviewPredictiveBackEdge
+    internal val linkPreviewPredictiveBackSettleRequest: CommentPredictiveBackSettleRequest?
+        get() = interactionState.linkPreviewPredictiveBackSettleRequest
+    internal val linkPreviewVisibleUrl: String?
+        get() = interactionState.linkPreviewVisibleUrl
+
+    private fun syncInteractionState() {
+        interactionState = interactionStore.state
+    }
+
+    internal fun isBookmarked(itemId: Int): Boolean = savedItemState.isBookmarked(itemId)
+
+    internal fun isFavorited(itemId: Int): Boolean = savedItemState.isFavorited(itemId)
+
+    internal fun isUpvoted(itemId: Int, isComment: Boolean): Boolean =
+        savedItemState.isUpvoted(itemId, isComment)
 
     fun updateContent(
         story: Story,
@@ -353,7 +378,7 @@ class CommentsComposeController private constructor(
         this.readerModeAvailable = readerModeAvailable
         this.readerModeEnabled = readerModeEnabled
         this.currentSorting = currentSorting
-        this.topInsetPx = topInsetPx
+        interactionStore.updateTopInset(topInsetPx)
         this.contentInsetLeftPx = contentInsetLeftPx
         this.contentInsetRightPx = contentInsetRightPx
         this.storyVoteLoading = storyVoteLoading
@@ -361,6 +386,7 @@ class CommentsComposeController private constructor(
         this.searchQuery = searchQuery
         this.searchResults = searchResults.toList()
         this.visibleComments = visibleComments.toList()
+        syncInteractionState()
         contentVersion++
     }
 
@@ -378,8 +404,8 @@ class CommentsComposeController private constructor(
     }
 
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
-        sheetSlideOffset = slideOffset.coerceIn(0f, 1f)
-        this.topInsetPx = topInsetPx
+        interactionStore.updateSheet(slideOffset, topInsetPx)
+        syncInteractionState()
     }
 
     internal fun updateStatusBarHeaderColor(color: Color) {
@@ -391,15 +417,18 @@ class CommentsComposeController private constructor(
     }
 
     fun requestExpandSheet() {
-        sheetRequest = SheetRequest(++requestSerial, expanded = true)
+        interactionStore.requestSheet(expanded = true)
+        syncInteractionState()
     }
 
     fun requestCollapseSheet() {
-        sheetRequest = SheetRequest(++requestSerial, expanded = false)
+        interactionStore.requestSheet(expanded = false)
+        syncInteractionState()
     }
 
-    internal fun consumeSheetRequest(request: SheetRequest) {
-        if (sheetRequest == request) sheetRequest = null
+    internal fun consumeSheetRequest(request: CommentSheetRequest) {
+        interactionStore.consumeSheetRequest(request)
+        syncInteractionState()
     }
 
     fun isSheetExpanded(): Boolean = sheetSlideOffset >= 0.999f
@@ -416,100 +445,88 @@ class CommentsComposeController private constructor(
     }
 
     fun navigateNext(topLevelOnly: Boolean, scaleLongScrollSpeed: Boolean) {
-        navigationRequest = NavigationRequest(
-            serial = ++requestSerial,
+        interactionStore.navigate(
             forward = true,
             topLevelOnly = topLevelOnly,
-            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = scaleLongScrollSpeed,
         )
+        syncInteractionState()
     }
 
     fun navigatePrevious(topLevelOnly: Boolean, scaleLongScrollSpeed: Boolean) {
-        navigationRequest = NavigationRequest(
-            serial = ++requestSerial,
+        interactionStore.navigate(
             forward = false,
             topLevelOnly = topLevelOnly,
-            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = scaleLongScrollSpeed,
         )
+        syncInteractionState()
     }
 
     internal fun navigateFirst() {
-        navigationRequest = NavigationRequest(
-            serial = ++requestSerial,
+        interactionStore.navigate(
             forward = false,
             topLevelOnly = true,
-            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = true,
-            edge = NavigationEdge.First,
+            edge = CommentNavigationEdge.First,
         )
+        syncInteractionState()
     }
 
     internal fun navigateLast() {
-        navigationRequest = NavigationRequest(
-            serial = ++requestSerial,
+        interactionStore.navigate(
             forward = true,
             topLevelOnly = true,
-            animate = shouldSmoothScroll(),
             scaleLongScrollSpeed = true,
-            edge = NavigationEdge.Last,
+            edge = CommentNavigationEdge.Last,
         )
+        syncInteractionState()
     }
 
     fun requestWebsite() {
-        showWebsiteRequest++
+        interactionStore.requestWebsite()
+        syncInteractionState()
     }
 
     @JvmOverloads
     fun scrollToComment(commentId: Int, topOffsetPx: Int = topInsetPx, animate: Boolean = true) {
-        scrollToCommentRequest = ScrollToCommentRequest(
-            serial = ++requestSerial,
+        interactionStore.scrollToComment(
             commentId = commentId,
             topOffsetPx = topOffsetPx,
-            animate = animate && shouldSmoothScroll(),
+            animate = animate,
             searchResult = false,
         )
+        syncInteractionState()
     }
 
     fun scrollToSearchResult(commentId: Int) {
-        scrollToCommentRequest = ScrollToCommentRequest(
-            serial = ++requestSerial,
+        interactionStore.scrollToComment(
             commentId = commentId,
             topOffsetPx = topInsetPx,
-            animate = shouldSmoothScroll(),
+            animate = true,
             searchResult = true,
         )
+        syncInteractionState()
     }
 
     fun showCommentSearch() {
-        searchDialogVisible = true
+        interactionStore.showCommentSearch()
+        syncInteractionState()
     }
 
     fun showCommentActions(comment: Comment) {
         // Long presses can arrive from multiple comments before Compose has a chance to render
         // the overlay. Keep the overlay single-owner so a rejected second request cannot leave
         // its source comment suppressed without a corresponding dialog.
-        if (commentActionOverlay != null) return
-
-        requestStopScroll()
-        commentActionDismissRequest = 0
-        commentActionPredictiveBackProgress = 0f
-        commentActionOverlay = CommentActionOverlayState(
-            comment = comment,
-            sourceBounds = commentBounds[comment.id],
-        )
-        suppressedCommentIds = setOf(comment.id)
+        if (!interactionStore.showCommentActions(comment, stopScroll = true)) return
+        commentActionSourceBounds = commentBounds[comment.id]
+        syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
     fun restoreCommentActions(comment: Comment) {
-        if (commentActionOverlay != null) return
-
-        commentActionDismissRequest = 0
-        commentActionPredictiveBackProgress = 0f
-        commentActionOverlay = CommentActionOverlayState(comment, sourceBounds = null)
-        suppressedCommentIds = setOf(comment.id)
+        if (!interactionStore.showCommentActions(comment, stopScroll = false)) return
+        commentActionSourceBounds = null
+        syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
@@ -518,49 +535,44 @@ class CommentsComposeController private constructor(
     fun getVisibleCommentActionId(): Int = commentActionOverlay?.comment?.id ?: -1
 
     fun requestDismissCommentActions() {
-        if (commentActionOverlay != null) {
-            commentActionDismissRequest++
-        }
+        interactionStore.requestDismissCommentActions()
+        syncInteractionState()
     }
 
     fun updateCommentActionPredictiveBack(progress: Float, edge: Int, touchY: Float) {
-        if (commentActionOverlay == null) return
-        commentActionPredictiveBackProgress = progress.coerceIn(0f, 1f)
-        commentActionPredictiveBackEdge = edge
-        commentActionPredictiveBackTouchY = touchY
+        interactionStore.updateCommentActionPredictiveBack(progress, edge, touchY)
+        syncInteractionState()
     }
 
     fun cancelCommentActionPredictiveBack() {
-        commentActionPredictiveBackProgress = 0f
+        interactionStore.cancelCommentActionPredictiveBack()
+        syncInteractionState()
     }
 
     fun isCommentActionPredictiveBackActive(): Boolean =
         commentActionOverlay != null && commentActionPredictiveBackProgress > 0f
 
     fun commitCommentActionPredictiveBack() {
-        commentActionPredictiveBackProgress = 0f
-        requestDismissCommentActions()
+        interactionStore.commitCommentActionPredictiveBack()
+        syncInteractionState()
     }
 
     fun completeCommentActionDismiss() {
-        val commentId = commentActionOverlay?.comment?.id
-        commentActionOverlay = null
-        commentActionDismissRequest = 0
-        commentActionPredictiveBackProgress = 0f
-        if (commentId != null) {
-            suppressedCommentIds = suppressedCommentIds - commentId
-        }
+        if (!interactionStore.completeCommentActionDismiss()) return
+        commentActionSourceBounds = null
+        syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(false)
     }
 
     fun setCommentActionFavoriteLoading(commentId: Int, loading: Boolean) {
-        commentActionFavoriteLoadingId = if (loading) commentId else -1
+        interactionStore.setCommentActionFavoriteLoading(commentId, loading)
+        syncInteractionState()
         contentVersion++
     }
 
     fun setCommentActionVoteLoading(commentId: Int, action: Int) {
-        commentActionVoteLoadingId = commentId
-        commentActionVoteLoadingAction = action
+        interactionStore.setCommentActionVoteLoading(commentId, action)
+        syncInteractionState()
         contentVersion++
     }
 
@@ -571,15 +583,8 @@ class CommentsComposeController private constructor(
         commentId in commentActionDownvotedIds
 
     fun finishCommentActionVote(commentId: Int, downvoted: Boolean) {
-        if (downvoted) {
-            commentActionDownvotedIds = commentActionDownvotedIds + commentId
-        } else {
-            commentActionDownvotedIds = commentActionDownvotedIds - commentId
-        }
-        if (commentActionVoteLoadingId == commentId) {
-            commentActionVoteLoadingId = -1
-            commentActionVoteLoadingAction = -1
-        }
+        interactionStore.finishCommentActionVote(commentId, downvoted)
+        syncInteractionState()
         contentVersion++
     }
 
@@ -588,12 +593,14 @@ class CommentsComposeController private constructor(
     }
 
     internal fun dismissCommentSearch() {
-        searchDialogVisible = false
+        interactionStore.dismissCommentSearch()
+        syncInteractionState()
         listener.onSearchQueryChanged("")
     }
 
     internal fun selectSearchResult(comment: Comment) {
-        searchDialogVisible = false
+        interactionStore.dismissCommentSearch()
+        syncInteractionState()
         listener.onSearchQueryChanged("")
         listener.onSearchResultSelected(comment)
     }
@@ -603,24 +610,28 @@ class CommentsComposeController private constructor(
     }
 
     internal fun revealSearchResult(commentId: Int, visiblePosition: Int) {
-        highlightedCommentId = commentId
-        searchScrollTopTargetId = commentId.takeIf { visiblePosition > 10 && !showUpdate } ?: -1
+        interactionStore.revealSearchResult(commentId, visiblePosition, showUpdate)
+        syncInteractionState()
     }
 
     internal fun clearSearchHighlight(commentId: Int) {
-        if (highlightedCommentId == commentId) highlightedCommentId = -1
+        interactionStore.clearSearchHighlight(commentId)
+        syncInteractionState()
     }
 
     fun clearSearchScrollTopTarget() {
-        searchScrollTopTargetId = -1
+        interactionStore.clearSearchScrollTopTarget()
+        syncInteractionState()
     }
 
-    internal fun consumeNavigationRequest(request: NavigationRequest) {
-        if (navigationRequest == request) navigationRequest = null
+    internal fun consumeNavigationRequest(request: CommentNavigationRequest) {
+        interactionStore.consumeNavigationRequest(request)
+        syncInteractionState()
     }
 
-    internal fun consumeScrollToCommentRequest(request: ScrollToCommentRequest) {
-        if (scrollToCommentRequest == request) scrollToCommentRequest = null
+    internal fun consumeScrollToCommentRequest(request: CommentScrollRequest) {
+        interactionStore.consumeScrollRequest(request)
+        syncInteractionState()
     }
 
     internal fun updateCommentBounds(commentId: Int, bounds: androidx.compose.ui.geometry.Rect) {
@@ -660,18 +671,15 @@ class CommentsComposeController private constructor(
         sourceCommentId: Int = -1,
         headerReference: Boolean = false,
     ) {
-        if (url.isBlank()) return
-        requestStopScroll()
-        resetLinkPreviewAnimationState()
-        linkPreviewVisibleUrl = url
-        linkPreviewOverlay = CommentLinkPreviewOverlayState.Reference(
+        if (!interactionStore.showReferencePreview(
             originalUrl = url,
             fallbackTitle = firstNotBlank(title, url),
             resolvedTitle = resolvedTitle,
-            sourceBounds = sourceBounds,
             sourceCommentId = sourceCommentId.takeIf { it > 0 },
             headerReference = headerReference,
-        )
+        )) return
+        linkPreviewSourceBounds = sourceBounds
+        syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
@@ -682,73 +690,57 @@ class CommentsComposeController private constructor(
         sourceBounds: androidx.compose.ui.geometry.Rect? = null,
         backgroundColor: Int,
     ) {
-        if (imageUrl.isBlank()) return
-        requestStopScroll()
-        resetLinkPreviewAnimationState()
-        linkPreviewVisibleUrl = imageUrl
-        linkPreviewOverlay = CommentLinkPreviewOverlayState.Image(
+        if (!interactionStore.showImagePreview(
             imageUrl = imageUrl,
             description = description.orEmpty(),
-            sourceBounds = sourceBounds,
             backgroundColor = backgroundColor,
-        )
+        )) return
+        linkPreviewSourceBounds = sourceBounds
+        syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
-    fun isLinkPreviewOverlayShowing(): Boolean = linkPreviewOverlay != null
+    fun isLinkPreviewOverlayShowing(): Boolean = interactionState.linkPreview != null
 
     fun isLinkPreviewReferenceShowing(): Boolean =
-        linkPreviewOverlay is CommentLinkPreviewOverlayState.Reference
+        interactionState.linkPreview is CommentLinkPreview.Reference
 
     fun isLinkPreviewImageShowing(): Boolean =
-        linkPreviewOverlay is CommentLinkPreviewOverlayState.Image
+        interactionState.linkPreview is CommentLinkPreview.Image
 
     fun getLinkPreviewVisibleUrl(): String? = linkPreviewVisibleUrl
 
     fun getLinkPreviewFallbackTitle(): String? =
-        (linkPreviewOverlay as? CommentLinkPreviewOverlayState.Reference)?.fallbackTitle
+        (interactionState.linkPreview as? CommentLinkPreview.Reference)?.fallbackTitle
 
     internal fun updateLinkPreviewVisibleUrl(originalUrl: String, resolvedUrl: String?) {
-        val current = linkPreviewOverlay as? CommentLinkPreviewOverlayState.Reference ?: return
-        if (current.originalUrl == originalUrl && !resolvedUrl.isNullOrBlank()) {
-            linkPreviewVisibleUrl = resolvedUrl
-        }
+        interactionStore.updateLinkPreviewVisibleUrl(originalUrl, resolvedUrl)
+        syncInteractionState()
     }
 
     fun requestDismissLinkPreview() {
-        if (linkPreviewOverlay == null || linkPreviewDismissRequest != 0) return
-        linkPreviewDismissRequest = ++requestSerial
+        interactionStore.requestDismissLinkPreview()
+        syncInteractionState()
     }
 
     fun completeLinkPreviewDismiss() {
-        val state = linkPreviewOverlay ?: return
-        when (state) {
-            is CommentLinkPreviewOverlayState.Reference -> Unit
-            is CommentLinkPreviewOverlayState.Image -> Unit
-        }
-        linkPreviewOverlay = null
-        linkPreviewVisibleUrl = null
-        resetLinkPreviewAnimationState()
+        if (!interactionStore.completeLinkPreviewDismiss()) return
+        linkPreviewSourceBounds = null
+        syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(false)
     }
 
     fun startLinkPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
-        if (linkPreviewOverlay == null || linkPreviewDismissRequest != 0) return
-        linkPreviewPredictiveBackSettleRequest = null
-        linkPreviewPredictiveBackEdge = edge
-        linkPreviewPredictiveBackTouchY = touchY
-        linkPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.updateLinkPreviewPredictiveBack(progress, edge, touchY)
+        syncInteractionState()
     }
 
     fun updateLinkPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) =
         startLinkPreviewPredictiveBack(progress, edge, touchY)
 
     fun cancelLinkPreviewPredictiveBack() {
-        if (linkPreviewOverlay == null || linkPreviewPredictiveBackProgress <= 0f) return
-        linkPreviewPredictiveBackSettleRequest = PredictiveBackSettleRequest(
-            serial = ++requestSerial,
-            target = 0f,
-        )
+        interactionStore.cancelLinkPreviewPredictiveBack()
+        syncInteractionState()
     }
 
     fun isLinkPreviewPredictiveBackActive(): Boolean =
@@ -760,34 +752,31 @@ class CommentsComposeController private constructor(
         if (linkPreviewOverlay != null) requestDismissLinkPreview()
     }
 
-    internal fun finishLinkPreviewPredictiveBackSettle(request: PredictiveBackSettleRequest) {
-        if (linkPreviewPredictiveBackSettleRequest != request) return
-        linkPreviewPredictiveBackProgress = request.target
-        linkPreviewPredictiveBackSettleRequest = null
-    }
-
-    private fun resetLinkPreviewAnimationState() {
-        linkPreviewDismissRequest = 0
-        linkPreviewPredictiveBackProgress = 0f
-        linkPreviewPredictiveBackSettleRequest = null
+    internal fun finishLinkPreviewPredictiveBackSettle(
+        request: CommentPredictiveBackSettleRequest,
+    ) {
+        interactionStore.finishLinkPreviewPredictiveBackSettle(request)
+        syncInteractionState()
     }
 
     fun requestStopScroll() {
-        stopScrollRequest++
+        interactionStore.requestStopScroll()
+        syncInteractionState()
     }
 
     fun beginPredictiveBack(progress: Float) {
-        predictiveBackActive = true
-        predictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.beginPredictiveBack(progress)
+        syncInteractionState()
     }
 
     fun updatePredictiveBack(progress: Float) {
-        predictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.updatePredictiveBack(progress)
+        syncInteractionState()
     }
 
     fun endPredictiveBack() {
-        predictiveBackActive = false
-        predictiveBackProgress = 0f
+        interactionStore.endPredictiveBack()
+        syncInteractionState()
     }
 
     internal fun updateScrollPosition(state: LazyListState, visibleComments: List<Comment>) {
@@ -796,32 +785,6 @@ class CommentsComposeController private constructor(
         firstVisibleCommentOffset = state.firstVisibleItemScrollOffset
         listener.onScrollPositionChanged(firstVisibleCommentId, firstVisibleCommentOffset)
     }
-
-    internal data class NavigationRequest(
-        val serial: Int,
-        val forward: Boolean,
-        val topLevelOnly: Boolean,
-        val animate: Boolean,
-        val scaleLongScrollSpeed: Boolean,
-        val edge: NavigationEdge? = null,
-    )
-
-    internal enum class NavigationEdge { First, Last }
-
-    internal data class ScrollToCommentRequest(
-        val serial: Int,
-        val commentId: Int,
-        val topOffsetPx: Int,
-        val animate: Boolean,
-        val searchResult: Boolean,
-    )
-
-    internal data class SheetRequest(
-        val serial: Int,
-        val expanded: Boolean,
-    )
-
-    internal data class PredictiveBackSettleRequest(val serial: Int, val target: Float)
 
     interface Listener {
         fun onToggleComment(comment: Comment, position: Int)
@@ -896,9 +859,11 @@ class CommentsComposeController private constructor(
             story: Story,
             showWebsite: Boolean,
             accountUser: String?,
+            savedItemState: SavedItemStateReader,
             listener: Listener,
         ): CommentsComposeController = CommentsComposeController(
             shouldSmoothScroll = { SettingsUtils.shouldSmoothScrollComments(activity) },
+            savedItemState = savedItemState,
             initialStory = story,
             initialShowWebsite = showWebsite,
             accountUser = accountUser,
@@ -1119,8 +1084,8 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
     LaunchedEffect(navigationRequest, visibleComments) {
         val request = navigationRequest ?: return@LaunchedEffect
         val target = when (request.edge) {
-            CommentsComposeController.NavigationEdge.First -> -1
-            CommentsComposeController.NavigationEdge.Last ->
+            CommentNavigationEdge.First -> -1
+            CommentNavigationEdge.Last ->
                 visibleComments.indexOfLast { it.comment.depth == 0 }.coerceAtLeast(0)
             null -> findNavigationTarget(
                 state = listState,
@@ -2790,10 +2755,10 @@ private fun HeaderActions(
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
     var archiveExpanded by remember { mutableStateOf(false) }
-    val upvoted = Utils.isUpvoted(context, story.id, story.isComment)
-    val favorited = Utils.isFavorited(context, story.id)
+    val upvoted = controller.isUpvoted(story.id, story.isComment)
+    val favorited = controller.isFavorited(story.id)
     val bookmarked = remember(contentVersion, story.id) {
-        Utils.isBookmarked(context, story.id)
+        controller.isBookmarked(story.id)
     }
     val actions = buildList {
         add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
@@ -3017,7 +2982,7 @@ private fun MoreMenu(
     val commentsCount = controller.comments.size
     val context = LocalContext.current
     val bookmarked = remember(contentVersion, story.id) {
-        Utils.isBookmarked(context, story.id)
+        controller.isBookmarked(story.id)
     }
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
         if (sortExpanded || archiveExpanded) {

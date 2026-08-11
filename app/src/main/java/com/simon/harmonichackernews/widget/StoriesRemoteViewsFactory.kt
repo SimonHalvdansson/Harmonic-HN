@@ -19,7 +19,7 @@ import com.simon.harmonichackernews.network.HttpRequest
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldIncludeTopLevelDomain
 import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
-import com.simon.harmonichackernews.utils.Utils.getTimeAgo
+import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.Utils.log
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -236,7 +236,10 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
             } catch (ignored: Exception) {
             }
         }
-        meta += " \u00B7 " + getTimeAgo(story.time.toLong())
+        meta += " \u00B7 " + RelativeTimeFormatter.format(
+            story.time.toLong(),
+            System.currentTimeMillis(),
+        )
         views.setTextViewText(R.id.widget_story_meta, meta)
 
         // Fill-in intent for item click -> MainActivity's Compose comments destination.

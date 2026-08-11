@@ -19,6 +19,10 @@ import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
+import com.simon.harmonichackernews.data.SavedItemCodec
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.local.LocalModelManager
@@ -68,14 +72,31 @@ class AndroidCredentialStore(context: Context) : CredentialStore {
 
 class AndroidBookmarkStore(context: Context) : BookmarkStore {
     private val appContext = context.applicationContext
+    private val savedItems = SavedItemsRepository(AndroidKeyValueStore.global(appContext))
 
-    override fun load(): List<Bookmark> = Utils.loadBookmarks(appContext, true)
+    override fun load(): List<Bookmark> = SavedItemCodec.toBookmarks(
+        savedItems.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
+    )
 
-    override fun add(id: Int) = Utils.addBookmark(appContext, id)
+    override fun add(id: Int) {
+        savedItems.setMembership(
+            SavedItemSource.BOOKMARKS,
+            id,
+            present = true,
+            createdAtMillis = System.currentTimeMillis(),
+        )
+    }
 
-    override fun remove(id: Int) = Utils.removeBookmark(appContext, id)
+    override fun remove(id: Int) {
+        savedItems.setMembership(
+            SavedItemSource.BOOKMARKS,
+            id,
+            present = false,
+            createdAtMillis = System.currentTimeMillis(),
+        )
+    }
 
-    override fun clear() = Utils.saveBookmarks(appContext, arrayListOf())
+    override fun clear() = savedItems.saveItems(SavedItemSource.BOOKMARKS, emptyList())
 }
 
 class AndroidHistoryStore(context: Context) : HistoryStore {

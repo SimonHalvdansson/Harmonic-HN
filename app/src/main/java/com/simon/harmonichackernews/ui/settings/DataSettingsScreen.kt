@@ -19,8 +19,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.data.Bookmark
+import com.simon.harmonichackernews.data.BookmarkImportPolicy
+import com.simon.harmonichackernews.data.SavedItemCodec
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.platform.AndroidTextDocuments
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.HistoriesUtils
@@ -37,6 +42,9 @@ fun DataSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    val savedItems = remember(context) {
+        SavedItemsRepository(AndroidKeyValueStore.global(context))
+    }
     val refresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
@@ -48,13 +56,10 @@ fun DataSettingsScreen(
     ) { uri ->
         uri?.let { outputUri ->
             runCatching {
-                Utils.writeInFile(
+                AndroidTextDocuments.write(
                     context,
                     outputUri,
-                    SettingsUtils.readStringFromSharedPreferences(
-                        context,
-                        Utils.KEY_SHARED_PREFERENCES_BOOKMARKS,
-                    ),
+                    SavedItemCodec.encode(savedItems.loadItems(SavedItemSource.BOOKMARKS)),
                 )
             }.onFailure {
                 Toast.makeText(context, "Write error", Toast.LENGTH_SHORT).show()
@@ -71,6 +76,7 @@ fun DataSettingsScreen(
                     context = context,
                     uri = inputUri,
                     overwrite = overwriteBookmarksOnImport,
+                    savedItems = savedItems,
                 )
             }.onSuccess { importedCount ->
                 localRefresh++
@@ -87,7 +93,7 @@ fun DataSettingsScreen(
     }
 
     val bookmarksEnabled = prefs.getBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, true)
-    val bookmarkCount = Utils.loadBookmarks(context, false).size
+    val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
     val hasBookmarks = bookmarkCount > 0
     val loggedIn = AccountUtils.hasAccountDetails(context)
 
@@ -120,8 +126,11 @@ fun DataSettingsScreen(
                     icon = Res.drawable.ic_star,
                     enabled = bookmarksEnabled && hasBookmarks && loggedIn,
                     onClick = {
-                        favoriteIds = Utils.loadBookmarks(context, true)
-                            .map(Bookmark::id)
+                        favoriteIds = savedItems.loadItems(
+                            SavedItemSource.BOOKMARKS,
+                            sortedByCreated = true,
+                        )
+                            .map { it.id }
                             .toIntArray()
                     },
                 )
@@ -294,34 +303,20 @@ private fun importBookmarks(
     context: Context,
     uri: Uri,
     overwrite: Boolean,
+    savedItems: SavedItemsRepository,
 ): Int {
-    val content = Utils.readFileContent(context, uri)
-    val imported = Utils.loadBookmarks(true, content)
-    if (imported.isEmpty()) {
+    val content = AndroidTextDocuments.read(context, uri)
+    val result = BookmarkImportPolicy.apply(
+        content = content,
+        current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
+        overwrite = overwrite,
+    )
+    if (result == null) {
         Toast.makeText(context, "File contained no bookmarks", Toast.LENGTH_SHORT).show()
         return 0
     }
-
-    if (overwrite) {
-        SettingsUtils.saveStringToSharedPreferences(
-            context,
-            Utils.KEY_SHARED_PREFERENCES_BOOKMARKS,
-            content,
-        )
-        return imported.size
-    }
-
-    val current = Utils.loadBookmarks(context, false)
-    val currentIds = current.mapTo(hashSetOf(), Bookmark::id)
-    var added = 0
-    imported.forEach { bookmark ->
-        if (currentIds.add(bookmark.id)) {
-            current.add(bookmark)
-            added++
-        }
-    }
-    Utils.saveBookmarks(context, current)
-    return added
+    savedItems.saveItems(SavedItemSource.BOOKMARKS, result.items)
+    return result.importedCount
 }
 
 private fun resetAllSettings(context: Context) {

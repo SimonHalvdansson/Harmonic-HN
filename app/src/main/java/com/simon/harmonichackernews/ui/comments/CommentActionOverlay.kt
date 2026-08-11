@@ -8,32 +8,25 @@ import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -49,23 +42,15 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.input.pointer.pointerInput
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -79,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.ui.common.SharedTransformOverlay
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -87,11 +73,6 @@ import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.utils.AgePolicy
-import kotlin.math.max
-
-private const val TRANSFORM_DURATION_MS = 280
-private const val PREDICTIVE_BACK_MAX_TRANSLATION_X_DP = 56f
-private const val PREDICTIVE_BACK_MAX_TRANSLATION_Y_DP = 18f
 
 /**
  * Compose replacement for `comment_action_overlay.xml`. The card is laid out at its final size,
@@ -105,60 +86,6 @@ internal fun CommentActionOverlay(
 ) {
     val state = controller.commentActionOverlay ?: return
     val comment = state.comment
-    val density = LocalDensity.current
-    val transformProgress = remember(comment.id) { Animatable(0f) }
-    var targetBounds by remember(comment.id) { mutableStateOf<Rect?>(null) }
-    val dismissRequest = controller.commentActionDismissRequest
-
-    LaunchedEffect(comment.id, targetBounds) {
-        if (targetBounds != null && dismissRequest == 0) {
-            transformProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(TRANSFORM_DURATION_MS, easing = FastOutSlowInEasing),
-            )
-        }
-    }
-    LaunchedEffect(dismissRequest) {
-        if (dismissRequest <= 0) return@LaunchedEffect
-        transformProgress.animateTo(
-            targetValue = 0f,
-            animationSpec = tween(TRANSFORM_DURATION_MS, easing = FastOutSlowInEasing),
-        )
-        controller.completeCommentActionDismiss()
-    }
-
-    val progress = transformProgress.value
-    val predictiveProgress = controller.commentActionPredictiveBackProgress
-    val predictiveEased = 1f - (1f - predictiveProgress) * (1f - predictiveProgress)
-    val target = targetBounds
-    val source = state.sourceBounds
-    val startScaleX = if (target != null && source != null && target.width > 0f) {
-        (source.width / target.width).coerceIn(0.08f, 1.15f)
-    } else {
-        0.96f
-    }
-    val startScaleY = if (target != null && source != null && target.height > 0f) {
-        (source.height / target.height).coerceIn(0.08f, 1.15f)
-    } else {
-        0.96f
-    }
-    val startTranslationX = if (target != null && source != null) {
-        source.center.x - target.center.x
-    } else {
-        0f
-    }
-    val startTranslationY = if (target != null && source != null) {
-        source.center.y - target.center.y
-    } else {
-        0f
-    }
-    val backDirection = if (controller.commentActionPredictiveBackEdge == 1) -1f else 1f
-    val backTranslationX = with(density) {
-        PREDICTIVE_BACK_MAX_TRANSLATION_X_DP.dp.toPx()
-    } * predictiveEased * backDirection
-    val backTranslationY = with(density) {
-        PREDICTIVE_BACK_MAX_TRANSLATION_Y_DP.dp.toPx()
-    } * predictiveEased
     val cardRadius = HarmonicDimens.compose_comment_action_corner_radius
     val cardColor = if (settings.cardStyle) {
         HarmonicTheme.colors.surfaceContainerHigh
@@ -166,83 +93,29 @@ internal fun CommentActionOverlay(
         HarmonicTheme.colors.background
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Color.Black.copy(
-                        alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
-                    ),
-                )
-                .blockGesturesBehindModal()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = controller::requestDismissCommentActions,
-                ),
+    SharedTransformOverlay(
+        contentKey = comment.id,
+        sourceBounds = state.sourceBounds,
+        dismissRequestVersion = controller.commentActionDismissRequest,
+        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+        predictiveBackEdge = controller.commentActionPredictiveBackEdge,
+        maxWidth = if (settings.isTablet) {
+            HarmonicDimens.compose_comment_action_tablet_max_width
+        } else {
+            HarmonicDimens.compose_comment_action_max_width
+        },
+        horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+        verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
+        shape = RoundedCornerShape(cardRadius),
+        containerColor = cardColor,
+        onDismissRequest = controller::requestDismissCommentActions,
+        onDismissAnimationFinished = controller::completeCommentActionDismiss,
+    ) {
+        CommentActionCardContent(
+            controller = controller,
+            settings = settings,
+            comment = comment,
         )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(
-                    horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
-                    vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .widthIn(
-                        max = if (settings.isTablet) {
-                            HarmonicDimens.compose_comment_action_tablet_max_width
-                        } else {
-                            HarmonicDimens.compose_comment_action_max_width
-                        },
-                    )
-                    .fillMaxWidth()
-                    .onGloballyPositioned { targetBounds = it.boundsInWindow() }
-                    .graphicsLayer {
-                        val sharedScaleX = startScaleX + (1f - startScaleX) * progress
-                        val sharedScaleY = startScaleY + (1f - startScaleY) * progress
-                        val backScale = 1f - 0.1f * predictiveEased
-                        scaleX = sharedScaleX * backScale
-                        scaleY = sharedScaleY * backScale
-                        translationX = startTranslationX * (1f - progress) + backTranslationX
-                        translationY = startTranslationY * (1f - progress) + backTranslationY
-                        alpha = if (source == null) progress else max(0.7f, progress)
-                        transformOrigin = TransformOrigin(
-                            pivotFractionX = if (backDirection > 0f) 0f else 1f,
-                            pivotFractionY = 0.5f,
-                        )
-                    }
-                    .blockGesturesBehindModal()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
-                shape = RoundedCornerShape(cardRadius),
-                color = cardColor,
-                shadowElevation = 8.dp,
-            ) {
-                CommentActionCardContent(
-                    controller = controller,
-                    settings = settings,
-                    comment = comment,
-                )
-            }
-        }
-    }
-}
-
-private fun Modifier.blockGesturesBehindModal(): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        do {
-            val event = awaitPointerEvent()
-            event.changes.forEach { it.consume() }
-        } while (event.changes.any { it.pressed })
     }
 }
 
@@ -256,13 +129,13 @@ private fun CommentActionCardContent(
     val hasAccount = AccountUtils.hasAccountDetails(context)
     val bookmarksEnabled = SettingsUtils.shouldUseBookmarks(context)
     val bookmarked = remember(controller.contentVersion, comment.id) {
-        bookmarksEnabled && Utils.isBookmarked(context, comment.id)
+        bookmarksEnabled && controller.isBookmarked(comment.id)
     }
     val favorited = remember(controller.contentVersion, comment.id) {
-        Utils.isFavorited(context, comment.id)
+        controller.isFavorited(comment.id)
     }
     val upvoted = remember(controller.contentVersion, comment.id) {
-        Utils.isUpvoted(context, comment.id, true)
+        controller.isUpvoted(comment.id, isComment = true)
     }
     val downvoted = !upvoted && comment.id in controller.commentActionDownvotedIds
     val voteLoading = controller.commentActionVoteLoadingId == comment.id

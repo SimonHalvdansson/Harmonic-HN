@@ -18,24 +18,19 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -60,16 +55,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -96,17 +85,13 @@ import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.ui.common.SharedTransformOverlay
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
-import kotlin.math.max
-
-private const val TransformDurationMillis = 280
-private const val PredictiveBackTranslationXDp = 56f
-private const val PredictiveBackTranslationYDp = 18f
 private const val ReferenceContentDurationMillis = 240
 private const val ReferenceImageDurationMillis = 360
 private const val PdfContentTypeError = "This link contains application/pdf, not a web page"
@@ -115,29 +100,9 @@ private const val PdfContentTypeError = "This link contains application/pdf, not
 internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
     val state = controller.linkPreviewOverlay ?: return
     val context = LocalContext.current
-    val density = LocalDensity.current
-    val transformProgress = remember(state) { Animatable(0f) }
     val predictiveProgressAnimation = remember(state) { Animatable(0f) }
-    var targetBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    val dismissRequest = controller.linkPreviewDismissRequest
     val settleRequest = controller.linkPreviewPredictiveBackSettleRequest
 
-    LaunchedEffect(state, targetBounds) {
-        if (targetBounds != null && dismissRequest == 0) {
-            transformProgress.animateTo(
-                1f,
-                tween(TransformDurationMillis, easing = FastOutSlowInEasing),
-            )
-        }
-    }
-    LaunchedEffect(dismissRequest) {
-        if (dismissRequest == 0) return@LaunchedEffect
-        transformProgress.animateTo(
-            0f,
-            tween(TransformDurationMillis, easing = FastOutSlowInEasing),
-        )
-        controller.completeLinkPreviewDismiss()
-    }
     LaunchedEffect(controller.linkPreviewPredictiveBackProgress, settleRequest) {
         if (settleRequest == null) {
             predictiveProgressAnimation.snapTo(
@@ -154,103 +119,39 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
         controller.finishLinkPreviewPredictiveBackSettle(request)
     }
 
-    val progress = transformProgress.value
-    val predictiveProgress = predictiveProgressAnimation.value
-    val predictiveEased = 1f - (1f - predictiveProgress) * (1f - predictiveProgress)
-    val backDirection = if (controller.linkPreviewPredictiveBackEdge == 1) -1f else 1f
-    val backTranslationX = with(density) { PredictiveBackTranslationXDp.dp.toPx() } *
-        predictiveEased * backDirection
-    val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } * predictiveEased
-    val source = state.sourceBounds
-    val target = targetBounds
-    val startScaleX = if (source != null && target != null && target.width > 0f) {
-        (source.width / target.width).coerceIn(0.08f, 1.15f)
-    } else 0.96f
-    val startScaleY = if (source != null && target != null && target.height > 0f) {
-        (source.height / target.height).coerceIn(0.08f, 1.15f)
-    } else 0.96f
-    val startTranslationX = if (source != null && target != null) {
-        source.center.x - target.center.x
-    } else 0f
-    val startTranslationY = if (source != null && target != null) {
-        source.center.y - target.center.y
-    } else 0f
     val tablet = controller.displaySettings?.isTablet == true || Utils.isTablet(context.resources)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Color.Black.copy(
-                    alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
-                ),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = controller::requestDismissLinkPreview,
-            ),
+    val imageOnly = state is CommentLinkPreviewOverlayState.Image
+    SharedTransformOverlay(
+        contentKey = state,
+        sourceBounds = state.sourceBounds,
+        dismissRequestVersion = controller.linkPreviewDismissRequest,
+        predictiveBackProgress = predictiveProgressAnimation.value,
+        predictiveBackEdge = controller.linkPreviewPredictiveBackEdge,
+        maxWidth = if (tablet) {
+            HarmonicDimens.compose_comment_action_tablet_max_width
+        } else {
+            HarmonicDimens.compose_comment_action_max_width
+        },
+        horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+        verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
+        shape = RoundedCornerShape(28.dp),
+        containerColor = if (imageOnly) {
+            Color.Transparent
+        } else {
+            HarmonicTheme.colors.surfaceContainerHigh
+        },
+        shadowElevation = if (imageOnly) 0.dp else 8.dp,
+        keepContentOpaqueWithSource = imageOnly,
+        consumeAllGestures = false,
+        onDismissRequest = controller::requestDismissLinkPreview,
+        onDismissAnimationFinished = controller::completeLinkPreviewDismiss,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(
-                    horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
-                    vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            val cardColor = when (state) {
-                is CommentLinkPreviewOverlayState.Reference -> HarmonicTheme.colors.surfaceContainerHigh
-                is CommentLinkPreviewOverlayState.Image -> Color.Transparent
-            }
-            Surface(
-                modifier = Modifier
-                    .widthIn(
-                        max = if (tablet) {
-                            HarmonicDimens.compose_comment_action_tablet_max_width
-                        } else {
-                            HarmonicDimens.compose_comment_action_max_width
-                        },
-                    )
-                    .fillMaxWidth()
-                    .onGloballyPositioned { targetBounds = it.boundsInWindow() }
-                    .graphicsLayer {
-                        val sharedScaleX = startScaleX + (1f - startScaleX) * progress
-                        val sharedScaleY = startScaleY + (1f - startScaleY) * progress
-                        val backScale = 1f - 0.1f * predictiveEased
-                        scaleX = sharedScaleX * backScale
-                        scaleY = sharedScaleY * backScale
-                        translationX = startTranslationX * (1f - progress) + backTranslationX
-                        translationY = startTranslationY * (1f - progress) + backTranslationY
-                        alpha = when {
-                            source == null -> progress
-                            state is CommentLinkPreviewOverlayState.Image -> 1f
-                            else -> max(0.7f, progress)
-                        }
-                        transformOrigin = TransformOrigin(
-                            if (backDirection > 0f) 0f else 1f,
-                            0.5f,
-                        )
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
-                shape = RoundedCornerShape(28.dp),
-                color = cardColor,
-                shadowElevation = if (state is CommentLinkPreviewOverlayState.Image) 0.dp else 8.dp,
-            ) {
-                when (state) {
-                    is CommentLinkPreviewOverlayState.Reference -> ReferencePreviewCard(
-                        controller = controller,
-                        state = state,
-                    )
-                    is CommentLinkPreviewOverlayState.Image -> ImageOnlyPreviewCard(state)
-                }
-            }
+        when (state) {
+            is CommentLinkPreviewOverlayState.Reference -> ReferencePreviewCard(
+                controller = controller,
+                state = state,
+            )
+            is CommentLinkPreviewOverlayState.Image -> ImageOnlyPreviewCard(state)
         }
     }
 }

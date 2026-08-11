@@ -26,7 +26,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,9 +84,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -104,7 +101,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -128,6 +124,13 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
+import com.simon.harmonichackernews.presentation.StoriesInteractionStore
+import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
+import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
+import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
+import com.simon.harmonichackernews.presentation.StoryPreviewOverlayState
+import com.simon.harmonichackernews.presentation.StoryScrollRequest
+import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -151,7 +154,8 @@ import kotlin.math.roundToInt
  * controller during this migration; adapter notifications are converted to immutable snapshots.
  */
 class StoriesComposeController private constructor(
-    private val defaultStoryHeightPx: Int,
+    defaultStoryHeightPx: Int,
+    private val savedItemState: SavedItemStateReader,
     internal val listener: Listener,
 ) {
     internal var mainStories by mutableStateOf<List<Story>>(emptyList())
@@ -163,10 +167,6 @@ class StoriesComposeController private constructor(
     internal var typeLabels by mutableStateOf<List<String>>(emptyList())
         private set
     internal var selectedTypeIndex by mutableIntStateOf(0)
-        private set
-    internal var searching by mutableStateOf(false)
-        private set
-    internal var searchDraft by mutableStateOf("")
         private set
     internal var lastSearch by mutableStateOf("")
         private set
@@ -234,8 +234,6 @@ class StoriesComposeController private constructor(
         private set
     internal var frontNextEnabled by mutableStateOf(false)
         private set
-    internal var frontDatePickerRequest by mutableStateOf<FrontDatePickerRequest?>(null)
-        private set
     internal var loggedIn by mutableStateOf(false)
         private set
     internal var canCache by mutableStateOf(false)
@@ -252,47 +250,44 @@ class StoriesComposeController private constructor(
         private set
     internal var contentInsetStartPx by mutableIntStateOf(0)
         private set
-    internal var predictiveBackActive by mutableStateOf(false)
-        private set
-    internal var predictiveBackProgress by mutableFloatStateOf(0f)
-        private set
-    internal var suppressSearchAutoFocus by mutableStateOf(false)
-        private set
-    internal var predictiveBackSettleRequest by mutableStateOf<PredictiveBackSettleRequest?>(null)
-        private set
     internal var contentVersion by mutableIntStateOf(0)
         private set
-    internal var scrollByRequest by mutableStateOf<ScrollByRequest?>(null)
-        private set
-    internal var headerPinnedForPreview by mutableStateOf(false)
-        private set
-    internal val storyPagingAlphas: Map<Int, Float>
-        field = mutableStateMapOf()
-    internal var storyPreviewOverlay by mutableStateOf<StoryPreviewOverlayState?>(null)
-        private set
-    internal var storyPreviewDismissRequest by mutableIntStateOf(0)
-        private set
-    internal var storyPreviewPredictiveBackProgress by mutableFloatStateOf(0f)
-        private set
-    internal var storyPreviewPredictiveBackEdge by mutableIntStateOf(0)
-        private set
-    internal var storyPreviewPredictiveBackTouchY by mutableFloatStateOf(0f)
-        private set
-    internal var storyPreviewPredictiveBackSettleRequest by
-        mutableStateOf<PredictiveBackSettleRequest?>(null)
-        private set
-    internal var storyPreviewVoteLoadingId by mutableIntStateOf(-1)
-        private set
-    internal var storyPreviewFavoriteLoadingId by mutableIntStateOf(-1)
-        private set
-    internal var visibleStoryPreviewId by mutableIntStateOf(-1)
-        private set
 
-    private var requestSerial = 0
+    private val interactionStore = StoriesInteractionStore(defaultStoryHeightPx)
+    private var interactionState by mutableStateOf(interactionStore.state)
     private val storyBounds = mutableMapOf<Int, Rect>()
-    private val storyItemHeights = mutableMapOf<Int, Int>()
     private val storyRevisions = mutableMapOf<Int, MutableIntState>()
-    private val suppressedStoryIds = mutableStateOf<Set<Int>>(emptySet())
+
+    internal val searching: Boolean get() = interactionState.searching
+    internal val searchDraft: String get() = interactionState.searchDraft
+    internal val frontDatePickerRequest: StoryFrontDatePickerRequest?
+        get() = interactionState.frontDatePickerRequest
+    internal val predictiveBackActive: Boolean get() = interactionState.predictiveBackActive
+    internal val predictiveBackProgress: Float get() = interactionState.predictiveBackProgress
+    internal val suppressSearchAutoFocus: Boolean get() = interactionState.suppressSearchAutoFocus
+    internal val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
+        get() = interactionState.predictiveBackSettleRequest
+    internal val scrollByRequest: StoryScrollRequest? get() = interactionState.scrollRequest
+    internal val headerPinnedForPreview: Boolean get() = interactionState.headerPinnedForPreview
+    internal val storyPagingAlphas: Map<Int, Float> get() = interactionState.storyPagingAlphas
+    internal val storyPreviewOverlay: StoryPreviewOverlayState?
+        get() = interactionState.storyPreviewOverlay
+    internal val storyPreviewDismissRequest: Int
+        get() = interactionState.storyPreviewDismissRequestVersion
+    internal val storyPreviewPredictiveBackProgress: Float
+        get() = interactionState.storyPreviewPredictiveBackProgress
+    internal val storyPreviewPredictiveBackEdge: Int
+        get() = interactionState.storyPreviewPredictiveBackEdge
+    internal val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
+        get() = interactionState.storyPreviewPredictiveBackSettleRequest
+    internal val storyPreviewVoteLoadingId: Int get() = interactionState.storyPreviewVoteLoadingId
+    internal val storyPreviewFavoriteLoadingId: Int
+        get() = interactionState.storyPreviewFavoriteLoadingId
+    internal val visibleStoryPreviewId: Int get() = interactionState.visibleStoryPreviewId
+
+    private fun syncInteractionState() {
+        interactionState = interactionStore.state
+    }
 
     fun updateContent(
         mainStories: List<Story>,
@@ -343,19 +338,13 @@ class StoriesComposeController private constructor(
         cacheProgressStatus: String,
         contentInsetStartPx: Int,
     ) {
-        val enteringSearch = !this.searching && searching
         this.mainStories = mainStories.toList()
         this.searchStories = searchStories.toList()
         this.displaySettings = displaySettings
         this.typeLabels = typeLabels.toList()
         this.selectedTypeIndex = selectedTypeIndex
-        this.searching = searching
         this.lastSearch = lastSearch
-        if (enteringSearch) {
-            searchDraft = lastSearch
-            suppressSearchAutoFocus = false
-        }
-        if (!searching && searchDraft.isNotEmpty()) searchDraft = ""
+        interactionStore.updateContent(mainStories, searchStories, searching, lastSearch)
         this.searchSortLabel = searchSortLabel
         this.searchDateLabel = searchDateLabel
         this.searchPointsLabel = searchPointsLabel
@@ -401,7 +390,7 @@ class StoriesComposeController private constructor(
             searchStories.forEach { add(it.id) }
         }
         storyRevisions.keys.retainAll(currentStoryIds)
-        storyItemHeights.keys.retainAll(currentStoryIds)
+        syncInteractionState()
         contentVersion++
     }
 
@@ -414,7 +403,8 @@ class StoriesComposeController private constructor(
         storyRevisions.getOrPut(storyId) { mutableIntStateOf(0) }.intValue
 
     fun updateSearchDraft(value: String) {
-        searchDraft = value
+        interactionStore.updateSearchDraft(value)
+        syncInteractionState()
     }
 
     fun cacheStories(storyCount: Int) {
@@ -424,85 +414,64 @@ class StoriesComposeController private constructor(
     }
 
     fun showFrontDatePicker(initialDay: Long, earliestDay: Long, latestDay: Long) {
-        frontDatePickerRequest = FrontDatePickerRequest(
-            initialDay = initialDay.coerceIn(earliestDay, latestDay),
-            earliestDay = earliestDay,
-            latestDay = latestDay,
-        )
+        interactionStore.showFrontDatePicker(initialDay, earliestDay, latestDay)
+        syncInteractionState()
     }
 
     internal fun dismissFrontDatePicker() {
-        frontDatePickerRequest = null
+        interactionStore.dismissFrontDatePicker()
+        syncInteractionState()
     }
 
     internal fun selectFrontDate(day: Long) {
-        val request = frontDatePickerRequest ?: return
-        frontDatePickerRequest = null
-        listener.onFrontDateSelected(day.coerceIn(request.earliestDay, request.latestDay))
+        val selectedDay = interactionStore.selectFrontDate(day) ?: return
+        syncInteractionState()
+        listener.onFrontDateSelected(selectedDay)
     }
 
     fun beginPredictiveBack(progress: Float) {
-        predictiveBackSettleRequest = null
-        suppressSearchAutoFocus = true
-        predictiveBackActive = true
-        predictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.beginPredictiveBack(progress)
+        syncInteractionState()
     }
 
     fun updatePredictiveBack(progress: Float) {
-        predictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.updatePredictiveBack(progress)
+        syncInteractionState()
     }
 
     fun cancelPredictiveBack() {
-        predictiveBackSettleRequest = PredictiveBackSettleRequest(
-            serial = ++requestSerial,
-            target = 0f,
-        )
+        interactionStore.settlePredictiveBack(target = 0f)
+        syncInteractionState()
     }
 
     fun commitPredictiveBack() {
-        predictiveBackSettleRequest = PredictiveBackSettleRequest(
-            serial = ++requestSerial,
-            target = 1f,
-        )
+        interactionStore.settlePredictiveBack(target = 1f)
+        syncInteractionState()
     }
 
-    internal fun endPredictiveBack(request: PredictiveBackSettleRequest? = null) {
-        if (request != null && predictiveBackSettleRequest != request) return
-        predictiveBackSettleRequest = null
-        predictiveBackActive = false
-        predictiveBackProgress = 0f
-        if (request?.target == 0f) suppressSearchAutoFocus = false
+    internal fun endPredictiveBack(request: StoryPredictiveBackSettleRequest? = null) {
+        interactionStore.endPredictiveBack(request)
+        syncInteractionState()
     }
 
     fun requestScrollBy(dy: Int) {
-        if (dy != 0) {
-            headerPinnedForPreview = true
-            val pendingDy = scrollByRequest?.dy ?: 0
-            scrollByRequest = ScrollByRequest(++requestSerial, pendingDy + dy)
-        }
+        interactionStore.requestScrollBy(dy)
+        syncInteractionState()
     }
 
     internal fun unpinPreviewHeader() {
-        headerPinnedForPreview = false
+        interactionStore.unpinPreviewHeader()
+        syncInteractionState()
     }
 
-    internal fun consumeScrollBy(request: ScrollByRequest) {
-        if (scrollByRequest == request) scrollByRequest = null
-    }
-
-    fun setStoryPagingAlphas(
-        firstStoryId: Int,
-        firstAlpha: Float,
-        secondStoryId: Int,
-        secondAlpha: Float,
-    ) {
-        storyPagingAlphas.clear()
-        if (firstStoryId > 0) storyPagingAlphas[firstStoryId] = firstAlpha
-        if (secondStoryId > 0) storyPagingAlphas[secondStoryId] = secondAlpha
+    internal fun consumeScrollBy(request: StoryScrollRequest) {
+        interactionStore.consumeScrollRequest(request)
+        syncInteractionState()
     }
 
     fun clearStoryPagingAlphas() {
-        storyPagingAlphas.clear()
+        interactionStore.clearStoryPagingAlphas()
+        syncInteractionState()
     }
 
     fun showStoryPreview(
@@ -511,22 +480,15 @@ class StoriesComposeController private constructor(
         cardColors: IntArray,
         openedStoryId: Int,
     ) {
-        if (stories.isEmpty() || stories.size != sourcePositions.size || stories.size != cardColors.size) {
-            return
-        }
-        val initialPage = stories.indexOfFirst { it.id == openedStoryId }.takeIf { it >= 0 } ?: 0
+        if (!interactionStore.showStoryPreview(
+                stories,
+                sourcePositions.toList(),
+                cardColors.toList(),
+                openedStoryId,
+            )
+        ) return
         requestStopStoryPreviewScroll()
-        storyPreviewDismissRequest = 0
-        storyPreviewPredictiveBackProgress = 0f
-        storyPreviewPredictiveBackSettleRequest = null
-        storyPreviewOverlay = StoryPreviewOverlayState(
-            stories = stories.toList(),
-            sourcePositions = sourcePositions.toList(),
-            cardColors = cardColors.toList(),
-            initialPage = initialPage,
-        )
-        visibleStoryPreviewId = stories[initialPage].id
-        suppressedStoryIds.value = setOf(stories[initialPage].id)
+        syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(true)
     }
 
@@ -542,31 +504,19 @@ class StoriesComposeController private constructor(
     fun getVisibleStoryPreviewId(): Int = visibleStoryPreviewId
 
     fun requestDismissStoryPreview() {
-        if (storyPreviewOverlay == null || storyPreviewDismissRequest != 0) return
-        storyPreviewDismissRequest = ++requestSerial
+        interactionStore.requestDismissStoryPreview()
+        syncInteractionState()
     }
 
     fun completeStoryPreviewDismiss() {
-        if (storyPreviewOverlay == null) return
-        storyPreviewOverlay = null
-        storyPreviewDismissRequest = 0
-        storyPreviewPredictiveBackProgress = 0f
-        storyPreviewPredictiveBackSettleRequest = null
-        storyPreviewVoteLoadingId = -1
-        storyPreviewFavoriteLoadingId = -1
-        visibleStoryPreviewId = -1
-        storyPagingAlphas.clear()
-        suppressedStoryIds.value = emptySet()
-        headerPinnedForPreview = false
+        if (!interactionStore.completeStoryPreviewDismiss()) return
+        syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(false)
     }
 
     fun startStoryPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
-        if (storyPreviewOverlay == null || storyPreviewDismissRequest != 0) return
-        storyPreviewPredictiveBackSettleRequest = null
-        storyPreviewPredictiveBackEdge = edge
-        storyPreviewPredictiveBackTouchY = touchY
-        storyPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f)
+        interactionStore.updateStoryPreviewPredictiveBack(progress, edge, touchY)
+        syncInteractionState()
     }
 
     fun updateStoryPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
@@ -574,11 +524,8 @@ class StoriesComposeController private constructor(
     }
 
     fun cancelStoryPreviewPredictiveBack() {
-        if (storyPreviewOverlay == null || storyPreviewPredictiveBackProgress <= 0f) return
-        storyPreviewPredictiveBackSettleRequest = PredictiveBackSettleRequest(
-            serial = ++requestSerial,
-            target = 0f,
-        )
+        interactionStore.cancelStoryPreviewPredictiveBack()
+        syncInteractionState()
     }
 
     fun isStoryPreviewPredictiveBackActive(): Boolean =
@@ -592,11 +539,10 @@ class StoriesComposeController private constructor(
     }
 
     internal fun finishStoryPreviewPredictiveBackSettle(
-        request: PredictiveBackSettleRequest,
+        request: StoryPredictiveBackSettleRequest,
     ) {
-        if (storyPreviewPredictiveBackSettleRequest != request) return
-        storyPreviewPredictiveBackProgress = request.target
-        storyPreviewPredictiveBackSettleRequest = null
+        interactionStore.finishStoryPreviewPredictiveBackSettle(request)
+        syncInteractionState()
     }
 
     internal fun sourceBoundsForStory(storyId: Int): Rect? =
@@ -607,51 +553,36 @@ class StoriesComposeController private constructor(
         upperPage: Int,
         offset: Float,
     ) {
-        val state = storyPreviewOverlay ?: return
-        val lower = state.stories.getOrNull(lowerPage) ?: return
-        val upper = state.stories.getOrNull(upperPage) ?: lower
-        suppressedStoryIds.value = emptySet()
-        setStoryPagingAlphas(
-            lower.id,
-            if (upperPage == lowerPage) 0f else offset.coerceIn(0f, 1f),
-            if (upperPage == lowerPage) -1 else upper.id,
-            if (upperPage == lowerPage) 1f else 1f - offset.coerceIn(0f, 1f),
-        )
+        interactionStore.updateStoryPreviewPagePosition(lowerPage, upperPage, offset)
+        syncInteractionState()
     }
 
     internal fun onStoryPreviewPageSettled(page: Int) {
-        val state = storyPreviewOverlay ?: return
-        visibleStoryPreviewId = state.stories.getOrNull(page)?.id ?: return
+        interactionStore.settleStoryPreviewPage(page)
+        syncInteractionState()
     }
 
     internal fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
-        val state = storyPreviewOverlay ?: return
-        val story = state.stories.getOrNull(page) ?: return
-        val sourcePosition = state.sourcePositions.getOrNull(page) ?: return
-        if (!listener.onStoryPreviewNavigate(story, sourcePosition, showWebsite)) {
-            requestDismissStoryPreview()
+        val target = interactionStore.storyPreviewTarget(page) ?: return
+        if (!listener.onStoryPreviewNavigate(target.story, target.sourcePosition, showWebsite)) {
+            interactionStore.requestDismissStoryPreview()
+            syncInteractionState()
         }
     }
 
     internal fun onStoryPreviewAction(page: Int, action: Int) {
-        val state = storyPreviewOverlay ?: return
-        val story = state.stories.getOrNull(page) ?: return
-        val sourcePosition = state.sourcePositions.getOrNull(page) ?: return
-        if (action == STORY_PREVIEW_ACTION_VOTE) storyPreviewVoteLoadingId = story.id
-        if (action == STORY_PREVIEW_ACTION_FAVORITE) storyPreviewFavoriteLoadingId = story.id
-        listener.onStoryPreviewAction(story, sourcePosition, action)
+        val kind = previewActionKind(action) ?: return
+        val target = interactionStore.beginStoryPreviewAction(page, kind) ?: return
+        syncInteractionState()
+        listener.onStoryPreviewAction(target.story, target.sourcePosition, action)
         if (action == STORY_PREVIEW_ACTION_READ || action == STORY_PREVIEW_ACTION_BOOKMARK) {
             contentVersion++
         }
     }
 
     fun finishStoryPreviewAction(storyId: Int, action: Int) {
-        if (action == STORY_PREVIEW_ACTION_VOTE && storyPreviewVoteLoadingId == storyId) {
-            storyPreviewVoteLoadingId = -1
-        }
-        if (action == STORY_PREVIEW_ACTION_FAVORITE && storyPreviewFavoriteLoadingId == storyId) {
-            storyPreviewFavoriteLoadingId = -1
-        }
+        previewActionKind(action)?.let { interactionStore.finishStoryPreviewAction(storyId, it) }
+        syncInteractionState()
         contentVersion++
     }
 
@@ -660,26 +591,7 @@ class StoriesComposeController private constructor(
     }
 
     fun getStoryPagingDistance(firstStoryId: Int, secondStoryId: Int): Int {
-        val activeStories = if (searching) searchStories else mainStories
-        val first = activeStories.indexOfFirst { it.id == firstStoryId }
-        val second = activeStories.indexOfFirst { it.id == secondStoryId }
-        if (first < 0 || second < 0 || first == second) return averageStoryHeight()
-        val start = minOf(first, second)
-        val end = maxOf(first, second)
-        return (start until end).sumOf { index ->
-            storyItemHeights[activeStories[index].id]
-                ?.coerceAtLeast(1)
-                ?: averageStoryHeight()
-        }
-    }
-
-    private fun averageStoryHeight(): Int {
-        val heights = storyItemHeights.values.filter { it > 0 }
-        return if (heights.isEmpty()) {
-            defaultStoryHeightPx
-        } else {
-            heights.sum() / heights.size
-        }
+        return interactionStore.getStoryPagingDistance(firstStoryId, secondStoryId)
     }
 
     internal fun updateStoryBounds(storyId: Int, bounds: Rect) {
@@ -688,21 +600,26 @@ class StoriesComposeController private constructor(
     }
 
     internal fun updateStoryItemHeight(storyId: Int, heightPx: Int) {
-        if (heightPx <= 0) return
-        if (storyItemHeights[storyId] != heightPx) storyItemHeights[storyId] = heightPx
+        interactionStore.updateStoryItemHeight(storyId, heightPx)
     }
 
-    internal fun isStorySuppressed(storyId: Int): Boolean = storyId in suppressedStoryIds.value
+    internal fun isStorySuppressed(storyId: Int): Boolean =
+        storyId in interactionState.suppressedStoryIds
 
-    data class ScrollByRequest(val serial: Int, val dy: Int)
+    internal fun isBookmarked(storyId: Int): Boolean = savedItemState.isBookmarked(storyId)
 
-    data class PredictiveBackSettleRequest(val serial: Int, val target: Float)
+    internal fun isFavorited(storyId: Int): Boolean = savedItemState.isFavorited(storyId)
 
-    data class FrontDatePickerRequest(
-        val initialDay: Long,
-        val earliestDay: Long,
-        val latestDay: Long,
-    )
+    internal fun isUpvoted(storyId: Int): Boolean =
+        savedItemState.isUpvoted(storyId, isComment = false)
+
+    private fun previewActionKind(action: Int): StoryPreviewActionKind? = when (action) {
+        STORY_PREVIEW_ACTION_VOTE -> StoryPreviewActionKind.Vote
+        STORY_PREVIEW_ACTION_READ -> StoryPreviewActionKind.Read
+        STORY_PREVIEW_ACTION_BOOKMARK -> StoryPreviewActionKind.Bookmark
+        STORY_PREVIEW_ACTION_FAVORITE -> StoryPreviewActionKind.Favorite
+        else -> null
+    }
 
     interface Listener {
         fun onTypeSelected(index: Int)
@@ -757,23 +674,18 @@ class StoriesComposeController private constructor(
         @JvmStatic
         fun create(
             activity: ComponentActivity,
+            savedItemState: SavedItemStateReader,
             listener: Listener,
         ): StoriesComposeController {
             return StoriesComposeController(
                 defaultStoryHeightPx = (96f * activity.resources.displayMetrics.density)
                     .roundToInt(),
+                savedItemState = savedItemState,
                 listener = listener,
             )
         }
     }
 }
-
-internal data class StoryPreviewOverlayState(
-    val stories: List<Story>,
-    val sourcePositions: List<Int>,
-    val cardColors: List<Int>,
-    val initialPage: Int,
-)
 
 private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
@@ -782,17 +694,6 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
     val searchState = rememberLazyListState()
-    val progress = controller.predictiveBackProgress.coerceIn(0f, 1f)
-    val predictive = controller.predictiveBackActive
-    val standardSearchProgress by animateFloatAsState(
-        targetValue = if (controller.searching) 1f else 0f,
-        animationSpec = if (!controller.searching && controller.suppressSearchAutoFocus) {
-            androidx.compose.animation.core.snap()
-        } else {
-            tween(180, easing = StoriesEasing)
-        },
-        label = "stories search transition",
-    )
 
     val settleRequest = controller.predictiveBackSettleRequest
     LaunchedEffect(settleRequest?.serial) {
@@ -824,31 +725,13 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
-    ) {
-        val predictiveSearchFade = (progress / 0.5f).coerceIn(0f, 1f)
-        val predictiveMainFade = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
-        val searchAlpha = if (predictive) 1f - predictiveSearchFade else standardSearchProgress
-        val mainAlpha = if (predictive) predictiveMainFade else 1f - standardSearchProgress
-        val mainActive = !predictive && !controller.searching
-        val searchActive = !predictive && controller.searching
-
-        StableStoriesLayer(
-            active = mainActive,
-            modifier = Modifier
-                .zIndex(if (mainActive) 1f else 0f)
-                .graphicsLayer {
-                    alpha = mainAlpha
-                    translationY = if (predictive) {
-                        24.dp.toPx() * (1f - predictiveMainFade)
-                    } else {
-                        24.dp.toPx() * standardSearchProgress
-                    }
-                },
-        ) {
+    SharedStoriesRoot(
+        searching = controller.searching,
+        suppressSearchAutoFocus = controller.suppressSearchAutoFocus,
+        predictiveBackActive = controller.predictiveBackActive,
+        predictiveBackProgress = controller.predictiveBackProgress,
+        backgroundColor = HarmonicTheme.colors.background,
+        mainLayer = {
             StoriesList(
                 controller = controller,
                 settings = settings,
@@ -856,21 +739,8 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
                 listState = mainState,
                 searchMode = false,
             )
-        }
-
-        StableStoriesLayer(
-            active = searchActive,
-            modifier = Modifier
-                .zIndex(if (searchActive) 1f else 0f)
-                .graphicsLayer {
-                    alpha = searchAlpha
-                    translationY = if (predictive) {
-                        24.dp.toPx() * predictiveSearchFade
-                    } else {
-                        24.dp.toPx() * (1f - standardSearchProgress)
-                    }
-                },
-        ) {
+        },
+        searchLayer = {
             StoriesList(
                 controller = controller,
                 settings = settings,
@@ -878,35 +748,39 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
                 listState = searchState,
                 searchMode = true,
             )
-        }
-
-        AnimatedVisibility(
-            visible = controller.showUpdate && !controller.searching,
-            enter = fadeIn(tween(180, easing = StoriesEasing)),
-            exit = fadeOut(tween(140, easing = StoriesEasing)),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(2f)
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp),
-        ) {
-            ExtendedFloatingActionButton(
-                onClick = controller.listener::onRefresh,
-                modifier = Modifier.widthIn(min = 189.dp),
-                containerColor = HarmonicTheme.colors.overlayButton,
-                contentColor = Color.White,
-                icon = {
-                    Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
-                },
-                text = {
-                    Text(
-                        "Tap to update",
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-            )
-        }
-    }
+        },
+        overlay = {
+            AnimatedVisibility(
+                visible = controller.showUpdate && !controller.searching,
+                enter = fadeIn(tween(180, easing = StoriesEasing)),
+                exit = fadeOut(tween(140, easing = StoriesEasing)),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(2f)
+                    .padding(
+                        bottom = WindowInsets.navigationBars.asPaddingValues()
+                            .calculateBottomPadding() + 8.dp,
+                    ),
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = controller.listener::onRefresh,
+                    modifier = Modifier.widthIn(min = 189.dp),
+                    containerColor = HarmonicTheme.colors.overlayButton,
+                    contentColor = Color.White,
+                    icon = {
+                        Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
+                    },
+                    text = {
+                        Text(
+                            "Tap to update",
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                )
+            }
+        },
+    )
 
     controller.frontDatePickerRequest?.let { request ->
         FrontPageDatePickerDialog(
@@ -918,33 +792,8 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
 }
 
 @Composable
-private fun StableStoriesLayer(
-    active: Boolean,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Box(modifier.fillMaxSize()) {
-        content()
-        if (!active) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            do {
-                                val event = awaitPointerEvent()
-                                event.changes.forEach { it.consume() }
-                            } while (event.changes.any { it.pressed })
-                        }
-                    },
-            )
-        }
-    }
-}
-
-@Composable
 private fun FrontPageDatePickerDialog(
-    request: StoriesComposeController.FrontDatePickerRequest,
+    request: StoryFrontDatePickerRequest,
     onDismiss: () -> Unit,
     onSelected: (Long) -> Unit,
 ) {

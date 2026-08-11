@@ -751,6 +751,7 @@ class CommentsCoordinator(
             story!!,
             showWebsite,
             username,
+            savedItemActions,
             object : CommentsComposeController.Listener {
                 override fun onToggleComment(comment: Comment, position: Int) {
                     toggleCommentExpanded(comment, position)

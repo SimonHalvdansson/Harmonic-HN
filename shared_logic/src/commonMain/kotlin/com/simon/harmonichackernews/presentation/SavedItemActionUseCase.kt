@@ -28,6 +28,15 @@ sealed interface SavedItemActionOutcome {
     ) : SavedItemActionOutcome
 }
 
+/** Read-only saved-item state exposed to presentation controllers. */
+interface SavedItemStateReader {
+    fun isBookmarked(itemId: Int): Boolean
+
+    fun isFavorited(itemId: Int): Boolean
+
+    fun isUpvoted(itemId: Int, isComment: Boolean): Boolean
+}
+
 /**
  * Owns bookmark state and the optimistic persistence/rollback transaction for HN actions.
  * UI layers only decide how to render the pending and completed states.
@@ -37,14 +46,14 @@ class SavedItemActionUseCase(
     private val nowMillis: () -> Long,
     private val voteRequest: suspend (itemId: Int, direction: String) -> HackerNewsActionResult,
     private val favoriteRequest: suspend (itemId: Int, favorite: Boolean) -> HackerNewsActionResult,
-) {
-    fun isBookmarked(itemId: Int): Boolean =
+) : SavedItemStateReader {
+    override fun isBookmarked(itemId: Int): Boolean =
         repository.contains(SavedItemSource.BOOKMARKS, itemId)
 
-    fun isFavorited(itemId: Int): Boolean =
+    override fun isFavorited(itemId: Int): Boolean =
         repository.contains(SavedItemSource.FAVORITES, itemId)
 
-    fun isUpvoted(itemId: Int, isComment: Boolean): Boolean =
+    override fun isUpvoted(itemId: Int, isComment: Boolean): Boolean =
         if (isComment) {
             itemId in repository.loadCommentIds(SavedItemSource.UPVOTED)
         } else {

@@ -23,8 +23,6 @@ import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.data.Bookmark
-import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheIndex
 import com.simon.harmonichackernews.network.JSONParser
@@ -35,16 +33,9 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
-import java.math.BigDecimal
-import java.text.NumberFormat
-import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import com.simon.harmonichackernews.settings.UserTagCodec
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.data.SavedItemKeys
-import com.simon.harmonichackernews.data.SavedItemSource
-import com.simon.harmonichackernews.data.SavedItemsRepository
 
 object Utils {
     const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
@@ -62,8 +53,6 @@ object Utils {
     const val GLOBAL_SHARED_PREFERENCES_KEY: String =
         "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY"
 
-    const val KEY_SHARED_PREFERENCES_BOOKMARKS: String =
-        SavedItemKeys.BOOKMARKS
     const val KEY_SHARED_PREFERENCES_USER_TAGS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_USER_TAGS"
     const val KEY_SHARED_PREFERENCES_FIRST_TIME: String =
@@ -72,14 +61,6 @@ object Utils {
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN"
     const val KEY_SHARED_PREFERENCES_LAST_VERSION: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
-    const val KEY_SHARED_PREFERENCES_FAVORITES: String =
-        SavedItemKeys.FAVORITES
-    const val KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS: String =
-        SavedItemKeys.FAVORITE_COMMENTS
-    const val KEY_SHARED_PREFERENCES_UPVOTED: String =
-        SavedItemKeys.UPVOTED
-    const val KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS: String =
-        SavedItemKeys.UPVOTED_COMMENTS
 
     const val KEY_NIGHTTIME_FROM_HOUR: String =
         "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
@@ -683,194 +664,6 @@ object Utils {
         return story
     }
 
-    fun loadBookmarks(
-        ctx: Context,
-        sorted: Boolean
-    ): ArrayList<Bookmark> {
-        return SavedItemCodec.toBookmarks(
-            savedItems(ctx).loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = sorted),
-        )
-    }
-
-    fun loadBookmarks(
-        sorted: Boolean,
-        bookmarksString: String?
-    ): ArrayList<Bookmark> {
-        return SavedItemCodec.toBookmarks(SavedItemCodec.decode(bookmarksString, sorted))
-    }
-
-    fun isBookmarked(ctx: Context, id: Int): Boolean {
-        return savedItems(ctx).contains(SavedItemSource.BOOKMARKS, id)
-    }
-
-    fun saveBookmarks(
-        ctx: Context,
-        bookmarks: ArrayList<Bookmark>
-    ) {
-        savedItems(ctx).saveItems(
-            SavedItemSource.BOOKMARKS,
-            SavedItemCodec.fromBookmarks(bookmarks),
-        )
-    }
-
-    fun addBookmark(ctx: Context, id: Int) {
-        savedItems(ctx).setMembership(
-            SavedItemSource.BOOKMARKS,
-            id,
-            present = true,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    fun removeBookmark(ctx: Context, id: Int) {
-        savedItems(ctx).setMembership(
-            SavedItemSource.BOOKMARKS,
-            id,
-            present = false,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    fun loadFavorites(
-        ctx: Context,
-        sorted: Boolean
-    ): ArrayList<Bookmark> {
-        return loadSavedItemList(ctx, SavedItemSource.FAVORITES, sorted)
-    }
-
-    fun loadUpvoted(
-        ctx: Context,
-        sorted: Boolean
-    ): ArrayList<Bookmark> {
-        return loadSavedItemList(ctx, SavedItemSource.UPVOTED, sorted)
-    }
-
-    fun loadFavoriteCommentIds(ctx: Context): MutableSet<Int> {
-        return savedItems(ctx).loadCommentIds(SavedItemSource.FAVORITES).toMutableSet()
-    }
-
-    fun loadUpvotedCommentIds(ctx: Context): MutableSet<Int> {
-        return savedItems(ctx).loadCommentIds(SavedItemSource.UPVOTED).toMutableSet()
-    }
-
-    private fun loadSavedItemList(
-        ctx: Context,
-        source: SavedItemSource,
-        sorted: Boolean
-    ): ArrayList<Bookmark> {
-        val items = if (sorted) {
-            savedItems(ctx).loadItemsByDescendingId(source)
-        } else {
-            savedItems(ctx).loadItems(source)
-        }
-        return SavedItemCodec.toBookmarks(items)
-    }
-
-    fun isFavorited(ctx: Context, id: Int): Boolean {
-        return savedItems(ctx).contains(SavedItemSource.FAVORITES, id)
-    }
-
-    fun isUpvoted(ctx: Context, id: Int, comment: Boolean): Boolean {
-        if (comment) {
-            return id in savedItems(ctx).loadCommentIds(SavedItemSource.UPVOTED)
-        }
-        return savedItems(ctx).contains(SavedItemSource.UPVOTED, id)
-    }
-
-    fun saveFavorites(
-        ctx: Context,
-        favorites: ArrayList<Bookmark>
-    ) {
-        savedItems(ctx).saveItems(
-            SavedItemSource.FAVORITES,
-            SavedItemCodec.fromBookmarks(favorites),
-        )
-    }
-
-    fun saveFavoriteIds(ctx: Context, ids: List<Int>) {
-        savedItems(ctx).saveIds(
-            SavedItemSource.FAVORITES,
-            ids,
-            System.currentTimeMillis(),
-        )
-    }
-
-    fun saveFavoriteCommentIds(
-        ctx: Context,
-        ids: Set<Int>
-    ) {
-        savedItems(ctx).saveCommentIds(SavedItemSource.FAVORITES, ids)
-    }
-
-    fun saveUpvotedIds(ctx: Context, ids: List<Int>) {
-        savedItems(ctx).saveIds(
-            SavedItemSource.UPVOTED,
-            ids,
-            System.currentTimeMillis(),
-        )
-    }
-
-    fun saveUpvotedCommentIds(
-        ctx: Context,
-        ids: Set<Int>
-    ) {
-        savedItems(ctx).saveCommentIds(SavedItemSource.UPVOTED, ids)
-    }
-
-    fun addFavorite(ctx: Context, id: Int) {
-        savedItems(ctx).setMembership(
-            SavedItemSource.FAVORITES,
-            id,
-            present = true,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    fun setFavorite(ctx: Context, id: Int, favorite: Boolean) {
-        if (favorite) {
-            addFavorite(ctx, id)
-        } else {
-            removeFavorite(ctx, id)
-        }
-    }
-
-    fun removeFavorite(ctx: Context, id: Int) {
-        savedItems(ctx).setMembership(
-            SavedItemSource.FAVORITES,
-            id,
-            present = false,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    fun setUpvoted(
-        ctx: Context,
-        id: Int,
-        comment: Boolean,
-        upvoted: Boolean
-    ) {
-        if (comment) {
-            savedItems(ctx).setCommentMembership(SavedItemSource.UPVOTED, id, upvoted)
-            return
-        }
-        savedItems(ctx).setMembership(
-            SavedItemSource.UPVOTED,
-            id,
-            present = upvoted,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    private fun savedItems(ctx: Context): SavedItemsRepository =
-        SavedItemsRepository(AndroidKeyValueStore.global(ctx))
-
-    fun getThousandSeparatedString(n: Int): String {
-        val bd = BigDecimal(n)
-        val formatter = NumberFormat.getInstance(Locale.US)
-
-        return formatter.format(bd.toLong())
-    }
-
     fun getUserTags(ctx: Context): MutableMap<String, String> {
         return readUserTags(ctx, true)
     }
@@ -957,10 +750,6 @@ object Utils {
             return true
         }
         return false
-    }
-
-    fun getTimeAgo(time: Long): String {
-        return RelativeTimeFormatter.format(time, System.currentTimeMillis())
     }
 
     fun isOnWiFi(ctx: Context): Boolean {
@@ -1118,22 +907,6 @@ object Utils {
         return typedValue.data
     }
 
-    @Throws(IOException::class)
-    fun writeInFile(ctx: Context, uri: Uri, text: String?) {
-        val outputStream = checkNotNull(ctx.contentResolver.openOutputStream(uri))
-        outputStream.bufferedWriter().use { writer -> writer.write(text) }
-    }
-
-    @Throws(IOException::class)
-    fun readFileContent(ctx: Context, uri: Uri): String {
-        val inputStream = checkNotNull(ctx.contentResolver.openInputStream(uri))
-        return inputStream.bufferedReader().use { reader ->
-            buildString {
-                reader.forEachLine(::append)
-            }
-        }
-    }
-
     fun setNighttimeHours(
         fromHour: Int,
         fromMinute: Int,
@@ -1275,11 +1048,4 @@ object Utils {
             ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
 
-    fun linkify(input: String?): String? {
-        return HtmlTextUtils.linkify(input)
-    }
-
-    fun expandShortenedAnchorText(inputHtml: String?): String? {
-        return HtmlTextUtils.expandShortenedAnchorText(inputHtml)
-    }
 }
