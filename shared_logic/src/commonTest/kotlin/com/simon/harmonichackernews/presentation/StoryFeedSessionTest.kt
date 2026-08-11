@@ -33,23 +33,19 @@ class StoryFeedSessionTest {
     }
 
     @Test
-    fun aNewGenerationInvalidatesLoadsAndPaginationFromTheOldGeneration() {
+    fun aNewGenerationInvalidatesLoadsFromTheOldGeneration() {
         val session = StoryFeedLoadSession(staleLoadMillis = 1_000)
         val firstGeneration = session.beginGeneration()
         val startedAt = session.markStoryStarted(storyId = 1, nowMillis = 10)
-        val stories = listOf(story(id = 1), story(id = 2), story(id = 3, loaded = true))
 
         assertTrue(session.isCurrent(firstGeneration))
         assertTrue(session.isCurrentStoryLoad(1, startedAt))
-        assertEquals(setOf(1, 2), session.beginPagination(stories, -1, 2, firstGeneration))
 
         val nextGeneration = session.beginGeneration()
 
         assertFalse(session.isCurrent(firstGeneration))
         assertTrue(session.isCurrent(nextGeneration))
         assertFalse(session.isCurrentStoryLoad(1, startedAt))
-        assertFalse(session.hasPendingPaginationStories())
-        assertFalse(session.finishPaginationStory(1, firstGeneration))
     }
 
     @Test

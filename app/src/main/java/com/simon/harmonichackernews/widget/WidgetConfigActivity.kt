@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.utils.ThemeUtils.setupTheme
-import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.widget.WidgetConfigComposeHost.install
 
 class WidgetConfigActivity : ComponentActivity() {
@@ -69,8 +69,8 @@ class WidgetConfigActivity : ComponentActivity() {
             val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             return prefs.getString(
                 KEY_FEED_TYPE_PREFIX + appWidgetId,
-                Utils.URL_TOP
-            ) ?: Utils.URL_TOP
+                StoryType.TOP_STORIES.hackerNewsUrl
+            ) ?: checkNotNull(StoryType.TOP_STORIES.hackerNewsUrl)
         }
 
         fun getFeedName(context: Context, appWidgetId: Int): String? {

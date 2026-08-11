@@ -8,6 +8,17 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun themeSemanticsArePortable() {
+        assertTrue(ThemePreferences.isAutomatic(ThemePreferences.DEFAULT))
+        assertTrue(ThemePreferences.isDark("amoled"))
+        assertEquals("gray", ThemePreferences.selectableNighttimeTheme("gray"))
+        assertEquals(
+            ThemePreferences.DEFAULT_NIGHTTIME,
+            ThemePreferences.selectableNighttimeTheme("material_daynight"),
+        )
+    }
+
+    @Test
     fun defaultsMatchExistingAndroidBehaviour() {
         val settings = StoredUserSettings(TestKeyValueStore(), emptyFlow())
 
@@ -16,9 +27,14 @@ class StoredUserSettingsTest {
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals("Top Stories", settings.story.preferredStoryType)
         assertTrue(settings.comments.showHeaderPreviewImage)
+        assertTrue(settings.comments.animateChanges)
+        assertTrue(settings.comments.smoothScroll)
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
+        assertEquals(18, settings.reading.readerModeFontSize)
+        assertTrue(settings.reading.previewGithub)
         assertEquals(20, settings.cache.storiesToCache)
+        assertTrue(settings.general.bookmarksEnabled)
     }
 
     @Test
@@ -31,6 +47,9 @@ class StoredUserSettingsTest {
                 UserPreferenceKeys.STORIES_TO_CACHE to 202,
                 UserPreferenceKeys.FAVICON_PROVIDER to "unknown",
                 UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE to "unexpected",
+                UserPreferenceKeys.READER_MODE_FONT_SIZE to 500,
+                UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS to
+                    " https://Example.com/path, https://example.com ",
             ),
         )
         val settings = StoredUserSettings(store, emptyFlow())
@@ -41,6 +60,8 @@ class StoredUserSettingsTest {
         assertEquals(200, settings.cache.storiesToCache)
         assertEquals(FaviconPreferences.GOOGLE, settings.story.faviconProvider)
         assertEquals("small", settings.story.previewImageMode)
+        assertEquals(24, settings.reading.readerModeFontSize)
+        assertEquals(listOf("example.com"), settings.reading.archiveRedirectDomains)
     }
 
     @Test

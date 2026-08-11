@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import kotlinx.coroutines.flow.Flow
 
 /** Preference keys consumed by common settings snapshots. */
@@ -51,6 +52,10 @@ object UserPreferenceKeys {
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
     const val COLLAPSE_TOP_LEVEL = "pref_collapse_top_level"
     const val COMMENT_SORTING = "pref_comment_sorting"
+    const val COMMENTS_SCROLLBAR = "pref_comments_scrollbar"
+    const val COMMENTS_ANIMATION = "pref_comments_animation"
+    const val COMMENTS_SMOOTH_SCROLL = "pref_comments_animation_navigation"
+    const val COMMENTS_VOLUME_NAVIGATION = "pref_comments_volume_navigation"
 
     const val WEBVIEW = "pref_webview"
     const val PRELOAD_WEBVIEW = "pref_preload_webview"
@@ -62,6 +67,22 @@ object UserPreferenceKeys {
     const val CLOSE_WEBVIEW_ON_BACK = "pref_close_webview_on_back"
     const val COMMENTS_PROVIDER = "pref_comments_provider"
     const val STORIES_TO_CACHE = "pref_stories_to_cache"
+    const val READER_MODE_FONT = "pref_webview_reader_mode_font"
+    const val READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size"
+    const val EXTERNAL_BROWSER = "pref_external_browser"
+    const val REDIRECT_NITTER = "pref_redirect_nitter"
+    const val ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains"
+    const val LINK_PREVIEW_ARXIV = "pref_link_preview_arxiv"
+    const val LINK_PREVIEW_GITHUB = "pref_link_preview_github"
+    const val LINK_PREVIEW_GITLAB = "pref_link_preview_gitlab"
+    const val LINK_PREVIEW_STACK_EXCHANGE = "pref_link_preview_stack_exchange"
+    const val LINK_PREVIEW_WIKIPEDIA = "pref_link_preview_wikipedia"
+    const val LINK_PREVIEW_X = "pref_link_preview_x"
+
+    const val BOOKMARKS_ENABLED = "pref_bookmarks_enabled"
+    const val TRANSPARENT_STATUS_BAR = "pref_transparent_status_bar"
+    const val SPECIAL_NIGHTTIME = "pref_special_nighttime"
+    const val SHOW_CHANGELOG = "pref_show_changelog"
 }
 
 /**
@@ -144,6 +165,13 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
                 sorting = string(UserPreferenceKeys.COMMENT_SORTING, "Default"),
+                showScrollbar = boolean(UserPreferenceKeys.COMMENTS_SCROLLBAR, false),
+                animateChanges = boolean(UserPreferenceKeys.COMMENTS_ANIMATION, true),
+                smoothScroll = boolean(UserPreferenceKeys.COMMENTS_SMOOTH_SCROLL, true),
+                volumeNavigationMode = string(
+                    UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION,
+                    "disabled",
+                ),
             )
         }
 
@@ -165,6 +193,26 @@ class StoredUserSettings(
                 blockAds = boolean(UserPreferenceKeys.WEBVIEW_ADBLOCK, false),
                 closeWebViewOnBack = boolean(UserPreferenceKeys.CLOSE_WEBVIEW_ON_BACK, false),
                 useAlgoliaApi = string(UserPreferenceKeys.COMMENTS_PROVIDER, "algolia") == "algolia",
+                readerModeFont = TextPreferences.sanitizeFont(
+                    string(UserPreferenceKeys.READER_MODE_FONT, "googlesansflexrounded"),
+                ),
+                readerModeFontSize = TextPreferences.clampReaderModeFontSize(
+                    integer(UserPreferenceKeys.READER_MODE_FONT_SIZE, 18),
+                ),
+                externalBrowser = boolean(UserPreferenceKeys.EXTERNAL_BROWSER, false),
+                redirectNitter = boolean(UserPreferenceKeys.REDIRECT_NITTER, false),
+                archiveRedirectDomains = ArchiveRedirectPolicy.parseDomains(
+                    string(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, ""),
+                ),
+                previewArxiv = boolean(UserPreferenceKeys.LINK_PREVIEW_ARXIV, true),
+                previewGithub = boolean(UserPreferenceKeys.LINK_PREVIEW_GITHUB, true),
+                previewGitlab = boolean(UserPreferenceKeys.LINK_PREVIEW_GITLAB, true),
+                previewStackExchange = boolean(
+                    UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE,
+                    true,
+                ),
+                previewWikipedia = boolean(UserPreferenceKeys.LINK_PREVIEW_WIKIPEDIA, true),
+                previewX = boolean(UserPreferenceKeys.LINK_PREVIEW_X, false),
             )
         }
 
@@ -174,6 +222,14 @@ class StoredUserSettings(
                 integer(UserPreferenceKeys.STORIES_TO_CACHE, StoryCachePreferences.DEFAULT_COUNT),
             ),
             cacheArticleSnapshots = boolean(UserPreferenceKeys.WEBVIEW, true),
+        )
+
+    override val general: GeneralPreferences
+        get() = GeneralPreferences(
+            bookmarksEnabled = boolean(UserPreferenceKeys.BOOKMARKS_ENABLED, true),
+            transparentStatusBar = boolean(UserPreferenceKeys.TRANSPARENT_STATUS_BAR, false),
+            specialNighttimeTheme = boolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false),
+            showChangelog = boolean(UserPreferenceKeys.SHOW_CHANGELOG, true),
         )
 
     private fun paletteTintConfigKey(): String = PaletteTintPreferences.configKey(

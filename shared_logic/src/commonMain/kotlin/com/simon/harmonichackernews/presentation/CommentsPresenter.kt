@@ -65,7 +65,6 @@ sealed interface CommentsAction {
     data class SetStoryFavoriteLoading(val loading: Boolean) : CommentsAction
     data class RequestCommentActions(val comment: Comment) : CommentsAction
     data class LoadThread(
-        val requestId: Int,
         val storyId: Int,
         val useAlgolia: Boolean,
         val filteredUsers: Set<String>,
@@ -121,6 +120,7 @@ class CommentsPresenter(
     private val mutableEffects = MutableSharedFlow<CommentsEffect>(extraBufferCapacity = 8)
     val effects: SharedFlow<CommentsEffect> = mutableEffects.asSharedFlow()
     private var threadLoadJob: Job? = null
+    private val threadLoadSession = KeyedRequestSession<Int>()
 
     init {
         scope.launch { thread.state.collect { publish(thread = it) } }
@@ -176,12 +176,17 @@ class CommentsPresenter(
             CommentsAction.CancelThreadLoad -> {
                 threadLoadJob?.cancel()
                 threadLoadJob = null
+                threadLoadSession.invalidate()
             }
         }
     }
 
+    fun isCurrentThreadLoad(requestId: Int, storyId: Int): Boolean =
+        threadLoadSession.isCurrent(requestId, storyId)
+
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
+        val requestId = threadLoadSession.begin(action.storyId)
         threadLoadJob = scope.launch {
             action.previousResponse?.let { cachedResponse ->
                 runCatching {
@@ -193,7 +198,7 @@ class CommentsPresenter(
                 }.getOrNull()?.let { parsed ->
                     mutableEffects.emit(
                         CommentsEffect.CachedThreadParsed(
-                            action.requestId,
+                            requestId,
                             action.storyId,
                             cachedResponse,
                             parsed,
@@ -210,7 +215,7 @@ class CommentsPresenter(
             )
             mutableEffects.emit(
                 CommentsEffect.ThreadLoaded(
-                    action.requestId,
+                    requestId,
                     action.storyId,
                     result,
                     action.previousResponse,

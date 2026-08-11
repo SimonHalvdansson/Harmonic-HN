@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,6 +7,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.SettingsUtils
 
 @Composable
@@ -16,28 +17,29 @@ fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
+    val reading = AndroidUserSettings.get(context).reading
     val state = WebLinksSettingsUiState(
-        integratedWebView = prefs.getBoolean("pref_webview", true),
-        closeWebViewOnBack = prefs.getBoolean("pref_close_webview_on_back", false),
-        preloadSummary = preloadSummary(context),
-        matchWebViewTheme = prefs.getBoolean("pref_webview_match_theme", false),
-        blockWebViewAds = prefs.getBoolean("pref_webview_adblock", false),
-        readerModeEnabled = prefs.getBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED, true),
-        readerModeDefault = prefs.getBoolean(SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT, false),
+        integratedWebView = reading.integratedWebView,
+        closeWebViewOnBack = reading.closeWebViewOnBack,
+        preloadSummary = preloadSummary(reading.preloadWebViewMode, reading.preloadWebViewMinimumBattery),
+        matchWebViewTheme = reading.matchWebViewTheme,
+        blockWebViewAds = reading.blockAds,
+        readerModeEnabled = reading.readerModeEnabled,
+        readerModeDefault = reading.readerModeDefault,
         readerModeFontLabel = SettingsUtils.getPreferredReaderModeFontLabel(context).orEmpty(),
-        readerModeFontSize = SettingsUtils.getReaderModeFontSize(context),
+        readerModeFontSize = reading.readerModeFontSize,
         readerModeFontSizeDefault = SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE,
         readerModeFontSizeRange = SettingsUtils.MIN_READER_MODE_FONT_SIZE..
             SettingsUtils.MAX_READER_MODE_FONT_SIZE,
-        externalBrowser = prefs.getBoolean("pref_external_browser", false),
-        redirectNitter = prefs.getBoolean("pref_redirect_nitter", false),
-        archiveDomainCount = SettingsUtils.getArchiveRedirectDomains(context).size,
-        previewArxiv = prefs.getBoolean("pref_link_preview_arxiv", true),
-        previewGithub = prefs.getBoolean("pref_link_preview_github", true),
-        previewGitlab = prefs.getBoolean("pref_link_preview_gitlab", true),
-        previewStackExchange = prefs.getBoolean("pref_link_preview_stack_exchange", true),
-        previewWikipedia = prefs.getBoolean("pref_link_preview_wikipedia", true),
-        previewX = prefs.getBoolean("pref_link_preview_x", false),
+        externalBrowser = reading.externalBrowser,
+        redirectNitter = reading.redirectNitter,
+        archiveDomainCount = reading.archiveRedirectDomains.size,
+        previewArxiv = reading.previewArxiv,
+        previewGithub = reading.previewGithub,
+        previewGitlab = reading.previewGitlab,
+        previewStackExchange = reading.previewStackExchange,
+        previewWikipedia = reading.previewWikipedia,
+        previewX = reading.previewX,
     )
     SharedWebLinksSettingsScreen(
         state = state,
@@ -47,7 +49,7 @@ fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
             prefs.edit().putBoolean(setting.preferenceKey, value).apply()
         },
         onReaderFontSizeChanged = {
-            prefs.edit().putInt(SettingsUtils.PREF_WEBVIEW_READER_MODE_FONT_SIZE, it).apply()
+            prefs.edit().putInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, it).apply()
         },
         onDialogRequested = { dialog = it },
         contentVersion = refresh,
@@ -68,25 +70,23 @@ fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
 
 private val WebLinksBooleanSetting.preferenceKey: String
     get() = when (this) {
-        WebLinksBooleanSetting.IntegratedWebView -> "pref_webview"
-        WebLinksBooleanSetting.CloseWebViewOnBack -> "pref_close_webview_on_back"
-        WebLinksBooleanSetting.MatchWebViewTheme -> "pref_webview_match_theme"
-        WebLinksBooleanSetting.BlockWebViewAds -> "pref_webview_adblock"
-        WebLinksBooleanSetting.ReaderModeEnabled -> SettingsUtils.PREF_WEBVIEW_READER_MODE_ENABLED
-        WebLinksBooleanSetting.ReaderModeDefault -> SettingsUtils.PREF_WEBVIEW_READER_MODE_DEFAULT
-        WebLinksBooleanSetting.ExternalBrowser -> "pref_external_browser"
-        WebLinksBooleanSetting.RedirectNitter -> "pref_redirect_nitter"
-        WebLinksBooleanSetting.PreviewArxiv -> "pref_link_preview_arxiv"
-        WebLinksBooleanSetting.PreviewGithub -> "pref_link_preview_github"
-        WebLinksBooleanSetting.PreviewGitlab -> "pref_link_preview_gitlab"
-        WebLinksBooleanSetting.PreviewStackExchange -> "pref_link_preview_stack_exchange"
-        WebLinksBooleanSetting.PreviewWikipedia -> "pref_link_preview_wikipedia"
-        WebLinksBooleanSetting.PreviewX -> "pref_link_preview_x"
+        WebLinksBooleanSetting.IntegratedWebView -> UserPreferenceKeys.WEBVIEW
+        WebLinksBooleanSetting.CloseWebViewOnBack -> UserPreferenceKeys.CLOSE_WEBVIEW_ON_BACK
+        WebLinksBooleanSetting.MatchWebViewTheme -> UserPreferenceKeys.WEBVIEW_MATCH_THEME
+        WebLinksBooleanSetting.BlockWebViewAds -> UserPreferenceKeys.WEBVIEW_ADBLOCK
+        WebLinksBooleanSetting.ReaderModeEnabled -> UserPreferenceKeys.READER_MODE_ENABLED
+        WebLinksBooleanSetting.ReaderModeDefault -> UserPreferenceKeys.READER_MODE_DEFAULT
+        WebLinksBooleanSetting.ExternalBrowser -> UserPreferenceKeys.EXTERNAL_BROWSER
+        WebLinksBooleanSetting.RedirectNitter -> UserPreferenceKeys.REDIRECT_NITTER
+        WebLinksBooleanSetting.PreviewArxiv -> UserPreferenceKeys.LINK_PREVIEW_ARXIV
+        WebLinksBooleanSetting.PreviewGithub -> UserPreferenceKeys.LINK_PREVIEW_GITHUB
+        WebLinksBooleanSetting.PreviewGitlab -> UserPreferenceKeys.LINK_PREVIEW_GITLAB
+        WebLinksBooleanSetting.PreviewStackExchange -> UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE
+        WebLinksBooleanSetting.PreviewWikipedia -> UserPreferenceKeys.LINK_PREVIEW_WIKIPEDIA
+        WebLinksBooleanSetting.PreviewX -> UserPreferenceKeys.LINK_PREVIEW_X
     }
 
-private fun preloadSummary(context: Context): String {
-    val mode = SettingsUtils.shouldPreloadWebView(context)
-    val battery = SettingsUtils.getPreloadWebViewMinimumBattery(context)
+private fun preloadSummary(mode: String, battery: Int): String {
     if (mode == SettingsUtils.PRELOAD_WEBVIEW_NEVER) return "Never"
     val modeLabel = if (mode == SettingsUtils.PRELOAD_WEBVIEW_ALWAYS) "Always" else "Only on WiFi"
     return if (battery <= 0) "$modeLabel, any battery level" else "$modeLabel, battery at least $battery%"

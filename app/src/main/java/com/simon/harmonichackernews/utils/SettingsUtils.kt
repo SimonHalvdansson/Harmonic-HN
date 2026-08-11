@@ -10,6 +10,9 @@ import android.text.TextUtils
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
+import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.FaviconPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -27,48 +30,53 @@ import kotlin.math.max
 import kotlin.math.min
 
 object SettingsUtils {
+    private fun settings(ctx: Context) = AndroidUserSettings.get(ctx)
+
     const val PREF_THEME: String = "pref_theme"
     const val PREF_THEME_NIGHTTIME: String = "pref_theme_nighttime"
-    const val DEFAULT_THEME: String = "material_daynight"
-    const val DEFAULT_NIGHTTIME_THEME: String = "dark"
-    const val PREF_COMMENT_DEPTH_INDICATORS: String = "pref_comment_depth_indicators"
-    const val PREF_COMMENT_DIVIDERS: String = "pref_comment_dividers"
-    const val PREF_MONOCHROME_COMMENT_DEPTH: String = "pref_monochrome_comment_depth"
-    const val PREF_STORY_DISPLAY_STYLE: String = "pref_story_display_style"
-    const val PREF_STORY_PREVIEW_IMAGE_MODE: String = "pref_story_preview_image_mode"
-    const val PREF_STORY_PREVIEW_IMAGE_BORDERLESS: String = "pref_story_preview_image_borderless"
-    const val PREF_SHOW_STORY_SUMMARY: String = "pref_show_story_summary"
-    const val PREF_TINT_CARD_USING_PREVIEW: String = "pref_tint_card_using_preview"
-    const val PREF_PALETTE_TINT_MODE: String = "pref_palette_tint_mode"
-    const val PREF_PALETTE_TINT_STRENGTH: String = "pref_palette_tint_strength"
-    const val PREF_PALETTE_TINT_COLORFULNESS: String = "pref_palette_tint_colorfulness"
-    const val PREF_PALETTE_TINT_TONE: String = "pref_palette_tint_tone"
-    const val PREF_STORY_TEXT_SIZE: String = "pref_story_text_size"
-    const val PREF_COMPACT_POINTS: String = "pref_compact_points"
-    const val PREF_INCLUDE_TOP_LEVEL_DOMAIN: String = "pref_include_top_level_domain"
-    const val PREF_COMMENT_DISPLAY_STYLE: String = "pref_comment_display_style"
-    const val PREF_COMMENT_CARD_BORDER: String = "pref_comment_card_border"
-    const val PREF_HIGHLIGHT_COMMENT_META: String = "pref_highlight_comment_meta"
-    const val PREF_COMMENT_TEXT_SIZE: String = "pref_comment_text_size"
-    const val PREF_ENABLE_COMMENTS_HEADER_TINT: String = "pref_enable_comments_header_tint"
+    const val DEFAULT_THEME: String = ThemePreferences.DEFAULT
+    const val DEFAULT_NIGHTTIME_THEME: String = ThemePreferences.DEFAULT_NIGHTTIME
+    const val PREF_COMMENT_DEPTH_INDICATORS: String = UserPreferenceKeys.COMMENT_DEPTH_INDICATORS
+    const val PREF_COMMENT_DIVIDERS: String = UserPreferenceKeys.COMMENT_DIVIDERS
+    const val PREF_MONOCHROME_COMMENT_DEPTH: String = UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH
+    const val PREF_STORY_DISPLAY_STYLE: String = UserPreferenceKeys.STORY_DISPLAY_STYLE
+    const val PREF_STORY_PREVIEW_IMAGE_MODE: String = UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE
+    const val PREF_STORY_PREVIEW_IMAGE_BORDERLESS: String =
+        UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS
+    const val PREF_SHOW_STORY_SUMMARY: String = UserPreferenceKeys.SHOW_STORY_SUMMARY
+    const val PREF_TINT_CARD_USING_PREVIEW: String = UserPreferenceKeys.TINT_CARD_USING_PREVIEW
+    const val PREF_PALETTE_TINT_MODE: String = UserPreferenceKeys.PALETTE_TINT_MODE
+    const val PREF_PALETTE_TINT_STRENGTH: String = UserPreferenceKeys.PALETTE_TINT_STRENGTH
+    const val PREF_PALETTE_TINT_COLORFULNESS: String =
+        UserPreferenceKeys.PALETTE_TINT_COLORFULNESS
+    const val PREF_PALETTE_TINT_TONE: String = UserPreferenceKeys.PALETTE_TINT_TONE
+    const val PREF_STORY_TEXT_SIZE: String = UserPreferenceKeys.STORY_TEXT_SIZE
+    const val PREF_COMPACT_POINTS: String = UserPreferenceKeys.COMPACT_POINTS
+    const val PREF_INCLUDE_TOP_LEVEL_DOMAIN: String = UserPreferenceKeys.INCLUDE_TOP_LEVEL_DOMAIN
+    const val PREF_COMMENT_DISPLAY_STYLE: String = UserPreferenceKeys.COMMENT_DISPLAY_STYLE
+    const val PREF_COMMENT_CARD_BORDER: String = UserPreferenceKeys.COMMENT_CARD_BORDER
+    const val PREF_HIGHLIGHT_COMMENT_META: String = UserPreferenceKeys.HIGHLIGHT_COMMENT_META
+    const val PREF_COMMENT_TEXT_SIZE: String = UserPreferenceKeys.COMMENT_TEXT_SIZE
+    const val PREF_ENABLE_COMMENTS_HEADER_TINT: String = UserPreferenceKeys.COMMENTS_HEADER_TINT
     const val PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE: String =
-        "pref_enable_comments_header_preview_image"
-    const val PREF_COLLECT_LINKS_IN_COMMENTS: String = "pref_collect_links_in_comments"
-    const val PREF_FONT: String = "pref_font"
-    const val PREF_BOOKMARKS_ENABLED: String = "pref_bookmarks_enabled"
-    const val PREF_GRAY_OUT_CLICKED: String = "pref_gray_out_clicked"
-    const val PREF_HIDE_CLICKED: String = "pref_hide_clicked"
-    const val PREF_ALWAYS_SHOW_TAP_TO_REFRESH: String = "pref_always_show_tap_to_refresh"
-    const val PREF_PRELOAD_WEBVIEW: String = "pref_preload_webview"
-    const val PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY: String = "pref_preload_webview_minimum_battery"
-    const val PREF_WEBVIEW_READER_MODE_ENABLED: String = "pref_webview_reader_mode_enabled"
-    const val PREF_WEBVIEW_READER_MODE_DEFAULT: String = "pref_webview_reader_mode_default"
-    const val PREF_WEBVIEW_READER_MODE_FONT: String = "pref_webview_reader_mode_font"
-    const val PREF_WEBVIEW_READER_MODE_FONT_SIZE: String = "pref_webview_reader_mode_font_size"
-    const val PREF_ARCHIVE_REDIRECT_DOMAINS: String = "pref_archive_redirect_domains"
-    const val PREF_STORIES_TO_CACHE: String = "pref_stories_to_cache"
-    const val PREF_FAVICON_PROVIDER: String = "pref_favicon_provider"
-    const val PREF_ADDITIONAL_FRONTPAGES: String = "pref_additional_frontpages"
+        UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE
+    const val PREF_COLLECT_LINKS_IN_COMMENTS: String = UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS
+    const val PREF_FONT: String = UserPreferenceKeys.FONT
+    const val PREF_BOOKMARKS_ENABLED: String = UserPreferenceKeys.BOOKMARKS_ENABLED
+    const val PREF_GRAY_OUT_CLICKED: String = UserPreferenceKeys.GRAY_OUT_CLICKED
+    const val PREF_HIDE_CLICKED: String = UserPreferenceKeys.HIDE_CLICKED
+    const val PREF_ALWAYS_SHOW_TAP_TO_REFRESH: String = UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH
+    const val PREF_PRELOAD_WEBVIEW: String = UserPreferenceKeys.PRELOAD_WEBVIEW
+    const val PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY: String =
+        UserPreferenceKeys.PRELOAD_WEBVIEW_MINIMUM_BATTERY
+    const val PREF_WEBVIEW_READER_MODE_ENABLED: String = UserPreferenceKeys.READER_MODE_ENABLED
+    const val PREF_WEBVIEW_READER_MODE_DEFAULT: String = UserPreferenceKeys.READER_MODE_DEFAULT
+    const val PREF_WEBVIEW_READER_MODE_FONT: String = UserPreferenceKeys.READER_MODE_FONT
+    const val PREF_WEBVIEW_READER_MODE_FONT_SIZE: String = UserPreferenceKeys.READER_MODE_FONT_SIZE
+    const val PREF_ARCHIVE_REDIRECT_DOMAINS: String = UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS
+    const val PREF_STORIES_TO_CACHE: String = UserPreferenceKeys.STORIES_TO_CACHE
+    const val PREF_FAVICON_PROVIDER: String = UserPreferenceKeys.FAVICON_PROVIDER
+    const val PREF_ADDITIONAL_FRONTPAGES: String = UserPreferenceKeys.ADDITIONAL_FRONTPAGES
     const val FRONT_PAGE_CLASSIC: String = "Classic"
     const val FRONT_PAGE_BEST_COMMENTS: String = "Best Comments"
     const val FRONT_PAGE_HIGHLIGHTS: String = "Highlights"
@@ -128,24 +136,15 @@ object SettingsUtils {
     const val UPVOTED_LABEL: String = "Upvoted"
 
     fun isAutoTheme(theme: String?): Boolean {
-        return DEFAULT_THEME == theme
-                || "darklight_daynight" == theme
-                || "amoledwhite_daynight" == theme
+        return ThemePreferences.isAutomatic(theme)
     }
 
     fun isDarkTheme(theme: String?): Boolean {
-        return "material_dark" == theme
-                || "dark" == theme
-                || "hacker" == theme
-                || "amoled" == theme
-                || "gray" == theme
+        return ThemePreferences.isDark(theme)
     }
 
     fun getSelectableNighttimeTheme(theme: String): String {
-        if (TextUtils.isEmpty(theme) || !isDarkTheme(theme)) {
-            return DEFAULT_NIGHTTIME_THEME
-        }
-        return theme
+        return ThemePreferences.selectableNighttimeTheme(theme)
     }
 
     fun readIntSetFromSharedPreferences(ctx: Context, key: String?): MutableSet<Int> {
@@ -188,89 +187,67 @@ object SettingsUtils {
     }
 
     fun shouldShowPoints(ctx: Context): Boolean {
-        return getBooleanPref("pref_show_points", true, ctx)
+        return settings(ctx).story.showPoints
     }
 
     fun shouldUseCompactPoints(ctx: Context): Boolean {
-        return getBooleanPref(PREF_COMPACT_POINTS, false, ctx)
+        return settings(ctx).story.compactPoints
     }
 
     fun shouldIncludeTopLevelDomain(ctx: Context): Boolean {
-        return getBooleanPref(PREF_INCLUDE_TOP_LEVEL_DOMAIN, true, ctx)
+        return settings(ctx).story.includeTopLevelDomain
     }
 
     fun shouldShowCommentsCount(ctx: Context): Boolean {
-        return getBooleanPref("pref_show_comments_count", true, ctx)
+        return settings(ctx).story.showCommentsCount
     }
 
     fun shouldUseCompactView(ctx: Context): Boolean {
-        return getBooleanPref("pref_compact_view", false, ctx)
+        return settings(ctx).story.compactView
     }
 
     fun shouldShowThumbnails(ctx: Context): Boolean {
-        return getBooleanPref("pref_thumbnails", true, ctx)
+        return settings(ctx).story.thumbnails
     }
 
     fun getPreferredStoryPreviewImageMode(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val mode = prefs.getString(PREF_STORY_PREVIEW_IMAGE_MODE, null)
-        if (STORY_PREVIEW_IMAGE_OFF == mode
-            || STORY_PREVIEW_IMAGE_SMALL == mode
-            || STORY_PREVIEW_IMAGE_LARGE == mode
-        ) {
-            return mode
-        }
-        return STORY_PREVIEW_IMAGE_SMALL
+        return settings(ctx).story.previewImageMode
     }
 
     fun shouldUseBorderlessLargeStoryPreviewImage(ctx: Context): Boolean {
-        return getBooleanPref(PREF_STORY_PREVIEW_IMAGE_BORDERLESS, false, ctx)
+        return settings(ctx).story.borderlessLargePreviewImage
     }
 
     fun shouldShowStorySummary(ctx: Context): Boolean {
-        return getBooleanPref(PREF_SHOW_STORY_SUMMARY, false, ctx)
+        return settings(ctx).story.showSummary
     }
 
     fun shouldCollapseParent(ctx: Context): Boolean {
-        return getBooleanPref("pref_collapse_parent", false, ctx)
+        return settings(ctx).comments.collapseParent
     }
 
     fun shouldShowIndex(ctx: Context): Boolean {
-        return getBooleanPref("pref_show_index", true, ctx)
+        return settings(ctx).story.showIndex
     }
 
     fun shouldTintCardUsingPreview(ctx: Context): Boolean {
-        return getBooleanPref(PREF_TINT_CARD_USING_PREVIEW, true, ctx)
+        return settings(ctx).story.tintCardUsingPreview
     }
 
     fun shouldShowCommentsHeaderPreviewImage(ctx: Context): Boolean {
-        return STORY_PREVIEW_IMAGE_OFF != getPreferredStoryPreviewImageMode(ctx) && getBooleanPref(
-            PREF_ENABLE_COMMENTS_HEADER_PREVIEW_IMAGE, true, ctx
-        )
+        return settings(ctx).comments.showHeaderPreviewImage
     }
 
     fun shouldTintCommentsHeader(ctx: Context): Boolean {
-        return shouldTintCardUsingPreview(ctx)
-                && getBooleanPref(PREF_ENABLE_COMMENTS_HEADER_TINT, true, ctx)
+        return settings(ctx).comments.tintHeader
     }
 
     fun getPreferredPaletteTintMode(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return PaletteTintPreferences.sanitizeMode(
-            prefs.getString(
-                PREF_PALETTE_TINT_MODE,
-                PALETTE_TINT_DEFAULT
-            )
-        )
+        return PaletteTintPreferences.sanitizeMode(settings(ctx).story.paletteTintConfigKey)
     }
 
     fun getPreferredPaletteTintConfigKey(ctx: Context): String {
-        return PaletteTintPreferences.configKey(
-            getPreferredPaletteTintMode(ctx),
-            getPreferredPaletteTintStrength(ctx),
-            getPreferredPaletteTintColorfulness(ctx),
-            getPreferredPaletteTintTone(ctx)
-        )
+        return settings(ctx).story.paletteTintConfigKey
     }
 
     fun setPreferredPaletteTintMode(ctx: Context, mode: String?) {
@@ -336,33 +313,15 @@ object SettingsUtils {
     }
 
     fun getPreferredPaletteTintStrength(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return PaletteTintPreferences.clampStrength(
-            prefs.getInt(
-                PREF_PALETTE_TINT_STRENGTH,
-                DEFAULT_PALETTE_TINT_STRENGTH
-            )
-        )
+        return PaletteTintPreferences.strength(settings(ctx).story.paletteTintConfigKey)
     }
 
     fun getPreferredPaletteTintColorfulness(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return PaletteTintPreferences.clampColorfulness(
-            prefs.getInt(
-                PREF_PALETTE_TINT_COLORFULNESS,
-                DEFAULT_PALETTE_TINT_COLORFULNESS
-            )
-        )
+        return PaletteTintPreferences.colorfulness(settings(ctx).story.paletteTintConfigKey)
     }
 
     fun getPreferredPaletteTintTone(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return PaletteTintPreferences.clampTone(
-            prefs.getInt(
-                PREF_PALETTE_TINT_TONE,
-                DEFAULT_PALETTE_TINT_TONE
-            )
-        )
+        return PaletteTintPreferences.tone(settings(ctx).story.paletteTintConfigKey)
     }
 
     fun isDefaultPaletteTintTuning(ctx: Context): Boolean {
@@ -380,29 +339,23 @@ object SettingsUtils {
     }
 
     fun shouldShowNavigationButtons(ctx: Context): Boolean {
-        return getBooleanPref("pref_scroll_navigation", false, ctx)
+        return settings(ctx).comments.showNavigationButtons
     }
 
     fun shouldHideJobs(ctx: Context): Boolean {
-        return getBooleanPref("pref_hide_jobs", false, ctx)
+        return settings(ctx).story.hideJobs
     }
 
     fun shouldCollapseTopLevel(ctx: Context): Boolean {
-        return getBooleanPref("pref_collapse_top_level", false, ctx)
+        return settings(ctx).comments.collapseTopLevel
     }
 
     fun getPreferredHotness(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return prefs.getString("pref_hotness", "-1")!!.toInt()
+        return settings(ctx).story.hotness
     }
 
     fun getPreferredFont(ctx: Context): String {
-        if ("hacker" == ThemeUtils.getPreferredTheme(ctx)) {
-            return "jetbrainsmono"
-        }
-
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return TextPreferences.sanitizeFont(prefs.getString(PREF_FONT, "googlesansflexrounded"))
+        return settings(ctx).story.font
     }
 
     fun setPreferredFont(ctx: Context, font: String) {
@@ -429,13 +382,7 @@ object SettingsUtils {
     }
 
     fun getPreferredReaderModeFont(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return TextPreferences.sanitizeFont(
-            prefs.getString(
-                PREF_WEBVIEW_READER_MODE_FONT,
-                "googlesansflexrounded"
-            )!!
-        )
+        return settings(ctx).reading.readerModeFont
     }
 
     fun setPreferredReaderModeFont(ctx: Context, font: String) {
@@ -454,23 +401,11 @@ object SettingsUtils {
     }
 
     fun shouldUseExternalBrowser(ctx: Context): Boolean {
-        return getBooleanPref("pref_external_browser", false, ctx)
+        return settings(ctx).reading.externalBrowser
     }
 
     fun getPreferredCommentDepthIndicatorMode(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        if (prefs.contains(PREF_COMMENT_DEPTH_INDICATORS)) {
-            return CommentDepthIndicatorUtils.sanitizeMode(
-                prefs.getString(
-                    SettingsUtils.PREF_COMMENT_DEPTH_INDICATORS,
-                    CommentDepthIndicatorUtils.MODE_THEME_DEFAULT
-                )!!
-            )
-        }
-        if (getBooleanPref(PREF_MONOCHROME_COMMENT_DEPTH, false, ctx)) {
-            return CommentDepthIndicatorUtils.MODE_MONOCHROME
-        }
-        return CommentDepthIndicatorUtils.MODE_THEME_DEFAULT
+        return settings(ctx).comments.depthIndicatorMode
     }
 
     fun setPreferredCommentDepthIndicatorMode(ctx: Context, mode: String) {
@@ -492,34 +427,19 @@ object SettingsUtils {
     }
 
     fun shouldUseIntegratedWebView(ctx: Context): Boolean {
-        return getBooleanPref("pref_webview", true, ctx)
+        return settings(ctx).reading.integratedWebView
     }
 
     fun shouldPreloadWebView(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return WebViewPreferences.sanitizePreloadMode(
-            prefs.getString(
-                PREF_PRELOAD_WEBVIEW,
-                PRELOAD_WEBVIEW_NEVER
-            )!!
-        )
+        return settings(ctx).reading.preloadWebViewMode
     }
 
     fun getPreloadWebViewMinimumBattery(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return WebViewPreferences.clampBatteryPercent(
-            prefs.getInt(
-                PREF_PRELOAD_WEBVIEW_MINIMUM_BATTERY,
-                DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY
-            )
-        )
+        return settings(ctx).reading.preloadWebViewMinimumBattery
     }
 
     fun getStoriesToCache(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return StoryCachePreferences.sanitizeCount(
-            prefs.getInt(PREF_STORIES_TO_CACHE, DEFAULT_STORIES_TO_CACHE)
-        )
+        return settings(ctx).cache.storiesToCache
     }
 
     fun setStoriesToCache(ctx: Context, value: Int) {
@@ -551,65 +471,51 @@ object SettingsUtils {
     }
 
     fun shouldMatchWebViewTheme(ctx: Context): Boolean {
-        return getBooleanPref("pref_webview_match_theme", false, ctx)
+        return settings(ctx).reading.matchWebViewTheme
     }
 
     fun shouldUseReaderMode(ctx: Context): Boolean {
-        return getBooleanPref(PREF_WEBVIEW_READER_MODE_ENABLED, true, ctx)
+        return settings(ctx).reading.readerModeEnabled
     }
 
     fun shouldUseReaderModeByDefault(ctx: Context): Boolean {
-        return shouldUseReaderMode(ctx) && getBooleanPref(
-            PREF_WEBVIEW_READER_MODE_DEFAULT,
-            false,
-            ctx
-        )
+        return settings(ctx).reading.readerModeDefault
     }
 
     fun getReaderModeFontSize(ctx: Context): Int {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return TextPreferences.clampReaderModeFontSize(
-            prefs.getInt(
-                PREF_WEBVIEW_READER_MODE_FONT_SIZE,
-                DEFAULT_READER_MODE_FONT_SIZE
-            )
-        )
+        return settings(ctx).reading.readerModeFontSize
     }
 
     fun shouldCloseWebViewOnBack(ctx: Context): Boolean {
-        return getBooleanPref("pref_close_webview_on_back", false, ctx)
+        return settings(ctx).reading.closeWebViewOnBack
     }
 
     fun shouldBlockAds(ctx: Context): Boolean {
-        return getBooleanPref("pref_webview_adblock", false, ctx)
+        return settings(ctx).reading.blockAds
     }
 
     fun shouldShowTopLevelDepthIndicator(ctx: Context): Boolean {
-        return getBooleanPref("pref_top_level_thread_indicators", false, ctx)
+        return settings(ctx).comments.showTopLevelDepthIndicator
     }
 
     fun shouldAlwaysOpenComments(ctx: Context): Boolean {
-        return getBooleanPref("pref_always_open_comments", false, ctx)
+        return settings(ctx).story.alwaysOpenComments
     }
 
     fun shouldUseCompactHeader(ctx: Context): Boolean {
-        return getBooleanPref("pref_compact_header", false, ctx)
+        return settings(ctx).story.compactHeader
     }
 
     fun shouldUseLeftAlign(ctx: Context): Boolean {
-        return getBooleanPref("pref_left_align", false, ctx)
+        return settings(ctx).story.leftAlign
     }
 
     fun getPreferredStoryDisplayStyle(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val style: String = prefs.getString(
-            SettingsUtils.PREF_STORY_DISPLAY_STYLE,
-            SettingsUtils.STORY_DISPLAY_STYLE_STANDARD
-        )!!
-        if (STORY_DISPLAY_STYLE_CARD == style) {
-            return STORY_DISPLAY_STYLE_CARD
+        return if (settings(ctx).story.cardStyle) {
+            STORY_DISPLAY_STYLE_CARD
+        } else {
+            STORY_DISPLAY_STYLE_STANDARD
         }
-        return STORY_DISPLAY_STYLE_STANDARD
     }
 
     fun shouldUseCardStoryDisplayStyle(ctx: Context): Boolean {
@@ -617,21 +523,7 @@ object SettingsUtils {
     }
 
     fun getPreferredStoryTextSize(ctx: Context): Float {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        try {
-            return TextPreferences.clampStoryTextSize(
-                prefs.getString(
-                    SettingsUtils.PREF_STORY_TEXT_SIZE,
-                    SettingsUtils.DEFAULT_STORY_TEXT_SIZE.toString()
-                )!!.toFloat()
-            )
-        } catch (e: ClassCastException) {
-            return TextPreferences.clampStoryTextSize(
-                prefs.getFloat(PREF_STORY_TEXT_SIZE, DEFAULT_STORY_TEXT_SIZE)
-            )
-        } catch (e: NumberFormatException) {
-            return DEFAULT_STORY_TEXT_SIZE
-        }
+        return settings(ctx).story.storyTextSize
     }
 
     fun getStoryMetaTextSize(storyTextSize: Float): Float {
@@ -640,15 +532,11 @@ object SettingsUtils {
     }
 
     fun getPreferredCommentDisplayStyle(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val style: String = prefs.getString(
-            SettingsUtils.PREF_COMMENT_DISPLAY_STYLE,
-            SettingsUtils.COMMENT_DISPLAY_STYLE_STANDARD
-        )!!
-        if (COMMENT_DISPLAY_STYLE_CARD == style) {
-            return COMMENT_DISPLAY_STYLE_CARD
+        return if (settings(ctx).comments.cardStyle) {
+            COMMENT_DISPLAY_STYLE_CARD
+        } else {
+            COMMENT_DISPLAY_STYLE_STANDARD
         }
-        return COMMENT_DISPLAY_STYLE_STANDARD
     }
 
     fun shouldUseCardCommentDisplayStyle(ctx: Context): Boolean {
@@ -656,31 +544,31 @@ object SettingsUtils {
     }
 
     fun shouldShowCommentCardBorder(ctx: Context): Boolean {
-        return getBooleanPref(PREF_COMMENT_CARD_BORDER, true, ctx)
+        return settings(ctx).comments.cardBorder
     }
 
     fun shouldShowCommentDividers(ctx: Context): Boolean {
-        return getBooleanPref(PREF_COMMENT_DIVIDERS, false, ctx)
+        return settings(ctx).comments.showDividers
     }
 
     fun shouldHighlightCommentMeta(ctx: Context): Boolean {
-        return getBooleanPref(PREF_HIGHLIGHT_COMMENT_META, false, ctx)
+        return settings(ctx).comments.highlightMetadata
     }
 
     fun shouldUseTransparentStatusBar(ctx: Context): Boolean {
-        return getBooleanPref("pref_transparent_status_bar", false, ctx)
+        return settings(ctx).general.transparentStatusBar
     }
 
     fun shouldUseSpecialNighttimeTheme(ctx: Context): Boolean {
-        return getBooleanPref("pref_special_nighttime", false, ctx)
+        return settings(ctx).general.specialNighttimeTheme
     }
 
     fun shouldUseCommentsAnimation(ctx: Context): Boolean {
-        return getBooleanPref("pref_comments_animation", true, ctx)
+        return settings(ctx).comments.animateChanges
     }
 
     fun shouldSmoothScrollComments(ctx: Context): Boolean {
-        return getBooleanPref("pref_comments_animation_navigation", true, ctx)
+        return settings(ctx).comments.smoothScroll
     }
 
     const val COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED: String = "disabled"
@@ -688,60 +576,51 @@ object SettingsUtils {
     private const val PREF_COMMENTS_VOLUME_NAVIGATION = "pref_comments_volume_navigation"
 
     fun getCommentsVolumeNavigationMode(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return prefs.getString(
-            SettingsUtils.PREF_COMMENTS_VOLUME_NAVIGATION,
-            SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED
-        )!!
+        return settings(ctx).comments.volumeNavigationMode
     }
 
     fun shouldUseCommentsScrollbar(ctx: Context): Boolean {
-        return getBooleanPref("pref_comments_scrollbar", false, ctx)
+        return settings(ctx).comments.showScrollbar
     }
 
     fun shouldCollectLinksInComments(ctx: Context): Boolean {
-        return getBooleanPref(PREF_COLLECT_LINKS_IN_COMMENTS, true, ctx)
+        return settings(ctx).comments.collectReferenceLinks
     }
 
     fun shouldHideClicked(ctx: Context): Boolean {
-        return getBooleanPref(PREF_HIDE_CLICKED, false, ctx)
+        return settings(ctx).story.hideClicked
     }
 
     fun shouldGrayOutClicked(ctx: Context): Boolean {
-        return getBooleanPref(PREF_GRAY_OUT_CLICKED, true, ctx)
+        return settings(ctx).story.grayOutClicked
     }
 
     fun shouldUseLinkPreviewArxiv(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_arxiv", true, ctx)
+        return settings(ctx).reading.previewArxiv
     }
 
     fun shouldUseLinkPreviewGithub(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_github", true, ctx)
+        return settings(ctx).reading.previewGithub
     }
 
     fun shouldUseLinkPreviewGitLab(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_gitlab", true, ctx)
+        return settings(ctx).reading.previewGitlab
     }
 
     fun shouldUseLinkPreviewStackExchange(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_stack_exchange", true, ctx)
+        return settings(ctx).reading.previewStackExchange
     }
 
     fun shouldUseLinkPreviewWikipedia(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_wikipedia", true, ctx)
+        return settings(ctx).reading.previewWikipedia
     }
 
     fun shouldRedirectNitter(ctx: Context): Boolean {
-        return getBooleanPref("pref_redirect_nitter", false, ctx)
+        return settings(ctx).reading.redirectNitter
     }
 
     fun getArchiveRedirectDomains(ctx: Context): ArrayList<String> {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return ArrayList(
-            ArchiveRedirectPolicy.parseDomains(
-                prefs.getString(PREF_ARCHIVE_REDIRECT_DOMAINS, "")
-            )
-        )
+        return ArrayList(settings(ctx).reading.archiveRedirectDomains)
     }
 
     fun getArchiveRedirectUrl(ctx: Context, url: String?): String? {
@@ -749,32 +628,31 @@ object SettingsUtils {
     }
 
     fun shouldUseLinkPreviewX(ctx: Context): Boolean {
-        return getBooleanPref("pref_link_preview_x", false, ctx)
+        return settings(ctx).reading.previewX
     }
 
     fun shouldShowChangelog(ctx: Context): Boolean {
-        return getBooleanPref("pref_show_changelog", true, ctx)
+        return settings(ctx).general.showChangelog
     }
 
     fun shouldUseBookmarks(ctx: Context): Boolean {
-        return getBooleanPref(PREF_BOOKMARKS_ENABLED, true, ctx)
+        return settings(ctx).general.bookmarksEnabled
     }
 
     fun shouldSwapCommentLongPressTap(ctx: Context): Boolean {
-        return getBooleanPref("pref_comments_swap_long", false, ctx)
+        return settings(ctx).comments.swapLongPressTap
     }
 
     fun shouldUsePaginationMode(ctx: Context): Boolean {
-        return getBooleanPref("pref_pagination_mode", false, ctx)
+        return settings(ctx).story.pagination
     }
 
     fun shouldAlwaysShowTapToRefresh(ctx: Context): Boolean {
-        return getBooleanPref(PREF_ALWAYS_SHOW_TAP_TO_REFRESH, false, ctx)
+        return settings(ctx).story.alwaysShowTapToRefresh
     }
 
     fun shouldUseAlgoliaAPI(ctx: Context): Boolean {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return "algolia" == prefs.getString("pref_comments_provider", "algolia")
+        return settings(ctx).reading.useAlgoliaApi
     }
 
     fun getBooleanPref(key: String?, backup: Boolean, ctx: Context): Boolean {
@@ -783,49 +661,11 @@ object SettingsUtils {
     }
 
     fun getPreferredCommentTextSize(ctx: Context): Float {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        try {
-            return TextPreferences.clampCommentTextSize(
-                prefs.getString(
-                    SettingsUtils.PREF_COMMENT_TEXT_SIZE,
-                    SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE.toString()
-                )!!.toFloat()
-            )
-        } catch (e: ClassCastException) {
-            try {
-                return TextPreferences.clampCommentTextSize(
-                    prefs.getFloat(
-                        PREF_COMMENT_TEXT_SIZE,
-                        DEFAULT_COMMENT_TEXT_SIZE
-                    )
-                )
-            } catch (ignored: ClassCastException) {
-                return TextPreferences.clampCommentTextSize(
-                    prefs.getInt(
-                        PREF_COMMENT_TEXT_SIZE, Math.round(
-                            DEFAULT_COMMENT_TEXT_SIZE
-                        )
-                    ).toFloat()
-                )
-            }
-        } catch (e: NumberFormatException) {
-            return DEFAULT_COMMENT_TEXT_SIZE
-        }
+        return settings(ctx).comments.textSize
     }
 
     fun getPreferredStoryType(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val startingPage: String = prefs.getString("pref_default_story_type", "Top Stories")!!
-        if ("Bookmarks" == startingPage
-            || "History" == startingPage
-            || (AdditionalFrontpagePreferences.isLabel(startingPage) && !isAdditionalFrontpageEnabled(
-                ctx,
-                startingPage
-            ))
-        ) {
-            return "Top Stories"
-        }
-        return startingPage
+        return settings(ctx).story.preferredStoryType
     }
 
     fun getEnabledAdditionalFrontpages(ctx: Context): MutableSet<String> {
@@ -840,18 +680,11 @@ object SettingsUtils {
     }
 
     fun getPreferredCommentSorting(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return prefs.getString("pref_comment_sorting", "Default")!!
+        return settings(ctx).comments.sorting
     }
 
     fun getPreferredFaviconProvider(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return FaviconPreferences.sanitizeProvider(
-            prefs.getString(
-                PREF_FAVICON_PROVIDER,
-                FAVICON_PROVIDER_GOOGLE
-            )!!
-        )
+        return settings(ctx).story.faviconProvider
     }
 
     fun getFaviconProviderIconResource(provider: String): Int {

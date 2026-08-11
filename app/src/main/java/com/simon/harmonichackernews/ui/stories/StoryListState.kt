@@ -23,6 +23,7 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadCachedPr
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadPreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.saveCachedPreviewImageTintColor
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.presentation.StoryListStore
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -37,10 +38,12 @@ import kotlin.math.min
  * preview metadata/image prefetch, and card tint caching.
  */
 class StoryListState(
-    private val stories: MutableList<Story>,
+    private val storyListStore: StoryListStore,
     settings: StoryDisplaySettings,
     wantedType: Int,
 ) : StoryDisplayState {
+    private val stories: MutableList<Story>
+        get() = storyListStore.stories
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
     private var changedListener: ((Story?) -> Unit)? = null
@@ -70,10 +73,21 @@ class StoryListState(
     var disableClickedEffects: Boolean = false
     override var grayOutClicked: Boolean = false
 
-    var paginationMode: Boolean = false
-    var showLoadMoreButton: Boolean = false
-    var visibleStoryCount: Int = PAGINATION_PAGE_SIZE
-    private var loadMoreLoading = false
+    var paginationMode: Boolean
+        get() = storyListStore.state.value.paginationEnabled
+        set(value) {
+            if (value != paginationMode) storyListStore.setPaginationEnabled(value)
+        }
+    var showLoadMoreButton: Boolean
+        get() = storyListStore.state.value.canLoadMore
+        set(value) {
+            if (value != showLoadMoreButton) storyListStore.setCanLoadMore(value)
+        }
+    var visibleStoryCount: Int
+        get() = storyListStore.state.value.visibleStoryCount
+        set(value) {
+            if (value != visibleStoryCount) storyListStore.setVisibleStoryCount(value)
+        }
 
     init {
         applyInitialSettings(settings)
@@ -94,22 +108,20 @@ class StoryListState(
         ) else stories.size
 
     fun hasLoadMoreButton(): Boolean =
-        loadMoreLoading ||
+        storyListStore.state.value.loadMoreInProgress ||
             showLoadMoreButton ||
             (paginationMode && visibleStoryCount < stories.size)
 
-    fun isLoadMoreLoading(): Boolean = loadMoreLoading
+    fun isLoadMoreLoading(): Boolean = storyListStore.state.value.loadMoreInProgress
 
     fun setLoadMoreLoading(loading: Boolean) {
-        if (loadMoreLoading == loading) return
-        loadMoreLoading = loading
+        if (isLoadMoreLoading() == loading) return
+        if (loading) {
+            storyListStore.beginLoadMore()
+        } else {
+            storyListStore.finishLoadMore(storyListStore.state.value.canLoadMore)
+        }
         notifyChanged()
-    }
-
-    fun loadNextPage() {
-        val oldVisibleCount = visibleStoryCount
-        visibleStoryCount = min(visibleStoryCount + PAGINATION_PAGE_SIZE, stories.size)
-        if (visibleStoryCount != oldVisibleCount) notifyChanged()
     }
 
     fun updateStoryClickedState(position: Int) {
@@ -419,7 +431,6 @@ class StoryListState(
     private fun notifyChanged(story: Story? = null) = changedListener?.invoke(story)
 
     companion object {
-        const val PAGINATION_PAGE_SIZE = 30
         private const val LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176
     }
 }

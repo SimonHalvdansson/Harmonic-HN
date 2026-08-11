@@ -17,7 +17,9 @@ import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryTypeAndroid
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
@@ -37,47 +39,46 @@ fun StoriesSettingsScreen(
     val refresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
-    val previewImageMode = SettingsUtils.getPreferredStoryPreviewImageMode(context)
-    val textSize = SettingsUtils.getPreferredStoryTextSize(context)
+    val storySettings = AndroidUserSettings.get(context).story
+    val previewImageMode = storySettings.previewImageMode
+    val textSize = storySettings.storyTextSize
     val additionalFrontpages = AdditionalFrontpagePreferences.sanitize(
-        prefs.getStringSet(SettingsUtils.PREF_ADDITIONAL_FRONTPAGES, emptySet()) ?: emptySet(),
+        prefs.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES, emptySet()) ?: emptySet(),
     )
-    val hotness = prefs.getString("pref_hotness", "-1") ?: "-1"
-    val paletteTintConfigKey = SettingsUtils.getPreferredPaletteTintConfigKey(context)
+    val hotness = storySettings.hotness.toString()
+    val paletteTintConfigKey = storySettings.paletteTintConfigKey
     val previewModel = remember(context, paletteTintConfigKey) {
         val tintFallback = PreviewImageTintUtils.getTintBaseColor(context)
         SettingsStoryPreviewModel.copy(
             tintFallbackArgb = tintFallback,
         )
     }
-    val compact = prefs.getBoolean("pref_compact_view", false)
-    val showThumbnails = prefs.getBoolean("pref_thumbnails", true)
-    val hideClicked = prefs.getBoolean(SettingsUtils.PREF_HIDE_CLICKED, false)
-    val faviconProvider = SettingsUtils.getPreferredFaviconProvider(context)
+    val compact = storySettings.compactView
+    val showThumbnails = storySettings.thumbnails
+    val hideClicked = storySettings.hideClicked
+    val faviconProvider = storySettings.faviconProvider
     val state = StoriesSettingsUiState(
         previewModel = previewModel,
         previewImageMode = previewImageMode,
         previewOffValue = SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
         previewSmallValue = SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
         previewLargeValue = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
-        borderlessLargeImage = prefs.getBoolean(
-            SettingsUtils.PREF_STORY_PREVIEW_IMAGE_BORDERLESS,
-            false,
-        ),
+        borderlessLargeImage = storySettings.borderlessLargePreviewImage,
         compact = compact,
-        showSummary = prefs.getBoolean(SettingsUtils.PREF_SHOW_STORY_SUMMARY, false),
+        showSummary = storySettings.showSummary,
         showThumbnails = showThumbnails,
-        showPoints = prefs.getBoolean("pref_show_points", true),
-        compactPoints = prefs.getBoolean(SettingsUtils.PREF_COMPACT_POINTS, false),
-        includeTopLevelDomain = prefs.getBoolean(
-            SettingsUtils.PREF_INCLUDE_TOP_LEVEL_DOMAIN,
-            true,
-        ),
-        showComments = prefs.getBoolean("pref_show_comments_count", true),
-        showIndex = prefs.getBoolean("pref_show_index", true),
-        leftAlignComments = prefs.getBoolean("pref_left_align", false),
-        tint = prefs.getBoolean(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, true),
-        displayStyle = SettingsUtils.getPreferredStoryDisplayStyle(context),
+        showPoints = storySettings.showPoints,
+        compactPoints = storySettings.compactPoints,
+        includeTopLevelDomain = storySettings.includeTopLevelDomain,
+        showComments = storySettings.showCommentsCount,
+        showIndex = storySettings.showIndex,
+        leftAlignComments = storySettings.leftAlign,
+        tint = storySettings.tintCardUsingPreview,
+        displayStyle = if (storySettings.cardStyle) {
+            SettingsUtils.STORY_DISPLAY_STYLE_CARD
+        } else {
+            SettingsUtils.STORY_DISPLAY_STYLE_STANDARD
+        },
         standardStyleValue = SettingsUtils.STORY_DISPLAY_STYLE_STANDARD,
         cardStyleValue = SettingsUtils.STORY_DISPLAY_STYLE_CARD,
         textSize = textSize,
@@ -86,14 +87,14 @@ fun StoriesSettingsScreen(
         maxTextSizeOffset = SettingsUtils.MAX_STORY_TEXT_SIZE_OFFSET,
         hotnessEnabled = hotness != "-1",
         hotnessLabel = hotnessLabel(hotness),
-        preferredFont = SettingsUtils.getPreferredFont(context),
+        preferredFont = storySettings.font,
         paletteTintConfigKey = paletteTintConfigKey,
-        startingPage = prefs.getString("pref_default_story_type", "Top Stories") ?: "Top Stories",
+        startingPage = storySettings.preferredStoryType,
         additionalFrontpagesSummary = AdditionalFrontpagePreferences.summary(additionalFrontpages),
-        alwaysOpenComments = prefs.getBoolean("pref_always_open_comments", false),
-        pagination = prefs.getBoolean("pref_pagination_mode", false),
+        alwaysOpenComments = storySettings.alwaysOpenComments,
+        pagination = storySettings.pagination,
         hideClicked = hideClicked,
-        grayOutClicked = prefs.getBoolean(SettingsUtils.PREF_GRAY_OUT_CLICKED, true),
+        grayOutClicked = storySettings.grayOutClicked,
         faviconProvider = faviconProvider,
         faviconIcon = painterResource(SettingsUtils.getFaviconProviderIconResource(faviconProvider)),
     )
@@ -115,7 +116,7 @@ fun StoriesSettingsScreen(
         },
         onTextSizeOffsetChanged = { offset ->
             val size = TextPreferences.storyTextSizeForOffset(offset)
-            prefs.edit().putString(SettingsUtils.PREF_STORY_TEXT_SIZE, formatTextSize(size)).apply()
+            prefs.edit().putString(UserPreferenceKeys.STORY_TEXT_SIZE, formatTextSize(size)).apply()
         },
         onDialogRequested = { dialog = it },
         contentVersion = refresh + localRefresh,
@@ -133,7 +134,7 @@ fun StoriesSettingsScreen(
             ),
             selected = hotness,
             onDismiss = { dialog = null },
-            onSelected = { prefs.edit().putString("pref_hotness", it).apply() },
+            onSelected = { prefs.edit().putString(UserPreferenceKeys.HOTNESS, it).apply() },
         )
         StoriesSettingsDialog.StartingPage -> ChoiceDialog(
             title = "Starting page",
@@ -143,7 +144,7 @@ fun StoriesSettingsScreen(
             selected = state.startingPage,
             onDismiss = { dialog = null },
             onSelected = {
-                prefs.edit().putString("pref_default_story_type", it).apply()
+                prefs.edit().putString(UserPreferenceKeys.DEFAULT_STORY_TYPE, it).apply()
                 onRequestRestart()
             },
         )
@@ -154,7 +155,7 @@ fun StoriesSettingsScreen(
             onDismiss = { dialog = null },
             onSelectionChanged = {
                 prefs.edit().putStringSet(
-                    SettingsUtils.PREF_ADDITIONAL_FRONTPAGES,
+                    UserPreferenceKeys.ADDITIONAL_FRONTPAGES,
                     AdditionalFrontpagePreferences.sanitize(it),
                 ).apply()
                 onRequestRestart()
@@ -171,27 +172,27 @@ fun StoriesSettingsScreen(
 
 private val StoriesBooleanSetting.preferenceKey: String
     get() = when (this) {
-        StoriesBooleanSetting.BorderlessLargeImage -> SettingsUtils.PREF_STORY_PREVIEW_IMAGE_BORDERLESS
-        StoriesBooleanSetting.Tint -> SettingsUtils.PREF_TINT_CARD_USING_PREVIEW
-        StoriesBooleanSetting.Compact -> "pref_compact_view"
-        StoriesBooleanSetting.ShowSummary -> SettingsUtils.PREF_SHOW_STORY_SUMMARY
-        StoriesBooleanSetting.ShowThumbnails -> "pref_thumbnails"
-        StoriesBooleanSetting.ShowPoints -> "pref_show_points"
-        StoriesBooleanSetting.CompactPoints -> SettingsUtils.PREF_COMPACT_POINTS
-        StoriesBooleanSetting.IncludeTopLevelDomain -> SettingsUtils.PREF_INCLUDE_TOP_LEVEL_DOMAIN
-        StoriesBooleanSetting.ShowComments -> "pref_show_comments_count"
-        StoriesBooleanSetting.ShowIndex -> "pref_show_index"
-        StoriesBooleanSetting.LeftAlignComments -> "pref_left_align"
-        StoriesBooleanSetting.AlwaysOpenComments -> "pref_always_open_comments"
-        StoriesBooleanSetting.Pagination -> "pref_pagination_mode"
-        StoriesBooleanSetting.HideClicked -> SettingsUtils.PREF_HIDE_CLICKED
-        StoriesBooleanSetting.GrayOutClicked -> SettingsUtils.PREF_GRAY_OUT_CLICKED
+        StoriesBooleanSetting.BorderlessLargeImage -> UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS
+        StoriesBooleanSetting.Tint -> UserPreferenceKeys.TINT_CARD_USING_PREVIEW
+        StoriesBooleanSetting.Compact -> UserPreferenceKeys.COMPACT_VIEW
+        StoriesBooleanSetting.ShowSummary -> UserPreferenceKeys.SHOW_STORY_SUMMARY
+        StoriesBooleanSetting.ShowThumbnails -> UserPreferenceKeys.THUMBNAILS
+        StoriesBooleanSetting.ShowPoints -> UserPreferenceKeys.SHOW_POINTS
+        StoriesBooleanSetting.CompactPoints -> UserPreferenceKeys.COMPACT_POINTS
+        StoriesBooleanSetting.IncludeTopLevelDomain -> UserPreferenceKeys.INCLUDE_TOP_LEVEL_DOMAIN
+        StoriesBooleanSetting.ShowComments -> UserPreferenceKeys.SHOW_COMMENTS_COUNT
+        StoriesBooleanSetting.ShowIndex -> UserPreferenceKeys.SHOW_INDEX
+        StoriesBooleanSetting.LeftAlignComments -> UserPreferenceKeys.LEFT_ALIGN
+        StoriesBooleanSetting.AlwaysOpenComments -> UserPreferenceKeys.ALWAYS_OPEN_COMMENTS
+        StoriesBooleanSetting.Pagination -> UserPreferenceKeys.PAGINATION_MODE
+        StoriesBooleanSetting.HideClicked -> UserPreferenceKeys.HIDE_CLICKED
+        StoriesBooleanSetting.GrayOutClicked -> UserPreferenceKeys.GRAY_OUT_CLICKED
     }
 
 private val StoriesStringSetting.preferenceKey: String
     get() = when (this) {
-        StoriesStringSetting.PreviewImageMode -> SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE
-        StoriesStringSetting.DisplayStyle -> SettingsUtils.PREF_STORY_DISPLAY_STYLE
+        StoriesStringSetting.PreviewImageMode -> UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE
+        StoriesStringSetting.DisplayStyle -> UserPreferenceKeys.STORY_DISPLAY_STYLE
     }
 
 private fun formatTextSize(value: Float): String = if (value == value.toInt().toFloat()) {

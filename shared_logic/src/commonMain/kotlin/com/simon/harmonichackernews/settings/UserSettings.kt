@@ -14,6 +14,7 @@ interface UserSettings {
     val comments: CommentPreferences
     val reading: ReadingPreferences
     val cache: CachePreferences
+    val general: GeneralPreferences
 
     /** Emits after persisted user preferences change. Consumers can then read fresh snapshots. */
     val changes: Flow<Unit>
@@ -70,6 +71,10 @@ data class CommentPreferences(
     val collectReferenceLinks: Boolean,
     val collapseTopLevel: Boolean,
     val sorting: String,
+    val showScrollbar: Boolean,
+    val animateChanges: Boolean,
+    val smoothScroll: Boolean,
+    val volumeNavigationMode: String,
 )
 
 data class ReadingPreferences(
@@ -82,9 +87,27 @@ data class ReadingPreferences(
     val blockAds: Boolean,
     val closeWebViewOnBack: Boolean,
     val useAlgoliaApi: Boolean,
+    val readerModeFont: String,
+    val readerModeFontSize: Int,
+    val externalBrowser: Boolean,
+    val redirectNitter: Boolean,
+    val archiveRedirectDomains: List<String>,
+    val previewArxiv: Boolean,
+    val previewGithub: Boolean,
+    val previewGitlab: Boolean,
+    val previewStackExchange: Boolean,
+    val previewWikipedia: Boolean,
+    val previewX: Boolean,
 )
 
 data class CachePreferences(
     val storiesToCache: Int,
     val cacheArticleSnapshots: Boolean,
+)
+
+data class GeneralPreferences(
+    val bookmarksEnabled: Boolean,
+    val transparentStatusBar: Boolean,
+    val specialNighttimeTheme: Boolean,
+    val showChangelog: Boolean,
 )

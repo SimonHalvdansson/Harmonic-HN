@@ -26,6 +26,7 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.NighttimeScheduleKeys
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.HistoriesUtils
@@ -251,10 +252,10 @@ private fun resetAllSettings(context: Context) {
         Utils.GLOBAL_SHARED_PREFERENCES_KEY,
         Context.MODE_PRIVATE,
     ).edit()
-        .remove(Utils.KEY_NIGHTTIME_FROM_HOUR)
-        .remove(Utils.KEY_NIGHTTIME_FROM_MINUTE)
-        .remove(Utils.KEY_NIGHTTIME_TO_HOUR)
-        .remove(Utils.KEY_NIGHTTIME_TO_MINUTE)
+        .remove(NighttimeScheduleKeys.FROM_HOUR)
+        .remove(NighttimeScheduleKeys.FROM_MINUTE)
+        .remove(NighttimeScheduleKeys.TO_HOUR)
+        .remove(NighttimeScheduleKeys.TO_MINUTE)
         .apply()
     Utils.toast("Settings reset", context)
 }

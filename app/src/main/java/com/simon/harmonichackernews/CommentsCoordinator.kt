@@ -130,7 +130,6 @@ class CommentsCoordinator(
     private var allComments by sessionState::allComments
     private var queue: RequestQueue? = null
     private val requestTag = Any()
-    private var commentsLoadGeneration = 0
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
@@ -713,7 +712,7 @@ class CommentsCoordinator(
             return
         }
         composeController = CommentsComposeController.create(
-            { SettingsUtils.shouldSmoothScrollComments(requireActivity()) },
+            { userSettings.comments.smoothScroll },
             story!!,
             showWebsite,
             username,
@@ -1205,7 +1204,7 @@ class CommentsCoordinator(
         }
         val windowStatusBarColor =
             if (activity.isAdaptiveTwoPaneNavigation ||
-                SettingsUtils.shouldUseTransparentStatusBar(requireContext())
+                userSettings.general.transparentStatusBar
             )
                 Color.TRANSPARENT
             else
@@ -1504,7 +1503,7 @@ class CommentsCoordinator(
         if (queue != null) {
             queue!!.cancelAll(requestTag)
         }
-        commentsLoadGeneration++
+        commentsPresenter.dispatch(CommentsAction.CancelThreadLoad)
         commentsRefreshing = false
         storyVoteLoading = false
         storyFavoriteLoading = false
@@ -1618,7 +1617,7 @@ class CommentsCoordinator(
         id: Int,
         oldCachedResponse: String?,
         restoreScrollFromCache: Boolean = false,
-    ): Int {
+    ) {
         val context = this.context
         if (context == null || queue == null || !this.isCommentsViewActive) {
             Log.w(
@@ -1627,10 +1626,9 @@ class CommentsCoordinator(
                         + ", queuePresent=" + (queue != null)
                         + ", commentsViewActive=" + this.isCommentsViewActive)
             )
-            return -1
+            return
         }
 
-        val loadGeneration = ++commentsLoadGeneration
         Log.d(
             TAG,
             "Loading comments for storyId=" + id + ", hasCachedResponse=" + (oldCachedResponse != null)
@@ -1645,7 +1643,6 @@ class CommentsCoordinator(
 
         commentsPresenter.dispatch(
             CommentsAction.LoadThread(
-                requestId = loadGeneration,
                 storyId = id,
                 useAlgolia = userSettings.reading.useAlgoliaApi,
                 filteredUsers = filteredUsers ?: emptySet(),
@@ -1660,7 +1657,6 @@ class CommentsCoordinator(
         if (linkPreviewController != null) {
             linkPreviewController!!.loadNetworkPreviews(context)
         }
-        return loadGeneration
     }
 
     private fun handleCommentsEffect(effect: CommentsEffect) {
@@ -1988,7 +1984,7 @@ class CommentsCoordinator(
         get() = this.view != null && comments != null && allComments != null
 
     private fun isCurrentCommentsLoad(loadGeneration: Int, storyId: Int): Boolean {
-        return loadGeneration == commentsLoadGeneration &&
+        return commentsPresenter.isCurrentThreadLoad(loadGeneration, storyId) &&
             story?.id == storyId &&
             isCommentsViewActive
     }

@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.text.SimpleDateFormat
@@ -35,10 +37,11 @@ fun AppearanceSettingsScreen(
         SettingsUtils.PREF_THEME_NIGHTTIME,
         SettingsUtils.DEFAULT_NIGHTTIME_THEME,
     ) ?: SettingsUtils.DEFAULT_NIGHTTIME_THEME
-    val tintEnabled = SettingsUtils.shouldTintCardUsingPreview(context)
+    val settings = AndroidUserSettings.get(context)
+    val tintEnabled = settings.story.tintCardUsingPreview
     val state = AppearanceSettingsUiState(
         themeLabel = composeThemeLabel(theme),
-        specialNighttime = prefs.getBoolean("pref_special_nighttime", false),
+        specialNighttime = settings.general.specialNighttimeTheme,
         nighttimeRangeLabel = formatNighttimeRange(context),
         nighttimeThemeLabel = composeThemeLabel(
             nighttimeTheme,
@@ -52,8 +55,8 @@ fun AppearanceSettingsScreen(
         },
         paletteTintEnabled = tintEnabled,
         showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
-        transparentStatusBar = prefs.getBoolean("pref_transparent_status_bar", false),
-        compactHeader = prefs.getBoolean("pref_compact_header", false),
+        transparentStatusBar = settings.general.transparentStatusBar,
+        compactHeader = settings.story.compactHeader,
     )
     SharedAppearanceSettingsScreen(
         state = state,
@@ -98,9 +101,9 @@ fun AppearanceSettingsScreen(
 
 private val AppearanceBooleanSetting.preferenceKey: String
     get() = when (this) {
-        AppearanceBooleanSetting.SpecialNighttime -> "pref_special_nighttime"
-        AppearanceBooleanSetting.TransparentStatusBar -> "pref_transparent_status_bar"
-        AppearanceBooleanSetting.CompactHeader -> "pref_compact_header"
+        AppearanceBooleanSetting.SpecialNighttime -> UserPreferenceKeys.SPECIAL_NIGHTTIME
+        AppearanceBooleanSetting.TransparentStatusBar -> UserPreferenceKeys.TRANSPARENT_STATUS_BAR
+        AppearanceBooleanSetting.CompactHeader -> UserPreferenceKeys.COMPACT_HEADER
     }
 
 private fun formatNighttimeRange(context: Context): String {

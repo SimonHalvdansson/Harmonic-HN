@@ -11,6 +11,8 @@ data class StoryCacheIndexUpdate(
 data class StoryCacheEntry(val storyId: Int, val cachedAtMillis: Long)
 
 object StoryCacheIndex {
+    const val DEFAULT_MAX_AGE_MILLIS: Long = 24L * 60L * 60L * 1_000L
+
     fun record(
         encodedEntries: Set<String>,
         storyId: Int,
@@ -45,6 +47,17 @@ object StoryCacheIndex {
     fun entries(encodedEntries: Set<String>): List<StoryCacheEntry> =
         encodedEntries.mapNotNull(::parse)
 
+    fun recentEntries(
+        encodedEntries: Set<String>,
+        nowMillis: Long,
+        maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
+    ): List<StoryCacheEntry> {
+        val oldestAllowed = nowMillis - maxAgeMillis.coerceAtLeast(0L)
+        return entries(encodedEntries)
+            .filter { it.cachedAtMillis >= oldestAllowed }
+            .sortedWith(compareBy(StoryCacheEntry::cachedAtMillis, StoryCacheEntry::storyId))
+    }
+
     private fun parse(value: String): StoryCacheEntry? {
         val separator = value.indexOf('-')
         if (separator <= 0 || separator == value.lastIndex || value.indexOf('-', separator + 1) >= 0) {
@@ -56,6 +69,21 @@ object StoryCacheIndex {
     }
 
     private fun encode(entry: StoryCacheEntry): String = "${entry.storyId}-${entry.cachedAtMillis}"
+}
+
+object ArticleSnapshotPolicy {
+    const val MAX_BYTES: Long = 5L * 1_024L * 1_024L
+
+    fun isValidSize(byteCount: Long): Boolean = byteCount in 1L..MAX_BYTES
+}
+
+object CacheFileNamePolicy {
+    fun storyId(value: String, prefix: String = "", suffix: String = ""): Int? {
+        if (!value.startsWith(prefix) || !value.endsWith(suffix)) return null
+        val contentEnd = value.length - suffix.length
+        if (contentEnd < prefix.length) return null
+        return value.substring(prefix.length, contentEnd).toIntOrNull()?.takeIf { it > 0 }
+    }
 }
 
 object StoryCachePayloadParser {

@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
+import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.HttpCall
 import com.simon.harmonichackernews.network.HttpCallback
@@ -75,7 +76,7 @@ class ArticleSnapshotDownloader(context: Context) {
                             throw IOException("Article response was not HTML")
                         }
                         val contentLength = body.contentLength()
-                        if (contentLength > Utils.MAX_CACHED_ARTICLE_BYTES) {
+                        if (contentLength > ArticleSnapshotPolicy.MAX_BYTES) {
                             throw IOException("Article HTML exceeds the 5 MiB cache limit")
                         }
 
@@ -147,7 +148,7 @@ class ArticleSnapshotDownloader(context: Context) {
             if (!name.endsWith(HTML_FILE_SUFFIX)) {
                 continue
             }
-            if (file.length() <= 0L || file.length() > Utils.MAX_CACHED_ARTICLE_BYTES) {
+            if (!ArticleSnapshotPolicy.isValidSize(file.length())) {
                 val storyId: Int = getStoryId(file)
                 if (storyId > 0) {
                     Utils.deleteCachedArticleSnapshot(appContext, storyId)
@@ -221,7 +222,7 @@ class ArticleSnapshotDownloader(context: Context) {
                 var bytesRead: Int
                 while ((source.read(buffer).also { bytesRead = it }) != -1) {
                     downloadedBytes += bytesRead.toLong()
-                    if (downloadedBytes > Utils.MAX_CACHED_ARTICLE_BYTES) {
+                    if (downloadedBytes > ArticleSnapshotPolicy.MAX_BYTES) {
                         throw IOException("Article HTML exceeds the 5 MiB cache limit")
                     }
                     outputStream.write(buffer, 0, bytesRead)

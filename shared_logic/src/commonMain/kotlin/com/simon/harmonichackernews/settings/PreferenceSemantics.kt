@@ -1,5 +1,27 @@
 package com.simon.harmonichackernews.settings
 
+object ThemePreferences {
+    const val DEFAULT = "material_daynight"
+    const val DEFAULT_NIGHTTIME = "dark"
+
+    fun isAutomatic(theme: String?): Boolean = theme in setOf(
+        DEFAULT,
+        "darklight_daynight",
+        "amoledwhite_daynight",
+    )
+
+    fun isDark(theme: String?): Boolean = theme in setOf(
+        "material_dark",
+        "dark",
+        "hacker",
+        "amoled",
+        "gray",
+    )
+
+    fun selectableNighttimeTheme(theme: String?): String =
+        theme?.takeIf(::isDark) ?: DEFAULT_NIGHTTIME
+}
+
 object PaletteTintPreferences {
     const val DEFAULT = "default"
     const val VIBRANT = "vibrant"

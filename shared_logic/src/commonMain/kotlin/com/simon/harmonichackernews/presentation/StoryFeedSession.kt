@@ -56,7 +56,7 @@ class StoryVisibilityPolicy(
 }
 
 /**
- * Request-generation, in-flight item, and pagination tracking for a story feed.
+ * Request-generation and in-flight item tracking for a story feed.
  * Android remains responsible only for starting/cancelling actual network calls.
  */
 class StoryFeedLoadSession(
@@ -66,13 +66,10 @@ class StoryFeedLoadSession(
         private set
 
     private val startedAtByStoryId = mutableMapOf<Int, Long>()
-    private val paginationStoryIds = mutableSetOf<Int>()
-    private var paginationGeneration = -1
 
     fun beginGeneration(): Int {
         generation++
         startedAtByStoryId.clear()
-        clearPagination()
         return generation
     }
 
@@ -101,38 +98,6 @@ class StoryFeedLoadSession(
 
     fun clearStoryLoads() {
         startedAtByStoryId.clear()
-    }
-
-    fun beginPagination(
-        stories: List<Story>,
-        loadedThroughIndex: Int,
-        targetIndex: Int,
-        requestGeneration: Int,
-    ): Set<Int> {
-        paginationStoryIds.clear()
-        paginationGeneration = requestGeneration
-        if (stories.isEmpty()) return emptySet()
-        val firstIndex = (loadedThroughIndex + 1).coerceAtLeast(0)
-        val lastIndex = targetIndex.coerceAtMost(stories.lastIndex)
-        if (firstIndex <= lastIndex) {
-            for (index in firstIndex..lastIndex) {
-                stories[index].takeUnless { it.loaded }?.id?.let(paginationStoryIds::add)
-            }
-        }
-        return paginationStoryIds.toSet()
-    }
-
-    fun finishPaginationStory(storyId: Int, requestGeneration: Int): Boolean {
-        if (requestGeneration != paginationGeneration) return false
-        paginationStoryIds.remove(storyId)
-        return paginationStoryIds.isEmpty()
-    }
-
-    fun hasPendingPaginationStories(): Boolean = paginationStoryIds.isNotEmpty()
-
-    fun clearPagination() {
-        paginationStoryIds.clear()
-        paginationGeneration = -1
     }
 }
 

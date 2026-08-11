@@ -55,9 +55,9 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.Utils
 
 private data class WidgetFeedOption(
     val label: String,
@@ -109,32 +109,32 @@ private fun WidgetConfigScreen(
     val feedOptions = listOf(
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_top_stories),
-            feedUrl = Utils.URL_TOP,
+            feedUrl = checkNotNull(StoryType.TOP_STORIES.hackerNewsUrl),
             feedName = "Top stories",
         ),
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_new_stories),
-            feedUrl = Utils.URL_NEW,
+            feedUrl = checkNotNull(StoryType.NEW_STORIES.hackerNewsUrl),
             feedName = "New stories",
         ),
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_best_stories),
-            feedUrl = Utils.URL_BEST,
+            feedUrl = checkNotNull(StoryType.BEST_STORIES.hackerNewsUrl),
             feedName = "Best stories",
         ),
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_ask_hn),
-            feedUrl = Utils.URL_ASK,
+            feedUrl = checkNotNull(StoryType.ASK_HN.hackerNewsUrl),
             feedName = "Ask HN",
         ),
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_show_hn),
-            feedUrl = Utils.URL_SHOW,
+            feedUrl = checkNotNull(StoryType.SHOW_HN.hackerNewsUrl),
             feedName = "Show HN",
         ),
         WidgetFeedOption(
             label = stringResource(R.string.widget_config_jobs),
-            feedUrl = Utils.URL_JOBS,
+            feedUrl = checkNotNull(StoryType.HN_JOBS.hackerNewsUrl),
             feedName = "Jobs",
         ),
     )

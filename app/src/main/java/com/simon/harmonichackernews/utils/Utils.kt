@@ -25,12 +25,16 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheIndex
+import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
+import com.simon.harmonichackernews.data.CacheFileNamePolicy
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.AppLaunchStateStore
+import com.simon.harmonichackernews.settings.NighttimeSchedule
+import com.simon.harmonichackernews.settings.NighttimeScheduleStore
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import java.io.File
 import java.io.FileInputStream
@@ -48,28 +52,11 @@ object Utils {
     const val KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS: String =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
     private const val MAX_CACHED_STORIES = 200
-    const val MAX_CACHED_ARTICLE_BYTES = 5L * 1024L * 1024L
     private const val STORY_CACHE_DIR = "story_cache"
     private const val STORY_CACHE_FULL_DIR = "full"
     private const val STORY_CACHE_SUMMARY_DIR = "summary"
     private const val STORY_CACHE_FILE_SUFFIX = ".json"
     const val GLOBAL_SHARED_PREFERENCES_KEY: String = AppLaunchPreferenceKeys.STORE_NAME
-
-    const val KEY_NIGHTTIME_FROM_HOUR: String =
-        "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
-    const val KEY_NIGHTTIME_FROM_MINUTE: String =
-        "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_MINUTE"
-    const val KEY_NIGHTTIME_TO_HOUR: String =
-        "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_HOUR"
-    const val KEY_NIGHTTIME_TO_MINUTE: String =
-        "com.simon.harmonichackernews.KEY_NIGHTTIME_TO_MINUTE"
-
-    const val URL_TOP: String = "https://hacker-news.firebaseio.com/v0/topstories.json"
-    const val URL_NEW: String = "https://hacker-news.firebaseio.com/v0/newstories.json"
-    const val URL_BEST: String = "https://hacker-news.firebaseio.com/v0/beststories.json"
-    const val URL_ASK: String = "https://hacker-news.firebaseio.com/v0/askstories.json"
-    const val URL_SHOW: String = "https://hacker-news.firebaseio.com/v0/showstories.json"
-    const val URL_JOBS: String = "https://hacker-news.firebaseio.com/v0/jobstories.json"
 
     @Volatile
     var adservers: AdHostBlocklist = AdHostBlocklist.empty()
@@ -330,22 +317,17 @@ object Utils {
         )
         for (key in sharedPreferences.all.keys) {
             if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
-                addCachedPostId(
-                    cachedPostIds,
+                CacheFileNamePolicy.storyId(
                     key,
-                    KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL
-                )
+                    KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL,
+                )?.let(cachedPostIds::add)
             }
         }
 
         val articleCacheDir = getArticleCacheDir(ctx)
         articleCacheDir.listFiles()?.forEach { cachedArticleFile ->
-                addCachedPostId(
-                    cachedPostIds,
-                    cachedArticleFile.name,
-                    "",
-                    ".html"
-                )
+                CacheFileNamePolicy.storyId(cachedArticleFile.name, suffix = ".html")
+                    ?.let(cachedPostIds::add)
         }
 
         addCachedPostIdsFromStoryCacheDir(
@@ -365,27 +347,11 @@ object Utils {
         cacheDir: File
     ) {
         cacheDir.listFiles()?.forEach { cachedStoryFile ->
-            addCachedPostId(
-                cachedPostIds,
+            CacheFileNamePolicy.storyId(
                 cachedStoryFile.name,
-                "",
-                STORY_CACHE_FILE_SUFFIX
-            )
+                suffix = STORY_CACHE_FILE_SUFFIX,
+            )?.let(cachedPostIds::add)
         }
-    }
-
-    private fun addCachedPostId(
-        cachedPostIds: MutableSet<Int>,
-        value: String,
-        prefix: String,
-        suffix: String = ""
-    ) {
-        if (!value.startsWith(prefix) || !value.endsWith(suffix)) {
-            return
-        }
-
-        val end = value.length - suffix.length
-        value.substring(prefix.length, end).toIntOrNull()?.let(cachedPostIds::add)
     }
 
     private fun writeCachedStoryFiles(ctx: Context, id: Int, data: String?) {
@@ -526,7 +492,7 @@ object Utils {
         if (!cacheFile.exists()) {
             return null
         }
-        if (cacheFile.length() <= 0L || cacheFile.length() > MAX_CACHED_ARTICLE_BYTES) {
+        if (!ArticleSnapshotPolicy.isValidSize(cacheFile.length())) {
             deleteCachedArticleSnapshot(ctx, id)
             return null
         }
@@ -607,10 +573,8 @@ object Utils {
             ctx,
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
-        val limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000
-        return StoryCacheIndex.entries(cached).any { entry ->
-            entry.cachedAtMillis >= limit &&
-                loadCachedStoryForStoriesList(ctx, entry.storyId) != null
+        return StoryCacheIndex.recentEntries(cached, System.currentTimeMillis()).any { entry ->
+            loadCachedStoryForStoriesList(ctx, entry.storyId) != null
         }
     }
 
@@ -620,19 +584,8 @@ object Utils {
             KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
         )
         val stories = arrayListOf<Story>()
-        val limit = System.currentTimeMillis() - 24 * 60 * 60 * 1000
-
-        val orderedIds = mutableListOf<Pair<Long, Int>>()
-
-        for (entry in StoryCacheIndex.entries(cached)) {
-            if (entry.cachedAtMillis < limit) continue
-            orderedIds += entry.cachedAtMillis to entry.storyId
-        }
-
-        orderedIds.sortBy { it.first }
-
-        for (pair in orderedIds) {
-            loadCachedStoryForStoriesList(ctx, pair.second)?.let(stories::add)
+        for (entry in StoryCacheIndex.recentEntries(cached, System.currentTimeMillis())) {
+            loadCachedStoryForStoriesList(ctx, entry.storyId)?.let(stories::add)
         }
 
         return stories
@@ -701,9 +654,7 @@ object Utils {
                     Uri.parse(URLUtil.guessUrl(originalUrl))
                 )
             } catch (_: Exception) {
-                val fallbackUrl = originalUrl.takeIf {
-                    it.startsWith("http://") || it.startsWith("https://")
-                } ?: "http://$originalUrl"
+                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(originalUrl)
                 try {
                     createCustomTabsIntent(ctx, shareable).launchUrl(ctx, Uri.parse(fallbackUrl))
                 } catch (_: Exception) {
@@ -737,9 +688,7 @@ object Utils {
                 openExternalUrl(ctx, URLUtil.guessUrl(url))
             } catch (_: Exception) {
                 // automated fix didn't work, let's try to do it manually
-                val fallbackUrl = url.takeIf {
-                    it.startsWith("http://") || it.startsWith("https://")
-                } ?: "http://$url"
+                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(url)
                 try {
                     openExternalUrl(ctx, fallbackUrl)
                 } catch (_: Exception) {
@@ -832,51 +781,13 @@ object Utils {
         toMinute: Int,
         ctx: Context
     ) {
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
-            KEY_NIGHTTIME_FROM_HOUR,
-            fromHour.toString()
-        )
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
-            KEY_NIGHTTIME_FROM_MINUTE,
-            fromMinute.toString()
-        )
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
-            KEY_NIGHTTIME_TO_HOUR,
-            toHour.toString()
-        )
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
-            KEY_NIGHTTIME_TO_MINUTE,
-            toMinute.toString()
+        NighttimeScheduleStore(AndroidKeyValueStore.global(ctx)).save(
+            NighttimeSchedule(fromHour, fromMinute, toHour, toMinute),
         )
     }
 
     fun getNighttimeHours(ctx: Context): IntArray {
-        return intArrayOf(
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_NIGHTTIME_FROM_HOUR,
-                "21"
-            )?.toIntOrNull() ?: 21,
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_NIGHTTIME_FROM_MINUTE,
-                "0"
-            )?.toIntOrNull() ?: 0,
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_NIGHTTIME_TO_HOUR,
-                "6"
-            )?.toIntOrNull() ?: 6,
-            SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_NIGHTTIME_TO_MINUTE,
-                "0"
-            )?.toIntOrNull() ?: 0
-        )
+        return NighttimeScheduleStore(AndroidKeyValueStore.global(ctx)).load().toIntArray()
     }
 
     fun pxFromDp(resources: Resources, dp: Float): Float {

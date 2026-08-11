@@ -13,8 +13,17 @@ class AndroidUserSettings private constructor(
 ) : UserSettings by delegate {
     constructor(context: Context) : this(createDelegate(context.applicationContext))
 
-    private companion object {
-        fun createDelegate(context: Context): UserSettings {
+    companion object {
+        @Volatile
+        private var sharedInstance: AndroidUserSettings? = null
+
+        fun get(context: Context): AndroidUserSettings = sharedInstance ?: synchronized(this) {
+            sharedInstance ?: AndroidUserSettings(context.applicationContext).also {
+                sharedInstance = it
+            }
+        }
+
+        private fun createDelegate(context: Context): UserSettings {
             val preferences = PreferenceManager.getDefaultSharedPreferences(context)
             val changes = callbackFlow {
                 val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->

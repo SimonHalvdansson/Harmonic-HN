@@ -50,6 +50,8 @@ import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.presentation.StorySearchMode
 import com.simon.harmonichackernews.presentation.StorySearchUiState
 import com.simon.harmonichackernews.presentation.StoryFeedLoadSession
+import com.simon.harmonichackernews.presentation.StoryPaginationPolicy
+import com.simon.harmonichackernews.presentation.StoryPaginationSession
 import com.simon.harmonichackernews.presentation.StoryFeedRefreshPolicy
 import com.simon.harmonichackernews.presentation.StoryFeedSource
 import com.simon.harmonichackernews.presentation.StoryVisibilityConfig
@@ -170,6 +172,7 @@ class StoriesCoordinator(
     private var queue: RequestQueue? = null
     private val requestTag = Any()
     private val storyFeedLoadSession = StoryFeedLoadSession(STORY_LOAD_STALE_TIMEOUT_MS)
+    private val storyPaginationSession = StoryPaginationSession()
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
     private var alwaysOpenComments = false
     private var hideClicked = false
@@ -998,7 +1001,6 @@ class StoriesCoordinator(
 
     private fun setCanLoadMore(targetAdapter: StoryListState, canLoadMore: Boolean) {
         targetAdapter.showLoadMoreButton = canLoadMore
-        storyListStoreFor(targetAdapter).setCanLoadMore(canLoadMore)
     }
 
     private fun useStoryListForAdapter(sourceAdapter: StoryListState) {
@@ -1125,12 +1127,11 @@ class StoriesCoordinator(
         clearPaginationLoadMoreState()
         updateAdapterPaginationMode(adapter)
         adapter!!.visibleStoryCount =
-            if (adapter!!.paginationMode) StoryListState.PAGINATION_PAGE_SIZE else Int.MAX_VALUE
-        activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
+            StoryPaginationPolicy.initialVisibleCount(adapter!!.paginationMode)
     }
 
     private fun shouldUsePaginationForType(storyType: StoryType?): Boolean {
-        return paginationMode || (storyType != null && storyType.isScrapedFrontpage)
+        return StoryPaginationPolicy.isEnabled(paginationMode, storyType)
     }
 
     private fun updateAdapterPaginationMode(targetAdapter: StoryListState?) {
@@ -1139,7 +1140,6 @@ class StoriesCoordinator(
         }
 
         targetAdapter.paginationMode = shouldUsePaginationForType(getStoryType(targetAdapter.type))
-        storyListStoreFor(targetAdapter).setPaginationEnabled(targetAdapter.paginationMode)
     }
 
     private fun resetAlgoliaResultLimit() {
@@ -1152,7 +1152,11 @@ class StoriesCoordinator(
     }
 
     private val initialLoadCount: Int
-        get() = if (adapter != null && adapter!!.paginationMode) StoryListState.PAGINATION_PAGE_SIZE else 20
+        get() = if (adapter != null && adapter!!.paginationMode) {
+            StoryPaginationPolicy.DEFAULT_PAGE_SIZE
+        } else {
+            StoryPaginationPolicy.DEFAULT_INITIAL_LOAD_COUNT
+        }
 
     private fun loadStoriesThroughIndex(targetIndex: Int, loadGeneration: Int) {
         if (!isCurrentStoryListGeneration(loadGeneration)) {
@@ -1167,23 +1171,22 @@ class StoriesCoordinator(
         }
     }
 
-    private fun startPaginationLoadMore(targetIndex: Int, loadGeneration: Int) {
-        storyFeedLoadSession.beginPagination(
+    private fun startPaginationLoadMore(loadGeneration: Int) =
+        storyPaginationSession.beginNextPage(
             stories = stories.orEmpty(),
             loadedThroughIndex = loadedTo,
-            targetIndex = targetIndex,
+            visibleStoryCount = adapter?.visibleStoryCount ?: 0,
             requestGeneration = loadGeneration,
         )
-    }
 
     private fun finishPaginationLoadMoreStory(story: Story?, loadGeneration: Int) {
-        if (story != null && storyFeedLoadSession.finishPaginationStory(story.id, loadGeneration)) {
+        if (story != null && storyPaginationSession.finishStory(story.id, loadGeneration)) {
             clearPaginationLoadMoreState()
         }
     }
 
     private fun clearPaginationLoadMoreState() {
-        storyFeedLoadSession.clearPagination()
+        storyPaginationSession.clear()
         if (adapter != null) {
             adapter!!.setLoadMoreLoading(false)
         }
@@ -1207,18 +1210,11 @@ class StoriesCoordinator(
     }
 
     private val visibleLoadTargetIndex: Int
-        get() {
-            if (stories!!.isEmpty()) {
-                return -1
-            }
-
-            var storiesToLoad = this.initialLoadCount
-            if (adapter != null && adapter!!.paginationMode) {
-                storiesToLoad = adapter!!.visibleStoryCount
-            }
-
-            return min(storiesToLoad, stories!!.size) - 1
-        }
+        get() = StoryPaginationPolicy.visibleLoadTargetIndex(
+            storyCount = stories?.size ?: 0,
+            paginationEnabled = adapter?.paginationMode == true,
+            visibleStoryCount = adapter?.visibleStoryCount ?: 0,
+        )
 
     private fun loadVisibleStories(loadGeneration: Int) {
         val targetIndex = this.visibleLoadTargetIndex
@@ -1280,12 +1276,10 @@ class StoriesCoordinator(
             else
                 adapter!!.visibleStoryCount
             adapter!!.visibleStoryCount =
-                min(max(requestedVisibleCount, StoryListState.PAGINATION_PAGE_SIZE), stories!!.size)
+                min(max(requestedVisibleCount, StoryPaginationPolicy.DEFAULT_PAGE_SIZE), stories!!.size)
         } else {
             adapter!!.visibleStoryCount = Int.MAX_VALUE
         }
-        activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
-
         adapter!!.notifyDataSetChanged()
     }
 
@@ -1360,11 +1354,11 @@ class StoriesCoordinator(
         val previousMainVisibleStoryCount = if (mainAdapter != null)
             mainAdapter!!.visibleStoryCount
         else
-            (if (paginationMode) StoryListState.PAGINATION_PAGE_SIZE else Int.MAX_VALUE)
+            StoryPaginationPolicy.initialVisibleCount(paginationMode)
         val previousSearchVisibleStoryCount = if (searchAdapter != null)
             searchAdapter!!.visibleStoryCount
         else
-            (if (paginationMode) StoryListState.PAGINATION_PAGE_SIZE else Int.MAX_VALUE)
+            StoryPaginationPolicy.initialVisibleCount(paginationMode)
         val previousMainShowLoadMoreButton = mainAdapter != null && mainAdapter!!.showLoadMoreButton
         val previousSearchShowLoadMoreButton =
             searchAdapter != null && searchAdapter!!.showLoadMoreButton
@@ -1380,8 +1374,6 @@ class StoriesCoordinator(
         updateAdapterPaginationMode(searchAdapter)
         mainAdapter!!.visibleStoryCount = previousMainVisibleStoryCount
         searchAdapter!!.visibleStoryCount = previousSearchVisibleStoryCount
-        mainStoryListStore.setVisibleStoryCount(previousMainVisibleStoryCount)
-        searchStoryListStore.setVisibleStoryCount(previousSearchVisibleStoryCount)
         setCanLoadMore(mainAdapter!!, previousMainShowLoadMoreButton)
         setCanLoadMore(searchAdapter!!, previousSearchShowLoadMoreButton)
         syncActiveStoryListToSearchState()
@@ -1412,8 +1404,9 @@ class StoriesCoordinator(
     }
 
     private fun createStoryAdapter(adapterStories: MutableList<Story>): StoryListState {
+        val listStore = if (adapterStories === searchStories) searchStoryListStore else mainStoryListStore
         return StoryListState(
-            adapterStories,
+            listStore,
             StoryDisplaySettings.from(userSettings.story),
             this.preferredTypeIndex
         )
@@ -1425,14 +1418,11 @@ class StoriesCoordinator(
         configuredAdapter.visibleStoryCount = if (sessionState.initialized) {
             retainedListState.visibleStoryCount
         } else if (configuredAdapter.paginationMode) {
-            StoryListState.PAGINATION_PAGE_SIZE
+            StoryPaginationPolicy.DEFAULT_PAGE_SIZE
         } else {
             Int.MAX_VALUE
         }
         configuredAdapter.showLoadMoreButton = retainedListState.canLoadMore
-        if (!sessionState.initialized) {
-            storyListStoreFor(configuredAdapter).setVisibleStoryCount(configuredAdapter.visibleStoryCount)
-        }
         configuredAdapter.setChangedListener(::onStoryListStateChanged)
     }
 
@@ -1457,7 +1447,7 @@ class StoriesCoordinator(
                 story = stories!![position],
                 position = position,
                 alwaysOpenComments = alwaysOpenComments,
-                useIntegratedWebView = SettingsUtils.shouldUseIntegratedWebView(requireContext()),
+                useIntegratedWebView = userSettings.reading.integratedWebView,
             ),
         )
     }
@@ -1508,19 +1498,15 @@ class StoriesCoordinator(
         }
         useStoryListForAdapter(sourceAdapter)
         if (adapter!!.paginationMode && adapter!!.visibleStoryCount < stories!!.size) {
-            val newLoadedTo = min(
-                loadedTo + StoryListState.PAGINATION_PAGE_SIZE,
-                stories!!.size - 1
-            )
-            startPaginationLoadMore(newLoadedTo, storyListGeneration)
+            val plan = startPaginationLoadMore(storyListGeneration) ?: return
             adapter!!.setLoadMoreLoading(true)
-            adapter!!.loadNextPage()
-            activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
-            if (!storyFeedLoadSession.hasPendingPaginationStories()) {
+            adapter!!.visibleStoryCount = plan.nextVisibleCount
+            adapter!!.notifyDataSetChanged()
+            if (!storyPaginationSession.hasPendingStories()) {
                 clearPaginationLoadMoreState()
             }
-            loadStoriesThroughIndex(newLoadedTo, storyListGeneration)
-            retryUnsettledStoriesThroughIndex(newLoadedTo, storyListGeneration)
+            loadStoriesThroughIndex(plan.targetLoadedIndex, storyListGeneration)
+            retryUnsettledStoriesThroughIndex(plan.targetLoadedIndex, storyListGeneration)
         } else if (adapter!!.showLoadMoreButton && currentTypeIsScrapedFrontpage()) {
             loadMoreScrapedFrontpageStories(storyListGeneration)
         } else if (adapter!!.showLoadMoreButton) {
@@ -1990,6 +1976,7 @@ class StoriesCoordinator(
         if (searchAdapter != null) searchAdapter!!.dispose()
         if (queue != null) {
             storyFeedLoadSession.beginGeneration()
+            storyPaginationSession.clear()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -2237,6 +2224,7 @@ class StoriesCoordinator(
 
     private fun beginStoryListRefresh(): Int {
         storyFeedLoadSession.beginGeneration()
+        storyPaginationSession.clear()
         resetPreviewImagePrefetchRamp()
         resetScrapedFrontpagePaginationState()
         invalidateAlgoliaLoad()
@@ -2565,7 +2553,6 @@ class StoriesCoordinator(
                     adapter!!.visibleStoryCount =
                         min(adapter!!.visibleStoryCount + newStories.size, stories!!.size)
                 }
-                activeStoryListStore.setVisibleStoryCount(adapter!!.visibleStoryCount)
                 adapter!!.notifyDataSetChanged()
                 loadVisibleStories(refreshGeneration)
                 updateHeader()
@@ -3006,6 +2993,7 @@ class StoriesCoordinator(
 
             // cancel all ongoing
             storyFeedLoadSession.beginGeneration()
+            storyPaginationSession.clear()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3023,6 +3011,7 @@ class StoriesCoordinator(
             loadPendingBeforeSearch = false
 
             storyFeedLoadSession.beginGeneration()
+            storyPaginationSession.clear()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3084,7 +3073,7 @@ class StoriesCoordinator(
         algoliaLoadMoreInProgress = true
         if (adapter != null && adapter!!.paginationMode) {
             algoliaLoadMoreVisibleStoryCount =
-                adapter!!.visibleStoryCount + StoryListState.PAGINATION_PAGE_SIZE
+                adapter!!.visibleStoryCount + StoryPaginationPolicy.DEFAULT_PAGE_SIZE
         } else {
             algoliaLoadMoreVisibleStoryCount = -1
         }
