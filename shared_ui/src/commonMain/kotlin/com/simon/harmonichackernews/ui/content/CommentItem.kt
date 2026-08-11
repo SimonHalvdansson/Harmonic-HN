@@ -588,7 +588,7 @@ private fun ReferenceRow(
     }
 }
 
-private fun htmlAnnotatedString(
+internal fun htmlAnnotatedString(
     html: String,
     linkColor: Color,
     linkListener: LinkInteractionListener,

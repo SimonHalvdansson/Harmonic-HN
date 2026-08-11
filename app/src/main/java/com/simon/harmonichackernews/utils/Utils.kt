@@ -39,7 +39,6 @@ import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import com.simon.harmonichackernews.settings.UserTagCodec
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
@@ -872,120 +871,6 @@ object Utils {
         return formatter.format(bd.toLong())
     }
 
-    fun getFilterWords(ctx: Context): ArrayList<String> {
-        return getCommaSeparatedPreference(
-            ctx,
-            "pref_filter"
-        )
-    }
-
-    fun getFilterDomains(ctx: Context): ArrayList<String> {
-        return getCommaSeparatedPreference(
-            ctx,
-            "pref_filter_domains"
-        )
-    }
-
-    fun getFilteredUsers(ctx: Context): MutableSet<String> {
-        return getCommaSeparatedPreferenceSet(
-            ctx,
-            "pref_filter_users",
-            true
-        )
-    }
-
-    fun removeFilteredUser(ctx: Context, username: String?): Boolean {
-        val normalizedUsername = username
-            ?.takeUnless(String::isEmpty)
-            ?.lowercase(Locale.getDefault())
-            ?.trim { it <= ' ' }
-            ?: return false
-
-        val users = getFilteredUsers(ctx)
-        users.remove(normalizedUsername)
-        saveCommaSeparatedPreferenceSet(
-            ctx,
-            "pref_filter_users",
-            users
-        )
-
-        return true
-    }
-
-    fun addFilteredUser(ctx: Context, username: String?): Boolean {
-        val normalizedUsername = username
-            ?.takeUnless(String::isEmpty)
-            ?.lowercase(Locale.getDefault())
-            ?.trim { it <= ' ' }
-            ?: return false
-
-        val users = getFilteredUsers(ctx)
-        users.add(normalizedUsername)
-        saveCommaSeparatedPreferenceSet(
-            ctx,
-            "pref_filter_users",
-            users
-        )
-
-        return true
-    }
-
-    private fun getCommaSeparatedPreference(
-        ctx: Context,
-        key: String?
-    ): ArrayList<String> {
-        return getCommaSeparatedPreference(ctx, key, false)
-    }
-
-    private fun getCommaSeparatedPreference(
-        ctx: Context,
-        key: String?,
-        lowercase: Boolean
-    ): ArrayList<String> {
-        val prefText = PreferenceManager.getDefaultSharedPreferences(ctx)
-            .getString(key, null)
-            .orEmpty()
-        if (prefText.isEmpty()) {
-            return arrayListOf()
-        }
-
-        val normalizedText = if (lowercase) {
-            prefText.lowercase(Locale.getDefault())
-        } else {
-            prefText
-        }
-        return normalizedText.split(',')
-            .dropLastWhile(String::isEmpty)
-            .mapTo(ArrayList()) { it.trim { character -> character <= ' ' } }
-    }
-
-    private fun getCommaSeparatedPreferenceSet(
-        ctx: Context,
-        key: String?,
-        lowercase: Boolean
-    ): MutableSet<String> {
-        return HashSet(
-            getCommaSeparatedPreference(
-                ctx,
-                key,
-                lowercase
-            )
-        )
-    }
-
-    private fun saveCommaSeparatedPreferenceSet(
-        ctx: Context,
-        key: String?,
-        values: MutableSet<String>
-    ) {
-        PreferenceManager.getDefaultSharedPreferences(ctx)
-            .edit()
-            .putString(key, joinCommaSeparated(values))
-            .apply()
-    }
-
-    private fun joinCommaSeparated(values: Set<String>): String = values.joinToString(",")
-
     fun getUserTags(ctx: Context): MutableMap<String, String> {
         return readUserTags(ctx, true)
     }
@@ -1301,14 +1186,6 @@ object Utils {
                 "0"
             )?.toIntOrNull() ?: 0
         )
-    }
-
-    fun timeInSecondsMoreThanTwoWeeksAgo(time: Int): Boolean {
-        return AgePolicy.isOlderThan(time, System.currentTimeMillis(), TimeUnit.DAYS.toMillis(14))
-    }
-
-    fun timeInSecondsMoreThanTwoHoursAgo(time: Int): Boolean {
-        return AgePolicy.isOlderThan(time, System.currentTimeMillis(), TimeUnit.HOURS.toMillis(2))
     }
 
     fun pxFromDp(resources: Resources, dp: Float): Float {

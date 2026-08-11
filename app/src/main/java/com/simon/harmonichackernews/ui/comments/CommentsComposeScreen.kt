@@ -163,6 +163,7 @@ import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -2761,7 +2762,7 @@ private fun HeaderActions(
     val story = controller.story
     val bookmarksEnabled = SettingsUtils.shouldUseBookmarks(context)
     val hasAccount = settings.hasAccountDetails
-    val canReply = hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(story.time)
+    val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(story.time)
     var shareExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }

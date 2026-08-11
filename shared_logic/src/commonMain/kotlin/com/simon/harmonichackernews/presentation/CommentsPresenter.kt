@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class CommentsPresenterState(
     val thread: CommentThreadUiState = CommentThreadUiState(),
+    val lastLoadedMillis: Long = 0L,
     val loaded: Boolean = false,
     val refreshing: Boolean = false,
     val failure: StoryLoadFailure? = null,
@@ -49,6 +50,13 @@ sealed interface CommentsAction {
     data object ShowCommentsByOp : CommentsAction
     data object ResetCommentsByOp : CommentsAction
     data class SetSearchQuery(val query: String) : CommentsAction
+    data class BeginThreadLoad(val nowMillis: Long) : CommentsAction
+    data class EvaluateUpdateAvailability(
+        val nowMillis: Long,
+        val alwaysShow: Boolean,
+        val storyTimeEpochSeconds: Int,
+    ) : CommentsAction
+    data class ThreadLoadFailed(val result: CommentThreadLoadResult.Failure) : CommentsAction
     data class SetLoaded(val loaded: Boolean) : CommentsAction
     data class SetRefreshing(val refreshing: Boolean) : CommentsAction
     data class SetFailure(val failure: StoryLoadFailure?) : CommentsAction
@@ -95,6 +103,7 @@ class CommentsPresenter(
     private val mutableState = MutableStateFlow(
         CommentsPresenterState(
             thread = thread.state.value,
+            lastLoadedMillis = sessionState.lastLoaded,
             loaded = sessionState.commentsLoaded,
             refreshing = sessionState.refreshInProgress,
             failure = when {
@@ -138,6 +147,23 @@ class CommentsPresenter(
             CommentsAction.ShowCommentsByOp -> thread.showCommentsByOp()
             CommentsAction.ResetCommentsByOp -> thread.resetCommentsByOp()
             is CommentsAction.SetSearchQuery -> thread.setSearchQuery(action.query)
+            is CommentsAction.BeginThreadLoad -> publish(
+                lastLoadedMillis = action.nowMillis,
+                showUpdate = false,
+            )
+            is CommentsAction.EvaluateUpdateAvailability -> publish(
+                showUpdate = CommentsPresentationPolicy.shouldShowUpdateAffordance(
+                    nowMillis = action.nowMillis,
+                    lastLoadedMillis = state.value.lastLoadedMillis,
+                    alwaysShow = action.alwaysShow,
+                    storyTimeEpochSeconds = action.storyTimeEpochSeconds,
+                ),
+            )
+            is CommentsAction.ThreadLoadFailed -> publish(
+                loaded = true,
+                refreshing = false,
+                failure = CommentsPresentationPolicy.failureFor(action.result),
+            )
             is CommentsAction.SetLoaded -> publish(loaded = action.loaded)
             is CommentsAction.SetRefreshing -> publish(refreshing = action.refreshing)
             is CommentsAction.SetFailure -> publish(failure = action.failure)
@@ -195,6 +221,7 @@ class CommentsPresenter(
 
     private fun publish(
         thread: CommentThreadUiState = state.value.thread,
+        lastLoadedMillis: Long = state.value.lastLoadedMillis,
         loaded: Boolean = state.value.loaded,
         refreshing: Boolean = state.value.refreshing,
         failure: StoryLoadFailure? = state.value.failure,
@@ -202,6 +229,7 @@ class CommentsPresenter(
         storyVoteLoading: Boolean = state.value.storyVoteLoading,
         storyFavoriteLoading: Boolean = state.value.storyFavoriteLoading,
     ) {
+        sessionState.lastLoaded = lastLoadedMillis
         sessionState.commentsLoaded = loaded
         sessionState.refreshInProgress = refreshing
         sessionState.loadingFailed = failure != null
@@ -211,6 +239,7 @@ class CommentsPresenter(
         sessionState.storyFavoriteLoading = storyFavoriteLoading
         mutableState.value = CommentsPresenterState(
             thread = thread,
+            lastLoadedMillis = lastLoadedMillis,
             loaded = loaded,
             refreshing = refreshing,
             failure = failure,

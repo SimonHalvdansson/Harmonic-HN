@@ -1,0 +1,32 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.compose.compiler)
+}
+
+kotlin {
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_11
+        }
+    }
+
+    sourceSets {
+        getByName("desktopMain").dependencies {
+            implementation(project(":shared_ui"))
+            implementation(compose.runtime)
+            implementation(compose.ui)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.desktop.currentOs)
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.simon.harmonichackernews.desktop.DesktopSmokeMainKt"
+    }
+}

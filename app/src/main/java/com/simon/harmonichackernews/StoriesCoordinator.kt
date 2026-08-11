@@ -27,7 +27,6 @@ import com.simon.harmonichackernews.data.SavedItemSnapshots
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.failureDetails
@@ -42,11 +41,15 @@ import com.simon.harmonichackernews.presentation.StoriesAction
 import com.simon.harmonichackernews.presentation.StoriesEffect
 import com.simon.harmonichackernews.presentation.StoriesPresenter
 import com.simon.harmonichackernews.presentation.SavedItemFilter
+import com.simon.harmonichackernews.presentation.SavedItemActionOutcome
+import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.presentation.StoryListStore
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.presentation.StorySearchMode
 import com.simon.harmonichackernews.presentation.StorySearchUiState
 import com.simon.harmonichackernews.presentation.StoryFeedLoadSession
+import com.simon.harmonichackernews.presentation.StoryFeedRefreshPolicy
+import com.simon.harmonichackernews.presentation.StoryFeedSource
 import com.simon.harmonichackernews.presentation.StoryVisibilityConfig
 import com.simon.harmonichackernews.presentation.StoryVisibilityPolicy
 import com.simon.harmonichackernews.presentation.PreviewPrefetchPlanner
@@ -54,6 +57,7 @@ import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
@@ -99,10 +103,20 @@ class StoriesCoordinator(
     private val connectivity = platformServices.connectivity
     private val externalLinks = platformServices.externalLinks
     private val historyStore = platformServices.history
+    private val contentFilters = ContentFilterRepository(AndroidKeyValueStore.defaults(activity))
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val hackerNewsUserService = HackerNewsUserService(
         NetworkComponent.hackerNewsSession,
         platformServices.credentials,
+    )
+    private val savedItems = SavedItemsRepository(AndroidKeyValueStore.global(activity))
+    private val savedItemActions = SavedItemActionUseCase(
+        repository = savedItems,
+        nowMillis = { clock.now().toEpochMilliseconds() },
+        voteRequest = { id, direction ->
+            hackerNewsUserService.vote(id.toString(), direction)
+        },
+        favoriteRequest = hackerNewsUserService::setFavorite,
     )
     private val storiesViewModel = ViewModelProvider(activity)[StoriesViewModel::class.java]
     private val sessionState = storiesViewModel.state
@@ -263,7 +277,8 @@ class StoriesCoordinator(
 
     var lastLoaded by sessionState::lastLoaded
     var lastClick: Long = 0
-    private var updateButtonShowing by sessionState::updateButtonShowing
+    private val updateButtonShowing: Boolean
+        get() = storiesPresenter.state.value.updateAvailable
     private var predictiveSearchBackInProgress = false
     private var predictiveSearchBackProgress = 0f
     private var finishSearchBackFromCurrentVisualState = false
@@ -565,21 +580,16 @@ class StoriesCoordinator(
                     val controller = composeController
                     if (controller == null) return
                     if (action == StoriesComposeController.STORY_PREVIEW_ACTION_VOTE) {
-                        val selected = Utils.isUpvoted(requireContext(), story.id, false)
                         toggleStoryVote(
-                            story, selected,
+                            story,
                             Runnable { controller.finishStoryPreviewAction(story.id, action) })
                     } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_READ) {
                         toggleStoryRead(story, position)
                     } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_BOOKMARK) {
-                        toggleStoryBookmark(
-                            story, position,
-                            Utils.isBookmarked(requireContext(), story.id)
-                        )
+                        toggleStoryBookmark(story)
                     } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_FAVORITE) {
-                        val selected = Utils.isFavorited(requireContext(), story.id)
                         toggleStoryFavorite(
-                            story, position, selected,
+                            story,
                             Runnable { controller.finishStoryPreviewAction(story.id, action) })
                     }
                 }
@@ -867,14 +877,12 @@ class StoriesCoordinator(
     }
 
     private fun shouldRefreshRestoredStoryState(): Boolean {
-        if (loadingFailed || loadingFailedServerError || !stories!!.isEmpty()) {
-            return false
-        }
-        if (searching) {
-            return !TextUtils.isEmpty(lastSearch)
-        }
-        return !isBookmarksType(adapter!!.type) && !isHistoryType(adapter!!.type) && !isUserItemListType(
-            adapter!!.type
+        return StoryFeedRefreshPolicy.shouldRefreshRestoredState(
+            failure = activeStoryListStore.state.value.failure,
+            listIsEmpty = stories!!.isEmpty(),
+            searching = searching,
+            searchQuery = lastSearch.orEmpty(),
+            storyType = currentStoryType,
         )
     }
 
@@ -1721,13 +1729,12 @@ class StoriesCoordinator(
         }
     }
 
-    private fun toggleStoryBookmark(story: Story?, position: Int, currentlyBookmarked: Boolean) {
+    private fun toggleStoryBookmark(story: Story?) {
         if (!this.isAdded || story == null) {
             return
         }
-        val context = requireContext()
-        if (currentlyBookmarked) {
-            Utils.removeBookmark(context, story.id)
+        val bookmarked = savedItemActions.toggleBookmark(story.id)
+        if (!bookmarked) {
             if (isBookmarksType(adapter!!.type)) {
                 bookmarkStories.remove(story)
                 val currentPosition = stories!!.indexOf(story)
@@ -1737,8 +1744,6 @@ class StoriesCoordinator(
                 updateHeader()
                 return
             }
-        } else {
-            Utils.addBookmark(context, story.id)
         }
         val currentPosition = stories!!.indexOf(story)
         if (currentPosition >= 0) {
@@ -1747,39 +1752,39 @@ class StoriesCoordinator(
     }
 
     private fun toggleStoryVote(
-        story: Story?, currentlyUpvoted: Boolean,
+        story: Story?,
         completion: Runnable
     ) {
         if (!this.isAdded || story == null || adapter == null || stories == null) {
             completion.run()
             return
         }
-        val context = requireContext()
         val actionGeneration = storyListGeneration
         val actionAdapter = adapter
         val actionStories = stories
-        val newUpvoted = !currentlyUpvoted
-        Utils.setUpvoted(context, story.id, false, newUpvoted)
+        val context = requireContext()
+        val action = savedItemActions.beginVote(
+            itemId = story.id,
+            isComment = false,
+            direction = if (savedItemActions.isUpvoted(story.id, false)) "un" else "up",
+        )
         val currentPosition = stories!!.indexOf(story)
         if (currentPosition >= 0) {
             adapter!!.notifyItemChanged(currentPosition)
         }
         coroutineScope.launch {
-            val result = hackerNewsUserService.vote(
-                story.id.toString(),
-                if (newUpvoted) "up" else "un",
-            )
-            if (result is HackerNewsActionResult.Success) {
+            val outcome = savedItemActions.execute(action)
+            if (outcome is SavedItemActionOutcome.Success) {
                 completion.run()
                 return@launch
             }
-            Utils.setUpvoted(context, story.id, false, currentlyUpvoted)
             if (isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
                 val restoredPosition = stories!!.indexOf(story)
                 if (restoredPosition >= 0) {
                     adapter!!.notifyItemChanged(restoredPosition)
                 }
             }
+            val result = (outcome as SavedItemActionOutcome.Failure).result
             val (summary, detail) = result.failureDetails()
             MainActivity.showFailureDetailForActiveUi(summary, detail)
             Toast.makeText(
@@ -1792,21 +1797,20 @@ class StoriesCoordinator(
     }
 
     private fun toggleStoryFavorite(
-        story: Story?, position: Int, currentlyFavorited: Boolean,
+        story: Story?,
         completion: Runnable
     ) {
         if (!this.isAdded || story == null || adapter == null || stories == null) {
             completion.run()
             return
         }
-        val context = requireContext()
         val actionGeneration = storyListGeneration
         val actionAdapter = adapter
         val actionStories = stories
         val actionIsFavoritesList = isFavoritesType(actionAdapter!!.type)
-        val newFavorited = !currentlyFavorited
+        val action = savedItemActions.beginFavorite(story.id)
+        val currentlyFavorited = action.previousPresent
         val optimisticIndex = stories!!.indexOf(story)
-        Utils.setFavorite(context, story.id, newFavorited)
         if (optimisticIndex >= 0) {
             if (currentlyFavorited && actionIsFavoritesList) {
                 removeStoryAt(optimisticIndex, storyListGeneration, true)
@@ -1816,12 +1820,11 @@ class StoriesCoordinator(
             }
         }
         coroutineScope.launch {
-            val result = hackerNewsUserService.setFavorite(story.id, newFavorited)
-            if (result is HackerNewsActionResult.Success) {
+            val outcome = savedItemActions.execute(action)
+            if (outcome is SavedItemActionOutcome.Success) {
                 completion.run()
                 return@launch
             }
-            Utils.setFavorite(context, story.id, currentlyFavorited)
             if (!isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
                 completion.run()
                 return@launch
@@ -1877,18 +1880,14 @@ class StoriesCoordinator(
         syncVisibleUserItemListWithLocalCache()
         refreshBookmarksIfNeeded()
 
-        val timeDiff = System.currentTimeMillis() - lastLoaded
-
-        // if more than 1 hr
-        val shouldShowUpdateButton = storyPreferences.alwaysShowTapToRefresh
-                || (timeDiff > 1000 * 60 * 60 && !searching && !isBookmarksType(adapter!!.type) && !isUserItemListType(
-            adapter!!.type
-        ) && !currentTypeIsAlgolia())
-        if (shouldShowUpdateButton) {
-            showUpdateButton()
-        } else {
-            hideUpdateButton()
-        }
+        storiesPresenter.dispatch(
+            StoriesAction.EvaluateUpdateAvailability(
+                nowMillis = clock.now().toEpochMilliseconds(),
+                lastLoadedMillis = lastLoaded,
+                alwaysShow = storyPreferences.alwaysShowTapToRefresh,
+                storyType = currentStoryType,
+            ),
+        )
 
         val displaySettings = StoryDisplaySettings.from(storyPreferences)
         val fontCacheChanged =
@@ -1943,10 +1942,11 @@ class StoriesCoordinator(
     }
 
     private fun updateStoryVisibilityPolicy(hideJobs: Boolean) {
+        val filters = contentFilters.load()
         storyVisibilityPolicy.config = StoryVisibilityConfig(
-            filteredWords = Utils.getFilterWords(requireContext()),
-            filteredDomains = Utils.getFilterDomains(requireContext()),
-            filteredUsers = Utils.getFilteredUsers(requireContext()),
+            filteredWords = filters.words,
+            filteredDomains = filters.domains,
+            filteredUsers = filters.users,
             hideJobs = hideJobs,
         )
     }
@@ -2380,7 +2380,15 @@ class StoriesCoordinator(
         showMainLoadingIndicator: Boolean = false
     ) {
         hideUpdateButton()
-        if (searching) {
+        val storyType = currentStoryType
+        val refreshPlan = StoryFeedRefreshPolicy.plan(
+            searching = searching,
+            storyType = storyType,
+            showSwipeRefreshIndicator = showSwipeRefreshIndicator,
+            showMainLoadingIndicator = showMainLoadingIndicator,
+            listIsEmpty = stories.isNullOrEmpty(),
+        )
+        if (refreshPlan.source == StoryFeedSource.SEARCH) {
             Log.d(
                 TAG,
                 "Refreshing active search, queryLength=" + (if (lastSearch == null) 0 else lastSearch!!.length)
@@ -2389,141 +2397,113 @@ class StoriesCoordinator(
             return
         }
 
-        this.isRefreshIndicatorShowing = showSwipeRefreshIndicator && !showMainLoadingIndicator
+        this.isRefreshIndicatorShowing = refreshPlan.showRefreshIndicator
 
         // cancel all ongoing
         val refreshGeneration = beginStoryListRefresh()
         activeStoryListStore.beginLoad(
-            refreshing = showSwipeRefreshIndicator && !showMainLoadingIndicator,
-            clearItems = showMainLoadingIndicator,
+            refreshing = refreshPlan.showRefreshIndicator,
+            clearItems = refreshPlan.clearItems,
         )
-        val currentStoryType = this.currentStoryType
         Log.d(
             TAG, ("Starting refresh generation=" + refreshGeneration
-                    + ", type=" + currentStoryType.label
+                    + ", type=" + storyType.label
+                    + ", source=" + refreshPlan.source
                     + ", showSwipeRefreshIndicator=" + showSwipeRefreshIndicator
                     + ", showMainLoadingIndicator=" + showMainLoadingIndicator)
         )
 
-        val userItemListTypeForRefresh = isUserItemListType(adapter!!.type)
-        if (showMainLoadingIndicator) {
+        if (refreshPlan.clearItems) {
             loadingFailed = false
             loadingFailedServerError = false
             loadingFailedRateLimited = false
             showingCached = false
-            userItemListInitialLoadInProgress = userItemListTypeForRefresh
+            userItemListInitialLoadInProgress = refreshPlan.source == StoryFeedSource.USER_ITEMS
             replaceStories(java.util.ArrayList<Story>(), true)
             updateHeader()
         }
 
-        if (currentTypeIsAlgolia()) {
-            // algoliaStuff
-            resetAlgoliaResultLimit()
-            loadTopStoriesSince(
-                this.currentAlgoliaTopStoriesStartTime,
-                showSwipeRefreshIndicator && !showMainLoadingIndicator
-            )
-
-            return
+        if (refreshPlan.recordRefreshTime) {
+            lastLoaded = clock.now().toEpochMilliseconds()
         }
 
-        lastLoaded = System.currentTimeMillis()
-
-        if (isBookmarksType(adapter!!.type)) {
-            // let's load bookmarks instead - or rather add empty stories with correct id:s and start loading them
-            val refreshedStories = java.util.ArrayList<Story>()
-            showingCached = false
-
-            bookmarksChanged = false
-            val bookmarks = Utils.loadBookmarks(
-                requireContext(), true
-            )
-
-            for (i in bookmarks.indices) {
-                val s = Story("Loading...", bookmarks.get(i)!!.id, false, false)
-                refreshedStories.add(s)
-            }
-
-            bookmarkStories.clear()
-            bookmarkStories.addAll(refreshedStories)
-            replaceStories(this.filteredSavedItemStories, true)
-            loadInitialVisibleStories(refreshGeneration)
-
-            updateHeader()
-            this.isRefreshIndicatorShowing = false
-
-            return
-        } else if (isUserItemListType(adapter!!.type)) {
-            val shouldLoadCachedUserItemList = showMainLoadingIndicator || stories!!.isEmpty()
-            val hasCachedUserItemList = if (shouldLoadCachedUserItemList)
-                loadUserItemListCache()
-            else
-                savedItemsRepository(this.context)
-                    ?.loadItems(this.currentUserItemListSource)
-                    ?.isNotEmpty() == true
-            if (!shouldLoadCachedUserItemList) {
-                resumeInterruptedStoryLoads()
-            }
-            syncUserItemListFromServer(showSwipeRefreshIndicator || hasCachedUserItemList)
-            return
-        } else if (isHistoryType(adapter!!.type)) {
-            val refreshedStories = java.util.ArrayList<Story>()
-            showingCached = false
-            val histories = historyStore.load()
-
-            for (i in histories.indices) {
-                val s =
-                    Story("Loading...", histories.get(i).id, false, false, histories.get(i).created)
-                refreshedStories.add(s)
-            }
-
-            replaceStories(refreshedStories, true)
-            loadInitialVisibleStories(refreshGeneration)
-
-            updateHeader()
-            this.isRefreshIndicatorShowing = false
-
-            return
-        }
-
-        if (currentStoryType.isFrontpageLinkList) {
-            loadFrontpageLinkRows(currentStoryType, refreshGeneration)
-            return
-        }
-        if (currentStoryType.isScrapedFrontpage) {
-            loadScrapedFrontpageStories(currentStoryType, refreshGeneration)
-            return
-        }
-
-        val storyType = currentStoryType
-        updateHeader()
-        coroutineScope.launch {
-            try {
-                val itemIds = (storyFeedRepository.load(storyType) as StoryFeedResult.ItemIds).ids
-                if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
-                isRefreshIndicatorShowing = false
-                showingCached = false
-                replaceStories(createLoadingStoriesFromIds(itemIds))
-                loadingFailed = false
-                loadingFailedServerError = false
-                loadingFailedRateLimited = false
-                updateHeader()
-                loadInitialVisibleStories(refreshGeneration)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
-                isRefreshIndicatorShowing = false
-                loadingFailed = true
-                loadingFailedServerError = error is HttpStatusException && error.statusCode == 404
-                loadingFailedRateLimited = error is HttpStatusException && error.statusCode == 429
-                Log.w(
-                    TAG,
-                    "Story list request failed for type=${storyType.label}, " +
-                        "generation=$refreshGeneration",
-                    error,
+        when (refreshPlan.source) {
+            StoryFeedSource.SEARCH -> Unit // Handled before starting a feed refresh.
+            StoryFeedSource.ALGOLIA -> {
+                resetAlgoliaResultLimit()
+                loadTopStoriesSince(
+                    currentAlgoliaTopStoriesStartTime,
+                    refreshPlan.showRefreshIndicator,
                 )
+            }
+            StoryFeedSource.BOOKMARKS -> {
+                val refreshedStories = java.util.ArrayList<Story>()
+                showingCached = false
+                bookmarksChanged = false
+                val bookmarks = Utils.loadBookmarks(requireContext(), true)
+                for (bookmark in bookmarks) {
+                    refreshedStories.add(Story("Loading...", bookmark.id, false, false))
+                }
+                bookmarkStories.clear()
+                bookmarkStories.addAll(refreshedStories)
+                replaceStories(filteredSavedItemStories, true)
+                loadInitialVisibleStories(refreshGeneration)
                 updateHeader()
+                isRefreshIndicatorShowing = false
+            }
+            StoryFeedSource.USER_ITEMS -> {
+                val hasCachedUserItemList = if (refreshPlan.loadCachedUserItems) {
+                    loadUserItemListCache()
+                } else {
+                    savedItems.loadItems(currentUserItemListSource).isNotEmpty()
+                }
+                if (!refreshPlan.loadCachedUserItems) resumeInterruptedStoryLoads()
+                syncUserItemListFromServer(showSwipeRefreshIndicator || hasCachedUserItemList)
+            }
+            StoryFeedSource.HISTORY -> {
+                val refreshedStories = java.util.ArrayList<Story>()
+                showingCached = false
+                for (history in historyStore.load()) {
+                    refreshedStories.add(
+                        Story("Loading...", history.id, false, false, history.created),
+                    )
+                }
+                replaceStories(refreshedStories, true)
+                loadInitialVisibleStories(refreshGeneration)
+                updateHeader()
+                isRefreshIndicatorShowing = false
+            }
+            StoryFeedSource.FRONTPAGE_LINKS ->
+                loadFrontpageLinkRows(storyType, refreshGeneration)
+            StoryFeedSource.SCRAPED_FRONTPAGE ->
+                loadScrapedFrontpageStories(storyType, refreshGeneration)
+            StoryFeedSource.HACKER_NEWS_API -> {
+                updateHeader()
+                coroutineScope.launch {
+                    try {
+                        val result = storyFeedRepository.load(storyType) as StoryFeedResult.ItemIds
+                        if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
+                        isRefreshIndicatorShowing = false
+                        showingCached = false
+                        replaceStories(createLoadingStoriesFromIds(result.ids))
+                        activeStoryListStore.setFailure(null)
+                        updateHeader()
+                        loadInitialVisibleStories(refreshGeneration)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
+                        isRefreshIndicatorShowing = false
+                        activeStoryListStore.fail(StoryFeedRefreshPolicy.failureFor(error))
+                        Log.w(
+                            TAG,
+                            "Story list request failed for type=${storyType.label}, " +
+                                "generation=$refreshGeneration",
+                            error,
+                        )
+                        updateHeader()
+                    }
+                }
             }
         }
     }
@@ -2936,14 +2916,12 @@ class StoriesCoordinator(
                     return@launch
                 }
 
-                val currentContext: Context? = this@StoriesCoordinator.context
-                if (currentContext == null) {
+                if (this@StoriesCoordinator.context == null) {
                     return@launch
                 }
 
                 val snapshot = SavedItemSnapshots.normalize(itemIds, commentIds)
-                val savedItems = savedItemsRepository(currentContext)
-                if (savedItems != null && savedItems.loadSnapshot(syncSource) != snapshot) {
+                if (savedItems.loadSnapshot(syncSource) != snapshot) {
                     savedItems.saveSnapshot(
                         syncSource,
                         snapshot,
@@ -2992,11 +2970,8 @@ class StoriesCoordinator(
     }
 
     private fun loadCachedUserItemSnapshot(): SavedItemSnapshot =
-        savedItemsRepository(context)?.loadSnapshot(currentUserItemListSource)
-            ?: SavedItemSnapshot(emptyList(), emptySet())
-
-    private fun savedItemsRepository(context: Context?): SavedItemsRepository? =
-        context?.let { SavedItemsRepository(AndroidKeyValueStore.global(it)) }
+        if (context != null) savedItems.loadSnapshot(currentUserItemListSource)
+        else SavedItemSnapshot(emptyList(), emptySet())
 
     private fun syncUserItemListStoriesToIds(
         itemIds: List<Int>,
@@ -3534,12 +3509,7 @@ class StoriesCoordinator(
     }
 
     private fun hideUpdateButton() {
-        updateButtonShowing = false
-        syncComposeState()
-    }
-
-    private fun showUpdateButton() {
-        updateButtonShowing = true
+        storiesPresenter.dispatch(StoriesAction.DismissUpdateAvailability)
         syncComposeState()
     }
 

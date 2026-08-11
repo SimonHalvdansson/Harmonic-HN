@@ -62,6 +62,8 @@ import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.RepliesChecker
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
@@ -90,6 +92,9 @@ fun UserSettingsDialog(
     onTagChanged: () -> Unit,
 ) {
     val context = LocalContext.current
+    val contentFilters = remember(context) {
+        ContentFilterRepository(AndroidKeyValueStore.defaults(context))
+    }
     val monthNames = stringArrayResource(Res.array.months)
     var state by remember(userName) {
         mutableStateOf<ComposeUserState>(ComposeUserState.Loading)
@@ -100,7 +105,7 @@ fun UserSettingsDialog(
         mutableStateOf(Utils.getUserTag(context, userName))
     }
     var isBlocked by remember(userName) {
-        mutableStateOf(userName in Utils.getFilteredUsers(context))
+        mutableStateOf(contentFilters.containsUser(userName))
     }
     DisposableEffect(userName, reload, monthNames) {
         state = ComposeUserState.Loading
@@ -157,6 +162,8 @@ fun UserSettingsDialog(
                                 onDismiss = onDismiss,
                                 onEditTag = { tagDialogOpen = true },
                                 onBlockedChanged = { isBlocked = it },
+                                onBlock = contentFilters::addUser,
+                                onUnblock = contentFilters::removeUser,
                             )
                         }
                     }
@@ -259,6 +266,8 @@ private fun UserLoadedContent(
     onDismiss: () -> Unit,
     onEditTag: () -> Unit,
     onBlockedChanged: (Boolean) -> Unit,
+    onBlock: (String) -> Boolean,
+    onUnblock: (String) -> Boolean,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -405,7 +414,7 @@ private fun UserLoadedContent(
                 icon = Res.drawable.ic_block,
                 onClick = {
                     if (blocked) {
-                        if (Utils.removeFilteredUser(context, user.id)) {
+                        if (onUnblock(user.id)) {
                             Toast.makeText(
                                 context,
                                 "Unblocked ${user.id}",
@@ -413,7 +422,7 @@ private fun UserLoadedContent(
                             ).show()
                             onBlockedChanged(false)
                         }
-                    } else if (Utils.addFilteredUser(context, user.id)) {
+                    } else if (onBlock(user.id)) {
                         Toast.makeText(
                             context,
                             "You will no longer see posts or comments from ${user.id}",

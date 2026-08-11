@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 data class StoriesPresenterState(
     val searching: Boolean = false,
     val searchDraft: String = "",
+    val updateAvailable: Boolean = false,
     val mainList: StoryListUiState = StoryListUiState(),
     val searchList: StoryListUiState = StoryListUiState(),
     val search: StorySearchUiState = StorySearchUiState(),
@@ -26,6 +27,13 @@ data class StoriesPresenterState(
 sealed interface StoriesAction {
     data class SetSearching(val searching: Boolean) : StoriesAction
     data class SetSearchDraft(val query: String) : StoriesAction
+    data class EvaluateUpdateAvailability(
+        val nowMillis: Long,
+        val lastLoadedMillis: Long,
+        val alwaysShow: Boolean,
+        val storyType: StoryType,
+    ) : StoriesAction
+    data object DismissUpdateAvailability : StoriesAction
     data class Search(val query: String, val resetResultLimit: Boolean = true) : StoriesAction
     data class LoadTopStories(
         val storyType: StoryType,
@@ -98,6 +106,7 @@ class StoriesPresenter(
         StoriesPresenterState(
             searching = sessionState.searching,
             searchDraft = sessionState.lastSearch,
+            updateAvailable = sessionState.updateButtonShowing,
             mainList = mainStoryList.state.value,
             searchList = searchStoryList.state.value,
         ),
@@ -126,6 +135,16 @@ class StoriesPresenter(
         when (action) {
             is StoriesAction.SetSearching -> publish(searching = action.searching)
             is StoriesAction.SetSearchDraft -> publish(searchDraft = action.query)
+            is StoriesAction.EvaluateUpdateAvailability -> publish(
+                updateAvailable = StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
+                    nowMillis = action.nowMillis,
+                    lastLoadedMillis = action.lastLoadedMillis,
+                    alwaysShow = action.alwaysShow,
+                    searching = state.value.searching,
+                    storyType = action.storyType,
+                ),
+            )
+            StoriesAction.DismissUpdateAvailability -> publish(updateAvailable = false)
             is StoriesAction.Search -> {
                 publish(searchDraft = action.query)
                 searchStore.search(action.query, action.resetResultLimit)
@@ -206,15 +225,18 @@ class StoriesPresenter(
     private fun publish(
         searching: Boolean = state.value.searching,
         searchDraft: String = state.value.searchDraft,
+        updateAvailable: Boolean = state.value.updateAvailable,
         mainList: StoryListUiState = state.value.mainList,
         searchList: StoryListUiState = state.value.searchList,
         search: StorySearchUiState = state.value.search,
     ) {
         sessionState.searching = searching
         sessionState.lastSearch = searchDraft
+        sessionState.updateButtonShowing = updateAvailable
         mutableState.value = StoriesPresenterState(
             searching = searching,
             searchDraft = searchDraft,
+            updateAvailable = updateAvailable,
             mainList = mainList,
             searchList = searchList,
             search = search,

@@ -46,11 +46,13 @@ class SubmissionsCoordinator(
     private var submissionsLoadJob: Job? = null
 
     init {
-        composeController = SubmissionsComposeController.create(
-            activity,
-            userName,
-            store.state.value.filter,
-            object : SubmissionsComposeController.Listener {
+        composeController = SubmissionsComposeController(
+            userName = userName,
+            initialFilter = store.state.value.filter,
+            initialDisplaySettings = StoryDisplaySettings
+                .from(AndroidUserSettings(activity).story)
+                .withShowIndex(false),
+            listener = object : SubmissionsComposeController.Listener {
                 override fun onFilterSelected(filter: SubmissionFilter) {
                     store.selectFilter(filter)
                 }
@@ -96,7 +98,8 @@ class SubmissionsCoordinator(
                     sessionState.firstVisibleStoryTop = firstVisibleStoryTop
                     sessionState.appBarCollapsed = appBarCollapsed
                 }
-            })
+            },
+        )
         composeController.updateDisplaySettings(
             StoryDisplaySettings.from(AndroidUserSettings(activity).story).withShowIndex(false)
         )

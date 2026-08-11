@@ -8,11 +8,7 @@ import androidx.annotation.AttrRes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.appcompat.widget.AppCompatTextView
@@ -21,28 +17,6 @@ import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.utils.ThemeUtils
-import org.jetbrains.compose.resources.Font
-
-val ProductSansFontFamily: FontFamily
-    @Composable get() {
-        val regular = Font(Res.font.product_sans_regular, FontWeight.Normal)
-        val semibold = Font(Res.font.product_sans_bold, FontWeight.SemiBold)
-        val italic = Font(
-            Res.font.product_sans_italic,
-            FontWeight.Normal,
-            FontStyle.Italic,
-        )
-        return remember(regular, semibold, italic) {
-            FontFamily(regular, semibold, italic)
-        }
-    }
-
-val GoogleSansFlexRoundedFontFamily: FontFamily
-    @Composable get() {
-        val regular = Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal)
-        val bold = Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold)
-        return remember(regular, bold) { FontFamily(regular, bold) }
-    }
 
 @Composable
 fun HarmonicTheme(content: @Composable () -> Unit) {

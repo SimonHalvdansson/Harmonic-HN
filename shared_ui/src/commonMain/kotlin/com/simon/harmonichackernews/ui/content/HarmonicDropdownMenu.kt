@@ -7,8 +7,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -19,7 +17,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 /** Shared popup treatment used by the legacy-equivalent Compose menus. */
 @Composable
-internal fun HarmonicDropdownMenu(
+fun HarmonicDropdownMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -36,8 +34,9 @@ internal fun HarmonicDropdownMenu(
 }
 
 @Composable
-internal fun HarmonicMenuText(
+fun HarmonicMenuText(
     text: String,
+    modifier: Modifier = Modifier,
     color: Color = HarmonicTheme.colors.textPrimary,
     fontFamily: FontFamily = ProductSansFontFamily,
     fontWeight: FontWeight = FontWeight.Normal,
@@ -45,14 +44,10 @@ internal fun HarmonicMenuText(
 ) {
     Text(
         text = text,
+        modifier = modifier,
         color = color,
         fontFamily = fontFamily,
         fontWeight = fontWeight,
         fontSize = fontSize,
-        style = HarmonicMenuLegacyTextStyle,
     )
 }
-
-private val HarmonicMenuLegacyTextStyle = TextStyle(
-    platformStyle = PlatformTextStyle(includeFontPadding = true),
-)

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.utils
 
+import kotlin.time.Clock
+
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 
 data class HackerNewsItemLink(
@@ -111,8 +113,21 @@ object ArchiveRedirectPolicy {
 }
 
 object AgePolicy {
+    const val TWO_HOURS_MILLIS: Long = 2L * 60L * 60L * 1_000L
+    const val TWO_WEEKS_MILLIS: Long = 14L * 24L * 60L * 60L * 1_000L
+
     fun isOlderThan(epochSeconds: Int, nowEpochMillis: Long, ageMillis: Long): Boolean =
         nowEpochMillis - epochSeconds.toLong() * 1_000L > ageMillis
+
+    fun isOlderThanTwoHours(
+        epochSeconds: Int,
+        nowEpochMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    ): Boolean = isOlderThan(epochSeconds, nowEpochMillis, TWO_HOURS_MILLIS)
+
+    fun isOlderThanTwoWeeks(
+        epochSeconds: Int,
+        nowEpochMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    ): Boolean = isOlderThan(epochSeconds, nowEpochMillis, TWO_WEEKS_MILLIS)
 }
 
 object DomainNamePolicy {

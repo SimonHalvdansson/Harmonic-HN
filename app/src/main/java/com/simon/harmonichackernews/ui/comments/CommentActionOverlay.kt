@@ -87,6 +87,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AgePolicy
 import kotlin.math.max
 
 private const val TRANSFORM_DURATION_MS = 280
@@ -255,7 +256,7 @@ private fun CommentActionCardContent(
     val downvoted = !upvoted && comment.id in controller.commentActionDownvotedIds
     val voteLoading = controller.commentActionVoteLoadingId == comment.id
     val favoriteLoading = controller.commentActionFavoriteLoadingId == comment.id
-    val canReply = hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)
+    val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(comment.time)
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
     val userLabel = buildString {
         append(comment.by?.takeIf(String::isNotBlank) ?: "Unknown user")
