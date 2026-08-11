@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
@@ -366,7 +367,7 @@ fun SharedCommentsScreen(
         } else {
             PullToRefreshBox(
                 isRefreshing = controller.commentsRefreshInProgress,
-                onRefresh = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                onRefresh = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 list()

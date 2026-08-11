@@ -62,6 +62,7 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -69,7 +70,6 @@ import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.rememberCoilPaletteTint
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Date
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -152,6 +152,7 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
 internal fun CommentsScreen(controller: CommentsComposeController) {
     val context = LocalContext.current
     val settings = controller.displaySettings
+    val commentPreferences = AndroidUserSettings.get(context).comments
     val userTagsRepository = remember(context) {
         UserTagsRepository(AndroidKeyValueStore.defaults(context))
     }
@@ -160,9 +161,9 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
     SharedCommentsScreen(
         controller = controller,
         listModifier = Modifier.nestedScroll(nestedScrollInterop),
-        animateComments = SettingsUtils.shouldUseCommentsAnimation(context),
-        showScrollbar = SettingsUtils.shouldUseCommentsScrollbar(context),
-        smoothScroll = SettingsUtils.shouldSmoothScrollComments(context),
+        animateComments = commentPreferences.animateChanges,
+        showScrollbar = commentPreferences.showScrollbar,
+        smoothScroll = commentPreferences.smoothScroll,
         userTags = userTags,
         onOpenLink = { url -> Utils.openLinkMaybeHN(context, url) },
         headerContent = {
@@ -248,7 +249,7 @@ private fun CommentsHeader(
             textStyle = legacyTextStyle,
             openLink = { url -> Utils.openLinkMaybeHN(context, url) },
             downloadPdf = { url -> Utils.downloadPDF(context, url) },
-            openCustomTab = { url -> Utils.launchCustomTab(context, url) },
+            openCustomTab = { url -> AndroidExternalLinkLauncher.openCustomTab(context, url) },
             plainText = { html -> Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString() },
             annotatedHtml = ::htmlToAnnotated,
         )
@@ -268,7 +269,7 @@ private fun CommentsHeader(
         initialTint = initialTint,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),
         actionHorizontalPadding = dimensionResource(R.dimen.comments_header_action_padding),
-        bookmarksEnabled = SettingsUtils.shouldUseBookmarks(context),
+        bookmarksEnabled = AndroidUserSettings.get(context).general.bookmarksEnabled,
         lastRefreshedText = lastRefreshedText,
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,

@@ -57,7 +57,8 @@ class StoryVisibilityPolicy(
 
 /**
  * Request-generation and in-flight item tracking for a story feed.
- * Android remains responsible only for starting/cancelling actual network calls.
+ * Platform shells use this only for individual row loads; feed request jobs are owned by the
+ * shared stories presenter.
  */
 class StoryFeedLoadSession(
     private val staleLoadMillis: Long,

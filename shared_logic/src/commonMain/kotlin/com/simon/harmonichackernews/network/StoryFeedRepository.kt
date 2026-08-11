@@ -9,12 +9,23 @@ sealed interface StoryFeedResult {
     data class LinkDirectory(val stories: List<Story>) : StoryFeedResult
 }
 
+interface StoryFeedLoader {
+    suspend fun load(storyType: StoryType, frontDay: String? = null): StoryFeedResult
+    suspend fun loadNextScrapedPage(
+        storyType: StoryType,
+        nextPageUrl: String,
+    ): HackerNewsListPage
+}
+
 /** Chooses the API or scraped HN source for a main-list story type. */
 class StoryFeedRepository(
     private val hackerNewsRepository: HackerNewsRepository,
     private val webRepository: HackerNewsWebRepository,
-) {
-    suspend fun load(storyType: StoryType, frontDay: String? = null): StoryFeedResult = when {
+) : StoryFeedLoader {
+    override suspend fun load(
+        storyType: StoryType,
+        frontDay: String?,
+    ): StoryFeedResult = when {
         storyType.isFrontpageLinkList ->
             StoryFeedResult.LinkDirectory(webRepository.getListDirectory())
         storyType.isScrapedFrontpage -> StoryFeedResult.Scraped(
@@ -29,7 +40,7 @@ class StoryFeedRepository(
         else -> StoryFeedResult.ItemIds(hackerNewsRepository.getStoryIds(storyType))
     }
 
-    suspend fun loadNextScrapedPage(
+    override suspend fun loadNextScrapedPage(
         storyType: StoryType,
         nextPageUrl: String,
     ): HackerNewsListPage = webRepository.getStoryListPage(

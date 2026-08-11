@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StorySearchController
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
 
@@ -20,8 +20,8 @@ class StoriesSessionState {
     val userItemListStories = mutableListOf<Story>()
     val userItemListCommentIds = mutableSetOf<Int>()
 
-    var mainTypeLabel: String? = null
-    var searchTypeLabel: String? = null
+    var mainStoryType: StoryType = StoryType.TOP_STORIES
+    var searchStoryType: StoryType = StoryType.TOP_STORIES
 
     var searching: Boolean = false
     var lastSearch: String = ""
@@ -50,8 +50,6 @@ class CommentsSessionState(
     var initialized: Boolean = false
     val commentThread = CommentThreadStore()
     var story: Story? = null
-    var comments: MutableList<Comment>? = commentThread.displayedComments
-    var allComments: MutableList<Comment>? = commentThread.allComments
     var showWebsite: Boolean = false
     var commentsLoaded: Boolean = false
     var refreshInProgress: Boolean = false

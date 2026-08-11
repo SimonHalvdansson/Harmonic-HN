@@ -119,7 +119,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
@@ -143,7 +143,8 @@ import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
 import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -230,7 +231,7 @@ private fun StoryItemFormFactorPreview() {
         StoryItem(
             model = SettingsStoryPreviewModel,
             style = StoryItemStyle(
-                previewImageMode = SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
+                previewImageMode = StoryPreviewPreferences.SMALL,
                 borderlessLargeImage = false,
                 compact = false,
                 showSummary = true,
@@ -245,7 +246,7 @@ private fun StoryItemFormFactorPreview() {
                 cardStyle = false,
                 useHotnessIcon = false,
                 preferredFont = "googlesansflexrounded",
-                textSize = SettingsUtils.DEFAULT_STORY_TEXT_SIZE,
+                textSize = TextPreferences.DEFAULT_STORY_TEXT_SIZE,
             ),
         )
     }

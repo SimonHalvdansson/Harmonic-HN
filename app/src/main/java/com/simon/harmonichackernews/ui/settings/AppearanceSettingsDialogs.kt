@@ -24,12 +24,17 @@ import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
+import com.simon.harmonichackernews.settings.AndroidSettingsMutator
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
 import com.simon.harmonichackernews.utils.FontUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 
-fun composeThemeLabel(value: String, fallback: String = SettingsUtils.DEFAULT_THEME): String {
+fun composeThemeLabel(value: String, fallback: String = ThemePreferences.DEFAULT): String {
     return harmonicThemeLabel(value, fallback)
 }
 
@@ -42,14 +47,14 @@ fun ThemeSelectionDialog(
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val key = if (nighttime) {
-        SettingsUtils.PREF_THEME_NIGHTTIME
+        ThemePreferences.NIGHTTIME_KEY
     } else {
-        SettingsUtils.PREF_THEME
+        ThemePreferences.KEY
     }
     val fallback = if (nighttime) {
-        SettingsUtils.DEFAULT_NIGHTTIME_THEME
+        ThemePreferences.DEFAULT_NIGHTTIME
     } else {
-        SettingsUtils.DEFAULT_THEME
+        ThemePreferences.DEFAULT
     }
     val selected = prefs.getString(key, fallback) ?: fallback
     SharedThemeSelectionDialog(
@@ -199,30 +204,30 @@ fun WelcomeSettingsDialog(
     LaunchedEffect(Unit) {
         AndroidAiModelDefaults.ensureInitialDefault(context)
     }
+    val storyPreferences = AndroidUserSettings.get(context).story
     SharedWelcomeSettingsDialog(
         styleChooser = styleChooser,
         initialExpressive = !styleChooser ||
-            SettingsUtils.getPreferredFont(context) != "productsans" ||
-            SettingsUtils.shouldTintCardUsingPreview(context) ||
-            SettingsUtils.getPreferredStoryPreviewImageMode(context) !=
-            SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
+            storyPreferences.font != "productsans" ||
+            storyPreferences.tintCardUsingPreview ||
+            storyPreferences.previewImageMode != StoryPreviewPreferences.OFF,
         onApplyPreset = { expressive ->
             if (expressive) {
                 prefs.edit()
-                    .putBoolean(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, true)
-                    .putString(SettingsUtils.PREF_FONT, "googlesansflexrounded")
+                    .putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true)
+                    .putString(UserPreferenceKeys.FONT, "googlesansflexrounded")
                     .putString(
-                        SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE,
-                        SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
+                        UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
+                        StoryPreviewPreferences.SMALL,
                     )
                     .apply()
             } else {
                 prefs.edit()
-                    .putBoolean(SettingsUtils.PREF_TINT_CARD_USING_PREVIEW, false)
-                    .putString(SettingsUtils.PREF_FONT, "productsans")
+                    .putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, false)
+                    .putString(UserPreferenceKeys.FONT, "productsans")
                     .putString(
-                        SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE,
-                        SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
+                        UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
+                        StoryPreviewPreferences.OFF,
                     )
                     .apply()
             }
@@ -263,13 +268,14 @@ fun PaletteTintDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val paletteConfig = AndroidUserSettings.get(context).story.paletteTintConfigKey
     SharedPaletteTintDialog(
-        initialMode = SettingsUtils.getPreferredPaletteTintMode(context),
-        initialStrength = SettingsUtils.getPreferredPaletteTintStrength(context),
-        initialColorfulness = SettingsUtils.getPreferredPaletteTintColorfulness(context),
-        initialTone = SettingsUtils.getPreferredPaletteTintTone(context),
+        initialMode = PaletteTintPreferences.sanitizeMode(paletteConfig),
+        initialStrength = PaletteTintPreferences.strength(paletteConfig),
+        initialColorfulness = PaletteTintPreferences.colorfulness(paletteConfig),
+        initialTone = PaletteTintPreferences.tone(paletteConfig),
         onSettingsChanged = { mode, strength, colorfulness, tone ->
-            SettingsUtils.setPreferredPaletteTintSettings(
+            AndroidSettingsMutator.setPaletteTint(
                 context,
                 mode,
                 strength,
@@ -277,7 +283,7 @@ fun PaletteTintDialog(
                 tone,
             )
         },
-        onReset = { SettingsUtils.clearPreferredPaletteTintMode(context) },
+        onReset = { AndroidSettingsMutator.clearPaletteTint(context) },
         onDismiss = onDismiss,
     )
 }

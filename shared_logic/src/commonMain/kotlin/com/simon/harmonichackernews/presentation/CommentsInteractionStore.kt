@@ -64,7 +64,7 @@ data class CommentsInteractionState(
     val commentActionPredictiveBackTouchY: Float = 0f,
     val commentActionFavoriteLoadingId: Int = -1,
     val commentActionVoteLoadingId: Int = -1,
-    val commentActionVoteLoadingAction: Int = -1,
+    val commentActionVoteLoadingAction: CommentMenuAction? = null,
     val commentActionDownvotedIds: Set<Int> = emptySet(),
     val suppressedCommentIds: Set<Int> = emptySet(),
     val linkPreview: CommentLinkPreview? = null,
@@ -266,7 +266,7 @@ class CommentsInteractionStore(
         state = state.copy(commentActionFavoriteLoadingId = if (loading) commentId else -1)
     }
 
-    fun setCommentActionVoteLoading(commentId: Int, action: Int) {
+    fun setCommentActionVoteLoading(commentId: Int, action: CommentMenuAction) {
         state = state.copy(
             commentActionVoteLoadingId = commentId,
             commentActionVoteLoadingAction = action,
@@ -286,7 +286,7 @@ class CommentsInteractionStore(
                 state.commentActionVoteLoadingId
             },
             commentActionVoteLoadingAction = if (state.commentActionVoteLoadingId == commentId) {
-                -1
+                null
             } else {
                 state.commentActionVoteLoadingAction
             },

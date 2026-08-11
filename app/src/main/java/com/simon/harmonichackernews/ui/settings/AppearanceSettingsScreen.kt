@@ -11,9 +11,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -31,12 +33,12 @@ fun AppearanceSettingsScreen(
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
     val refresh = rememberPreferenceRefresh()
     var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
-    val theme = prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME)
-        ?: SettingsUtils.DEFAULT_THEME
+    val theme = prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)
+        ?: ThemePreferences.DEFAULT
     val nighttimeTheme = prefs.getString(
-        SettingsUtils.PREF_THEME_NIGHTTIME,
-        SettingsUtils.DEFAULT_NIGHTTIME_THEME,
-    ) ?: SettingsUtils.DEFAULT_NIGHTTIME_THEME
+        ThemePreferences.NIGHTTIME_KEY,
+        ThemePreferences.DEFAULT_NIGHTTIME,
+    ) ?: ThemePreferences.DEFAULT_NIGHTTIME
     val settings = AndroidUserSettings.get(context)
     val tintEnabled = settings.story.tintCardUsingPreview
     val state = AppearanceSettingsUiState(
@@ -45,11 +47,11 @@ fun AppearanceSettingsScreen(
         nighttimeRangeLabel = formatNighttimeRange(context),
         nighttimeThemeLabel = composeThemeLabel(
             nighttimeTheme,
-            SettingsUtils.DEFAULT_NIGHTTIME_THEME,
+            ThemePreferences.DEFAULT_NIGHTTIME,
         ),
-        fontLabel = SettingsUtils.getPreferredFontLabel(context).orEmpty(),
+        fontLabel = AndroidSettingsResources.fontLabel(context, settings.story.font),
         paletteTintSummary = if (tintEnabled) {
-            SettingsUtils.getPreferredPaletteTintSummary(context)
+            PaletteTintPreferences.summary(settings.story.paletteTintConfigKey)
         } else {
             "Enable in Stories settings"
         },

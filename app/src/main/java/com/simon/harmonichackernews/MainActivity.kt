@@ -27,7 +27,8 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.CommentNavigationPreferences
 import com.simon.harmonichackernews.utils.HackerNewsItemLink
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -61,7 +62,7 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         val justUpdated = Utils.justUpdated(this)
         if (shouldShowWelcomeDialog) {
             mainNavigationController?.showWelcomeDialog()
-        } else if (justUpdated && SettingsUtils.shouldShowChangelog(this)) {
+        } else if (justUpdated && AndroidUserSettings.get(this).general.showChangelog) {
             mainNavigationController?.showChangelogDialog()
         }
 
@@ -219,11 +220,10 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
     }
 
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val volumeNavigationMode =
-            SettingsUtils.getCommentsVolumeNavigationMode(getApplicationContext())
-        if (SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_DISABLED != volumeNavigationMode) {
+        val volumeNavigationMode = AndroidUserSettings.get(this).comments.volumeNavigationMode
+        if (CommentNavigationPreferences.DISABLED != volumeNavigationMode) {
             val topLevelOnly =
-                SettingsUtils.COMMENTS_VOLUME_NAVIGATION_MODE_TOP_LEVEL == volumeNavigationMode
+                CommentNavigationPreferences.TOP_LEVEL == volumeNavigationMode
             val coordinator: CommentsCoordinator? = this.commentsCoordinator
             if (coordinator != null && coordinator.isAdded && coordinator.isBottomSheetFullyExpanded) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {

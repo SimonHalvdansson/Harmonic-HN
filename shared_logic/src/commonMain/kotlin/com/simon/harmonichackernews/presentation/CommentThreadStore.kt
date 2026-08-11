@@ -121,6 +121,11 @@ class CommentThreadStore {
         return expandedAny
     }
 
+    fun restoreCollapsedComments(collapsedIds: Set<Int>) {
+        allComments.forEach { comment -> comment.expanded = comment.id !in collapsedIds }
+        publish()
+    }
+
     fun findComment(commentId: Int): Comment? =
         displayedComments.firstOrNull { it.id == commentId }
             ?: allComments.firstOrNull { it.id == commentId }

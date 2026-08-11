@@ -15,26 +15,21 @@ import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
-import com.simon.harmonichackernews.network.HttpStatusException
 import com.simon.harmonichackernews.network.HackerNewsApi
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.RequestQueue
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.SavedItemSnapshot
-import com.simon.harmonichackernews.data.SavedItemSnapshots
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemKeys
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.NetworkErrorUtils
-import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.failureDetails
 import com.simon.harmonichackernews.network.StoryFeedRepository
-import com.simon.harmonichackernews.network.StoryFeedResult
-import com.simon.harmonichackernews.network.dto.applyTo
 import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PlatformServices
@@ -46,13 +41,15 @@ import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.SavedItemActionOutcome
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.presentation.StoryListStore
+import com.simon.harmonichackernews.presentation.StoryHistorySyncResult
+import com.simon.harmonichackernews.presentation.StoryListTarget
+import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
-import com.simon.harmonichackernews.presentation.StorySearchMode
+import com.simon.harmonichackernews.presentation.StorySearchRuntime
 import com.simon.harmonichackernews.presentation.StorySearchUiState
-import com.simon.harmonichackernews.presentation.StoryFeedLoadSession
 import com.simon.harmonichackernews.presentation.StoryPaginationPolicy
-import com.simon.harmonichackernews.presentation.StoryPaginationSession
 import com.simon.harmonichackernews.presentation.StoryFeedRefreshPolicy
+import com.simon.harmonichackernews.presentation.StoryFeedRuntime
 import com.simon.harmonichackernews.presentation.StoryFeedSource
 import com.simon.harmonichackernews.presentation.StoryVisibilityConfig
 import com.simon.harmonichackernews.presentation.StoryVisibilityPolicy
@@ -64,19 +61,25 @@ import com.simon.harmonichackernews.presentation.SavedItemStoryReconciler
 import com.simon.harmonichackernews.presentation.StoryRowMergePolicy
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationInput
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationPolicy
+import com.simon.harmonichackernews.presentation.StoriesMenuAction
+import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
+import com.simon.harmonichackernews.presentation.StoriesUiOrchestrator
+import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
+import com.simon.harmonichackernews.presentation.StorySearchOption
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.ContentFilterRepository
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
-import com.simon.harmonichackernews.ui.stories.StoryListState
+import com.simon.harmonichackernews.ui.stories.StoriesScreenState
+import com.simon.harmonichackernews.ui.stories.AndroidStoryListResources
 import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.FontUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import com.simon.harmonichackernews.utils.Utils
@@ -118,6 +121,7 @@ class StoriesCoordinator(
         platformServices.credentials,
     )
     private val savedItems = SavedItemsRepository(AndroidKeyValueStore.global(activity))
+    private val commentMasterResolver = CommentMasterResolver(hackerNewsRepository)
     private val savedItemActions = SavedItemActionUseCase(
         repository = savedItems,
         nowMillis = { clock.now().toEpochMilliseconds() },
@@ -147,20 +151,30 @@ class StoriesCoordinator(
         sessionState = sessionState,
         algoliaRepository = algoliaRepository,
         hackerNewsRepository = hackerNewsRepository,
+        hackerNewsApi = hackerNewsApi,
+        userItemsLoader = hackerNewsUserService,
+        savedItemsRepository = savedItems,
+        storyFeedLoader = storyFeedRepository,
         clickedStoryIds = { historyStore.load().map { it.id } },
         isStoryClicked = historyStore::contains,
         shouldFilterStory = ::shouldFilterLoadedStory,
         shouldHideClickedStories = { hideClicked },
     )
+    private val storyFeedRuntime = StoryFeedRuntime(
+        sessionState = sessionState,
+        clickedStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
+        shouldHideClickedStories = { hideClicked },
+        hydrateCachedStory = { story -> Utils.loadCachedStorySummary(context, story) },
+        shouldHideHydratedStory = ::shouldFilterLoadedStory,
+    )
     private val searchStore = storiesPresenter.searchStore
+    private val searchRuntime = StorySearchRuntime()
     private var restoredStateForCurrentView = false
     private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
 
-    private var mainAdapter: StoryListState? = null
-    private var searchAdapter: StoryListState? = null
-    private var adapter: StoryListState? = null
+    private var storyResources: AndroidStoryListResources? = null
     private val mainStoryListStore = storiesPresenter.mainStoryList
     private val searchStoryListStore = storiesPresenter.searchStoryList
     private val mainStories = mainStoryListStore.stories
@@ -171,8 +185,6 @@ class StoriesCoordinator(
     private val userItemListCommentIds = sessionState.userItemListCommentIds
     private var queue: RequestQueue? = null
     private val requestTag = Any()
-    private val storyFeedLoadSession = StoryFeedLoadSession(STORY_LOAD_STALE_TIMEOUT_MS)
-    private val storyPaginationSession = StoryPaginationSession()
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
     private var alwaysOpenComments = false
     private var hideClicked = false
@@ -222,12 +234,7 @@ class StoriesCoordinator(
             storiesPresenter.dispatch(StoriesAction.SetSearchDraft(value.orEmpty()))
         }
     private val storyListGeneration: Int
-        get() = storyFeedLoadSession.generation
-    private val pendingStoryRowChangeGenerations = mutableMapOf<Int, Int>()
-    private val pendingStoryRemovals = mutableMapOf<Int, PendingStoryRemoval>()
-    private var algoliaLoading = false
-    private var algoliaLoadMoreInProgress = false
-    private var algoliaLoadMoreVisibleStoryCount = -1
+        get() = storiesPresenter.storyLoadGeneration
     private var storiesBeforeSearch: MutableList<Story>? = null
     private var loadPendingBeforeSearch = false
 
@@ -244,34 +251,6 @@ class StoriesCoordinator(
         }
     private var paginationMode = false
 
-    private class PendingStoryRemoval(val generation: Int, var updateHeader: Boolean)
-
-    private var algoliaHitsPerPage: Int
-        get() = if (searching) {
-            sessionState.searchAlgoliaHitsPerPage
-        } else {
-            sessionState.mainAlgoliaHitsPerPage
-        }
-        set(value) {
-            if (searching) {
-                sessionState.searchAlgoliaHitsPerPage = value
-            } else {
-                sessionState.mainAlgoliaHitsPerPage = value
-            }
-        }
-    private var lastAlgoliaTopStoriesStartTime: Int
-        get() = if (searching) {
-            sessionState.searchLastAlgoliaTopStoriesStartTime
-        } else {
-            sessionState.mainLastAlgoliaTopStoriesStartTime
-        }
-        set(value) {
-            if (searching) {
-                sessionState.searchLastAlgoliaTopStoriesStartTime = value
-            } else {
-                sessionState.mainLastAlgoliaTopStoriesStartTime = value
-            }
-        }
     private val previewImagePrefetchHandler = Handler(Looper.getMainLooper())
     private val previewPrefetchPlanner = PreviewPrefetchPlanner(
         batchSize = PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE,
@@ -298,10 +277,6 @@ class StoriesCoordinator(
         restoredMillis = sessionState.frontPageDayUtcMillis,
         nowMillis = clock.now().toEpochMilliseconds(),
     )
-    private var scrapedFrontpageNextPageUrl by sessionState::scrapedFrontpageNextPageUrl
-    private var scrapedFrontpageNextPageLoading = false
-    private var scrapedFrontpageStoryType: StoryType? = StoryType.UNKNOWN
-
     init {
         storyClickListener = activity
         bookmarkPreferences = activity.getSharedPreferences(
@@ -358,8 +333,8 @@ class StoriesCoordinator(
         hideClicked = storyPreferences.hideClicked
         alwaysOpenComments = storyPreferences.alwaysOpenComments
         userItemListsDropdownVisible = shouldShowUserItemLists(requireContext())
-        setupAdapter()
-        registerStoryAdapterDataObservers()
+        setupStoryResources()
+        registerStoryResourceListeners()
         restoredStateForCurrentView = restoringSession && restoreStoryStateAfterViewSetup(sessionState)
         initializeComposeUi()
         coroutineScope.launch {
@@ -382,7 +357,7 @@ class StoriesCoordinator(
         }
 
         storyUpdateListener = StoryUpdateListener { story: Story? ->
-            if (story == null || stories == null || adapter == null) {
+            if (story == null || stories == null || storyResources == null) {
                 return@StoryUpdateListener
             }
             stories!!.firstOrNull { it.id == story.id }
@@ -418,12 +393,13 @@ class StoriesCoordinator(
             object : StoriesComposeController.Listener {
                 override fun onTypeSelected(index: Int) {
                     useMainStoryList()
-                    if (index < 0 || index >= buildTypeAdapterList(requireContext()).size || index == adapter!!.type) {
+                    val type = getStoryType(index)
+                    if (type == StoryType.UNKNOWN || type == currentStoryType) {
                         return
                     }
-                    setStoryType(adapter!!, index)
-                    updateAdapterCommentRows()
-                    updateAdapterPaginationMode(adapter)
+                    setStoryType(StoryListTarget.MAIN, type)
+                    updateStoryRowMode()
+                    updatePaginationMode(StoryListTarget.MAIN)
                     attemptStoryTypeRefresh()
                 }
 
@@ -439,16 +415,8 @@ class StoriesCoordinator(
                     search(query)
                 }
 
-                override fun onSearchOption(kind: Int, index: Int) {
-                    if (kind == StoriesComposeController.SEARCH_OPTION_SORT) {
-                        storiesPresenter.dispatch(StoriesAction.SelectSearchSort(index))
-                    } else if (kind == StoriesComposeController.SEARCH_OPTION_DATE) {
-                        storiesPresenter.dispatch(StoriesAction.SelectSearchDateRange(index))
-                    } else if (kind == StoriesComposeController.SEARCH_OPTION_POINTS) {
-                        storiesPresenter.dispatch(StoriesAction.SelectSearchMinimumPoints(index))
-                    } else if (kind == StoriesComposeController.SEARCH_OPTION_COMMENTS) {
-                        storiesPresenter.dispatch(StoriesAction.SelectSearchMinimumComments(index))
-                    }
+                override fun onSearchOption(kind: StorySearchOption, index: Int) {
+                    storiesPresenter.dispatch(StoriesUiOrchestrator.searchOption(kind, index))
                     updateSearchOptionChips()
                     retrySearchWithCurrentOptions()
                 }
@@ -468,14 +436,15 @@ class StoriesCoordinator(
                 }
 
                 override fun onLoadMore() {
-                    handleLoadMore(adapter)
+                    handleLoadMore()
                 }
 
-                override fun onSavedFilterSelected(filter: Int) {
-                    if (filter == userItemListFilter) {
+                override fun onSavedFilterSelected(filter: SavedItemFilter) {
+                    val storedFilter = filter.toStoredFilter()
+                    if (storedFilter == userItemListFilter) {
                         return
                     }
-                    userItemListFilter = filter
+                    userItemListFilter = storedFilter
                     if (currentTypeUsesSavedItemFilter()) {
                         applySavedItemFilter()
                     }
@@ -493,19 +462,22 @@ class StoriesCoordinator(
                     selectFrontPageDay(day)
                 }
 
-                override fun onMoreAction(action: Int) {
-                    handleComposeMoreAction(action)
+                override fun onMoreAction(action: StoriesMenuAction) {
+                    StoriesUiOrchestrator.menu(
+                        action,
+                        AccountUtils.getAccountUsername(requireActivity()),
+                    )?.let(::handleStoriesPlatformEffect)
                 }
 
                 override fun onCacheStoriesConfirmed(storyCount: Int) {
-                    SettingsUtils.setStoriesToCache(requireContext(), storyCount)
+                    userSettings.setStoriesToCache(storyCount)
                     if (storyCacheController != null) {
                         storyCacheController!!.cacheStories()
                     }
                 }
 
                 override fun onLinkClick(story: Story) {
-                    handleStoryLinkClick(adapter!!, stories!!.indexOf(story))
+                    handleStoryLinkClick(stories!!.indexOf(story))
                 }
 
                 override fun onCommentClick(story: Story) {
@@ -559,23 +531,13 @@ class StoriesCoordinator(
                 }
 
                 override fun onStoryPreviewAction(
-                    story: Story, position: Int, action: Int
+                    story: Story,
+                    position: Int,
+                    action: StoryPreviewActionKind,
                 ) {
-                    val controller = composeController
-                    if (controller == null) return
-                    if (action == StoriesComposeController.STORY_PREVIEW_ACTION_VOTE) {
-                        toggleStoryVote(
-                            story,
-                            Runnable { controller.finishStoryPreviewAction(story.id, action) })
-                    } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_READ) {
-                        toggleStoryRead(story, position)
-                    } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_BOOKMARK) {
-                        toggleStoryBookmark(story)
-                    } else if (action == StoriesComposeController.STORY_PREVIEW_ACTION_FAVORITE) {
-                        toggleStoryFavorite(
-                            story,
-                            Runnable { controller.finishStoryPreviewAction(story.id, action) })
-                    }
+                    handleStoriesPlatformEffect(
+                        StoriesUiOrchestrator.preview(story, position, action),
+                    )
                 }
             })
         requireActivity().attachStoriesComposeController(composeController!!)
@@ -584,8 +546,8 @@ class StoriesCoordinator(
 
     private fun showComposeStoryPreview(openedStory: Story) {
         val controller = composeController
-        if (controller == null || stories == null || adapter == null) return
-        val visibleCount = min(stories!!.size, adapter!!.visibleStoryItemCount)
+        if (controller == null || stories == null || storyResources == null) return
+        val visibleCount = activeStoryListStore.visibleStoryItemCount
         val previewStories = java.util.ArrayList<Story>()
         val sourcePositions = java.util.ArrayList<Int>()
         val cardColors = java.util.ArrayList<Int>()
@@ -600,7 +562,7 @@ class StoriesCoordinator(
             }
             previewStories.add(story)
             sourcePositions.add(position)
-            cardColors.add(adapter!!.resolveStoryCardBackgroundColor(context, story))
+            cardColors.add(storyResources!!.resolveStoryCardBackgroundColor(context, story))
         }
         var containsOpenedStory = false
         for (story in previewStories) {
@@ -646,37 +608,54 @@ class StoriesCoordinator(
         }
     }
 
-    private fun handleComposeMoreAction(action: Int) {
-        if (action == StoriesComposeController.MORE_SETTINGS) {
-            requireActivity().startActivity(create(requireActivity()))
-        } else if (action == StoriesComposeController.MORE_LOGIN) {
-            if (TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity()))) {
-                AccountUtils.showLoginPrompt(requireContext())
-            } else {
+    private fun handleStoriesPlatformEffect(effect: StoriesPlatformEffect) {
+        when (effect) {
+            StoriesPlatformEffect.OpenSettings ->
+                requireActivity().startActivity(create(requireActivity()))
+            StoriesPlatformEffect.RequestLogin -> AccountUtils.showLoginPrompt(requireContext())
+            StoriesPlatformEffect.Logout -> {
                 AccountUtils.deleteAccountDetails(requireActivity())
                 refreshTypeSpinnerItemsIfNeeded()
                 Toast.makeText(this.context, "Logged out", Toast.LENGTH_SHORT).show()
             }
-        } else if (action == StoriesComposeController.MORE_PROFILE) {
-            requireActivity().showUserDialog(
-                AccountUtils.getAccountUsername(requireActivity()).orEmpty(), null
-            )
-        } else if (action == StoriesComposeController.MORE_CACHE) {
-            showCacheStoriesDialog()
-        } else if (action == StoriesComposeController.MORE_SUBMIT) {
-            val submitIntent = ComposeEditorContract.createIntent(requireContext())
-            submitIntent.putExtra(
-                ComposeEditorContract.EXTRA_TYPE,
-                ComposeEditorContract.TYPE_POST
-            )
-            startActivity(submitIntent)
-        } else if (action == StoriesComposeController.MORE_CLEAR_HISTORY) {
-            historyStore.clear()
-            loadingFailed = false
-            loadingFailedServerError = false
-            loadingFailedRateLimited = false
-            clearStories()
-            updateHeader()
+            is StoriesPlatformEffect.OpenProfile ->
+                requireActivity().showUserDialog(effect.userName, null)
+            StoriesPlatformEffect.ShowCacheDialog -> showCacheStoriesDialog()
+            StoriesPlatformEffect.OpenSubmitEditor -> {
+                val submitIntent = ComposeEditorContract.createIntent(requireContext())
+                submitIntent.putExtra(
+                    ComposeEditorContract.EXTRA_TYPE,
+                    ComposeEditorContract.TYPE_POST
+                )
+                startActivity(submitIntent)
+            }
+            StoriesPlatformEffect.ClearHistory -> {
+                historyStore.clear()
+                loadingFailed = false
+                loadingFailedServerError = false
+                loadingFailedRateLimited = false
+                clearStories()
+                updateHeader()
+            }
+            is StoriesPlatformEffect.PreviewAction -> {
+                val controller = composeController ?: return
+                when (effect.action) {
+                    StoryPreviewActionKind.Vote -> toggleStoryVote(
+                        effect.story,
+                        Runnable {
+                            controller.finishStoryPreviewAction(effect.story.id, effect.action)
+                        },
+                    )
+                    StoryPreviewActionKind.Read -> toggleStoryRead(effect.story, effect.position)
+                    StoryPreviewActionKind.Bookmark -> toggleStoryBookmark(effect.story)
+                    StoryPreviewActionKind.Favorite -> toggleStoryFavorite(
+                        effect.story,
+                        Runnable {
+                            controller.finishStoryPreviewAction(effect.story.id, effect.action)
+                        },
+                    )
+                }
+            }
         }
         syncComposeState()
     }
@@ -687,17 +666,17 @@ class StoriesCoordinator(
 
     private fun syncComposeState() {
         val controller = composeController
-        if (controller == null || mainAdapter == null || searchAdapter == null || adapter == null || stories == null || this.context == null) {
+        if (controller == null || storyResources == null || stories == null || this.context == null) {
             return
         }
         val context = requireContext()
-        val labels = buildTypeAdapterList(context)
+        val labels = buildStoryTypeLabels(context)
         val stringLabels = java.util.ArrayList(labels.map(CharSequence::toString))
 
-        val bookmarksType = isBookmarksType(adapter!!.type)
-        val historyType = isHistoryType(adapter!!.type)
-        val favoritesType = isFavoritesType(adapter!!.type)
-        val upvotedType = isUpvotedType(adapter!!.type)
+        val bookmarksType = currentStoryType.isBookmarks
+        val historyType = currentStoryType.isHistory
+        val favoritesType = currentStoryType.isFavorites
+        val upvotedType = currentStoryType.isUpvoted
         val userItemListType = favoritesType || upvotedType
         val savedItemSourceHasItems = currentSavedItemSourceHasItems()
         val online = connectivity.isOnline()
@@ -723,7 +702,7 @@ class StoriesCoordinator(
                 searching = searching,
                 submittedSearch = lastSearch.orEmpty().trim().isNotEmpty(),
                 storyCount = stories!!.size,
-                searchLoading = algoliaLoading,
+                searchLoading = searchStore.state.value.loading,
                 loadingFailed = loadingFailed,
                 notFound = loadingFailedServerError,
                 rateLimited = loadingFailedRateLimited,
@@ -735,60 +714,62 @@ class StoriesCoordinator(
                 refreshIndicatorShowing = isRefreshIndicatorShowing,
                 showingCached = showingCached,
                 cacheInProgress = cacheInProgress,
-                visibleStoryCount = adapter!!.visibleStoryItemCount,
+                visibleStoryCount = activeStoryListStore.visibleStoryItemCount,
             ),
         )
 
         controller.updateContent(
-            mainStories,
-            searchStories,
-            StoryDisplaySettings.from(userSettings.story),
-            stringLabels,
-            mainAdapter!!.type,
-            searching,
-            lastSearch!!,
-            searchStore.sortLabel,
-            searchStore.dateRangeLabel,
-            searchStore.minimumPointsLabel,
-            searchStore.minimumCommentsLabel,
-            StorySearchController.sortLabels,
-            StorySearchController.dateRangeLabels,
-            StorySearchController.minimumPointsLabels,
-            StorySearchController.minimumCommentsLabels,
-            searchStore.state.value.options.onlyClicked,
-            shellPresentation.showLoading,
-            this.isRefreshIndicatorShowing,
-            loadingFailed,
-            loadingFailedServerError,
-            shellPresentation.loadingFailureMessage,
-            showingCached,
-            loadingFailed && !searching && Utils.hasCachedStories(context),
-            shellPresentation.showEmptySavedList,
-            getEmptySavedListText(
-                historyType, favoritesType, upvotedType, savedItemSourceHasItems
+            StoriesScreenState(
+                mainStories = mainStories,
+                searchStories = searchStories,
+                displaySettings = StoryDisplaySettings.from(userSettings.story),
+                typeLabels = stringLabels,
+                selectedTypeIndex = getTypeIndex(storiesPresenter.state.value.mainStoryType.label),
+                searching = searching,
+                lastSearch = lastSearch!!,
+                searchSortLabel = searchStore.sortLabel,
+                searchDateLabel = searchStore.dateRangeLabel,
+                searchPointsLabel = searchStore.minimumPointsLabel,
+                searchCommentsLabel = searchStore.minimumCommentsLabel,
+                searchSortLabels = StorySearchController.sortLabels.toList(),
+                searchDateLabels = StorySearchController.dateRangeLabels.toList(),
+                searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
+                searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
+                searchOnlyClicked = searchStore.state.value.options.onlyClicked,
+                loading = shellPresentation.showLoading,
+                refreshing = this.isRefreshIndicatorShowing,
+                loadingFailed = loadingFailed,
+                loadingFailedServerError = loadingFailedServerError,
+                loadingFailedMessage = shellPresentation.loadingFailureMessage,
+                showingCached = showingCached,
+                showCachedAction = loadingFailed && !searching && Utils.hasCachedStories(context),
+                showEmptySavedList = shellPresentation.showEmptySavedList,
+                emptySavedListText = getEmptySavedListText(
+                    historyType, favoritesType, upvotedType, savedItemSourceHasItems
+                ),
+                emptySavedListIcon = getEmptySavedListIcon(historyType, favoritesType, upvotedType),
+                showEmptySearch = shellPresentation.showEmptySearch,
+                showUpdate = updateButtonShowing,
+                lastUpdatedText = lastUpdated,
+                showLoadMore = activeStoryListStore.hasLoadMore,
+                loadMoreLoading = activeStoryListStore.state.value.loadMoreInProgress,
+                mainVisibleCount = mainStoryListStore.visibleStoryItemCount,
+                searchVisibleCount = searchStoryListStore.visibleStoryItemCount,
+                showSavedFilter = !searching && currentTypeUsesSavedItemFilter() && savedItemSourceHasItems,
+                savedFilter = currentSavedItemFilter,
+                showFrontDate = !searching && currentTypeIsFront(),
+                frontDateLabel = this.frontPageDayParameter,
+                frontPreviousEnabled = frontPageDay.selectedMillis > frontPageDay.earliestMillis,
+                frontNextEnabled = frontPageDay.selectedMillis < frontPageDay.latestMillis,
+                loggedIn = !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity())),
+                canCache = shellPresentation.canCacheStories,
+                canClearHistory = currentStoryType.isHistory && historyStore.size > 0,
+                cacheProgressVisible = cacheProgressVisible,
+                cacheProgress = cacheProgress,
+                cacheProgressMax = cacheProgressMax,
+                cacheProgressStatus = cacheProgressStatus,
+                contentInsetStartPx = this.splitStoriesContentPaddingStart,
             ),
-            getEmptySavedListIcon(historyType, favoritesType, upvotedType),
-            shellPresentation.showEmptySearch,
-            updateButtonShowing,
-            lastUpdated,
-            adapter!!.hasLoadMoreButton(),
-            adapter!!.isLoadMoreLoading(),
-            mainAdapter!!.visibleStoryItemCount,
-            searchAdapter!!.visibleStoryItemCount,
-            !searching && currentTypeUsesSavedItemFilter() && savedItemSourceHasItems,
-            userItemListFilter,
-            !searching && currentTypeIsFront(),
-            this.frontPageDayParameter,
-            frontPageDay.selectedMillis > frontPageDay.earliestMillis,
-            frontPageDay.selectedMillis < frontPageDay.latestMillis,
-            !TextUtils.isEmpty(AccountUtils.getAccountUsername(requireActivity())),
-            shellPresentation.canCacheStories,
-            isHistoryType(adapter!!.type) && historyStore.size > 0,
-            cacheProgressVisible,
-            cacheProgress,
-            cacheProgressMax,
-            cacheProgressStatus,
-            this.splitStoriesContentPaddingStart
         )
     }
 
@@ -817,31 +798,25 @@ class StoriesCoordinator(
     }
 
     private fun restoreStoryStateAfterViewSetup(state: StoriesSessionState?): Boolean {
-        if (state == null || !state.initialized || mainAdapter == null || searchAdapter == null) {
+        if (state == null || !state.initialized || storyResources == null) {
             return false
         }
 
         val mainListState = mainStoryListStore.state.value
         val searchListState = searchStoryListStore.state.value
-        mainAdapter!!.visibleStoryCount = mainListState.visibleStoryCount
-        searchAdapter!!.visibleStoryCount = searchListState.visibleStoryCount
-        mainAdapter!!.showLoadMoreButton = mainListState.canLoadMore
-        searchAdapter!!.showLoadMoreButton = searchListState.canLoadMore
-        updateAdapterCommentRows()
+        updateStoryRowMode()
 
         syncActiveStoryListToSearchState()
-        scrapedFrontpageNextPageLoading = false
-        scrapedFrontpageStoryType = if (currentTypeIsScrapedFrontpage())
-            this.currentStoryType
-        else
-            StoryType.UNKNOWN
+        storyFeedRuntime.restoreScrapedPagination(
+            currentStoryType.takeIf { currentTypeIsScrapedFrontpage() },
+        )
 
         if (searching) {
             storiesBeforeSearch = java.util.ArrayList<Story>(mainStories)
             loadPendingBeforeSearch = mainStories.isEmpty()
-                    && mainListState.failure == null && !isBookmarksType(
-                mainAdapter!!.type
-            ) && !isUserItemListType(mainAdapter!!.type)
+                    && mainListState.failure == null &&
+                    !storiesPresenter.state.value.mainStoryType.isBookmarks &&
+                    !storiesPresenter.state.value.mainStoryType.isUserItemList
         }
 
         syncActiveStoryListToSearchState()
@@ -859,17 +834,13 @@ class StoriesCoordinator(
         )
     }
 
-    private val preferredTypeIndex: Int
-        get() {
-            val typeAdapterList =
-                buildTypeAdapterList(requireContext())
-            val preferredIndex =
-                typeAdapterList.indexOf(userSettings.story.preferredStoryType)
-            return if (preferredIndex >= 0) preferredIndex else 0
-        }
+    private val preferredStoryType: StoryType
+        get() = StoryType.fromLabel(userSettings.story.preferredStoryType)
+            .takeUnless { it == StoryType.UNKNOWN }
+            ?: StoryType.TOP_STORIES
 
-    private fun buildTypeAdapterList(ctx: Context): java.util.ArrayList<CharSequence> {
-        return StoryTypeAndroid.buildAdapterLabels(
+    private fun buildStoryTypeLabels(ctx: Context): java.util.ArrayList<CharSequence> {
+        return StoryTypeAndroid.buildStoryTypeLabels(
             resources,
             ctx,
             shouldShowUserItemLists(ctx),
@@ -881,28 +852,24 @@ class StoriesCoordinator(
     }
 
     private fun refreshTypeSpinnerItemsIfNeeded() {
-        if (adapter == null || this.context == null) {
+        if (storyResources == null || this.context == null) {
             return
         }
 
-        val previousTypeLabel = getTypeLabel(adapter!!.type)
+        val previousType = currentStoryType
         val showUserItemLists = shouldShowUserItemLists(requireContext())
         if (userItemListsDropdownVisible == showUserItemLists) {
             return
         }
 
         userItemListsDropdownVisible = showUserItemLists
-        var newType = getTypeIndex(previousTypeLabel)
-        if (newType < 0) {
-            newType = 0
-        }
-
-        val newTypeLabel = getTypeLabel(newType)
-        val typeChanged = !TextUtils.equals(previousTypeLabel, newTypeLabel)
-        if (adapter!!.type != newType || typeChanged) {
-            setStoryType(adapter!!, newType)
-            updateAdapterCommentRows()
-            updateAdapterPaginationMode(adapter)
+        val availableTypes = buildStoryTypeLabels(requireContext()).map(StoryType::fromLabel)
+        val newType = previousType.takeIf { it in availableTypes } ?: StoryType.TOP_STORIES
+        val typeChanged = previousType != newType
+        if (typeChanged) {
+            setStoryType(StoryListTarget.MAIN, newType)
+            updateStoryRowMode()
+            updatePaginationMode(StoryListTarget.MAIN)
         }
 
         if (typeChanged) {
@@ -913,14 +880,7 @@ class StoriesCoordinator(
     }
 
     private fun enqueueStoryRowChange(story: Story, loadGeneration: Int) {
-        if (!isCurrentStoryListGeneration(loadGeneration)) {
-            return
-        }
-
-        // Story requests frequently finish during a fling. Keep the model update, but coalesce
-        // the adapter notifications until holders are no longer rapidly moving through scrap.
-        pendingStoryRowChangeGenerations[story.id] = loadGeneration
-        postPendingStoryAdapterUpdateIfNotSettling()
+        if (isCurrentStoryListGeneration(loadGeneration)) publishStoryContentChange(story)
     }
 
     private fun enqueueStoryRemoval(
@@ -932,47 +892,11 @@ class StoriesCoordinator(
             return
         }
 
-        val pendingRemoval = pendingStoryRemovals[story.id]
-        if (pendingRemoval == null || pendingRemoval.generation != loadGeneration) {
-            pendingStoryRemovals[story.id] =
-                PendingStoryRemoval(loadGeneration, updateHeader)
-        } else {
-            pendingRemoval.updateHeader = pendingRemoval.updateHeader or updateHeader
-        }
-        pendingStoryRowChangeGenerations.remove(story.id)
-        postPendingStoryAdapterUpdateIfNotSettling()
-    }
-
-    private fun postPendingStoryAdapterUpdateIfNotSettling() {
-        flushPendingStoryAdapterUpdates()
-    }
-
-    private fun flushPendingStoryAdapterUpdates() {
-        val currentGeneration = storyListGeneration
-        var shouldUpdateHeader = false
-        val removalIds = java.util.ArrayList<Int>()
-        for ((storyId, removal) in pendingStoryRemovals) {
-            if (removal.generation == currentGeneration) {
-                removalIds.add(storyId)
-                shouldUpdateHeader = shouldUpdateHeader or removal.updateHeader
-            }
-        }
-        pendingStoryRemovals.clear()
-        for (storyId in removalIds) {
-            val position = findStoryPositionById(storyId)
-            if (position >= 0) {
-                removeStoryAt(position, currentGeneration, false)
-            }
-        }
-        pendingStoryRowChangeGenerations.clear()
-        if (removalIds.isNotEmpty()) {
-            loadVisibleStories(currentGeneration)
-        }
-        if (shouldUpdateHeader) {
-            updateHeader()
-        } else {
-            syncComposeState()
-        }
+        val position = findStoryPositionById(story.id)
+        if (position < 0) return
+        removeStoryAt(position, loadGeneration, false)
+        loadVisibleStories(loadGeneration)
+        if (updateHeader) updateHeader() else syncComposeState()
     }
 
     private fun syncActiveStoryListToSearchState() {
@@ -984,32 +908,15 @@ class StoriesCoordinator(
     }
 
     private fun useMainStoryList() {
-        adapter = mainAdapter
         stories = mainStories
     }
 
     private fun useSearchStoryList() {
-        adapter = searchAdapter
         stories = searchStories
     }
 
     private val activeStoryListStore: StoryListStore
-        get() = if (stories === searchStories) searchStoryListStore else mainStoryListStore
-
-    private fun storyListStoreFor(targetAdapter: StoryListState?): StoryListStore =
-        if (targetAdapter === searchAdapter) searchStoryListStore else mainStoryListStore
-
-    private fun setCanLoadMore(targetAdapter: StoryListState, canLoadMore: Boolean) {
-        targetAdapter.showLoadMoreButton = canLoadMore
-    }
-
-    private fun useStoryListForAdapter(sourceAdapter: StoryListState) {
-        if (sourceAdapter == searchAdapter) {
-            useSearchStoryList()
-        } else {
-            useMainStoryList()
-        }
-    }
+        get() = if (searching) searchStoryListStore else mainStoryListStore
 
     private fun updateHeader(animateSearchTransition: Boolean = false) {
         syncComposeState()
@@ -1111,9 +1018,11 @@ class StoriesCoordinator(
         finishSearchBackFromCurrentVisualState = false
         predictiveSearchBackInProgress = false
         predictiveSearchBackProgress = 0f
-        searching = false
         lastSearch = ""
+        // Resetting search emits a search-store update. Keep the search list active until that
+        // update is applied so it can never clear the retained main stories list on the way out.
         resetSearchOptions()
+        searching = false
         updateSearchStatus()
     }
 
@@ -1125,34 +1034,30 @@ class StoriesCoordinator(
     private fun resetPaginationState() {
         loadedTo = -1
         clearPaginationLoadMoreState()
-        updateAdapterPaginationMode(adapter)
-        adapter!!.visibleStoryCount =
-            StoryPaginationPolicy.initialVisibleCount(adapter!!.paginationMode)
+        activeStoryListStore.setPaginationEnabled(shouldUsePaginationForType(currentStoryType))
+        activeStoryListStore.setVisibleStoryCount(
+            StoryPaginationPolicy.initialVisibleCount(
+                activeStoryListStore.state.value.paginationEnabled,
+            ),
+        )
     }
 
     private fun shouldUsePaginationForType(storyType: StoryType?): Boolean {
         return StoryPaginationPolicy.isEnabled(paginationMode, storyType)
     }
 
-    private fun updateAdapterPaginationMode(targetAdapter: StoryListState?) {
-        if (targetAdapter == null) {
-            return
+    private fun updatePaginationMode(target: StoryListTarget) {
+        val targetType = if (target == StoryListTarget.SEARCH) {
+            storiesPresenter.state.value.searchStoryType
+        } else {
+            storiesPresenter.state.value.mainStoryType
         }
-
-        targetAdapter.paginationMode = shouldUsePaginationForType(getStoryType(targetAdapter.type))
-    }
-
-    private fun resetAlgoliaResultLimit() {
-        algoliaHitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT
-        algoliaLoadMoreInProgress = false
-        if (adapter != null) {
-            adapter!!.setLoadMoreLoading(false)
-        }
-        algoliaLoadMoreVisibleStoryCount = -1
+        val targetStore = if (target == StoryListTarget.SEARCH) searchStoryListStore else mainStoryListStore
+        targetStore.setPaginationEnabled(shouldUsePaginationForType(targetType))
     }
 
     private val initialLoadCount: Int
-        get() = if (adapter != null && adapter!!.paginationMode) {
+        get() = if (activeStoryListStore.state.value.paginationEnabled) {
             StoryPaginationPolicy.DEFAULT_PAGE_SIZE
         } else {
             StoryPaginationPolicy.DEFAULT_INITIAL_LOAD_COUNT
@@ -1166,30 +1071,17 @@ class StoriesCoordinator(
         var i = loadedTo + 1
         while (i <= targetIndex && i < stories!!.size) {
             loadedTo = i
-            loadStory(stories!!.get(i), 0, loadGeneration)
+            loadStory(stories!!.get(i), loadGeneration)
             i++
         }
     }
 
-    private fun startPaginationLoadMore(loadGeneration: Int) =
-        storyPaginationSession.beginNextPage(
-            stories = stories.orEmpty(),
-            loadedThroughIndex = loadedTo,
-            visibleStoryCount = adapter?.visibleStoryCount ?: 0,
-            requestGeneration = loadGeneration,
-        )
-
     private fun finishPaginationLoadMoreStory(story: Story?, loadGeneration: Int) {
-        if (story != null && storyPaginationSession.finishStory(story.id, loadGeneration)) {
-            clearPaginationLoadMoreState()
-        }
+        if (story != null) activeStoryListStore.finishNextPageStory(story.id, loadGeneration)
     }
 
     private fun clearPaginationLoadMoreState() {
-        storyPaginationSession.clear()
-        if (adapter != null) {
-            adapter!!.setLoadMoreLoading(false)
-        }
+        activeStoryListStore.clearPendingPage()
     }
 
     private fun retryUnsettledStoriesThroughIndex(targetIndex: Int, loadGeneration: Int) {
@@ -1204,7 +1096,7 @@ class StoriesCoordinator(
                     story
                 )
             ) {
-                loadStory(story, 0, loadGeneration)
+                loadStory(story, loadGeneration)
             }
         }
     }
@@ -1212,8 +1104,8 @@ class StoriesCoordinator(
     private val visibleLoadTargetIndex: Int
         get() = StoryPaginationPolicy.visibleLoadTargetIndex(
             storyCount = stories?.size ?: 0,
-            paginationEnabled = adapter?.paginationMode == true,
-            visibleStoryCount = adapter?.visibleStoryCount ?: 0,
+            paginationEnabled = activeStoryListStore.state.value.paginationEnabled,
+            visibleStoryCount = activeStoryListStore.state.value.visibleStoryCount,
         )
 
     private fun loadVisibleStories(loadGeneration: Int) {
@@ -1224,63 +1116,44 @@ class StoriesCoordinator(
 
     private fun clearStories() {
         resetPreviewImagePrefetchRamp()
-        val oldItemCount = adapter!!.itemCount
         activeStoryListStore.clear()
         resetPaginationState()
-        setCanLoadMore(adapter!!, false)
-
-        if (oldItemCount > 0) {
-            adapter!!.notifyItemRangeRemoved(0, oldItemCount)
-        }
+        activeStoryListStore.setCanLoadMore(false)
     }
 
     private fun clearStoriesForSearchEntry() {
         clearStories()
     }
 
+    private fun clearSearchStoriesAfterExit() {
+        resetPreviewImagePrefetchRamp()
+        searchStoryListStore.clear()
+        searchStoryListStore.setPaginationEnabled(
+            shouldUsePaginationForType(storiesPresenter.state.value.searchStoryType),
+        )
+        searchStoryListStore.setVisibleStoryCount(
+            StoryPaginationPolicy.initialVisibleCount(
+                searchStoryListStore.state.value.paginationEnabled,
+            ),
+        )
+        searchStoryListStore.setCanLoadMore(false)
+    }
+
     private fun replaceStories(
         newStories: MutableList<Story>,
-        notifyDataSetChanged: Boolean = false,
+        replaceExisting: Boolean = false,
         showLoadMoreButton: Boolean = false
     ) {
         resetPreviewImagePrefetchRamp()
-        if (notifyDataSetChanged) {
+        if (replaceExisting) {
             resetPaginationState()
-            setCanLoadMore(adapter!!, showLoadMoreButton)
             activeStoryListStore.replace(newStories, showLoadMoreButton, showingCached)
-            adapter!!.notifyDataSetChanged()
             return
         }
 
         clearStories()
-        setCanLoadMore(adapter!!, showLoadMoreButton)
         activeStoryListStore.replace(newStories, showLoadMoreButton, showingCached)
 
-        val newItemCount = adapter!!.itemCount
-        if (newItemCount > 0) {
-            adapter!!.notifyItemRangeInserted(0, newItemCount)
-        }
-    }
-
-    private fun replaceAlgoliaLoadMoreStories(
-        newStories: MutableList<Story>,
-        showLoadMoreButton: Boolean
-    ) {
-        resetPreviewImagePrefetchRamp()
-        activeStoryListStore.replace(newStories, showLoadMoreButton, showingCached)
-        setCanLoadMore(adapter!!, showLoadMoreButton)
-
-        if (adapter != null && adapter!!.paginationMode) {
-            val requestedVisibleCount = if (algoliaLoadMoreVisibleStoryCount > 0)
-                algoliaLoadMoreVisibleStoryCount
-            else
-                adapter!!.visibleStoryCount
-            adapter!!.visibleStoryCount =
-                min(max(requestedVisibleCount, StoryPaginationPolicy.DEFAULT_PAGE_SIZE), stories!!.size)
-        } else {
-            adapter!!.visibleStoryCount = Int.MAX_VALUE
-        }
-        adapter!!.notifyDataSetChanged()
     }
 
     private fun saveStoriesBeforeSearch() {
@@ -1290,9 +1163,8 @@ class StoriesCoordinator(
 
         storiesBeforeSearch = java.util.ArrayList<Story>(stories ?: emptyList())
         loadPendingBeforeSearch = stories!!.isEmpty()
-                && !loadingFailed && !loadingFailedServerError && !isBookmarksType(adapter!!.type) && !isUserItemListType(
-            adapter!!.type
-        )
+                && !loadingFailed && !loadingFailedServerError &&
+                !currentStoryType.isBookmarks && !currentStoryType.isUserItemList
     }
 
     private fun restoreStoriesBeforeSearch(): Boolean {
@@ -1319,118 +1191,43 @@ class StoriesCoordinator(
         for (i in 0..lastIndexToLoad) {
             val story = stories!!.get(i)
             if (!story.loaded && !story.loadingFailed) {
-                loadStory(story, 0)
+                loadStory(story)
             }
         }
     }
 
-    private fun setupAdapter() {
+    private fun setupStoryResources() {
         paginationMode = userSettings.story.pagination
 
-        mainAdapter = createStoryAdapter(mainStories)
-        searchAdapter = createStoryAdapter(searchStories)
-        if (sessionState.initialized) {
-            val restoredMainType = getTypeIndex(sessionState.mainTypeLabel)
-            if (restoredMainType >= 0) mainAdapter!!.type = restoredMainType
-            val restoredSearchType = getTypeIndex(sessionState.searchTypeLabel)
-            searchAdapter!!.type =
-                if (restoredSearchType >= 0) restoredSearchType else mainAdapter!!.type
+        storyResources = AndroidStoryListResources(
+            StoryDisplaySettings.from(userSettings.story),
+        ).also { it.setStoryResourceChangedListener(::onStoryResourceChanged) }
+        if (!sessionState.initialized) {
+            setStoryType(StoryListTarget.MAIN, preferredStoryType)
+            setStoryType(StoryListTarget.SEARCH, preferredStoryType)
         }
-        adapter = mainAdapter
         stories = mainStories
 
-        configureStoryAdapter(mainAdapter!!)
-        configureStoryAdapter(searchAdapter!!)
-        setStoryType(mainAdapter!!, mainAdapter!!.type)
-        setStoryType(searchAdapter!!, searchAdapter!!.type)
-        updateAdapterCommentRows()
-    }
-
-    private fun rebuildStoryAdapters() {
-        val previousMainType =
-            if (mainAdapter != null) mainAdapter!!.type else this.preferredTypeIndex
-        val previousSearchType =
-            if (searchAdapter != null) searchAdapter!!.type else previousMainType
-        val previousMainVisibleStoryCount = if (mainAdapter != null)
-            mainAdapter!!.visibleStoryCount
-        else
-            StoryPaginationPolicy.initialVisibleCount(paginationMode)
-        val previousSearchVisibleStoryCount = if (searchAdapter != null)
-            searchAdapter!!.visibleStoryCount
-        else
-            StoryPaginationPolicy.initialVisibleCount(paginationMode)
-        val previousMainShowLoadMoreButton = mainAdapter != null && mainAdapter!!.showLoadMoreButton
-        val previousSearchShowLoadMoreButton =
-            searchAdapter != null && searchAdapter!!.showLoadMoreButton
-
-        if (mainAdapter != null) mainAdapter!!.dispose()
-        if (searchAdapter != null) searchAdapter!!.dispose()
-
-        setupAdapter()
-
-        setStoryType(mainAdapter!!, previousMainType)
-        setStoryType(searchAdapter!!, previousSearchType)
-        updateAdapterPaginationMode(mainAdapter)
-        updateAdapterPaginationMode(searchAdapter)
-        mainAdapter!!.visibleStoryCount = previousMainVisibleStoryCount
-        searchAdapter!!.visibleStoryCount = previousSearchVisibleStoryCount
-        setCanLoadMore(mainAdapter!!, previousMainShowLoadMoreButton)
-        setCanLoadMore(searchAdapter!!, previousSearchShowLoadMoreButton)
-        syncActiveStoryListToSearchState()
-        updateAdapterCommentRows()
-
-        registerStoryAdapterDataObservers()
-        syncComposeState()
-    }
-
-    private fun syncInactiveStoryAdapterDisplaySettings() {
-        if (mainAdapter == null || searchAdapter == null || adapter == null) {
-            return
+        updatePaginationMode(StoryListTarget.MAIN)
+        updatePaginationMode(StoryListTarget.SEARCH)
+        if (!sessionState.initialized) {
+            mainStoryListStore.setVisibleStoryCount(
+                StoryPaginationPolicy.initialVisibleCount(mainStoryListStore.state.value.paginationEnabled),
+            )
+            searchStoryListStore.setVisibleStoryCount(
+                StoryPaginationPolicy.initialVisibleCount(searchStoryListStore.state.value.paginationEnabled),
+            )
         }
-
-        val inactiveAdapter = (if (adapter == mainAdapter) searchAdapter else mainAdapter)!!
-        copyStoryAdapterDisplaySettings(adapter!!, inactiveAdapter)
-        updateAdapterCommentRows(inactiveAdapter)
-        if (inactiveAdapter.itemCount > 0) {
-            inactiveAdapter.notifyItemRangeChanged(0, inactiveAdapter.itemCount)
-        }
+        updateStoryRowMode()
     }
 
-    private fun copyStoryAdapterDisplaySettings(
-        sourceAdapter: StoryListState,
-        targetAdapter: StoryListState
-    ) {
-        StoryDisplaySettings.copyStateSettings(sourceAdapter, targetAdapter)
+    private fun syncInactiveStoryDisplaySettings() {
+        updateStoryRowMode()
+        mainStoryListStore.contentChanged()
+        searchStoryListStore.contentChanged()
     }
 
-    private fun createStoryAdapter(adapterStories: MutableList<Story>): StoryListState {
-        val listStore = if (adapterStories === searchStories) searchStoryListStore else mainStoryListStore
-        return StoryListState(
-            listStore,
-            StoryDisplaySettings.from(userSettings.story),
-            this.preferredTypeIndex
-        )
-    }
-
-    private fun configureStoryAdapter(configuredAdapter: StoryListState) {
-        val retainedListState = storyListStoreFor(configuredAdapter).state.value
-        updateAdapterPaginationMode(configuredAdapter)
-        configuredAdapter.visibleStoryCount = if (sessionState.initialized) {
-            retainedListState.visibleStoryCount
-        } else if (configuredAdapter.paginationMode) {
-            StoryPaginationPolicy.DEFAULT_PAGE_SIZE
-        } else {
-            Int.MAX_VALUE
-        }
-        configuredAdapter.showLoadMoreButton = retainedListState.canLoadMore
-        configuredAdapter.setChangedListener(::onStoryListStateChanged)
-    }
-
-    private fun handleStoryLinkClick(
-        sourceAdapter: StoryListState,
-        position: Int
-    ) {
-        useStoryListForAdapter(sourceAdapter)
+    private fun handleStoryLinkClick(position: Int) {
         if (position == NO_POSITION || position < 0 || position >= stories!!.size) {
             return
         }
@@ -1456,9 +1253,7 @@ class StoriesCoordinator(
         when (effect) {
             is StoriesEffect.OpenComments -> {
                 markStoryClicked(effect.story)
-                resolveStoryPosition(effect.story, effect.position)
-                    .takeIf { it >= 0 }
-                    ?.let { adapter?.updateStoryClickedState(it) }
+                publishStoryContentChange(effect.story)
                 openComments(effect.story, effect.position, effect.showWebsite)
             }
             is StoriesEffect.OpenExternalStory -> {
@@ -1467,49 +1262,162 @@ class StoriesCoordinator(
                 } else {
                     markStoryClicked(effect.story)
                 }
-                resolveStoryPosition(effect.story, effect.position)
-                    .takeIf { it >= 0 }
-                    ?.let { adapter?.updateStoryClickedState(it) }
+                publishStoryContentChange(effect.story)
                 externalLinks.open(ExternalLinkRequest(effect.url))
             }
             is StoriesEffect.RetryStory -> {
                 effect.story.loadingFailed = false
-                loadStory(effect.story, 0)
-                resolveStoryPosition(effect.story, effect.position)
-                    .takeIf { it >= 0 }
-                    ?.let { adapter?.notifyItemChanged(it) }
+                loadStory(effect.story)
+                publishStoryContentChange(effect.story)
             }
+            is StoriesEffect.FeedLoaded -> applyLoadedStoryFeed(effect)
+            is StoriesEffect.FeedFailed -> applyFailedStoryFeed(effect)
+            is StoriesEffect.NextScrapedPageLoaded -> applyNextScrapedPage(effect)
+            is StoriesEffect.NextScrapedPageFailed -> {
+                if (!isCurrentStoryFeedEffect(effect.storyType, effect.generation) ||
+                    !storyFeedRuntime.failNextScrapedPage(activeStoryListStore, effect.storyType)
+                ) {
+                    return
+                }
+                Log.w(
+                    TAG,
+                    "Next scraped page failed for type=${effect.storyType.label}, " +
+                        "generation=${effect.generation}",
+                    effect.cause,
+                )
+                updateHeader()
+            }
+            is StoriesEffect.StoryRowLoaded -> applyLoadedStoryRow(effect)
+            is StoriesEffect.StoryRowRejected -> {
+                if (isCurrentStoryRowEffect(effect.story, effect.generation)) {
+                    enqueueStoryRemoval(effect.story, effect.generation, false)
+                }
+            }
+            is StoriesEffect.StoryRowLoadAttemptFailed -> {
+                if (!isCurrentStoryRowEffect(effect.story, effect.generation)) return
+                Log.w(
+                    TAG,
+                    "Failed to load story id=${effect.story.id}, attempt=${effect.attempt}",
+                    effect.cause,
+                )
+                if (effect.finalAttempt) {
+                    finishPaginationLoadMoreStory(effect.story, effect.generation)
+                }
+                drainPreviewImagePrefetchQueue()
+                enqueueStoryRowChange(effect.story, effect.generation)
+            }
+            is StoriesEffect.UserItemsSynced -> applySyncedUserItems(effect)
+            is StoriesEffect.UserItemsSyncFailed -> applyFailedUserItemsSync(effect)
         }
     }
 
-    private fun resolveStoryPosition(story: Story, fallback: Int): Int {
-        val currentStories = stories
-        if (currentStories != null && fallback in currentStories.indices &&
-            currentStories[fallback].id == story.id
-        ) {
-            return fallback
-        }
-        return currentStories?.indexOfFirst { it.id == story.id } ?: fallback
+    private fun applySyncedUserItems(effect: StoriesEffect.UserItemsSynced) {
+        val upvoted = effect.source == SavedItemSource.UPVOTED
+        if (!isCurrentUserItemsEffect(upvoted, effect.generation)) return
+        syncUserItemListStoriesToIds(effect.snapshot.itemIds, effect.snapshot.commentIds)
+        userItemListInitialLoadInProgress = false
+        activeStoryListStore.setFailure(null)
+        isRefreshIndicatorShowing = false
+        updateHeader()
     }
 
-    private fun handleLoadMore(sourceAdapter: StoryListState?) {
-        if (sourceAdapter == null) {
+    private fun applyFailedUserItemsSync(effect: StoriesEffect.UserItemsSyncFailed) {
+        val upvoted = effect.source == SavedItemSource.UPVOTED
+        if (!isCurrentUserItemsEffect(upvoted, effect.generation)) return
+        isRefreshIndicatorShowing = false
+        userItemListInitialLoadInProgress = false
+        loadingFailed = stories!!.isEmpty()
+        loadingFailedRateLimited = NetworkErrorUtils.isRateLimitedText(
+            effect.summary,
+            effect.detail,
+        )
+        effect.cause?.let {
+            Log.w(TAG, "User item sync failed for ${effect.source}", it)
+        }
+        updateHeader()
+        Toast.makeText(requireContext(), effect.summary, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun isCurrentUserItemsEffect(upvoted: Boolean, generation: Int): Boolean =
+        isAdded && storyResources != null && isSameUserItemListType(currentStoryType, upvoted) &&
+            isCurrentStoryListGeneration(generation)
+
+    private fun applyLoadedStoryRow(effect: StoriesEffect.StoryRowLoaded) {
+        val story = effect.story
+        if (!isCurrentStoryRowEffect(story, effect.generation)) return
+        finishPaginationLoadMoreStory(story, effect.generation)
+        if (story.isComment && currentTypeUsesCommentRows()) {
+            loadCommentMaster(story, story.parentId, effect.generation)
+        }
+        if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
+            enqueueStoryRemoval(story, effect.generation, true)
             return
         }
-        useStoryListForAdapter(sourceAdapter)
-        if (adapter!!.paginationMode && adapter!!.visibleStoryCount < stories!!.size) {
-            val plan = startPaginationLoadMore(storyListGeneration) ?: return
-            adapter!!.setLoadMoreLoading(true)
-            adapter!!.visibleStoryCount = plan.nextVisibleCount
-            adapter!!.notifyDataSetChanged()
-            if (!storyPaginationSession.hasPendingStories()) {
+        if (shouldFilterLoadedStory(story)) {
+            enqueueStoryRemoval(story, effect.generation, false)
+            return
+        }
+        context?.let { requestPreviewImagePrefetch(it, story) }
+        enqueueStoryRowChange(story, effect.generation)
+    }
+
+    private fun isCurrentStoryRowEffect(story: Story, generation: Int): Boolean =
+        isCurrentStoryListGeneration(generation) && stories?.indexOf(story) != -1
+
+    private fun applyLoadedStoryFeed(effect: StoriesEffect.FeedLoaded) {
+        if (!isCurrentStoryFeedEffect(effect.storyType, effect.generation)) return
+        isRefreshIndicatorShowing = false
+        resetPreviewImagePrefetchRamp()
+        val application = storyFeedRuntime.applyInitial(
+            activeStoryListStore,
+            effect.storyType,
+            effect.result,
+        )
+        if (application.loadVisibleStories) loadInitialVisibleStories(effect.generation)
+        updateHeader()
+    }
+
+    private fun applyFailedStoryFeed(effect: StoriesEffect.FeedFailed) {
+        if (!isCurrentStoryFeedEffect(effect.storyType, effect.generation)) return
+        isRefreshIndicatorShowing = false
+        activeStoryListStore.fail(StoryFeedRefreshPolicy.failureFor(effect.cause))
+        Log.w(
+            TAG,
+            "Story feed failed for type=${effect.storyType.label}, " +
+                "generation=${effect.generation}",
+            effect.cause,
+        )
+        updateHeader()
+    }
+
+    private fun applyNextScrapedPage(effect: StoriesEffect.NextScrapedPageLoaded) {
+        if (!isCurrentStoryFeedEffect(effect.storyType, effect.generation)) return
+        val application = storyFeedRuntime.applyNextScrapedPage(
+            activeStoryListStore,
+            effect.storyType,
+            effect.page,
+        )
+        if (!application.applied) return
+        if (application.loadVisibleStories) loadVisibleStories(effect.generation)
+        updateHeader()
+    }
+
+    private fun isCurrentStoryFeedEffect(storyType: StoryType, generation: Int): Boolean =
+        isAdded && storyResources != null && currentStoryType == storyType &&
+            isCurrentStoryListGeneration(generation)
+
+    private fun handleLoadMore() {
+        val listState = activeStoryListStore.state.value
+        if (listState.paginationEnabled && listState.visibleStoryCount < stories!!.size) {
+            val plan = activeStoryListStore.beginNextPage(storyListGeneration) ?: return
+            if (!activeStoryListStore.hasPendingPageStories()) {
                 clearPaginationLoadMoreState()
             }
             loadStoriesThroughIndex(plan.targetLoadedIndex, storyListGeneration)
             retryUnsettledStoriesThroughIndex(plan.targetLoadedIndex, storyListGeneration)
-        } else if (adapter!!.showLoadMoreButton && currentTypeIsScrapedFrontpage()) {
+        } else if (listState.canLoadMore && currentTypeIsScrapedFrontpage()) {
             loadMoreScrapedFrontpageStories(storyListGeneration)
-        } else if (adapter!!.showLoadMoreButton) {
+        } else if (listState.canLoadMore) {
             loadMoreAlgoliaResults()
         }
         syncComposeState()
@@ -1567,9 +1475,7 @@ class StoriesCoordinator(
             currentPosition = position
         }
         markStoryClicked(story)
-        if (currentPosition >= 0 && currentPosition < stories!!.size) {
-            adapter!!.updateStoryClickedState(currentPosition)
-        }
+        publishStoryContentChange(story)
         openComments(story, currentPosition, showWebsite)
     }
 
@@ -1591,10 +1497,7 @@ class StoriesCoordinator(
         } else {
             historyStore.remove(story.id)
         }
-        val currentPosition = stories!!.indexOf(story)
-        if (currentPosition >= 0) {
-            adapter!!.updateStoryClickedState(currentPosition)
-        }
+        publishStoryContentChange(story)
     }
 
     private fun toggleStoryBookmark(story: Story?) {
@@ -1603,7 +1506,7 @@ class StoriesCoordinator(
         }
         val bookmarked = savedItemActions.toggleBookmark(story.id)
         if (!bookmarked) {
-            if (isBookmarksType(adapter!!.type)) {
+            if (currentStoryType.isBookmarks) {
                 bookmarkStories.remove(story)
                 val currentPosition = stories!!.indexOf(story)
                 if (currentPosition >= 0) {
@@ -1613,22 +1516,18 @@ class StoriesCoordinator(
                 return
             }
         }
-        val currentPosition = stories!!.indexOf(story)
-        if (currentPosition >= 0) {
-            adapter!!.notifyItemChanged(currentPosition)
-        }
+        publishStoryContentChange(story)
     }
 
     private fun toggleStoryVote(
         story: Story?,
         completion: Runnable
     ) {
-        if (!this.isAdded || story == null || adapter == null || stories == null) {
+        if (!this.isAdded || story == null || storyResources == null || stories == null) {
             completion.run()
             return
         }
         val actionGeneration = storyListGeneration
-        val actionAdapter = adapter
         val actionStories = stories
         val context = requireContext()
         val action = savedItemActions.beginVote(
@@ -1636,21 +1535,15 @@ class StoriesCoordinator(
             isComment = false,
             direction = if (savedItemActions.isUpvoted(story.id, false)) "un" else "up",
         )
-        val currentPosition = stories!!.indexOf(story)
-        if (currentPosition >= 0) {
-            adapter!!.notifyItemChanged(currentPosition)
-        }
+        publishStoryContentChange(story)
         coroutineScope.launch {
             val outcome = savedItemActions.execute(action)
             if (outcome is SavedItemActionOutcome.Success) {
                 completion.run()
                 return@launch
             }
-            if (isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
-                val restoredPosition = stories!!.indexOf(story)
-                if (restoredPosition >= 0) {
-                    adapter!!.notifyItemChanged(restoredPosition)
-                }
+            if (isCurrentStoryActionContext(actionGeneration, actionStories)) {
+                publishStoryContentChange(story)
             }
             val result = (outcome as SavedItemActionOutcome.Failure).result
             val (summary, detail) = result.failureDetails()
@@ -1668,14 +1561,13 @@ class StoriesCoordinator(
         story: Story?,
         completion: Runnable
     ) {
-        if (!this.isAdded || story == null || adapter == null || stories == null) {
+        if (!this.isAdded || story == null || storyResources == null || stories == null) {
             completion.run()
             return
         }
         val actionGeneration = storyListGeneration
-        val actionAdapter = adapter
         val actionStories = stories
-        val actionIsFavoritesList = isFavoritesType(actionAdapter!!.type)
+        val actionIsFavoritesList = currentStoryType.isFavorites
         val action = savedItemActions.beginFavorite(story.id)
         val currentlyFavorited = action.previousPresent
         val optimisticIndex = stories!!.indexOf(story)
@@ -1684,7 +1576,7 @@ class StoriesCoordinator(
                 removeStoryAt(optimisticIndex, storyListGeneration, true)
                 updateHeader()
             } else {
-                adapter!!.notifyItemChanged(optimisticIndex)
+                publishStoryContentChange(story)
             }
         }
         coroutineScope.launch {
@@ -1693,7 +1585,7 @@ class StoriesCoordinator(
                 completion.run()
                 return@launch
             }
-            if (!isCurrentStoryActionContext(actionGeneration, actionAdapter, actionStories)) {
+            if (!isCurrentStoryActionContext(actionGeneration, actionStories)) {
                 completion.run()
                 return@launch
             }
@@ -1701,11 +1593,10 @@ class StoriesCoordinator(
             if (currentlyFavorited && actionIsFavoritesList && currentIndex == -1) {
                 val restoreIndex =
                     if (optimisticIndex >= 0) min(optimisticIndex, stories!!.size) else 0
-                activeStoryListStore.mutateStories { add(restoreIndex, story) }
-                adapter!!.notifyItemInserted(restoreIndex)
+                activeStoryListStore.insertAt(restoreIndex, story)
                 updateHeader()
             } else if (currentIndex >= 0) {
-                adapter!!.notifyItemChanged(currentIndex)
+                publishStoryContentChange(story)
             }
             completion.run()
         }
@@ -1713,11 +1604,10 @@ class StoriesCoordinator(
 
     private fun isCurrentStoryActionContext(
         generation: Int,
-        expectedAdapter: StoryListState?,
         expectedStories: MutableList<Story>?
     ): Boolean {
         return this.isAdded
-                && generation == storyListGeneration && adapter == expectedAdapter && stories === expectedStories
+                && generation == storyListGeneration && stories === expectedStories
     }
 
     private fun findStoryPositionById(storyId: Int): Int {
@@ -1763,12 +1653,10 @@ class StoriesCoordinator(
         if (fontCacheChanged) {
             FontUtils.init(requireContext())
         }
-        val displayUpdate = displaySettings.applyToState(adapter!!)
+        val displayUpdate = storyResources!!.updateSettings(displaySettings)
 
-        if (displayUpdate.requiresRebuild) {
-            rebuildStoryAdapters()
-        } else if ((displayUpdate.itemsChanged || fontCacheChanged) && adapter!!.itemCount > 0) {
-            adapter!!.notifyItemRangeChanged(0, adapter!!.itemCount)
+        if (displayUpdate.itemsChanged || fontCacheChanged) {
+            publishStoryContentChange()
         }
 
         if (displayUpdate.previewImageModeChanged) {
@@ -1781,30 +1669,17 @@ class StoriesCoordinator(
 
         val newPaginationMode = storyPreferences.pagination
         if (paginationMode != newPaginationMode) {
-            val oldItemCount = adapter!!.itemCount
             paginationMode = newPaginationMode
-            updateAdapterPaginationMode(adapter)
+            updatePaginationMode(StoryListTarget.MAIN)
+            updatePaginationMode(StoryListTarget.SEARCH)
             resetPaginationState()
-
-            val newItemCount = adapter!!.itemCount
-            val sharedItemCount = min(oldItemCount, newItemCount)
-
-            if (sharedItemCount > 0) {
-                adapter!!.notifyItemRangeChanged(0, sharedItemCount)
-            }
-
-            if (oldItemCount > newItemCount) {
-                adapter!!.notifyItemRangeRemoved(newItemCount, oldItemCount - newItemCount)
-            } else if (newItemCount > oldItemCount) {
-                adapter!!.notifyItemRangeInserted(oldItemCount, newItemCount - oldItemCount)
-            }
         }
 
         if (hideJobsChanged) {
             attemptRefresh()
         }
 
-        syncInactiveStoryAdapterDisplaySettings()
+        syncInactiveStoryDisplaySettings()
         syncStoriesWithHistoriesIfNeeded()
         syncComposeState()
     }
@@ -1820,8 +1695,8 @@ class StoriesCoordinator(
     }
 
     private fun refreshBookmarksIfNeeded() {
-        if (!bookmarksChanged || adapter == null || searching
-            || !started || !isBookmarksType(adapter!!.type)
+        if (!bookmarksChanged || storyResources == null || searching
+            || !started || !currentStoryType.isBookmarks
         ) {
             return
         }
@@ -1836,16 +1711,14 @@ class StoriesCoordinator(
     }
 
     fun applyWelcomePresetSettings() {
-        if (adapter == null || this.context == null) {
+        if (storyResources == null || this.context == null) {
             return
         }
 
         val storyPreferences = userSettings.story
         val previewImageMode = storyPreferences.previewImageMode
-        val previewImageModeChanged = adapter!!.previewImageMode != previewImageMode
-        val tintCardUsingPreview = storyPreferences.tintCardUsingPreview
-        val storyCardShellChanged =
-            adapter!!.tintCardUsingPreview != tintCardUsingPreview && !adapter!!.cardStyle
+        val previewImageModeChanged =
+            storyResources!!.settings.previewImageMode != previewImageMode
         val preferredFont = storyPreferences.font
         val fontCacheChanged = TextUtils.isEmpty(FontUtils.font) || FontUtils.font != preferredFont
 
@@ -1853,98 +1726,39 @@ class StoriesCoordinator(
             FontUtils.init(requireContext())
         }
 
-        adapter!!.previewImageMode = previewImageMode
-        adapter!!.showSummary = storyPreferences.showSummary
-        adapter!!.tintCardUsingPreview = tintCardUsingPreview
-        adapter!!.font = preferredFont
+        storyResources!!.updateSettings(StoryDisplaySettings.from(storyPreferences))
 
-        if (storyCardShellChanged) {
-            rebuildStoryAdapters()
-        } else {
-            syncInactiveStoryAdapterDisplaySettings()
-            notifyStoryDisplaySettingsChanged(mainAdapter)
-            notifyStoryDisplaySettingsChanged(searchAdapter)
-        }
+        syncInactiveStoryDisplaySettings()
+        mainStoryListStore.contentChanged()
+        searchStoryListStore.contentChanged()
 
         if (previewImageModeChanged) {
             scheduleLoadedPreviewImagePrefetchNearViewport()
         }
     }
 
-    private fun notifyStoryDisplaySettingsChanged(targetAdapter: StoryListState?) {
-        if (targetAdapter != null && targetAdapter.itemCount > 0) {
-            targetAdapter.notifyItemRangeChanged(0, targetAdapter.itemCount)
-        }
-    }
-
     private fun syncStoriesWithHistoriesIfNeeded() {
         val currentHistoriesChangeVersion = historyStore.changeVersion
-        if (historiesChangeVersion == currentHistoriesChangeVersion || adapter == null || stories == null) {
+        if (historiesChangeVersion == currentHistoriesChangeVersion || storyResources == null || stories == null) {
             return
         }
 
         historiesChangeVersion = currentHistoriesChangeVersion
 
-        if (searching && searchStore.state.value.options.onlyClicked) {
-            var clickedStateChanged = false
-            for (story in stories) {
-                if (story.clicked) {
-                    story.clicked = false
-                    clickedStateChanged = true
-                }
+        when (activeStoryListStore.syncHistory(
+            clickedStoryIds = historyStore.load().mapTo(mutableSetOf()) { it.id },
+            searchingOnlyClicked = searching && searchStore.state.value.options.onlyClicked,
+            showingHistory = currentStoryType.isHistory,
+            hideClicked = hideClicked,
+        )) {
+            StoryHistorySyncResult.ITEMS_REMOVED -> {
+                loadVisibleStories(storyListGeneration)
+                updateHeader()
             }
-
-            if (clickedStateChanged) {
-                adapter!!.notifyItemRangeChanged(0, adapter!!.itemCount)
-            }
-            return
+            StoryHistorySyncResult.REFRESH_REQUIRED -> attemptRefresh()
+            StoryHistorySyncResult.CONTENT_CHANGED -> syncComposeState()
+            StoryHistorySyncResult.UNCHANGED -> Unit
         }
-
-        if (isHistoryType(adapter!!.type)) {
-            attemptRefresh()
-            return
-        }
-
-        if (hideClicked) {
-            if (removeClickedStoriesFromCurrentList()) {
-                return
-            }
-
-            attemptRefresh()
-            return
-        }
-
-        var clickedStateChanged = false
-        for (story in stories) {
-            val clicked = historyStore.contains(story.id)
-            if (story.clicked != clicked) {
-                story.clicked = clicked
-                clickedStateChanged = true
-            }
-        }
-
-        if (clickedStateChanged) {
-            adapter!!.notifyItemRangeChanged(0, adapter!!.itemCount)
-        }
-    }
-
-    private fun removeClickedStoriesFromCurrentList(): Boolean {
-        var removedStories = false
-
-        for (i in stories!!.indices.reversed()) {
-            val story = stories!!.get(i)
-            if (historyStore.contains(story.id)) {
-                removeStoryAt(i, storyListGeneration, false)
-                removedStories = true
-            }
-        }
-
-        if (removedStories) {
-            loadVisibleStories(storyListGeneration)
-            updateHeader()
-        }
-
-        return removedStories
     }
 
     fun onSaveInstanceState(outState: Bundle) {
@@ -1971,19 +1785,17 @@ class StoriesCoordinator(
         if (storyUpdateListener != null) {
             StoryUpdate.clearStoryUpdatedListener(storyUpdateListener)
         }
-        unregisterStoryAdapterDataObservers()
-        if (mainAdapter != null) mainAdapter!!.dispose()
-        if (searchAdapter != null) searchAdapter!!.dispose()
+        unregisterStoryResourceListeners()
+        storyResources?.dispose()
         if (queue != null) {
-            storyFeedLoadSession.beginGeneration()
-            storyPaginationSession.clear()
+            storiesPresenter.beginStoryLoadGeneration()
+            mainStoryListStore.clearPendingPage()
+            searchStoryListStore.clearPendingPage()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
         }
         coroutineScope.cancel()
-        pendingStoryRowChangeGenerations.clear()
-        pendingStoryRemovals.clear()
         clearControllerReferences()
         if (bookmarkPreferences != null) {
             bookmarkPreferences!!.unregisterOnSharedPreferenceChangeListener(
@@ -2007,9 +1819,7 @@ class StoriesCoordinator(
         }
         composeController = null
         storyUpdateListener = null
-        mainAdapter = null
-        searchAdapter = null
-        adapter = null
+        storyResources = null
         stories = null
     }
 
@@ -2053,13 +1863,10 @@ class StoriesCoordinator(
 
         coroutineScope.launch {
             try {
-                hackerNewsRepository.getStory(masterStory.id)?.let { loadedMaster ->
-                    sourceStory.updateCommentMasterFrom(loadedMaster)
-                }
-                if (!isAdded || adapter == null) return@launch
-                val index = stories?.indexOf(sourceStory) ?: -1
-                if (index >= 0) adapter?.notifyItemChanged(index)
-                openComments(sourceStory.toCommentMasterStory() ?: masterStory, position, false)
+                val resolved = commentMasterResolver.resolve(sourceStory)
+                if (!isAdded || storyResources == null) return@launch
+                publishStoryContentChange(sourceStory)
+                openComments(resolved, position, false)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -2081,19 +1888,11 @@ class StoriesCoordinator(
             return
         }
 
-        var removedStory: Story? = null
-        activeStoryListStore.mutateStories { removedStory = removeAt(index) }
+        val removedStory = activeStoryListStore.removeAt(index) ?: return
         finishPaginationLoadMoreStory(removedStory, loadGeneration)
-        clearStoryLoadState(removedStory!!)
+        clearStoryLoadState(removedStory)
         if (index <= loadedTo) {
             loadedTo = max(-1, loadedTo - 1)
-        }
-
-        if (adapter != null && adapter!!.paginationMode) {
-            adapter!!.notifyDataSetChanged()
-        } else if (adapter != null) {
-            adapter!!.notifyItemRemoved(index)
-            adapter!!.updateStoryIndicesFromPosition(index)
         }
 
         if (loadVisibleReplacement) {
@@ -2106,48 +1905,19 @@ class StoriesCoordinator(
     }
 
     private fun isStoryLoadInProgress(story: Story?): Boolean {
-        return story?.let {
-            storyFeedLoadSession.isStoryInProgress(it.id, clock.now().toEpochMilliseconds())
-        } == true
-    }
-
-    private fun markStoryLoadStarted(story: Story?): Long {
-        val startedAt = clock.now().toEpochMilliseconds()
-        story?.let { storyFeedLoadSession.markStoryStarted(it.id, startedAt) }
-        return startedAt
+        return story?.let { storiesPresenter.isStoryRowLoadInProgress(it.id) } == true
     }
 
     private fun clearStoryLoadState(story: Story?) {
-        story?.let { storyFeedLoadSession.clearStory(it.id) }
-    }
-
-    private fun clearStoryLoadState(story: Story?, startedAt: Long) {
-        if (story == null) {
-            return
-        }
-
-        storyFeedLoadSession.clearStory(story.id, startedAt)
-    }
-
-    private fun isCurrentStoryLoad(story: Story?, startedAt: Long): Boolean {
-        if (story == null) {
-            return false
-        }
-
-        return storyFeedLoadSession.isCurrentStoryLoad(story.id, startedAt)
+        story?.let { storiesPresenter.cancelStoryRowLoad(it.id) }
     }
 
     private fun clearLoadingStoryState() {
-        storyFeedLoadSession.clearStoryLoads()
+        storiesPresenter.clearStoryRowLoads()
     }
 
-    private fun loadStory(story: Story, attempt: Int, loadGeneration: Int = storyListGeneration) {
+    private fun loadStory(story: Story, loadGeneration: Int = storyListGeneration) {
         if (!isCurrentStoryListGeneration(loadGeneration)) {
-            return
-        }
-
-        val pendingRemoval = pendingStoryRemovals[story.id]
-        if (pendingRemoval != null && pendingRemoval.generation == loadGeneration) {
             return
         }
 
@@ -2159,54 +1929,17 @@ class StoriesCoordinator(
             return
         }
 
-        if (attempt >= 3 || isStoryLoadInProgress(story)) {
+        if (isStoryLoadInProgress(story)) {
             return
         }
 
-        val startedAt = markStoryLoadStarted(story)
-
-        coroutineScope.launch {
-            try {
-                val item = hackerNewsApi.getItem(story.id)
-                if (!isCurrentStoryLoad(story, startedAt)) return@launch
-                clearStoryLoadState(story, startedAt)
-                if (!isCurrentStoryListGeneration(loadGeneration)) return@launch
-                if (stories?.indexOf(story) == -1) return@launch
-                if (item == null || !item.applyTo(story, isHistoryType(adapter!!.type))) {
-                    enqueueStoryRemoval(story, loadGeneration, false)
-                    return@launch
-                }
-
-                finishPaginationLoadMoreStory(story, loadGeneration)
-                if (story.isComment && currentTypeUsesCommentRows()) {
-                    loadCommentMaster(story, story.parentId, 0, loadGeneration)
-                }
-                if (currentTypeUsesSavedItemFilter() && !shouldShowStoryForSavedItemFilter(story)) {
-                    enqueueStoryRemoval(story, loadGeneration, true)
-                    return@launch
-                }
-                if (shouldFilterLoadedStory(story)) {
-                    enqueueStoryRemoval(story, loadGeneration, false)
-                    return@launch
-                }
-                context?.let { requestPreviewImagePrefetch(it, story) }
-                enqueueStoryRowChange(story, loadGeneration)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                if (!isCurrentStoryLoad(story, startedAt)) return@launch
-                clearStoryLoadState(story, startedAt)
-                if (!isCurrentStoryListGeneration(loadGeneration) || story.loaded) return@launch
-                Log.w(TAG, "Failed to load story id=${story.id}, attempt=$attempt", error)
-                story.loadingFailed = true
-                if (attempt >= 2) finishPaginationLoadMoreStory(story, loadGeneration)
-                drainPreviewImagePrefetchQueue()
-                if (stories?.indexOf(story) != -1) {
-                    enqueueStoryRowChange(story, loadGeneration)
-                    loadStory(story, attempt + 1, loadGeneration)
-                }
-            }
-        }
+        storiesPresenter.dispatch(
+            StoriesAction.LoadStoryRow(
+                story = story,
+                preserveTime = currentStoryType.isHistory,
+                generation = loadGeneration,
+            ),
+        )
     }
 
     fun attemptRefresh() {
@@ -2219,12 +1952,13 @@ class StoriesCoordinator(
 
     private fun invalidateAlgoliaLoad() {
         searchStore.cancel(clearResults = false)
-        algoliaLoading = false
+        searchRuntime.cancel(activeStoryListStore)
     }
 
     private fun beginStoryListRefresh(): Int {
-        storyFeedLoadSession.beginGeneration()
-        storyPaginationSession.clear()
+        storiesPresenter.dispatch(StoriesAction.CancelFeedLoads)
+        storiesPresenter.beginStoryLoadGeneration()
+        activeStoryListStore.clearPendingPage()
         resetPreviewImagePrefetchRamp()
         resetScrapedFrontpagePaginationState()
         invalidateAlgoliaLoad()
@@ -2233,16 +1967,11 @@ class StoriesCoordinator(
     }
 
     private fun resetScrapedFrontpagePaginationState() {
-        scrapedFrontpageNextPageUrl = null
-        scrapedFrontpageNextPageLoading = false
-        scrapedFrontpageStoryType = StoryType.UNKNOWN
-        if (adapter != null) {
-            adapter!!.setLoadMoreLoading(false)
-        }
+        storyFeedRuntime.resetScrapedPagination(activeStoryListStore)
     }
 
     private fun isCurrentStoryListGeneration(generation: Int): Boolean {
-        return storyFeedLoadSession.isCurrent(generation)
+        return storiesPresenter.isCurrentStoryLoadGeneration(generation)
     }
 
     private fun attemptRefresh(
@@ -2300,7 +2029,6 @@ class StoriesCoordinator(
         when (refreshPlan.source) {
             StoryFeedSource.SEARCH -> Unit // Handled before starting a feed refresh.
             StoryFeedSource.ALGOLIA -> {
-                resetAlgoliaResultLimit()
                 loadTopStoriesSince(
                     currentAlgoliaTopStoriesStartTime,
                     refreshPlan.showRefreshIndicator,
@@ -2352,340 +2080,53 @@ class StoriesCoordinator(
                 loadScrapedFrontpageStories(storyType, refreshGeneration)
             StoryFeedSource.HACKER_NEWS_API -> {
                 updateHeader()
-                coroutineScope.launch {
-                    try {
-                        val result = storyFeedRepository.load(storyType) as StoryFeedResult.ItemIds
-                        if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
-                        isRefreshIndicatorShowing = false
-                        showingCached = false
-                        replaceStories(createLoadingStoriesFromIds(result.ids))
-                        activeStoryListStore.setFailure(null)
-                        updateHeader()
-                        loadInitialVisibleStories(refreshGeneration)
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Exception) {
-                        if (!isCurrentStoryListGeneration(refreshGeneration)) return@launch
-                        isRefreshIndicatorShowing = false
-                        activeStoryListStore.fail(StoryFeedRefreshPolicy.failureFor(error))
-                        Log.w(
-                            TAG,
-                            "Story list request failed for type=${storyType.label}, " +
-                                "generation=$refreshGeneration",
-                            error,
-                        )
-                        updateHeader()
-                    }
-                }
+                requestStoryFeed(storyType, refreshGeneration)
             }
         }
     }
 
     private fun loadScrapedFrontpageStories(storyType: StoryType, refreshGeneration: Int) {
-        val ctx = this.context
-        if (ctx == null) {
-            this.isRefreshIndicatorShowing = false
-            loadingFailed = true
-            loadingFailedServerError = false
-            loadingFailedRateLimited = false
-            Log.w(
-                TAG, ("Scraped frontpage refresh failed before request: missing context for type="
-                        + storyType.label + ", generation=" + refreshGeneration)
-            )
-            updateHeader()
-            return
-        }
-
-        val frontDay = if (storyType.isFront) this.frontPageDayParameter else null
-        Log.d(
-            TAG, ("Fetching scraped frontpage type=" + storyType.label
-                    + ", path=" + storyType.hackerNewsPath
-                    + ", commentsPage=" + storyType.usesCommentRows()
-                    + ", day=" + frontDay
-                    + ", generation=" + refreshGeneration)
-        )
-        val callbackReceived = booleanArrayOf(false)
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (!callbackReceived[0] && this@StoriesCoordinator.isAdded
-                && adapter != null && this@StoriesCoordinator.currentStoryType == storyType && isCurrentStoryListGeneration(
-                    refreshGeneration
-                )
-            ) {
-                Log.w(
-                    TAG, ("Scraped frontpage request still pending for type=" + storyType.label
-                            + ", path=" + storyType.hackerNewsPath
-                            + ", generation=" + refreshGeneration
-                            + ", loadingFailed=" + loadingFailed
-                            + ", networkAvailable=" + connectivity.isOnline())
-                )
-            }
-        }, 15000)
-        coroutineScope.launch {
-            try {
-                val page = (
-                    storyFeedRepository.load(storyType, frontDay) as StoryFeedResult.Scraped
-                ).page
-                val itemIds = page.itemIds
-                val commentIds = page.commentIds
-                val nextPageUrl = page.nextPageUrl
-                callbackReceived[0] = true
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    Log.d(
-                        TAG,
-                        ("Ignoring stale scraped frontpage success for type=" + storyType.label
-                                + ", generation=" + refreshGeneration
-                                + ", currentGeneration=" + storyListGeneration
-                                + ", isAdded=" + this@StoriesCoordinator.isAdded
-                                + ", adapterPresent=" + (adapter != null)
-                                + ", currentType=" + this@StoriesCoordinator.currentStoryType.label)
-                    )
-                    return@launch
-                }
-
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                loadingFailed = itemIds.isEmpty()
-                loadingFailedServerError = false
-                loadingFailedRateLimited = false
-                showingCached = false
-                scrapedFrontpageStoryType = storyType
-                scrapedFrontpageNextPageUrl = nextPageUrl
-                scrapedFrontpageNextPageLoading = false
-                Log.d(
-                    TAG, ("Scraped frontpage success for type=" + storyType.label
-                            + ", generation=" + refreshGeneration
-                            + ", itemCount=" + itemIds.size
-                            + ", commentIdCount=" + commentIds.size
-                            + ", hasNextPage=" + !TextUtils.isEmpty(nextPageUrl) + ", loadingFailed=" + loadingFailed)
-                )
-
-                if (!loadingFailed) {
-                    replaceStories(
-                        createLoadingStoriesFromIds(itemIds, HashSet<Int>(commentIds)),
-                        false,
-                        !TextUtils.isEmpty(scrapedFrontpageNextPageUrl)
-                    )
-                }
-
-                updateHeader()
-                loadInitialVisibleStories(refreshGeneration)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                callbackReceived[0] = true
-                val summary = "Couldn't fetch ${storyType.label.lowercase()}"
-                val response = error.message
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    Log.d(
-                        TAG,
-                        ("Ignoring stale scraped frontpage failure for type=" + storyType.label
-                                + ", generation=" + refreshGeneration
-                                + ", currentGeneration=" + storyListGeneration
-                                + ", isAdded=" + this@StoriesCoordinator.isAdded
-                                + ", adapterPresent=" + (adapter != null)
-                                + ", currentType=" + this@StoriesCoordinator.currentStoryType.label
-                                + ", summary=" + summary
-                                + ", response=" + response)
-                    )
-                    return@launch
-                }
-
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                loadingFailed = true
-                loadingFailedServerError = false
-                loadingFailedRateLimited = NetworkErrorUtils.isRateLimitedText(summary, response)
-                Log.w(
-                    TAG, ("Scraped frontpage request failed for type=" + storyType.label
-                            + ", path=" + storyType.hackerNewsPath
-                            + ", generation=" + refreshGeneration
-                            + ", summary=" + summary
-                            + ", response=" + response)
-                )
-                updateHeader()
-            }
-        }
-
+        requestStoryFeed(storyType, refreshGeneration)
         updateHeader()
     }
 
     private fun loadMoreScrapedFrontpageStories(refreshGeneration: Int) {
-        val ctx = this.context
         val storyType = this.currentStoryType
-        if (ctx == null || adapter == null || scrapedFrontpageNextPageLoading
-            || storyType != scrapedFrontpageStoryType || TextUtils.isEmpty(
-                scrapedFrontpageNextPageUrl
-            )
-        ) {
-            return
-        }
-
-        scrapedFrontpageNextPageLoading = true
-        adapter!!.setLoadMoreLoading(true)
-        val nextPageUrl = scrapedFrontpageNextPageUrl
-        coroutineScope.launch {
-            try {
-                val page = storyFeedRepository.loadNextScrapedPage(
-                    storyType,
-                    checkNotNull(nextPageUrl),
-                )
-                val itemIds = page.itemIds
-                val commentIds = page.commentIds
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    return@launch
-                }
-
-                scrapedFrontpageNextPageLoading = false
-                adapter!!.setLoadMoreLoading(false)
-                scrapedFrontpageNextPageUrl = page.nextPageUrl
-                val newStories =
-                    createNewLoadingStoriesFromIds(itemIds.toMutableList(), HashSet(commentIds))
-                activeStoryListStore.mutateStories { addAll(newStories) }
-                setCanLoadMore(adapter!!, !TextUtils.isEmpty(scrapedFrontpageNextPageUrl))
-                if (adapter!!.paginationMode && !newStories.isEmpty()) {
-                    adapter!!.visibleStoryCount =
-                        min(adapter!!.visibleStoryCount + newStories.size, stories!!.size)
-                }
-                adapter!!.notifyDataSetChanged()
-                loadVisibleStories(refreshGeneration)
-                updateHeader()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || scrapedFrontpageStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    return@launch
-                }
-
-                scrapedFrontpageNextPageLoading = false
-                adapter!!.setLoadMoreLoading(false)
-                setCanLoadMore(adapter!!, true)
-                adapter!!.notifyDataSetChanged()
-                updateHeader()
-            }
-        }
+        if (storyResources == null) return
+        val nextPageUrl = storyFeedRuntime.beginNextScrapedPage(
+            activeStoryListStore,
+            storyType,
+        ) ?: return
+        storiesPresenter.dispatch(
+            StoriesAction.LoadNextScrapedPage(
+                storyType = storyType,
+                nextPageUrl = nextPageUrl,
+                generation = refreshGeneration,
+            ),
+        )
     }
 
     private fun loadFrontpageLinkRows(storyType: StoryType?, refreshGeneration: Int) {
-        val ctx = this.context
-        if (ctx == null) {
-            this.isRefreshIndicatorShowing = false
-            loadingFailed = true
-            loadingFailedServerError = false
-            loadingFailedRateLimited = false
-            updateHeader()
-            return
-        }
-
-        coroutineScope.launch {
-            try {
-                val linkRows = (
-                    storyFeedRepository.load(requireNotNull(storyType)) as
-                        StoryFeedResult.LinkDirectory
-                ).stories
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    return@launch
-                }
-
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                loadingFailed = linkRows.isEmpty()
-                loadingFailedServerError = false
-                loadingFailedRateLimited = false
-                showingCached = false
-
-                if (!loadingFailed) {
-                    replaceStories(linkRows.toMutableList())
-                    loadedTo = stories!!.size - 1
-                }
-
-                updateHeader()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                if (!this@StoriesCoordinator.isAdded || adapter == null || this@StoriesCoordinator.currentStoryType != storyType || !isCurrentStoryListGeneration(
-                        refreshGeneration
-                    )
-                ) {
-                    return@launch
-                }
-
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                loadingFailed = true
-                loadingFailedServerError = false
-                loadingFailedRateLimited = error is HttpStatusException && error.statusCode == 429
-                updateHeader()
-            }
-        }
-
+        requestStoryFeed(requireNotNull(storyType), refreshGeneration)
         updateHeader()
     }
 
-    private fun createNewLoadingStoriesFromIds(
-        itemIds: MutableList<Int>,
-        commentIds: MutableSet<Int>
-    ): java.util.ArrayList<Story> {
-        val existingStoryIds = HashSet<Int>()
-        for (story in stories!!) {
-            existingStoryIds.add(story.id)
-        }
-
-        val newItemIds = java.util.ArrayList<Int>()
-        for (id in itemIds) {
-            if (!existingStoryIds.contains(id)) {
-                newItemIds.add(id)
-            }
-        }
-
-        return createLoadingStoriesFromIds(newItemIds, commentIds)
-    }
-
-    private fun createLoadingStoriesFromIds(
-        itemIds: List<Int>,
-        commentIds: Set<Int> = emptySet(),
-    ): java.util.ArrayList<Story> {
-        val refreshedStories = java.util.ArrayList<Story>()
-        val ctx = this.context
-
-        for (id in itemIds) {
-            if (hideClicked && historyStore.contains(id)) {
-                continue
-            }
-
-            val story = Story("Loading...", id, false, historyStore.contains(id))
-            val isComment = commentIds.contains(id)
-            story.isComment = isComment
-            if (Utils.loadCachedStorySummary(ctx, story) && shouldFilterLoadedStory(story)) {
-                continue
-            }
-            if (isComment) {
-                story.isComment = true
-            }
-
-            refreshedStories.add(story)
-        }
-
-        return refreshedStories
+    private fun requestStoryFeed(storyType: StoryType, refreshGeneration: Int) {
+        storiesPresenter.dispatch(
+            StoriesAction.LoadFeed(
+                storyType = storyType,
+                frontDay = frontPageDayParameter.takeIf { storyType.isFront },
+                generation = refreshGeneration,
+            ),
+        )
     }
 
     private fun loadCommentMaster(
         story: Story,
         parentId: Int,
-        attempt: Int,
         loadGeneration: Int = storyListGeneration
     ) {
-        if (parentId <= 0 || attempt >= 8 || (story.commentMasterId > 0 && !TextUtils.isEmpty(story.commentMasterTitle))
+        if (parentId <= 0 || (story.commentMasterId > 0 && !TextUtils.isEmpty(story.commentMasterTitle))
             || !isCurrentStoryListGeneration(loadGeneration)
         ) {
             return
@@ -2693,21 +2134,13 @@ class StoriesCoordinator(
 
         coroutineScope.launch {
             try {
-                val parent = hackerNewsRepository.getStory(parentId) ?: return@launch
+                commentMasterResolver.resolveParentChain(story, parentId) ?: return@launch
                 if (!isCurrentStoryListGeneration(loadGeneration)) return@launch
-                if (parent.isComment) {
-                    loadCommentMaster(story, parent.parentId, attempt + 1, loadGeneration)
-                    return@launch
-                }
-                story.updateCommentMasterFrom(parent)
                 if (stories?.indexOf(story) != -1) enqueueStoryRowChange(story, loadGeneration)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 Log.w(TAG, "Failed to load comment master parent id=$parentId", error)
-                if (attempt < 2 && isCurrentStoryListGeneration(loadGeneration)) {
-                    loadCommentMaster(story, parentId, attempt + 1, loadGeneration)
-                }
             }
         }
     }
@@ -2744,86 +2177,21 @@ class StoriesCoordinator(
         }
 
         val syncSource = this.currentUserItemListSource
-        val upvotedTypeForSync = syncSource == SavedItemSource.UPVOTED
         userItemListInitialLoadInProgress = stories!!.isEmpty() && !showSwipeRefreshIndicator
         this.isRefreshIndicatorShowing = showSwipeRefreshIndicator
         updateHeader()
 
-        val syncGeneration = storyListGeneration
-        coroutineScope.launch {
-            try {
-                val path = if (upvotedTypeForSync) "upvoted" else "favorites"
-                val userItems = when (
-                    val result = hackerNewsUserService.getUserItems(
-                        path,
-                        loginRequired = upvotedTypeForSync,
-                    )
-                ) {
-                    is HackerNewsUserItemsResult.Success -> result.items
-                    is HackerNewsUserItemsResult.Failure ->
-                        throw UserItemSyncException(result.summary, result.detail)
-                    is HackerNewsUserItemsResult.Captcha ->
-                        throw UserItemSyncException(
-                            "Captcha required",
-                            "HN asked for a captcha before syncing $path.",
-                        )
-                }
-                val itemIds = userItems.itemIds
-                val commentIds = userItems.commentIds
-                if (!this@StoriesCoordinator.isAdded || adapter == null || !isSameUserItemListType(
-                        adapter!!.type,
-                        upvotedTypeForSync
-                    ) || !isCurrentStoryListGeneration(syncGeneration)
-                ) {
-                    return@launch
-                }
-
-                if (this@StoriesCoordinator.context == null) {
-                    return@launch
-                }
-
-                val snapshot = SavedItemSnapshots.normalize(itemIds, commentIds)
-                if (savedItems.loadSnapshot(syncSource) != snapshot) {
-                    savedItems.saveSnapshot(
-                        syncSource,
-                        snapshot,
-                        clock.now().toEpochMilliseconds(),
-                    )
-                }
-                syncUserItemListStoriesToIds(snapshot.itemIds, snapshot.commentIds)
-
-                userItemListInitialLoadInProgress = false
-                loadingFailed = false
-                loadingFailedServerError = false
-                loadingFailedRateLimited = false
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                updateHeader()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                if (!this@StoriesCoordinator.isAdded || adapter == null || !isSameUserItemListType(
-                        adapter!!.type,
-                        upvotedTypeForSync
-                    ) || !isCurrentStoryListGeneration(syncGeneration)
-                ) {
-                    return@launch
-                }
-
-                val summary = (error as? UserItemSyncException)?.summary
-                    ?: "Couldn't sync ${if (upvotedTypeForSync) "upvoted" else "favorites"}"
-                val response = (error as? UserItemSyncException)?.detail ?: error.message
-                this@StoriesCoordinator.isRefreshIndicatorShowing = false
-                userItemListInitialLoadInProgress = false
-                loadingFailed = stories!!.isEmpty()
-                loadingFailedRateLimited = NetworkErrorUtils.isRateLimitedText(summary, response)
-                updateHeader()
-                Toast.makeText(requireContext(), summary, Toast.LENGTH_SHORT).show()
-            }
-        }
+        storiesPresenter.dispatch(
+            StoriesAction.SyncUserItems(
+                source = syncSource,
+                generation = storyListGeneration,
+                savedAtMillis = clock.now().toEpochMilliseconds(),
+            ),
+        )
     }
 
     private fun syncVisibleUserItemListWithLocalCache() {
-        if (adapter == null || stories == null || !isUserItemListType(adapter!!.type)) {
+        if (storyResources == null || stories == null || !currentStoryType.isUserItemList) {
             return
         }
 
@@ -2873,12 +2241,12 @@ class StoriesCoordinator(
     private val filteredSavedItemStories: ArrayList<Story>
         get() {
             val sourceStories =
-                if (isBookmarksType(adapter!!.type)) bookmarkStories else userItemListStories
+                if (currentStoryType.isBookmarks) bookmarkStories else userItemListStories
             return java.util.ArrayList(
                 activeStoryListStore.filteredSavedItems(
                     source = sourceStories,
                     filter = currentSavedItemFilter,
-                    keepUnloadedItems = isBookmarksType(adapter!!.type),
+                    keepUnloadedItems = currentStoryType.isBookmarks,
                 )
             )
         }
@@ -2890,11 +2258,17 @@ class StoriesCoordinator(
             else -> SavedItemFilter.BOTH
         }
 
+    private fun SavedItemFilter.toStoredFilter(): Int = when (this) {
+        SavedItemFilter.STORIES -> USER_ITEM_LIST_FILTER_STORIES
+        SavedItemFilter.BOTH -> USER_ITEM_LIST_FILTER_BOTH
+        SavedItemFilter.COMMENTS -> USER_ITEM_LIST_FILTER_COMMENTS
+    }
+
     private fun shouldShowStoryForSavedItemFilter(story: Story): Boolean =
         activeStoryListStore.filteredSavedItems(
             source = listOf(story),
             filter = currentSavedItemFilter,
-            keepUnloadedItems = isBookmarksType(adapter!!.type),
+            keepUnloadedItems = currentStoryType.isBookmarks,
         ).isNotEmpty()
 
     private fun applySavedItemFilter() {
@@ -2913,16 +2287,17 @@ class StoriesCoordinator(
     private fun beginPreviewImagePrefetchRamp(targetIndex: Int) {
         previewPrefetchPlanner.begin(
             targetIndex,
-            enabled = adapter != null &&
-                SettingsUtils.STORY_PREVIEW_IMAGE_OFF != adapter!!.previewImageMode,
+            enabled = storyResources != null &&
+                StoryPreviewPreferences.OFF !=
+                    storyResources!!.settings.previewImageMode,
         )
     }
 
     private fun requestPreviewImagePrefetch(context: Context?, story: Story?) {
         val currentStories = stories
-        if (context == null || adapter == null || story == null || currentStories == null) return
+        if (context == null || storyResources == null || story == null || currentStories == null) return
         previewPrefetchPlanner.enqueue(story, currentStories).forEach {
-            adapter!!.prefetchPreviewImage(context, it)
+            storyResources!!.prefetchPreviewImage(context, it)
         }
         scheduleNextPreviewImagePrefetchRampBatch()
     }
@@ -2930,9 +2305,9 @@ class StoriesCoordinator(
     private fun drainPreviewImagePrefetchQueue() {
         val context = this.context
         val currentStories = stories
-        if (context == null || adapter == null || currentStories == null) return
+        if (context == null || storyResources == null || currentStories == null) return
         previewPrefetchPlanner.drain(currentStories).forEach {
-            adapter!!.prefetchPreviewImage(context, it)
+            storyResources!!.prefetchPreviewImage(context, it)
         }
         scheduleNextPreviewImagePrefetchRampBatch()
     }
@@ -2960,18 +2335,20 @@ class StoriesCoordinator(
         lastVisibleItem: Int
     ) {
         val context = this.context
-        val currentAdapter = adapter
+        val currentResources = storyResources
         val currentStories = stories
-        if (context == null || currentAdapter == null || currentStories.isNullOrEmpty()) return
-        if (SettingsUtils.STORY_PREVIEW_IMAGE_OFF == currentAdapter.previewImageMode) return
+        if (context == null || currentResources == null || currentStories.isNullOrEmpty()) return
+        if (StoryPreviewPreferences.OFF ==
+            currentResources.settings.previewImageMode
+        ) return
 
         val range = previewPrefetchPlanner.prefetchRange(
             storyCount = currentStories.size,
             initialLoadCount = initialLoadCount,
             firstVisibleItem = firstVisibleItem,
             lastVisibleItem = lastVisibleItem,
-            paginationVisibleCount = currentAdapter.visibleStoryCount
-                .takeIf { currentAdapter.paginationMode },
+            paginationVisibleCount = activeStoryListStore.state.value.visibleStoryCount
+                .takeIf { activeStoryListStore.state.value.paginationEnabled },
         ) ?: return
 
         beginPreviewImagePrefetchRamp(range.last)
@@ -2992,8 +2369,8 @@ class StoriesCoordinator(
             saveStoriesBeforeSearch()
 
             // cancel all ongoing
-            storyFeedLoadSession.beginGeneration()
-            storyPaginationSession.clear()
+            storiesPresenter.beginStoryLoadGeneration()
+            activeStoryListStore.clearPendingPage()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3002,16 +2379,16 @@ class StoriesCoordinator(
             loadingFailedServerError = false
             loadingFailedRateLimited = false
             useSearchStoryList()
-            setStoryType(searchAdapter!!, mainAdapter!!.type)
-            updateAdapterCommentRows()
+            setStoryType(StoryListTarget.SEARCH, storiesPresenter.state.value.mainStoryType)
+            updateStoryRowMode()
             clearStoriesForSearchEntry()
         } else {
             shouldRefreshAfterRestore = loadPendingBeforeSearch
                     && storiesBeforeSearch != null && storiesBeforeSearch!!.isEmpty()
             loadPendingBeforeSearch = false
 
-            storyFeedLoadSession.beginGeneration()
-            storyPaginationSession.clear()
+            storiesPresenter.beginStoryLoadGeneration()
+            activeStoryListStore.clearPendingPage()
             resetPreviewImagePrefetchRamp()
             invalidateAlgoliaLoad()
             queue!!.cancelAll(requestTag)
@@ -3022,8 +2399,7 @@ class StoriesCoordinator(
             if (!restoredStories) {
                 clearStories()
             }
-            useSearchStoryList()
-            clearStories()
+            clearSearchStoriesAfterExit()
             useMainStoryList()
         }
 
@@ -3047,7 +2423,6 @@ class StoriesCoordinator(
         get() = searchStore.getTopStoriesStartTime(this.currentStoryType)
 
     private fun loadTopStoriesSince(start_i: Int, showSwipeRefreshIndicator: Boolean) {
-        lastAlgoliaTopStoriesStartTime = start_i
         this.isRefreshIndicatorShowing = showSwipeRefreshIndicator
         storiesPresenter.dispatch(
             StoriesAction.LoadTopStories(
@@ -3066,93 +2441,44 @@ class StoriesCoordinator(
 
     private fun loadMoreAlgoliaResults() {
         if (searchStore.state.value.loading) return
-
-        if (adapter != null) {
-            adapter!!.setLoadMoreLoading(true)
-        }
-        algoliaLoadMoreInProgress = true
-        if (adapter != null && adapter!!.paginationMode) {
-            algoliaLoadMoreVisibleStoryCount =
-                adapter!!.visibleStoryCount + StoryPaginationPolicy.DEFAULT_PAGE_SIZE
-        } else {
-            algoliaLoadMoreVisibleStoryCount = -1
-        }
+        searchRuntime.beginLoadMore(activeStoryListStore)
         storiesPresenter.dispatch(StoriesAction.LoadMoreSearchResults)
     }
 
     private fun applyStorySearchState(state: StorySearchUiState) {
-        if (state.mode == StorySearchMode.NONE || adapter == null || stories == null) return
-        if (state.mode == StorySearchMode.QUERY && !searching) return
-        if (state.mode == StorySearchMode.TOP_STORIES && (searching || !currentTypeIsAlgolia())) return
-
-        algoliaHitsPerPage = state.hitsPerPage
-        if (state.mode == StorySearchMode.QUERY) {
-            lastSearch = state.query
-        } else {
-            lastAlgoliaTopStoriesStartTime = state.topStoriesStartTime
-        }
-
-        algoliaLoading = state.loading
-        loadingFailed = state.failure != null
-        loadingFailedServerError = state.failure == StoryLoadFailure.NOT_FOUND
-        loadingFailedRateLimited = state.failure == StoryLoadFailure.RATE_LIMITED
-        if (state.loading) {
-            algoliaLoadMoreInProgress = state.loadingMore
-            if (state.loadingMore) {
-                adapter!!.setLoadMoreLoading(true)
-            } else if (state.mode == StorySearchMode.QUERY && stories!!.isNotEmpty()) {
-                clearStories()
-            }
-            updateHeader()
-            return
-        }
-
-        this.isRefreshIndicatorShowing = false
-        adapter!!.setLoadMoreLoading(false)
-        if (state.failure != null) {
-            algoliaLoadMoreInProgress = false
-            algoliaLoadMoreVisibleStoryCount = -1
-            updateHeader()
-            return
-        }
-
-        showingCached = false
-        val nextStories = state.stories.toMutableList()
-        if (algoliaLoadMoreInProgress) {
-            replaceAlgoliaLoadMoreStories(nextStories, state.canLoadMore)
-        } else {
-            replaceStories(nextStories, false, state.canLoadMore)
-        }
-        loadedTo = stories!!.size - 1
-        activeStoryListStore.markLoadedThrough(loadedTo)
-        activeStoryListStore.finishLoadMore(state.canLoadMore)
-        scheduleLoadedPreviewImagePrefetchNearViewport()
-        algoliaLoadMoreInProgress = false
-        algoliaLoadMoreVisibleStoryCount = -1
+        if (storyResources == null || stories == null) return
+        if (state.loading && !state.loadingMore) resetPreviewImagePrefetchRamp()
+        val application = searchRuntime.apply(
+            store = activeStoryListStore,
+            state = state,
+            searching = searching,
+            activeTypeIsAlgolia = currentTypeIsAlgolia(),
+        )
+        if (!application.consumed) return
+        if (application.completed) isRefreshIndicatorShowing = false
+        if (application.contentApplied) scheduleLoadedPreviewImagePrefetchNearViewport()
         updateHeader()
     }
 
-    private fun registerStoryAdapterDataObservers() {
-        mainAdapter?.setChangedListener(::onStoryListStateChanged)
-        searchAdapter?.setChangedListener(::onStoryListStateChanged)
+    private fun registerStoryResourceListeners() {
+        storyResources?.setStoryResourceChangedListener(::onStoryResourceChanged)
     }
 
-    private fun unregisterStoryAdapterDataObservers() {
-        if (mainAdapter != null) mainAdapter!!.setChangedListener(null)
-        if (searchAdapter != null) searchAdapter!!.setChangedListener(null)
+    private fun unregisterStoryResourceListeners() {
+        storyResources?.setStoryResourceChangedListener(null)
     }
 
-    private fun onStoryListStateChanged(story: Story?) {
+    private fun onStoryResourceChanged(story: Story) {
+        publishStoryContentChange(story)
+    }
+
+    private fun publishStoryContentChange(story: Story? = null) {
         when {
-            story == null -> activeStoryListStore.notifyStoryChanged()
-            mainStories.contains(story) -> mainStoryListStore.notifyStoryChanged()
-            searchStories.contains(story) -> searchStoryListStore.notifyStoryChanged()
+            story == null -> activeStoryListStore.contentChanged()
+            mainStories.contains(story) -> mainStoryListStore.contentChanged()
+            searchStories.contains(story) -> searchStoryListStore.contentChanged()
         }
-        if (story == null) {
-            syncComposeState()
-        } else {
-            composeController?.invalidateStory(story.id)
-        }
+        if (story == null) syncComposeState() else composeController?.invalidateStory(story.id)
     }
 
     fun onStoryPreviewImageLoaded(storyId: Int) {
@@ -3160,10 +2486,10 @@ class StoriesCoordinator(
         // not otherwise invalidate the row that is still visible in the stories pane.
         if (storyId <= 0) return
         val currentContext = context ?: return
-        val currentAdapter = adapter ?: return
+        val currentResources = storyResources ?: return
         val currentStories = stories ?: return
         currentStories.firstOrNull { it.id == storyId }?.let { story ->
-            currentAdapter.prefetchPreviewImage(currentContext, story)
+            currentResources.prefetchPreviewImage(currentContext, story)
         }
     }
 
@@ -3182,35 +2508,24 @@ class StoriesCoordinator(
 
     private fun currentTypeIsScrapedFrontpage(): Boolean = currentStoryType.isScrapedFrontpage
 
-    private fun isBookmarksType(type: Int): Boolean = getStoryType(type).isBookmarks
-
-    private fun isHistoryType(type: Int): Boolean = getStoryType(type).isHistory
-
-    private fun isFavoritesType(type: Int): Boolean = getStoryType(type).isFavorites
-
-    private fun isUpvotedType(type: Int): Boolean = getStoryType(type).isUpvoted
-
-    private fun isUserItemListType(type: Int): Boolean = getStoryType(type).isUserItemList
-
     private fun currentTypeUsesSavedItemFilter(): Boolean = currentStoryType.usesSavedItemFilter()
 
     private fun currentSavedItemSourceHasItems(): Boolean {
-        val type = checkNotNull(adapter).type
-        if (isBookmarksType(type)) {
+        if (currentStoryType.isBookmarks) {
             return bookmarkStories.isNotEmpty()
         }
-        if (isUserItemListType(type)) {
+        if (currentStoryType.isUserItemList) {
             return userItemListStories.isNotEmpty()
         }
         return false
     }
 
-    private fun isSameUserItemListType(type: Int, upvotedType: Boolean): Boolean {
-        return if (upvotedType) isUpvotedType(type) else isFavoritesType(type)
+    private fun isSameUserItemListType(type: StoryType, upvotedType: Boolean): Boolean {
+        return if (upvotedType) type.isUpvoted else type.isFavorites
     }
 
     private val currentUserItemListSource: SavedItemSource
-        get() = if (isUpvotedType(adapter!!.type))
+        get() = if (currentStoryType.isUpvoted)
             SavedItemSource.UPVOTED
         else
             SavedItemSource.FAVORITES
@@ -3218,7 +2533,7 @@ class StoriesCoordinator(
     private fun currentTypeUsesCommentRows(): Boolean = currentStoryType.usesCommentRows()
 
     private val currentStoryType: StoryType
-        get() = getStoryType(adapter!!.type)
+        get() = storiesPresenter.state.value.activeStoryType
 
     private fun getStoryType(type: Int): StoryType {
         return StoryType.fromLabel(getTypeLabel(type))
@@ -3234,18 +2549,12 @@ class StoriesCoordinator(
             return null
         }
 
-        val typeAdapterList = buildTypeAdapterList(ctx)
-        return typeAdapterList.getOrNull(type)
+        val typeLabels = buildStoryTypeLabels(ctx)
+        return typeLabels.getOrNull(type)
     }
 
-    private fun setStoryType(targetAdapter: StoryListState, type: Int) {
-        targetAdapter.type = type
-        val label = getTypeLabel(type)?.toString()
-        if (targetAdapter === searchAdapter) {
-            sessionState.searchTypeLabel = label
-        } else {
-            sessionState.mainTypeLabel = label
-        }
+    private fun setStoryType(target: StoryListTarget, type: StoryType) {
+        storiesPresenter.dispatch(StoriesAction.SelectStoryType(type, target))
     }
 
     private fun getTypeIndex(label: CharSequence?): Int {
@@ -3253,24 +2562,13 @@ class StoriesCoordinator(
             return -1
         }
 
-        return buildTypeAdapterList(requireContext())
+        return buildStoryTypeLabels(requireContext())
             .indexOfFirst { it.contentEquals(label) }
     }
 
-    private fun updateAdapterCommentRows() {
-        updateAdapterCommentRows(mainAdapter)
-        updateAdapterCommentRows(searchAdapter)
-    }
-
-    private fun updateAdapterCommentRows(targetAdapter: StoryListState?) {
-        if (targetAdapter == null) {
-            return
-        }
-
-        targetAdapter.allowCommentRows = getStoryType(targetAdapter.type).usesCommentRows()
-        targetAdapter.disableClickedEffects =
-            targetAdapter.allowCommentRows || isHistoryType(targetAdapter.type)
-        updateAdapterPaginationMode(targetAdapter)
+    private fun updateStoryRowMode() {
+        updatePaginationMode(StoryListTarget.MAIN)
+        updatePaginationMode(StoryListTarget.SEARCH)
     }
 
     fun exitSearch(): Boolean {
@@ -3362,11 +2660,6 @@ class StoriesCoordinator(
         fun openStory(story: Story?, pos: Int, showWebsite: Boolean)
     }
 
-    private class UserItemSyncException(
-        val summary: String,
-        val detail: String?,
-    ) : Exception(detail ?: summary)
-
     companion object {
         private const val TAG = "StoriesCoordinator"
         private const val NO_POSITION = -1
@@ -3375,7 +2668,6 @@ class StoriesCoordinator(
             "com.simon.harmonichackernews.STATE_LINK_SUMMARY_STORY_ID"
 
         private const val STORY_VISIBLE_PREFETCH_THRESHOLD = 17
-        private const val STORY_LOAD_STALE_TIMEOUT_MS = 30000L
         private const val PREVIEW_IMAGE_PREFETCH_RAMP_BATCH_SIZE = 10
         private const val PREVIEW_IMAGE_PREFETCH_RAMP_DELAY_MS = 450L
 

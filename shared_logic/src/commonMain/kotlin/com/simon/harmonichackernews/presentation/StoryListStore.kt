@@ -17,6 +17,13 @@ enum class SavedItemFilter {
     COMMENTS,
 }
 
+enum class StoryHistorySyncResult {
+    UNCHANGED,
+    CONTENT_CHANGED,
+    ITEMS_REMOVED,
+    REFRESH_REQUIRED,
+}
+
 data class StoryListUiState(
     val stories: List<Story> = emptyList(),
     val visibleStoryCount: Int = Int.MAX_VALUE,
@@ -42,9 +49,20 @@ class StoryListStore(
     private val pageSize: Int = DEFAULT_PAGE_SIZE,
 ) {
     val stories: MutableList<Story> = mutableListOf()
+    private val paginationSession = StoryPaginationSession(pageSize)
 
     private val mutableState = MutableStateFlow(StoryListUiState())
     val state: StateFlow<StoryListUiState> = mutableState.asStateFlow()
+
+    val visibleStoryItemCount: Int
+        get() = state.value.visibleStoryCount
+            .takeIf { state.value.paginationEnabled }
+            ?.coerceAtMost(stories.size)
+            ?: stories.size
+
+    val hasLoadMore: Boolean
+        get() = state.value.loadMoreInProgress || state.value.canLoadMore ||
+            (state.value.paginationEnabled && state.value.visibleStoryCount < stories.size)
 
     fun restore(
         stories: List<Story>,
@@ -71,6 +89,7 @@ class StoryListStore(
     }
 
     fun beginLoad(refreshing: Boolean, clearItems: Boolean = false) {
+        paginationSession.clear()
         if (clearItems) stories.clear()
         publish(
             loading = !refreshing,
@@ -86,6 +105,7 @@ class StoryListStore(
         canLoadMore: Boolean = false,
         showingCached: Boolean = false,
     ) {
+        paginationSession.clear()
         this.stories.clear()
         this.stories.addAll(stories)
         val current = state.value
@@ -106,6 +126,7 @@ class StoryListStore(
     }
 
     fun clear() {
+        paginationSession.clear()
         stories.clear()
         publish(
             visibleStoryCount = if (state.value.paginationEnabled) pageSize else Int.MAX_VALUE,
@@ -138,6 +159,7 @@ class StoryListStore(
     }
 
     fun cancelTransientLoads() {
+        paginationSession.clear()
         publish(
             loading = false,
             refreshing = false,
@@ -148,6 +170,57 @@ class StoryListStore(
     fun mutateStories(block: MutableList<Story>.() -> Unit) {
         stories.block()
         publish()
+    }
+
+    fun removeAt(index: Int): Story? {
+        if (index !in stories.indices) return null
+        return stories.removeAt(index).also { publish() }
+    }
+
+    fun insertAt(index: Int, story: Story) {
+        stories.add(index.coerceIn(0, stories.size), story)
+        publish()
+    }
+
+    fun contentChanged() {
+        publish()
+    }
+
+    fun syncHistory(
+        clickedStoryIds: Set<Int>,
+        searchingOnlyClicked: Boolean,
+        showingHistory: Boolean,
+        hideClicked: Boolean,
+    ): StoryHistorySyncResult {
+        if (searchingOnlyClicked) {
+            val hadClicked = stories.any(Story::clicked)
+            if (hadClicked) {
+                stories.forEach { it.clicked = false }
+                publish()
+                return StoryHistorySyncResult.CONTENT_CHANGED
+            }
+            return StoryHistorySyncResult.UNCHANGED
+        }
+        if (showingHistory) return StoryHistorySyncResult.REFRESH_REQUIRED
+        if (hideClicked) {
+            val removed = stories.removeAll { it.id in clickedStoryIds }
+            if (removed) {
+                publish()
+                return StoryHistorySyncResult.ITEMS_REMOVED
+            }
+            return StoryHistorySyncResult.REFRESH_REQUIRED
+        }
+
+        var changed = false
+        stories.forEach { story ->
+            val clicked = story.id in clickedStoryIds
+            if (story.clicked != clicked) {
+                story.clicked = clicked
+                changed = true
+            }
+        }
+        if (changed) publish()
+        return if (changed) StoryHistorySyncResult.CONTENT_CHANGED else StoryHistorySyncResult.UNCHANGED
     }
 
     fun setPaginationEnabled(enabled: Boolean) {
@@ -166,6 +239,37 @@ class StoryListStore(
 
     fun beginLoadMore() {
         publish(loadMoreInProgress = true, failure = null)
+    }
+
+    fun beginNextPage(requestGeneration: Int): StoryPageLoadPlan? {
+        val plan = paginationSession.beginNextPage(
+            stories = stories,
+            loadedThroughIndex = state.value.loadedThroughIndex,
+            visibleStoryCount = state.value.visibleStoryCount,
+            requestGeneration = requestGeneration,
+        ) ?: return null
+        publish(
+            visibleStoryCount = plan.nextVisibleCount,
+            loadMoreInProgress = true,
+            failure = null,
+        )
+        return plan
+    }
+
+    fun finishNextPageStory(storyId: Int, requestGeneration: Int): Boolean {
+        val completed = paginationSession.finishStory(storyId, requestGeneration)
+        if (completed) {
+            paginationSession.clear()
+            publish(loadMoreInProgress = false)
+        }
+        return completed
+    }
+
+    fun hasPendingPageStories(): Boolean = paginationSession.hasPendingStories()
+
+    fun clearPendingPage() {
+        paginationSession.clear()
+        publish(loadMoreInProgress = false)
     }
 
     fun finishLoadMore(canLoadMore: Boolean) {
@@ -197,10 +301,6 @@ class StoryListStore(
 
     fun setShowingCached(showingCached: Boolean) {
         publish(showingCached = showingCached)
-    }
-
-    fun notifyStoryChanged() {
-        publish()
     }
 
     fun filteredSavedItems(

@@ -14,6 +14,34 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
+/** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
+data class CommentsScreenState(
+    val story: Story,
+    val comments: List<Comment> = emptyList(),
+    val visibleComments: List<VisibleComment> = emptyList(),
+    val displaySettings: CommentDisplaySettings? = null,
+    val commentsLoaded: Boolean = false,
+    val commentsRefreshInProgress: Boolean = false,
+    val loadingFailed: Boolean = false,
+    val loadingFailedServerError: Boolean = false,
+    val showUpdate: Boolean = false,
+    val lastRefreshed: Long = 0L,
+    val commentsByOpFilterActive: Boolean = false,
+    val hasCommentsByOp: Boolean = false,
+    val adBlockActive: Boolean = false,
+    val integratedWebView: Boolean = false,
+    val readerModeAvailable: Boolean = false,
+    val readerModeEnabled: Boolean = false,
+    val currentSorting: String = "Default",
+    val topInsetPx: Int = 0,
+    val contentInsetLeftPx: Int = 0,
+    val contentInsetRightPx: Int = 0,
+    val storyVoteLoading: Boolean = false,
+    val storyFavoriteLoading: Boolean = false,
+    val searchQuery: String = "",
+    val searchResults: List<Comment> = emptyList(),
+)
+
 class CommentsComposeController private constructor(
     shouldSmoothScroll: () -> Boolean,
     private val savedItemState: SavedItemStateReader,
@@ -22,63 +50,43 @@ class CommentsComposeController private constructor(
     val accountUser: String?,
     val listener: Listener,
 ) {
-    var story by mutableStateOf(initialStory)
+    var screenState by mutableStateOf(CommentsScreenState(story = initialStory))
         private set
-    var comments by mutableStateOf<List<Comment>>(emptyList())
-        private set
-    var visibleComments by mutableStateOf<List<VisibleComment>>(emptyList())
-        private set
-    var displaySettings by mutableStateOf<CommentDisplaySettings?>(null)
-        private set
-    var commentsLoaded by mutableStateOf(false)
-        private set
-    var commentsRefreshInProgress by mutableStateOf(false)
-        private set
-    var loadingFailed by mutableStateOf(false)
-        private set
-    var loadingFailedServerError by mutableStateOf(false)
-        private set
-    var showUpdate by mutableStateOf(false)
-        private set
-    var lastRefreshed by mutableStateOf(0L)
-        private set
-    var commentsByOpFilterActive by mutableStateOf(false)
-        private set
-    var hasCommentsByOp by mutableStateOf(false)
-        private set
-    var adBlockActive by mutableStateOf(false)
-        private set
-    var integratedWebView by mutableStateOf(false)
-        private set
-    var readerModeAvailable by mutableStateOf(false)
-        private set
-    var readerModeEnabled by mutableStateOf(false)
-        private set
+
+    val story: Story get() = screenState.story
+    val comments: List<Comment> get() = screenState.comments
+    val visibleComments: List<VisibleComment> get() = screenState.visibleComments
+    val displaySettings: CommentDisplaySettings? get() = screenState.displaySettings
+    val commentsLoaded: Boolean get() = screenState.commentsLoaded
+    val commentsRefreshInProgress: Boolean get() = screenState.commentsRefreshInProgress
+    val loadingFailed: Boolean get() = screenState.loadingFailed
+    val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError
+    val showUpdate: Boolean get() = screenState.showUpdate
+    val lastRefreshed: Long get() = screenState.lastRefreshed
+    val commentsByOpFilterActive: Boolean get() = screenState.commentsByOpFilterActive
+    val hasCommentsByOp: Boolean get() = screenState.hasCommentsByOp
+    val adBlockActive: Boolean get() = screenState.adBlockActive
+    val integratedWebView: Boolean get() = screenState.integratedWebView
+    val readerModeAvailable: Boolean get() = screenState.readerModeAvailable
+    val readerModeEnabled: Boolean get() = screenState.readerModeEnabled
+    val currentSorting: String get() = screenState.currentSorting
+    val storyVoteLoading: Boolean get() = screenState.storyVoteLoading
+    val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
+    val searchQuery: String get() = screenState.searchQuery
+    val searchResults: List<Comment> get() = screenState.searchResults
+    val contentInsetLeftPx: Int get() = screenState.contentInsetLeftPx
+    val contentInsetRightPx: Int get() = screenState.contentInsetRightPx
     var statusBarHeaderColor by mutableStateOf<Color?>(null)
         private set
     var statusBarHeaderCoverage by mutableFloatStateOf(0f)
         private set
-    var contentInsetLeftPx by mutableIntStateOf(0)
-        private set
-    var contentInsetRightPx by mutableIntStateOf(0)
-        private set
     var contentVersion by mutableIntStateOf(0)
-        private set
-    var currentSorting by mutableStateOf("Default")
-        private set
-    var storyVoteLoading by mutableStateOf(false)
-        private set
-    var storyFavoriteLoading by mutableStateOf(false)
         private set
     var storySummaryLoading by mutableStateOf(false)
         private set
     var headerPreviewSuppressed by mutableStateOf(false)
         private set
     var suppressedHeaderReferenceUrl by mutableStateOf<String?>(null)
-        private set
-    var searchQuery by mutableStateOf("")
-        private set
-    var searchResults by mutableStateOf<List<Comment>>(emptyList())
         private set
     var webViewFullscreen by mutableStateOf(false)
         private set
@@ -122,7 +130,7 @@ class CommentsComposeController private constructor(
         get() = interactionState.commentActionFavoriteLoadingId
     val commentActionVoteLoadingId: Int
         get() = interactionState.commentActionVoteLoadingId
-    val commentActionVoteLoadingAction: Int
+    val commentActionVoteLoadingAction: CommentMenuAction?
         get() = interactionState.commentActionVoteLoadingAction
     val commentActionDownvotedIds: Set<Int>
         get() = interactionState.commentActionDownvotedIds
@@ -166,56 +174,13 @@ class CommentsComposeController private constructor(
     fun isUpvoted(itemId: Int, isComment: Boolean): Boolean =
         savedItemState.isUpvoted(itemId, isComment)
 
-    fun updateContent(
-        story: Story,
-        comments: List<Comment>,
-        displaySettings: CommentDisplaySettings,
-        commentsLoaded: Boolean,
-        commentsRefreshInProgress: Boolean,
-        loadingFailed: Boolean,
-        loadingFailedServerError: Boolean,
-        showUpdate: Boolean,
-        lastRefreshed: Long,
-        commentsByOpFilterActive: Boolean,
-        hasCommentsByOp: Boolean,
-        adBlockActive: Boolean,
-        integratedWebView: Boolean,
-        readerModeAvailable: Boolean,
-        readerModeEnabled: Boolean,
-        currentSorting: String,
-        topInsetPx: Int,
-        contentInsetLeftPx: Int,
-        contentInsetRightPx: Int,
-        storyVoteLoading: Boolean,
-        storyFavoriteLoading: Boolean,
-        searchQuery: String,
-        searchResults: List<Comment>,
-        visibleComments: List<VisibleComment>,
-    ) {
-        this.story = story
-        this.comments = comments.toList()
-        this.displaySettings = displaySettings
-        this.commentsLoaded = commentsLoaded
-        this.commentsRefreshInProgress = commentsRefreshInProgress
-        this.loadingFailed = loadingFailed
-        this.loadingFailedServerError = loadingFailedServerError
-        this.showUpdate = showUpdate
-        this.lastRefreshed = lastRefreshed
-        this.commentsByOpFilterActive = commentsByOpFilterActive
-        this.hasCommentsByOp = hasCommentsByOp
-        this.adBlockActive = adBlockActive
-        this.integratedWebView = integratedWebView
-        this.readerModeAvailable = readerModeAvailable
-        this.readerModeEnabled = readerModeEnabled
-        this.currentSorting = currentSorting
-        interactionStore.updateTopInset(topInsetPx)
-        this.contentInsetLeftPx = contentInsetLeftPx
-        this.contentInsetRightPx = contentInsetRightPx
-        this.storyVoteLoading = storyVoteLoading
-        this.storyFavoriteLoading = storyFavoriteLoading
-        this.searchQuery = searchQuery
-        this.searchResults = searchResults.toList()
-        this.visibleComments = visibleComments.toList()
+    fun updateContent(state: CommentsScreenState) {
+        screenState = state.copy(
+            comments = state.comments.toList(),
+            searchResults = state.searchResults.toList(),
+            visibleComments = state.visibleComments.toList(),
+        )
+        interactionStore.updateTopInset(state.topInsetPx)
         syncInteractionState()
         contentVersion++
     }
@@ -229,7 +194,7 @@ class CommentsComposeController private constructor(
     }
 
     fun refreshContent() {
-        comments = comments.toList()
+        screenState = screenState.copy(comments = screenState.comments.toList())
         contentVersion++
     }
 
@@ -266,8 +231,10 @@ class CommentsComposeController private constructor(
     fun isWebsiteVisible(): Boolean = integratedWebView && sheetSlideOffset <= 0.001f
 
     fun updateReaderMode(available: Boolean, enabled: Boolean) {
-        readerModeAvailable = available
-        readerModeEnabled = enabled
+        screenState = screenState.copy(
+            readerModeAvailable = available,
+            readerModeEnabled = enabled,
+        )
     }
 
     fun updateWebViewFullscreen(fullscreen: Boolean) {
@@ -399,7 +366,7 @@ class CommentsComposeController private constructor(
         contentVersion++
     }
 
-    fun setCommentActionVoteLoading(commentId: Int, action: Int) {
+    fun setCommentActionVoteLoading(commentId: Int, action: CommentMenuAction) {
         interactionStore.setCommentActionVoteLoading(commentId, action)
         syncInteractionState()
         contentVersion++
@@ -614,19 +581,19 @@ class CommentsComposeController private constructor(
     interface Listener {
         fun onToggleComment(comment: Comment, position: Int)
         fun onScrollPositionChanged(commentId: Int, offset: Int) {}
-        fun onCommentAction(comment: Comment, action: Int)
+        fun onCommentAction(comment: Comment, action: CommentMenuAction)
         fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
         fun onHeaderPreviewLoaded()
         fun onHeaderPreviewLoadFailed()
-        fun onHeaderAction(action: Int)
-        fun onShareAction(action: Int)
-        fun onMoreAction(action: Int)
+        fun onHeaderAction(action: CommentsHeaderAction)
+        fun onShareAction(action: CommentsShareAction)
+        fun onMoreAction(action: CommentsMoreAction)
         fun onSearchResultSelected(comment: Comment)
         fun onSearchQueryChanged(query: String)
         fun onSortComments(sortType: String)
-        fun onSheetAction(action: Int)
+        fun onSheetAction(action: CommentsSheetAction)
         fun onCollapseSheetForWebsite()
         fun onSheetProgressChanged(expandedFraction: Float)
         fun onSheetSettled(expanded: Boolean)
@@ -636,48 +603,6 @@ class CommentsComposeController private constructor(
     }
 
     companion object {
-        const val HEADER_ACTION_USER = 0
-        const val HEADER_ACTION_REPLY = 1
-        const val HEADER_ACTION_VOTE = 2
-        const val HEADER_ACTION_FAVORITE = 3
-        const val HEADER_ACTION_BOOKMARK = 4
-        const val HEADER_ACTION_SUMMARIZE = 5
-        const val HEADER_ACTION_REFRESH = 6
-
-        const val SHARE_ARTICLE = 0
-        const val SHARE_ARTICLE_TITLE = 1
-        const val SHARE_HN = 2
-        const val SHARE_HN_TITLE = 3
-        const val SHARE_ALL = 4
-
-        const val MORE_REFRESH = 0
-        const val MORE_OPEN_PARENT = 1
-        const val MORE_OPEN_TOP_LEVEL = 2
-        const val MORE_TOGGLE_BOOKMARK = 3
-        const val MORE_SEARCH = 4
-        const val MORE_COMMENTS_BY_OP = 5
-        const val MORE_OPEN_BROWSER = 6
-        const val MORE_DISABLE_ADBLOCK = 7
-        const val MORE_ARCHIVE_ORG = 8
-        const val MORE_ARCHIVE_IS = 9
-        const val MORE_ARCHIVE_TODAY = 10
-
-        const val SHEET_REFRESH = 0
-        const val SHEET_EXPAND = 1
-        const val SHEET_BROWSER = 2
-        const val SHEET_READER = 3
-        const val SHEET_INVERT = 4
-
-        const val COMMENT_ACTION_USER = 0
-        const val COMMENT_ACTION_SHARE = 1
-        const val COMMENT_ACTION_COPY = 2
-        const val COMMENT_ACTION_BOOKMARK = 4
-        const val COMMENT_ACTION_FAVORITE = 5
-        const val COMMENT_ACTION_UPVOTE = 6
-        const val COMMENT_ACTION_UNVOTE = 7
-        const val COMMENT_ACTION_DOWNVOTE = 8
-        const val COMMENT_ACTION_REPLY = 9
-
         fun create(
             shouldSmoothScroll: () -> Boolean,
             story: Story,

@@ -64,6 +64,7 @@ import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -467,7 +468,7 @@ fun SettingsShell(
                             )
                         },
                         onOpenPrivacy = {
-                            Utils.launchCustomTab(
+                            AndroidExternalLinkLauncher.openCustomTab(
                                 context,
                                 "https://simonhalvdansson.github.io/harmonic_privacy.html",
                             )
@@ -479,7 +480,7 @@ fun SettingsShell(
                     SettingsSection.Licenses -> LicensesScreen(
                         onBack = ::navigateBack,
                         onOpenLicense = { url ->
-                            Utils.launchCustomTab(
+                            AndroidExternalLinkLauncher.openCustomTab(
                                 context,
                                 url,
                             )

@@ -4,8 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.content.res.Resources
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -13,12 +11,7 @@ import android.net.Uri
 import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
-import android.webkit.URLUtil
 import android.widget.Toast
-import androidx.browser.customtabs.CustomTabColorSchemeParams
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
-import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
@@ -30,6 +23,7 @@ import com.simon.harmonichackernews.data.CacheFileNamePolicy
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.LocalSummaryManager
+import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.AppLaunchStateStore
@@ -122,10 +116,9 @@ object Utils {
             GLOBAL_SHARED_PREFERENCES_KEY,
             Context.MODE_PRIVATE
         )
-        var cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
-        )
+        var cachedStories = AndroidKeyValueStore.global(ctx)
+            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
+            .toMutableSet()
         val cacheUpdate = StoryCacheIndex.record(
             cachedStories,
             id,
@@ -279,10 +272,9 @@ object Utils {
                 GLOBAL_SHARED_PREFERENCES_KEY,
                 Context.MODE_PRIVATE
             )
-        var cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
-        )
+        var cachedStories = AndroidKeyValueStore.global(ctx)
+            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
+            .toMutableSet()
         cachedStories = StoryCacheIndex.remove(cachedStories, id).toMutableSet()
 
         sharedPreferences.edit()
@@ -305,10 +297,8 @@ object Utils {
     private fun getCachedPostIds(ctx: Context): MutableSet<Int> {
         val cachedPostIds = mutableSetOf<Int>()
 
-        val cachedStories = SettingsUtils.readStringSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
-        )
+        val cachedStories = AndroidKeyValueStore.global(ctx)
+            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
         cachedPostIds.addAll(StoryCacheIndex.storyIds(cachedStories))
 
         val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
@@ -499,10 +489,10 @@ object Utils {
         cacheFile.setLastModified(System.currentTimeMillis())
 
         try {
-            val charsetName = SettingsUtils.readStringFromSharedPreferences(
-                ctx,
-                KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id
-            ).orEmpty().ifEmpty { "UTF-8" }
+            val charsetName = AndroidKeyValueStore.global(ctx)
+                .getString(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
+                .orEmpty()
+                .ifEmpty { "UTF-8" }
             return InputStreamReader(FileInputStream(cacheFile), charsetName).buffered().use { reader ->
                 buildString {
                     reader.forEachLine { line -> append(line).append('\n') }
@@ -518,10 +508,8 @@ object Utils {
         if (ctx == null || id <= 0) {
             return null
         }
-        return SettingsUtils.readStringFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id
-        )
+        return AndroidKeyValueStore.global(ctx)
+            .getString(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
     }
 
     fun deleteCachedArticleSnapshot(ctx: Context?, id: Int) {
@@ -569,20 +557,16 @@ object Utils {
     }
 
     fun hasCachedStories(ctx: Context): Boolean {
-        val cached = SettingsUtils.readStringSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
-        )
+        val cached = AndroidKeyValueStore.global(ctx)
+            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
         return StoryCacheIndex.recentEntries(cached, System.currentTimeMillis()).any { entry ->
             loadCachedStoryForStoriesList(ctx, entry.storyId) != null
         }
     }
 
     fun loadCachedStories(ctx: Context): ArrayList<Story> {
-        val cached = SettingsUtils.readStringSetFromSharedPreferences(
-            ctx,
-            KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS
-        )
+        val cached = AndroidKeyValueStore.global(ctx)
+            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
         val stories = arrayListOf<Story>()
         for (entry in StoryCacheIndex.recentEntries(cached, System.currentTimeMillis())) {
             loadCachedStoryForStoriesList(ctx, entry.storyId)?.let(stories::add)
@@ -631,102 +615,6 @@ object Utils {
         return networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
-    @JvmOverloads
-    fun launchCustomTab(
-        ctx: Context,
-        url: String?,
-        shareable: Boolean = true
-    ) {
-        val originalUrl = url ?: return
-        if (SettingsUtils.shouldUseExternalBrowser(ctx) || !isCustomTabSupported(ctx)) {
-            launchInExternalBrowser(ctx, originalUrl)
-            return
-        }
-
-        try {
-            createCustomTabsIntent(ctx, shareable).launchUrl(ctx, Uri.parse(originalUrl))
-        } catch (e: Exception) {
-            e.printStackTrace()
-
-            try {
-                createCustomTabsIntent(ctx, shareable).launchUrl(
-                    ctx,
-                    Uri.parse(URLUtil.guessUrl(originalUrl))
-                )
-            } catch (_: Exception) {
-                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(originalUrl)
-                try {
-                    createCustomTabsIntent(ctx, shareable).launchUrl(ctx, Uri.parse(fallbackUrl))
-                } catch (_: Exception) {
-                    launchInExternalBrowser(ctx, fallbackUrl)
-                }
-            }
-        }
-    }
-
-    private fun createCustomTabsIntent(ctx: Context, shareable: Boolean): CustomTabsIntent {
-        val colorScheme = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(
-                ContextCompat.getColor(ctx, ThemeUtils.getBackgroundColorResource(ctx))
-            )
-            .build()
-        return CustomTabsIntent.Builder()
-            .setShareState(
-                if (shareable) CustomTabsIntent.SHARE_STATE_ON
-                else CustomTabsIntent.SHARE_STATE_OFF
-            )
-            .setDefaultColorSchemeParams(colorScheme)
-            .build()
-    }
-
-    fun launchInExternalBrowser(ctx: Context, url: String) {
-        try {
-            openExternalUrl(ctx, url)
-        } catch (e: Exception) {
-            // failed for the first time, let's try to guess a fix to the url
-            try {
-                openExternalUrl(ctx, URLUtil.guessUrl(url))
-            } catch (_: Exception) {
-                // automated fix didn't work, let's try to do it manually
-                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(url)
-                try {
-                    openExternalUrl(ctx, fallbackUrl)
-                } catch (_: Exception) {
-                    Toast.makeText(
-                        ctx,
-                        "Couldn't open link to: $fallbackUrl",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-    }
-
-    private fun openExternalUrl(ctx: Context, url: String) {
-        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        getPackageForExternalUrl(ctx, browserIntent)?.let(browserIntent::setPackage)
-        ctx.startActivity(browserIntent)
-    }
-
-    private fun getPackageForExternalUrl(
-        ctx: Context,
-        browserIntent: Intent
-    ): String? {
-        val defaultBrowserPackageName = ctx.defaultBrowserPackageName() ?: return null
-        val resolveInfo = ctx.packageManager
-            .resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-        val resolvedPackageName = resolveInfo?.activityInfo?.packageName
-
-        // force browser only when VIEW resolves to Harmonic itself (self-loop) or a known bad resolver.
-        if (ctx.packageName == resolvedPackageName
-            || ctx.isInvalidViewHandlerPackage(resolvedPackageName)
-        ) {
-            return defaultBrowserPackageName
-        }
-
-        return null
-    }
-
     fun downloadPDF(context: Context, pdfUrl: String?): Boolean {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             data = Uri.parse(pdfUrl)
@@ -739,32 +627,6 @@ object Utils {
             return true
         }
         return false
-    }
-
-    fun isCustomTabSupported(context: Context): Boolean {
-        return getCustomTabsPackages(context).isNotEmpty()
-    }
-
-    /**
-     * Returns a list of packages that support Custom Tabs.
-     */
-    private fun getCustomTabsPackages(context: Context): List<ResolveInfo> {
-        val pm = context.packageManager
-        // Get default VIEW intent handler.
-        val activityIntent = Intent()
-            .setAction(Intent.ACTION_VIEW)
-            .addCategory(Intent.CATEGORY_BROWSABLE)
-            .setData(Uri.fromParts("http", "", null))
-
-        // Get all apps that can handle VIEW intents.
-        return pm.queryIntentActivities(activityIntent, 0).filter { info ->
-            val serviceIntent = Intent().apply {
-                action = ACTION_CUSTOM_TABS_CONNECTION
-                setPackage(info.activityInfo.packageName)
-            }
-            // Check if this package also resolves the Custom Tabs service.
-            pm.resolveService(serviceIntent, 0) != null
-        }
     }
 
     fun getColorViaAttr(ctx: Context, attr: Int): Int {
@@ -812,7 +674,7 @@ object Utils {
             return
         }
 
-        launchCustomTab(context, href)
+        AndroidExternalLinkLauncher.openCustomTab(context, href)
     }
 
     fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: Context) {

@@ -145,9 +145,9 @@ class AndroidExternalLinkOpener(context: Context) : ExternalLinkOpener {
 
     override fun open(request: ExternalLinkRequest) {
         if (request.preferInApp) {
-            Utils.launchCustomTab(context, request.url, request.shareable)
+            AndroidExternalLinkLauncher.openCustomTab(context, request.url, request.shareable)
         } else {
-            Utils.launchInExternalBrowser(context, request.url)
+            AndroidExternalLinkLauncher.openExternalBrowser(context, request.url)
         }
     }
 }
@@ -220,7 +220,7 @@ class AndroidArticleViewer(context: Context) : ArticleViewer {
     private val context = context
 
     override fun open(request: ArticleRequest) {
-        Utils.launchCustomTab(context, request.url)
+        AndroidExternalLinkLauncher.openCustomTab(context, request.url)
     }
 }
 

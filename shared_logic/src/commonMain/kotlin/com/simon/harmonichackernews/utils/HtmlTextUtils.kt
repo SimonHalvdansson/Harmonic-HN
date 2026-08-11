@@ -12,6 +12,9 @@ object HtmlTextUtils {
     )
     private const val TRAILING_PUNCTUATION = ".,;:!?)"
 
+    fun plainText(inputHtml: String?): String =
+        inputHtml?.takeIf(String::isNotEmpty)?.let { Ksoup.parse(it).text() }.orEmpty()
+
     fun linkify(input: String?): String? {
         if (input.isNullOrEmpty()) return input
         if (!input.contains("http:") && !input.contains("https:")) return input

@@ -64,7 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.presentation.SubmissionFilter
@@ -118,6 +118,7 @@ class SubmissionsComposeController(
         canLoadMore: Boolean,
         loadedSuccessfully: Boolean,
         emptyText: String,
+        revision: Int,
     ) {
         this.submissions = submissions.toList()
         this.selectedFilter = selectedFilter
@@ -125,6 +126,7 @@ class SubmissionsComposeController(
         this.canLoadMore = canLoadMore
         this.loadedSuccessfully = loadedSuccessfully
         this.emptyText = emptyText
+        this.contentVersion = revision
     }
 
     fun updateLoading(
@@ -139,10 +141,6 @@ class SubmissionsComposeController(
 
     fun updateDisplaySettings(settings: StoryDisplaySettings) {
         displaySettings = settings
-    }
-
-    fun refreshStoryRows() {
-        contentVersion++
     }
 
     fun restoreScrollState(

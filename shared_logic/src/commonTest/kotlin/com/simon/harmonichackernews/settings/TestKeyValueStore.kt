@@ -7,6 +7,10 @@ internal class TestKeyValueStore(
 
     override fun contains(key: String): Boolean = key in values
 
+    override fun remove(key: String) {
+        values.remove(key)
+    }
+
     override fun getString(key: String, default: String?): String? =
         values[key]?.let { it as String } ?: default
 

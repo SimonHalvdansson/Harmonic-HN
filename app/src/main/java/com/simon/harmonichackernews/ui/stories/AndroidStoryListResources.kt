@@ -7,8 +7,7 @@ import coil3.imageLoader
 import coil3.request.Disposable
 import coil3.request.ImageRequest
 import coil3.target.Target
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
-import com.simon.harmonichackernews.adapters.StoryDisplayState
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
 import com.simon.harmonichackernews.network.LinkSummary
@@ -22,152 +21,41 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader.isCachedPrev
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadCachedPreviewImageTintColor
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.loadPreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.saveCachedPreviewImageTintColor
-import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.presentation.StoryListStore
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.utils.Utils
 import java.util.IdentityHashMap
-import kotlin.math.min
 
 /**
- * Non-View state owned by `StoriesCoordinator` while Compose renders the story list.
- *
- * This replaces the old unattached RecyclerView adapter. It deliberately contains only the
- * stateful responsibilities still needed by the Compose screen: pagination, display settings,
- * preview metadata/image prefetch, and card tint caching.
+ * Android image and cache facilities for stories rendered by shared Compose UI.
+ * Structural list, paging and selection state deliberately do not live here.
  */
-class StoryListState(
-    private val storyListStore: StoryListStore,
+class AndroidStoryListResources(
     settings: StoryDisplaySettings,
-    wantedType: Int,
-) : StoryDisplayState {
-    private val stories: MutableList<Story>
-        get() = storyListStore.stories
+) {
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
-    private var changedListener: ((Story?) -> Unit)? = null
+    private var storyResourceChangedListener: ((Story) -> Unit)? = null
+    var settings: StoryDisplaySettings = settings
+        private set
 
-    override var showPoints: Boolean = false
-    override var compactPoints: Boolean = false
-    override var includeTopLevelDomain: Boolean = false
-    override var showCommentsCount: Boolean = false
-    override var compactView: Boolean = false
-    override var thumbnails: Boolean = false
-    override var previewImageMode: String = SettingsUtils.STORY_PREVIEW_IMAGE_OFF
-    override var borderlessLargePreviewImage: Boolean = false
-    override var showSummary: Boolean = false
-    override var storyTextSize: Float = 0f
-    override var showIndex: Boolean = false
-    override var compactHeader: Boolean = false
-    override var leftAlign: Boolean = false
-    override var cardStyle: Boolean = false
-    override var tintCardUsingPreview: Boolean = false
-    override var paletteTintMode: String = ""
-    override var faviconProvider: String = SettingsUtils.FAVICON_PROVIDER_GOOGLE
-    override var hotness: Int = 0
-    var type: Int
-    override var font: String = "googlesansflexrounded"
-    override var commentTextSize: Float = 0f
-    var allowCommentRows: Boolean = false
-    var disableClickedEffects: Boolean = false
-    override var grayOutClicked: Boolean = false
+    private val previewImageMode get() = settings.previewImageMode
+    private val showSummary get() = settings.showSummary
+    private val tintCardUsingPreview get() = settings.tintCardUsingPreview
+    private val paletteTintMode get() = settings.paletteTintMode
+    private val faviconProvider get() = settings.faviconProvider
 
-    var paginationMode: Boolean
-        get() = storyListStore.state.value.paginationEnabled
-        set(value) {
-            if (value != paginationMode) storyListStore.setPaginationEnabled(value)
-        }
-    var showLoadMoreButton: Boolean
-        get() = storyListStore.state.value.canLoadMore
-        set(value) {
-            if (value != showLoadMoreButton) storyListStore.setCanLoadMore(value)
-        }
-    var visibleStoryCount: Int
-        get() = storyListStore.state.value.visibleStoryCount
-        set(value) {
-            if (value != visibleStoryCount) storyListStore.setVisibleStoryCount(value)
-        }
+    fun updateSettings(settings: StoryDisplaySettings): StoryDisplaySettings.UpdateResult =
+        settings.changesFrom(this.settings).also { this.settings = settings }
 
-    init {
-        applyInitialSettings(settings)
-        type = wantedType
-    }
-
-    fun setChangedListener(listener: ((Story?) -> Unit)?) {
-        changedListener = listener
-    }
-
-    val itemCount: Int
-        get() = visibleStoryItemCount + if (hasLoadMoreButton()) 1 else 0
-
-    val visibleStoryItemCount: Int
-        get() = if (paginationMode) min(
-            visibleStoryCount,
-            stories.size,
-        ) else stories.size
-
-    fun hasLoadMoreButton(): Boolean =
-        storyListStore.state.value.loadMoreInProgress ||
-            showLoadMoreButton ||
-            (paginationMode && visibleStoryCount < stories.size)
-
-    fun isLoadMoreLoading(): Boolean = storyListStore.state.value.loadMoreInProgress
-
-    fun setLoadMoreLoading(loading: Boolean) {
-        if (isLoadMoreLoading() == loading) return
-        if (loading) {
-            storyListStore.beginLoadMore()
-        } else {
-            storyListStore.finishLoadMore(storyListStore.state.value.canLoadMore)
-        }
-        notifyChanged()
-    }
-
-    fun updateStoryClickedState(position: Int) {
-        stories.getOrNull(position)?.let(::notifyChanged)
-    }
-
-    fun updateStoryIndicesFromPosition(position: Int) {
-        if (showIndex && position in 0..<visibleStoryItemCount) notifyChanged()
-    }
-
-    fun notifyDataSetChanged() {
-        notifyChanged()
-    }
-
-    fun notifyItemChanged(position: Int) {
-        notifyChanged(stories.getOrNull(position))
-    }
-
-    fun notifyItemInserted(position: Int) {
-        notifyChanged()
-    }
-
-    fun notifyItemRemoved(position: Int) {
-        notifyChanged()
-    }
-
-    fun notifyItemRangeChanged(positionStart: Int, itemCount: Int) {
-        notifyChanged()
-    }
-
-    fun notifyItemRangeInserted(positionStart: Int, itemCount: Int) {
-        notifyChanged()
-    }
-
-    fun notifyItemRangeRemoved(positionStart: Int, itemCount: Int) {
-        notifyChanged()
-    }
-
-    override fun invalidateTypography() {
-        // Compose typography is derived from StoryDisplaySettings on recomposition.
+    fun setStoryResourceChangedListener(listener: ((Story) -> Unit)?) {
+        storyResourceChangedListener = listener
     }
 
     fun resolveStoryCardBackgroundColor(context: Context?, story: Story?): Int {
         val baseColor = context?.let(PreviewImageTintUtils::getTintBaseColor) ?: Color.TRANSPARENT
         if (!tintCardUsingPreview || story == null) return baseColor
-        if (previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF &&
+        if (previewImageMode != StoryPreviewPreferences.OFF &&
             !story.previewImageLoadFailed &&
             PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
                 story,
@@ -199,7 +87,7 @@ class StoryListState(
         // results incompatible with the colors read by Compose.
         hydrateCachedPreviewState(context, story)
 
-        val previewEnabled = SettingsUtils.STORY_PREVIEW_IMAGE_OFF != previewImageMode
+        val previewEnabled = StoryPreviewPreferences.OFF != previewImageMode
         if (!previewEnabled && !showSummary) return
         if (!story.previewImageUrl.isNullOrEmpty()) {
             if (previewEnabled) prefetchPreviewDrawable(context, story)
@@ -240,13 +128,13 @@ class StoryListState(
                     if (previewEnabled && !story.previewImageUrl.isNullOrEmpty()) {
                         prefetchPreviewDrawable(context, story)
                     }
-                    notifyChanged(story)
+                    publishStoryResourceChange(story)
                 })
         previewRequests[story] = request
     }
 
     fun dispose() {
-        changedListener = null
+        storyResourceChangedListener = null
         for ((story, request) in previewRequests) {
             request.cancel()
             story.previewImageUrlLoading = false
@@ -258,30 +146,6 @@ class StoryListState(
             story.previewImageLoading = false
         }
         imagePrefetches.clear()
-    }
-
-    private fun applyInitialSettings(settings: StoryDisplaySettings) {
-        showPoints = settings.showPoints
-        compactPoints = settings.compactPoints
-        includeTopLevelDomain = settings.includeTopLevelDomain
-        showCommentsCount = settings.showCommentsCount
-        compactView = settings.compactView
-        thumbnails = settings.thumbnails
-        previewImageMode = settings.previewImageMode
-        borderlessLargePreviewImage = settings.borderlessLargePreviewImage
-        showSummary = settings.showSummary
-        storyTextSize = settings.storyTextSize
-        showIndex = settings.showIndex
-        compactHeader = settings.compactHeader
-        leftAlign = settings.leftAlign
-        cardStyle = settings.cardStyle
-        tintCardUsingPreview = settings.tintCardUsingPreview
-        paletteTintMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-        grayOutClicked = settings.grayOutClicked
-        hotness = settings.hotness
-        faviconProvider = settings.faviconProvider
-        font = settings.font
-        commentTextSize = settings.commentTextSize
     }
 
     private fun hydrateCachedPreviewState(context: Context, story: Story) {
@@ -338,11 +202,11 @@ class StoryListState(
         if (story.previewImageLoaded) return
 
         story.previewImageLoading = true
-        val width = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
+        val width = if (StoryPreviewPreferences.LARGE == previewImageMode)
             context.resources.displayMetrics.widthPixels
         else
             Utils.pxFromDpInt(context.resources, 72f)
-        val height = if (SettingsUtils.STORY_PREVIEW_IMAGE_LARGE == previewImageMode)
+        val height = if (StoryPreviewPreferences.LARGE == previewImageMode)
             Utils.pxFromDpInt(
                 context.resources,
                 LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP.toFloat(),
@@ -361,7 +225,7 @@ class StoryListState(
                         story.previewImageLoadFailed = true
                         PreviewImageTintUtils.clearStoryPreviewImageTintColor(story)
                         cachePreviewState(context, story)
-                        notifyChanged(story)
+                        publishStoryResourceChange(story)
                     }
                 }
 
@@ -371,7 +235,7 @@ class StoryListState(
                     story.previewImageLoaded = true
                     story.previewImageLoadFailed = false
                     cachePreviewState(context, story)
-                    notifyChanged(story)
+                    publishStoryResourceChange(story)
                 }
             })
             .build()
@@ -428,7 +292,8 @@ class StoryListState(
     private fun getFaviconUrl(story: Story): String? =
         runCatching { getFaviconUrl(story.url, faviconProvider) }.getOrNull()
 
-    private fun notifyChanged(story: Story? = null) = changedListener?.invoke(story)
+    private fun publishStoryResourceChange(story: Story) =
+        storyResourceChangedListener?.invoke(story)
 
     companion object {
         private const val LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176

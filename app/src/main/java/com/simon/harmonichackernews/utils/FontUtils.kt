@@ -7,6 +7,7 @@ import android.util.TypedValue
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.TextPreferences
 import kotlin.math.max
 
@@ -47,7 +48,7 @@ object FontUtils {
     var font: String? = null
 
     fun init(ctx: Context) {
-        font = SettingsUtils.getPreferredFont(ctx)
+        font = AndroidUserSettings.get(ctx).story.font
 
         activeRegular = getRegularTypeface(ctx, font)
         activeBold = getBoldTypeface(ctx, font)
@@ -63,11 +64,11 @@ object FontUtils {
         val clampedStoryTextSize = TextPreferences.clampStoryTextSize(storyTextSize)
         val clampedCommentTextSize = TextPreferences.clampCommentTextSize(commentTextSize)
         val storyTextDelta =
-            clampedStoryTextSize - SettingsUtils.DEFAULT_STORY_TEXT_SIZE
+            clampedStoryTextSize - TextPreferences.DEFAULT_STORY_TEXT_SIZE
         val storyTextScale =
-            clampedStoryTextSize / SettingsUtils.DEFAULT_STORY_TEXT_SIZE
+            clampedStoryTextSize / TextPreferences.DEFAULT_STORY_TEXT_SIZE
         val commentTextDelta =
-            clampedCommentTextSize - SettingsUtils.DEFAULT_COMMENT_TEXT_SIZE
+            clampedCommentTextSize - TextPreferences.DEFAULT_COMMENT_TEXT_SIZE
         val adjustExplicitSizes = "googlesansflexrounded" == resolvedFont
 
         return FontUtils.Typography(
@@ -235,7 +236,7 @@ object FontUtils {
     }
 
     private fun setTypeface(textView: TextView, bold: Boolean, sizes: FontSizes, unit: Int) {
-        val preferredFont = SettingsUtils.getPreferredFont(textView.getContext())
+        val preferredFont = AndroidUserSettings.get(textView.context).story.font
         if (activeRegular == null || activeBold == null || TextUtils.isEmpty(font) || (font != preferredFont)) {
             init(textView.getContext())
         }

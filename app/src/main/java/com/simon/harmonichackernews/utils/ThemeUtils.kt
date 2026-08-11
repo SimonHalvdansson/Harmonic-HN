@@ -8,9 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.core.view.WindowCompat
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.SettingsUtils.getSelectableNighttimeTheme
-import com.simon.harmonichackernews.utils.SettingsUtils.shouldUseSpecialNighttimeTheme
-import com.simon.harmonichackernews.utils.SettingsUtils.shouldUseTransparentStatusBar
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -86,7 +86,11 @@ object ThemeUtils {
             window.setNavigationBarColor(navBarColor)
         }
 
-        if (shouldUseTransparentStatusBar(activity)) {
+        if (AndroidKeyValueStore.defaults(activity).getBoolean(
+                UserPreferenceKeys.TRANSPARENT_STATUS_BAR,
+                false,
+            )
+        ) {
             window.setStatusBarColor(Color.TRANSPARENT)
         }
     }
@@ -130,10 +134,13 @@ object ThemeUtils {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         return ThemeUtils.getPreferredTheme(
             ctx,
-            shouldUseSpecialNighttimeTheme(ctx),
+            AndroidKeyValueStore.defaults(ctx).getBoolean(
+                UserPreferenceKeys.SPECIAL_NIGHTTIME,
+                false,
+            ),
             prefs.getString(
-                SettingsUtils.PREF_THEME_NIGHTTIME,
-                SettingsUtils.DEFAULT_NIGHTTIME_THEME
+                ThemePreferences.NIGHTTIME_KEY,
+                ThemePreferences.DEFAULT_NIGHTTIME,
             )!!
         )
     }
@@ -145,9 +152,9 @@ object ThemeUtils {
     ): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         if (useSpecialNighttimeTheme && isNighttimeThemeTime(ctx)) {
-            return getSelectableNighttimeTheme(nighttimeTheme)
+            return ThemePreferences.selectableNighttimeTheme(nighttimeTheme)
         }
-        return prefs.getString(SettingsUtils.PREF_THEME, SettingsUtils.DEFAULT_THEME)!!
+        return prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)!!
     }
 
     private fun isNighttimeThemeTime(ctx: Context): Boolean {

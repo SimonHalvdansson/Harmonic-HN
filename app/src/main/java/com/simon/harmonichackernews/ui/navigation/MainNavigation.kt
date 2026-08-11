@@ -126,7 +126,7 @@ import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.concurrent.CancellationException
@@ -1321,7 +1321,7 @@ private fun MainNavigation(
 
         if (controller.cacheStoriesDialogVisible) {
             CacheStoriesDialog(
-                initialStoryCount = SettingsUtils.getStoriesToCache(activity),
+                initialStoryCount = AndroidUserSettings.get(activity).cache.storiesToCache,
                 onDismiss = controller::dismissCacheStoriesDialog,
                 onConfirm = controller::confirmCacheStories,
             )

@@ -15,7 +15,7 @@ import androidx.compose.ui.text.TextStyle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.NetworkComponent
@@ -23,7 +23,6 @@ import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.AccountUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 
 @Composable
@@ -32,11 +31,12 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
     val fallbackSettings = remember(context) {
         StoryDisplaySettings.from(AndroidUserSettings(context).story)
     }
-    val settings = controller.displaySettings ?: fallbackSettings
+    val displaySettings = controller.displaySettings ?: fallbackSettings
     val contentVersion = controller.contentVersion
     val hasAccount = remember(contentVersion) { AccountUtils.hasAccountDetails(context) }
-    val bookmarksEnabled = remember(contentVersion) { SettingsUtils.shouldUseBookmarks(context) }
-    val faviconProvider = SettingsUtils.getPreferredFaviconProvider(context)
+    val userSettings = remember(contentVersion) { AndroidUserSettings.get(context) }
+    val bookmarksEnabled = userSettings.general.bookmarksEnabled
+    val faviconProvider = userSettings.story.faviconProvider
 
     SharedStoryPreviewOverlay(
         controller = controller,
@@ -55,7 +55,7 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
             story = story,
             page = page,
             cardColor = cardColor,
-            settings = settings,
+            settings = displaySettings,
             summaryState = summaryState,
             hasAccount = hasAccount,
             bookmarksEnabled = bookmarksEnabled,

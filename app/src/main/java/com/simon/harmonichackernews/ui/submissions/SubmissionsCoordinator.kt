@@ -3,16 +3,20 @@ package com.simon.harmonichackernews.ui.submissions
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ScreenStateViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.platform.AndroidPlatformServices
+import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.PlatformServices
 import com.simon.harmonichackernews.presentation.SubmissionFilter
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.presentation.SubmissionsStore
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +34,8 @@ class SubmissionsCoordinator(
     private val userName: String,
     private val navigator: Navigator,
     private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
+    private val userSettings: UserSettings = AndroidUserSettings(activity),
+    private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
 ) {
     fun interface Navigator {
         fun openStory(story: Story, showWebsite: Boolean)
@@ -40,7 +46,7 @@ class SubmissionsCoordinator(
             .submissionsStateFor(sessionKey, userName, algoliaRepository)
     private val store: SubmissionsStore = sessionState.submissions
     private var submissions: List<Story> = emptyList()
-    private val hackerNewsRepository = NetworkComponent.hackerNewsRepository
+    private val commentMasterResolver = CommentMasterResolver(NetworkComponent.hackerNewsRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val composeController: SubmissionsComposeController
     private var submissionsLoadJob: Job? = null
@@ -50,7 +56,7 @@ class SubmissionsCoordinator(
             userName = userName,
             initialFilter = store.state.value.filter,
             initialDisplaySettings = StoryDisplaySettings
-                .from(AndroidUserSettings(activity).story)
+                .from(userSettings.story)
                 .withShowIndex(false),
             listener = object : SubmissionsComposeController.Listener {
                 override fun onFilterSelected(filter: SubmissionFilter) {
@@ -63,10 +69,12 @@ class SubmissionsCoordinator(
 
                 override fun onStoryLinkClick(story: Story) {
                     if (story.isLink) {
-                        if (SettingsUtils.shouldUseIntegratedWebView(activity)) {
+                        if (userSettings.reading.integratedWebView) {
                             openComments(story, true)
                         } else {
-                            Utils.launchCustomTab(activity, story.url)
+                            story.url?.let {
+                                platformServices.externalLinks.open(ExternalLinkRequest(it))
+                            }
                         }
                     } else {
                         openComments(story, false)
@@ -101,7 +109,7 @@ class SubmissionsCoordinator(
             },
         )
         composeController.updateDisplaySettings(
-            StoryDisplaySettings.from(AndroidUserSettings(activity).story).withShowIndex(false)
+            StoryDisplaySettings.from(userSettings.story).withShowIndex(false)
         )
         if (sessionState.initialized) {
             composeController.restoreScrollState(
@@ -140,6 +148,7 @@ class SubmissionsCoordinator(
             state.canLoadMore,
             state.loadedSuccessfully,
             state.emptyText,
+            state.revision,
         )
     }
 
@@ -156,10 +165,9 @@ class SubmissionsCoordinator(
 
         coroutineScope.launch {
             try {
-                hackerNewsRepository.getStory(masterStory.id)
-                    ?.let(story::updateCommentMasterFrom)
-                if (submissions.contains(story)) composeController.refreshStoryRows()
-                openComments(story.toCommentMasterStory() ?: masterStory, false)
+                val resolved = commentMasterResolver.resolve(story)
+                if (submissions.contains(story)) store.contentChanged()
+                openComments(resolved, false)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

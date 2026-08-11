@@ -87,7 +87,7 @@ class CommentsInteractionStoreTest {
     @Test
     fun voteCompletionOnlyClearsTheMatchingRequestAndTracksDownvotes() {
         val store = store()
-        store.setCommentActionVoteLoading(commentId = 3, action = 8)
+        store.setCommentActionVoteLoading(commentId = 3, action = CommentMenuAction.DOWNVOTE)
 
         store.finishCommentActionVote(commentId = 4, downvoted = true)
         assertEquals(3, store.state.commentActionVoteLoadingId)
@@ -95,7 +95,7 @@ class CommentsInteractionStoreTest {
 
         store.finishCommentActionVote(commentId = 3, downvoted = true)
         assertEquals(-1, store.state.commentActionVoteLoadingId)
-        assertEquals(-1, store.state.commentActionVoteLoadingAction)
+        assertEquals(null, store.state.commentActionVoteLoadingAction)
         assertEquals(setOf(3, 4), store.state.commentActionDownvotedIds)
 
         store.finishCommentActionVote(commentId = 4, downvoted = false)

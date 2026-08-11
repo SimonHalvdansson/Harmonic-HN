@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -278,7 +279,7 @@ private fun SharedCommentsSheetControls(
     showInvert: Boolean,
     progress: Float,
     contentAlpha: Float,
-    onAction: (Int) -> Unit,
+    onAction: (CommentsSheetAction) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -300,13 +301,13 @@ private fun SharedCommentsSheetControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SheetButtonSlot(Res.drawable.ic_refresh, "Refresh website") {
-                onAction(CommentsComposeController.SHEET_REFRESH)
+                onAction(CommentsSheetAction.REFRESH)
             }
             SheetButtonSlot(Res.drawable.ic_arrow_upward, "Show comments") {
-                onAction(CommentsComposeController.SHEET_EXPAND)
+                onAction(CommentsSheetAction.EXPAND)
             }
             SheetButtonSlot(Res.drawable.ic_public, "Open in browser") {
-                onAction(CommentsComposeController.SHEET_BROWSER)
+                onAction(CommentsSheetAction.BROWSER)
             }
             if (readerModeAvailable) {
                 SheetButtonSlot(
@@ -314,12 +315,12 @@ private fun SharedCommentsSheetControls(
                     if (readerModeEnabled) "Reader mode on" else "Reader mode",
                     tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.drawable,
                 ) {
-                    onAction(CommentsComposeController.SHEET_READER)
+                    onAction(CommentsSheetAction.READER)
                 }
             }
             if (showInvert) {
                 SheetButtonSlot(Res.drawable.ic_invert_colors, "Invert colors") {
-                    onAction(CommentsComposeController.SHEET_INVERT)
+                    onAction(CommentsSheetAction.INVERT)
                 }
             }
         }

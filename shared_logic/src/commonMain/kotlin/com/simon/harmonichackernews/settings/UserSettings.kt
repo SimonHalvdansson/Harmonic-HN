@@ -18,6 +18,8 @@ interface UserSettings {
 
     /** Emits after persisted user preferences change. Consumers can then read fresh snapshots. */
     val changes: Flow<Unit>
+
+    fun setStoriesToCache(count: Int)
 }
 
 data class StoryPreferences(
@@ -48,6 +50,7 @@ data class StoryPreferences(
     val pagination: Boolean,
     val alwaysShowTapToRefresh: Boolean,
     val preferredStoryType: String,
+    val additionalFrontpages: Set<String>,
 )
 
 data class CommentPreferences(

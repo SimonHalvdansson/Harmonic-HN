@@ -7,15 +7,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.Utils
 
 /** Android cache/image/link adapter around the platform-neutral submissions screen. */
@@ -58,7 +58,7 @@ private fun rememberAndroidStoryItemUiModel(
         settings.previewImageMode,
         settings.showSummary,
     ) {
-        val needsPreview = settings.previewImageMode != SettingsUtils.STORY_PREVIEW_IMAGE_OFF
+        val needsPreview = settings.previewImageMode != StoryPreviewPreferences.OFF
         val request = if (story.isLink && !story.url.isNullOrBlank() &&
             (needsPreview || settings.showSummary)
         ) {

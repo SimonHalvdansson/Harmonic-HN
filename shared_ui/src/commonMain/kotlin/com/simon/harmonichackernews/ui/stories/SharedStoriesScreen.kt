@@ -113,7 +113,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.SavedItemFilter
+import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
@@ -608,9 +610,9 @@ private fun StoriesHeader(
                     .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                SavedFilterButton("Stories", StoriesComposeController.FILTER_STORIES, 0, controller, filterColors, Modifier.weight(1f))
-                SavedFilterButton("Both", StoriesComposeController.FILTER_BOTH, 1, controller, filterColors, Modifier.weight(1f))
-                SavedFilterButton("Comments", StoriesComposeController.FILTER_COMMENTS, 2, controller, filterColors, Modifier.weight(1f))
+                SavedFilterButton("Stories", SavedItemFilter.STORIES, 0, controller, filterColors, Modifier.weight(1f))
+                SavedFilterButton("Both", SavedItemFilter.BOTH, 1, controller, filterColors, Modifier.weight(1f))
+                SavedFilterButton("Comments", SavedItemFilter.COMMENTS, 2, controller, filterColors, Modifier.weight(1f))
             }
         }
 
@@ -920,24 +922,24 @@ private fun StoriesMoreMenu(
         modifier = Modifier.width(196.dp),
     ) {
         if (controller.loggedIn) {
-            MoreItem("Profile", StoriesComposeController.MORE_PROFILE, controller, dismiss)
-            MoreItem("Submit", StoriesComposeController.MORE_SUBMIT, controller, dismiss)
+            MoreItem("Profile", StoriesMenuAction.PROFILE, controller, dismiss)
+            MoreItem("Submit", StoriesMenuAction.SUBMIT, controller, dismiss)
         }
-        MoreItem(if (controller.loggedIn) "Log out" else "Log in", StoriesComposeController.MORE_LOGIN, controller, dismiss)
+        MoreItem(if (controller.loggedIn) "Log out" else "Log in", StoriesMenuAction.ACCOUNT, controller, dismiss)
         if (controller.canCache) {
-            MoreItem("Cache stories", StoriesComposeController.MORE_CACHE, controller, dismiss)
+            MoreItem("Cache stories", StoriesMenuAction.CACHE, controller, dismiss)
         }
         if (controller.canClearHistory) {
-            MoreItem("Clear history", StoriesComposeController.MORE_CLEAR_HISTORY, controller, dismiss)
+            MoreItem("Clear history", StoriesMenuAction.CLEAR_HISTORY, controller, dismiss)
         }
-        MoreItem("Settings", StoriesComposeController.MORE_SETTINGS, controller, dismiss)
+        MoreItem("Settings", StoriesMenuAction.SETTINGS, controller, dismiss)
     }
 }
 
 @Composable
 private fun MoreItem(
     label: String,
-    action: Int,
+    action: StoriesMenuAction,
     controller: StoriesComposeController,
     dismiss: () -> Unit,
 ) {
@@ -953,7 +955,7 @@ private fun MoreItem(
 @Composable
 private fun SavedFilterButton(
     label: String,
-    value: Int,
+    value: SavedItemFilter,
     position: Int,
     controller: StoriesComposeController,
     colors: HarmonicFilterButtonColors,

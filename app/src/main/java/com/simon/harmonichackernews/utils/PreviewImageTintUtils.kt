@@ -5,7 +5,9 @@ import android.graphics.Color
 import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.StoryPreviewImageLoader.cachePreviewImageTintColor
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader.clearCachedPreviewImageTintColors
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 
 /** Android cache/theme adapter around the shared palette extraction and tint-state policy. */
@@ -21,7 +23,6 @@ object PreviewImageTintUtils {
     )
 
     fun clearTintColorCaches(context: Context?) {
-        StoryPreviewImageMemoryCache.clearTintColors()
         clearCachedPreviewImageTintColors(context)
     }
 
@@ -33,7 +34,7 @@ object PreviewImageTintUtils {
         tintColor: Int,
     ): Boolean {
         if (story == null || imageUrl.isNullOrEmpty()) return false
-        StoryPreviewImageMemoryCache.putTintColor(story.id, imageUrl, baseColor, tintColor)
+        cachePreviewImageTintColor(story.id, imageUrl, baseColor, tintColor)
         return StoryPreviewTintState.applyPreview(
             story,
             imageUrl,
@@ -46,7 +47,7 @@ object PreviewImageTintUtils {
     fun isStoryPreviewImageTintColorCurrent(
         story: Story?,
         baseColor: Int,
-        paletteTintMode: String? = SettingsUtils.PALETTE_TINT_DEFAULT,
+        paletteTintMode: String? = PaletteTintPreferences.DEFAULT,
     ): Boolean = StoryPreviewTintState.isPreviewCurrent(story, baseColor, paletteTintMode)
 
     fun isTintModeCurrent(storedMode: String?, paletteTintMode: String?): Boolean =

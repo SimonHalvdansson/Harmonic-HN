@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
@@ -81,12 +82,13 @@ data class AlgoliaCommentsResponse(
  */
 class AlgoliaCommentsParser(
     private val json: Json = Json { ignoreUnknownKeys = true },
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     suspend fun parse(
         response: String?,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
-    ): AlgoliaCommentsResponse = withContext(Dispatchers.Default) {
+    ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
         val payload = try {
             json.decodeFromString<AlgoliaCommentsPayload>(response.orEmpty())
         } catch (error: SerializationException) {

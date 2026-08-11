@@ -7,6 +7,7 @@ import androidx.annotation.NonNull
 import androidx.annotation.Nullable
 import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.network.HttpCall
 import com.simon.harmonichackernews.network.HttpCallback
 import com.simon.harmonichackernews.network.HttpMediaType
@@ -93,13 +94,11 @@ class ArticleSnapshotDownloader(context: Context) {
                         synchronized(CACHE_LOCK) {
                             Companion.moveReplacing(tempFile!!, outputFile)
                             outputFile.setLastModified(System.currentTimeMillis())
-                            SettingsUtils.saveStringToSharedPreferences(
-                                appContext,
+                            AndroidKeyValueStore.global(appContext).putString(
                                 Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + storyId,
                                 articleUrl
                             )
-                            SettingsUtils.saveStringToSharedPreferences(
-                                appContext,
+                            AndroidKeyValueStore.global(appContext).putString(
                                 Utils.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + storyId,
                                 contentType!!.charset(StandardCharsets.UTF_8)!!.name()
                             )

@@ -17,11 +17,15 @@ sealed interface HackerNewsUserItemsResult {
     data class Captcha(val challenge: HackerNewsCaptchaChallenge) : HackerNewsUserItemsResult
 }
 
+interface HackerNewsUserItemsLoader {
+    suspend fun getUserItems(path: String, loginRequired: Boolean): HackerNewsUserItemsResult
+}
+
 /** Owns credential/session policy while repositories own the HN wire protocol. */
 class HackerNewsUserService(
     private val session: HackerNewsAuthenticatedSession,
     private val credentials: CredentialStore,
-) {
+) : HackerNewsUserItemsLoader {
     suspend fun login(): HackerNewsActionResult {
         val account = readCredentials() ?: return missingCredentials()
         session.reset()
@@ -80,7 +84,10 @@ class HackerNewsUserService(
         session.actions.continueCaptchaAction(challenge, captchaResponse)
     }
 
-    suspend fun getUserItems(path: String, loginRequired: Boolean): HackerNewsUserItemsResult {
+    override suspend fun getUserItems(
+        path: String,
+        loginRequired: Boolean,
+    ): HackerNewsUserItemsResult {
         val account = readCredentials() ?: return HackerNewsUserItemsResult.Failure(
             "Login required",
             "Save your Hacker News login before syncing $path.",

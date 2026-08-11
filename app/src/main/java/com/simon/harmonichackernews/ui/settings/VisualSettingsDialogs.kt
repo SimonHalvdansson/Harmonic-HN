@@ -10,8 +10,12 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource as androidPainterResource
 import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.network.FaviconLoader
+import com.simon.harmonichackernews.settings.AndroidSettingsMutator
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 
 private data class AndroidFaviconProviderOption(
@@ -20,9 +24,9 @@ private data class AndroidFaviconProviderOption(
 )
 
 private val FaviconProviderOptions = listOf(
-    AndroidFaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_GOOGLE, "Google"),
-    AndroidFaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_DUCKDUCKGO, "DuckDuckGo"),
-    AndroidFaviconProviderOption(SettingsUtils.FAVICON_PROVIDER_TWENTY, "Twenty icons"),
+    AndroidFaviconProviderOption(FaviconPreferences.GOOGLE, "Google"),
+    AndroidFaviconProviderOption(FaviconPreferences.DUCK_DUCK_GO, "DuckDuckGo"),
+    AndroidFaviconProviderOption(FaviconPreferences.TWENTY, "Twenty icons"),
 )
 
 @Composable
@@ -32,7 +36,7 @@ fun FaviconProviderDialog(
 ) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    val selected = SettingsUtils.getPreferredFaviconProvider(context)
+    val selected = AndroidUserSettings.get(context).story.faviconProvider
 
     SharedFaviconProviderDialog(
         selected = selected,
@@ -42,12 +46,12 @@ fun FaviconProviderDialog(
                 label = provider.label,
                 urlTemplate = FaviconLoader.getFaviconUrlSchema(provider.value),
                 icon = androidPainterResource(
-                    SettingsUtils.getFaviconProviderIconResource(provider.value),
+                    AndroidSettingsResources.faviconProviderIcon(provider.value),
                 ),
             )
         },
         onProviderSelected = { provider ->
-            prefs.edit().putString(SettingsUtils.PREF_FAVICON_PROVIDER, provider).apply()
+            prefs.edit().putString(UserPreferenceKeys.FAVICON_PROVIDER, provider).apply()
             onProviderSelected(provider)
         },
         onDismiss = onDismiss,
@@ -61,7 +65,7 @@ fun ThreadDepthIndicatorsDialog(
     val context = LocalContext.current
     var mode by remember {
         mutableStateOf(
-            SettingsUtils.getPreferredCommentDepthIndicatorMode(context),
+            AndroidUserSettings.get(context).comments.depthIndicatorMode,
         )
     }
     val theme = ThemeUtils.getPreferredTheme(context)
@@ -71,7 +75,7 @@ fun ThreadDepthIndicatorsDialog(
             colorResource(CommentDepthIndicatorUtils.getColorResource(context, mode, theme, index))
         },
         onModeSelected = { selectedMode ->
-            SettingsUtils.setPreferredCommentDepthIndicatorMode(context, selectedMode)
+            AndroidSettingsMutator.setCommentDepthIndicatorMode(context, selectedMode)
             mode = selectedMode
         },
         onDismiss = onDismiss,

@@ -6,10 +6,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
+import com.simon.harmonichackernews.presentation.SavedItemFilter
+import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
+import com.simon.harmonichackernews.presentation.StorySearchOption
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
@@ -19,103 +22,111 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 import org.jetbrains.compose.resources.DrawableResource
 
+/** One immutable rendering snapshot shared by every stories-screen host. */
+data class StoriesScreenState(
+    val mainStories: List<Story> = emptyList(),
+    val searchStories: List<Story> = emptyList(),
+    val displaySettings: StoryDisplaySettings? = null,
+    val typeLabels: List<String> = emptyList(),
+    val selectedTypeIndex: Int = 0,
+    val searching: Boolean = false,
+    val lastSearch: String = "",
+    val searchSortLabel: String = "Relevance",
+    val searchDateLabel: String = "All time",
+    val searchPointsLabel: String = "Any points",
+    val searchCommentsLabel: String = "Any comments",
+    val searchSortLabels: List<String> = emptyList(),
+    val searchDateLabels: List<String> = emptyList(),
+    val searchPointsLabels: List<String> = emptyList(),
+    val searchCommentsLabels: List<String> = emptyList(),
+    val searchOnlyClicked: Boolean = false,
+    val loading: Boolean = false,
+    val refreshing: Boolean = false,
+    val loadingFailed: Boolean = false,
+    val loadingFailedServerError: Boolean = false,
+    val loadingFailedMessage: String = "Loading failed",
+    val showingCached: Boolean = false,
+    val showCachedAction: Boolean = false,
+    val showEmptySavedList: Boolean = false,
+    val emptySavedListText: String = "No saved stories",
+    val emptySavedListIcon: DrawableResource = Res.drawable.ic_bookmark,
+    val showEmptySearch: Boolean = false,
+    val showUpdate: Boolean = false,
+    val lastUpdatedText: String? = null,
+    val showLoadMore: Boolean = false,
+    val loadMoreLoading: Boolean = false,
+    val mainVisibleCount: Int = Int.MAX_VALUE,
+    val searchVisibleCount: Int = Int.MAX_VALUE,
+    val showSavedFilter: Boolean = false,
+    val savedFilter: SavedItemFilter = SavedItemFilter.BOTH,
+    val showFrontDate: Boolean = false,
+    val frontDateLabel: String = "",
+    val frontPreviousEnabled: Boolean = false,
+    val frontNextEnabled: Boolean = false,
+    val loggedIn: Boolean = false,
+    val canCache: Boolean = false,
+    val canClearHistory: Boolean = false,
+    val cacheProgressVisible: Boolean = false,
+    val cacheProgress: Int = 0,
+    val cacheProgressMax: Int = 1,
+    val cacheProgressStatus: String = "Caching stories",
+    val contentInsetStartPx: Int = 0,
+)
+
 class StoriesComposeController private constructor(
     defaultStoryHeightPx: Int,
     private val savedItemState: SavedItemStateReader,
     val listener: Listener,
 ) {
-    var mainStories by mutableStateOf<List<Story>>(emptyList())
+    var screenState by mutableStateOf(StoriesScreenState())
         private set
-    var searchStories by mutableStateOf<List<Story>>(emptyList())
-        private set
-    var displaySettings by mutableStateOf<StoryDisplaySettings?>(null)
-        private set
-    var typeLabels by mutableStateOf<List<String>>(emptyList())
-        private set
-    var selectedTypeIndex by mutableIntStateOf(0)
-        private set
-    var lastSearch by mutableStateOf("")
-        private set
-    var searchSortLabel by mutableStateOf("Relevance")
-        private set
-    var searchDateLabel by mutableStateOf("All time")
-        private set
-    var searchPointsLabel by mutableStateOf("Any points")
-        private set
-    var searchCommentsLabel by mutableStateOf("Any comments")
-        private set
-    var searchSortLabels by mutableStateOf<List<String>>(emptyList())
-        private set
-    var searchDateLabels by mutableStateOf<List<String>>(emptyList())
-        private set
-    var searchPointsLabels by mutableStateOf<List<String>>(emptyList())
-        private set
-    var searchCommentsLabels by mutableStateOf<List<String>>(emptyList())
-        private set
-    var searchOnlyClicked by mutableStateOf(false)
-        private set
-    var loading by mutableStateOf(false)
-        private set
-    var refreshing by mutableStateOf(false)
-        private set
-    var loadingFailed by mutableStateOf(false)
-        private set
-    var loadingFailedServerError by mutableStateOf(false)
-        private set
-    var loadingFailedMessage by mutableStateOf("Loading failed")
-        private set
-    var showingCached by mutableStateOf(false)
-        private set
-    var showCachedAction by mutableStateOf(false)
-        private set
-    var showEmptySavedList by mutableStateOf(false)
-        private set
-    var emptySavedListText by mutableStateOf("No saved stories")
-        private set
-    var emptySavedListIcon by mutableStateOf(Res.drawable.ic_bookmark)
-        private set
-    var showEmptySearch by mutableStateOf(false)
-        private set
-    var showUpdate by mutableStateOf(false)
-        private set
-    var lastUpdatedText by mutableStateOf<String?>(null)
-        private set
-    var showLoadMore by mutableStateOf(false)
-        private set
-    var loadMoreLoading by mutableStateOf(false)
-        private set
-    var mainVisibleCount by mutableIntStateOf(Int.MAX_VALUE)
-        private set
-    var searchVisibleCount by mutableIntStateOf(Int.MAX_VALUE)
-        private set
-    var showSavedFilter by mutableStateOf(false)
-        private set
-    var savedFilter by mutableIntStateOf(FILTER_BOTH)
-        private set
-    var showFrontDate by mutableStateOf(false)
-        private set
-    var frontDateLabel by mutableStateOf("")
-        private set
-    var frontPreviousEnabled by mutableStateOf(false)
-        private set
-    var frontNextEnabled by mutableStateOf(false)
-        private set
-    var loggedIn by mutableStateOf(false)
-        private set
-    var canCache by mutableStateOf(false)
-        private set
-    var canClearHistory by mutableStateOf(false)
-        private set
-    var cacheProgressVisible by mutableStateOf(false)
-        private set
-    var cacheProgress by mutableIntStateOf(0)
-        private set
-    var cacheProgressMax by mutableIntStateOf(1)
-        private set
-    var cacheProgressStatus by mutableStateOf("Caching stories")
-        private set
-    var contentInsetStartPx by mutableIntStateOf(0)
-        private set
+
+    val mainStories: List<Story> get() = screenState.mainStories
+    val searchStories: List<Story> get() = screenState.searchStories
+    val displaySettings: StoryDisplaySettings? get() = screenState.displaySettings
+    val typeLabels: List<String> get() = screenState.typeLabels
+    val selectedTypeIndex: Int get() = screenState.selectedTypeIndex
+    val lastSearch: String get() = screenState.lastSearch
+    val searchSortLabel: String get() = screenState.searchSortLabel
+    val searchDateLabel: String get() = screenState.searchDateLabel
+    val searchPointsLabel: String get() = screenState.searchPointsLabel
+    val searchCommentsLabel: String get() = screenState.searchCommentsLabel
+    val searchSortLabels: List<String> get() = screenState.searchSortLabels
+    val searchDateLabels: List<String> get() = screenState.searchDateLabels
+    val searchPointsLabels: List<String> get() = screenState.searchPointsLabels
+    val searchCommentsLabels: List<String> get() = screenState.searchCommentsLabels
+    val searchOnlyClicked: Boolean get() = screenState.searchOnlyClicked
+    val loading: Boolean get() = screenState.loading
+    val refreshing: Boolean get() = screenState.refreshing
+    val loadingFailed: Boolean get() = screenState.loadingFailed
+    val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError
+    val loadingFailedMessage: String get() = screenState.loadingFailedMessage
+    val showingCached: Boolean get() = screenState.showingCached
+    val showCachedAction: Boolean get() = screenState.showCachedAction
+    val showEmptySavedList: Boolean get() = screenState.showEmptySavedList
+    val emptySavedListText: String get() = screenState.emptySavedListText
+    val emptySavedListIcon: DrawableResource get() = screenState.emptySavedListIcon
+    val showEmptySearch: Boolean get() = screenState.showEmptySearch
+    val showUpdate: Boolean get() = screenState.showUpdate
+    val lastUpdatedText: String? get() = screenState.lastUpdatedText
+    val showLoadMore: Boolean get() = screenState.showLoadMore
+    val loadMoreLoading: Boolean get() = screenState.loadMoreLoading
+    val mainVisibleCount: Int get() = screenState.mainVisibleCount
+    val searchVisibleCount: Int get() = screenState.searchVisibleCount
+    val showSavedFilter: Boolean get() = screenState.showSavedFilter
+    val savedFilter: SavedItemFilter get() = screenState.savedFilter
+    val showFrontDate: Boolean get() = screenState.showFrontDate
+    val frontDateLabel: String get() = screenState.frontDateLabel
+    val frontPreviousEnabled: Boolean get() = screenState.frontPreviousEnabled
+    val frontNextEnabled: Boolean get() = screenState.frontNextEnabled
+    val loggedIn: Boolean get() = screenState.loggedIn
+    val canCache: Boolean get() = screenState.canCache
+    val canClearHistory: Boolean get() = screenState.canClearHistory
+    val cacheProgressVisible: Boolean get() = screenState.cacheProgressVisible
+    val cacheProgress: Int get() = screenState.cacheProgress
+    val cacheProgressMax: Int get() = screenState.cacheProgressMax
+    val cacheProgressStatus: String get() = screenState.cacheProgressStatus
+    val contentInsetStartPx: Int get() = screenState.contentInsetStartPx
     var contentVersion by mutableIntStateOf(0)
         private set
 
@@ -155,105 +166,26 @@ class StoriesComposeController private constructor(
         interactionState = interactionStore.state
     }
 
-    fun updateContent(
-        mainStories: List<Story>,
-        searchStories: List<Story>,
-        displaySettings: StoryDisplaySettings,
-        typeLabels: List<String>,
-        selectedTypeIndex: Int,
-        searching: Boolean,
-        lastSearch: String,
-        searchSortLabel: String,
-        searchDateLabel: String,
-        searchPointsLabel: String,
-        searchCommentsLabel: String,
-        searchSortLabels: Array<String>,
-        searchDateLabels: Array<String>,
-        searchPointsLabels: Array<String>,
-        searchCommentsLabels: Array<String>,
-        searchOnlyClicked: Boolean,
-        loading: Boolean,
-        refreshing: Boolean,
-        loadingFailed: Boolean,
-        loadingFailedServerError: Boolean,
-        loadingFailedMessage: String,
-        showingCached: Boolean,
-        showCachedAction: Boolean,
-        showEmptySavedList: Boolean,
-        emptySavedListText: String,
-        emptySavedListIcon: DrawableResource,
-        showEmptySearch: Boolean,
-        showUpdate: Boolean,
-        lastUpdatedText: String?,
-        showLoadMore: Boolean,
-        loadMoreLoading: Boolean,
-        mainVisibleCount: Int,
-        searchVisibleCount: Int,
-        showSavedFilter: Boolean,
-        savedFilter: Int,
-        showFrontDate: Boolean,
-        frontDateLabel: String,
-        frontPreviousEnabled: Boolean,
-        frontNextEnabled: Boolean,
-        loggedIn: Boolean,
-        canCache: Boolean,
-        canClearHistory: Boolean,
-        cacheProgressVisible: Boolean,
-        cacheProgress: Int,
-        cacheProgressMax: Int,
-        cacheProgressStatus: String,
-        contentInsetStartPx: Int,
-    ) {
-        this.mainStories = mainStories.toList()
-        this.searchStories = searchStories.toList()
-        this.displaySettings = displaySettings
-        this.typeLabels = typeLabels.toList()
-        this.selectedTypeIndex = selectedTypeIndex
-        this.lastSearch = lastSearch
-        interactionStore.updateContent(mainStories, searchStories, searching, lastSearch)
-        this.searchSortLabel = searchSortLabel
-        this.searchDateLabel = searchDateLabel
-        this.searchPointsLabel = searchPointsLabel
-        this.searchCommentsLabel = searchCommentsLabel
-        this.searchSortLabels = searchSortLabels.toList()
-        this.searchDateLabels = searchDateLabels.toList()
-        this.searchPointsLabels = searchPointsLabels.toList()
-        this.searchCommentsLabels = searchCommentsLabels.toList()
-        this.searchOnlyClicked = searchOnlyClicked
-        this.loading = loading
-        this.refreshing = refreshing
-        this.loadingFailed = loadingFailed
-        this.loadingFailedServerError = loadingFailedServerError
-        this.loadingFailedMessage = loadingFailedMessage
-        this.showingCached = showingCached
-        this.showCachedAction = showCachedAction
-        this.showEmptySavedList = showEmptySavedList
-        this.emptySavedListText = emptySavedListText
-        this.emptySavedListIcon = emptySavedListIcon
-        this.showEmptySearch = showEmptySearch
-        this.showUpdate = showUpdate
-        this.lastUpdatedText = lastUpdatedText
-        this.showLoadMore = showLoadMore
-        this.loadMoreLoading = loadMoreLoading
-        this.mainVisibleCount = mainVisibleCount
-        this.searchVisibleCount = searchVisibleCount
-        this.showSavedFilter = showSavedFilter
-        this.savedFilter = savedFilter
-        this.showFrontDate = showFrontDate
-        this.frontDateLabel = frontDateLabel
-        this.frontPreviousEnabled = frontPreviousEnabled
-        this.frontNextEnabled = frontNextEnabled
-        this.loggedIn = loggedIn
-        this.canCache = canCache
-        this.canClearHistory = canClearHistory
-        this.cacheProgressVisible = cacheProgressVisible
-        this.cacheProgress = cacheProgress
-        this.cacheProgressMax = cacheProgressMax.coerceAtLeast(1)
-        this.cacheProgressStatus = cacheProgressStatus
-        this.contentInsetStartPx = contentInsetStartPx
-        val currentStoryIds = buildSet(mainStories.size + searchStories.size) {
-            mainStories.forEach { add(it.id) }
-            searchStories.forEach { add(it.id) }
+    fun updateContent(state: StoriesScreenState) {
+        screenState = state.copy(
+            mainStories = state.mainStories.toList(),
+            searchStories = state.searchStories.toList(),
+            typeLabels = state.typeLabels.toList(),
+            searchSortLabels = state.searchSortLabels.toList(),
+            searchDateLabels = state.searchDateLabels.toList(),
+            searchPointsLabels = state.searchPointsLabels.toList(),
+            searchCommentsLabels = state.searchCommentsLabels.toList(),
+            cacheProgressMax = state.cacheProgressMax.coerceAtLeast(1),
+        )
+        interactionStore.updateContent(
+            state.mainStories,
+            state.searchStories,
+            state.searching,
+            state.lastSearch,
+        )
+        val currentStoryIds = buildSet(state.mainStories.size + state.searchStories.size) {
+            state.mainStories.forEach { add(it.id) }
+            state.searchStories.forEach { add(it.id) }
         }
         storyRevisions.keys.retainAll(currentStoryIds)
         syncInteractionState()
@@ -434,18 +366,18 @@ class StoriesComposeController private constructor(
         }
     }
 
-    fun onStoryPreviewAction(page: Int, action: Int) {
-        val kind = previewActionKind(action) ?: return
+    fun onStoryPreviewAction(page: Int, action: StoryPreviewActionKind) {
+        val kind = action
         val target = interactionStore.beginStoryPreviewAction(page, kind) ?: return
         syncInteractionState()
         listener.onStoryPreviewAction(target.story, target.sourcePosition, action)
-        if (action == STORY_PREVIEW_ACTION_READ || action == STORY_PREVIEW_ACTION_BOOKMARK) {
+        if (action == StoryPreviewActionKind.Read || action == StoryPreviewActionKind.Bookmark) {
             contentVersion++
         }
     }
 
-    fun finishStoryPreviewAction(storyId: Int, action: Int) {
-        previewActionKind(action)?.let { interactionStore.finishStoryPreviewAction(storyId, it) }
+    fun finishStoryPreviewAction(storyId: Int, action: StoryPreviewActionKind) {
+        interactionStore.finishStoryPreviewAction(storyId, action)
         syncInteractionState()
         contentVersion++
     }
@@ -477,29 +409,21 @@ class StoriesComposeController private constructor(
     fun isUpvoted(storyId: Int): Boolean =
         savedItemState.isUpvoted(storyId, isComment = false)
 
-    private fun previewActionKind(action: Int): StoryPreviewActionKind? = when (action) {
-        STORY_PREVIEW_ACTION_VOTE -> StoryPreviewActionKind.Vote
-        STORY_PREVIEW_ACTION_READ -> StoryPreviewActionKind.Read
-        STORY_PREVIEW_ACTION_BOOKMARK -> StoryPreviewActionKind.Bookmark
-        STORY_PREVIEW_ACTION_FAVORITE -> StoryPreviewActionKind.Favorite
-        else -> null
-    }
-
     interface Listener {
         fun onTypeSelected(index: Int)
         fun onOpenSearch()
         fun onCloseSearch()
         fun onSearch(query: String)
-        fun onSearchOption(kind: Int, index: Int)
+        fun onSearchOption(kind: StorySearchOption, index: Int)
         fun onToggleOnlyClicked()
         fun onRefresh()
         fun onShowCached()
         fun onLoadMore()
-        fun onSavedFilterSelected(filter: Int)
+        fun onSavedFilterSelected(filter: SavedItemFilter)
         fun onShiftFrontDate(days: Int)
         fun onPickFrontDate()
         fun onFrontDateSelected(day: Long)
-        fun onMoreAction(action: Int)
+        fun onMoreAction(action: StoriesMenuAction)
         fun onCacheStoriesConfirmed(storyCount: Int)
         fun onLinkClick(story: Story)
         fun onCommentClick(story: Story)
@@ -510,31 +434,14 @@ class StoriesComposeController private constructor(
         fun onStoryPreviewStopScroll()
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
         fun onStoryPreviewNavigate(story: Story, position: Int, showWebsite: Boolean): Boolean
-        fun onStoryPreviewAction(story: Story, position: Int, action: Int)
+        fun onStoryPreviewAction(
+            story: Story,
+            position: Int,
+            action: StoryPreviewActionKind,
+        )
     }
 
     companion object {
-        const val SEARCH_OPTION_SORT = 0
-        const val SEARCH_OPTION_DATE = 1
-        const val SEARCH_OPTION_POINTS = 2
-        const val SEARCH_OPTION_COMMENTS = 3
-
-        const val MORE_SETTINGS = 0
-        const val MORE_LOGIN = 1
-        const val MORE_PROFILE = 2
-        const val MORE_CACHE = 3
-        const val MORE_SUBMIT = 4
-        const val MORE_CLEAR_HISTORY = 5
-
-        const val FILTER_STORIES = 0
-        const val FILTER_BOTH = 1
-        const val FILTER_COMMENTS = 2
-
-        const val STORY_PREVIEW_ACTION_VOTE = 0
-        const val STORY_PREVIEW_ACTION_READ = 1
-        const val STORY_PREVIEW_ACTION_BOOKMARK = 2
-        const val STORY_PREVIEW_ACTION_FAVORITE = 3
-
         fun create(
             defaultStoryHeightPx: Int,
             savedItemState: SavedItemStateReader,

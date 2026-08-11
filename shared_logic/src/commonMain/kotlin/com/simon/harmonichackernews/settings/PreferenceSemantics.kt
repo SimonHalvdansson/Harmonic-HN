@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.settings
 
 object ThemePreferences {
+    const val KEY = "pref_theme"
+    const val NIGHTTIME_KEY = "pref_theme_nighttime"
     const val DEFAULT = "material_daynight"
     const val DEFAULT_NIGHTTIME = "dark"
 
@@ -75,6 +77,19 @@ object PaletteTintPreferences {
         else -> "Muted"
     }
 
+    fun summary(value: String?): String {
+        val label = modeLabel(value)
+        return if (
+            strength(value) == DEFAULT_STRENGTH &&
+            colorfulness(value) == DEFAULT_COLORFULNESS &&
+            tone(value) == DEFAULT_TONE
+        ) {
+            label
+        } else {
+            "$label, adjusted"
+        }
+    }
+
     fun clampStrength(value: Int): Int = value.coerceIn(MIN_STRENGTH, MAX_STRENGTH)
     fun clampColorfulness(value: Int): Int =
         value.coerceIn(MIN_COLORFULNESS, MAX_COLORFULNESS)
@@ -84,6 +99,16 @@ object PaletteTintPreferences {
     private fun modePart(value: String?): String = value.orEmpty().substringBefore('|')
     private fun configInt(value: String?, index: Int, default: Int): Int =
         value?.split('|')?.getOrNull(index)?.toIntOrNull() ?: default
+}
+
+object DisplayStylePreferences {
+    const val STANDARD = "standard"
+    const val CARD = "card"
+}
+
+object CommentNavigationPreferences {
+    const val DISABLED = "disabled"
+    const val TOP_LEVEL = "top_level"
 }
 
 object CommentDepthPreferences {
@@ -121,6 +146,7 @@ object FaviconPreferences {
 }
 
 object WebViewPreferences {
+    const val DEFAULT_MINIMUM_BATTERY = 0
     const val PRELOAD_ALWAYS = "always"
     const val PRELOAD_WIFI_ONLY = "onlywifi"
     const val PRELOAD_NEVER = "never"
@@ -131,6 +157,18 @@ object WebViewPreferences {
     }
 
     fun clampBatteryPercent(value: Int): Int = value.coerceIn(0, 100)
+}
+
+object StoryPreviewPreferences {
+    const val OFF = "off"
+    const val SMALL = "small"
+    const val LARGE = "large"
+
+    fun sanitize(mode: String?): String = when (mode) {
+        OFF -> OFF
+        LARGE -> LARGE
+        else -> SMALL
+    }
 }
 
 object StoryCachePreferences {

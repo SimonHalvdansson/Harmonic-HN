@@ -31,7 +31,7 @@ import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.HistoriesUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Calendar
 
@@ -96,7 +96,7 @@ fun DataSettingsScreen(
     val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
     SharedDataSettingsScreen(
         state = DataSettingsUiState(
-            bookmarksEnabled = prefs.getBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, true),
+            bookmarksEnabled = prefs.getBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, true),
             bookmarkCount = bookmarkCount,
             loggedIn = AccountUtils.hasAccountDetails(context),
             historyCount = HistoriesUtils.loadHistories(context, false).size,
@@ -108,7 +108,7 @@ fun DataSettingsScreen(
         showNavigation = showNavigation,
         onBack = onBack,
         onBookmarksEnabledChanged = {
-            prefs.edit().putBoolean(SettingsUtils.PREF_BOOKMARKS_ENABLED, it).apply()
+            prefs.edit().putBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, it).apply()
         },
         onShowChangelogChanged = {
             prefs.edit().putBoolean("pref_show_changelog", it).apply()

@@ -17,8 +17,7 @@ import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
 import com.simon.harmonichackernews.network.HttpRequest
 import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
-import com.simon.harmonichackernews.utils.SettingsUtils.shouldIncludeTopLevelDomain
-import com.simon.harmonichackernews.utils.SettingsUtils.shouldShowIndex
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.Utils.log
 import kotlin.time.Duration.Companion.seconds
@@ -218,7 +217,8 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         val views = RemoteViews(context.packageName, R.layout.widget_story_item)
 
         // Index
-        val showIndex = shouldShowIndex(context)
+        val storyPreferences = AndroidUserSettings.get(context).story
+        val showIndex = storyPreferences.showIndex
         views.setViewVisibility(R.id.widget_story_index, if (showIndex) View.VISIBLE else View.GONE)
         views.setTextViewText(R.id.widget_story_index, "${position + 1}.")
 
@@ -230,7 +230,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         if (story.url != null && story.isLink) {
             try {
                 val domain = story.getDisplayDomain(
-                    shouldIncludeTopLevelDomain(context)
+                    storyPreferences.includeTopLevelDomain
                 )
                 meta += " \u00B7 " + domain
             } catch (ignored: Exception) {

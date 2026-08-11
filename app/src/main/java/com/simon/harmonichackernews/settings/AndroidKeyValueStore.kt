@@ -10,6 +10,10 @@ class AndroidKeyValueStore private constructor(
 ) : KeyValueStore {
     override fun contains(key: String): Boolean = preferences.contains(key)
 
+    override fun remove(key: String) {
+        preferences.edit().remove(key).apply()
+    }
+
     override fun getString(key: String, default: String?): String? =
         preferences.getString(key, default)
 
@@ -54,6 +58,10 @@ class AndroidKeyValueStore private constructor(
 
         fun defaults(context: Context): AndroidKeyValueStore = AndroidKeyValueStore(
             PreferenceManager.getDefaultSharedPreferences(context.applicationContext),
+        )
+
+        fun named(context: Context, name: String): AndroidKeyValueStore = AndroidKeyValueStore(
+            context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE),
         )
     }
 }

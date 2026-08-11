@@ -57,7 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.simon.harmonichackernews.adapters.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -283,7 +284,7 @@ fun SharedStoryPreviewCard(
                         ) {
                             controller.onStoryPreviewAction(
                                 page,
-                                StoriesComposeController.STORY_PREVIEW_ACTION_VOTE,
+                                StoryPreviewActionKind.Vote,
                             )
                         }
                     }
@@ -293,7 +294,7 @@ fun SharedStoryPreviewCard(
                     ) {
                         controller.onStoryPreviewAction(
                             page,
-                            StoriesComposeController.STORY_PREVIEW_ACTION_READ,
+                            StoryPreviewActionKind.Read,
                         )
                     }
                     if (bookmarksEnabled) {
@@ -303,7 +304,7 @@ fun SharedStoryPreviewCard(
                         ) {
                             controller.onStoryPreviewAction(
                                 page,
-                                StoriesComposeController.STORY_PREVIEW_ACTION_BOOKMARK,
+                                StoryPreviewActionKind.Bookmark,
                             )
                         }
                     }
@@ -315,7 +316,7 @@ fun SharedStoryPreviewCard(
                         ) {
                             controller.onStoryPreviewAction(
                                 page,
-                                StoriesComposeController.STORY_PREVIEW_ACTION_FAVORITE,
+                                StoryPreviewActionKind.Favorite,
                             )
                         }
                     }

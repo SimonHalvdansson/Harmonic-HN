@@ -5,18 +5,24 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+interface PollOptionsLoader {
+    suspend fun findOptionIds(storyId: Int): IntArray
+    fun placeholders(optionIds: IntArray): List<PollOption>
+    fun loadOptions(optionIds: IntArray): Flow<PollOption>
+}
+
 /** Resolves poll metadata and streams options as each network item finishes loading. */
 class PollOptionsRepository(
     private val api: HackerNewsApi,
-) {
-    suspend fun findOptionIds(storyId: Int): IntArray =
+) : PollOptionsLoader {
+    override suspend fun findOptionIds(storyId: Int): IntArray =
         api.getItem(storyId)?.parts.orEmpty().toIntArray()
 
-    fun placeholders(optionIds: IntArray): List<PollOption> = optionIds.map { optionId ->
+    override fun placeholders(optionIds: IntArray): List<PollOption> = optionIds.map { optionId ->
         PollOption().apply { id = optionId }
     }
 
-    fun loadOptions(optionIds: IntArray): Flow<PollOption> = flow {
+    override fun loadOptions(optionIds: IntArray): Flow<PollOption> = flow {
         for (optionId in optionIds) {
             val option = PollOption().apply { id = optionId }
             try {

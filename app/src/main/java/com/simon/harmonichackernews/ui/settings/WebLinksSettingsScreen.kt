@@ -7,9 +7,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.WebViewPreferences
 
 @Composable
 fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
@@ -26,11 +28,11 @@ fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
         blockWebViewAds = reading.blockAds,
         readerModeEnabled = reading.readerModeEnabled,
         readerModeDefault = reading.readerModeDefault,
-        readerModeFontLabel = SettingsUtils.getPreferredReaderModeFontLabel(context).orEmpty(),
+        readerModeFontLabel = AndroidSettingsResources.fontLabel(context, reading.readerModeFont),
         readerModeFontSize = reading.readerModeFontSize,
-        readerModeFontSizeDefault = SettingsUtils.DEFAULT_READER_MODE_FONT_SIZE,
-        readerModeFontSizeRange = SettingsUtils.MIN_READER_MODE_FONT_SIZE..
-            SettingsUtils.MAX_READER_MODE_FONT_SIZE,
+        readerModeFontSizeDefault = TextPreferences.DEFAULT_READER_MODE_FONT_SIZE,
+        readerModeFontSizeRange = TextPreferences.MIN_READER_MODE_FONT_SIZE..
+            TextPreferences.MAX_READER_MODE_FONT_SIZE,
         externalBrowser = reading.externalBrowser,
         redirectNitter = reading.redirectNitter,
         archiveDomainCount = reading.archiveRedirectDomains.size,
@@ -87,7 +89,7 @@ private val WebLinksBooleanSetting.preferenceKey: String
     }
 
 private fun preloadSummary(mode: String, battery: Int): String {
-    if (mode == SettingsUtils.PRELOAD_WEBVIEW_NEVER) return "Never"
-    val modeLabel = if (mode == SettingsUtils.PRELOAD_WEBVIEW_ALWAYS) "Always" else "Only on WiFi"
+    if (mode == WebViewPreferences.PRELOAD_NEVER) return "Never"
+    val modeLabel = if (mode == WebViewPreferences.PRELOAD_ALWAYS) "Always" else "Only on WiFi"
     return if (battery <= 0) "$modeLabel, any battery level" else "$modeLabel, battery at least $battery%"
 }

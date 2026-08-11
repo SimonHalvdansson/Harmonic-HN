@@ -10,6 +10,8 @@ package com.simon.harmonichackernews.settings
 interface KeyValueStore {
     fun contains(key: String): Boolean
 
+    fun remove(key: String)
+
     fun getString(key: String, default: String? = null): String?
     fun putString(key: String, value: String?)
 

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.presentation.CommentMenuAction
 import com.simon.harmonichackernews.ui.common.SharedTransformOverlay
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -145,7 +146,7 @@ private fun CommentActionCardContent(
             onClick = {
                 controller.listener.onCommentAction(
                     comment,
-                    CommentsComposeController.COMMENT_ACTION_USER,
+                    CommentMenuAction.USER,
                 )
             },
             colors = ButtonDefaults.buttonColors(
@@ -198,12 +199,12 @@ private fun CommentActionCardContent(
                     description = if (upvoted) "Upvoted" else "Vote up",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
-                        CommentsComposeController.COMMENT_ACTION_UPVOTE,
+                        CommentMenuAction.UPVOTE,
                     enabled = !voteLoading,
                 ) {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_UPVOTE,
+                        CommentMenuAction.UPVOTE,
                     )
                 }
                 CommentActionIcon(
@@ -211,12 +212,12 @@ private fun CommentActionCardContent(
                     description = if (downvoted) "Downvoted" else "Vote down",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
-                        CommentsComposeController.COMMENT_ACTION_DOWNVOTE,
+                        CommentMenuAction.DOWNVOTE,
                     enabled = !voteLoading,
                 ) {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_DOWNVOTE,
+                        CommentMenuAction.DOWNVOTE,
                     )
                 }
                 CommentActionIcon(
@@ -224,12 +225,12 @@ private fun CommentActionCardContent(
                     description = "Unvote",
                     loading = voteLoading &&
                         controller.commentActionVoteLoadingAction ==
-                        CommentsComposeController.COMMENT_ACTION_UNVOTE,
+                        CommentMenuAction.UNVOTE,
                     enabled = !voteLoading,
                 ) {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_UNVOTE,
+                        CommentMenuAction.UNVOTE,
                     )
                 }
             }
@@ -240,7 +241,7 @@ private fun CommentActionCardContent(
                 ) {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_BOOKMARK,
+                        CommentMenuAction.BOOKMARK,
                     )
                 }
             }
@@ -253,20 +254,20 @@ private fun CommentActionCardContent(
                 ) {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_FAVORITE,
+                        CommentMenuAction.FAVORITE,
                     )
                 }
             }
             CommentActionIcon(Res.drawable.ic_content_copy, "Copy text") {
                 controller.listener.onCommentAction(
                     comment,
-                    CommentsComposeController.COMMENT_ACTION_COPY,
+                    CommentMenuAction.COPY,
                 )
             }
             CommentActionIcon(Res.drawable.ic_share, "Share link") {
                 controller.listener.onCommentAction(
                     comment,
-                    CommentsComposeController.COMMENT_ACTION_SHARE,
+                    CommentMenuAction.SHARE,
                 )
             }
         }
@@ -277,7 +278,7 @@ private fun CommentActionCardContent(
                 onClick = {
                     controller.listener.onCommentAction(
                         comment,
-                        CommentsComposeController.COMMENT_ACTION_REPLY,
+                        CommentMenuAction.REPLY,
                     )
                 },
                 colors = ButtonDefaults.buttonColors(

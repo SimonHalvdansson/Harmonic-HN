@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils
 
 import android.content.Context
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
 object AccountUtils {
     private const val KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME =
@@ -18,15 +19,11 @@ object AccountUtils {
     private var cachedHasAccountDetails: Boolean? = null
 
     fun getAccountUsername(ctx: Context): String? =
-        SettingsUtils.readStringFromSharedPreferences(
-            ctx,
-            KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME,
-        )
+        AndroidKeyValueStore.global(ctx).getString(KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME)
 
     fun setAccountUsername(ctx: Context, username: String?) {
         cachedHasAccountDetails = null
-        SettingsUtils.saveStringToSharedPreferences(
-            ctx,
+        AndroidKeyValueStore.global(ctx).putString(
             KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME,
             username,
         )

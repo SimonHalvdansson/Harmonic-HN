@@ -38,8 +38,8 @@ import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.link_summary_collapse_image
 import com.simon.harmonichackernews.resources.link_summary_expand_image
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.Utils
 import org.jetbrains.compose.resources.stringResource
@@ -112,11 +112,12 @@ private fun ReferencePreviewCard(
     }
 
     val currentUrl = controller.linkPreviewVisibleUrl ?: state.originalUrl
-    val preferredFont = controller.displaySettings?.font ?: SettingsUtils.getPreferredFont(context)
+    val userSettings = AndroidUserSettings.get(context)
+    val preferredFont = controller.displaySettings?.font ?: userSettings.story.font
     val commentTextSize = controller.displaySettings?.preferredTextSize
-        ?: SettingsUtils.getPreferredCommentTextSize(context)
+        ?: userSettings.comments.textSize
     val faviconProvider = controller.displaySettings?.faviconProvider
-        ?: SettingsUtils.getPreferredFaviconProvider(context)
+        ?: userSettings.story.faviconProvider
     val favicon = remember(currentUrl, faviconProvider) {
         runCatching { FaviconLoader.getFaviconUrl(currentUrl, faviconProvider) }.getOrNull()
     }

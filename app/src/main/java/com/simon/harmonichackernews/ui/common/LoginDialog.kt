@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.platform.AndroidCredentialStore
+import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.login_dialog_success
 import com.simon.harmonichackernews.utils.AccountUtils
@@ -37,7 +38,7 @@ fun LoginDialog(
             onDismiss()
         },
         onLoginFailed = { AccountUtils.deleteAccountDetails(context) },
-        onCreateAccount = { Utils.launchInExternalBrowser(context, HackerNewsLoginUrl) },
+        onCreateAccount = { AndroidExternalLinkLauncher.openExternalBrowser(context, HackerNewsLoginUrl) },
         captchaDialog = { challenge, dismiss, response ->
             CaptchaDialog(
                 challenge = challenge,

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.utils
 import android.content.Context
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.data.HistoryLedger
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
 /** Shared history semantics with an Android SharedPreferences persistence adapter. */
 object HistoriesUtils {
@@ -45,14 +46,10 @@ object HistoriesUtils {
         HistoryLedger.decodeHistories(readSerialized(ctx), sorted)
 
     private fun readSerialized(context: Context): String? =
-        SettingsUtils.readStringFromSharedPreferences(
-            context,
-            KEY_SHARED_PREFERENCES_HISTORIES,
-        )
+        AndroidKeyValueStore.global(context).getString(KEY_SHARED_PREFERENCES_HISTORIES)
 
     private fun persist(context: Context) {
-        SettingsUtils.saveStringToSharedPreferences(
-            context,
+        AndroidKeyValueStore.global(context).putString(
             KEY_SHARED_PREFERENCES_HISTORIES,
             ledger.serialize(),
         )

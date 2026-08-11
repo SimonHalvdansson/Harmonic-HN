@@ -54,9 +54,13 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
+import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.utils.FileDownloader
 import com.simon.harmonichackernews.utils.FileDownloader.FileDownloaderCallback
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -122,7 +126,7 @@ internal class CommentsWebViewController(
     private var showWebsite = false
     private var integratedWebview = true
     private var preloadWebview: String? = "never"
-    private var preloadWebviewMinimumBattery = SettingsUtils.DEFAULT_PRELOAD_WEBVIEW_MINIMUM_BATTERY
+    private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
     private var matchWebviewTheme = true
     private var readerModeFeatureEnabled = true
     private var readerModeDefault = false
@@ -736,13 +740,14 @@ internal class CommentsWebViewController(
             com.google.android.material.R.attr.colorSurfaceContainerHigh,
             backgroundColor
         )
-        val readerModeFont = SettingsUtils.getPreferredReaderModeFont(context)
+        val readingPreferences = AndroidUserSettings.get(context).reading
+        val readerModeFont = readingPreferences.readerModeFont
         val readerModeFontFaceCss = getReaderModeFontFaceCss(context, readerModeFont)
         val readerModeFontFamily = if (TextUtils.isEmpty(readerModeFontFaceCss))
             getReaderModeSystemFontFamily(readerModeFont)
         else
             "'HarmonicReaderFont', " + getReaderModeSystemFontFamily(readerModeFont)
-        val readerModeFontSize = SettingsUtils.getReaderModeFontSize(context)
+        val readerModeFontSize = readingPreferences.readerModeFontSize
 
         return String.format(
             Locale.US,
@@ -991,16 +996,22 @@ internal class CommentsWebViewController(
     }
 
     private fun shouldPreloadStoryUrl(context: Context): Boolean {
-        val enabledForConnection = SettingsUtils.PRELOAD_WEBVIEW_ALWAYS == preloadWebview
-                || (SettingsUtils.PRELOAD_WEBVIEW_ONLY_WIFI == preloadWebview && Utils.isOnWiFi(
+        val enabledForConnection = WebViewPreferences.PRELOAD_ALWAYS == preloadWebview
+                || (WebViewPreferences.PRELOAD_WIFI_ONLY == preloadWebview && Utils.isOnWiFi(
             context
         ))
         return enabledForConnection
-                && SettingsUtils.hasEnoughBatteryForWebViewPreload(
+                && AndroidSettingsResources.hasEnoughBatteryForWebViewPreload(
             context,
             preloadWebviewMinimumBattery
         )
     }
+
+    private fun archiveRedirectUrl(context: Context, url: String?): String? =
+        ArchiveRedirectPolicy.redirectUrl(
+            url,
+            AndroidUserSettings.get(context).reading.archiveRedirectDomains,
+        )
 
     private fun isCurrentWebViewCallback(view: WebView?): Boolean {
         return view != null && view === webView && coordinator.context != null && coordinator.view != null && webViewBackdrop != null
@@ -1281,7 +1292,7 @@ internal class CommentsWebViewController(
         val targetWebView = webView ?: return
         if (context == null || coordinator.view == null || targetUrl.isNullOrEmpty()) return
 
-        val archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(context, targetUrl)
+        val archiveRedirectUrl = archiveRedirectUrl(context, targetUrl)
         if (archiveRedirectUrl != null) {
             targetUrl = archiveRedirectUrl
         }
@@ -1443,7 +1454,7 @@ internal class CommentsWebViewController(
                             "Failed to download, opening in browser",
                             Toast.LENGTH_LONG
                         ).show()
-                        Utils.launchInExternalBrowser(coordinator.requireActivity(), url.orEmpty())
+                        AndroidExternalLinkLauncher.openExternalBrowser(coordinator.requireActivity(), url.orEmpty())
                     }
                 }
         })
@@ -1744,7 +1755,7 @@ internal class CommentsWebViewController(
                     val fallbackUrl = intent.getStringExtra("browser_fallback_url")
                     if (fallbackUrl != null) {
                         val archiveRedirectUrl =
-                            SettingsUtils.getArchiveRedirectUrl(context, fallbackUrl)
+                            archiveRedirectUrl(context, fallbackUrl)
                         loadUrl(if (archiveRedirectUrl != null) archiveRedirectUrl else fallbackUrl)
                         return true
                     } else {
@@ -1758,7 +1769,7 @@ internal class CommentsWebViewController(
                 }
             }
 
-            val archiveRedirectUrl = SettingsUtils.getArchiveRedirectUrl(view.getContext(), url)
+            val archiveRedirectUrl = archiveRedirectUrl(view.context, url)
             if (archiveRedirectUrl != null) {
                 loadUrl(archiveRedirectUrl)
                 return true

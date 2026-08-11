@@ -11,7 +11,7 @@ import com.simon.harmonichackernews.network.LinkPreviewPreferences
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.NitterPreview
-import com.simon.harmonichackernews.utils.SettingsUtils
+import com.simon.harmonichackernews.settings.AndroidUserSettings
 import kotlin.math.min
 
 class LinkPreviewController(private val story: Story?, private val callbacks: Callbacks) {
@@ -31,14 +31,15 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
         }
 
         val useCase = LinkPreviewUseCase(NetworkComponent.linkPreviewRepository)
+        val preferences = AndroidUserSettings.get(context).reading
         val provider = useCase.selectProvider(
             url,
             LinkPreviewPreferences(
-                arxiv = SettingsUtils.shouldUseLinkPreviewArxiv(context),
-                github = SettingsUtils.shouldUseLinkPreviewGithub(context),
-                gitLab = SettingsUtils.shouldUseLinkPreviewGitLab(context),
-                stackExchange = SettingsUtils.shouldUseLinkPreviewStackExchange(context),
-                wikipedia = SettingsUtils.shouldUseLinkPreviewWikipedia(context),
+                arxiv = preferences.previewArxiv,
+                github = preferences.previewGithub,
+                gitLab = preferences.previewGitlab,
+                stackExchange = preferences.previewStackExchange,
+                wikipedia = preferences.previewWikipedia,
             ),
         ) ?: return
 
@@ -61,7 +62,7 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
 
     fun shouldInitializeWebViewForPreview(context: Context?): Boolean {
         return context != null && story != null && NitterPreview.isConvertibleUrl(story.url)
-                && SettingsUtils.shouldUseLinkPreviewX(context)
+                && AndroidUserSettings.get(context).reading.previewX
     }
 
     fun prepareWebViewLoad(context: Context?, webView: WebView?, url: String): String {
@@ -71,7 +72,7 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
             return url
         }
 
-        if (NitterPreview.isConvertibleUrl(url) && SettingsUtils.shouldRedirectNitter(context)) {
+        if (NitterPreview.isConvertibleUrl(url) && AndroidUserSettings.get(context).reading.redirectNitter) {
             url = NitterPreview.convertUrl(url)
         }
 
@@ -117,14 +118,14 @@ class LinkPreviewController(private val story: Story?, private val callbacks: Ca
         return shouldReadNitterLinkPreview(context, url)
                 || (NitterPreview.isConvertibleUrl(url)
                 && context != null
-                && SettingsUtils.shouldRedirectNitter(context)
-                && SettingsUtils.shouldUseLinkPreviewX(context))
+                && AndroidUserSettings.get(context).reading.redirectNitter
+                && AndroidUserSettings.get(context).reading.previewX)
     }
 
     private fun shouldReadNitterLinkPreview(context: Context?, url: String?): Boolean {
         return NitterPreview.isNitterUrl(url)
                 && context != null
-                && SettingsUtils.shouldUseLinkPreviewX(context)
+                && AndroidUserSettings.get(context).reading.previewX
     }
 
     private fun scheduleNitterLinkPreviewPageLoadTimeout(

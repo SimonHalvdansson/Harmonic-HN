@@ -66,6 +66,7 @@ import com.simon.harmonichackernews.resources.ic_cloud_off
 import com.simon.harmonichackernews.resources.ic_history
 import com.simon.harmonichackernews.resources.ic_search
 import org.jetbrains.compose.resources.DrawableResource
+import com.simon.harmonichackernews.presentation.StorySearchOption
 import org.jetbrains.compose.resources.painterResource
 
 data class StorySearchPresentationState(
@@ -194,7 +195,7 @@ fun SharedStorySearchHeader(
     onDraftChanged: (String) -> Unit,
     onSearch: (String) -> Unit,
     onClose: () -> Unit,
-    onOptionSelected: (kind: Int, index: Int) -> Unit,
+    onOptionSelected: (kind: StorySearchOption, index: Int) -> Unit,
     onToggleOnlyClicked: () -> Unit,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
@@ -251,10 +252,10 @@ fun SharedStorySearchHeader(
             contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item { SharedSearchOptionChip(state.sortLabel, state.sortLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(SEARCH_OPTION_SORT, it) } }
-            item { SharedSearchOptionChip(state.dateLabel, state.dateLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(SEARCH_OPTION_DATE, it) } }
-            item { SharedSearchOptionChip(state.pointsLabel, state.pointsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(SEARCH_OPTION_POINTS, it) } }
-            item { SharedSearchOptionChip(state.commentsLabel, state.commentsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(SEARCH_OPTION_COMMENTS, it) } }
+            item { SharedSearchOptionChip(state.sortLabel, state.sortLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.SORT, it) } }
+            item { SharedSearchOptionChip(state.dateLabel, state.dateLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.DATE, it) } }
+            item { SharedSearchOptionChip(state.pointsLabel, state.pointsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.POINTS, it) } }
+            item { SharedSearchOptionChip(state.commentsLabel, state.commentsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.COMMENTS, it) } }
             item {
                 FilterChip(
                     selected = state.onlyClicked,
@@ -420,8 +421,3 @@ private fun SharedEmptyState(
         )
     }
 }
-
-const val SEARCH_OPTION_SORT = 0
-const val SEARCH_OPTION_DATE = 1
-const val SEARCH_OPTION_POINTS = 2
-const val SEARCH_OPTION_COMMENTS = 3

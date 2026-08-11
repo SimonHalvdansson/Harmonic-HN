@@ -59,6 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.CommentsHeaderAction
+import com.simon.harmonichackernews.presentation.CommentsMoreAction
+import com.simon.harmonichackernews.presentation.CommentsShareAction
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
@@ -248,12 +251,12 @@ fun HeaderActions(
         controller.isBookmarked(story.id)
     }
     val actions = buildList {
-        add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsComposeController.HEADER_ACTION_USER))
-        if (canReply) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsComposeController.HEADER_ACTION_REPLY))
-        if (hasAccount) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsComposeController.HEADER_ACTION_VOTE, controller.storyVoteLoading))
-        if (hasAccount) add(HeaderAction(if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsComposeController.HEADER_ACTION_FAVORITE, controller.storyFavoriteLoading))
-        if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsComposeController.HEADER_ACTION_BOOKMARK))
-        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsComposeController.HEADER_ACTION_SUMMARIZE, controller.storySummaryLoading))
+        add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsHeaderAction.USER))
+        if (canReply) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsHeaderAction.REPLY))
+        if (hasAccount) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Vote", CommentsHeaderAction.VOTE, controller.storyVoteLoading))
+        if (hasAccount) add(HeaderAction(if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsHeaderAction.FAVORITE, controller.storyFavoriteLoading))
+        if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsHeaderAction.BOOKMARK))
+        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsHeaderAction.SUMMARIZE, controller.storySummaryLoading))
     }
     FlowRow(
         modifier = Modifier
@@ -293,7 +296,7 @@ fun HeaderActions(
         if (!hasAccount) {
             CommentsTooltip("Refresh") {
                 IconButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
                     modifier = Modifier.size(width = 48.dp, height = 58.dp),
                 ) {
                     Icon(
@@ -348,7 +351,7 @@ fun HeaderActions(
 private data class HeaderAction(
     val icon: DrawableResource,
     val label: String,
-    val action: Int,
+    val action: CommentsHeaderAction,
     val loading: Boolean = false,
 )
 
@@ -423,10 +426,10 @@ private fun ShareMenu(
     expanded: Boolean,
     isLink: Boolean,
     onDismiss: () -> Unit,
-    onAction: (Int) -> Unit,
+    onAction: (CommentsShareAction) -> Unit,
 ) {
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
-        @Composable fun action(label: String, id: Int) {
+        @Composable fun action(label: String, id: CommentsShareAction) {
             DropdownMenuItem(
                 text = { CommentsMenuText(label) },
                 onClick = {
@@ -436,12 +439,12 @@ private fun ShareMenu(
             )
         }
         if (isLink) {
-            action("Article link", CommentsComposeController.SHARE_ARTICLE)
-            action("Article link and title", CommentsComposeController.SHARE_ARTICLE_TITLE)
+            action("Article link", CommentsShareAction.ARTICLE)
+            action("Article link and title", CommentsShareAction.ARTICLE_WITH_TITLE)
         }
-        action("HN link", CommentsComposeController.SHARE_HN)
-        action("HN link and title", CommentsComposeController.SHARE_HN_TITLE)
-        if (isLink) action("Article + HN link and title", CommentsComposeController.SHARE_ALL)
+        action("HN link", CommentsShareAction.HN)
+        action("HN link and title", CommentsShareAction.HN_WITH_TITLE)
+        if (isLink) action("Article + HN link and title", CommentsShareAction.ARTICLE_AND_HN)
     }
 }
 
@@ -503,7 +506,7 @@ private fun MoreMenu(
         }
 
         if (archiveExpanded) {
-            @Composable fun archive(label: String, action: Int) {
+            @Composable fun archive(label: String, action: CommentsMoreAction) {
                 DropdownMenuItem(
                     text = { CommentsMenuText(label) },
                     onClick = {
@@ -512,13 +515,13 @@ private fun MoreMenu(
                     },
                 )
             }
-            archive("archive.org", CommentsComposeController.MORE_ARCHIVE_ORG)
-            archive("archive.is", CommentsComposeController.MORE_ARCHIVE_IS)
-            archive("archive.today", CommentsComposeController.MORE_ARCHIVE_TODAY)
+            archive("archive.org", CommentsMoreAction.ARCHIVE_ORG)
+            archive("archive.is", CommentsMoreAction.ARCHIVE_IS)
+            archive("archive.today", CommentsMoreAction.ARCHIVE_TODAY)
             return@HarmonicDropdownMenu
         }
 
-        @Composable fun action(label: String, icon: DrawableResource, id: Int) {
+        @Composable fun action(label: String, icon: DrawableResource, id: CommentsMoreAction) {
             DropdownMenuItem(
                 text = { CommentsMenuText(label) },
                 leadingIcon = {
@@ -534,17 +537,17 @@ private fun MoreMenu(
                 },
             )
         }
-        if (settings.hasAccountDetails) action("Refresh", Res.drawable.ic_refresh, CommentsComposeController.MORE_REFRESH)
-        if (story.isComment && story.parentId > 0) action("Open parent", Res.drawable.ic_reply, CommentsComposeController.MORE_OPEN_PARENT)
-        if (story.isComment && story.commentMasterId > 0) action("Open top level", Res.drawable.ic_arrow_upward, CommentsComposeController.MORE_OPEN_TOP_LEVEL)
+        if (settings.hasAccountDetails) action("Refresh", Res.drawable.ic_refresh, CommentsMoreAction.REFRESH)
+        if (story.isComment && story.parentId > 0) action("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT)
+        if (story.isComment && story.commentMasterId > 0) action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
         if (settings.hasAccountDetails && bookmarksEnabled) {
             action(
                 if (bookmarked) "Remove bookmark" else "Bookmark",
                 if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
-                CommentsComposeController.MORE_TOGGLE_BOOKMARK,
+                CommentsMoreAction.TOGGLE_BOOKMARK,
             )
         }
-        if (commentsCount > 1) action("Search comments", Res.drawable.ic_search, CommentsComposeController.MORE_SEARCH)
+        if (commentsCount > 1) action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
         if (commentsCount > 2) {
             DropdownMenuItem(
                 text = { CommentsMenuText("Sort comments") },
@@ -566,11 +569,11 @@ private fun MoreMenu(
             )
         }
         if (!controller.commentsByOpFilterActive && controller.hasCommentsByOp) {
-            action("Comments by OP", Res.drawable.ic_person, CommentsComposeController.MORE_COMMENTS_BY_OP)
+            action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
         }
-        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsComposeController.MORE_OPEN_BROWSER)
+        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsMoreAction.OPEN_BROWSER)
         if (controller.adBlockActive) {
-            action("Disable AdBlock", Res.drawable.ic_block, CommentsComposeController.MORE_DISABLE_ADBLOCK)
+            action("Disable AdBlock", Res.drawable.ic_block, CommentsMoreAction.DISABLE_AD_BLOCK)
         }
         if (story.isLink) {
             DropdownMenuItem(
@@ -625,7 +628,7 @@ fun OpFilterBanner(controller: CommentsComposeController) {
             )
             CommentsTooltip("Show all comments") {
                 IconButton(
-                    onClick = { controller.listener.onMoreAction(CommentsComposeController.MORE_COMMENTS_BY_OP) },
+                    onClick = { controller.listener.onMoreAction(CommentsMoreAction.COMMENTS_BY_OP) },
                 ) {
                     Icon(painterResource(Res.drawable.ic_close), contentDescription = "Show all comments")
                 }
@@ -687,7 +690,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     fontWeight = FontWeight.Bold,
                 )
                 OutlinedButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
                     modifier = Modifier.padding(top = 8.dp),
                 ) { Text("Try again") }
             }
@@ -724,7 +727,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     )
                 }
                 ExtendedFloatingActionButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsComposeController.HEADER_ACTION_REFRESH) },
+                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
                     modifier = Modifier
                         .padding(top = 10.dp, bottom = 16.dp)
                         .height(56.dp),

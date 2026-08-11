@@ -17,6 +17,7 @@ data class SubmissionsUiState(
     val showInitialLoading: Boolean = false,
     val refreshing: Boolean = false,
     val emptyText: String = "No submissions",
+    val revision: Int = 0,
 )
 
 /** Shared state owner and loading/filtering workflow for the submissions screen. */
@@ -58,6 +59,10 @@ class SubmissionsStore(
             showInitialLoading = false,
             refreshing = false,
         )
+    }
+
+    fun contentChanged() {
+        mutableState.value = mutableState.value.copy(revision = mutableState.value.revision + 1)
     }
 
     private suspend fun load(refreshing: Boolean) {
@@ -121,6 +126,7 @@ class SubmissionsStore(
                 filter == SubmissionFilter.COMMENTS -> "No comments"
                 else -> "No submissions"
             },
+            revision = mutableState.value.revision + 1,
         )
     }
 

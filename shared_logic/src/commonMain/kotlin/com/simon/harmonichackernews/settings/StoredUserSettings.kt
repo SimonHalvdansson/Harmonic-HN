@@ -133,6 +133,11 @@ class StoredUserSettings(
                 alwaysShowTapToRefresh =
                     boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
                 preferredStoryType = preferredStoryType(),
+                additionalFrontpages = AdditionalFrontpagePreferences.sanitize(
+                    runCatching {
+                        store.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES)
+                    }.getOrDefault(emptySet()),
+                ),
             )
         }
 
@@ -142,7 +147,7 @@ class StoredUserSettings(
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 thumbnails = boolean(UserPreferenceKeys.THUMBNAILS, true),
-                showHeaderPreviewImage = previewImageMode() != PREVIEW_OFF &&
+                showHeaderPreviewImage = previewImageMode() != StoryPreviewPreferences.OFF &&
                     boolean(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE, true),
                 tintHeader = tintCard && boolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true),
                 paletteTintConfigKey = paletteTintConfigKey(),
@@ -232,6 +237,13 @@ class StoredUserSettings(
             showChangelog = boolean(UserPreferenceKeys.SHOW_CHANGELOG, true),
         )
 
+    override fun setStoriesToCache(count: Int) {
+        store.putInt(
+            UserPreferenceKeys.STORIES_TO_CACHE,
+            StoryCachePreferences.sanitizeCount(count),
+        )
+    }
+
     private fun paletteTintConfigKey(): String = PaletteTintPreferences.configKey(
         string(UserPreferenceKeys.PALETTE_TINT_MODE, PaletteTintPreferences.DEFAULT),
         integer(UserPreferenceKeys.PALETTE_TINT_STRENGTH, PaletteTintPreferences.DEFAULT_STRENGTH),
@@ -242,13 +254,9 @@ class StoredUserSettings(
         integer(UserPreferenceKeys.PALETTE_TINT_TONE, PaletteTintPreferences.DEFAULT_TONE),
     )
 
-    private fun previewImageMode(): String = when (
-        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, PREVIEW_SMALL)
-    ) {
-        PREVIEW_OFF -> PREVIEW_OFF
-        PREVIEW_LARGE -> PREVIEW_LARGE
-        else -> PREVIEW_SMALL
-    }
+    private fun previewImageMode(): String = StoryPreviewPreferences.sanitize(
+        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, StoryPreviewPreferences.SMALL),
+    )
 
     private fun storyTextSize(): Float = TextPreferences.clampStoryTextSize(
         numericPreference(UserPreferenceKeys.STORY_TEXT_SIZE, TextPreferences.DEFAULT_STORY_TEXT_SIZE),
@@ -320,9 +328,6 @@ class StoredUserSettings(
     private companion object {
         const val STANDARD = "standard"
         const val CARD = "card"
-        const val PREVIEW_OFF = "off"
-        const val PREVIEW_SMALL = "small"
-        const val PREVIEW_LARGE = "large"
         const val TOP_STORIES = "Top Stories"
     }
 }

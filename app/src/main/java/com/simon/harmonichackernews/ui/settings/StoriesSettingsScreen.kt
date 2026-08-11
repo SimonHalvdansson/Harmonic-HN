@@ -18,11 +18,13 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryTypeAndroid
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
+import com.simon.harmonichackernews.settings.DisplayStylePreferences
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.SettingsUtils
 import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
 import java.util.Locale
@@ -42,9 +44,7 @@ fun StoriesSettingsScreen(
     val storySettings = AndroidUserSettings.get(context).story
     val previewImageMode = storySettings.previewImageMode
     val textSize = storySettings.storyTextSize
-    val additionalFrontpages = AdditionalFrontpagePreferences.sanitize(
-        prefs.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES, emptySet()) ?: emptySet(),
-    )
+    val additionalFrontpages = storySettings.additionalFrontpages
     val hotness = storySettings.hotness.toString()
     val paletteTintConfigKey = storySettings.paletteTintConfigKey
     val previewModel = remember(context, paletteTintConfigKey) {
@@ -60,9 +60,9 @@ fun StoriesSettingsScreen(
     val state = StoriesSettingsUiState(
         previewModel = previewModel,
         previewImageMode = previewImageMode,
-        previewOffValue = SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
-        previewSmallValue = SettingsUtils.STORY_PREVIEW_IMAGE_SMALL,
-        previewLargeValue = SettingsUtils.STORY_PREVIEW_IMAGE_LARGE,
+        previewOffValue = StoryPreviewPreferences.OFF,
+        previewSmallValue = StoryPreviewPreferences.SMALL,
+        previewLargeValue = StoryPreviewPreferences.LARGE,
         borderlessLargeImage = storySettings.borderlessLargePreviewImage,
         compact = compact,
         showSummary = storySettings.showSummary,
@@ -75,16 +75,16 @@ fun StoriesSettingsScreen(
         leftAlignComments = storySettings.leftAlign,
         tint = storySettings.tintCardUsingPreview,
         displayStyle = if (storySettings.cardStyle) {
-            SettingsUtils.STORY_DISPLAY_STYLE_CARD
+            DisplayStylePreferences.CARD
         } else {
-            SettingsUtils.STORY_DISPLAY_STYLE_STANDARD
+            DisplayStylePreferences.STANDARD
         },
-        standardStyleValue = SettingsUtils.STORY_DISPLAY_STYLE_STANDARD,
-        cardStyleValue = SettingsUtils.STORY_DISPLAY_STYLE_CARD,
+        standardStyleValue = DisplayStylePreferences.STANDARD,
+        cardStyleValue = DisplayStylePreferences.CARD,
         textSize = textSize,
         textSizeOffset = TextPreferences.storyTextSizeOffset(textSize),
-        minTextSizeOffset = SettingsUtils.MIN_STORY_TEXT_SIZE_OFFSET,
-        maxTextSizeOffset = SettingsUtils.MAX_STORY_TEXT_SIZE_OFFSET,
+        minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,
+        maxTextSizeOffset = TextPreferences.MAX_TEXT_SIZE_OFFSET,
         hotnessEnabled = hotness != "-1",
         hotnessLabel = hotnessLabel(hotness),
         preferredFont = storySettings.font,
@@ -96,7 +96,7 @@ fun StoriesSettingsScreen(
         hideClicked = hideClicked,
         grayOutClicked = storySettings.grayOutClicked,
         faviconProvider = faviconProvider,
-        faviconIcon = painterResource(SettingsUtils.getFaviconProviderIconResource(faviconProvider)),
+        faviconIcon = painterResource(AndroidSettingsResources.faviconProviderIcon(faviconProvider)),
     )
     SharedStoriesSettingsScreen(
         state = state,

@@ -11,9 +11,10 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.comment_sorting
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.DisplayStylePreferences
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import com.simon.harmonichackernews.utils.SettingsUtils
 import org.jetbrains.compose.resources.stringArrayResource
 
 @Composable
@@ -25,22 +26,22 @@ fun CommentsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val settings = AndroidUserSettings.get(context)
     val commentsSettings = settings.comments
     val displayStyle = if (commentsSettings.cardStyle) {
-        SettingsUtils.COMMENT_DISPLAY_STYLE_CARD
+        DisplayStylePreferences.CARD
     } else {
-        SettingsUtils.COMMENT_DISPLAY_STYLE_STANDARD
+        DisplayStylePreferences.STANDARD
     }
     val textSize = commentsSettings.textSize
     val textSizeOffset = TextPreferences.commentTextSizeOffset(textSize)
     val depthMode = commentsSettings.depthIndicatorMode
     val state = CommentsSettingsUiState(
         displayStyle = displayStyle,
-        cardStyleValue = SettingsUtils.COMMENT_DISPLAY_STYLE_CARD,
-        standardStyleValue = SettingsUtils.COMMENT_DISPLAY_STYLE_STANDARD,
+        cardStyleValue = DisplayStylePreferences.CARD,
+        standardStyleValue = DisplayStylePreferences.STANDARD,
         showBorder = commentsSettings.cardBorder,
         textSize = textSize,
         textSizeOffset = textSizeOffset,
-        minTextSizeOffset = SettingsUtils.MIN_COMMENT_TEXT_SIZE_OFFSET,
-        maxTextSizeOffset = SettingsUtils.MAX_COMMENT_TEXT_SIZE_OFFSET,
+        minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,
+        maxTextSizeOffset = TextPreferences.MAX_TEXT_SIZE_OFFSET,
         collectLinks = commentsSettings.collectReferenceLinks,
         emphasizeMetadata = commentsSettings.highlightMetadata,
         depthMode = depthMode,
@@ -53,7 +54,7 @@ fun CommentsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
         storyTintEnabled = settings.story.tintCardUsingPreview,
         headerTint = prefs.getBoolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true),
         storyPreviewEnabled = settings.story.previewImageMode !=
-            SettingsUtils.STORY_PREVIEW_IMAGE_OFF,
+            StoryPreviewPreferences.OFF,
         headerPreviewImage = prefs.getBoolean(
             UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE,
             true,
