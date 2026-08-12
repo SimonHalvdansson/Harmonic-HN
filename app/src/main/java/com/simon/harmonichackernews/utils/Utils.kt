@@ -106,37 +106,6 @@ object Utils {
         return storyCache(ctx).hydrateStory(story)
     }
 
-    fun cacheStoryPreviewState(ctx: Context?, story: Story?) {
-        if (ctx == null || story == null || story.id <= 0 ||
-            (!story.previewImageUrlLoaded && story.previewImageUrl.isNullOrEmpty() &&
-                    !story.faviconTintColorLoaded)
-        ) {
-            return
-        }
-
-        val appContext = ctx.applicationContext
-        val previewState: Story = Story()
-        previewState.id = story.id
-        previewState.previewImageUrl = story.previewImageUrl
-        previewState.previewImageUrlLoaded =
-            story.previewImageUrlLoaded || !story.previewImageUrl.isNullOrEmpty()
-        previewState.previewImageLoadFailed = story.previewImageLoadFailed
-        previewState.previewImageTintColor = story.previewImageTintColor
-        previewState.previewImageTintColorLoaded = story.previewImageTintColorLoaded
-        previewState.previewImageTintSourceUrl = story.previewImageTintSourceUrl
-        previewState.previewImageTintBaseColor = story.previewImageTintBaseColor
-        previewState.previewImageTintMode = story.previewImageTintMode
-        previewState.faviconTintColor = story.faviconTintColor
-        previewState.faviconTintColorLoaded = story.faviconTintColorLoaded
-        previewState.faviconTintSourceUrl = story.faviconTintSourceUrl
-        previewState.faviconTintBaseColor = story.faviconTintBaseColor
-        previewState.faviconTintMode = story.faviconTintMode
-
-        backgroundExecutor.execute {
-            storyCache(appContext).savePreviewState(previewState)
-        }
-    }
-
     fun getCachedPostCount(ctx: Context?): Int {
         if (ctx == null) {
             return 0

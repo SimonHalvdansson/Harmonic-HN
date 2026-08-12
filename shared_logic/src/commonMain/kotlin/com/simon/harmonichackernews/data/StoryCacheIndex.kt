@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import com.simon.harmonichackernews.serialization.JsonArray
 import com.simon.harmonichackernews.serialization.JsonObject
 
 data class StoryCacheIndexUpdate(
@@ -87,12 +86,6 @@ object CacheFileNamePolicy {
 }
 
 object StoryCachePayloadParser {
-    fun storyIds(response: String?, maximumCount: Int): List<Int> {
-        val values = JsonArray(response.orEmpty())
-        val count = minOf(values.length(), maximumCount.coerceAtLeast(0))
-        return List(count, values::getInt)
-    }
-
     fun externalArticleUrl(storyJson: String): String? {
         val value = JsonObject(storyJson)
         if (!value.has("url") || value.isNull("url")) return null

@@ -19,7 +19,6 @@ interface ObservableHackerNewsAccountRepository : HackerNewsAccountRepository {
 interface ObservableBookmarkStore : BookmarkStore {
     val bookmarkState: StateFlow<List<Bookmark>>
     suspend fun setBookmarked(id: Int, bookmarked: Boolean, createdAtMillis: Long): Boolean
-    suspend fun clearBookmarks()
 }
 
 data class HistoryStoreSnapshot(
@@ -30,7 +29,6 @@ data class HistoryStoreSnapshot(
 /** Suspend-friendly observable history storage for new shared feature code. */
 interface ObservableHistoryStore : HistoryStore {
     val historyState: StateFlow<HistoryStoreSnapshot>
-    suspend fun initializeHistory()
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
@@ -72,8 +70,6 @@ class LegacyObservableBookmarkStoreAdapter(
         wasBookmarked != bookmarked
     }
 
-    override suspend fun clearBookmarks() = mutationMutex.withLock { clear() }
-
     private fun publish() {
         mutableBookmarkState.value = legacy.load()
     }
@@ -112,8 +108,6 @@ class LegacyObservableHistoryStoreAdapter(
     override fun contains(id: Int): Boolean = legacy.contains(id)
     override val size: Int get() = legacy.size
     override val changeVersion: Long get() = legacy.changeVersion
-
-    override suspend fun initializeHistory() = mutationMutex.withLock { initialize() }
 
     override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
         mutationMutex.withLock {

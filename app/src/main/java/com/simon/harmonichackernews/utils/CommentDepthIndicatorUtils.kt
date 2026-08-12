@@ -70,11 +70,6 @@ object CommentDepthIndicatorUtils {
         return CommentDepthPreferences.sanitizeMode(mode)
     }
 
-    fun shouldShowIndicators(mode: String): Boolean =
-        CommentDepthPreferences.shouldShowIndicators(mode)
-
-    fun getModeLabel(mode: String): String = CommentDepthPreferences.modeLabel(mode)
-
     private fun getStandardColorResource(ctx: Context, theme: String?, index: Int): Int {
         return if (ThemeUtils.isDarkMode(
                 ctx,

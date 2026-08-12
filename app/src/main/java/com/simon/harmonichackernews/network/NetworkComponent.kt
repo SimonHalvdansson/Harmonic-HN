@@ -133,23 +133,6 @@ object NetworkComponent {
         }
     }
 
-    /** Collects a shared flow on the network scope and delivers every event on Android's UI. */
-    fun <T> collectCallbackFlow(
-        flow: Flow<T>,
-        onEach: (T) -> Unit,
-        onFailure: (Throwable) -> Unit,
-    ): Job = networkScope.launch {
-        try {
-            flow.collect { event ->
-                withContext(Dispatchers.Main.immediate) { onEach(event) }
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            withContext(Dispatchers.Main.immediate) { onFailure(error) }
-        }
-    }
-
     private var requestQueueInstance: RequestQueue? = null
 
     val httpClientInstanceWithCookies: KtorHttpClient

@@ -63,10 +63,6 @@ class SavedItemsRepository(
         publish(source)
     }
 
-    fun saveIds(source: SavedItemSource, ids: List<Int>, createdAtMillis: Long) {
-        saveItems(source, SavedItemCodec.fromIds(ids, createdAtMillis))
-    }
-
     fun setMembership(
         source: SavedItemSource,
         id: Int,
@@ -106,15 +102,6 @@ class SavedItemsRepository(
         val changed = if (present) updated.add(id) else updated.remove(id)
         if (changed) saveCommentIds(source, updated)
         return changed
-    }
-
-    /** Serializes read-modify-write comment changes made by this repository instance. */
-    suspend fun setCommentMembershipAtomic(
-        source: SavedItemSource,
-        id: Int,
-        present: Boolean,
-    ): Boolean = mutationMutex.withLock {
-        setCommentMembership(source, id, present)
     }
 
     fun loadSnapshot(source: SavedItemSource): SavedItemSnapshot {

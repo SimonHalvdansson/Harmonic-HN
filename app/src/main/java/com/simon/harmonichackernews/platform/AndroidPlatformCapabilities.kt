@@ -52,7 +52,7 @@ class AndroidCredentialStore(context: Context) :
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
         CredentialIds.HACKER_NEWS_USERNAME -> AccountUtils.getAccountUsername(appContext)
-        CredentialIds.HACKER_NEWS_PASSWORD -> AccountUtils.getAccountDetails(appContext).second
+        CredentialIds.HACKER_NEWS_PASSWORD -> AccountUtils.getAccountDetails(appContext)?.second
         else -> null
     }
 
@@ -159,8 +159,6 @@ class AndroidBookmarkStore(context: Context) : ObservableBookmarkStore {
         ).also { if (it) publishBookmarks() }
     }
 
-    override suspend fun clearBookmarks() = bookmarkMutationMutex.withLock { clear() }
-
     private fun publishBookmarks() {
         processBookmarkState.value = loadPersisted()
     }
@@ -208,10 +206,6 @@ class AndroidHistoryStore(context: Context) : ObservableHistoryStore {
 
     override val changeVersion: Long
         get() = HistoriesUtils.getChangeVersion()
-
-    override suspend fun initializeHistory() = historyMutationMutex.withLock {
-        withContext(Dispatchers.IO) { initialize() }
-    }
 
     override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
         historyMutationMutex.withLock {
