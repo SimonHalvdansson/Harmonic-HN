@@ -32,10 +32,22 @@ import com.simon.harmonichackernews.utils.Utils
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class AndroidCredentialStore(context: Context) : CredentialStore {
+class AndroidCredentialStore(context: Context) :
+    CredentialStore,
+    ObservableHackerNewsAccountRepository {
     private val appContext = context.applicationContext
+    override val accountState: StateFlow<HackerNewsAccount?> = processAccountState.asStateFlow()
+
+    init {
+        publishAccount()
+    }
 
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
@@ -57,7 +69,7 @@ class AndroidCredentialStore(context: Context) : CredentialStore {
                 true
             }
             else -> false
-        }
+        }.also { if (it) publishAccount() }
 
     override fun remove(id: String): Boolean =
         when (id) {
@@ -67,14 +79,45 @@ class AndroidCredentialStore(context: Context) : CredentialStore {
                 true
             }
             else -> false
-        }
+        }.also { if (it) publishAccount() }
+
+    override fun load(): HackerNewsAccount? = AccountUtils.getHackerNewsAccount(appContext)
+
+    override fun save(account: HackerNewsAccount): Boolean =
+        AccountUtils.setHackerNewsAccount(appContext, account).also { publishAccount() }
+
+    override fun clear(): Boolean = AccountUtils.clearHackerNewsAccount(appContext).also {
+        publishAccount()
+    }
+
+    override suspend fun saveAccount(account: HackerNewsAccount): Boolean =
+        accountMutationMutex.withLock { withContext(Dispatchers.IO) { save(account) } }
+
+    override suspend fun clearAccount(): Boolean =
+        accountMutationMutex.withLock { withContext(Dispatchers.IO) { clear() } }
+
+    private fun publishAccount() {
+        processAccountState.value = AccountUtils.getHackerNewsAccount(appContext)
+    }
+
+    private companion object {
+        val processAccountState = MutableStateFlow<HackerNewsAccount?>(null)
+        val accountMutationMutex = Mutex()
+    }
 }
 
-class AndroidBookmarkStore(context: Context) : BookmarkStore {
+class AndroidBookmarkStore(context: Context) : ObservableBookmarkStore {
     private val appContext = context.applicationContext
     private val savedItems = SavedItemsRepository(AndroidKeyValueStore.global(appContext))
+    override val bookmarkState: StateFlow<List<Bookmark>> = processBookmarkState.asStateFlow()
 
-    override fun load(): List<Bookmark> = SavedItemCodec.toBookmarks(
+    init {
+        publishBookmarks()
+    }
+
+    override fun load(): List<Bookmark> = loadPersisted()
+
+    private fun loadPersisted(): List<Bookmark> = SavedItemCodec.toBookmarks(
         savedItems.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
     )
 
@@ -85,6 +128,7 @@ class AndroidBookmarkStore(context: Context) : BookmarkStore {
             present = true,
             createdAtMillis = System.currentTimeMillis(),
         )
+        publishBookmarks()
     }
 
     override fun remove(id: Int) {
@@ -94,25 +138,68 @@ class AndroidBookmarkStore(context: Context) : BookmarkStore {
             present = false,
             createdAtMillis = System.currentTimeMillis(),
         )
+        publishBookmarks()
     }
 
-    override fun clear() = savedItems.saveItems(SavedItemSource.BOOKMARKS, emptyList())
+    override fun clear() {
+        savedItems.saveItems(SavedItemSource.BOOKMARKS, emptyList())
+        publishBookmarks()
+    }
+
+    override suspend fun setBookmarked(
+        id: Int,
+        bookmarked: Boolean,
+        createdAtMillis: Long,
+    ): Boolean = bookmarkMutationMutex.withLock {
+        savedItems.setMembershipAtomic(
+            SavedItemSource.BOOKMARKS,
+            id,
+            bookmarked,
+            createdAtMillis,
+        ).also { if (it) publishBookmarks() }
+    }
+
+    override suspend fun clearBookmarks() = bookmarkMutationMutex.withLock { clear() }
+
+    private fun publishBookmarks() {
+        processBookmarkState.value = loadPersisted()
+    }
+
+    private companion object {
+        val processBookmarkState = MutableStateFlow<List<Bookmark>>(emptyList())
+        val bookmarkMutationMutex = Mutex()
+    }
 }
 
-class AndroidHistoryStore(context: Context) : HistoryStore {
+class AndroidHistoryStore(context: Context) : ObservableHistoryStore {
     private val appContext = context.applicationContext
+    override val historyState: StateFlow<HistoryStoreSnapshot> = processHistoryState.asStateFlow()
 
-    override fun initialize() = HistoriesUtils.init(appContext)
+    init {
+        publishHistory()
+    }
+
+    override fun initialize() {
+        HistoriesUtils.init(appContext)
+        publishHistory()
+    }
 
     override fun load(): List<History> = HistoriesUtils.loadHistories(appContext, true)
 
     override fun record(id: Int, createdAtMillis: Long) {
         HistoriesUtils.addHistory(appContext, id, createdAtMillis)
+        publishHistory()
     }
 
-    override fun remove(id: Int) = HistoriesUtils.removeHistoryById(appContext, id)
+    override fun remove(id: Int) {
+        HistoriesUtils.removeHistoryById(appContext, id)
+        publishHistory()
+    }
 
-    override fun clear() = HistoriesUtils.clearHistories(appContext)
+    override fun clear() {
+        HistoriesUtils.clearHistories(appContext)
+        publishHistory()
+    }
 
     override fun contains(id: Int): Boolean = HistoriesUtils.isHistoryExist(id)
 
@@ -121,6 +208,36 @@ class AndroidHistoryStore(context: Context) : HistoryStore {
 
     override val changeVersion: Long
         get() = HistoriesUtils.getChangeVersion()
+
+    override suspend fun initializeHistory() = historyMutationMutex.withLock {
+        withContext(Dispatchers.IO) { initialize() }
+    }
+
+    override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
+        historyMutationMutex.withLock {
+            val previousVersion = changeVersion
+            withContext(Dispatchers.IO) { record(id, createdAtMillis) }
+            changeVersion != previousVersion
+        }
+
+    override suspend fun removeHistory(id: Int): Boolean = historyMutationMutex.withLock {
+        val previousVersion = changeVersion
+        withContext(Dispatchers.IO) { remove(id) }
+        changeVersion != previousVersion
+    }
+
+    override suspend fun clearHistory() = historyMutationMutex.withLock {
+        withContext(Dispatchers.IO) { clear() }
+    }
+
+    private fun publishHistory() {
+        processHistoryState.value = HistoryStoreSnapshot(load(), changeVersion)
+    }
+
+    private companion object {
+        val processHistoryState = MutableStateFlow(HistoryStoreSnapshot())
+        val historyMutationMutex = Mutex()
+    }
 }
 
 class AndroidClipboardService(context: Context) : ClipboardService {
@@ -295,6 +412,24 @@ class AndroidLocalSummaryEngine(context: Context) : LocalSummaryEngine {
 }
 
 object AndroidPlatformServices {
+    fun stories(context: Context): StoriesPlatformDependencies = StoriesPlatformDependencies(
+        accounts = AndroidCredentialStore(context),
+        history = AndroidHistoryStore(context),
+        connectivity = AndroidConnectivityService(context),
+        externalLinks = AndroidExternalLinkOpener(context),
+    )
+
+    fun comments(context: Context): CommentsPlatformDependencies = CommentsPlatformDependencies(
+        accounts = AndroidCredentialStore(context),
+        externalLinks = AndroidExternalLinkOpener(context),
+        sharing = AndroidShareService(context),
+        clipboard = AndroidClipboardService(context),
+    )
+
+    fun submissions(context: Context): SubmissionsPlatformDependencies =
+        SubmissionsPlatformDependencies(AndroidExternalLinkOpener(context))
+
+    /** Legacy all-services composition retained while non-feature Android call sites migrate. */
     fun create(context: Context): PlatformServices = PlatformServices(
         credentials = AndroidCredentialStore(context),
         bookmarks = AndroidBookmarkStore(context),

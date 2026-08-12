@@ -56,8 +56,8 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Platform-neutral comments header. Image loading and palette extraction remain a slot supplied by
- * the platform shell; all visible header state, controls, and transitions live here.
+ * Platform-neutral comments header. The preview slot is implemented by shared Coil/KMPalette UI;
+ * the host supplies only surrounding platform actions such as opening links.
  */
 @Composable
 fun SharedCommentsHeader(
@@ -231,7 +231,11 @@ fun SharedCommentsHeader(
                                     )
                                     LinkPreviewContent(story, contentVersion, settings)
                                 }
-                                PollOptions(pollOptions, controller.listener::onPollOption)
+                                PollOptions(
+                                    pollOptions,
+                                    controller.pollVoteInFlightOptionId,
+                                    controller.listener::onPollOption,
+                                )
                                 StorySummary(story, settings)
                                 HeaderMeta(
                                     story = story,

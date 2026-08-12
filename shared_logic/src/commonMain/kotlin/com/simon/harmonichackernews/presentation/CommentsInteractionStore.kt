@@ -16,10 +16,12 @@ enum class CommentNavigationEdge { First, Last }
 data class CommentScrollRequest(
     val serial: Int,
     val commentId: Int,
-    val topOffsetPx: Int,
+    val topOffset: LayoutCoordinate,
     val animate: Boolean,
     val searchResult: Boolean,
-)
+) {
+    val topOffsetPx: Int get() = topOffset.value
+}
 
 data class CommentSheetRequest(
     val serial: Int,
@@ -40,13 +42,15 @@ sealed interface CommentLinkPreview {
     data class Image(
         val imageUrl: String,
         val description: String,
-        val backgroundColor: Int,
-    ) : CommentLinkPreview
+        val background: ArgbColor,
+    ) : CommentLinkPreview {
+        val backgroundColor: Int get() = background.value
+    }
 }
 
 data class CommentsInteractionState(
     val sheetSlideOffset: Float,
-    val topInsetPx: Int = 0,
+    val topInset: LayoutCoordinate = LayoutCoordinate(0),
     val sheetRequest: CommentSheetRequest? = null,
     val navigationRequest: CommentNavigationRequest? = null,
     val websiteRequestVersion: Int = 0,
@@ -59,9 +63,7 @@ data class CommentsInteractionState(
     val predictiveBackProgress: Float = 0f,
     val commentAction: Comment? = null,
     val commentActionDismissRequestVersion: Int = 0,
-    val commentActionPredictiveBackProgress: Float = 0f,
-    val commentActionPredictiveBackEdge: Int = 0,
-    val commentActionPredictiveBackTouchY: Float = 0f,
+    val commentActionBackGesture: BackGesture = BackGesture(),
     val commentActionFavoriteLoadingId: Int = -1,
     val commentActionVoteLoadingId: Int = -1,
     val commentActionVoteLoadingAction: CommentMenuAction? = null,
@@ -70,16 +72,29 @@ data class CommentsInteractionState(
     val linkPreview: CommentLinkPreview? = null,
     val linkPreviewVisibleUrl: String? = null,
     val linkPreviewDismissRequestVersion: Int = 0,
-    val linkPreviewPredictiveBackProgress: Float = 0f,
-    val linkPreviewPredictiveBackEdge: Int = 0,
-    val linkPreviewPredictiveBackTouchY: Float = 0f,
+    val linkPreviewBackGesture: BackGesture = BackGesture(),
     val linkPreviewPredictiveBackSettleRequest: CommentPredictiveBackSettleRequest? = null,
-)
+) {
+    val topInsetPx: Int get() = topInset.value
+    val commentActionPredictiveBackProgress: Float get() = commentActionBackGesture.progress
+    val commentActionPredictiveBackEdge: Int get() = commentActionBackGesture.edge.legacyValue
+    val commentActionPredictiveBackTouchY: Float get() = commentActionBackGesture.pointerY
+    val linkPreviewPredictiveBackProgress: Float get() = linkPreviewBackGesture.progress
+    val linkPreviewPredictiveBackEdge: Int get() = linkPreviewBackGesture.edge.legacyValue
+    val linkPreviewPredictiveBackTouchY: Float get() = linkPreviewBackGesture.pointerY
+}
+
+private val BackGestureEdge.legacyValue: Int
+    get() = when (this) {
+        BackGestureEdge.LEFT -> 0
+        BackGestureEdge.RIGHT -> 1
+        BackGestureEdge.UNKNOWN -> -1
+    }
 
 /**
  * Platform-neutral interaction state machine for the comments screen.
  *
- * Rendering, scrolling, Android back dispatch, and source geometry remain in the platform UI.
+ * Rendering, scrolling, back dispatch, and source geometry remain in the platform UI.
  * This store owns the request ordering and state transitions so every future UI shell can share
  * the same navigation, search, sheet, and comment-action behavior.
  */
@@ -95,13 +110,21 @@ class CommentsInteractionStore(
     private var requestSerial = 0
 
     fun updateTopInset(topInsetPx: Int) {
-        state = state.copy(topInsetPx = topInsetPx)
+        updateTopInset(LayoutCoordinate(topInsetPx))
+    }
+
+    fun updateTopInset(topInset: LayoutCoordinate) {
+        state = state.copy(topInset = topInset)
     }
 
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
+        updateSheet(slideOffset, LayoutCoordinate(topInsetPx))
+    }
+
+    fun updateSheet(slideOffset: Float, topInset: LayoutCoordinate) {
         state = state.copy(
             sheetSlideOffset = slideOffset.coerceIn(0f, 1f),
-            topInsetPx = topInsetPx,
+            topInset = topInset,
         )
     }
 
@@ -143,7 +166,19 @@ class CommentsInteractionStore(
 
     fun scrollToComment(
         commentId: Int,
-        topOffsetPx: Int = state.topInsetPx,
+        topOffsetPx: Int = state.topInset.value,
+        animate: Boolean = true,
+        searchResult: Boolean = false,
+    ) = scrollToCommentAt(
+        commentId = commentId,
+        topOffset = LayoutCoordinate(topOffsetPx),
+        animate = animate,
+        searchResult = searchResult,
+    )
+
+    fun scrollToCommentAt(
+        commentId: Int,
+        topOffset: LayoutCoordinate = state.topInset,
         animate: Boolean = true,
         searchResult: Boolean = false,
     ) {
@@ -151,7 +186,7 @@ class CommentsInteractionStore(
             scrollRequest = CommentScrollRequest(
                 serial = ++requestSerial,
                 commentId = commentId,
-                topOffsetPx = topOffsetPx,
+                topOffset = topOffset,
                 animate = animate && shouldSmoothScroll(),
                 searchResult = searchResult,
             ),
@@ -216,7 +251,7 @@ class CommentsInteractionStore(
         state = state.copy(
             commentAction = comment,
             commentActionDismissRequestVersion = 0,
-            commentActionPredictiveBackProgress = 0f,
+            commentActionBackGesture = BackGesture(),
             suppressedCommentIds = setOf(comment.id),
             stopScrollRequestVersion = state.stopScrollRequestVersion + if (stopScroll) 1 else 0,
         )
@@ -233,21 +268,31 @@ class CommentsInteractionStore(
     }
 
     fun updateCommentActionPredictiveBack(progress: Float, edge: Int, touchY: Float) {
-        if (state.commentAction == null) return
-        state = state.copy(
-            commentActionPredictiveBackProgress = progress.coerceIn(0f, 1f),
-            commentActionPredictiveBackEdge = edge,
-            commentActionPredictiveBackTouchY = touchY,
+        updateCommentActionBackGesture(
+            BackGesture(
+                progress = progress.coerceIn(0f, 1f),
+                edge = BackGestureEdge.fromLegacyValue(edge),
+                pointerY = touchY,
+            ),
         )
     }
 
+    fun updateCommentActionBackGesture(gesture: BackGesture) {
+        if (state.commentAction == null) return
+        state = state.copy(commentActionBackGesture = gesture)
+    }
+
     fun cancelCommentActionPredictiveBack() {
-        state = state.copy(commentActionPredictiveBackProgress = 0f)
+        state = state.copy(
+            commentActionBackGesture = state.commentActionBackGesture.copy(progress = 0f),
+        )
     }
 
     fun commitCommentActionPredictiveBack() {
         if (state.commentAction == null) return
-        state = state.copy(commentActionPredictiveBackProgress = 0f)
+        state = state.copy(
+            commentActionBackGesture = state.commentActionBackGesture.copy(progress = 0f),
+        )
         requestDismissCommentActions()
     }
 
@@ -256,7 +301,7 @@ class CommentsInteractionStore(
         state = state.copy(
             commentAction = null,
             commentActionDismissRequestVersion = 0,
-            commentActionPredictiveBackProgress = 0f,
+            commentActionBackGesture = BackGesture(),
             suppressedCommentIds = state.suppressedCommentIds - commentId,
         )
         return true
@@ -293,6 +338,20 @@ class CommentsInteractionStore(
         )
     }
 
+    fun synchronizeCommentActionState(
+        favoriteLoadingId: Int,
+        voteLoadingId: Int,
+        voteLoadingAction: CommentMenuAction?,
+        downvotedIds: Set<Int>,
+    ) {
+        state = state.copy(
+            commentActionFavoriteLoadingId = favoriteLoadingId,
+            commentActionVoteLoadingId = voteLoadingId,
+            commentActionVoteLoadingAction = voteLoadingAction,
+            commentActionDownvotedIds = downvotedIds,
+        )
+    }
+
     fun showReferencePreview(
         originalUrl: String,
         fallbackTitle: String,
@@ -320,11 +379,17 @@ class CommentsInteractionStore(
         imageUrl: String,
         description: String,
         backgroundColor: Int,
+    ): Boolean = showImagePreview(imageUrl, description, ArgbColor(backgroundColor))
+
+    fun showImagePreview(
+        imageUrl: String,
+        description: String,
+        background: ArgbColor,
     ): Boolean {
         if (imageUrl.isBlank()) return false
         resetLinkPreviewAnimationState()
         state = state.copy(
-            linkPreview = CommentLinkPreview.Image(imageUrl, description, backgroundColor),
+            linkPreview = CommentLinkPreview.Image(imageUrl, description, background),
             linkPreviewVisibleUrl = imageUrl,
             stopScrollRequestVersion = state.stopScrollRequestVersion + 1,
         )
@@ -351,12 +416,20 @@ class CommentsInteractionStore(
     }
 
     fun updateLinkPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        updateLinkPreviewBackGesture(
+            BackGesture(
+                progress = progress.coerceIn(0f, 1f),
+                edge = BackGestureEdge.fromLegacyValue(edge),
+                pointerY = touchY,
+            ),
+        )
+    }
+
+    fun updateLinkPreviewBackGesture(gesture: BackGesture) {
         if (state.linkPreview == null || state.linkPreviewDismissRequestVersion != 0) return
         state = state.copy(
             linkPreviewPredictiveBackSettleRequest = null,
-            linkPreviewPredictiveBackEdge = edge,
-            linkPreviewPredictiveBackTouchY = touchY,
-            linkPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f),
+            linkPreviewBackGesture = gesture,
         )
     }
 
@@ -373,7 +446,9 @@ class CommentsInteractionStore(
     fun finishLinkPreviewPredictiveBackSettle(request: CommentPredictiveBackSettleRequest) {
         if (state.linkPreviewPredictiveBackSettleRequest != request) return
         state = state.copy(
-            linkPreviewPredictiveBackProgress = request.target.coerceIn(0f, 1f),
+            linkPreviewBackGesture = state.linkPreviewBackGesture.copy(
+                progress = request.target.coerceIn(0f, 1f),
+            ),
             linkPreviewPredictiveBackSettleRequest = null,
         )
     }
@@ -381,7 +456,7 @@ class CommentsInteractionStore(
     private fun resetLinkPreviewAnimationState() {
         state = state.copy(
             linkPreviewDismissRequestVersion = 0,
-            linkPreviewPredictiveBackProgress = 0f,
+            linkPreviewBackGesture = BackGesture(),
             linkPreviewPredictiveBackSettleRequest = null,
         )
     }

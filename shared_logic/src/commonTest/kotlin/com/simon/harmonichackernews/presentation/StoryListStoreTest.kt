@@ -18,12 +18,25 @@ class StoryListStoreTest {
         input.clear()
 
         val state = store.state.value
-        assertEquals(listOf(1, 2, 3), state.stories.map(Story::id))
+        assertEquals(listOf(1, 2, 3), state.items.map { it.story.id })
         assertEquals(2, state.visibleStoryCount)
         assertTrue(state.canLoadMore)
         assertTrue(state.showingCached)
         assertFalse(state.loading)
         assertFalse(state.refreshing)
+
+        val portable = store.portableState.value
+        assertEquals(listOf(1, 2, 3), portable.items.map { it.story.id })
+        store.stories.first().apply {
+            title = "mutated"
+            previewImageUrl = "https://example.com/mutated.png"
+            previewImageUrlLoaded = true
+            previewImageLoaded = true
+            kids = intArrayOf(99)
+        }
+        assertEquals("Story 1", state.items.first().story.title)
+        assertEquals(null, state.items.first().presentation.previewImage.url)
+        assertEquals(emptyList(), state.items.first().story.childIds)
     }
 
     @Test

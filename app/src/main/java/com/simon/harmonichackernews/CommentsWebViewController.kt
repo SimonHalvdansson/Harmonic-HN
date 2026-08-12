@@ -75,7 +75,6 @@ import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.min
-import com.simon.harmonichackernews.network.HttpCall
 import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 internal class CommentsWebViewController(
@@ -92,8 +91,6 @@ internal class CommentsWebViewController(
     }
 
     internal interface Callbacks {
-        fun onSwitchView(isAtWebView: Boolean)
-
         fun syncOnBackPressedCallbackEnabledState()
 
         fun onReaderModeChanged(enabled: Boolean)
@@ -228,7 +225,6 @@ internal class CommentsWebViewController(
             startedLoading = true
             loadUrl(story?.url)
         }
-        callbacks.onSwitchView(true)
     }
 
     fun shouldInitializeInBackground(context: Context?): Boolean {
@@ -1205,7 +1201,6 @@ internal class CommentsWebViewController(
         setFullscreenSystemBarsHidden(false)
         callbacks.syncOnBackPressedCallbackEnabledState()
 
-        callbacks.onSwitchView(true)
 
         if (notifyCallback && currentCustomViewCallback != null) {
             currentCustomViewCallback.onCustomViewHidden()
@@ -1243,7 +1238,6 @@ internal class CommentsWebViewController(
         setFullscreenSystemBarsHidden(true)
         callbacks.syncOnBackPressedCallbackEnabledState()
 
-        callbacks.onSwitchView(true)
     }
 
     private fun setFullscreenSystemBarsHidden(hidden: Boolean) {
@@ -1417,7 +1411,7 @@ internal class CommentsWebViewController(
         val fileDownloader = FileDownloader(ctx)
         Toast.makeText(ctx, "Loading PDF...", Toast.LENGTH_LONG).show()
         fileDownloader.downloadFile(url, PDF_MIME_TYPE, object : FileDownloaderCallback {
-            override fun onFailure(call: HttpCall?, e: IOException?) {
+            override fun onFailure(error: IOException?) {
                 showDownloadButton(url, contentDisposition, mimetype)
             }
 

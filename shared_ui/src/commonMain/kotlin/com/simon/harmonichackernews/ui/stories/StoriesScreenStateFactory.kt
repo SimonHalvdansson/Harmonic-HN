@@ -5,8 +5,8 @@ import com.simon.harmonichackernews.presentation.SavedListPresentationPolicy
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationInput
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationPolicy
-import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_bookmark
 import com.simon.harmonichackernews.resources.ic_history
@@ -14,24 +14,18 @@ import com.simon.harmonichackernews.resources.ic_star
 import com.simon.harmonichackernews.resources.ic_thumb_up_filled
 
 data class StoriesPlatformPresentation(
-    val displaySettings: StoryDisplaySettings,
-    val typeLabels: List<String>,
-    val selectedTypeIndex: Int,
     val searchSortLabels: List<String>,
     val searchDateLabels: List<String>,
     val searchPointsLabels: List<String>,
     val searchCommentsLabels: List<String>,
-    val online: Boolean,
     val lastUpdatedText: String?,
-    val hasCachedStories: Boolean,
-    val loggedIn: Boolean,
     val cacheInProgress: Boolean,
     val cacheProgressVisible: Boolean,
     val cacheProgress: Int,
     val cacheProgressMax: Int,
     val cacheProgressStatus: String,
-    val canClearHistory: Boolean,
     val contentInsetStartPx: Int,
+    val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
 )
 
 /** Maps common stories state plus a narrow platform snapshot into shared UI state. */
@@ -53,7 +47,7 @@ object StoriesScreenStateFactory {
                 loadingFailed = listState.failure != null,
                 notFound = listState.failure == StoryLoadFailure.NOT_FOUND,
                 rateLimited = feature.loadingFailedRateLimited,
-                online = platform.online,
+                online = feature.online,
                 bookmarks = type.isBookmarks,
                 history = type.isHistory,
                 userItems = type.isUserItemList,
@@ -79,9 +73,10 @@ object StoriesScreenStateFactory {
         return StoriesScreenState(
             mainStories = feature.mainStories,
             searchStories = feature.searchStories,
-            displaySettings = platform.displaySettings,
-            typeLabels = platform.typeLabels,
-            selectedTypeIndex = platform.selectedTypeIndex,
+            previewResources = platform.previewResources,
+            displaySettings = feature.settingsState.value.displaySettings,
+            typeLabels = feature.availableStoryTypes.map { it.label },
+            selectedTypeIndex = feature.selectedStoryTypeIndex(),
             searching = feature.searching,
             lastSearch = presenterState.searchDraft,
             searchSortLabel = feature.searchOptions.sortLabel,
@@ -100,7 +95,7 @@ object StoriesScreenStateFactory {
             loadingFailedMessage = shell.loadingFailureMessage,
             showingCached = listState.showingCached,
             showCachedAction = listState.failure != null && !feature.searching &&
-                platform.hasCachedStories,
+                feature.cachedStoriesAvailable,
             showEmptySavedList = shell.showEmptySavedList,
             emptySavedListText = SavedListPresentationPolicy.emptyMessage(
                 savedKind,
@@ -124,9 +119,9 @@ object StoriesScreenStateFactory {
                 feature.frontPageDay.earliestMillis,
             frontNextEnabled = feature.frontPageDay.selectedMillis <
                 feature.frontPageDay.latestMillis,
-            loggedIn = platform.loggedIn,
+            loggedIn = feature.loggedIn,
             canCache = shell.canCacheStories,
-            canClearHistory = platform.canClearHistory,
+            canClearHistory = feature.canClearHistory,
             cacheProgressVisible = platform.cacheProgressVisible,
             cacheProgress = platform.cacheProgress,
             cacheProgressMax = platform.cacheProgressMax,

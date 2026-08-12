@@ -8,6 +8,11 @@ package com.simon.harmonichackernews.settings
  * rewrite any user data.
  */
 interface KeyValueStore {
+    /** Clears this store without affecting other platform stores. */
+    fun clear() {
+        throw UnsupportedOperationException("This key-value store does not support clearing")
+    }
+
     fun contains(key: String): Boolean
 
     fun remove(key: String)

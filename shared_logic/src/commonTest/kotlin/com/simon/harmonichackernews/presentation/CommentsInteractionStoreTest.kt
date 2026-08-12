@@ -34,6 +34,7 @@ class CommentsInteractionStoreTest {
         store.updateTopInset(42)
         store.scrollToComment(commentId = 91)
         assertEquals(42, store.state.scrollRequest?.topOffsetPx)
+        assertEquals(LayoutCoordinate(42), store.state.scrollRequest?.topOffset)
         assertFalse(requireNotNull(store.state.scrollRequest).animate)
 
         store.consumeNavigationRequest(firstNavigation)
@@ -56,6 +57,7 @@ class CommentsInteractionStoreTest {
 
         store.updateCommentActionPredictiveBack(progress = 2f, edge = 1, touchY = 300f)
         assertEquals(1f, store.state.commentActionPredictiveBackProgress)
+        assertEquals(BackGestureEdge.RIGHT, store.state.commentActionBackGesture.edge)
         store.commitCommentActionPredictiveBack()
         assertEquals(0f, store.state.commentActionPredictiveBackProgress)
         assertEquals(1, store.state.commentActionDismissRequestVersion)

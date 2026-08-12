@@ -27,6 +27,8 @@ class StoredUserSettingsTest {
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals("Top Stories", settings.story.preferredStoryType)
         assertTrue(settings.comments.showHeaderPreviewImage)
+        assertTrue(settings.comments.headerPreviewImageEnabled)
+        assertTrue(settings.comments.headerTintEnabled)
         assertTrue(settings.comments.animateChanges)
         assertTrue(settings.comments.smoothScroll)
         assertTrue(settings.reading.integratedWebView)
@@ -35,6 +37,10 @@ class StoredUserSettingsTest {
         assertTrue(settings.reading.previewGithub)
         assertEquals(20, settings.cache.storiesToCache)
         assertTrue(settings.general.bookmarksEnabled)
+        assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)
+        assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
+        assertFalse(settings.debug.alwaysShowTapToRefresh)
+        assertFalse(settings.debug.showAiSummaryDebugInfo)
     }
 
     @Test
@@ -50,6 +56,10 @@ class StoredUserSettingsTest {
                 UserPreferenceKeys.READER_MODE_FONT_SIZE to 500,
                 UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS to
                     " https://Example.com/path, https://example.com ",
+                UserPreferenceKeys.COMMENT_SORTING to "unsupported",
+                UserPreferenceKeys.COMMENTS_PROVIDER to "unsupported",
+                UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION to "unsupported",
+                UserPreferenceKeys.READER_MODE_FONT to "unsupported",
             ),
         )
         val settings = StoredUserSettings(store, emptyFlow())
@@ -62,6 +72,10 @@ class StoredUserSettingsTest {
         assertEquals("small", settings.story.previewImageMode)
         assertEquals(24, settings.reading.readerModeFontSize)
         assertEquals(listOf("example.com"), settings.reading.archiveRedirectDomains)
+        assertEquals(CommentSortingPreference.DEFAULT, settings.comments.sortingPreference)
+        assertEquals(CommentsProvider.ALGOLIA, settings.reading.commentsProvider)
+        assertEquals(CommentVolumeNavigationMode.DISABLED, settings.comments.volumeNavigation)
+        assertEquals(AppFont.GOOGLE_SANS_FLEX_ROUNDED, settings.reading.readerFont)
     }
 
     @Test
@@ -79,7 +93,9 @@ class StoredUserSettingsTest {
         val settings = StoredUserSettings(store, emptyFlow())
 
         assertFalse(settings.comments.showHeaderPreviewImage)
+        assertTrue(settings.comments.headerPreviewImageEnabled)
         assertFalse(settings.comments.tintHeader)
+        assertTrue(settings.comments.headerTintEnabled)
         assertFalse(settings.reading.readerModeDefault)
     }
 

@@ -12,6 +12,15 @@ data class ContentFilters(
     val users: Set<String> = emptySet(),
 )
 
+enum class ContentFilterType { STORY_TITLE, DOMAIN, USER }
+
+data class UserBlockUpdate(
+    val blocked: Boolean,
+    val changed: Boolean,
+    val message: String,
+    val dismissProfile: Boolean,
+)
+
 /** Portable persistence and normalization for story and comment content filters. */
 class ContentFilterRepository(
     private val store: KeyValueStore,
@@ -25,6 +34,38 @@ class ContentFilterRepository(
     fun containsUser(username: String?): Boolean {
         val normalized = normalizeUsername(username) ?: return false
         return normalized in load().users
+    }
+
+    fun items(type: ContentFilterType): List<String> = when (type) {
+        ContentFilterType.STORY_TITLE -> load().words
+        ContentFilterType.DOMAIN -> load().domains
+        ContentFilterType.USER -> load().users.toList()
+    }
+
+    fun setItems(type: ContentFilterType, items: List<String>) {
+        val normalized = items.asSequence()
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .map { if (type == ContentFilterType.USER) it.lowercase() else it }
+            .distinct()
+            .toList()
+        store.putString(type.key, normalized.joinToString(","))
+    }
+
+    fun toggleUser(username: String?): UserBlockUpdate? {
+        val normalized = normalizeUsername(username) ?: return null
+        val wasBlocked = containsUser(normalized)
+        val changed = if (wasBlocked) removeUser(normalized) else addUser(normalized)
+        return UserBlockUpdate(
+            blocked = !wasBlocked && changed,
+            changed = changed,
+            message = if (wasBlocked) {
+                "Unblocked $normalized"
+            } else {
+                "You will no longer see posts or comments from $normalized"
+            },
+            dismissProfile = !wasBlocked && changed,
+        )
     }
 
     fun addUser(username: String?): Boolean {
@@ -60,4 +101,11 @@ class ContentFilterRepository(
         ?.trim()
         ?.takeIf(String::isNotEmpty)
         ?.lowercase()
+
+    private val ContentFilterType.key: String
+        get() = when (this) {
+            ContentFilterType.STORY_TITLE -> ContentFilterKeys.WORDS
+            ContentFilterType.DOMAIN -> ContentFilterKeys.DOMAINS
+            ContentFilterType.USER -> ContentFilterKeys.USERS
+        }
 }

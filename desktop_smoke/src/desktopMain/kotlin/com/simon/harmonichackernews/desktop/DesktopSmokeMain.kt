@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,8 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
+import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.StoryFeedRefreshPolicy
+import com.simon.harmonichackernews.settings.StoryBooleanPreference
+import com.simon.harmonichackernews.settings.StoryStringPreference
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -33,32 +39,40 @@ import com.simon.harmonichackernews.ui.stories.SharedStoriesRoot
 import com.simon.harmonichackernews.ui.theme.HarmonicColors
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
-fun main() = application {
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Harmonic KMP smoke host",
-    ) {
-        HarmonicTheme(
-            colors = desktopColors,
-            colorScheme = lightColorScheme(
-                primary = desktopColors.accent,
-                background = desktopColors.background,
-                surface = desktopColors.background,
-                onSurface = desktopColors.onSurface,
-            ),
-        ) {
-            Surface(Modifier.fillMaxSize()) {
-                DesktopSmokeContent()
+fun main() {
+    val bootstrap = DesktopHarmonicAppBootstrap.inMemory(
+        userAgent = "Harmonic-HN-Desktop-Smoke",
+    )
+    try {
+        application {
+            Window(
+                onCloseRequest = ::exitApplication,
+                title = "Harmonic KMP smoke host",
+            ) {
+                HarmonicTheme(
+                    colors = desktopColors,
+                    colorScheme = lightColorScheme(
+                        primary = desktopColors.accent,
+                        background = desktopColors.background,
+                        surface = desktopColors.background,
+                        onSurface = desktopColors.onSurface,
+                    ),
+                ) {
+                    Surface(Modifier.fillMaxSize()) {
+                        DesktopSmokeContent(bootstrap.app)
+                    }
+                }
             }
         }
+    } finally {
+        bootstrap.close()
     }
 }
 
 @androidx.compose.runtime.Composable
-private fun DesktopSmokeContent() {
-    var showEditor by remember { mutableStateOf(false) }
-    var cardStyle by remember { mutableStateOf(true) }
-    var compact by remember { mutableStateOf(false) }
+private fun DesktopSmokeContent(app: HarmonicAppComposition) {
+    val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
+    val navigation by app.navigation.state.collectAsState()
     var menuExpanded by remember { mutableStateOf(false) }
     var searchMode by remember { mutableStateOf(false) }
     val refreshSource = remember {
@@ -71,7 +85,7 @@ private fun DesktopSmokeContent() {
         ).source
     }
 
-    if (showEditor) {
+    if (navigation.editorRequest != null) {
         SharedEditorScreen(
             type = EditorType.POST,
             parentText = null,
@@ -79,7 +93,7 @@ private fun DesktopSmokeContent() {
             user = null,
             titleMaxLength = 80,
             submitting = false,
-            onClose = { showEditor = false },
+            onClose = app.navigation::closeEditor,
             onSubmit = {},
         )
         return
@@ -98,15 +112,40 @@ private fun DesktopSmokeContent() {
             ) {
                 Text("Shared stories smoke host", style = MaterialTheme.typography.headlineMedium)
                 Text("Refresh policy selected: $refreshSource")
+                Text("Real shared graph: CIO network, settings, sessions, and navigation are ready")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { cardStyle = !cardStyle }) {
-                        Text(if (cardStyle) "Use standard row" else "Use card row")
+                    Button(
+                        onClick = {
+                            app.settings.setStoryString(
+                                StoryStringPreference.DISPLAY_STYLE,
+                                if (settings.story.cardStyle) "standard" else "card",
+                            )
+                        },
+                    ) {
+                        Text(if (settings.story.cardStyle) "Use standard row" else "Use card row")
                     }
-                    Button(onClick = { compact = !compact }) {
-                        Text(if (compact) "Use comfortable spacing" else "Use compact spacing")
+                    Button(
+                        onClick = {
+                            app.settings.setStoryBoolean(
+                                StoryBooleanPreference.COMPACT_VIEW,
+                                !settings.story.compactView,
+                            )
+                        },
+                    ) {
+                        Text(
+                            if (settings.story.compactView) {
+                                "Use comfortable spacing"
+                            } else {
+                                "Use compact spacing"
+                            },
+                        )
                     }
                     Button(onClick = { menuExpanded = true }) { Text("Shared menu") }
-                    Button(onClick = { showEditor = true }) { Text("Shared editor") }
+                    Button(
+                        onClick = {
+                            app.navigation.openEditor(EditorDestination(EditorType.POST))
+                        },
+                    ) { Text("Shared editor") }
                     Button(onClick = { searchMode = true }) { Text("Shared search root") }
                     HarmonicDropdownMenu(
                         expanded = menuExpanded,
@@ -123,7 +162,7 @@ private fun DesktopSmokeContent() {
                     style = StoryItemStyle(
                         previewImageMode = "large",
                         borderlessLargeImage = false,
-                        compact = compact,
+                        compact = settings.story.compactView,
                         showSummary = true,
                         showFavicon = true,
                         showPoints = true,
@@ -133,7 +172,7 @@ private fun DesktopSmokeContent() {
                         showIndex = true,
                         commentsOnLeft = false,
                         tintCard = true,
-                        cardStyle = cardStyle,
+                        cardStyle = settings.story.cardStyle,
                         useHotnessIcon = false,
                         preferredFont = "googlesansflexrounded",
                         textSize = 17.5f,

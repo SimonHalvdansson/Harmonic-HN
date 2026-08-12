@@ -5,7 +5,6 @@
     <color name="colorAccent">#FF959E</color>
 
     <color name="statusBarColor">@color/background</color>
-    <color name="statusBarColorTransparent">@android:color/transparent</color>
 
     <color name="grayStatusBarColor">@color/grayBackground</color>
 
@@ -49,7 +48,6 @@
     <color name="hackerNewsAccentDark">#B34700</color>
     <color name="hackerNewsAccentContainer">#FFD5B8</color>
     <color name="hackerNewsOverlayButton">#BF5724</color>
-    <color name="hackerNewsTextSelectionHighlight">#66FF6600</color>
     <color name="hackerNewsSurfaceContainer">#EEEBD9</color>
     <color name="hackerNewsStoryColorNormal">#222222</color>
     <color name="hackerNewsStoryColorDisabled">#828282</color>
@@ -69,7 +67,6 @@
     <color name="hackerTextColor">#00FF00</color>
     <color name="hackerTextColorDisabled">#9900FF00</color>
     <color name="hackerDividerColor">#6600FF00</color>
-    <color name="hackerTextSelectionHighlight">#6600FF00</color>
 
     <color name="commentIndentIndicatorColor1">#FF959E</color>
     <color name="commentIndentIndicatorColor2">#3f51b5</color>
@@ -89,20 +86,14 @@
 
     <color name="commentIndentIndicatorColorMonochrome">#888</color>
 
-    <color name="material_you_900">#001E2C</color>
-    <color name="material_you_50">#E0F3FF</color>
     <color name="material_you_primary_200">#B0C6FF</color>
     <color name="material_you_600">#00668B</color>
-    <color name="material_you_secondary_100">#D1E5F4</color>
-    <color name="material_you_secondary_900">#091E28</color>
-    <color name="material_you_secondary_800">#20333D</color>
     <color name="material_you_secondary_40">#4E616C</color>
     <color name="material_you_secondary_70">#9AAEBB</color>
 
     <color name="material_you_third_400">#8094A0</color>
     <color name="material_you_third_700">#374955</color>
 
-    <color name="material_you_neutral_10">#FCFCFF</color>
     <color name="material_you_neutral_50">#F0F0F3</color>
     <color name="material_you_neutral_100">#E1E3E5</color>
     <color name="material_you_neutral_800">#2E3133</color>

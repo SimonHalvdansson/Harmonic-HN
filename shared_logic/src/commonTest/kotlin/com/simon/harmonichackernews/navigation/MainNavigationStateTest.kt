@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.navigation
 
+import com.simon.harmonichackernews.data.StorySnapshot
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,20 +10,22 @@ import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
     @Test
-    fun storyDestinationRoundTripsAllHeaderAndPreviewState() {
+    fun storyDestinationRoundTripsImmutableDomainSeedWithoutResourceState() {
         val source = StoryDestination(
             storyId = 42,
-            title = "Title",
-            author = "author",
-            url = "https://example.com",
-            previewImageUrl = "https://example.com/image.png",
-            previewImageTintColorLoaded = true,
-            previewImageTintColor = 123,
-            childIds = listOf(1, 2),
-            pollOptionIds = listOf(3, 4),
-            descendantCount = 8,
-            score = 9,
-            isLink = true,
+            seed = StoryNavigationSeed(
+                story = StorySnapshot(
+                    id = 42,
+                    title = "Title",
+                    author = "author",
+                    url = "https://example.com",
+                    childIds = listOf(1, 2),
+                    pollOptionIds = listOf(3, 4),
+                    descendantCount = 8,
+                    score = 9,
+                ),
+                isLink = true,
+            ),
         )
 
         val story = source.toStory()
@@ -30,8 +34,8 @@ class MainNavigationStateTest {
         assertEquals("Title", story.title)
         assertEquals("author", story.by)
         assertTrue(story.loaded)
-        assertTrue(story.previewImageUrlLoaded)
-        assertEquals(123, story.previewImageTintColor)
+        assertFalse(story.previewImageUrlLoaded)
+        assertFalse(story.previewImageTintColorLoaded)
         assertEquals(listOf(1, 2), story.kids?.toList())
         assertEquals(listOf(3, 4), story.pollOptions?.toList())
         assertEquals(8, story.descendants)
@@ -53,6 +57,16 @@ class MainNavigationStateTest {
         assertNull(state.storyRequest)
         assertEquals("appearance", state.settingsRequest?.initialSectionRoute)
         assertFalse(state.storyOpenedFromSettings)
+    }
+
+    @Test
+    fun stableRouteRestoresWithoutCarryingStoryPresentationState() {
+        val route = StoryRoute(storyId = 42, showWebsite = true, scrollToCommentId = 7)
+        val state = MainNavigationState(MainNavigationRestoration(storyRoute = route))
+
+        assertEquals(route, state.storyRequest?.route)
+        assertEquals(42, state.storyRequest?.destination?.storyId)
+        assertNull(state.storyRequest?.destination?.seed)
     }
 
     @Test
@@ -102,4 +116,60 @@ class MainNavigationStateTest {
         assertFalse(state.coulombGasVisible)
         assertEquals(EditorType.POST, state.editorRequest?.destination?.type)
     }
+
+    @Test
+    fun transientDialogsOwnSerialAndPresencePolicyInSharedState() {
+        val state = MainNavigationState()
+        val firstCaptcha = state.showCaptchaDialog(captcha("first"))
+        val replacementCaptcha = state.showCaptchaDialog(captcha("second"))
+        val user = state.showUserDialog("simon")
+        val failure = state.showFailureDetailDialog("Failed", "Details", "copy")
+
+        assertEquals(1, firstCaptcha.serial)
+        assertEquals(2, replacementCaptcha.serial)
+        assertEquals(replacementCaptcha, state.captchaRequest)
+        assertEquals(1, user?.serial)
+        assertEquals(user, state.userRequest)
+        assertEquals(1, failure.serial)
+        assertEquals(failure, state.failureRequest)
+
+        assertEquals(replacementCaptcha, state.dismissCaptchaDialog())
+        assertEquals(user, state.dismissUserDialog())
+        assertEquals(failure, state.dismissFailureDetailDialog())
+        assertNull(state.captchaRequest)
+        assertNull(state.userRequest)
+        assertNull(state.failureRequest)
+    }
+
+    @Test
+    fun restoredUserDialogContinuesItsSerialSequence() {
+        val state = MainNavigationState(
+            MainNavigationRestoration(
+                userDialogUserName = "restored-user",
+                userDialogSerial = 7,
+            ),
+        )
+
+        assertEquals(MainUserRequest(7, "restored-user"), state.userRequest)
+
+        val next = state.showUserDialog("next-user")
+
+        assertEquals(MainUserRequest(8, "next-user"), next)
+    }
+
+    @Test
+    fun blankUserDoesNotReplaceVisibleUserDialog() {
+        val state = MainNavigationState()
+        val visible = state.showUserDialog("simon")
+
+        assertNull(state.showUserDialog("  "))
+        assertEquals(visible, state.userRequest)
+    }
+
+    private fun captcha(siteKey: String) = HackerNewsCaptchaChallenge(
+        actionUrl = "https://news.ycombinator.com/login",
+        siteKey = siteKey,
+        formFields = emptyList(),
+        useCookies = true,
+    )
 }

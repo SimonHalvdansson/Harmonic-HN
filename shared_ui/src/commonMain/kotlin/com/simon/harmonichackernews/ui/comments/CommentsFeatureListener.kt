@@ -24,8 +24,8 @@ class CommentsFeatureListener(
         feature.commentAction(
             action = action,
             comment = comment,
-            voteLoading = platform.isCommentVoteLoading(comment.id),
-            downvoted = platform.isCommentDownvoted(comment.id),
+            voteLoading = feature.state.commentVoteLoadingId == comment.id,
+            downvoted = comment.id in feature.state.downvotedCommentIds,
         )
     }
 
@@ -33,9 +33,20 @@ class CommentsFeatureListener(
         platform.onCommentActionOverlayVisibilityChanged()
     override fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean) =
         platform.onLinkPreviewOverlayVisibilityChanged()
-    override fun onHeaderClick() = platform.openHeaderLink()
-    override fun onHeaderPreviewLoaded() = platform.onHeaderPreviewLoaded()
-    override fun onHeaderPreviewLoadFailed() = platform.onHeaderPreviewLoadFailed()
+    override fun onHeaderClick() = feature.openHeaderLink()
+    override fun onHeaderPreviewImageResult(imageUrl: String, success: Boolean) =
+        feature.completeHeaderPreviewImageLoad(imageUrl, success)
+    override fun onHeaderPreviewTintExtracted(
+        sourceUrl: String,
+        baseColorArgb: Int,
+        paletteConfigKey: String,
+        tintColorArgb: Int,
+    ) = feature.recordHeaderPreviewTint(
+        sourceUrl,
+        baseColorArgb,
+        paletteConfigKey,
+        tintColorArgb,
+    )
     override fun onHeaderAction(action: CommentsHeaderAction) = feature.header(action)
     override fun onShareAction(action: CommentsShareAction) = feature.share(action)
     override fun onMoreAction(action: CommentsMoreAction) = feature.more(action)
@@ -54,24 +65,18 @@ class CommentsFeatureListener(
     override fun onSheetSettled(expanded: Boolean) = platform.onSheetSettled(expanded)
     override fun onHeaderColorChanged(color: Int) = platform.onHeaderColorChanged(color)
     override fun onHeaderCoverageChanged(coverage: Float) = platform.onHeaderCoverageChanged(coverage)
-    override fun onPollOption(optionId: Int) = platform.votePollOption(optionId)
+    override fun onPollOption(optionId: Int) = feature.votePollOption(optionId)
 
     interface PlatformCallbacks {
         fun isRestoringScroll(): Boolean
         fun canHandleCommentAction(): Boolean
-        fun isCommentVoteLoading(commentId: Int): Boolean
-        fun isCommentDownvoted(commentId: Int): Boolean
         fun onCommentActionOverlayVisibilityChanged()
         fun onLinkPreviewOverlayVisibilityChanged()
-        fun openHeaderLink()
-        fun onHeaderPreviewLoaded()
-        fun onHeaderPreviewLoadFailed()
         fun scrollToSearchResult(commentId: Int)
         fun collapseSheetForWebsite()
         fun onSheetProgressChanged(expandedFraction: Float)
         fun onSheetSettled(expanded: Boolean)
         fun onHeaderColorChanged(color: Int)
         fun onHeaderCoverageChanged(coverage: Float)
-        fun votePollOption(optionId: Int)
     }
 }

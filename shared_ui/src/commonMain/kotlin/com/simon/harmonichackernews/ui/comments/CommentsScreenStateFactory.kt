@@ -1,12 +1,9 @@
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 
 data class CommentsPlatformPresentation(
-    val displaySettings: CommentDisplaySettings,
     val adBlockActive: Boolean,
-    val integratedWebView: Boolean,
     val readerModeAvailable: Boolean,
     val readerModeEnabled: Boolean,
     val topInsetPx: Int,
@@ -21,12 +18,15 @@ object CommentsScreenStateFactory {
         platform: CommentsPlatformPresentation,
     ): CommentsScreenState? {
         val story = feature.story ?: return null
+        val settings = feature.settingsState.value ?: return null
         val state = feature.state
-        val thread = feature.thread.state.value
+        val thread = feature.state.thread
+        val legacyThread = feature.thread.legacyState.value
         return CommentsScreenState(
             story = story,
+            accountUser = feature.accountUser,
             comments = feature.comments,
-            displaySettings = platform.displaySettings,
+            displaySettings = settings.displaySettings,
             commentsLoaded = state.loaded,
             commentsRefreshInProgress = state.refreshing,
             loadingFailed = state.failure != null,
@@ -37,7 +37,7 @@ object CommentsScreenStateFactory {
             commentsByOpFilterActive = thread.commentsByOp,
             hasCommentsByOp = thread.hasCommentsByOp,
             adBlockActive = platform.adBlockActive,
-            integratedWebView = platform.integratedWebView,
+            integratedWebView = settings.integratedWebView,
             readerModeAvailable = platform.readerModeAvailable,
             readerModeEnabled = platform.readerModeEnabled,
             currentSorting = thread.sorting,
@@ -46,9 +46,16 @@ object CommentsScreenStateFactory {
             contentInsetRightPx = platform.contentInsetRightPx,
             storyVoteLoading = state.storyVoteLoading,
             storyFavoriteLoading = state.storyFavoriteLoading,
+            pollVoteInFlightOptionId = state.pollVoteInFlightOptionId,
+            storySummaryLoading = feature.summaryLoading,
+            headerPreviewResource = feature.headerPreviewResource,
+            commentFavoriteLoadingId = state.commentFavoriteLoadingId,
+            commentVoteLoadingId = state.commentVoteLoadingId,
+            commentVoteLoadingAction = state.commentVoteLoadingAction,
+            downvotedCommentIds = state.downvotedCommentIds,
             searchQuery = thread.searchQuery,
-            searchResults = thread.searchResults,
-            visibleComments = thread.visibleComments,
+            searchResults = legacyThread.searchResults,
+            visibleComments = legacyThread.visibleComments,
         )
     }
 }

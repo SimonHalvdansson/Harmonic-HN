@@ -2,11 +2,9 @@ package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
+import com.simon.harmonichackernews.platform.HackerNewsAccount
 
-data class HackerNewsCredentials(
-    val username: String,
-    val password: String,
-)
+typealias HackerNewsCredentials = HackerNewsAccount
 
 data class HackerNewsCaptchaFormField(
     val name: String,

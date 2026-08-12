@@ -2,16 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
 import com.simon.harmonichackernews.resources.*
-
-data class DataSettingsUiState(
-    val bookmarksEnabled: Boolean,
-    val bookmarkCount: Int,
-    val loggedIn: Boolean,
-    val historyCount: Int,
-    val postCacheCount: Int,
-    val tintCacheCount: Int,
-    val showChangelog: Boolean,
-)
+import com.simon.harmonichackernews.settings.DataSettingsSnapshot
 
 enum class DataSettingsAction {
     AddBookmarksToFavorites,
@@ -26,7 +17,7 @@ enum class DataSettingsAction {
 
 @Composable
 fun SharedDataSettingsScreen(
-    state: DataSettingsUiState,
+    state: DataSettingsSnapshot,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onBookmarksEnabledChanged: (Boolean) -> Unit,

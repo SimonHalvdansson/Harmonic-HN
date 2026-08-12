@@ -10,14 +10,13 @@ import kotlin.math.min
 
 /** Resource and device queries that cannot be implemented in common settings code. */
 object AndroidSettingsResources {
-    fun fontLabel(context: Context, font: String): String {
-        val sanitized = TextPreferences.sanitizeFont(font)
+    fun fontLabel(context: Context, font: AppFont): String {
         val entries = context.resources.getStringArray(R.array.font_entries)
         val values = context.resources.getStringArray(R.array.font_values)
         for (index in 0 until min(entries.size, values.size)) {
-            if (sanitized == values[index]) return entries[index]
+            if (font.storedValue == values[index]) return entries[index]
         }
-        return entries.firstOrNull() ?: sanitized
+        return entries.firstOrNull() ?: font.storedValue
     }
 
     fun faviconProviderIcon(provider: String): Int = when (

@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import com.simon.harmonichackernews.resources.*
-
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,21 +16,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.BookmarkImportPolicy
 import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
+import com.simon.harmonichackernews.platform.AndroidCredentialStore
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.NighttimeScheduleKeys
-import com.simon.harmonichackernews.utils.AccountUtils
-import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.BookmarkExportDecision
+import com.simon.harmonichackernews.settings.DataSettingsCounts
+import com.simon.harmonichackernews.settings.DataSettingsPolicy
+import com.simon.harmonichackernews.settings.GeneralBooleanPreference
+import com.simon.harmonichackernews.settings.SettingsResetUseCase
 import com.simon.harmonichackernews.utils.HistoriesUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Calendar
 
@@ -42,13 +42,23 @@ fun DataSettingsScreen(
     onRequestRestart: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    val settingsRepository = remember(context) { AndroidUserSettings.get(context).repository }
+    val appSettings by settingsRepository.updates.collectAsState(
+        initial = settingsRepository.snapshot(),
+    )
+    val credentials = remember(context) { AndroidCredentialStore(context) }
+    val settingsReset = remember(context) {
+        SettingsResetUseCase(
+            defaultSettings = AndroidKeyValueStore.defaults(context),
+            globalSettings = AndroidKeyValueStore.global(context),
+            credentials = credentials,
+        )
+    }
     val savedItems = remember(context) {
         SavedItemsRepository(AndroidKeyValueStore.global(context))
     }
-    val refresh = rememberPreferenceRefresh()
     var localRefresh by remember { mutableIntStateOf(0) }
-    var dialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<DataSettingsDialog?>(null) }
     var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
     var favoriteIds by remember { mutableStateOf<IntArray?>(null) }
 
@@ -94,24 +104,25 @@ fun DataSettingsScreen(
     }
 
     val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
-    SharedDataSettingsScreen(
-        state = DataSettingsUiState(
-            bookmarksEnabled = prefs.getBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, true),
-            bookmarkCount = bookmarkCount,
-            loggedIn = AccountUtils.hasAccountDetails(context),
-            historyCount = HistoriesUtils.loadHistories(context, false).size,
-            postCacheCount = Utils.getCachedPostCount(context),
-            tintCacheCount = StoryPreviewImageLoader
-                .getCachedPreviewImageTintColorCount(context),
-            showChangelog = prefs.getBoolean("pref_show_changelog", true),
+    val portableState = DataSettingsPolicy.snapshot(
+        settings = appSettings,
+        counts = DataSettingsCounts(
+            bookmarks = bookmarkCount,
+            history = HistoriesUtils.loadHistories(context, false).size,
+            postCache = Utils.getCachedPostCount(context),
+            tintCache = StoryPreviewImageLoader.getCachedPreviewImageTintColorCount(context),
         ),
+        loggedIn = credentials.load() != null,
+    )
+    SharedDataSettingsScreen(
+        state = portableState,
         showNavigation = showNavigation,
         onBack = onBack,
         onBookmarksEnabledChanged = {
-            prefs.edit().putBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, it).apply()
+            settingsRepository.setGeneralBoolean(GeneralBooleanPreference.BOOKMARKS_ENABLED, it)
         },
         onShowChangelogChanged = {
-            prefs.edit().putBoolean("pref_show_changelog", it).apply()
+            settingsRepository.setGeneralBoolean(GeneralBooleanPreference.SHOW_CHANGELOG, it)
         },
         onAction = { action ->
             when (action) {
@@ -122,48 +133,46 @@ fun DataSettingsScreen(
                     ).map { it.id }.toIntArray()
                 }
                 DataSettingsAction.ExportBookmarks -> {
-                    if (bookmarkCount == 0) {
-                        Toast.makeText(context, "No bookmarks to export", Toast.LENGTH_SHORT).show()
-                    } else {
-                        exportLauncher.launch(bookmarksFilename())
+                    when (DataSettingsPolicy.exportDecision(bookmarkCount)) {
+                        BookmarkExportDecision.Empty -> Toast.makeText(
+                            context,
+                            "No bookmarks to export",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        BookmarkExportDecision.Ready -> exportLauncher.launch(bookmarksFilename())
                     }
                 }
-                DataSettingsAction.ImportBookmarks -> dialog = "import"
+                DataSettingsAction.ImportBookmarks -> dialog = DataSettingsDialog.Import
                 DataSettingsAction.ClearHistory -> {
                     val oldCount = HistoriesUtils.loadHistories(context, false).size
                     HistoriesUtils.clearHistories(context)
                     localRefresh++
-                    if (oldCount > 0) {
-                        Utils.toast(
-                            "Cleared $oldCount ${if (oldCount == 1) "entry" else "entries"}",
-                            context,
-                        )
-                    }
+                    DataSettingsPolicy.clearedItemsMessage(oldCount, "entry", "entries")
+                        ?.let { Utils.toast(it, context) }
                 }
                 DataSettingsAction.ClearPostCache -> {
                     val oldCount = Utils.clearPostCache(context)
                     localRefresh++
-                    if (oldCount > 0) {
-                        Utils.toast(
-                            "Cleared $oldCount cached ${if (oldCount == 1) "post" else "posts"}",
-                            context,
-                        )
-                    }
+                    DataSettingsPolicy.clearedItemsMessage(
+                        oldCount,
+                        "cached post",
+                        "cached posts",
+                    )?.let { Utils.toast(it, context) }
                 }
                 DataSettingsAction.ClearTintCache -> {
                     PreviewImageTintUtils.clearTintColorCaches(context)
                     localRefresh++
                     Utils.toast("Tint cache cleared", context)
                 }
-                DataSettingsAction.OpenLinksSettings -> dialog = "links"
-                DataSettingsAction.ResetSettings -> dialog = "reset"
+                DataSettingsAction.OpenLinksSettings -> dialog = DataSettingsDialog.Links
+                DataSettingsAction.ResetSettings -> dialog = DataSettingsDialog.Reset
             }
         },
-        contentVersion = refresh + localRefresh,
+        contentVersion = appSettings.hashCode() + localRefresh,
     )
 
     when (dialog) {
-        "import" -> ItemsDialog(
+        DataSettingsDialog.Import -> ItemsDialog(
             title = "Import bookmarks",
             options = listOf(
                 "Overwrite current bookmarks",
@@ -177,14 +186,15 @@ fun DataSettingsScreen(
             },
         )
 
-        "reset" -> MessageActionDialog(
+        DataSettingsDialog.Reset -> MessageActionDialog(
             title = "Reset all settings?",
             message = "This restores app settings to their defaults. Bookmarks, history, " +
                 "favorites, user tags, account details and cached posts are not deleted.",
             positiveLabel = "Reset",
             negativeLabel = "Cancel",
             onPositive = {
-                resetAllSettings(context)
+                settingsReset.execute()
+                Utils.toast("Settings reset", context)
                 onRequestRestart()
                 dialog = null
             },
@@ -192,7 +202,7 @@ fun DataSettingsScreen(
             onDismiss = { dialog = null },
         )
 
-        "links" -> MessageActionDialog(
+        DataSettingsDialog.Links -> MessageActionDialog(
             message = "Since Harmonic does not own the domain news.ycombinator.com, " +
                 "intercepting links needs to be enabled by the user manually.\n\n" +
                 "Go to \"Open by default\" → \"Add link\" in the linked app settings page.",
@@ -212,6 +222,7 @@ fun DataSettingsScreen(
             },
             onDismiss = { dialog = null },
         )
+        null -> Unit
     }
 
     favoriteIds?.let { ids ->
@@ -245,23 +256,13 @@ private fun importBookmarks(
     return result.importedCount
 }
 
-private fun resetAllSettings(context: Context) {
-    PreferenceManager.getDefaultSharedPreferences(context).edit().clear().apply()
-    AiSummaryApiKeyStore.clearApiKey(context)
-    context.getSharedPreferences(
-        Utils.GLOBAL_SHARED_PREFERENCES_KEY,
-        Context.MODE_PRIVATE,
-    ).edit()
-        .remove(NighttimeScheduleKeys.FROM_HOUR)
-        .remove(NighttimeScheduleKeys.FROM_MINUTE)
-        .remove(NighttimeScheduleKeys.TO_HOUR)
-        .remove(NighttimeScheduleKeys.TO_MINUTE)
-        .apply()
-    Utils.toast("Settings reset", context)
-}
-
 private fun bookmarksFilename(): String {
     val calendar = Calendar.getInstance()
-    return "HarmonicBookmarks${calendar.get(Calendar.YEAR)}-" +
-        "${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}.txt"
+    return DataSettingsPolicy.bookmarksFilename(
+        year = calendar.get(Calendar.YEAR),
+        month = calendar.get(Calendar.MONTH) + 1,
+        day = calendar.get(Calendar.DAY_OF_MONTH),
+    )
 }
+
+private enum class DataSettingsDialog { Import, Reset, Links }

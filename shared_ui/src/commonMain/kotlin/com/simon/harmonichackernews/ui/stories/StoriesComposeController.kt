@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
@@ -26,6 +27,7 @@ import org.jetbrains.compose.resources.DrawableResource
 data class StoriesScreenState(
     val mainStories: List<Story> = emptyList(),
     val searchStories: List<Story> = emptyList(),
+    val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
     val displaySettings: StoryDisplaySettings? = null,
     val typeLabels: List<String> = emptyList(),
     val selectedTypeIndex: Int = 0,
@@ -83,6 +85,7 @@ class StoriesComposeController private constructor(
 
     val mainStories: List<Story> get() = screenState.mainStories
     val searchStories: List<Story> get() = screenState.searchStories
+    val previewResources: Map<Int, StoryPreviewResourceState> get() = screenState.previewResources
     val displaySettings: StoryDisplaySettings? get() = screenState.displaySettings
     val typeLabels: List<String> get() = screenState.typeLabels
     val selectedTypeIndex: Int get() = screenState.selectedTypeIndex
@@ -170,6 +173,7 @@ class StoriesComposeController private constructor(
         screenState = state.copy(
             mainStories = state.mainStories.toList(),
             searchStories = state.searchStories.toList(),
+            previewResources = state.previewResources.toMap(),
             typeLabels = state.typeLabels.toList(),
             searchSortLabels = state.searchSortLabels.toList(),
             searchDateLabels = state.searchDateLabels.toList(),
@@ -232,9 +236,29 @@ class StoriesComposeController private constructor(
         syncInteractionState()
     }
 
+    /**
+     * Handles a host back gesture without exposing search workflow to the platform shell.
+     * Hosts only translate their native back event into the progress value.
+     */
+    fun startSearchBack(progress: Float): Boolean {
+        if (!searching) return false
+        beginPredictiveBack(progress)
+        return true
+    }
+
     fun updatePredictiveBack(progress: Float) {
         interactionStore.updatePredictiveBack(progress)
         syncInteractionState()
+    }
+
+    fun updateSearchBack(progress: Float): Boolean {
+        if (!searching) return false
+        if (predictiveBackActive) {
+            updatePredictiveBack(progress)
+        } else {
+            beginPredictiveBack(progress)
+        }
+        return true
     }
 
     fun cancelPredictiveBack() {
@@ -242,9 +266,25 @@ class StoriesComposeController private constructor(
         syncInteractionState()
     }
 
+    fun cancelSearchBack(): Boolean {
+        if (!predictiveBackActive) return false
+        cancelPredictiveBack()
+        return true
+    }
+
     fun commitPredictiveBack() {
         interactionStore.settlePredictiveBack(target = 1f)
         syncInteractionState()
+    }
+
+    fun finishSearchBack(): Boolean {
+        if (!searching) return false
+        if (predictiveBackActive) {
+            commitPredictiveBack()
+        } else {
+            listener.onCloseSearch()
+        }
+        return true
     }
 
     fun endPredictiveBack(request: StoryPredictiveBackSettleRequest? = null) {
@@ -274,13 +314,11 @@ class StoriesComposeController private constructor(
 
     fun showStoryPreview(
         stories: List<Story>,
-        sourcePositions: IntArray,
         cardColors: IntArray,
         openedStoryId: Int,
     ) {
         if (!interactionStore.showStoryPreview(
                 stories,
-                sourcePositions.toList(),
                 cardColors.toList(),
                 openedStoryId,
             )
@@ -290,12 +328,14 @@ class StoriesComposeController private constructor(
         listener.onStoryPreviewVisibilityChanged(true)
     }
 
+    fun showStoryPreview(deck: com.simon.harmonichackernews.presentation.StoryPreviewDeck) =
+        showStoryPreview(deck.stories, deck.cardColors.toIntArray(), deck.openedStoryId)
+
     fun restoreStoryPreview(
         stories: List<Story>,
-        sourcePositions: IntArray,
         cardColors: IntArray,
         openedStoryId: Int,
-    ) = showStoryPreview(stories, sourcePositions, cardColors, openedStoryId)
+    ) = showStoryPreview(stories, cardColors, openedStoryId)
 
     fun isStoryPreviewShowing(): Boolean = storyPreviewOverlay != null
 
@@ -360,7 +400,7 @@ class StoriesComposeController private constructor(
 
     fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
         val target = interactionStore.storyPreviewTarget(page) ?: return
-        if (!listener.onStoryPreviewNavigate(target.story, target.sourcePosition, showWebsite)) {
+        if (!listener.onStoryPreviewNavigate(target.story, showWebsite)) {
             interactionStore.requestDismissStoryPreview()
             syncInteractionState()
         }
@@ -370,7 +410,7 @@ class StoriesComposeController private constructor(
         val kind = action
         val target = interactionStore.beginStoryPreviewAction(page, kind) ?: return
         syncInteractionState()
-        listener.onStoryPreviewAction(target.story, target.sourcePosition, action)
+        listener.onStoryPreviewAction(target.story, action)
         if (action == StoryPreviewActionKind.Read || action == StoryPreviewActionKind.Bookmark) {
             contentVersion++
         }
@@ -429,14 +469,26 @@ class StoriesComposeController private constructor(
         fun onCommentClick(story: Story)
         fun onCommentStoryClick(story: Story)
         fun onCommentRepliesClick(story: Story)
-        fun onStoryLongClick(story: Story)
+        fun onStoryLongClick(
+            story: Story,
+            tintBaseColorArgb: Int,
+        ): com.simon.harmonichackernews.presentation.StoryPreviewDeck?
+        fun onStoryPreviewImageLoaded(storyId: Int, pageUrl: String, imageUrl: String)
+        fun onStoryPreviewImageLoadFailed(storyId: Int, pageUrl: String, imageUrl: String)
+        fun onStoryTintExtracted(
+            story: Story,
+            sourceUrl: String,
+            baseColorArgb: Int,
+            paletteConfigKey: String,
+            tintColorArgb: Int,
+            favicon: Boolean,
+        )
         fun onVisibleStoryRange(lastVisibleIndex: Int)
         fun onStoryPreviewStopScroll()
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
-        fun onStoryPreviewNavigate(story: Story, position: Int, showWebsite: Boolean): Boolean
+        fun onStoryPreviewNavigate(story: Story, showWebsite: Boolean): Boolean
         fun onStoryPreviewAction(
             story: Story,
-            position: Int,
             action: StoryPreviewActionKind,
         )
     }

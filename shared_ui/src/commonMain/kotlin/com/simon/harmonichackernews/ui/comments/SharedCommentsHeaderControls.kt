@@ -74,7 +74,11 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
 
 @Composable
-fun PollOptions(options: List<PollOptionUi>?, onVote: (Int) -> Unit) {
+fun PollOptions(
+    options: List<PollOptionUi>?,
+    voteInFlightOptionId: Int?,
+    onVote: (Int) -> Unit,
+) {
     if (options == null) return
     Column(
         modifier = Modifier
@@ -86,6 +90,7 @@ fun PollOptions(options: List<PollOptionUi>?, onVote: (Int) -> Unit) {
             if (option.loaded) {
                 OutlinedButton(
                     onClick = { onVote(option.id) },
+                    enabled = voteInFlightOptionId == null,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("${option.text} (${option.points} ${if (option.points == 1) "point" else "points"})")

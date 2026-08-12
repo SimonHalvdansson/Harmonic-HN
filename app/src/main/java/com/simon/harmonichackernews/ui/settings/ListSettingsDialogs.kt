@@ -3,16 +3,13 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.font_entries
 import com.simon.harmonichackernews.resources.font_values
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.AndroidSettingsMutator
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import com.simon.harmonichackernews.settings.UserTagsRepository
+import com.simon.harmonichackernews.settings.AppFont
+import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.utils.FontUtils
 import org.jetbrains.compose.resources.stringArrayResource
@@ -35,20 +32,25 @@ fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val labels = stringArrayResource(Res.array.font_entries)
     val values = stringArrayResource(Res.array.font_values)
-    val settings = AndroidUserSettings.get(context)
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val webPresenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
+    val appearancePresenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
+    val snapshot = app.settings.snapshot()
     SharedFontSelectionDialog(
         readerMode = readerMode,
         selected = if (readerMode) {
-            settings.reading.readerModeFont
+            snapshot.reading.readerFont
         } else {
-            settings.story.font
+            snapshot.story.fontChoice
         },
-        options = remember(labels, values) { labels.zip(values) },
+        options = remember(labels, values) {
+            labels.zip(values.map { AppFont.fromStored(it) })
+        },
         onSelected = { value ->
             if (readerMode) {
-                AndroidSettingsMutator.setReaderModeFont(context, value)
+                webPresenter.setReaderFont(value)
             } else {
-                AndroidSettingsMutator.setFont(context, value)
+                appearancePresenter.setFont(value)
                 FontUtils.init(context)
             }
         },
@@ -59,16 +61,14 @@ fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
 @Composable
 fun PreloadWebViewDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
-    val reading = AndroidUserSettings.get(context).reading
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
+    val reading = presenter.snapshot.reading
     SharedPreloadWebViewDialog(
-        initialMode = reading.preloadWebViewMode,
+        initialMode = reading.preloadMode,
         initialBattery = reading.preloadWebViewMinimumBattery,
         onSave = { mode, minimumBattery ->
-            prefs.edit()
-                .putString(UserPreferenceKeys.PRELOAD_WEBVIEW, mode)
-                .putInt(UserPreferenceKeys.PRELOAD_WEBVIEW_MINIMUM_BATTERY, minimumBattery)
-                .apply()
+            presenter.setPreload(mode, minimumBattery)
         },
         onDismiss = onDismiss,
     )
@@ -77,22 +77,21 @@ fun PreloadWebViewDialog(onDismiss: () -> Unit) {
 @Composable
 fun ArchiveRedirectDomainsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
     SharedStringListEditorDialog(
         title = "Redirect to archive version",
         subtitle = "Choose domains where we should automatically redirect the webview " +
             "to the archive.is version. Useful for domains where paywalls are persistent.",
         inputLabel = "Domain",
-        initialItems = AndroidUserSettings.get(context).reading.archiveRedirectDomains,
+        initialItems = presenter.snapshot.reading.archiveRedirectDomains,
         emptyMessage = "No archive redirect domains",
         suggestedItems = SuggestedArchiveDomains,
         suggestionsLabel = "Suggested domains",
         parseInput = ArchiveRedirectPolicy::parseDomains,
         emptyInputError = "Enter a domain",
         onItemsChanged = { updated ->
-            prefs.edit()
-                .putString(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, updated.joinToString(","))
-                .apply()
+            presenter.setArchiveDomains(updated)
         },
         onDismiss = onDismiss,
     )
@@ -100,7 +99,7 @@ fun ArchiveRedirectDomainsDialog(onDismiss: () -> Unit) {
 
 @Composable
 fun FilterListDialog(
-    preferenceKey: String,
+    type: ContentFilterType,
     title: String,
     subtitle: String,
     inputLabel: String,
@@ -108,20 +107,21 @@ fun FilterListDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) {
+        FiltersTagsSettingsPresenter(app.settings, app.contentFilters, app.userTags)
+    }
     SharedStringListEditorDialog(
         title = title,
         subtitle = subtitle,
         inputLabel = inputLabel,
-        initialItems = DelimitedListPolicy.parseCommaSeparated(
-            prefs.getString(preferenceKey, ""),
-        ),
+        initialItems = presenter.filterItems(type),
         emptyMessage = emptyMessage,
         parseInput = DelimitedListPolicy::parseCommaSeparated,
         emptyInputError = "Enter a value",
-        disableSuggestions = preferenceKey == "pref_filter_users",
+        disableSuggestions = type == ContentFilterType.USER,
         onItemsChanged = { updated ->
-            prefs.edit().putString(preferenceKey, updated.joinToString(",")).apply()
+            presenter.setFilterItems(type, updated)
         },
         onDismiss = onDismiss,
     )
@@ -135,13 +135,14 @@ fun UserTagDialog(
     onSaved: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val userTags = remember(context) {
-        UserTagsRepository(AndroidKeyValueStore.defaults(context))
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) {
+        FiltersTagsSettingsPresenter(app.settings, app.contentFilters, app.userTags)
     }
     SharedUserTagDialog(
         currentTag = currentTag,
         onSave = { tag ->
-            userTags.setTag(userName, tag)
+            presenter.setTag(userName, tag)
             onSaved(tag)
         },
         onDismiss = onDismiss,

@@ -61,7 +61,9 @@ import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.LinkSummary
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.SharedNetworkImage
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -84,12 +86,15 @@ fun SharedStoryPreviewCard(
     cardColor: Color,
     settings: StoryDisplaySettings,
     summaryState: StoryPreviewSummaryState,
+    previewResource: StoryPreviewResourceState? = null,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
     faviconUrl: String?,
     textStyle: TextStyle,
     htmlToPlainText: (String) -> String,
-    previewImage: @Composable (url: String, onError: () -> Unit, modifier: Modifier) -> Unit,
+    onPreviewImageLoaded: (storyId: Int, pageUrl: String, imageUrl: String) -> Unit =
+        { _, _, _ -> },
+    onPreviewImageError: (storyId: Int, pageUrl: String, imageUrl: String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val typography = rememberContentTypography(
@@ -104,12 +109,13 @@ fun SharedStoryPreviewCard(
     val voteLoading = controller.storyPreviewVoteLoadingId == story.id
     val favoriteLoading = controller.storyPreviewFavoriteLoadingId == story.id
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
+        ?: previewResource?.imageUrl?.takeIf(String::isNotBlank)
         ?: story.previewImageUrl?.takeIf(String::isNotBlank)
-    var imageLoadFailed by remember(story.id, imageUrl) {
+    var imageLoadFailed by remember(story.id, imageUrl, previewResource?.imageLoadFailed) {
         mutableStateOf(
             imageUrl != null &&
-                story.previewImageLoadFailed &&
-                story.previewImageUrl == imageUrl,
+                previewResource?.imageLoadFailed == true &&
+                previewResource.imageUrl == imageUrl,
         )
     }
     val displayedImageUrl = imageUrl?.takeIf { !imageLoadFailed }
@@ -163,22 +169,29 @@ fun SharedStoryPreviewCard(
                     label = "story preview image content",
                 ) { (currentImageUrl, imageLoading) ->
                     when {
-                        currentImageUrl != null -> previewImage(
-                            currentImageUrl,
-                            {
-                                imageLoadFailed = true
-                                if (story.previewImageUrl.isNullOrBlank()) {
-                                    story.previewImageUrl = currentImageUrl
-                                    story.previewImageUrlLoaded = true
-                                }
-                                if (story.previewImageUrl == currentImageUrl) {
-                                    story.previewImageLoadFailed = true
-                                    controller.invalidateStory(story.id)
-                                }
-                            },
-                            Modifier
+                        currentImageUrl != null -> SharedNetworkImage(
+                            url = currentImageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            crossfade = true,
+                            onSuccess = {
+                                onPreviewImageLoaded(
+                                    story.id,
+                                    story.url.orEmpty(),
+                                    currentImageUrl,
+                                )
+                            },
+                            onError = {
+                                imageLoadFailed = true
+                                onPreviewImageError(
+                                    story.id,
+                                    story.url.orEmpty(),
+                                    currentImageUrl,
+                                )
+                            },
                         )
                         imageLoading -> StoryPreviewShimmer(
                             Modifier

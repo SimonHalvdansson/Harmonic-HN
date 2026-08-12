@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.utils
 
 import android.content.Context
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
 object AccountUtils {
@@ -92,10 +93,33 @@ object AccountUtils {
         )
     }
 
-    fun deleteAccountDetails(ctx: Context) {
+    fun getHackerNewsAccount(ctx: Context): HackerNewsAccount? {
+        val (username, password, failureMode) = getAccountDetails(ctx)
+        if (
+            failureMode != FAILURE_MODE_NONE ||
+            username.isNullOrBlank() ||
+            password.isNullOrEmpty()
+        ) {
+            return null
+        }
+        return HackerNewsAccount(username, password)
+    }
+
+    fun setHackerNewsAccount(ctx: Context, account: HackerNewsAccount): Boolean {
+        setAccountDetails(ctx, account.username, account.password)
+        return getHackerNewsAccount(ctx) == account
+    }
+
+    fun clearHackerNewsAccount(ctx: Context): Boolean {
         cachedHasAccountDetails = null
         setAccountDetails(ctx, null, null)
-        val deleted = EncryptedSharedPreferencesHelper.deleteSharedPreferences(ctx)
+        val encryptedPreferencesDeleted =
+            EncryptedSharedPreferencesHelper.deleteSharedPreferences(ctx)
+        return encryptedPreferencesDeleted && getAccountUsername(ctx).isNullOrEmpty()
+    }
+
+    fun deleteAccountDetails(ctx: Context) {
+        val deleted = clearHackerNewsAccount(ctx)
         if (!deleted) {
             Utils.toast(
                 "Failed to delete EncryptedSharedPreferences",

@@ -1,5 +1,15 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+
+/** Portable user-facing outcome; the host only renders details/login/toast facilities. */
+data class ActionFailurePresentation(
+    val result: HackerNewsActionResult,
+    val message: String,
+    val showDetails: Boolean,
+    val requestLoginIfMissing: Boolean = false,
+)
+
 /** Typed user intents shared by every stories screen implementation. */
 enum class StorySearchOption { SORT, DATE, POINTS, COMMENTS }
 
@@ -69,4 +79,18 @@ enum class VoteDirection(val wireValue: String) {
     UP("up"),
     DOWN("down"),
     REMOVE("un"),
+
+    ;
+
+    val commentMenuAction: CommentMenuAction
+        get() = when (this) {
+            UP -> CommentMenuAction.UPVOTE
+            DOWN -> CommentMenuAction.DOWNVOTE
+            REMOVE -> CommentMenuAction.UNVOTE
+        }
+
+    companion object {
+        fun fromWireValue(value: String): VoteDirection =
+            entries.firstOrNull { it.wireValue == value } ?: REMOVE
+    }
 }

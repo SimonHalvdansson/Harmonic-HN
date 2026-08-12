@@ -2,14 +2,16 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.CommentSortingPreference
+import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
+import com.simon.harmonichackernews.settings.CommentsProvider
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 
 data class CommentsSettingsUiState(
-    val displayStyle: String,
-    val cardStyleValue: String,
-    val standardStyleValue: String,
+    val displayStyle: DisplayStyle,
     val showBorder: Boolean,
     val textSize: Float,
     val textSizeOffset: Int,
@@ -31,10 +33,10 @@ data class CommentsSettingsUiState(
     val collapseParent: Boolean,
     val collapseTopLevel: Boolean,
     val swapTap: Boolean,
-    val sortingLabel: String,
-    val providerLabel: String,
+    val sorting: CommentSortingPreference,
+    val provider: CommentsProvider,
     val showNavigationButtons: Boolean,
-    val volumeNavigationLabel: String,
+    val volumeNavigation: CommentVolumeNavigationMode,
     val smoothScroll: Boolean,
 )
 
@@ -62,7 +64,7 @@ fun SharedCommentsSettingsScreen(
     state: CommentsSettingsUiState,
     showNavigation: Boolean,
     onBack: () -> Unit,
-    onDisplayStyleChanged: (String) -> Unit,
+    onDisplayStyleChanged: (DisplayStyle) -> Unit,
     onTextSizeOffsetChanged: (Int) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
@@ -77,7 +79,7 @@ fun SharedCommentsSettingsScreen(
             CommentItem(
                 model = SettingsCommentPreviewModel,
                 style = CommentItemStyle(
-                    cardStyle = state.displayStyle == state.cardStyleValue,
+                    cardStyle = state.displayStyle == DisplayStyle.CARD,
                     showCardBorder = state.showBorder,
                     textSize = state.textSize,
                     collectLinks = state.collectLinks,
@@ -94,11 +96,11 @@ fun SharedCommentsSettingsScreen(
                 SegmentedSetting(
                     title = "Display style",
                     options = listOf(
-                        state.standardStyleValue to "Standard",
-                        state.cardStyleValue to "Card",
+                        DisplayStyle.STANDARD.storedValue to "Standard",
+                        DisplayStyle.CARD.storedValue to "Card",
                     ),
-                    selected = state.displayStyle,
-                    onSelected = onDisplayStyleChanged,
+                    selected = state.displayStyle.storedValue,
+                    onSelected = { onDisplayStyleChanged(DisplayStyle.fromStored(it)) },
                 )
                 SettingsDivider()
                 BooleanRow(
@@ -107,7 +109,7 @@ fun SharedCommentsSettingsScreen(
                     state.showBorder,
                     CommentsBooleanSetting.Border,
                     onBooleanChanged,
-                    enabled = state.displayStyle == state.cardStyleValue,
+                    enabled = state.displayStyle == DisplayStyle.CARD,
                 )
                 SettingsDivider()
                 SliderSetting(
@@ -189,9 +191,9 @@ fun SharedCommentsSettingsScreen(
                     },
                 )
                 SettingsDivider()
-                DialogRow("Comment sorting", state.sortingLabel, Res.drawable.ic_filter_list, CommentsSettingsDialog.Sorting, onDialogRequested)
+                DialogRow("Comment sorting", state.sorting.label, Res.drawable.ic_filter_list, CommentsSettingsDialog.Sorting, onDialogRequested)
                 SettingsDivider()
-                DialogRow("Comments provider", state.providerLabel, Res.drawable.ic_api, CommentsSettingsDialog.Provider, onDialogRequested)
+                DialogRow("Comments provider", state.provider.label, Res.drawable.ic_api, CommentsSettingsDialog.Provider, onDialogRequested)
             }
         }
         item {
@@ -207,7 +209,7 @@ fun SharedCommentsSettingsScreen(
                 SettingsDivider()
                 DialogRow(
                     "Volume buttons for navigation",
-                    state.volumeNavigationLabel,
+                    state.volumeNavigation.label,
                     Res.drawable.ic_swipe_vertical,
                     CommentsSettingsDialog.VolumeNavigation,
                     onDialogRequested,

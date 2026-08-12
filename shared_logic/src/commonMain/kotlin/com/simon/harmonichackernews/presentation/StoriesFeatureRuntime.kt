@@ -1,37 +1,72 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
+import com.simon.harmonichackernews.cache.StoryCacheRequest
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.platform.HistoryStore
+import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.network.StoryPreviewResourceService
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.StoryResourceTintKind
+import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.toDestination
+import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.ObservableHistoryStore
+import com.simon.harmonichackernews.settings.ContentFilters
+import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 
 /** Platform operations that remain after the shared stories feature has made a decision. */
 sealed interface StoriesRuntimeEffect {
-    data class OpenComments(
-        val story: Story,
-        val position: Int,
-        val showWebsite: Boolean,
-    ) : StoriesRuntimeEffect
+    data class OpenStory(val destination: StoryDestination) : StoriesRuntimeEffect
 
     data class OpenExternalLink(val url: String) : StoriesRuntimeEffect
+    data class Platform(val effect: StoriesPlatformEffect) : StoriesRuntimeEffect
+    data class PreviewActionCompleted(
+        val storyId: Int,
+        val action: StoryPreviewActionKind,
+    ) : StoriesRuntimeEffect
     data class StoryChanged(val story: Story? = null) : StoriesRuntimeEffect
-    data class PrefetchStoryResources(val story: Story) : StoriesRuntimeEffect
+    data class CacheStories(val request: StoryCacheRequest) : StoriesRuntimeEffect
     data object LoginRequired : StoriesRuntimeEffect
     data class UserMessage(val message: String) : StoriesRuntimeEffect
     data class SavedActionFailed(
-        val outcome: SavedItemActionOutcome.Failure,
+        val presentation: ActionFailurePresentation,
     ) : StoriesRuntimeEffect
 }
+
+/**
+ * Portable settings state for the stories feature.
+ *
+ * Version counters let a platform shell execute only facilities it owns, such as its font cache,
+ * without rediscovering which preference changed. Preview reconciliation stays in shared code.
+ */
+data class StoriesSettingsState(
+    val displaySettings: StoryDisplaySettings,
+    val version: Long = 0L,
+    val fontRefreshVersion: Long = 0L,
+)
+
+data class StoryPreviewDeck(
+    val stories: List<Story>,
+    val cardColors: List<Int>,
+    val openedStoryId: Int,
+)
 
 /**
  * Lifecycle-independent stories-screen workflow.
@@ -46,12 +81,18 @@ class StoriesFeatureRuntime(
     val presenter: StoriesPresenter,
     private val savedItems: SavedItemsRepository,
     val savedItemActions: SavedItemActionUseCase,
-    private val historyStore: HistoryStore,
+    private val historyStore: ObservableHistoryStore,
+    private val accounts: ObservableHackerNewsAccountRepository,
+    private val connectivity: ConnectivityService,
+    private val userSettings: UserSettings,
+    private val loadContentFilters: () -> ContentFilters,
     private val commentMasterResolver: CommentMasterResolver,
     private val nowMillis: () -> Long,
     private val hydrateCachedStory: (Story) -> Boolean,
-    private val shouldFilterStory: (Story, StoryType) -> Boolean,
-    private val hasAccountDetails: () -> Boolean,
+    private val loadCachedStories: () -> List<Story> = { emptyList() },
+    private val hasCachedStories: () -> Boolean = { false },
+    previewResourceService: StoryPreviewResourceService? = null,
+    storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
 ) {
     private val mutableEffects = MutableSharedFlow<StoriesRuntimeEffect>(extraBufferCapacity = 32)
     val effects: SharedFlow<StoriesRuntimeEffect> = mutableEffects.asSharedFlow()
@@ -71,9 +112,20 @@ class StoriesFeatureRuntime(
         clickedStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
         shouldHideClickedStories = { hideClicked },
         hydrateCachedStory = hydrateCachedStory,
-        shouldHideHydratedStory = { shouldFilterStory(it, currentType) },
+        shouldHideHydratedStory = { presenter.shouldHideStory(it, currentType) },
     )
     private val searchRuntime = StorySearchRuntime()
+    val storyResources = previewResourceService?.let { service ->
+        StoryListResourceRuntime(
+            scope = scope,
+            service = service,
+            settings = StoryDisplaySettings.from(userSettings.story),
+            tintStore = storyResourceTints,
+        )
+    }
+
+    val previewResourceStates: Map<Int, StoryPreviewResourceState>
+        get() = storyResources?.states().orEmpty()
 
     private var paginationMode = false
     private var hideClicked = false
@@ -85,6 +137,17 @@ class StoriesFeatureRuntime(
     private var userItemsInitialLoadInProgress = false
     private var rateLimited = false
     private var lastSelectionMillis = 0L
+    private var bookmarksChanged = false
+    private var historyChangeVersion = -1L
+    private var enabledAdditionalFrontpages: Set<String> = emptySet()
+    private val mutableSettingsState = MutableStateFlow(
+        StoriesSettingsState(StoryDisplaySettings.from(userSettings.story)),
+    )
+
+    val settingsState: StateFlow<StoriesSettingsState> = mutableSettingsState.asStateFlow()
+
+    var availableStoryTypes: List<StoryType> = listOf(StoryType.TOP_STORIES)
+        private set
 
     var refreshIndicatorShowing: Boolean = false
         private set
@@ -124,9 +187,26 @@ class StoriesFeatureRuntime(
     val isUserItemsInitialLoadInProgress: Boolean
         get() = userItemsInitialLoadInProgress
 
+    val online: Boolean
+        get() = connectivity.isOnline()
+
+    val loggedIn: Boolean
+        get() = accounts.accountState.value != null
+
+    val canClearHistory: Boolean
+        get() = currentType.isHistory && historyStore.size > 0
+
+    val cachedStoriesAvailable: Boolean
+        get() = hasCachedStories()
+
     init {
+        configure(userSettings, loadContentFilters())
         scope.launch { presenter.effects.collect(::applyPresenterEffect) }
         scope.launch { presenter.searchStore.state.collect(::applySearchState) }
+        scope.launch { userSettings.changes.collect { reconcileSettings() } }
+        scope.launch {
+            accounts.accountState.drop(1).collect { refreshAccountState() }
+        }
     }
 
     fun configure(
@@ -151,7 +231,38 @@ class StoriesFeatureRuntime(
         }
     }
 
-    fun initialize(preferredType: StoryType, restoring: Boolean) {
+    /** Applies all portable story/feed preferences and reports whether filtering changed. */
+    fun configure(settings: UserSettings, filters: ContentFilters): Boolean {
+        val story = settings.story
+        configure(
+            pagination = story.pagination,
+            hideClicked = story.hideClicked,
+            alwaysOpenComments = story.alwaysOpenComments,
+            useIntegratedWebView = settings.reading.integratedWebView,
+        )
+        return presenter.configureVisibility(filters, story.hideJobs)
+    }
+
+    fun initializeHistory() {
+        historyStore.initialize()
+        historyChangeVersion = historyStore.changeVersion
+    }
+
+    fun initialize(
+        preferredTypeLabel: CharSequence?,
+        enabledAdditionalFrontpages: Set<String>,
+        hasAccount: Boolean,
+        restoring: Boolean,
+    ) {
+        availableStoryTypes = StoryTypeMenuPolicy.availableTypes(
+            enabledAdditionalFrontpages,
+            hasAccount,
+        )
+        this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
+        val preferredType = StoryTypeMenuPolicy.preferred(
+            preferredTypeLabel,
+            availableStoryTypes,
+        )
         if (!sessionState.initialized) {
             selectType(StoryListTarget.MAIN, preferredType)
             selectType(StoryListTarget.SEARCH, preferredType)
@@ -166,15 +277,128 @@ class StoriesFeatureRuntime(
         }
     }
 
+    fun initialize(settings: UserSettings, hasAccount: Boolean, restoring: Boolean) = initialize(
+        preferredTypeLabel = settings.story.preferredStoryType,
+        enabledAdditionalFrontpages = settings.story.additionalFrontpages,
+        hasAccount = hasAccount,
+        restoring = restoring,
+    )
+
+    fun initialize(restoring: Boolean) = initialize(
+        settings = userSettings,
+        hasAccount = loggedIn,
+        restoring = restoring,
+    )
+
+    /**
+     * Reconciles persisted settings with all shared feed and presentation state.
+     *
+     * The platform observes [settingsState] only to perform facilities such as refreshing its font
+     * cache or prefetching images. It does not decide what changed or which shared data to reload.
+     */
+    fun reconcileSettings(): StoryDisplaySettings.UpdateResult {
+        val storyPreferences = userSettings.story
+        val currentState = mutableSettingsState.value
+        val nextDisplaySettings = StoryDisplaySettings.from(storyPreferences)
+        val update = nextDisplaySettings.changesFrom(currentState.displaySettings)
+        storyResources?.updateSettings(nextDisplaySettings)
+        val filtersChanged = configure(userSettings, loadContentFilters())
+
+        updateAvailableStoryTypes(
+            enabledAdditionalFrontpages = storyPreferences.additionalFrontpages,
+            hasAccount = loggedIn,
+        )
+
+        if (update.itemsChanged) {
+            mutableSettingsState.value = currentState.copy(
+                displaySettings = nextDisplaySettings,
+                version = currentState.version + 1L,
+                fontRefreshVersion = currentState.fontRefreshVersion +
+                    if (update.fontChanged) 1L else 0L,
+            )
+            publishAllStoryContentChanged()
+            changed()
+        }
+
+        if (filtersChanged) refresh(showSwipeRefreshIndicator = false)
+        if (update.previewImageModeChanged) prefetchVisibleStoryResources()
+        evaluateUpdate(storyPreferences.alwaysShowTapToRefresh)
+        return update
+    }
+
+    /** Applies portable work associated with a host becoming active again. */
+    fun resume(hostStarted: Boolean) {
+        reconcileSettings()
+        syncVisibleUserItemsWithCache()
+        refreshBookmarksIfNeeded(hostStarted)
+        syncHistoryIfChanged()
+        changed()
+    }
+
+    fun refreshAccountState() {
+        updateAvailableStoryTypes(
+            enabledAdditionalFrontpages = userSettings.story.additionalFrontpages,
+            hasAccount = loggedIn,
+        )
+    }
+
+    fun requestStoryCache(storyCount: Int) {
+        userSettings.setStoriesToCache(storyCount)
+        val cache = userSettings.cache
+        emit(
+            StoriesRuntimeEffect.CacheStories(
+                StoryCacheRequest(
+                    storyCount = cache.storiesToCache,
+                    cacheArticleSnapshots = cache.cacheArticleSnapshots,
+                ),
+            ),
+        )
+    }
+
+    fun evaluateUpdate(alwaysShow: Boolean) {
+        presenter.dispatch(
+            StoriesAction.EvaluateUpdateAvailability(
+                nowMillis = nowMillis(),
+                lastLoadedMillis = sessionState.lastLoaded,
+                alwaysShow = alwaysShow,
+                storyType = currentType,
+            ),
+        )
+    }
+
     fun selectType(target: StoryListTarget, type: StoryType) {
         presenter.dispatch(StoriesAction.SelectStoryType(type, target))
         store(target).setPaginationEnabled(shouldUsePagination(type))
     }
 
     fun selectTypeAndRefresh(type: StoryType) {
+        if (type !in availableStoryTypes) return
         selectType(StoryListTarget.MAIN, type)
         refresh(showSwipeRefreshIndicator = false, showMainLoadingIndicator = true)
     }
+
+    /** Updates the portable source menu and returns true if the selected feed was replaced. */
+    fun updateAvailableStoryTypes(
+        enabledAdditionalFrontpages: Set<String>,
+        hasAccount: Boolean,
+    ): Boolean {
+        this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
+        val next = StoryTypeMenuPolicy.availableTypes(enabledAdditionalFrontpages, hasAccount)
+        if (next == availableStoryTypes) return false
+        availableStoryTypes = next
+        if (currentType !in next) {
+            selectTypeAndRefresh(StoryType.TOP_STORIES)
+            return true
+        }
+        changed()
+        return false
+    }
+
+    fun storyTypeAt(index: Int): StoryType =
+        availableStoryTypes.getOrNull(index) ?: StoryType.UNKNOWN
+
+    fun selectedStoryTypeIndex(): Int =
+        availableStoryTypes.indexOf(presenter.state.value.mainStoryType)
 
     fun shiftFrontPageDay(days: Int) {
         frontPageDay.shift(days)
@@ -256,6 +480,7 @@ class StoriesFeatureRuntime(
         showSwipeRefreshIndicator: Boolean,
         showMainLoadingIndicator: Boolean = false,
     ) {
+        if (currentType.isBookmarks) bookmarksChanged = false
         presenter.dispatch(StoriesAction.DismissUpdateAvailability)
         val type = currentType
         val plan = StoryFeedRefreshPolicy.plan(
@@ -353,12 +578,10 @@ class StoriesFeatureRuntime(
     }
 
     fun selectStoryLink(story: Story) {
-        val position = activeStories.indexOf(story)
-        if (position < 0 || !canSelect()) return
+        if (story !in activeStories || !canSelect()) return
         presenter.dispatch(
             StoriesAction.SelectStoryLink(
                 story,
-                position,
                 alwaysOpenComments,
                 useIntegratedWebView,
             ),
@@ -366,22 +589,20 @@ class StoriesFeatureRuntime(
     }
 
     fun selectStoryComments(story: Story) {
-        val position = activeStories.indexOf(story)
-        if (position >= 0 && canSelect()) {
-            presenter.dispatch(StoriesAction.SelectStoryComments(story, position))
+        if (story in activeStories && canSelect()) {
+            presenter.dispatch(StoriesAction.SelectStoryComments(story))
         }
     }
 
     fun selectCommentStory(story: Story) {
-        val position = activeStories.indexOf(story)
-        if (position < 0) return
+        if (story !in activeStories) return
         val master = story.toCommentMasterStory()
         if (master == null) {
             selectStoryComments(story)
             return
         }
         if (master.loaded) {
-            emit(StoriesRuntimeEffect.OpenComments(master, position, false))
+            openStory(master, false)
             return
         }
         scope.launch {
@@ -394,24 +615,148 @@ class StoriesFeatureRuntime(
             }
             if (activeStories.contains(story)) {
                 changed(story)
-                emit(StoriesRuntimeEffect.OpenComments(resolved, position, false))
+                openStory(resolved, false)
             }
         }
     }
 
-    fun openComments(story: Story, position: Int, showWebsite: Boolean) {
+    fun openStory(story: Story, showWebsite: Boolean) {
         markClicked(story)
         changed(story)
-        emit(StoriesRuntimeEffect.OpenComments(story, position, showWebsite))
+        emit(StoriesRuntimeEffect.OpenStory(story.toDestination(showWebsite = showWebsite)))
     }
 
-    fun toggleRead(story: Story) {
+    fun previewStories(openedStoryId: Int): List<Story> {
+        val candidates = activeStories
+            .take(activeStore.visibleStoryItemCount)
+            .filter { story ->
+                !story.isComment && story.loaded && (!story.isLink || !story.url.isNullOrEmpty())
+            }
+        return candidates.takeIf { stories -> stories.any { it.id == openedStoryId } }.orEmpty()
+    }
+
+    fun previewStory(storyId: Int): Story? = activeStories.firstOrNull { story ->
+        story.id == storyId && (!story.isLink || !story.url.isNullOrEmpty())
+    }
+
+    fun activeStory(storyId: Int): Story? = activeStories.firstOrNull { it.id == storyId }
+
+    fun completePreviewImageLoad(
+        storyId: Int,
+        pageUrl: String,
+        imageUrl: String,
+        success: Boolean,
+    ) = storyResources?.completePreviewImageLoad(storyId, pageUrl, imageUrl, success)
+
+    fun recordStoryResourceTint(
+        story: Story,
+        kind: StoryResourceTintKind,
+        sourceUrl: String,
+        baseColorArgb: Int,
+        paletteConfigKey: String,
+        tintColorArgb: Int,
+    ): Boolean = storyResources?.recordTint(
+        story,
+        kind,
+        sourceUrl,
+        baseColorArgb,
+        paletteConfigKey,
+        tintColorArgb,
+    ) ?: false
+
+    fun prefetchVisibleStoryResources(lastVisibleIndex: Int = -1) {
+        val store = activeStore
+        storyResources?.prefetchNearViewport(
+            stories = activeStories,
+            initialLoadCount = previewPrefetchInitialLoadCount,
+            lastVisibleItem = lastVisibleIndex,
+            paginationVisibleCount = store.state.value.visibleStoryCount
+                .takeIf { store.state.value.paginationEnabled },
+        )
+    }
+
+    fun previewDeck(openedStoryId: Int, tintBaseColorArgb: Int): StoryPreviewDeck? {
+        val stories = previewStories(openedStoryId)
+        if (stories.isEmpty()) return null
+        stories.forEach { storyResources?.request(it) }
+        return StoryPreviewDeck(
+            stories = stories,
+            cardColors = stories.map { story ->
+                storyResources?.resolveCardBackgroundColor(story, tintBaseColorArgb)
+                    ?: tintBaseColorArgb
+            },
+            openedStoryId = openedStoryId,
+        )
+    }
+
+    val previewPrefetchInitialLoadCount: Int
+        get() = if (activeStore.state.value.paginationEnabled) {
+            StoryPaginationPolicy.DEFAULT_PAGE_SIZE
+        } else {
+            StoryPaginationPolicy.DEFAULT_INITIAL_LOAD_COUNT
+        }
+
+    fun lastUpdatedMillisForHeader(): Long? = sessionState.lastLoaded.takeIf {
+        presenter.state.value.updateAvailable && !searching && it > 0L
+    }
+
+    fun notifySavedItemsChanged(source: SavedItemSource) {
+        if (source == SavedItemSource.BOOKMARKS) bookmarksChanged = true
+    }
+
+    fun menu(action: StoriesMenuAction) {
+        if (action == StoriesMenuAction.CLEAR_HISTORY) {
+            scope.launch {
+                historyStore.clearHistory()
+                clearActiveStories()
+            }
+            return
+        }
+        val account = accounts.load()
+        if (action == StoriesMenuAction.ACCOUNT && account != null) {
+            scope.launch {
+                accounts.clearAccount()
+                updateAvailableStoryTypes(enabledAdditionalFrontpages, hasAccount = false)
+                emit(StoriesRuntimeEffect.UserMessage("Logged out"))
+            }
+            return
+        }
+        when (val effect = StoriesUiOrchestrator.menu(action, account?.username)) {
+            null -> Unit
+            else -> emit(StoriesRuntimeEffect.Platform(effect))
+        }
+    }
+
+    fun previewAction(story: Story, action: StoryPreviewActionKind) {
+        if (story !in activeStories) return
+        when (action) {
+            StoryPreviewActionKind.Vote -> toggleVote(story)
+            StoryPreviewActionKind.Read -> toggleRead(story)
+            StoryPreviewActionKind.Bookmark -> toggleBookmark(story)
+            StoryPreviewActionKind.Favorite -> toggleFavorite(story)
+        }
+    }
+
+    fun refreshBookmarksIfNeeded(hostStarted: Boolean): Boolean {
+        if (!bookmarksChanged || searching || !hostStarted || !currentType.isBookmarks) return false
+        bookmarksChanged = false
+        refresh(false)
+        return true
+    }
+
+    private fun toggleRead(story: Story) {
         story.clicked = !story.clicked
-        if (story.clicked) historyStore.record(story.id, nowMillis()) else historyStore.remove(story.id)
+        scope.launch {
+            if (story.clicked) {
+                historyStore.recordHistory(story.id, nowMillis())
+            } else {
+                historyStore.removeHistory(story.id)
+            }
+        }
         changed(story)
     }
 
-    fun toggleBookmark(story: Story) {
+    private fun toggleBookmark(story: Story) {
         val bookmarked = savedItemActions.toggleBookmark(story.id)
         if (!bookmarked && currentType.isBookmarks) {
             sessionState.bookmarkStories.remove(story)
@@ -421,7 +766,7 @@ class StoriesFeatureRuntime(
         }
     }
 
-    fun toggleVote(story: Story, completed: () -> Unit) {
+    private fun toggleVote(story: Story) {
         val generation = presenter.storyLoadGeneration
         val expectedStore = activeStore
         val action = savedItemActions.beginVote(
@@ -435,14 +780,27 @@ class StoriesFeatureRuntime(
                 is SavedItemActionOutcome.Success -> Unit
                 is SavedItemActionOutcome.Failure -> {
                     if (isCurrentActionContext(generation, expectedStore)) changed(story)
-                    emit(StoriesRuntimeEffect.SavedActionFailed(outcome))
+                    emit(
+                        StoriesRuntimeEffect.SavedActionFailed(
+                            ActionFailurePresentation(
+                                result = outcome.result,
+                                message = "Action unsuccessful, see dialog for response",
+                                showDetails = true,
+                            ),
+                        ),
+                    )
                 }
             }
-            completed()
+            emit(
+                StoriesRuntimeEffect.PreviewActionCompleted(
+                    story.id,
+                    StoryPreviewActionKind.Vote,
+                ),
+            )
         }
     }
 
-    fun toggleFavorite(story: Story, completed: () -> Unit) {
+    private fun toggleFavorite(story: Story) {
         val generation = presenter.storyLoadGeneration
         val expectedStore = activeStore
         val favoritesList = currentType.isFavorites
@@ -466,10 +824,23 @@ class StoriesFeatureRuntime(
                             changed(story)
                         }
                     }
-                    emit(StoriesRuntimeEffect.SavedActionFailed(outcome))
+                    emit(
+                        StoriesRuntimeEffect.SavedActionFailed(
+                            ActionFailurePresentation(
+                                result = outcome.result,
+                                message = "Action unsuccessful, see dialog for response",
+                                showDetails = true,
+                            ),
+                        ),
+                    )
                 }
             }
-            completed()
+            emit(
+                StoriesRuntimeEffect.PreviewActionCompleted(
+                    story.id,
+                    StoryPreviewActionKind.Favorite,
+                ),
+            )
         }
     }
 
@@ -504,6 +875,8 @@ class StoriesFeatureRuntime(
         changed()
     }
 
+    fun showCachedStories() = showCachedStories(loadCachedStories())
+
     fun clearActiveStories() {
         beginGeneration()
         activeStore.clear()
@@ -526,24 +899,56 @@ class StoriesFeatureRuntime(
 
     fun resumeRetainedLoads() = resumeInterruptedLoads()
 
-    fun syncHistoryIfChanged(previousVersion: Long): StoryHistorySyncResult {
-        if (historyStore.changeVersion == previousVersion) return StoryHistorySyncResult.UNCHANGED
+    fun syncHistoryIfChanged(): StoryHistorySyncResult {
+        val currentVersion = historyStore.changeVersion
+        if (currentVersion == historyChangeVersion) return StoryHistorySyncResult.UNCHANGED
+        historyChangeVersion = currentVersion
         val result = activeStore.syncHistory(
             clickedStoryIds = historyStore.load().mapTo(mutableSetOf()) { it.id },
             searchingOnlyClicked = searching && searchOptions.state.value.options.onlyClicked,
             showingHistory = currentType.isHistory,
             hideClicked = hideClicked,
         )
-        if (result == StoryHistorySyncResult.ITEMS_REMOVED) loadVisibleStories()
+        when (result) {
+            StoryHistorySyncResult.ITEMS_REMOVED -> loadVisibleStories()
+            StoryHistorySyncResult.REFRESH_REQUIRED -> refresh(false)
+            StoryHistorySyncResult.CONTENT_CHANGED,
+            StoryHistorySyncResult.UNCHANGED -> Unit
+        }
         if (result != StoryHistorySyncResult.UNCHANGED) changed()
         return result
     }
 
     fun publishStoryChanged(story: Story? = null) = changed(story)
 
+    fun publishStoryContentChanged(story: Story? = null) {
+        when {
+            story == null -> activeStore.contentChanged()
+            story in mainStories -> mainStore.contentChanged()
+            story in searchStories -> searchStore.contentChanged()
+            else -> return
+        }
+        changed(story)
+    }
+
+    fun mergeExternalStoryUpdate(update: Story): Boolean {
+        val story = activeStories.firstOrNull { it.id == update.id } ?: return false
+        StoryRowMergePolicy.mergeSummaryFields(story, update)
+        publishStoryContentChanged(story)
+        return true
+    }
+
+    fun publishAllStoryContentChanged() {
+        mainStore.contentChanged()
+        searchStore.contentChanged()
+    }
+
     fun dispose() {
         presenter.dispatch(StoriesAction.CancelFeedLoads)
         presenter.clearStoryRowLoads()
+        mainStore.cancelTransientLoads()
+        searchStore.cancelTransientLoads()
+        storyResources?.dispose()
     }
 
     private fun applyPresenterEffect(effect: StoriesEffect) {
@@ -551,7 +956,11 @@ class StoriesFeatureRuntime(
             is StoriesEffect.OpenComments -> {
                 markClicked(effect.story)
                 changed(effect.story)
-                emit(StoriesRuntimeEffect.OpenComments(effect.story, effect.position, effect.showWebsite))
+                emit(
+                    StoriesRuntimeEffect.OpenStory(
+                        effect.story.toDestination(showWebsite = effect.showWebsite),
+                    ),
+                )
             }
             is StoriesEffect.OpenExternalStory -> {
                 if (effect.story.isFrontpageLink) effect.story.clicked = true else markClicked(effect.story)
@@ -628,7 +1037,7 @@ class StoriesFeatureRuntime(
             removeStory(story, loadReplacement = true)
             return
         }
-        if (shouldFilterStory(story, currentType)) {
+        if (presenter.shouldHideStory(story, currentType)) {
             removeStory(story)
             return
         }
@@ -688,7 +1097,7 @@ class StoriesFeatureRuntime(
         val source = currentUserItemSource()
         val cached = savedItems.loadSnapshot(source)
         if (plan.loadCachedUserItems) syncUserItemStories(cached.itemIds, cached.commentIds)
-        if (!hasAccountDetails()) {
+        if (accounts.load() == null) {
             refreshIndicatorShowing = false
             userItemsInitialLoadInProgress = false
             if (activeStories.isEmpty()) activeStore.fail(StoryLoadFailure.GENERAL)
@@ -807,7 +1216,7 @@ class StoriesFeatureRuntime(
     private fun loadStory(story: Story, generation: Int) {
         if (!presenter.isCurrentStoryLoadGeneration(generation)) return
         if (story.loaded) {
-            if (shouldFilterStory(story, currentType)) removeStory(story)
+            if (presenter.shouldHideStory(story, currentType)) removeStory(story)
             else prefetch(story)
             return
         }
@@ -909,7 +1318,7 @@ class StoriesFeatureRuntime(
 
     private fun markClicked(story: Story) {
         if (!searchOptions.state.value.options.onlyClicked) story.clicked = true
-        historyStore.record(story.id, nowMillis())
+        scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 
     private fun canSelect(): Boolean {
@@ -919,8 +1328,7 @@ class StoriesFeatureRuntime(
         return true
     }
 
-    private fun prefetch(story: Story) =
-        emit(StoriesRuntimeEffect.PrefetchStoryResources(story))
+    private fun prefetch(story: Story) = storyResources?.prefetchStory(story, activeStories)
 
     private fun changed(story: Story? = null) {
         when {

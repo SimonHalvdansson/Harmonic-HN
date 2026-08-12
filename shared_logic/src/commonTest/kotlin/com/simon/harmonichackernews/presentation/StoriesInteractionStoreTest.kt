@@ -51,6 +51,7 @@ class StoriesInteractionStoreTest {
         store.requestScrollBy(-5)
         val second = requireNotNull(store.state.scrollRequest)
         assertEquals(15, second.dy)
+        assertEquals(LayoutDelta(15), second.delta)
         assertTrue(store.state.headerPinnedForPreview)
 
         store.consumeScrollRequest(first)
@@ -66,18 +67,27 @@ class StoriesInteractionStoreTest {
         val store = store()
         val stories = listOf(story(1), story(2), story(3))
 
-        assertFalse(store.showStoryPreview(stories, listOf(0), listOf(10), openedStoryId = 2))
-        assertTrue(store.showStoryPreview(stories, listOf(4, 5, 6), listOf(10, 20, 30), 2))
+        assertFalse(store.showStoryPreview(stories, listOf(10), openedStoryId = 2))
+        assertTrue(store.showStoryPreview(stories, listOf(10, 20, 30), 2))
+        assertEquals(
+            listOf(ArgbColor(10), ArgbColor(20), ArgbColor(30)),
+            store.state.storyPreviewOverlay?.cardBackgrounds,
+        )
         assertEquals(1, store.state.storyPreviewOverlay?.initialPage)
         assertEquals(2, store.state.visibleStoryPreviewId)
         assertEquals(setOf(2), store.state.suppressedStoryIds)
+
+        store.updateStoryPreviewBackGesture(
+            BackGesture(0.5f, BackGestureEdge.RIGHT, pointerY = 30f),
+        )
+        assertEquals(BackGestureEdge.RIGHT, store.state.storyPreviewBackGesture.edge)
 
         store.updateStoryPreviewPagePosition(lowerPage = 1, upperPage = 2, offset = 0.25f)
         assertTrue(store.state.suppressedStoryIds.isEmpty())
         assertEquals(mapOf(2 to 0.25f, 3 to 0.75f), store.state.storyPagingAlphas)
         store.settleStoryPreviewPage(2)
         assertEquals(3, store.state.visibleStoryPreviewId)
-        assertEquals(6, store.storyPreviewTarget(2)?.sourcePosition)
+        assertEquals(3, store.storyPreviewTarget(2)?.story?.id)
 
         store.requestDismissStoryPreview()
         val dismissVersion = store.state.storyPreviewDismissRequestVersion
@@ -94,7 +104,7 @@ class StoriesInteractionStoreTest {
         val store = store(defaultHeight = 96)
         val stories = listOf(story(1), story(2), story(3))
         store.updateContent(stories, emptyList(), searching = false, lastSearch = "")
-        assertTrue(store.showStoryPreview(stories, listOf(0, 1, 2), listOf(1, 2, 3), 1))
+        assertTrue(store.showStoryPreview(stories, listOf(1, 2, 3), 1))
 
         store.beginStoryPreviewAction(1, StoryPreviewActionKind.Vote)
         assertEquals(2, store.state.storyPreviewVoteLoadingId)

@@ -9,26 +9,30 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.Data
+import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
-import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.network.DownloadSink
+import com.simon.harmonichackernews.network.HttpTransferEngine
+import com.simon.harmonichackernews.network.KtorTransferClient
+import com.simon.harmonichackernews.network.TransferOptions
+import com.simon.harmonichackernews.network.TransferRequest
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
-import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.concurrent.ExecutionException
 import kotlin.math.min
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Downloads a local model to app-owned storage, with resumable progress.  */
 class LocalModelDownloadWorker(
     context: Context,
     workerParams: WorkerParameters,
-) : Worker(context, workerParams) {
-    private var connection: HttpURLConnection? = null
+) : CoroutineWorker(context, workerParams) {
 
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         val modelId = inputData.getString(KEY_MODEL_ID)
         val modelName = inputData.getString(KEY_MODEL_NAME)
         val modelUrl = inputData.getString(KEY_MODEL_URL)
@@ -42,12 +46,11 @@ class LocalModelDownloadWorker(
         }
 
         try {
-            setForegroundAsync(createForegroundInfo(modelName, 0)).get()
-        } catch (e: ExecutionException) {
+            setForeground(createForegroundInfo(modelName, 0))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (e: Throwable) {
             return failure("Android couldn't restart the download in the background")
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
-            return failure("Model download was interrupted")
         }
 
         val outputFile = LocalModelManager.getModelFile(
@@ -84,50 +87,40 @@ class LocalModelDownloadWorker(
             return Result.success()
         }
 
-        var downloadedBytes = partialFile.length()
+        val partialBytes = partialFile.length()
         try {
-            val activeConnection = (URL(modelUrl).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 30_000
-                readTimeout = 60_000
-                instanceFollowRedirects = true
-                setRequestProperty("Accept-Encoding", "identity")
-                if (downloadedBytes > 0L) {
-                    setRequestProperty("Range", "bytes=$downloadedBytes-")
-                }
+            val headers = buildMap {
+                put("Accept-Encoding", "identity")
+                if (partialBytes > 0L) put("Range", "bytes=$partialBytes-")
             }
-            connection = activeConnection
-            activeConnection.connect()
-
-            val responseCode = activeConnection.responseCode
-            val resumed = responseCode == HttpURLConnection.HTTP_PARTIAL
-            if (responseCode != HttpURLConnection.HTTP_OK && !resumed) {
-                return failure("Model server returned HTTP $responseCode")
-            }
-            if (!resumed) {
-                downloadedBytes = 0L
-            }
-
-            BufferedInputStream(activeConnection.inputStream).use { input ->
-                FileOutputStream(partialFile, resumed).use { output ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var lastUpdateAt = 0L
-                    var bytesRead: Int
-                    while ((input.read(buffer).also { bytesRead = it }) != -1) {
-                        if (isStopped()) {
-                            return failure("Model download was cancelled")
-                        }
-                        output.write(buffer, 0, bytesRead)
-                        downloadedBytes += bytesRead.toLong()
-
-                        val now = System.currentTimeMillis()
-                        if (now - lastUpdateAt >= 500L) {
-                            publishProgress(modelName, downloadedBytes, expectedBytes)
-                            lastUpdateAt = now
-                        }
+            var lastUpdateAt = 0L
+            HttpTransferEngine(
+                KtorTransferClient(AndroidAppComposition.get(applicationContext).network.httpClient),
+            ).transfer(
+                request = TransferRequest(modelUrl, headers),
+                sinkForResponse = { response ->
+                    ModelDownloadSink(
+                        file = partialFile,
+                        append = response.statusCode == HTTP_PARTIAL && partialBytes > 0L,
+                    )
+                },
+                optionsForResponse = { response ->
+                    val resumed = response.statusCode == HTTP_PARTIAL && partialBytes > 0L
+                    TransferOptions(
+                        initialBytes = if (resumed) partialBytes else 0L,
+                        expectedTotalBytes = expectedBytes,
+                        maxTotalBytes = expectedBytes,
+                        acceptsStatus = { it == HTTP_OK || it == HTTP_PARTIAL },
+                    )
+                },
+                onProgress = { progress ->
+                    val now = System.currentTimeMillis()
+                    if (now - lastUpdateAt >= PROGRESS_INTERVAL_MILLIS) {
+                        publishProgress(modelName, progress.bytesWritten, expectedBytes)
+                        lastUpdateAt = now
                     }
-                    output.fd.sync()
-                }
-            }
+                },
+            )
             if (partialFile.length() != expectedBytes) {
                 return failure(
                     "Downloaded model size was ${partialFile.length()} bytes; " +
@@ -142,27 +135,25 @@ class LocalModelDownloadWorker(
             }
             publishProgress(modelName, expectedBytes, expectedBytes)
             return Result.success()
-        } catch (e: IOException) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (e: Throwable) {
             return failure(errorMessage(e))
-        } finally {
-            connection?.disconnect()
-            connection = null
         }
     }
 
-    override fun onStopped() {
-        connection?.disconnect()
-        super.onStopped()
-    }
-
-    private fun publishProgress(modelName: String, receivedBytes: Long, expectedBytes: Long) {
-        setProgressAsync(
+    private suspend fun publishProgress(
+        modelName: String,
+        receivedBytes: Long,
+        expectedBytes: Long,
+    ) {
+        setProgress(
             Data.Builder()
                 .putLong(KEY_RECEIVED_BYTES, receivedBytes)
                 .build(),
         )
         val percent = min(100L, receivedBytes * 100L / expectedBytes).toInt()
-        setForegroundAsync(createForegroundInfo(modelName, percent))
+        setForeground(createForegroundInfo(modelName, percent))
     }
 
     private fun createForegroundInfo(modelName: String, percent: Int): ForegroundInfo {
@@ -219,9 +210,33 @@ class LocalModelDownloadWorker(
         const val KEY_ERROR = "error"
 
         private const val CHANNEL_ID = "local_model_download"
-        private const val BUFFER_SIZE = 256 * 1024
+        private const val HTTP_OK = 200
+        private const val HTTP_PARTIAL = 206
+        private const val PROGRESS_INTERVAL_MILLIS = 500L
 
         private fun errorMessage(throwable: Throwable): String =
             throwable.message?.takeIf(String::isNotEmpty) ?: "Unknown download error"
+    }
+
+    /** Closing on abort deliberately preserves the resumable partial file. */
+    private class ModelDownloadSink(file: File, append: Boolean) : DownloadSink {
+        private val output = FileOutputStream(file, append)
+        override val reference: String = file.absolutePath
+
+        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) =
+            withContext(Dispatchers.IO) {
+                output.write(buffer, offset, length)
+            }
+
+        override suspend fun close() = withContext(Dispatchers.IO) {
+            output.fd.sync()
+            output.close()
+        }
+
+        override suspend fun abort() = withContext(Dispatchers.IO) {
+            runCatching { output.fd.sync() }
+            runCatching { output.close() }
+            Unit
+        }
     }
 }

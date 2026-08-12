@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class CommentsPresenterState(
-    val thread: CommentThreadUiState = CommentThreadUiState(),
+    val thread: PortableCommentThreadState = PortableCommentThreadState(),
     val lastLoadedMillis: Long = 0L,
     val loaded: Boolean = false,
     val refreshing: Boolean = false,
@@ -24,6 +26,11 @@ data class CommentsPresenterState(
     val showUpdate: Boolean = false,
     val storyVoteLoading: Boolean = false,
     val storyFavoriteLoading: Boolean = false,
+    val pollVoteInFlightOptionId: Int? = null,
+    val commentFavoriteLoadingId: Int = -1,
+    val commentVoteLoadingId: Int = -1,
+    val commentVoteLoadingAction: CommentMenuAction? = null,
+    val downvotedCommentIds: Set<Int> = emptySet(),
 )
 
 sealed interface CommentsAction {
@@ -71,8 +78,10 @@ sealed interface CommentsAction {
         val restoreScrollFromCache: Boolean,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story) : CommentsAction
+    data class VotePollOption(val optionId: Int) : CommentsAction
     data object CancelThreadLoad : CommentsAction
     data object CancelPollOptionsLoad : CommentsAction
+    data object CancelPollVote : CommentsAction
 }
 
 sealed interface CommentsEffect {
@@ -101,11 +110,21 @@ sealed interface CommentsEffect {
         val storyId: Int,
         val cause: Throwable,
     ) : CommentsEffect
+    data class PollVoteStarted(val optionId: Int) : CommentsEffect
+    data class PollVoteCompleted(
+        val optionId: Int,
+        val outcome: PollVoteOutcome,
+    ) : CommentsEffect
     data class SavedItemActionStarted(val request: CommentsSavedItemRequest) : CommentsEffect
     data class SavedItemActionCompleted(
         val request: CommentsSavedItemRequest,
         val outcome: SavedItemActionOutcome,
     ) : CommentsEffect
+}
+
+sealed interface PollVoteOutcome {
+    data object Success : PollVoteOutcome
+    data class Failure(val result: HackerNewsActionResult) : PollVoteOutcome
 }
 
 sealed interface CommentsSavedItemRequest {
@@ -128,6 +147,7 @@ class CommentsPresenter(
     private val commentThreadRepository: CommentThreadRepository,
     private val pollOptionsLoader: PollOptionsLoader,
     private val savedItemActions: SavedItemActionUseCase,
+    private val votingService: HackerNewsVotingService,
 ) : Feature<CommentsAction, CommentsPresenterState, CommentsEffect> {
     val thread: CommentThreadStore = sessionState.commentThread
     private val mutableState = MutableStateFlow(
@@ -155,6 +175,7 @@ class CommentsPresenter(
     private var pollOptionsStoryId: Int = 0
     private var pollOptionsLoadStarted = false
     private var pollOptionsLookupStarted = false
+    private var pollVoteJob: Job? = null
     private val threadLoadSession = KeyedRequestSession<Int>()
     private val savedItemActionJobs = mutableMapOf<String, Job>()
 
@@ -231,12 +252,38 @@ class CommentsPresenter(
                 ) }
             is CommentsAction.LoadThread -> loadThread(action)
             is CommentsAction.LoadPollOptions -> loadPollOptions(action.story)
+            is CommentsAction.VotePollOption -> votePollOption(action.optionId)
             CommentsAction.CancelThreadLoad -> {
                 threadLoadJob?.cancel()
                 threadLoadJob = null
                 threadLoadSession.invalidate()
             }
             CommentsAction.CancelPollOptionsLoad -> cancelPollOptionsLoad()
+            CommentsAction.CancelPollVote -> cancelPollVote()
+        }
+    }
+
+    private fun votePollOption(optionId: Int) {
+        if (optionId <= 0 || pollVoteJob?.isActive == true) return
+        publish(pollVoteInFlightOptionId = optionId)
+        mutableEffects.tryEmit(CommentsEffect.PollVoteStarted(optionId))
+        pollVoteJob = scope.launch {
+            val result = votingService.vote(optionId.toString(), POLL_VOTE_DIRECTION)
+            val outcome = when (result) {
+                is HackerNewsActionResult.Success -> PollVoteOutcome.Success
+                else -> PollVoteOutcome.Failure(result)
+            }
+            publish(pollVoteInFlightOptionId = null)
+            mutableEffects.emit(CommentsEffect.PollVoteCompleted(optionId, outcome))
+            pollVoteJob = null
+        }
+    }
+
+    private fun cancelPollVote() {
+        pollVoteJob?.cancel()
+        pollVoteJob = null
+        if (state.value.pollVoteInFlightOptionId != null) {
+            publish(pollVoteInFlightOptionId = null)
         }
     }
 
@@ -253,12 +300,41 @@ class CommentsPresenter(
         val pending = createPending()
         if (request is CommentsSavedItemRequest.StoryVote) publish(storyVoteLoading = true)
         if (request is CommentsSavedItemRequest.StoryFavorite) publish(storyFavoriteLoading = true)
+        if (request is CommentsSavedItemRequest.CommentFavorite) {
+            publish(commentFavoriteLoadingId = request.itemId)
+        }
+        if (request is CommentsSavedItemRequest.CommentVote) {
+            publish(
+                commentVoteLoadingId = request.itemId,
+                commentVoteLoadingAction = VoteDirection.fromWireValue(request.direction)
+                    .commentMenuAction,
+            )
+        }
         mutableEffects.tryEmit(CommentsEffect.SavedItemActionStarted(request))
         savedItemActionJobs[key] = scope.launch {
             val outcome = savedItemActions.execute(pending)
             if (request is CommentsSavedItemRequest.StoryVote) publish(storyVoteLoading = false)
             if (request is CommentsSavedItemRequest.StoryFavorite) {
                 publish(storyFavoriteLoading = false)
+            }
+            if (request is CommentsSavedItemRequest.CommentFavorite) {
+                publish(commentFavoriteLoadingId = -1)
+            }
+            if (request is CommentsSavedItemRequest.CommentVote) {
+                val downvoted = if (outcome is SavedItemActionOutcome.Failure) {
+                    request.previousDownvoted
+                } else {
+                    request.direction == "down"
+                }
+                publish(
+                    commentVoteLoadingId = -1,
+                    commentVoteLoadingAction = null,
+                    downvotedCommentIds = if (downvoted) {
+                        state.value.downvotedCommentIds + request.itemId
+                    } else {
+                        state.value.downvotedCommentIds - request.itemId
+                    },
+                )
             }
             mutableEffects.emit(CommentsEffect.SavedItemActionCompleted(request, outcome))
             savedItemActionJobs.remove(key)
@@ -465,7 +541,7 @@ class CommentsPresenter(
     }
 
     private fun publish(
-        thread: CommentThreadUiState = state.value.thread,
+        thread: PortableCommentThreadState = state.value.thread,
         lastLoadedMillis: Long = state.value.lastLoadedMillis,
         loaded: Boolean = state.value.loaded,
         refreshing: Boolean = state.value.refreshing,
@@ -473,6 +549,11 @@ class CommentsPresenter(
         showUpdate: Boolean = state.value.showUpdate,
         storyVoteLoading: Boolean = state.value.storyVoteLoading,
         storyFavoriteLoading: Boolean = state.value.storyFavoriteLoading,
+        pollVoteInFlightOptionId: Int? = state.value.pollVoteInFlightOptionId,
+        commentFavoriteLoadingId: Int = state.value.commentFavoriteLoadingId,
+        commentVoteLoadingId: Int = state.value.commentVoteLoadingId,
+        commentVoteLoadingAction: CommentMenuAction? = state.value.commentVoteLoadingAction,
+        downvotedCommentIds: Set<Int> = state.value.downvotedCommentIds,
     ) {
         sessionState.lastLoaded = lastLoadedMillis
         sessionState.commentsLoaded = loaded
@@ -491,6 +572,15 @@ class CommentsPresenter(
             showUpdate = showUpdate,
             storyVoteLoading = storyVoteLoading,
             storyFavoriteLoading = storyFavoriteLoading,
+            pollVoteInFlightOptionId = pollVoteInFlightOptionId,
+            commentFavoriteLoadingId = commentFavoriteLoadingId,
+            commentVoteLoadingId = commentVoteLoadingId,
+            commentVoteLoadingAction = commentVoteLoadingAction,
+            downvotedCommentIds = downvotedCommentIds,
         )
+    }
+
+    private companion object {
+        const val POLL_VOTE_DIRECTION = "up"
     }
 }

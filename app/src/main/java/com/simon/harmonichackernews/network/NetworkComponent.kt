@@ -29,73 +29,93 @@ object NetworkComponent {
     private val networkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val transportClient: HttpClient by lazy { createClient() }
 
+    private val authenticatedClientProvider = object : AuthenticatedHttpClientProvider {
+        @Volatile
+        private var activeClient: HttpClient? = null
+
+        override fun get(): HttpClient {
+            activeClient?.let { return it }
+            return synchronized(NetworkComponent::class.java) {
+                activeClient ?: createClient { install(HttpCookies) }
+                    .also { activeClient = it }
+            }
+        }
+
+        override fun reset() {
+            synchronized(NetworkComponent::class.java) {
+                activeClient?.close()
+                activeClient = null
+            }
+        }
+    }
+
+    /** Shared network graph used by the application composition and legacy Android bridges. */
+    val graph: NetworkGraph by lazy {
+        NetworkGraph(
+            transportClient = transportClient,
+            scope = networkScope,
+            authenticatedClientProvider = authenticatedClientProvider,
+        )
+    }
+
     @Volatile
     private var responseCache: CacheStorage? = null
 
     val httpClientInstance: KtorHttpClient by lazy {
-        KtorHttpClient(transportClient, networkScope)
+        graph.httpClient
     }
 
-    val hackerNewsApi: HackerNewsApi by lazy { KtorHackerNewsApi(transportClient) }
+    val hackerNewsApi: HackerNewsApi by lazy { graph.hackerNewsApi }
 
     val hackerNewsRepository: HackerNewsRepository by lazy {
-        DefaultHackerNewsRepository(hackerNewsApi)
+        graph.hackerNewsRepository
     }
 
     val pollOptionsRepository: PollOptionsRepository by lazy {
-        PollOptionsRepository(hackerNewsApi)
+        graph.pollOptionsRepository
     }
 
     val replyScanner: ReplyScanner by lazy {
-        DefaultReplyScanner(hackerNewsApi)
+        graph.replyScanner
     }
 
     val algoliaRepository: AlgoliaRepository by lazy {
-        KtorAlgoliaRepository(transportClient)
+        graph.algoliaRepository
     }
 
     val linkPreviewRepository: LinkPreviewRepository by lazy {
-        KtorLinkPreviewRepository(transportClient)
+        graph.linkPreviewRepository
     }
 
     val linkSummaryRepository: LinkSummaryRepository by lazy {
-        KtorLinkSummaryRepository(transportClient, linkPreviewRepository)
+        graph.linkSummaryRepository
     }
 
     val previewContentCoordinator: PreviewContentCoordinator by lazy {
-        PreviewContentCoordinator(networkScope)
+        graph.previewContentCoordinator
     }
 
     val cloudSummaryRepository: CloudSummaryRepository by lazy {
-        KtorCloudSummaryRepository(httpClientInstance)
+        graph.cloudSummaryRepository
     }
 
     val summaryUseCase: SummaryUseCase by lazy {
-        SummaryUseCase(cloudSummaryRepository)
+        graph.summaryUseCase
     }
 
     val aiModelCatalogRepository: AiModelCatalogRepository by lazy {
-        KtorAiModelCatalogRepository(httpClientInstance)
+        graph.aiModelCatalogRepository
     }
 
     val openRouterProviderIconRepository: OpenRouterProviderIconRepository by lazy {
-        KtorOpenRouterProviderIconRepository(httpClientInstance)
+        graph.openRouterProviderIconRepository
     }
 
     val hackerNewsWebRepository: HackerNewsWebRepository by lazy {
-        KtorHackerNewsWebRepository(transportClient)
+        graph.hackerNewsWebRepository
     }
 
-    val hackerNewsSession: HackerNewsAuthenticatedSession =
-        object : HackerNewsAuthenticatedSession {
-            override val actions: HackerNewsActionRepository
-                get() = hackerNewsActionRepository
-            override val authenticatedWeb: HackerNewsWebRepository
-                get() = authenticatedHackerNewsWebRepository
-            override val publicWeb: HackerNewsWebRepository
-                get() = hackerNewsWebRepository
-            override fun reset() = resetHttpClientCookieInstance()
-        }
+    val hackerNewsSession: HackerNewsAuthenticatedSession by lazy { graph.hackerNewsSession }
 
     /** Callback bridge for Android callers while shared repositories remain suspend-first. */
     fun <T> launchCallbackRequest(
@@ -130,67 +150,19 @@ object NetworkComponent {
         }
     }
 
-    @Volatile
-    private var cookieTransportClient: HttpClient? = null
-
-    @Volatile
-    private var cookieClient: KtorHttpClient? = null
-
-    @Volatile
-    private var authenticatedWebRepository: HackerNewsWebRepository? = null
-
-    @Volatile
-    private var authenticatedActionRepository: HackerNewsActionRepository? = null
-
     private var requestQueueInstance: RequestQueue? = null
 
     val httpClientInstanceWithCookies: KtorHttpClient
-        get() {
-            cookieClient?.let { return it }
-            return synchronized(NetworkComponent::class.java) {
-                cookieClient ?: createCookieClient().also { cookieClient = it }
-            }
-        }
+        get() = graph.httpClientWithCookies
 
     val authenticatedHackerNewsWebRepository: HackerNewsWebRepository
-        get() {
-            authenticatedWebRepository?.let { return it }
-            return synchronized(NetworkComponent::class.java) {
-                authenticatedWebRepository ?: run {
-                    createCookieClient()
-                    checkNotNull(authenticatedWebRepository)
-                }
-            }
-        }
+        get() = graph.authenticatedHackerNewsWebRepository
 
     val hackerNewsActionRepository: HackerNewsActionRepository
-        get() {
-            authenticatedActionRepository?.let { return it }
-            return synchronized(NetworkComponent::class.java) {
-                authenticatedActionRepository ?: run {
-                    httpClientInstanceWithCookies
-                    checkNotNull(authenticatedActionRepository)
-                }
-            }
-        }
-
-    private fun createCookieClient(): KtorHttpClient {
-        val transport = createClient { install(HttpCookies) }
-        val client = KtorHttpClient(transport, networkScope)
-        cookieTransportClient = transport
-        authenticatedWebRepository = KtorHackerNewsWebRepository(transport)
-        authenticatedActionRepository = KtorHackerNewsActionRepository(httpClientInstance, client)
-        return client
-    }
+        get() = graph.hackerNewsActionRepository
 
     fun resetHttpClientCookieInstance() {
-        synchronized(NetworkComponent::class.java) {
-            cookieTransportClient?.close()
-            cookieTransportClient = null
-            cookieClient = null
-            authenticatedWebRepository = null
-            authenticatedActionRepository = null
-        }
+        authenticatedClientProvider.reset()
     }
 
     fun getRequestQueueInstance(context: Context): RequestQueue {
@@ -212,7 +184,7 @@ object NetworkComponent {
                 }
             }
             RequestQueue(
-                client = KtorHttpClient(queueClient, networkScope),
+                client = KtorHttpClient(queueClient),
                 workerScope = networkScope,
                 callbackDispatcher = Dispatchers.Main.immediate,
             ).also { requestQueueInstance = it }

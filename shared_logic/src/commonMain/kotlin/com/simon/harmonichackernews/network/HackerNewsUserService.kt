@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.network
 
-import com.simon.harmonichackernews.platform.CredentialIds
-import com.simon.harmonichackernews.platform.CredentialStore
+import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
 import kotlinx.coroutines.CancellationException
 
 interface HackerNewsAuthenticatedSession {
@@ -21,18 +20,26 @@ interface HackerNewsUserItemsLoader {
     suspend fun getUserItems(path: String, loginRequired: Boolean): HackerNewsUserItemsResult
 }
 
+fun interface HackerNewsVotingService {
+    suspend fun vote(itemId: String, direction: String): HackerNewsActionResult
+}
+
+fun interface HackerNewsFavoriteService {
+    suspend fun setFavorite(itemId: Int, favorite: Boolean): HackerNewsActionResult
+}
+
 /** Owns credential/session policy while repositories own the HN wire protocol. */
 class HackerNewsUserService(
     private val session: HackerNewsAuthenticatedSession,
-    private val credentials: CredentialStore,
-) : HackerNewsUserItemsLoader {
+    private val accounts: HackerNewsAccountRepository,
+) : HackerNewsUserItemsLoader, HackerNewsVotingService, HackerNewsFavoriteService {
     suspend fun login(): HackerNewsActionResult {
         val account = readCredentials() ?: return missingCredentials()
         session.reset()
         return safeAction("Login failed") { session.actions.login(account) }
     }
 
-    suspend fun vote(itemId: String, direction: String): HackerNewsActionResult =
+    override suspend fun vote(itemId: String, direction: String): HackerNewsActionResult =
         withCredentials("Couldn't connect to HN") { session.actions.vote(it, itemId, direction) }
 
     suspend fun comment(itemId: String, text: String): HackerNewsActionResult =
@@ -46,7 +53,7 @@ class HackerNewsUserService(
         }
     }
 
-    suspend fun setFavorite(itemId: Int, favorite: Boolean): HackerNewsActionResult {
+    override suspend fun setFavorite(itemId: Int, favorite: Boolean): HackerNewsActionResult {
         val account = readCredentials() ?: return missingCredentials()
         session.reset()
         return safeAction("Couldn't update favorite") {
@@ -126,15 +133,12 @@ class HackerNewsUserService(
     }
 
     private fun readCredentials(): HackerNewsCredentials? {
-        val username = credentials.read(CredentialIds.HACKER_NEWS_USERNAME)
-        val password = credentials.read(CredentialIds.HACKER_NEWS_PASSWORD)
-        if (username.isNullOrEmpty() || password.isNullOrEmpty()) return null
-        return HackerNewsCredentials(username, password)
+        return accounts.load()
     }
 
     private fun sanitize(result: HackerNewsActionResult): HackerNewsActionResult {
         if (result is HackerNewsActionResult.Failure && result.invalidCredentials) {
-            credentials.remove(CredentialIds.HACKER_NEWS_USERNAME)
+            accounts.clear()
         }
         return result
     }

@@ -5,14 +5,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.text.Html
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -20,19 +19,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.network.RepliesChecker
-import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
+import com.simon.harmonichackernews.presentation.UserProfileBlockPort
+import com.simon.harmonichackernews.presentation.UserProfileLoadState
+import com.simon.harmonichackernews.presentation.UserProfileLoader
+import com.simon.harmonichackernews.presentation.UserProfileNotificationPort
+import com.simon.harmonichackernews.presentation.UserProfileRuntime
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.months
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.ContentFilterRepository
-import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
-import com.simon.harmonichackernews.utils.AccountUtils
-import com.simon.harmonichackernews.utils.GroupedNumberFormatter
-import java.util.Calendar
-import java.util.Date
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringArrayResource
 
@@ -44,118 +40,87 @@ fun UserSettingsDialog(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val contentFilters = remember(context) {
-        ContentFilterRepository(AndroidKeyValueStore.defaults(context))
-    }
-    val userTags = remember(context) {
-        UserTagsRepository(AndroidKeyValueStore.defaults(context))
-    }
+    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val contentFilters = appComposition.contentFilters
+    val userTags = appComposition.userTags
     val monthNames = stringArrayResource(Res.array.months)
-    var state by remember(userName) {
-        mutableStateOf<UserDialogUiState>(UserDialogUiState.Loading)
+    val runtime = remember(userName, monthNames) {
+        UserProfileRuntime(
+            username = userName,
+            monthNames = monthNames,
+            loader = UserProfileLoader { appComposition.network.hackerNewsApi.getUser(it) },
+            accounts = appComposition.platform.accounts,
+            blocks = object : UserProfileBlockPort {
+                override fun isBlocked(username: String): Boolean =
+                    contentFilters.containsUser(username)
+
+                override fun setBlocked(username: String, blocked: Boolean): Boolean =
+                    if (blocked) {
+                        contentFilters.addUser(username)
+                    } else {
+                        contentFilters.removeUser(username)
+                    }
+            },
+            notifications = AndroidUserProfileNotificationPort(context),
+        )
     }
-    var reload by remember(userName) { mutableIntStateOf(0) }
+    val runtimeState by runtime.state.collectAsState()
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
-    var isBlocked by remember(userName) {
-        mutableStateOf(contentFilters.containsUser(userName))
-    }
-    var notificationLoading by remember(userName) { mutableStateOf(false) }
-    var notificationStatus by remember(userName) { mutableStateOf("") }
-    var notificationsActive by remember(userName) {
-        mutableStateOf(
-            userName.equals(
-                RepliesChecker.getConfiguredUsername(context),
-                ignoreCase = true,
-            ),
-        )
-    }
     var permissionActionPending by remember(userName) { mutableStateOf(false) }
 
-    DisposableEffect(userName, reload, monthNames) {
-        state = UserDialogUiState.Loading
-        val job = NetworkComponent.launchCallbackRequest(
-            request = {
-                NetworkComponent.hackerNewsApi.getUser(userName)
-                    ?: error("Hacker News user not found")
-            },
-            onSuccess = { user ->
-                state = runCatching { user.toUserInfoUi(monthNames) }.fold(
-                    onSuccess = UserDialogUiState::Loaded,
-                    onFailure = { UserDialogUiState.Error },
-                )
-            },
-            onFailure = { state = UserDialogUiState.Error },
-        )
-        onDispose { job.cancel() }
-    }
-
-    fun activateNotifications(targetUser: String) {
-        notificationLoading = true
-        notificationStatus = ""
-        coroutineScope.launch {
-            val success = RepliesChecker.enable(context, targetUser)
-            notificationLoading = false
-            notificationsActive = success && targetUser.equals(
-                RepliesChecker.getConfiguredUsername(context),
-                ignoreCase = true,
-            )
-            notificationStatus = if (success) "" else "Could not activate reply notifications."
-        }
+    LaunchedEffect(runtime) {
+        runtime.load()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted && permissionActionPending) {
-            activateNotifications(userName)
+            coroutineScope.launch { runtime.enableNotifications() }
         } else if (!granted) {
-            notificationStatus = "Notification permission denied."
+            runtime.notificationPermissionDenied()
         }
         permissionActionPending = false
     }
 
-    val loadedUser = (state as? UserDialogUiState.Loaded)?.user
-    val ownProfile = loadedUser?.id?.equals(
-        AccountUtils.getAccountUsername(context),
-        ignoreCase = true,
-    ) == true
+    val state = when (val loadState = runtimeState.loadState) {
+        UserProfileLoadState.Loading -> UserDialogUiState.Loading
+        UserProfileLoadState.Error -> UserDialogUiState.Error
+        is UserProfileLoadState.Loaded -> UserDialogUiState.Loaded(
+            UserInfoUi(
+                id = loadState.profile.id,
+                meta = loadState.profile.meta,
+                about = loadState.profile.about,
+                hasSubmissions = loadState.profile.hasSubmissions,
+            ),
+        )
+    }
     SharedUserSettingsDialog(
         requestedUserName = userName,
         state = state,
         tag = currentTag,
-        blocked = isBlocked,
-        ownProfile = ownProfile,
-        notificationsActive = notificationsActive,
-        notificationLoading = notificationLoading,
-        notificationStatus = notificationStatus,
+        blocked = runtimeState.blocked,
+        ownProfile = runtimeState.ownProfile,
+        notificationsActive = runtimeState.notificationsActive,
+        notificationLoading = runtimeState.notificationLoading,
+        notificationStatus = runtimeState.notificationStatus,
         onDismiss = onDismiss,
-        onRetry = { reload++ },
+        onRetry = { coroutineScope.launch { runtime.retry() } },
         onOpenSubmissions = { targetUser ->
             onDismiss()
             context.startActivity(SubmissionsContract.createIntent(context, targetUser))
         },
         onEditTag = { tagDialogOpen = true },
-        onToggleBlocked = { targetUser ->
-            if (isBlocked) {
-                if (contentFilters.removeUser(targetUser)) {
-                    Toast.makeText(context, "Unblocked $targetUser", Toast.LENGTH_SHORT).show()
-                    isBlocked = false
-                }
-            } else if (contentFilters.addUser(targetUser)) {
-                Toast.makeText(
-                    context,
-                    "You will no longer see posts or comments from $targetUser",
-                    Toast.LENGTH_SHORT,
-                ).show()
-                onDismiss()
+        onToggleBlocked = {
+            runtime.toggleBlocked()?.let { outcome ->
+                Toast.makeText(context, outcome.message, Toast.LENGTH_SHORT).show()
+                if (outcome.dismissProfile) onDismiss()
             }
         },
-        onToggleNotifications = { targetUser ->
-            if (notificationsActive) {
-                RepliesChecker.disable(context)
-                notificationsActive = false
-                notificationStatus = ""
+        onToggleNotifications = {
+            if (runtimeState.notificationsActive) {
+                runtime.disableNotifications()
             } else if (
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
@@ -166,7 +131,7 @@ fun UserSettingsDialog(
                 permissionActionPending = true
                 permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                activateNotifications(targetUser)
+                coroutineScope.launch { runtime.enableNotifications() }
             }
         },
         onReport = { targetUser ->
@@ -197,21 +162,16 @@ fun UserSettingsDialog(
     }
 }
 
-private fun HackerNewsUserDto.toUserInfoUi(months: List<String>): UserInfoUi {
-    val calendar = Calendar.getInstance().apply { time = Date(created * 1_000L) }
-    val month = months[calendar[Calendar.MONTH]]
-    val formattedKarma = GroupedNumberFormatter.format(karma)
-    val formattedAbout = if (about != null) {
-        @Suppress("DEPRECATION")
-        Html.fromHtml(about.orEmpty()).toString().trim()
-    } else {
-        ""
-    }
-    return UserInfoUi(
-        id = id,
-        meta = "$formattedKarma karma since $month ${calendar[Calendar.DAY_OF_MONTH]}, " +
-            calendar[Calendar.YEAR],
-        about = formattedAbout,
-        hasSubmissions = submitted.isNotEmpty(),
+private class AndroidUserProfileNotificationPort(context: android.content.Context) :
+    UserProfileNotificationPort {
+    private val appContext = context.applicationContext
+
+    override fun configuredUsername(): String? = RepliesChecker.getConfiguredUsername(appContext)
+
+    override suspend fun enable(username: String): Boolean = RepliesChecker.enable(
+        appContext,
+        username,
     )
+
+    override fun disable() = RepliesChecker.disable(appContext)
 }

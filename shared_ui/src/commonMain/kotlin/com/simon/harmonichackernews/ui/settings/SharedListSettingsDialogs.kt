@@ -54,7 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.settings.AppFont
+import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.Font
@@ -63,9 +64,9 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun SharedFontSelectionDialog(
     readerMode: Boolean,
-    selected: String,
-    options: List<Pair<String, String>>,
-    onSelected: (String) -> Unit,
+    selected: AppFont,
+    options: List<Pair<String, AppFont>>,
+    onSelected: (AppFont) -> Unit,
     onDismiss: () -> Unit,
 ) {
     SettingsAlertDialog(
@@ -80,7 +81,7 @@ fun SharedFontSelectionDialog(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
             ) {
                 items(options, key = { it.second }) { (label, value) ->
-                    val fontFamily = fontFamilyForSetting(value)
+                    val fontFamily = fontFamilyForSetting(value.storedValue)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -124,21 +125,18 @@ fun SharedFontSelectionDialog(
 
 @Composable
 fun SharedPreloadWebViewDialog(
-    initialMode: String,
+    initialMode: WebViewPreloadMode,
     initialBattery: Int,
-    onSave: (mode: String, minimumBattery: Int) -> Unit,
+    onSave: (mode: WebViewPreloadMode, minimumBattery: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var mode by rememberSaveable { mutableStateOf(initialMode) }
+    var modeValue by rememberSaveable { mutableStateOf(initialMode.storedValue) }
+    val mode = WebViewPreloadMode.fromStored(modeValue)
     var battery by rememberSaveable {
         mutableFloatStateOf(((initialBattery / 5) * 5).toFloat().coerceIn(0f, 100f))
     }
-    val enabled = mode != WebViewPreferences.PRELOAD_NEVER
-    val options = listOf(
-        WebViewPreferences.PRELOAD_ALWAYS to "Always",
-        WebViewPreferences.PRELOAD_WIFI_ONLY to "Only on WiFi",
-        WebViewPreferences.PRELOAD_NEVER to "Never",
-    )
+    val enabled = mode != WebViewPreloadMode.NEVER
+    val options = WebViewPreloadMode.entries
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -155,7 +153,7 @@ fun SharedPreloadWebViewDialog(
                     lineHeight = 20.sp,
                 )
                 Column(modifier = Modifier.padding(top = 12.dp).selectableGroup()) {
-                    options.forEach { (value, label) ->
+                    options.forEach { value ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -163,13 +161,13 @@ fun SharedPreloadWebViewDialog(
                                 .selectable(
                                     selected = mode == value,
                                     role = Role.RadioButton,
-                                    onClick = { mode = value },
+                                    onClick = { modeValue = value.storedValue },
                                 ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SettingsRadioButton(selected = mode == value)
                             Text(
-                                text = label,
+                                text = value.label,
                                 modifier = Modifier.padding(start = 4.dp),
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 16.sp,

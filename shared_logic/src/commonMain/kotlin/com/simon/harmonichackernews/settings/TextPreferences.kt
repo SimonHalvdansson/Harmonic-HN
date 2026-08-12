@@ -2,6 +2,23 @@ package com.simon.harmonichackernews.settings
 
 import kotlin.math.roundToInt
 
+enum class AppFont(val storedValue: String) {
+    GOOGLE_SANS_FLEX_ROUNDED("googlesansflexrounded"),
+    GOOGLE_SANS("googlesans"),
+    PRODUCT_SANS("productsans"),
+    DEVICE_DEFAULT("devicedefault"),
+    VERDANA("verdana"),
+    JETBRAINS_MONO("jetbrainsmono"),
+    GOOGLE_SANS_CODE("googlesanscode"),
+    GEORGIA("georgia"),
+    ROBOTO_SLAB("robotoslab");
+
+    companion object {
+        fun fromStored(value: String?): AppFont =
+            entries.firstOrNull { it.storedValue == value } ?: GOOGLE_SANS_FLEX_ROUNDED
+    }
+}
+
 object TextPreferences {
     const val DEFAULT_STORY_TEXT_SIZE = 17.5f
     const val DEFAULT_COMMENT_TEXT_SIZE = 15f
@@ -16,18 +33,7 @@ object TextPreferences {
     const val MIN_READER_MODE_FONT_SIZE = 14
     const val MAX_READER_MODE_FONT_SIZE = 24
 
-    fun sanitizeFont(font: String?): String = when (font) {
-        "productsans",
-        "googlesansflexrounded",
-        "googlesans",
-        "devicedefault",
-        "verdana",
-        "jetbrainsmono",
-        "googlesanscode",
-        "georgia",
-        "robotoslab" -> font
-        else -> "googlesansflexrounded"
-    }
+    fun sanitizeFont(font: String?): String = AppFont.fromStored(font).storedValue
 
     fun clampStoryTextSize(value: Float): Float =
         value.coerceIn(MIN_STORY_TEXT_SIZE, MAX_STORY_TEXT_SIZE)

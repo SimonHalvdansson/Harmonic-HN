@@ -10,18 +10,20 @@ import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService.RemoteViewsFactory
 import com.simon.harmonichackernews.CommentsContract
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.StoryCachePayloadParser
 import com.simon.harmonichackernews.data.toBundle
-import com.simon.harmonichackernews.network.JSONParser.updateStoryWithHNJson
-import com.simon.harmonichackernews.network.HttpRequest
-import com.simon.harmonichackernews.network.NetworkComponent.httpClientInstance
+import com.simon.harmonichackernews.network.WidgetFeedRequest
+import com.simon.harmonichackernews.network.WidgetFeedResult
+import com.simon.harmonichackernews.network.WidgetFeedUseCase
+import com.simon.harmonichackernews.network.widgetStoryTypeForUrl
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.Utils.log
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 class StoriesRemoteViewsFactory(private val context: Context, private val appWidgetId: Int) :
     RemoteViewsFactory {
@@ -57,85 +59,23 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
                 return
             }
 
-            var freshStories = ArrayList<Story>()
-            var storyFetchErrors = 0
             val visibleStoryCount = WidgetConfigActivity.getStoryCount(context, appWidgetId)
             val fetchStoryCount = WidgetConfigActivity.getFetchStoryCount(context, appWidgetId)
-
-            val client = checkNotNull(httpClientInstance) {
-                "Network client is unavailable"
-            }
-                .newBuilder()
-                .readTimeoutMillis(CALL_TIMEOUT_SECONDS * 1_000L)
-                .build()
-
             val feedUrl = WidgetConfigActivity.getFeedUrl(context, appWidgetId)
             log("WidgetFactory fetch ids widgetId=$appWidgetId url=$feedUrl")
-            val idsRequest = HttpRequest.Builder()
-                .url(feedUrl)
-                .build()
-
-            client.newCall(idsRequest).execute().use { idsResponse ->
-                val idsBody = idsResponse.takeIf { it.isSuccessful }?.body?.string()
-                if (idsBody == null) {
-                    log(
-                        "WidgetFactory ids request failed widgetId=$appWidgetId" +
-                            " code=${idsResponse.code}"
-                    )
-                    postRefreshError()
-                    terminalStatePosted = true
-                    return
-                }
-                val allStoryIds = StoryCachePayloadParser.storyIds(idsBody, Int.MAX_VALUE)
-                val storyIds = allStoryIds.take(fetchStoryCount)
-                val count = storyIds.size
-
-                log(
-                    "WidgetFactory ids fetched widgetId=$appWidgetId" +
-                            " totalIds=${allStoryIds.size} visibleCount=$visibleStoryCount" +
-                        " fetchTarget=$fetchStoryCount fetchCount=$count"
+            val result = runBlocking(Dispatchers.IO) {
+                WidgetFeedUseCase(
+                    AndroidAppComposition.get(context).network.hackerNewsRepository,
+                ).load(
+                    WidgetFeedRequest(
+                        storyType = widgetStoryTypeForUrl(feedUrl),
+                        fetchCount = fetchStoryCount,
+                        visibleCount = visibleStoryCount,
+                    ),
                 )
-                for (storyId in storyIds) {
-                    val elapsed = startedAt.elapsedNow()
-                    if (elapsed > TOTAL_FETCH_TIMEOUT) {
-                        log(
-                            "WidgetFactory total timeout reached widgetId=$appWidgetId" +
-                                " elapsedMs=${elapsed.inWholeMilliseconds}"
-                        )
-                        break
-                    }
-
-                    val storyUrl =
-                        "https://hacker-news.firebaseio.com/v0/item/$storyId.json"
-
-                    val storyRequest = HttpRequest.Builder()
-                        .url(storyUrl)
-                        .build()
-
-                    try {
-                        client.newCall(storyRequest).execute().use { storyResponse ->
-                            val storyBody = storyResponse
-                                .takeIf { it.isSuccessful }
-                                ?.body
-                                ?.string()
-                            if (storyBody != null) {
-                                val story = Story()
-                                story.id = storyId
-                                if (updateStoryWithHNJson(storyBody, story, false)) {
-                                    freshStories.add(story)
-                                } else {
-                                    storyFetchErrors++
-                                }
-                            } else {
-                                storyFetchErrors++
-                            }
-                        }
-                    } catch (e: Exception) {
-                        storyFetchErrors++
-                    }
-                }
             }
-            if (freshStories.isEmpty()) {
+            val loaded = result as? WidgetFeedResult.Loaded
+            if (loaded == null) {
                 log("WidgetFactory no stories fetched widgetId=$appWidgetId")
                 postRefreshError()
                 terminalStatePosted = true
@@ -144,16 +84,15 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
             log(
                 "WidgetFactory fetch complete widgetId=$appWidgetId" +
-                    " stories=${freshStories.size} storyErrors=$storyFetchErrors" +
+                    " stories=${loaded.stories.size}" +
+                    " available=${loaded.availableStoryCount}" +
+                    " storyErrors=${loaded.failedStoryCount}" +
+                    " timedOut=${loaded.timedOut}" +
                     " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
             )
 
-            if (freshStories.size > visibleStoryCount) {
-                freshStories = ArrayList(freshStories.subList(0, visibleStoryCount))
-            }
-
             stories.clear()
-            stories.addAll(freshStories)
+            stories.addAll(loaded.stories)
 
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putLong(KEY_LAST_UPDATED_PREFIX + appWidgetId, System.currentTimeMillis())
@@ -275,9 +214,6 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         private const val KEY_LAST_UPDATED_PREFIX = "last_updated_"
         private const val KEY_SKIP_FETCH_PREFIX = "skip_fetch_"
         private const val KEY_REFRESHING_PREFIX = "refreshing_"
-        private const val CALL_TIMEOUT_SECONDS: Long = 15
-        private val TOTAL_FETCH_TIMEOUT = 60.seconds
-
         fun setSkipFetch(context: Context, appWidgetId: Int, skip: Boolean) {
             log("WidgetFactory setSkipFetch widgetId=$appWidgetId skip=$skip")
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

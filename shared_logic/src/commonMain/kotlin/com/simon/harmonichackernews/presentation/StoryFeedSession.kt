@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.settings.ContentFilters
 
 data class StoryVisibilityConfig(
     val filteredWords: List<String> = emptyList(),
@@ -21,6 +22,17 @@ class StoryVisibilityPolicy(
 
     init {
         this.config = config
+    }
+
+    fun update(filters: ContentFilters, hideJobs: Boolean): Boolean {
+        val previous = config
+        config = StoryVisibilityConfig(
+            filteredWords = filters.words,
+            filteredDomains = filters.domains,
+            filteredUsers = filters.users,
+            hideJobs = hideJobs,
+        )
+        return config != previous
     }
 
     fun shouldHide(story: Story, storyType: StoryType): Boolean {

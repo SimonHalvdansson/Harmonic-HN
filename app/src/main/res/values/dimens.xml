@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--<dimen name="design_snackbar_padding_vertical">8dp</dimen>-->
-    <dimen name="comments_bottom_standard">16dp</dimen>
-    <dimen name="comments_bottom_navigation">88dp</dimen>
     <dimen name="single_view_side_margin">0dp</dimen>
     <dimen name="extra_pane_padding">0dp</dimen>
     <dimen name="settings_extra_pane_padding">0dp</dimen>
     <dimen name="comments_header_top_padding">24dp</dimen>
     <dimen name="margin_between_panes">0dp</dimen>
-    <dimen name="comments_header_text_size">12dp</dimen>
     <dimen name="comments_header_action_padding">0dp</dimen>
-    <dimen name="comment_card_shadow_padding">4dp</dimen>
     <dimen name="widget_corner_radius">16dp</dimen>
     <dimen name="widget_config_horizontal_margin">16dp</dimen>
     <dimen name="widget_config_content_top_padding">40dp</dimen>
@@ -37,16 +33,9 @@
     <dimen name="widget_config_title_letter_spacing">0.125sp</dimen>
     <dimen name="widget_config_feed_letter_spacing">0.25sp</dimen>
     <dimen name="widget_config_label_letter_spacing">0.2sp</dimen>
-    <dimen name="settings_list_segment_top_margin">8dp</dimen>
-    <dimen name="settings_list_main_toggle_corner_radius">36dp</dimen>
-    <dimen name="settings_list_segment_vertical_padding_extra">2dp</dimen>
     <dimen name="compose_settings_toolbar_height">64dp</dimen>
-    <dimen name="detail_toolbar_height">60dp</dimen>
     <dimen name="detail_toolbar_navigation_height">56dp</dimen>
     <dimen name="detail_toolbar_navigation_inset">0dp</dimen>
-    <dimen name="story_preview_image_corner_radius">6dp</dimen>
-    <dimen name="story_large_preview_image_inset">10dp</dimen>
-    <dimen name="story_large_preview_image_bottom_margin">2dp</dimen>
     <integer name="stories_pane_weight">4</integer>
     <bool name="is_tablet">false</bool>
 </resources>

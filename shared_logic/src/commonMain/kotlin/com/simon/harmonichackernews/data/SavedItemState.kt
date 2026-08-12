@@ -1,5 +1,11 @@
 package com.simon.harmonichackernews.data
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 data class TimestampedItem(
     val id: Int,
     val created: Long,
@@ -139,4 +145,56 @@ class HistoryLedger {
             SavedItemCodec.decode(serialized, sorted)
                 .mapTo(mutableListOf()) { History(it.id, it.created) }
     }
+}
+
+data class HistoryLedgerSnapshot(
+    val histories: List<History>,
+    val changeVersion: Long,
+    val serialized: String,
+)
+
+/**
+ * Coroutine-safe, observable history state for new platform persistence adapters.
+ * Existing adapters can migrate without changing [HistoryLedger]'s legacy synchronous API.
+ */
+class AtomicHistoryLedger(serialized: String? = null) {
+    private val ledger = HistoryLedger().apply { initialize(serialized) }
+    private val mutationMutex = Mutex()
+    private val mutableState = MutableStateFlow(ledger.snapshot())
+
+    val state: StateFlow<HistoryLedgerSnapshot> = mutableState.asStateFlow()
+
+    suspend fun initialize(serialized: String?) = mutationMutex.withLock {
+        ledger.initialize(serialized)
+        publish()
+    }
+
+    suspend fun record(id: Int, createdAtMillis: Long): Boolean = mutationMutex.withLock {
+        ledger.record(id, createdAtMillis).also { changed ->
+            if (changed) publish()
+        }
+    }
+
+    suspend fun remove(id: Int): Boolean = mutationMutex.withLock {
+        ledger.remove(id).also { changed ->
+            if (changed) publish()
+        }
+    }
+
+    suspend fun clear() = mutationMutex.withLock {
+        ledger.clear()
+        publish()
+    }
+
+    fun current(): HistoryLedgerSnapshot = state.value
+
+    private fun publish() {
+        mutableState.value = ledger.snapshot()
+    }
+
+    private fun HistoryLedger.snapshot() = HistoryLedgerSnapshot(
+        histories = load(),
+        changeVersion = changeVersion,
+        serialized = serialize(),
+    )
 }

@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -19,8 +20,21 @@ kotlin {
     }
 
     jvm("desktop")
-    iosArm64()
-    iosSimulatorArm64()
+
+    val harmonicXcFramework = XCFramework("HarmonicShared")
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "HarmonicShared"
+            isStatic = true
+            export(project(":shared_logic"))
+            export(project(":shared_resources"))
+            transitiveExport = true
+            harmonicXcFramework.add(this)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -33,7 +47,11 @@ kotlin {
             implementation(libs.compose.multiplatform.material3)
             implementation(libs.compose.multiplatform.resources)
             implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
             implementation(libs.ksoup)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
         androidMain.dependencies {
             implementation(libs.androidx.compose.material3)

@@ -3,10 +3,9 @@ package com.simon.harmonichackernews.ui.editor
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.HackerNewsUserService
-import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.platform.AndroidCredentialStore
 import com.simon.harmonichackernews.platform.AndroidConnectivityService
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.navigation.EditorDestination
@@ -29,10 +28,8 @@ class ComposeEditorCoordinator(
     val postTitle: String? = destination.postTitle
     val user: String? = destination.userName
     private var controller: ComposeEditorController? = null
-    private val hackerNewsUserService = HackerNewsUserService(
-        NetworkComponent.hackerNewsSession,
-        AndroidCredentialStore(activity),
-    )
+    private val appComposition = AndroidAppComposition.get(activity)
+    private val hackerNewsUserService = appComposition.hackerNewsUser
     private val workflow = EditorSubmissionWorkflow(
         type = type,
         itemId = id,

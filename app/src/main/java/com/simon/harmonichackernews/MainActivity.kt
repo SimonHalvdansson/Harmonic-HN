@@ -11,13 +11,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.simon.harmonichackernews.CommentsCoordinator.CommentsPaneCallback
-import com.simon.harmonichackernews.StoriesCoordinator.StoryClickListener
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.StoryDestination
-import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
@@ -37,8 +33,7 @@ import java.lang.ref.WeakReference
 import java.util.Collections
 import java.util.WeakHashMap
 
-class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
-    var lastPosition: Int = 0
+class MainActivity : BaseActivity() {
     private lateinit var backPressedCallback: OnBackPressedCallback
     private var searchBackEnabled = false
     private var mainNavigationController: MainNavigationController? = null
@@ -163,25 +158,24 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         mainNavigationController?.showFailureDetailDialog(title, message, clipboardText)
     }
 
-    private fun applyWelcomePresetToUi() {
-        storiesCoordinator?.applyWelcomePresetSettings()
-    }
-
     private fun startSearchBackProgress(progress: Float) {
-        storiesCoordinator?.startSearchBackProgress(progress)
+        storiesComposeController?.startSearchBack(progress)
     }
 
     private fun updateSearchBackProgress(progress: Float) {
-        storiesCoordinator?.updateSearchBackProgress(progress)
+        storiesComposeController?.updateSearchBack(progress)
     }
 
     private fun cancelSearchBackProgress() {
-        storiesCoordinator?.cancelSearchBackProgress()
+        storiesComposeController?.cancelSearchBack()
     }
 
     private fun finishSearchBackProgress(): Boolean {
-        return storiesCoordinator?.finishSearchBackProgress() == true
+        return storiesComposeController?.finishSearchBack() == true
     }
+
+    private val storiesComposeController: StoriesComposeController?
+        get() = mainNavigationController?.storiesComposeController
 
     private val storiesCoordinator: StoriesCoordinator?
         get() = mainNavigationController?.getStoriesCoordinator()
@@ -197,26 +191,13 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         fun onSearchBackStateChanged(enabled: Boolean)
     }
 
-    override fun openStory(story: Story?, pos: Int, showWebsite: Boolean) {
-        if (story == null) return
-        if (switchOpenStoryViewIfMatching(story, showWebsite)) {
-            lastPosition = pos
-            return
-        }
-
-        val destination = story.toDestination(
-            relativePosition = pos - lastPosition,
-            showWebsite = showWebsite,
-        )
-        lastPosition = pos
+    internal fun openStory(destination: StoryDestination) {
+        if (mainNavigationController!!.switchOpenStoryViewIfMatching(
+                destination.storyId,
+                destination.showWebsite,
+            )
+        ) return
         mainNavigationController!!.openStory(destination)
-    }
-
-    private fun switchOpenStoryViewIfMatching(story: Story?, showWebsite: Boolean): Boolean {
-        if (story == null) {
-            return false
-        }
-        return mainNavigationController!!.switchOpenStoryViewIfMatching(story.id, showWebsite)
     }
 
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -236,18 +217,6 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
             }
         }
         return super.onKeyDown(keyCode, event)
-    }
-
-    fun onAccountStateChanged() {
-        storiesCoordinator?.onAccountStateChanged()
-    }
-
-    fun onStoryPreviewImageLoaded(storyId: Int) {
-        storiesCoordinator?.onStoryPreviewImageLoaded(storyId)
-    }
-
-    fun onStoryPreviewImageLoadFailed(storyId: Int) {
-        storiesCoordinator?.onStoryPreviewImageLoadFailed(storyId)
     }
 
     fun closeStory() {
@@ -282,7 +251,6 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         mainNavigationController!!.openStory(
             StoryDestination(
                 storyId = itemId,
-                title = "",
                 scrollToCommentId = scrollToCommentId,
             ),
         )
@@ -417,10 +385,6 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
         commentsCoordinator?.onConfigurationChanged(newConfig)
     }
 
-    public override fun onSwitchView(isAtWebView: Boolean) {
-        // Navigation 3 and the comments coordinator's back handler own the relevant state now.
-    }
-
     private val commentsCoordinator: CommentsCoordinator?
         get() = mainNavigationController?.getCommentsCoordinator()
 
@@ -460,10 +424,6 @@ class MainActivity : BaseActivity(), StoryClickListener, CommentsPaneCallback {
 
         fun finishActiveSearchBackProgress(): Boolean {
             return getCurrentMainActivity()?.finishSearchBackProgress() == true
-        }
-
-        fun applyWelcomePresetToActiveUi() {
-            getCurrentMainActivity()?.applyWelcomePresetToUi()
         }
 
         fun showLoginPrompt(): Boolean {

@@ -89,3 +89,41 @@ enum class StoryType(
         }
     }
 }
+
+/** Portable ordering and availability policy for the stories source selector. */
+object StoryTypeMenuPolicy {
+    private val baseTypes = listOf(
+        StoryType.TOP_STORIES,
+        StoryType.LAST_24_HOURS,
+        StoryType.LAST_48_HOURS,
+        StoryType.LAST_WEEK,
+        StoryType.NEW_STORIES,
+        StoryType.BEST_STORIES,
+        StoryType.ASK_HN,
+        StoryType.SHOW_HN,
+        StoryType.HN_JOBS,
+        StoryType.BOOKMARKS,
+        StoryType.HISTORY,
+    )
+
+    fun availableTypes(
+        enabledAdditionalFrontpages: Set<String>,
+        hasAccount: Boolean,
+    ): List<StoryType> = buildList {
+        baseTypes.forEach { type ->
+            if (type == StoryType.BOOKMARKS) {
+                StoryType.additionalFrontpages
+                    .filter { it.label in enabledAdditionalFrontpages }
+                    .forEach(::add)
+            }
+            add(type)
+            if (hasAccount && type == StoryType.BOOKMARKS) add(StoryType.FAVORITES)
+        }
+        if (hasAccount) add(StoryType.UPVOTED)
+    }
+
+    fun preferred(label: CharSequence?, availableTypes: List<StoryType>): StoryType =
+        StoryType.fromLabel(label)
+            .takeIf { it != StoryType.UNKNOWN && it in availableTypes }
+            ?: StoryType.TOP_STORIES
+}

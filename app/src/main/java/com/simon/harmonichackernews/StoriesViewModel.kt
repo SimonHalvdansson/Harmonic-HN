@@ -1,9 +1,10 @@
 package com.simon.harmonichackernews
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.simon.harmonichackernews.presentation.StoriesSessionState
 
-/** Android lifecycle holder for platform-neutral story session state. */
-class StoriesViewModel : ViewModel() {
-    val state = StoriesSessionState()
+/** Android lifecycle handle for the application composition's platform-neutral story session. */
+class StoriesViewModel(application: Application) : AndroidViewModel(application) {
+    val state: StoriesSessionState = AndroidAppComposition.get(application).sessions.stories
 }

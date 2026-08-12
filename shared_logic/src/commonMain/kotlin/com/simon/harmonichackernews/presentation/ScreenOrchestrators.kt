@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
@@ -23,13 +24,15 @@ sealed interface CommentsPlatformEffect {
     data class ShowMessage(val message: String) : CommentsPlatformEffect
     data class ShareText(val text: String) : CommentsPlatformEffect
     data class CopyText(val label: String, val text: String) : CommentsPlatformEffect
-    data object Refresh : CommentsPlatformEffect
+    data object ReloadLinkPreviews : CommentsPlatformEffect
     data object Summarize : CommentsPlatformEffect
-    data class OpenStory(val itemId: Int) : CommentsPlatformEffect
+    data class OpenStory(val destination: StoryDestination) : CommentsPlatformEffect
+    data class OpenExternalLink(
+        val url: String,
+        val preferInApp: Boolean = true,
+    ) : CommentsPlatformEffect
     data object ShowSearch : CommentsPlatformEffect
-    data object OpenBrowser : CommentsPlatformEffect
     data object DisableAdBlock : CommentsPlatformEffect
-    data class OpenArchive(val provider: ArchiveProvider) : CommentsPlatformEffect
     data object ReloadWebsite : CommentsPlatformEffect
     data object ExpandSheet : CommentsPlatformEffect
     data object OpenWebsiteInBrowser : CommentsPlatformEffect
@@ -93,7 +96,7 @@ object CommentsUiOrchestrator {
                 refreshState = true,
             )
             CommentsHeaderAction.SUMMARIZE -> effect(CommentsPlatformEffect.Summarize)
-            CommentsHeaderAction.REFRESH -> effect(CommentsPlatformEffect.Refresh)
+            CommentsHeaderAction.REFRESH -> FeatureDecision()
         }
     }
 
@@ -115,14 +118,19 @@ object CommentsUiOrchestrator {
         story: Story,
         commentsByOpActive: Boolean,
     ): FeatureDecision<CommentsAction, CommentsPlatformEffect> = when (action) {
-        CommentsMoreAction.REFRESH -> effect(CommentsPlatformEffect.Refresh)
+        CommentsMoreAction.REFRESH -> FeatureDecision()
         CommentsMoreAction.OPEN_PARENT -> itemEffect(story.parentId)
         CommentsMoreAction.OPEN_TOP_LEVEL -> itemEffect(story.commentMasterId)
         CommentsMoreAction.TOGGLE_BOOKMARK -> action(
             CommentsAction.ToggleBookmark(story.id),
             refreshState = true,
         )
-        CommentsMoreAction.SEARCH -> effect(CommentsPlatformEffect.ShowSearch)
+        CommentsMoreAction.SEARCH -> FeatureDecision(
+            actions = listOf(CommentsAction.ResetCommentsByOp),
+            effects = listOf(CommentsPlatformEffect.ShowSearch),
+            refreshState = true,
+            refreshNavigation = true,
+        )
         CommentsMoreAction.COMMENTS_BY_OP -> action(
             if (commentsByOpActive) {
                 CommentsAction.ResetCommentsByOp
@@ -132,14 +140,23 @@ object CommentsUiOrchestrator {
             refreshState = true,
             refreshNavigation = true,
         )
-        CommentsMoreAction.OPEN_BROWSER -> effect(CommentsPlatformEffect.OpenBrowser)
+        CommentsMoreAction.OPEN_BROWSER -> effect(
+            CommentsPlatformEffect.OpenExternalLink(
+                url = "$HN_ITEM_URL${story.id}",
+                preferInApp = false,
+            ),
+        )
         CommentsMoreAction.DISABLE_AD_BLOCK -> effect(CommentsPlatformEffect.DisableAdBlock)
-        CommentsMoreAction.ARCHIVE_ORG ->
-            effect(CommentsPlatformEffect.OpenArchive(ArchiveProvider.ORG))
-        CommentsMoreAction.ARCHIVE_IS ->
-            effect(CommentsPlatformEffect.OpenArchive(ArchiveProvider.IS))
-        CommentsMoreAction.ARCHIVE_TODAY ->
-            effect(CommentsPlatformEffect.OpenArchive(ArchiveProvider.TODAY))
+        CommentsMoreAction.ARCHIVE_ORG,
+        CommentsMoreAction.ARCHIVE_IS,
+        CommentsMoreAction.ARCHIVE_TODAY -> FeatureDecision()
+    }
+
+    fun archiveProvider(action: CommentsMoreAction): ArchiveProvider? = when (action) {
+        CommentsMoreAction.ARCHIVE_ORG -> ArchiveProvider.ORG
+        CommentsMoreAction.ARCHIVE_IS -> ArchiveProvider.IS
+        CommentsMoreAction.ARCHIVE_TODAY -> ArchiveProvider.TODAY
+        else -> null
     }
 
     fun sheet(action: CommentsSheetAction): CommentsPlatformEffect = when (action) {
@@ -211,7 +228,7 @@ object CommentsUiOrchestrator {
     }
 
     private fun itemEffect(itemId: Int) = if (itemId > 0) {
-        effect(CommentsPlatformEffect.OpenStory(itemId))
+        effect(CommentsPlatformEffect.OpenStory(StoryDestination(storyId = itemId)))
     } else {
         FeatureDecision()
     }
@@ -243,16 +260,9 @@ object CommentsUiOrchestrator {
 sealed interface StoriesPlatformEffect {
     data object OpenSettings : StoriesPlatformEffect
     data object RequestLogin : StoriesPlatformEffect
-    data object Logout : StoriesPlatformEffect
     data class OpenProfile(val userName: String) : StoriesPlatformEffect
     data object ShowCacheDialog : StoriesPlatformEffect
     data object OpenSubmitEditor : StoriesPlatformEffect
-    data object ClearHistory : StoriesPlatformEffect
-    data class PreviewAction(
-        val story: Story,
-        val position: Int,
-        val action: StoryPreviewActionKind,
-    ) : StoriesPlatformEffect
 }
 
 object StoriesUiOrchestrator {
@@ -268,19 +278,13 @@ object StoriesUiOrchestrator {
         StoriesMenuAction.ACCOUNT -> if (accountUser.isNullOrBlank()) {
             StoriesPlatformEffect.RequestLogin
         } else {
-            StoriesPlatformEffect.Logout
+            null
         }
         StoriesMenuAction.PROFILE -> accountUser?.takeIf(String::isNotBlank)?.let {
             StoriesPlatformEffect.OpenProfile(it)
         }
         StoriesMenuAction.CACHE -> StoriesPlatformEffect.ShowCacheDialog
         StoriesMenuAction.SUBMIT -> StoriesPlatformEffect.OpenSubmitEditor
-        StoriesMenuAction.CLEAR_HISTORY -> StoriesPlatformEffect.ClearHistory
+        StoriesMenuAction.CLEAR_HISTORY -> null
     }
-
-    fun preview(
-        story: Story,
-        position: Int,
-        action: StoryPreviewActionKind,
-    ): StoriesPlatformEffect = StoriesPlatformEffect.PreviewAction(story, position, action)
 }

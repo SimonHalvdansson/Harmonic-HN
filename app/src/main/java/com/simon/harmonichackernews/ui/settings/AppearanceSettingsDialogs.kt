@@ -20,18 +20,13 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.ColorUtils
-import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
-import com.simon.harmonichackernews.settings.AndroidSettingsMutator
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.ThemePreferences
-import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
-import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.Utils
 
 fun composeThemeLabel(value: String, fallback: String = ThemePreferences.DEFAULT): String {
@@ -45,25 +40,21 @@ fun ThemeSelectionDialog(
     onThemeChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    val key = if (nighttime) {
-        ThemePreferences.NIGHTTIME_KEY
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
+    val selected = if (nighttime) {
+        presenter.snapshot.appearance.nighttimeTheme
     } else {
-        ThemePreferences.KEY
+        presenter.snapshot.appearance.theme
     }
-    val fallback = if (nighttime) {
-        ThemePreferences.DEFAULT_NIGHTTIME
-    } else {
-        ThemePreferences.DEFAULT
-    }
-    val selected = prefs.getString(key, fallback) ?: fallback
     SharedThemeSelectionDialog(
         nighttime = nighttime,
         selected = selected,
         onThemeSelected = { theme ->
-            prefs.edit().putString(key, theme).apply()
+            presenter.setTheme(theme, nighttime).forEach { effect ->
+                if (effect == SettingsPlatformEffect.ThemeChanged) onThemeChanged()
+            }
             onDismiss()
-            onThemeChanged()
         },
         onDismiss = onDismiss,
         previewPalettes = { theme -> themePreviewPalettes(theme) },
@@ -200,11 +191,12 @@ fun WelcomeSettingsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
     LaunchedEffect(Unit) {
         AndroidAiModelDefaults.ensureInitialDefault(context)
     }
-    val storyPreferences = AndroidUserSettings.get(context).story
+    val storyPreferences = presenter.snapshot.story
     SharedWelcomeSettingsDialog(
         styleChooser = styleChooser,
         initialExpressive = !styleChooser ||
@@ -212,27 +204,7 @@ fun WelcomeSettingsDialog(
             storyPreferences.tintCardUsingPreview ||
             storyPreferences.previewImageMode != StoryPreviewPreferences.OFF,
         onApplyPreset = { expressive ->
-            if (expressive) {
-                prefs.edit()
-                    .putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true)
-                    .putString(UserPreferenceKeys.FONT, "googlesansflexrounded")
-                    .putString(
-                        UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-                        StoryPreviewPreferences.SMALL,
-                    )
-                    .apply()
-            } else {
-                prefs.edit()
-                    .putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, false)
-                    .putString(UserPreferenceKeys.FONT, "productsans")
-                    .putString(
-                        UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-                        StoryPreviewPreferences.OFF,
-                    )
-                    .apply()
-            }
-            FontUtils.init(context)
-            MainActivity.applyWelcomePresetToActiveUi()
+            presenter.applyWelcomePreset(expressive)
             if (!styleChooser) Utils.markWelcomeDialogShown(context)
             onDismiss()
         },
@@ -268,22 +240,23 @@ fun PaletteTintDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val paletteConfig = AndroidUserSettings.get(context).story.paletteTintConfigKey
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
+    val paletteConfig = presenter.snapshot.story.paletteTintConfigKey
     SharedPaletteTintDialog(
         initialMode = PaletteTintPreferences.sanitizeMode(paletteConfig),
         initialStrength = PaletteTintPreferences.strength(paletteConfig),
         initialColorfulness = PaletteTintPreferences.colorfulness(paletteConfig),
         initialTone = PaletteTintPreferences.tone(paletteConfig),
         onSettingsChanged = { mode, strength, colorfulness, tone ->
-            AndroidSettingsMutator.setPaletteTint(
-                context,
+            presenter.setPaletteTint(
                 mode,
                 strength,
                 colorfulness,
                 tone,
             )
         },
-        onReset = { AndroidSettingsMutator.clearPaletteTint(context) },
+        onReset = { presenter.clearPaletteTint() },
         onDismiss = onDismiss,
     )
 }

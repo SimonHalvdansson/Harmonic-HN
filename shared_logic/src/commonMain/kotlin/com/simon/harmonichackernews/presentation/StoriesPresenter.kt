@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsListPage
 import com.simon.harmonichackernews.network.StoryFeedLoader
+import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.network.StoryFeedResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -31,11 +32,11 @@ data class StoriesPresenterState(
     val updateAvailable: Boolean = false,
     val mainStoryType: StoryType = StoryType.TOP_STORIES,
     val searchStoryType: StoryType = StoryType.TOP_STORIES,
-    val mainList: StoryListUiState = StoryListUiState(),
-    val searchList: StoryListUiState = StoryListUiState(),
+    val mainList: PortableStoryListState = PortableStoryListState(),
+    val searchList: PortableStoryListState = PortableStoryListState(),
     val search: StorySearchUiState = StorySearchUiState(),
 ) {
-    val activeList: StoryListUiState get() = if (searching) searchList else mainList
+    val activeList: PortableStoryListState get() = if (searching) searchList else mainList
     val activeStoryType: StoryType get() = if (searching) searchStoryType else mainStoryType
 }
 
@@ -71,11 +72,10 @@ sealed interface StoriesAction {
     data object ToggleOnlyClicked : StoriesAction
     data class SelectStoryLink(
         val story: Story,
-        val position: Int,
         val alwaysOpenComments: Boolean,
         val useIntegratedWebView: Boolean,
     ) : StoriesAction
-    data class SelectStoryComments(val story: Story, val position: Int) : StoriesAction
+    data class SelectStoryComments(val story: Story) : StoriesAction
     data class LoadFeed(
         val storyType: StoryType,
         val frontDay: String?,
@@ -102,17 +102,15 @@ sealed interface StoriesAction {
 sealed interface StoriesEffect {
     data class OpenComments(
         val story: Story,
-        val position: Int,
         val showWebsite: Boolean,
     ) : StoriesEffect
 
     data class OpenExternalStory(
         val story: Story,
-        val position: Int,
         val url: String,
     ) : StoriesEffect
 
-    data class RetryStory(val story: Story, val position: Int) : StoriesEffect
+    data class RetryStory(val story: Story) : StoriesEffect
     data class FeedLoaded(
         val storyType: StoryType,
         val generation: Int,
@@ -180,9 +178,9 @@ class StoriesPresenter(
     private val storyFeedLoader: StoryFeedLoader,
     clickedStoryIds: () -> List<Int>,
     isStoryClicked: (Int) -> Boolean,
-    shouldFilterStory: (Story) -> Boolean,
     shouldHideClickedStories: () -> Boolean,
 ) : Feature<StoriesAction, StoriesPresenterState, StoriesEffect> {
+    private val storyVisibilityPolicy = StoryVisibilityPolicy()
     val mainStoryList = sessionState.mainStoryList
     val searchStoryList = sessionState.searchStoryList
     val searchStore = StorySearchStore(
@@ -191,7 +189,16 @@ class StoriesPresenter(
         hackerNewsRepository = hackerNewsRepository,
         clickedStoryIds = clickedStoryIds,
         isStoryClicked = isStoryClicked,
-        shouldFilterStory = shouldFilterStory,
+        shouldFilterStory = { story ->
+            storyVisibilityPolicy.shouldHide(
+                story,
+                if (sessionState.searching) {
+                    sessionState.searchStoryType
+                } else {
+                    sessionState.mainStoryType
+                },
+            )
+        },
         shouldHideClickedStories = shouldHideClickedStories,
     )
 
@@ -211,6 +218,12 @@ class StoriesPresenter(
     private val mutableEffects = MutableSharedFlow<StoriesEffect>(extraBufferCapacity = 16)
     override val effects: SharedFlow<StoriesEffect> = mutableEffects.asSharedFlow()
     private var feedLoadJob: Job? = null
+
+    fun configureVisibility(filters: ContentFilters, hideJobs: Boolean): Boolean =
+        storyVisibilityPolicy.update(filters, hideJobs)
+
+    fun shouldHideStory(story: Story, type: StoryType): Boolean =
+        storyVisibilityPolicy.shouldHide(story, type)
     private var nextScrapedPageJob: Job? = null
     private var userItemsLoadJob: Job? = null
     private val storyRowLoader = StoryRowLoadOrchestrator(
@@ -292,19 +305,19 @@ class StoriesPresenter(
     private fun selectStoryLink(action: StoriesAction.SelectStoryLink) {
         val story = action.story
         val effect = when {
-            !story.loaded && story.loadingFailed -> StoriesEffect.RetryStory(story, action.position)
+            !story.loaded && story.loadingFailed -> StoriesEffect.RetryStory(story)
             !story.loaded -> null
             story.isFrontpageLink -> story.url?.let {
-                StoriesEffect.OpenExternalStory(story, action.position, it)
+                StoriesEffect.OpenExternalStory(story, it)
             }
             action.alwaysOpenComments ->
-                StoriesEffect.OpenComments(story, action.position, showWebsite = false)
+                StoriesEffect.OpenComments(story, showWebsite = false)
             story.isLink && action.useIntegratedWebView ->
-                StoriesEffect.OpenComments(story, action.position, showWebsite = true)
+                StoriesEffect.OpenComments(story, showWebsite = true)
             story.isLink -> story.url?.let {
-                StoriesEffect.OpenExternalStory(story, action.position, it)
+                StoriesEffect.OpenExternalStory(story, it)
             }
-            else -> StoriesEffect.OpenComments(story, action.position, showWebsite = false)
+            else -> StoriesEffect.OpenComments(story, showWebsite = false)
         }
         effect?.let(mutableEffects::tryEmit)
     }
@@ -313,10 +326,10 @@ class StoriesPresenter(
         if (!action.story.loaded) return
         val effect = if (action.story.isFrontpageLink) {
             action.story.url?.let {
-                StoriesEffect.OpenExternalStory(action.story, action.position, it)
+                StoriesEffect.OpenExternalStory(action.story, it)
             }
         } else {
-            StoriesEffect.OpenComments(action.story, action.position, showWebsite = false)
+            StoriesEffect.OpenComments(action.story, showWebsite = false)
         }
         effect?.let(mutableEffects::tryEmit)
     }
@@ -394,7 +407,7 @@ class StoriesPresenter(
                             result.items.commentIds,
                         )
                         if (savedItemsRepository.loadSnapshot(action.source) != snapshot) {
-                            savedItemsRepository.saveSnapshot(
+                            savedItemsRepository.saveSnapshotAtomic(
                                 action.source,
                                 snapshot,
                                 action.savedAtMillis,
@@ -509,8 +522,8 @@ class StoriesPresenter(
         updateAvailable: Boolean = state.value.updateAvailable,
         mainStoryType: StoryType = state.value.mainStoryType,
         searchStoryType: StoryType = state.value.searchStoryType,
-        mainList: StoryListUiState = state.value.mainList,
-        searchList: StoryListUiState = state.value.searchList,
+        mainList: PortableStoryListState = state.value.mainList,
+        searchList: PortableStoryListState = state.value.searchList,
         search: StorySearchUiState = state.value.search,
     ) {
         sessionState.searching = searching

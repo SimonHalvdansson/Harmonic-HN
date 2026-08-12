@@ -35,6 +35,7 @@ object UserPreferenceKeys {
     const val ALWAYS_OPEN_COMMENTS = "pref_always_open_comments"
     const val PAGINATION_MODE = "pref_pagination_mode"
     const val ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh"
+    const val DEBUG_SHOW_AI_SUMMARY_INFO = "pref_debug_show_llm_summary_info"
     const val DEFAULT_STORY_TYPE = "pref_default_story_type"
     const val ADDITIONAL_FRONTPAGES = "pref_additional_frontpages"
 
@@ -144,12 +145,17 @@ class StoredUserSettings(
     override val comments: CommentPreferences
         get() {
             val tintCard = boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true)
+            val headerPreviewImageEnabled =
+                boolean(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE, true)
+            val headerTintEnabled = boolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true)
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 thumbnails = boolean(UserPreferenceKeys.THUMBNAILS, true),
+                headerPreviewImageEnabled = headerPreviewImageEnabled,
                 showHeaderPreviewImage = previewImageMode() != StoryPreviewPreferences.OFF &&
-                    boolean(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE, true),
-                tintHeader = tintCard && boolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true),
+                    headerPreviewImageEnabled,
+                headerTintEnabled = headerTintEnabled,
+                tintHeader = tintCard && headerTintEnabled,
                 paletteTintConfigKey = paletteTintConfigKey(),
                 textSize = commentTextSize(),
                 depthIndicatorMode = commentDepthMode(),
@@ -169,14 +175,18 @@ class StoredUserSettings(
                 collectReferenceLinks =
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
-                sorting = string(UserPreferenceKeys.COMMENT_SORTING, "Default"),
+                sorting = CommentSortingPreference.fromStored(
+                    string(UserPreferenceKeys.COMMENT_SORTING, CommentSortingPreference.DEFAULT.storedValue),
+                ).storedValue,
                 showScrollbar = boolean(UserPreferenceKeys.COMMENTS_SCROLLBAR, false),
                 animateChanges = boolean(UserPreferenceKeys.COMMENTS_ANIMATION, true),
                 smoothScroll = boolean(UserPreferenceKeys.COMMENTS_SMOOTH_SCROLL, true),
-                volumeNavigationMode = string(
-                    UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION,
-                    "disabled",
-                ),
+                volumeNavigationMode = CommentVolumeNavigationMode.fromStored(
+                    string(
+                        UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION,
+                        CommentVolumeNavigationMode.DISABLED.storedValue,
+                    ),
+                ).storedValue,
             )
         }
 
@@ -197,7 +207,9 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.READER_MODE_DEFAULT, false),
                 blockAds = boolean(UserPreferenceKeys.WEBVIEW_ADBLOCK, false),
                 closeWebViewOnBack = boolean(UserPreferenceKeys.CLOSE_WEBVIEW_ON_BACK, false),
-                useAlgoliaApi = string(UserPreferenceKeys.COMMENTS_PROVIDER, "algolia") == "algolia",
+                useAlgoliaApi = CommentsProvider.fromStored(
+                    string(UserPreferenceKeys.COMMENTS_PROVIDER, CommentsProvider.ALGOLIA.storedValue),
+                ) == CommentsProvider.ALGOLIA,
                 readerModeFont = TextPreferences.sanitizeFont(
                     string(UserPreferenceKeys.READER_MODE_FONT, "googlesansflexrounded"),
                 ),
@@ -235,6 +247,20 @@ class StoredUserSettings(
             transparentStatusBar = boolean(UserPreferenceKeys.TRANSPARENT_STATUS_BAR, false),
             specialNighttimeTheme = boolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false),
             showChangelog = boolean(UserPreferenceKeys.SHOW_CHANGELOG, true),
+        )
+
+    override val appearance: AppearancePreferences
+        get() = AppearancePreferences(
+            theme = string(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+            nighttimeTheme = ThemePreferences.selectableNighttimeTheme(
+                string(ThemePreferences.NIGHTTIME_KEY, ThemePreferences.DEFAULT_NIGHTTIME),
+            ),
+        )
+
+    override val debug: DebugPreferences
+        get() = DebugPreferences(
+            alwaysShowTapToRefresh = boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
+            showAiSummaryDebugInfo = boolean(UserPreferenceKeys.DEBUG_SHOW_AI_SUMMARY_INFO, false),
         )
 
     override fun setStoriesToCache(count: Int) {

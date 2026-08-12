@@ -120,12 +120,16 @@ import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.MainEditorRequest
+import com.simon.harmonichackernews.navigation.MainCaptchaRequest
+import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
-import com.simon.harmonichackernews.navigation.MainNavigationState
+import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
+import com.simon.harmonichackernews.navigation.MainUserRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
@@ -140,25 +144,6 @@ private data object StoriesDestination : NavKey
 private data class CommentsDestination(
     val request: MainStoryRequest,
 ) : NavKey
-
-internal data class MainCaptchaRequest(
-    val serial: Int,
-    val challenge: HackerNewsCaptchaChallenge,
-    val callback: CaptchaResultCallback,
-)
-
-internal data class MainUserRequest(
-    val serial: Int,
-    val userName: String,
-    val onTagChanged: Runnable?,
-)
-
-internal data class MainFailureRequest(
-    val serial: Int,
-    val title: String?,
-    val message: String?,
-    val clipboardText: String?,
-)
 
 /**
  * Imperative bridge used by the existing story-loading controller while Navigation 3 owns the
@@ -207,13 +192,27 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     internal var closeRequest by mutableIntStateOf(0)
         private set
 
-    private var captchaRequestSerial = 0
-    private var userRequestSerial = 0
-    private var failureRequestSerial = 0
-    private val navigationState = MainNavigationState(
+    private var captchaCallback: CaptchaResultCallback? = null
+    private var userTagChangedCallback: Runnable? = null
+    private val restoredStoryRoute = savedState
+        ?.getInt(STATE_STORY_ID, 0)
+        ?.takeIf { it > 0 }
+        ?.let { storyId ->
+            StoryRoute(
+                storyId = storyId,
+                showWebsite = savedState?.getBoolean(STATE_STORY_SHOW_WEBSITE, false) == true,
+                scrollToCommentId =
+                    savedState?.getInt(STATE_STORY_SCROLL_TO_COMMENT_ID, -1) ?: -1,
+            )
+        }
+    private val navigationState = MainNavigationStore(
         MainNavigationRestoration(
-            storyDestination = savedState?.getBundle(STATE_STORY_ARGUMENTS)
-                ?.toStoryDestinationOrNull(),
+            storyDestination = if (restoredStoryRoute == null) {
+                savedState?.getBundle(STATE_STORY_ARGUMENTS)?.toStoryDestinationOrNull()
+            } else {
+                null
+            },
+            storyRoute = restoredStoryRoute,
             storyRequestSerial = savedState?.getInt(STATE_REQUEST_SERIAL, 0) ?: 0,
             settingsOpen = savedState?.getBoolean(STATE_SETTINGS_OPEN, false) == true,
             settingsRequestSerial = savedState?.getInt(STATE_SETTINGS_REQUEST_SERIAL, 0) ?: 0,
@@ -228,6 +227,8 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
                 savedState?.getBoolean(STATE_CACHE_STORIES_DIALOG_VISIBLE, false) == true,
             loginDialogVisible =
                 savedState?.getBoolean(STATE_LOGIN_DIALOG_VISIBLE, false) == true,
+            userDialogUserName = savedState?.getString(STATE_USER_DIALOG_NAME),
+            userDialogSerial = savedState?.getInt(STATE_USER_DIALOG_SERIAL, 0) ?: 0,
             editorDestination = savedState?.getBundle(STATE_EDITOR_ARGUMENTS)
                 ?.toEditorDestination(),
             editorRequestSerial = savedState?.getInt(STATE_EDITOR_REQUEST_SERIAL, 0) ?: 0,
@@ -256,10 +257,6 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     init {
         syncNavigationState()
-        savedState?.getString(STATE_USER_DIALOG_NAME)?.let { userName ->
-            userRequestSerial = savedState.getInt(STATE_USER_DIALOG_SERIAL, 1).coerceAtLeast(1)
-            userRequest = MainUserRequest(userRequestSerial, userName, null)
-        }
     }
 
     fun openStory(destination: StoryDestination) {
@@ -353,33 +350,42 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         challenge: HackerNewsCaptchaChallenge,
         callback: CaptchaResultCallback,
     ) {
-        captchaRequest?.callback?.onCaptchaCancelled()
-        captchaRequest = MainCaptchaRequest(++captchaRequestSerial, challenge, callback)
+        captchaCallback?.onCaptchaCancelled()
+        navigationState.showCaptchaDialog(challenge)
+        captchaCallback = callback
+        syncNavigationState()
     }
 
     internal fun dismissCaptchaDialog() {
-        val request = captchaRequest ?: return
-        captchaRequest = null
-        request.callback.onCaptchaCancelled()
+        if (navigationState.dismissCaptchaDialog() == null) return
+        val callback = captchaCallback
+        captchaCallback = null
+        syncNavigationState()
+        callback?.onCaptchaCancelled()
     }
 
     internal fun completeCaptchaDialog(response: String) {
-        val request = captchaRequest ?: return
-        captchaRequest = null
-        request.callback.onCaptchaResponse(request.challenge, response)
+        val request = navigationState.dismissCaptchaDialog() ?: return
+        val callback = captchaCallback
+        captchaCallback = null
+        syncNavigationState()
+        callback?.onCaptchaResponse(request.challenge, response)
     }
 
     fun showUserDialog(userName: String, onTagChanged: Runnable?) {
-        if (userName.isBlank()) return
-        userRequest = MainUserRequest(++userRequestSerial, userName, onTagChanged)
+        if (navigationState.showUserDialog(userName) == null) return
+        userTagChangedCallback = onTagChanged
+        syncNavigationState()
     }
 
     internal fun dismissUserDialog() {
-        userRequest = null
+        navigationState.dismissUserDialog()
+        userTagChangedCallback = null
+        syncNavigationState()
     }
 
     internal fun notifyUserTagChanged() {
-        userRequest?.onTagChanged?.run()
+        userTagChangedCallback?.run()
     }
 
     fun showFailureDetailDialog(
@@ -387,16 +393,13 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         message: String?,
         clipboardText: String?,
     ) {
-        failureRequest = MainFailureRequest(
-            serial = ++failureRequestSerial,
-            title = title,
-            message = message,
-            clipboardText = clipboardText,
-        )
+        navigationState.showFailureDetailDialog(title, message, clipboardText)
+        syncNavigationState()
     }
 
     internal fun dismissFailureDetailDialog() {
-        failureRequest = null
+        navigationState.dismissFailureDetailDialog()
+        syncNavigationState()
     }
 
     fun openEditor(destination: EditorDestination) {
@@ -510,6 +513,9 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         changelogDialogVisible = navigationState.changelogDialogVisible
         cacheStoriesDialogVisible = navigationState.cacheStoriesDialogVisible
         loginDialogVisible = navigationState.loginDialogVisible
+        captchaRequest = navigationState.captchaRequest
+        userRequest = navigationState.userRequest
+        failureRequest = navigationState.failureRequest
         editorRequest = navigationState.editorRequest
         lastEditorRequest = navigationState.lastEditorRequest
         submissionsRequest = navigationState.submissionsRequest
@@ -523,7 +529,12 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     fun saveState(outState: Bundle) {
         storyRequest?.let { request ->
             outState.putInt(STATE_REQUEST_SERIAL, request.serial)
-            outState.putBundle(STATE_STORY_ARGUMENTS, request.destination.toBundle())
+            outState.putInt(STATE_STORY_ID, request.route.storyId)
+            outState.putBoolean(STATE_STORY_SHOW_WEBSITE, request.route.showWebsite)
+            outState.putInt(
+                STATE_STORY_SCROLL_TO_COMMENT_ID,
+                request.route.scrollToCommentId,
+            )
             commentsCoordinator?.let { coordinator ->
                 val commentsState = Bundle()
                 coordinator.onSaveInstanceState(commentsState)
@@ -575,6 +586,11 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     private companion object {
         const val STATE_REQUEST_SERIAL = "main_navigation_request_serial"
+        const val STATE_STORY_ID = "main_navigation_story_id"
+        const val STATE_STORY_SHOW_WEBSITE = "main_navigation_story_show_website"
+        const val STATE_STORY_SCROLL_TO_COMMENT_ID =
+            "main_navigation_story_scroll_to_comment_id"
+        // Read-only migration key for state saved by builds before route-only restoration.
         const val STATE_STORY_ARGUMENTS = "main_navigation_story_arguments"
         const val STATE_COMMENTS_REQUEST_SERIAL = "main_navigation_comments_request_serial"
         const val STATE_COMMENTS_STATE = "main_navigation_comments_state"
@@ -1195,10 +1211,10 @@ private fun MainNavigation(
                                 activity = activity,
                                 sessionKey = request.serial,
                                 userName = request.userName,
-                                navigator = SubmissionsCoordinator.Navigator { story, showWebsite ->
+                                navigator = SubmissionsCoordinator.Navigator { destination ->
                                     controller.prepareToOpenStoryFromSubmissions()
                                     controller.closeSettings()
-                                    activity.openStory(story, 0, showWebsite)
+                                    activity.openStory(destination)
                                 },
                             )
                         }
@@ -1330,7 +1346,6 @@ private fun MainNavigation(
         if (controller.loginDialogVisible) {
             LoginDialog(
                 onDismiss = controller::dismissLoginDialog,
-                onAccountStateChanged = activity::onAccountStateChanged,
             )
         }
 

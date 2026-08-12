@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="load_more">Load more</string>
-    <string name="loading_more_stories">Loading more stories</string>
     <string name="app_name">Harmonic</string>
     <string name="widget_config_title">Configure Widget</string>
     <string name="widget_config_top_stories">Top Stories</string>
@@ -43,16 +41,5 @@
         <item>Highlights</item>
         <item>Active</item>
         <item>Front</item>
-    </string-array>
-    <string-array name="search_sorting_options">
-        <item>Popularity</item>
-        <item>Recent</item>
-    </string-array>
-    <string-array name="search_sorting_timescale">
-        <item>All time</item>
-        <item>Last year</item>
-        <item>Last month</item>
-        <item>Last week</item>
-        <item>Last 24 hours</item>
     </string-array>
 </resources>

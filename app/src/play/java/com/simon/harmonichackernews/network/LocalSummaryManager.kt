@@ -14,7 +14,6 @@ import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.local.LocalModelManager
 import java.util.concurrent.ExecutionException
-import kotlinx.coroutines.runBlocking
 
 /** Play distribution implementation for Gemini Nano and downloadable local models.  */
 internal object LocalSummaryManager {
@@ -62,41 +61,6 @@ internal object LocalSummaryManager {
                 postDownloadableModelAvailability(callback)
             } finally {
                 summarizer?.close()
-            }
-        }.start()
-    }
-
-    fun summarizeArticle(
-        context: Context?,
-        articleUrl: String?,
-        callback: LocalSummaryCallback?,
-    ) {
-        if (context == null || callback == null) return
-        val appContext = context.applicationContext
-        Thread {
-            try {
-                summarizePreparedTextLocally(
-                    appContext,
-                    prepareLocalSummaryInput(
-                        runBlocking {
-                            NetworkComponent.summaryUseCase.extractArticleText(articleUrl.orEmpty())
-                        }
-                    ),
-                    callback
-                )
-            } catch (exception: ExecutionException) {
-                LocalSummaryCallbacks.failure(
-                    callback,
-                    "Local summarization failed: ${LocalSummaryCallbacks.errorMessage(exception.cause)}",
-                )
-            } catch (exception: InterruptedException) {
-                Thread.currentThread().interrupt()
-                LocalSummaryCallbacks.failure(callback, "Local summarization was interrupted")
-            } catch (exception: Exception) {
-                LocalSummaryCallbacks.failure(
-                    callback,
-                    "Local summarization failed: ${LocalSummaryCallbacks.errorMessage(exception)}",
-                )
             }
         }.start()
     }

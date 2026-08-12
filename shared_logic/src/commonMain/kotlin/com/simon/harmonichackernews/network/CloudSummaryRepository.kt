@@ -154,9 +154,8 @@ class KtorCloudSummaryRepository(
         val plainResponse = StringBuilder()
         var sawSseData = false
         var complete = false
-        val source = body.source()
         while (!complete) {
-            val line = source.readUtf8LineAsync() ?: break
+            val line = body.readUtf8Line() ?: break
             when {
                 line.isEmpty() -> if (eventData.isNotEmpty()) {
                     sawSseData = true

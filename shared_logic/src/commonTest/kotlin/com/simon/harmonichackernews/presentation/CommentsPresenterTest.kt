@@ -10,9 +10,11 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterIsInstance
@@ -24,6 +26,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -41,6 +44,7 @@ class CommentsPresenterTest {
             ),
             UnusedPollOptions,
             savedItemActions(),
+            UnusedVotingService,
         )
         val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L }
         val story = Story("Shared", 42, true, false)
@@ -60,6 +64,51 @@ class CommentsPresenterTest {
         runCurrent()
         runtime.header(CommentsHeaderAction.REPLY)
         assertIs<CommentsPlatformEffect.RequestLogin>(effect.await().effect)
+    }
+
+    @Test
+    fun featureRuntimeConsumesRouteTargetAndRestoresPortableThreadProgress() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L }
+        val story = Story("Shared", 42, true, false)
+        val parent = Comment().also {
+            it.id = 7
+            it.parent = story.id
+            it.expanded = false
+        }
+        val child = Comment().also {
+            it.id = 8
+            it.parent = parent.id
+        }
+        runtime.initialize(story, false, child.id, "new", false)
+        runtime.thread.appendLoadedComments(story, listOf(parent, child), "new", false)
+
+        assertEquals(CommentTargetResolution.Found(child.id), runtime.consumeCommentTarget())
+        assertTrue(parent.expanded)
+        assertEquals(-1, session.scrollToCommentId)
+
+        session.scrollProgress.apply {
+            initialized = true
+            storyId = story.id
+            topCommentId = child.id
+            topCommentOffset = -24
+            collapsedIDs += parent.id
+        }
+        val restoration = runtime.restoreScrollProgress()
+
+        assertEquals(CommentsScrollRestoration(child.id, -24), restoration)
+        assertFalse(parent.expanded)
     }
 
     @Test
@@ -91,6 +140,7 @@ class CommentsPresenterTest {
             repository,
             UnusedPollOptions,
             savedItemActions(),
+            UnusedVotingService,
         )
         val effect = async { presenter.effects.first() }
         runCurrent()
@@ -110,7 +160,7 @@ class CommentsPresenterTest {
         val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
 
         assertEquals("Shared comments", story.title)
-        assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map(Comment::id))
+        assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.comment.id })
         assertTrue(presenter.state.value.loaded)
         assertEquals(null, presenter.state.value.failure)
         assertTrue(applied.contentApplied)
@@ -131,6 +181,7 @@ class CommentsPresenterTest {
             repository,
             FakePollOptions,
             savedItemActions(),
+            UnusedVotingService,
         )
         val story = Story("Poll: choose", 42, true, false).also {
             it.pollOptions = intArrayOf(7)
@@ -160,6 +211,7 @@ class CommentsPresenterTest {
             ),
             UnusedPollOptions,
             savedItemActions(HackerNewsActionResult.Success()),
+            UnusedVotingService,
         )
         val effects = async { presenter.effects.take(2).toList() }
         runCurrent()
@@ -172,6 +224,72 @@ class CommentsPresenterTest {
         assertIs<CommentsEffect.SavedItemActionCompleted>(effects.await()[1])
         assertTrue(presenter.savedItemState.isUpvoted(42, false))
         assertEquals(false, presenter.state.value.storyVoteLoading)
+    }
+
+    @Test
+    fun pollVoteRuntimeOwnsInFlightStateDuplicateSuppressionAndFailureOutcome() = runTest {
+        val voting = RecordingVotingService()
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            voting,
+        )
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 0L }
+        val effects = async { presenter.effects.take(2).toList() }
+        runCurrent()
+
+        runtime.votePollOption(7)
+        assertEquals(7, presenter.state.value.pollVoteInFlightOptionId)
+        runCurrent()
+        runtime.votePollOption(8)
+        runCurrent()
+        assertEquals(listOf("7" to "up"), voting.requests)
+
+        voting.result.complete(HackerNewsActionResult.Failure("Vote failed", "Try again"))
+        runCurrent()
+
+        val emitted = effects.await()
+        assertEquals(7, assertIs<CommentsEffect.PollVoteStarted>(emitted[0]).optionId)
+        val completed = assertIs<CommentsEffect.PollVoteCompleted>(emitted[1])
+        val failure = assertIs<PollVoteOutcome.Failure>(completed.outcome)
+        assertEquals("Vote failed", assertIs<HackerNewsActionResult.Failure>(failure.result).summary)
+        assertEquals(null, presenter.state.value.pollVoteInFlightOptionId)
+    }
+
+    @Test
+    fun successfulPollVoteHasAnExplicitPortableOutcome() = runTest {
+        val voting = RecordingVotingService().also {
+            it.result.complete(HackerNewsActionResult.Success())
+        }
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            voting,
+        )
+        val completed = async {
+            presenter.effects.filterIsInstance<CommentsEffect.PollVoteCompleted>().first()
+        }
+        runCurrent()
+
+        presenter.dispatch(CommentsAction.VotePollOption(9))
+        runCurrent()
+
+        assertIs<PollVoteOutcome.Success>(completed.await().outcome)
+        assertEquals(listOf("9" to "up"), voting.requests)
+        assertEquals(null, presenter.state.value.pollVoteInFlightOptionId)
     }
 
     private class FakeAlgoliaRepository(
@@ -195,6 +313,21 @@ class CommentsPresenterTest {
         override suspend fun findOptionIds(storyId: Int): IntArray = error("Not used")
         override fun placeholders(optionIds: IntArray) = error("Not used")
         override fun loadOptions(optionIds: IntArray) = error("Not used")
+    }
+
+    private object UnusedVotingService : HackerNewsVotingService {
+        override suspend fun vote(itemId: String, direction: String): HackerNewsActionResult =
+            error("Not used")
+    }
+
+    private class RecordingVotingService : HackerNewsVotingService {
+        val requests = mutableListOf<Pair<String, String>>()
+        val result = CompletableDeferred<HackerNewsActionResult>()
+
+        override suspend fun vote(itemId: String, direction: String): HackerNewsActionResult {
+            requests += itemId to direction
+            return result.await()
+        }
     }
 
     private object FakePollOptions : PollOptionsLoader {

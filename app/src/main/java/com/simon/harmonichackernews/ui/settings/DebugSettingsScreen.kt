@@ -4,14 +4,17 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.DebugBooleanPreference
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.utils.Utils
 
@@ -23,21 +26,15 @@ fun DebugSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    val refresh = rememberPreferenceRefresh()
+    val repository = remember(context) { AndroidUserSettings.get(context).repository }
+    val settings by repository.updates.collectAsState(initial = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
 
     SharedDebugSettingsScreen(
         showNavigation = showNavigation,
-        contentVersion = refresh,
-        alwaysShowTapToRefresh = prefs.getBoolean(
-            "pref_always_show_tap_to_refresh",
-            false,
-        ),
-        showAiSummaryDebugInfo = prefs.getBoolean(
-            "pref_debug_show_llm_summary_info",
-            false,
-        ),
+        contentVersion = settings.hashCode(),
+        alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
+        showAiSummaryDebugInfo = settings.debug.showAiSummaryDebugInfo,
         environment = DebugEnvironmentUiState(
             appVersion = BuildConfig.VERSION_NAME,
             appBuild = BuildConfig.VERSION_CODE.toString(),
@@ -46,10 +43,10 @@ fun DebugSettingsScreen(
         ),
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {
-            prefs.edit().putBoolean("pref_always_show_tap_to_refresh", it).apply()
+            repository.setDebugBoolean(DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH, it)
         },
         onShowAiSummaryDebugInfoChanged = {
-            prefs.edit().putBoolean("pref_debug_show_llm_summary_info", it).apply()
+            repository.setDebugBoolean(DebugBooleanPreference.SHOW_AI_SUMMARY_INFO, it)
         },
         onOpenHnId = { Utils.openCommentsActivity(it, -1, context) },
         onOpenWithoutCache = {

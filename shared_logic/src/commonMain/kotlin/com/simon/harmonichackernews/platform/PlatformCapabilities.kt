@@ -107,7 +107,10 @@ interface LocalSummaryEngine {
     suspend fun summarize(request: SummaryRequest): SummaryResult
 }
 
-/** Complete platform boundary consumed by shared presenters and platform UI composition roots. */
+/**
+ * Legacy complete platform bag. New composition roots should accept [AppPlatformDependencies] or
+ * one of the feature-specific dependency types so platforms need not fake unsupported services.
+ */
 data class PlatformServices(
     val credentials: CredentialStore,
     val bookmarks: BookmarkStore,

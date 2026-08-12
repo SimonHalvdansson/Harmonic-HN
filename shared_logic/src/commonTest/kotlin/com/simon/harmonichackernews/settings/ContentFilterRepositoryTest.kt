@@ -46,4 +46,25 @@ class ContentFilterRepositoryTest {
         assertFalse(repository.containsUser(""))
         assertEquals(emptySet(), repository.load().users)
     }
+
+    @Test
+    fun typedEditorsNormalizeListsAndProfileTogglePresentation() {
+        val repository = ContentFilterRepository(TestKeyValueStore())
+
+        repository.setItems(ContentFilterType.STORY_TITLE, listOf(" Kotlin ", "Kotlin", ""))
+        repository.setItems(ContentFilterType.USER, listOf(" Alice ", "BOB"))
+
+        assertEquals(listOf("Kotlin"), repository.items(ContentFilterType.STORY_TITLE))
+        assertEquals(setOf("alice", "bob"), repository.items(ContentFilterType.USER).toSet())
+
+        val unblocked = repository.toggleUser("ALICE")
+        assertEquals(false, unblocked?.blocked)
+        assertEquals(false, unblocked?.dismissProfile)
+        assertEquals("Unblocked alice", unblocked?.message)
+
+        val blocked = repository.toggleUser("Charlie")
+        assertEquals(true, blocked?.blocked)
+        assertEquals(true, blocked?.dismissProfile)
+        assertTrue(repository.containsUser("charlie"))
+    }
 }

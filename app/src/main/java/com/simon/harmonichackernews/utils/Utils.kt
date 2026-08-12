@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.utils
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.res.Resources
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -17,10 +16,7 @@ import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.StoryCacheIndex
-import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
-import com.simon.harmonichackernews.data.CacheFileNamePolicy
-import com.simon.harmonichackernews.network.JSONParser
+import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
@@ -31,25 +27,10 @@ import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.NighttimeScheduleStore
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStreamReader
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 object Utils {
-    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
-    const val KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET"
-    const val KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS: String =
-        "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
-    private const val MAX_CACHED_STORIES = 200
-    private const val STORY_CACHE_DIR = "story_cache"
-    private const val STORY_CACHE_FULL_DIR = "full"
-    private const val STORY_CACHE_SUMMARY_DIR = "summary"
-    private const val STORY_CACHE_FILE_SUFFIX = ".json"
     const val GLOBAL_SHARED_PREFERENCES_KEY: String = AppLaunchPreferenceKeys.STORE_NAME
 
     @Volatile
@@ -106,37 +87,7 @@ object Utils {
     }
 
     fun cacheStory(ctx: Context?, id: Int, data: String?) {
-        if (ctx == null || id <= 0 || data.isNullOrEmpty() || JSONParser.ALGOLIA_ERROR_STRING == data) {
-            return
-        }
-
-        writeCachedStoryFiles(ctx, id, data)
-
-        val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        var cachedStories = AndroidKeyValueStore.global(ctx)
-            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-            .toMutableSet()
-        val cacheUpdate = StoryCacheIndex.record(
-            cachedStories,
-            id,
-            System.currentTimeMillis(),
-            MAX_CACHED_STORIES,
-        )
-        cachedStories = cacheUpdate.encodedEntries.toMutableSet()
-        cacheUpdate.evictedStoryIds.forEach { evictedId ->
-            deleteCachedStoryFiles(ctx, evictedId)
-            deleteCachedArticleSnapshot(ctx, evictedId)
-        }
-
-        sharedPreferences.edit()
-            .putStringSet(
-                KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
-                cachedStories
-            )
-            .apply()
+        if (ctx != null) storyCache(ctx).storeStory(id, data, System.currentTimeMillis())
     }
 
     fun loadCachedStory(ctx: Context?, id: Int): String? {
@@ -144,12 +95,7 @@ object Utils {
             return null
         }
 
-        return readStringFromFile(
-            getCachedStoryFullFile(
-                ctx,
-                id
-            )
-        )
+        return storyCache(ctx).loadStoryPayload(id)
     }
 
     fun loadCachedStorySummary(ctx: Context?, story: Story?): Boolean {
@@ -157,31 +103,7 @@ object Utils {
             return false
         }
 
-        var summary = readStringFromFile(
-            getCachedStorySummaryFile(
-                ctx,
-                story.id
-            )
-        )
-        if (summary.isNullOrEmpty()) {
-            val fullStory = readStringFromFile(
-                getCachedStoryFullFile(
-                    ctx,
-                    story.id
-                )
-            )
-            summary = JSONParser.compactAlgoliaStoryResponse(fullStory, story.id)
-            if (!summary.isNullOrEmpty()) {
-                writeStringToFile(
-                    getCachedStorySummaryFile(
-                        ctx,
-                        story.id
-                    ), summary
-                )
-            }
-        }
-
-        return JSONParser.updateStoryWithCachedStorySummary(story, summary)
+        return storyCache(ctx).hydrateStory(story)
     }
 
     fun cacheStoryPreviewState(ctx: Context?, story: Story?) {
@@ -211,7 +133,7 @@ object Utils {
         previewState.faviconTintMode = story.faviconTintMode
 
         backgroundExecutor.execute {
-            writeCachedStoryPreviewState(appContext, previewState)
+            storyCache(appContext).savePreviewState(previewState)
         }
     }
 
@@ -220,7 +142,7 @@ object Utils {
             return 0
         }
 
-        return getCachedPostIds(ctx).size
+        return storyCache(ctx).cachedItemIds().size
     }
 
     fun clearPostCache(ctx: Context?): Int {
@@ -228,38 +150,9 @@ object Utils {
             return 0
         }
 
-        val cachedPostIds = getCachedPostIds(ctx)
-        val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        val editor: SharedPreferences.Editor = sharedPreferences.edit()
-
-        for (key in sharedPreferences.all.keys) {
-            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
-                editor.remove(key)
-            } else if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET)) {
-                editor.remove(key)
-            }
-        }
-
-        editor.remove(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-            .apply()
-
-        deleteFileOrDirectory(
-            getStoryCacheDir(
-                ctx
-            )
-        )
-        deleteFileOrDirectory(
-            getArticleCacheDir(
-                ctx
-            )
-        )
-
+        val count = storyCache(ctx).clear()
         StoryPreviewImageLoader.clearDiskCache(ctx)
-
-        return cachedPostIds.size
+        return count
     }
 
     fun removeStoryFromCaches(ctx: Context?, id: Int) {
@@ -267,210 +160,7 @@ object Utils {
             return
         }
 
-        val sharedPreferences: SharedPreferences =
-            ctx.getSharedPreferences(
-                GLOBAL_SHARED_PREFERENCES_KEY,
-                Context.MODE_PRIVATE
-            )
-        var cachedStories = AndroidKeyValueStore.global(ctx)
-            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-            .toMutableSet()
-        cachedStories = StoryCacheIndex.remove(cachedStories, id).toMutableSet()
-
-        sharedPreferences.edit()
-            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
-            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
-            .putStringSet(
-                KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS,
-                cachedStories
-            )
-            .apply()
-
-        deleteCachedStoryFiles(ctx, id)
-
-        val articleFile = getArticleCacheFile(ctx, id)
-        if (articleFile.exists() && !articleFile.delete()) {
-            articleFile.deleteOnExit()
-        }
-    }
-
-    private fun getCachedPostIds(ctx: Context): MutableSet<Int> {
-        val cachedPostIds = mutableSetOf<Int>()
-
-        val cachedStories = AndroidKeyValueStore.global(ctx)
-            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-        cachedPostIds.addAll(StoryCacheIndex.storyIds(cachedStories))
-
-        val sharedPreferences: SharedPreferences = ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-        for (key in sharedPreferences.all.keys) {
-            if (key.startsWith(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL)) {
-                CacheFileNamePolicy.storyId(
-                    key,
-                    KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL,
-                )?.let(cachedPostIds::add)
-            }
-        }
-
-        val articleCacheDir = getArticleCacheDir(ctx)
-        articleCacheDir.listFiles()?.forEach { cachedArticleFile ->
-                CacheFileNamePolicy.storyId(cachedArticleFile.name, suffix = ".html")
-                    ?.let(cachedPostIds::add)
-        }
-
-        addCachedPostIdsFromStoryCacheDir(
-            cachedPostIds,
-            getCachedStoryFullDir(ctx)
-        )
-        addCachedPostIdsFromStoryCacheDir(
-            cachedPostIds,
-            getCachedStorySummaryDir(ctx)
-        )
-
-        return cachedPostIds
-    }
-
-    private fun addCachedPostIdsFromStoryCacheDir(
-        cachedPostIds: MutableSet<Int>,
-        cacheDir: File
-    ) {
-        cacheDir.listFiles()?.forEach { cachedStoryFile ->
-            CacheFileNamePolicy.storyId(
-                cachedStoryFile.name,
-                suffix = STORY_CACHE_FILE_SUFFIX,
-            )?.let(cachedPostIds::add)
-        }
-    }
-
-    private fun writeCachedStoryFiles(ctx: Context, id: Int, data: String?) {
-        writeStringToFile(
-            getCachedStoryFullFile(
-                ctx,
-                id
-            ), data
-        )
-
-        val summary: String? = JSONParser.compactAlgoliaStoryResponse(data, id)
-        if (!summary.isNullOrEmpty()) {
-            writeStringToFile(
-                getCachedStorySummaryFile(
-                    ctx,
-                    id
-                ), summary
-            )
-        }
-    }
-
-    private fun writeCachedStoryPreviewState(ctx: Context, previewState: Story) {
-        val summaryFile =
-            getCachedStorySummaryFile(ctx, previewState.id)
-        if (!summaryFile.exists()) {
-            return
-        }
-
-        var summary = readStringFromFile(summaryFile)
-        if (summary.isNullOrEmpty()) {
-            val fullStory = readStringFromFile(
-                getCachedStoryFullFile(
-                    ctx,
-                    previewState.id
-                )
-            )
-            summary = JSONParser.compactAlgoliaStoryResponse(fullStory, previewState.id)
-        }
-
-        val updatedSummary: String? =
-            JSONParser.updateCachedStorySummaryPreviewState(summary, previewState)
-        if (!updatedSummary.isNullOrEmpty() && summary != updatedSummary) {
-            writeStringToFile(summaryFile, updatedSummary)
-        }
-    }
-
-    private fun getStoryCacheDir(ctx: Context): File {
-        return File(
-            ctx.filesDir,
-            STORY_CACHE_DIR
-        )
-    }
-
-    private fun getCachedStoryFullDir(ctx: Context): File {
-        return File(
-            getStoryCacheDir(ctx),
-            STORY_CACHE_FULL_DIR
-        )
-    }
-
-    private fun getCachedStorySummaryDir(ctx: Context): File {
-        return File(
-            getStoryCacheDir(ctx),
-            STORY_CACHE_SUMMARY_DIR
-        )
-    }
-
-    private fun getCachedStoryFullFile(ctx: Context, id: Int): File {
-        return File(
-            getCachedStoryFullDir(ctx),
-            id.toString() + STORY_CACHE_FILE_SUFFIX
-        )
-    }
-
-    private fun getCachedStorySummaryFile(ctx: Context, id: Int): File {
-        return File(
-            getCachedStorySummaryDir(ctx),
-            id.toString() + STORY_CACHE_FILE_SUFFIX
-        )
-    }
-
-    private fun deleteCachedStoryFiles(ctx: Context, id: Int) {
-        val fullFile = getCachedStoryFullFile(ctx, id)
-        if (fullFile.exists() && !fullFile.delete()) {
-            fullFile.deleteOnExit()
-        }
-
-        val summaryFile =
-            getCachedStorySummaryFile(ctx, id)
-        if (summaryFile.exists() && !summaryFile.delete()) {
-            summaryFile.deleteOnExit()
-        }
-    }
-
-    private fun readStringFromFile(file: File?): String? {
-        if (file == null || !file.exists()) {
-            return null
-        }
-
-        try {
-            return FileInputStream(file).bufferedReader(Charsets.UTF_8).use { reader ->
-                buildString {
-                    reader.forEachLine { line -> append(line).append('\n') }
-                }
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return null
-        }
-    }
-
-    private fun writeStringToFile(file: File?, data: String?): Boolean {
-        if (file == null || data.isNullOrEmpty()) {
-            return false
-        }
-
-        try {
-            val parent = file.parentFile
-            if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                return false
-            }
-            FileOutputStream(file).use { outputStream ->
-                outputStream.write(data.toByteArray(Charsets.UTF_8))
-            }
-            return true
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return false
-        }
+        storyCache(ctx).remove(id)
     }
 
     fun loadCachedArticleSnapshot(ctx: Context?, id: Int): String? {
@@ -478,38 +168,14 @@ object Utils {
             return null
         }
 
-        val cacheFile = getArticleCacheFile(ctx, id)
-        if (!cacheFile.exists()) {
-            return null
-        }
-        if (!ArticleSnapshotPolicy.isValidSize(cacheFile.length())) {
-            deleteCachedArticleSnapshot(ctx, id)
-            return null
-        }
-        cacheFile.setLastModified(System.currentTimeMillis())
-
-        try {
-            val charsetName = AndroidKeyValueStore.global(ctx)
-                .getString(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
-                .orEmpty()
-                .ifEmpty { "UTF-8" }
-            return InputStreamReader(FileInputStream(cacheFile), charsetName).buffered().use { reader ->
-                buildString {
-                    reader.forEachLine { line -> append(line).append('\n') }
-                }
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return null
-        }
+        return storyCache(ctx).loadArticle(id, System.currentTimeMillis())
     }
 
     fun loadCachedArticleUrl(ctx: Context?, id: Int): String? {
         if (ctx == null || id <= 0) {
             return null
         }
-        return AndroidKeyValueStore.global(ctx)
-            .getString(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
+        return storyCache(ctx).articleUrl(id)
     }
 
     fun deleteCachedArticleSnapshot(ctx: Context?, id: Int) {
@@ -517,81 +183,23 @@ object Utils {
             return
         }
 
-        val cacheFile = getArticleCacheFile(ctx, id)
-        if (cacheFile.exists() && !cacheFile.delete()) {
-            cacheFile.deleteOnExit()
-        }
-        ctx.getSharedPreferences(
-            GLOBAL_SHARED_PREFERENCES_KEY,
-            Context.MODE_PRIVATE
-        )
-            .edit()
-            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL + id)
-            .remove(KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET + id)
-            .apply()
+        storyCache(ctx).removeArticle(id)
     }
 
     fun getArticleCacheDir(ctx: Context): File {
         return File(ctx.filesDir, "article_cache")
     }
 
-    fun getArticleCacheFile(ctx: Context, id: Int): File {
-        return File(
-            getArticleCacheDir(ctx),
-            id.toString() + ".html"
-        )
-    }
-
-    private fun deleteFileOrDirectory(file: File?) {
-        if (file == null || !file.exists()) {
-            return
-        }
-
-        if (file.isDirectory) {
-            file.listFiles()?.forEach(::deleteFileOrDirectory)
-        }
-
-        if (!file.delete()) {
-            file.deleteOnExit()
-        }
-    }
-
     fun hasCachedStories(ctx: Context): Boolean {
-        val cached = AndroidKeyValueStore.global(ctx)
-            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-        return StoryCacheIndex.recentEntries(cached, System.currentTimeMillis()).any { entry ->
-            loadCachedStoryForStoriesList(ctx, entry.storyId) != null
-        }
+        return storyCache(ctx).hasRecentStories(System.currentTimeMillis())
     }
 
     fun loadCachedStories(ctx: Context): ArrayList<Story> {
-        val cached = AndroidKeyValueStore.global(ctx)
-            .getStringSet(KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS)
-        val stories = arrayListOf<Story>()
-        for (entry in StoryCacheIndex.recentEntries(cached, System.currentTimeMillis())) {
-            loadCachedStoryForStoriesList(ctx, entry.storyId)?.let(stories::add)
-        }
-
-        return stories
+        return ArrayList(storyCache(ctx).recentStories(System.currentTimeMillis()))
     }
 
-    private fun loadCachedStoryForStoriesList(ctx: Context?, id: Int): Story? {
-        val story = Story().apply { this.id = id }
-        var loaded = loadCachedStorySummary(ctx, story)
-        if (!loaded) {
-            val fullStory = loadCachedStory(ctx, id)
-            val summary = JSONParser.compactAlgoliaStoryResponse(fullStory, id)
-            loaded = !summary.isNullOrEmpty() && JSONParser.updateStoryWithCachedStorySummary(
-                story,
-                summary
-            )
-        }
-
-        if (!loaded || story.isComment) {
-            return null
-        }
-
-        return story
+    private fun storyCache(context: Context): StoryCacheRepository {
+        return AndroidStoryCacheRepositories.get(context)
     }
 
     fun shouldShowWelcomeDialog(ctx: Context): Boolean {

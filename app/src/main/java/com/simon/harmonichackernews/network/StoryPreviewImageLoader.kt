@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.Job
@@ -110,14 +111,19 @@ object StoryPreviewImageLoader {
             return previewImageRequest
         }
 
+        if (appContext == null) {
+            postResult(previewImageRequest, null, null)
+            return previewImageRequest
+        }
+        val network = AndroidAppComposition.get(appContext).network
         val job = NetworkComponent.launchCallbackRequest(
             request = {
-                NetworkComponent.previewContentCoordinator.load(
+                network.previewContentCoordinator.load(
                     pageUrl = normalizedPageUrl,
                     requireSummary = requireSummary,
                     forceRefresh = forceRefresh,
                 ) {
-                    NetworkComponent.linkSummaryRepository.load(normalizedPageUrl)
+                    network.linkSummaryRepository.load(normalizedPageUrl)
                 }
             },
             onSuccess = { content ->

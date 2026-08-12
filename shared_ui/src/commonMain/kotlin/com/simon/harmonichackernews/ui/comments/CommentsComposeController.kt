@@ -12,11 +12,13 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.*
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
 data class CommentsScreenState(
     val story: Story,
+    val accountUser: String? = null,
     val comments: List<Comment> = emptyList(),
     val visibleComments: List<VisibleComment> = emptyList(),
     val displaySettings: CommentDisplaySettings? = null,
@@ -38,6 +40,13 @@ data class CommentsScreenState(
     val contentInsetRightPx: Int = 0,
     val storyVoteLoading: Boolean = false,
     val storyFavoriteLoading: Boolean = false,
+    val pollVoteInFlightOptionId: Int? = null,
+    val storySummaryLoading: Boolean = false,
+    val headerPreviewResource: StoryPreviewResourceState? = null,
+    val commentFavoriteLoadingId: Int = -1,
+    val commentVoteLoadingId: Int = -1,
+    val commentVoteLoadingAction: CommentMenuAction? = null,
+    val downvotedCommentIds: Set<Int> = emptySet(),
     val searchQuery: String = "",
     val searchResults: List<Comment> = emptyList(),
 )
@@ -47,13 +56,16 @@ class CommentsComposeController private constructor(
     private val savedItemState: SavedItemStateReader,
     initialStory: Story,
     val initialShowWebsite: Boolean,
-    val accountUser: String?,
+    accountUser: String?,
     val listener: Listener,
 ) {
-    var screenState by mutableStateOf(CommentsScreenState(story = initialStory))
+    var screenState by mutableStateOf(
+        CommentsScreenState(story = initialStory, accountUser = accountUser),
+    )
         private set
 
     val story: Story get() = screenState.story
+    val accountUser: String? get() = screenState.accountUser
     val comments: List<Comment> get() = screenState.comments
     val visibleComments: List<VisibleComment> get() = screenState.visibleComments
     val displaySettings: CommentDisplaySettings? get() = screenState.displaySettings
@@ -72,6 +84,10 @@ class CommentsComposeController private constructor(
     val currentSorting: String get() = screenState.currentSorting
     val storyVoteLoading: Boolean get() = screenState.storyVoteLoading
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
+    val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
+    val storySummaryLoading: Boolean get() = screenState.storySummaryLoading
+    val headerPreviewResource: StoryPreviewResourceState?
+        get() = screenState.headerPreviewResource
     val searchQuery: String get() = screenState.searchQuery
     val searchResults: List<Comment> get() = screenState.searchResults
     val contentInsetLeftPx: Int get() = screenState.contentInsetLeftPx
@@ -81,8 +97,6 @@ class CommentsComposeController private constructor(
     var statusBarHeaderCoverage by mutableFloatStateOf(0f)
         private set
     var contentVersion by mutableIntStateOf(0)
-        private set
-    var storySummaryLoading by mutableStateOf(false)
         private set
     var headerPreviewSuppressed by mutableStateOf(false)
         private set
@@ -175,18 +189,22 @@ class CommentsComposeController private constructor(
         savedItemState.isUpvoted(itemId, isComment)
 
     fun updateContent(state: CommentsScreenState) {
+        val updateBecameVisible = !screenState.showUpdate && state.showUpdate
         screenState = state.copy(
             comments = state.comments.toList(),
             searchResults = state.searchResults.toList(),
             visibleComments = state.visibleComments.toList(),
         )
         interactionStore.updateTopInset(state.topInsetPx)
+        interactionStore.synchronizeCommentActionState(
+            favoriteLoadingId = state.commentFavoriteLoadingId,
+            voteLoadingId = state.commentVoteLoadingId,
+            voteLoadingAction = state.commentVoteLoadingAction,
+            downvotedIds = state.downvotedCommentIds,
+        )
+        if (updateBecameVisible) interactionStore.clearSearchScrollTopTarget()
         syncInteractionState()
         contentVersion++
-    }
-
-    fun updateStorySummaryLoading(loading: Boolean) {
-        storySummaryLoading = loading
     }
 
     fun updateHeaderPreviewSuppressed(suppressed: Boolean) {
@@ -585,8 +603,13 @@ class CommentsComposeController private constructor(
         fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
-        fun onHeaderPreviewLoaded()
-        fun onHeaderPreviewLoadFailed()
+        fun onHeaderPreviewImageResult(imageUrl: String, success: Boolean)
+        fun onHeaderPreviewTintExtracted(
+            sourceUrl: String,
+            baseColorArgb: Int,
+            paletteConfigKey: String,
+            tintColorArgb: Int,
+        )
         fun onHeaderAction(action: CommentsHeaderAction)
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)

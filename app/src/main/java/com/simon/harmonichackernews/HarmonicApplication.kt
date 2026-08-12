@@ -12,6 +12,11 @@ class HarmonicApplication : Application(), Configuration.Provider {
         LOCAL_AI_SUPPORT.install(this)
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        AndroidAppComposition.initialize(this)
+    }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setJobSchedulerJobIdRange(

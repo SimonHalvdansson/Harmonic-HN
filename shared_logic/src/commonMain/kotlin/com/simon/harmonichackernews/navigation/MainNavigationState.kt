@@ -1,10 +1,13 @@
 package com.simon.harmonichackernews.navigation
 
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+
 data class MainStoryRequest(
     val serial: Int,
     val destination: StoryDestination,
 ) {
     val storyId: Int = destination.storyId
+    val route: StoryRoute = destination.route
 }
 
 data class MainSettingsRequest(
@@ -22,6 +25,25 @@ data class MainSubmissionsRequest(
     val userName: String,
 )
 
+/** Portable CAPTCHA dialog state. Platform callbacks deliberately stay in the host shell. */
+data class MainCaptchaRequest(
+    val serial: Int,
+    val challenge: HackerNewsCaptchaChallenge,
+)
+
+/** Portable user-dialog state. Platform tag-change callbacks deliberately stay in the host. */
+data class MainUserRequest(
+    val serial: Int,
+    val userName: String,
+)
+
+data class MainFailureRequest(
+    val serial: Int,
+    val title: String?,
+    val message: String?,
+    val clipboardText: String?,
+)
+
 data class MainNavigationRestoration(
     val storyDestination: StoryDestination? = null,
     val storyRequestSerial: Int = 0,
@@ -33,6 +55,8 @@ data class MainNavigationRestoration(
     val changelogDialogVisible: Boolean = false,
     val cacheStoriesDialogVisible: Boolean = false,
     val loginDialogVisible: Boolean = false,
+    val userDialogUserName: String? = null,
+    val userDialogSerial: Int = 0,
     val editorDestination: EditorDestination? = null,
     val editorRequestSerial: Int = 0,
     val submissionsUserName: String? = null,
@@ -40,6 +64,7 @@ data class MainNavigationRestoration(
     val storyOpenedFromSubmissions: Boolean = false,
     val storyOpenedFromSettings: Boolean = false,
     val coulombGasVisible: Boolean = false,
+    val storyRoute: StoryRoute? = storyDestination?.route,
 )
 
 /** Pure navigation state and transition policy shared by every platform shell. */
@@ -61,6 +86,12 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     var cacheStoriesDialogVisible: Boolean = restored.cacheStoriesDialogVisible
         private set
     var loginDialogVisible: Boolean = restored.loginDialogVisible
+        private set
+    var captchaRequest: MainCaptchaRequest? = null
+        private set
+    var userRequest: MainUserRequest? = null
+        private set
+    var failureRequest: MainFailureRequest? = null
         private set
     var editorRequest: MainEditorRequest? = null
         private set
@@ -84,6 +115,9 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         private set
     private var editorRequestSerial = 0
     private var submissionsRequestSerial = 0
+    private var captchaRequestSerial = 0
+    private var userRequestSerial = 0
+    private var failureRequestSerial = 0
     var currentSettingsSectionRoute: String? = null
         private set
     private var settingsThemeChangedRequestSerial = -1
@@ -91,7 +125,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         private set
 
     init {
-        restored.storyDestination?.let { destination ->
+        (restored.storyDestination ?: restored.storyRoute?.toDestination())?.let { destination ->
             storyRequestSerial = restored.storyRequestSerial.coerceAtLeast(1)
             MainStoryRequest(storyRequestSerial, destination).also { request ->
                 storyRequest = request
@@ -121,6 +155,10 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
                 lastSubmissionsRequest = request
             }
         }
+        restored.userDialogUserName?.takeIf(String::isNotBlank)?.let { userName ->
+            userRequestSerial = restored.userDialogSerial.coerceAtLeast(1)
+            userRequest = MainUserRequest(userRequestSerial, userName)
+        }
         storyOpenedFromSubmissions = restored.storyOpenedFromSubmissions &&
             storyRequest != null && submissionsRequest != null
         storyOpenedFromSettings = restored.storyOpenedFromSettings &&
@@ -140,6 +178,8 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
             storyRequest = request
         }
     }
+
+    fun openStory(route: StoryRoute) = openStory(route.toDestination())
 
     fun requestCloseStory() {
         closeRequest++
@@ -195,6 +235,35 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     fun dismissCacheStoriesDialog() { cacheStoriesDialogVisible = false }
     fun showLoginDialog() { loginDialogVisible = true }
     fun dismissLoginDialog() { loginDialogVisible = false }
+
+    fun showCaptchaDialog(challenge: HackerNewsCaptchaChallenge): MainCaptchaRequest =
+        MainCaptchaRequest(++captchaRequestSerial, challenge).also { captchaRequest = it }
+
+    fun dismissCaptchaDialog(): MainCaptchaRequest? = captchaRequest.also {
+        captchaRequest = null
+    }
+
+    fun showUserDialog(userName: String): MainUserRequest? {
+        if (userName.isBlank()) return null
+        return MainUserRequest(++userRequestSerial, userName).also { userRequest = it }
+    }
+
+    fun dismissUserDialog(): MainUserRequest? = userRequest.also { userRequest = null }
+
+    fun showFailureDetailDialog(
+        title: String?,
+        message: String?,
+        clipboardText: String?,
+    ): MainFailureRequest = MainFailureRequest(
+        serial = ++failureRequestSerial,
+        title = title,
+        message = message,
+        clipboardText = clipboardText,
+    ).also { failureRequest = it }
+
+    fun dismissFailureDetailDialog(): MainFailureRequest? = failureRequest.also {
+        failureRequest = null
+    }
 
     fun openEditor(destination: EditorDestination) {
         settingsRequest = null

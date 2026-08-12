@@ -19,14 +19,14 @@ class CommentThreadStoreTest {
             collapseTopLevel = true,
         )
 
-        assertEquals(listOf(1), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(1), store.state.value.visibleComments.map { it.item.comment.id })
         assertEquals(2, store.state.value.visibleComments.single().hiddenReplyCount)
 
         assertTrue(store.toggleExpanded(1))
-        assertEquals(listOf(1, 2), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(1, 2), store.state.value.visibleComments.map { it.item.comment.id })
 
         assertTrue(store.expandParents(3))
-        assertEquals(listOf(1, 2, 3), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(1, 2, 3), store.state.value.visibleComments.map { it.item.comment.id })
     }
 
     @Test
@@ -45,9 +45,9 @@ class CommentThreadStoreTest {
 
         store.setSearchQuery("kotlin multiplatform")
 
-        assertEquals(listOf(1), store.state.value.searchResults.map(Comment::id))
+        assertEquals(listOf(1), store.state.value.searchResults.map { it.comment.id })
         store.setSearchQuery("")
-        assertEquals(listOf(1, 2), store.state.value.searchResults.map(Comment::id))
+        assertEquals(listOf(1, 2), store.state.value.searchResults.map { it.comment.id })
     }
 
     @Test
@@ -87,6 +87,24 @@ class CommentThreadStoreTest {
 
         assertFalse(store.showCommentsByOp())
         assertFalse(store.state.value.commentsByOp)
+    }
+
+    @Test
+    fun portableStateDoesNotExposeLaterLegacyMutations() {
+        val store = CommentThreadStore()
+        val sourceStory = story()
+        val source = comment(1, -1, 0, "original").also { it.expanded = true }
+        store.reset(sourceStory)
+        store.appendLoadedComments(sourceStory, listOf(source), "Default", false)
+
+        val portable = store.portableState.value
+        sourceStory.title = "mutated story"
+        source.text = "mutated"
+        source.expanded = false
+
+        assertEquals("Story", portable.story?.title)
+        assertEquals("original", portable.displayedComments.last().comment.text)
+        assertTrue(portable.displayedComments.last().presentation.expanded)
     }
 
     private fun story() = Story("Story", 99, true, false)

@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.presentation.StorySearchOption
+import com.simon.harmonichackernews.network.StoryResourceTintKind
 
 /** Common UI-to-feature binding. Hosts implement only operations that need platform facilities. */
 class StoriesFeatureListener(
@@ -14,20 +15,20 @@ class StoriesFeatureListener(
     private val platform: PlatformCallbacks,
 ) : StoriesComposeController.Listener {
     override fun onTypeSelected(index: Int) {
-        val type = platform.storyTypeAt(index)
+        val type = feature.storyTypeAt(index)
         if (type == StoryType.UNKNOWN || type == feature.currentType) return
         feature.selectTypeAndRefresh(type)
-        platform.onActiveListChanged(searching = false)
+        activeListChanged(searching = false)
     }
 
     override fun onOpenSearch() {
         feature.openSearch()
-        platform.onActiveListChanged(searching = true)
+        activeListChanged(searching = true)
     }
 
     override fun onCloseSearch() {
         feature.closeSearch()
-        platform.onActiveListChanged(searching = false)
+        activeListChanged(searching = false)
     }
 
     override fun onSearch(query: String) = feature.submitSearch(query)
@@ -35,24 +36,60 @@ class StoriesFeatureListener(
         feature.selectSearchOption(kind, index)
     override fun onToggleOnlyClicked() = feature.toggleOnlyClicked()
     override fun onRefresh() = feature.refresh(false)
-    override fun onShowCached() = platform.showCachedStories()
+    override fun onShowCached() = feature.showCachedStories()
     override fun onLoadMore() = feature.loadMore()
     override fun onSavedFilterSelected(filter: SavedItemFilter) = feature.selectSavedFilter(filter)
 
     override fun onShiftFrontDate(days: Int) = feature.shiftFrontPageDay(days)
     override fun onPickFrontDate() = platform.showFrontDatePicker()
     override fun onFrontDateSelected(day: Long) = feature.selectFrontPageDay(day)
-    override fun onMoreAction(action: StoriesMenuAction) = platform.onMoreAction(action)
-    override fun onCacheStoriesConfirmed(storyCount: Int) = platform.cacheStories(storyCount)
+    override fun onMoreAction(action: StoriesMenuAction) = feature.menu(action)
+    override fun onCacheStoriesConfirmed(storyCount: Int) = feature.requestStoryCache(storyCount)
     override fun onLinkClick(story: Story) = feature.selectStoryLink(story)
     override fun onCommentClick(story: Story) = feature.selectStoryComments(story)
     override fun onCommentStoryClick(story: Story) = feature.selectCommentStory(story)
     override fun onCommentRepliesClick(story: Story) = feature.selectStoryComments(story)
-    override fun onStoryLongClick(story: Story) = platform.showStoryPreview(story)
+    override fun onStoryLongClick(story: Story, tintBaseColorArgb: Int) =
+        story.takeIf { it in feature.activeStories }
+            ?.let { feature.previewDeck(it.id, tintBaseColorArgb) }
+    override fun onStoryPreviewImageLoaded(
+        storyId: Int,
+        pageUrl: String,
+        imageUrl: String,
+    ) {
+        feature.completePreviewImageLoad(storyId, pageUrl, imageUrl, success = true)
+    }
+
+    override fun onStoryPreviewImageLoadFailed(
+        storyId: Int,
+        pageUrl: String,
+        imageUrl: String,
+    ) {
+        feature.completePreviewImageLoad(storyId, pageUrl, imageUrl, success = false)
+    }
+
+    override fun onStoryTintExtracted(
+        story: Story,
+        sourceUrl: String,
+        baseColorArgb: Int,
+        paletteConfigKey: String,
+        tintColorArgb: Int,
+        favicon: Boolean,
+    ) {
+        feature.recordStoryResourceTint(
+            story = story,
+            kind = if (favicon) StoryResourceTintKind.FAVICON
+            else StoryResourceTintKind.PREVIEW_IMAGE,
+            sourceUrl = sourceUrl,
+            baseColorArgb = baseColorArgb,
+            paletteConfigKey = paletteConfigKey,
+            tintColorArgb = tintColorArgb,
+        )
+    }
 
     override fun onVisibleStoryRange(lastVisibleIndex: Int) {
         feature.loadVisibleStories(lastVisibleIndex)
-        platform.onVisibleStoryRange(lastVisibleIndex)
+        feature.prefetchVisibleStoryResources(lastVisibleIndex)
     }
 
     override fun onStoryPreviewStopScroll() = Unit
@@ -61,31 +98,27 @@ class StoriesFeatureListener(
 
     override fun onStoryPreviewNavigate(
         story: Story,
-        position: Int,
         showWebsite: Boolean,
-    ): Boolean = platform.onStoryPreviewNavigate(story, position, showWebsite)
+    ): Boolean {
+        feature.openStory(story, showWebsite)
+        return platform.isSplitLayout()
+    }
 
     override fun onStoryPreviewAction(
         story: Story,
-        position: Int,
         action: StoryPreviewActionKind,
-    ) = platform.onStoryPreviewAction(story, position, action)
+    ) = feature.previewAction(story, action)
+
+    private fun activeListChanged(searching: Boolean) {
+        if (!searching) feature.refreshBookmarksIfNeeded(platform.hostStarted)
+        platform.onSearchStateChanged(searching)
+    }
 
     interface PlatformCallbacks {
-        fun storyTypeAt(index: Int): StoryType
-        fun onActiveListChanged(searching: Boolean)
-        fun showCachedStories()
+        val hostStarted: Boolean
+        fun onSearchStateChanged(searching: Boolean)
         fun showFrontDatePicker()
-        fun onMoreAction(action: StoriesMenuAction)
-        fun cacheStories(storyCount: Int)
-        fun showStoryPreview(story: Story)
-        fun onVisibleStoryRange(lastVisibleIndex: Int)
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
-        fun onStoryPreviewNavigate(story: Story, position: Int, showWebsite: Boolean): Boolean
-        fun onStoryPreviewAction(
-            story: Story,
-            position: Int,
-            action: StoryPreviewActionKind,
-        )
+        fun isSplitLayout(): Boolean
     }
 }

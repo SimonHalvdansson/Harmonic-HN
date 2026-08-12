@@ -95,6 +95,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -119,10 +120,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.FaviconLoader
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.network.FaviconUrlBuilder
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.StoryResourceTintKind
+import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
@@ -131,13 +135,17 @@ import com.simon.harmonichackernews.presentation.StoryPreviewOverlayState
 import com.simon.harmonichackernews.presentation.StoryScrollRequest
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.StoryItem
+import com.simon.harmonichackernews.ui.content.StoryItemResourcePresentation
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryItemUiModelFactory
+import com.simon.harmonichackernews.ui.content.withPreviewResource
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
 import com.simon.harmonichackernews.ui.common.SharedLazyContentList
@@ -145,8 +153,6 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.Utils
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 
@@ -157,10 +163,12 @@ import kotlin.math.roundToInt
 @Composable
 internal fun StoriesScreen(controller: StoriesComposeController) {
     val context = LocalContext.current
+    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+    val tintStore = remember(context) { AndroidAppComposition.get(context).storyResourceTints }
     SharedStoriesScreen(
         controller = controller,
-        storyItemModel = { story, position, settings ->
-            story.toUiModel(position, settings, context)
+        storyItemModel = { story, position, settings, previewResource ->
+            story.toUiModel(position, settings, previewResource, tintBaseColor, tintStore)
         },
         commentText = { html ->
             runCatching { AnnotatedString.fromHtml(html) }.getOrElse { AnnotatedString(html) }
@@ -169,55 +177,62 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
         extraCompactSelectedText =
             booleanResource(R.bool.extra_compact_stories_dropdown_selected_text),
         compactSelectedText = booleanResource(R.bool.compact_stories_dropdown_selected_text),
-        onStoryTintExtracted = { story, sourceUrl, baseColor, _, tintColor, _ ->
-            StoryPreviewImageLoader.saveCachedPreviewImageTintColor(
-                context,
-                story.id,
-                sourceUrl,
-                baseColor,
-                tintColor,
-            )
-            Utils.cacheStoryPreviewState(context, story)
-        },
     )
 }
 
 private fun Story.toUiModel(
     position: Int,
     settings: StoryDisplaySettings,
-    context: android.content.Context,
+    previewResource: StoryPreviewResourceState?,
+    tintBaseColor: Int,
+    tintStore: StoryResourceTintStore,
 ): StoryItemUiModel {
-    val fullDomain = runCatching { getDisplayDomain(true) }.getOrNull().orEmpty()
-    val shortDomain = runCatching { getDisplayDomain(false) }.getOrNull().orEmpty()
-    val favicon = runCatching { FaviconLoader.getFaviconUrl(url, settings.faviconProvider) }.getOrNull()
-    val tintBaseColor = PreviewImageTintUtils.getTintBaseColor(context)
+    val favicon = runCatching {
+        FaviconUrlBuilder.faviconUrl(url.orEmpty(), settings.faviconProvider)
+    }.getOrNull()
     val paletteTintMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-    val currentPreviewTint = PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+    val previewUrl = previewResource?.imageUrl ?: previewImageUrl
+    val currentPreviewTint = StoryPreviewTintState.isPreviewCurrent(
         this,
         tintBaseColor,
         paletteTintMode,
     )
     val currentFaviconTint = faviconTintColorLoaded &&
         faviconTintBaseColor == tintBaseColor &&
-        PreviewImageTintUtils.isTintModeCurrent(faviconTintMode, paletteTintMode) &&
+        StoryPreviewTintState.isModeCurrent(faviconTintMode, paletteTintMode) &&
         faviconTintSourceUrl == favicon
-    return StoryItemUiModel(
-        index = "${position + 1}.",
-        title = title ?: if (loadingFailed) "Tap to retry" else "Loading…",
-        summary = linkSummaryDescription ?: summary.orEmpty(),
-        points = score,
-        domain = fullDomain,
-        domainWithoutTopLevel = shortDomain,
-        age = timeFormatted,
-        commentCount = descendants,
-        faviconFallback = Res.drawable.ic_public,
-        previewImageFallback = null,
-        faviconUrl = favicon,
-        previewImageUrl = previewImageUrl,
-        previewImageLoadFailed = previewImageLoadFailed,
-        faviconTintArgb = faviconTintColor.takeIf { currentFaviconTint },
-        previewImageTintArgb = previewImageTintColor.takeIf { currentPreviewTint },
-        tintFallbackArgb = tintBaseColor,
+    val persistedPreviewTint = previewUrl?.let { sourceUrl ->
+        tintStore.read(
+            id,
+            StoryResourceTintKind.PREVIEW_IMAGE,
+            sourceUrl,
+            tintBaseColor,
+            StoryPreviewTintState.storedMode(paletteTintMode),
+        )?.tintColorArgb
+    }
+    val persistedFaviconTint = favicon?.let { sourceUrl ->
+        tintStore.read(
+            id,
+            StoryResourceTintKind.FAVICON,
+            sourceUrl,
+            tintBaseColor,
+            StoryPreviewTintState.storedMode(paletteTintMode),
+        )?.tintColorArgb
+    }
+    return StoryItemUiModelFactory.create(
+        story = this,
+        position = position,
+        resources = StoryItemResourcePresentation(
+            faviconUrl = favicon,
+            summary = linkSummaryDescription,
+            previewImageUrl = previewUrl,
+            previewImageLoadFailed = previewImageLoadFailed,
+            faviconTintArgb = persistedFaviconTint
+                ?: faviconTintColor.takeIf { currentFaviconTint },
+            previewImageTintArgb = persistedPreviewTint
+                ?: previewImageTintColor.takeIf { currentPreviewTint },
+            tintFallbackArgb = tintBaseColor,
+        ).withPreviewResource(previewResource, paletteTintMode),
     )
 }
 

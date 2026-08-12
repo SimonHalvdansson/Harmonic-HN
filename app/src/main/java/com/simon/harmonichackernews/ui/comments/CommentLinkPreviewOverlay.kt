@@ -30,7 +30,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.simon.harmonichackernews.network.FaviconLoader
+import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
@@ -63,6 +64,7 @@ private fun ReferencePreviewCard(
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val context = LocalContext.current
+    val appComposition = remember(context) { AndroidAppComposition.get(context) }
     var attempt by remember(state) { mutableIntStateOf(0) }
     val initialCached = remember(state.originalUrl) {
         StoryPreviewImageLoader.getCachedLinkSummary(context, state.originalUrl)?.takeIf { cached ->
@@ -91,7 +93,7 @@ private fun ReferencePreviewCard(
         } else {
             if (attempt > 0) summary = summary.copy(retrying = true)
             try {
-                val result = NetworkComponent.linkSummaryRepository.load(
+                val result = appComposition.network.linkSummaryRepository.load(
                     state.originalUrl,
                     state.fallbackTitle,
                 )
@@ -119,7 +121,7 @@ private fun ReferencePreviewCard(
     val faviconProvider = controller.displaySettings?.faviconProvider
         ?: userSettings.story.faviconProvider
     val favicon = remember(currentUrl, faviconProvider) {
-        runCatching { FaviconLoader.getFaviconUrl(currentUrl, faviconProvider) }.getOrNull()
+        runCatching { FaviconUrlBuilder.faviconUrl(currentUrl, faviconProvider) }.getOrNull()
     }
     val offline = summary.error != null && !Utils.isNetworkAvailable(context)
     SharedReferenceCardContent(

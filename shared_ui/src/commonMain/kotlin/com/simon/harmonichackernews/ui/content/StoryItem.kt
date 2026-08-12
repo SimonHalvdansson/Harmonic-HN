@@ -149,6 +149,7 @@ fun StoryItem(
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
     onBoundsChanged: ((Rect) -> Unit)? = null,
+    onPreviewLoadSuccess: (() -> Unit)? = null,
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
@@ -259,6 +260,7 @@ fun StoryItem(
                             previewFailed = true
                             onPreviewLoadFailed?.invoke()
                         },
+                        onLoadSuccess = { onPreviewLoadSuccess?.invoke() },
                         tintBaseColorArgb = tintBaseColorArgb,
                         paletteTintConfigKey = style.paletteTintConfigKey,
                         extractTint = style.tintCard && model.previewImageTintArgb == null,
@@ -294,6 +296,7 @@ fun StoryItem(
                             previewFailed = true
                             onPreviewLoadFailed?.invoke()
                         },
+                        onPreviewLoadSuccess = { onPreviewLoadSuccess?.invoke() },
                         tintBaseColorArgb = tintBaseColorArgb,
                         paletteTintConfigKey = style.paletteTintConfigKey,
                         extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
@@ -326,6 +329,7 @@ private fun StoryMainContent(
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
     onPreviewLoadFailed: () -> Unit,
+    onPreviewLoadSuccess: () -> Unit,
     tintBaseColorArgb: Int,
     paletteTintConfigKey: String,
     extractPreviewTint: Boolean,
@@ -419,6 +423,7 @@ private fun StoryMainContent(
                     .clip(RoundedCornerShape(6.dp))
                     .graphicsLayer(alpha = dimAlpha),
                 onLoadFailed = onPreviewLoadFailed,
+                onLoadSuccess = onPreviewLoadSuccess,
                 tintBaseColorArgb = tintBaseColorArgb,
                 paletteTintConfigKey = paletteTintConfigKey,
                 extractTint = extractPreviewTint,
@@ -433,6 +438,7 @@ private fun StoryPreviewImage(
     model: StoryItemUiModel,
     modifier: Modifier,
     onLoadFailed: () -> Unit,
+    onLoadSuccess: () -> Unit,
     tintBaseColorArgb: Int,
     paletteTintConfigKey: String,
     extractTint: Boolean,
@@ -468,6 +474,7 @@ private fun StoryPreviewImage(
             onSuccess = { success ->
                 loaded = true
                 loadedPainter = success.painter
+                onLoadSuccess()
             },
             onError = { onLoadFailed() },
         )

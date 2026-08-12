@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.Composable
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.AiSummaryMode
 
 enum class AiSummarySettingsDialog { BaseUrl, ApiKey, Model, SystemPrompt }
 
@@ -10,9 +11,7 @@ data class AiSummarySettingsUiState(
     val enabled: Boolean,
     val configurationComplete: Boolean,
     val localSummarizationSupported: Boolean,
-    val mode: String,
-    val localModeValue: String,
-    val cloudModeValue: String,
+    val mode: AiSummaryMode,
     val baseUrl: String,
     val apiKeyPreview: String,
     val model: String,
@@ -27,12 +26,12 @@ fun SharedAiSummarySettingsScreen(
     contentVersion: Int,
     onBack: () -> Unit,
     onEnabledChanged: (Boolean) -> Unit,
-    onModeSelected: (String) -> Unit,
+    onModeSelected: (AiSummaryMode) -> Unit,
     onStreamChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
     localModelsContent: @Composable () -> Unit,
 ) {
-    val cloudMode = state.mode == state.cloudModeValue
+    val cloudMode = state.mode == AiSummaryMode.CLOUD
     SettingsPage(
         title = "AI summarization",
         showNavigation = showNavigation,
@@ -54,13 +53,13 @@ fun SharedAiSummarySettingsScreen(
                     SegmentedSetting(
                         title = "Summarization mode",
                         options = listOf(
-                            state.localModeValue to "Local",
-                            state.cloudModeValue to "Cloud",
+                            AiSummaryMode.LOCAL.storedValue to "Local",
+                            AiSummaryMode.CLOUD.storedValue to "Cloud",
                         ),
-                        selected = state.mode,
-                        onSelected = onModeSelected,
+                        selected = state.mode.storedValue,
+                        onSelected = { onModeSelected(AiSummaryMode.fromStored(it)) },
                     )
-                    AnimatedVisibility(visible = state.mode == state.localModeValue) {
+                    AnimatedVisibility(visible = state.mode == AiSummaryMode.LOCAL) {
                         localModelsContent()
                     }
                     SettingsDivider()

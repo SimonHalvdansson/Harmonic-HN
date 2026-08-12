@@ -5,46 +5,34 @@ import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.StoryNavigationSeed
+import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 
 /** Android persistence/intent encoding for the shared navigation model. */
 fun StoryDestination.toBundle(): Bundle = Bundle().apply {
-    putString(CommentsContract.EXTRA_TITLE, title)
-    putString(CommentsContract.EXTRA_PDF_TITLE, pdfTitle)
-    putString(CommentsContract.EXTRA_VIDEO_TITLE, videoTitle)
-    putString(CommentsContract.EXTRA_BY, author)
-    putString(CommentsContract.EXTRA_URL, url)
-    putString(CommentsContract.EXTRA_PREVIEW_IMAGE_URL, previewImageUrl)
-    putBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_URL_LOADED, previewImageUrlLoaded)
-    putBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_LOAD_FAILED, previewImageLoadFailed)
-    putBoolean(
-        CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED,
-        previewImageTintColorLoaded,
-    )
-    putInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR, previewImageTintColor)
-    putString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL, previewImageTintSourceUrl)
-    putInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR, previewImageTintBaseColor)
-    putString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_MODE, previewImageTintMode)
-    putBoolean(CommentsContract.EXTRA_FAVICON_TINT_COLOR_LOADED, faviconTintColorLoaded)
-    putInt(CommentsContract.EXTRA_FAVICON_TINT_COLOR, faviconTintColor)
-    putString(CommentsContract.EXTRA_FAVICON_TINT_SOURCE_URL, faviconTintSourceUrl)
-    putInt(CommentsContract.EXTRA_FAVICON_TINT_BASE_COLOR, faviconTintBaseColor)
-    putString(CommentsContract.EXTRA_FAVICON_TINT_MODE, faviconTintMode)
-    putInt(CommentsContract.EXTRA_TIME, createdAtEpochSeconds)
-    putIntArray(CommentsContract.EXTRA_KIDS, childIds.toIntArray())
-    putIntArray(CommentsContract.EXTRA_POLL_OPTIONS, pollOptionIds.toIntArray())
-    putInt(CommentsContract.EXTRA_DESCENDANTS, descendantCount)
     putInt(CommentsContract.EXTRA_ID, storyId)
-    putInt(CommentsContract.EXTRA_SCORE, score)
-    putString(CommentsContract.EXTRA_TEXT, text)
-    putBoolean(CommentsContract.EXTRA_IS_LINK, isLink)
-    putBoolean(CommentsContract.EXTRA_IS_COMMENT, isComment)
-    putInt(CommentsContract.EXTRA_PARENT_ID, parentId)
-    putInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, commentMasterId)
-    putString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE, commentMasterTitle)
-    putString(CommentsContract.EXTRA_COMMENT_MASTER_URL, commentMasterUrl)
-    putInt(CommentsContract.EXTRA_FORWARD, relativePosition)
+    seed?.let { initial ->
+        val story = initial.story
+        putString(CommentsContract.EXTRA_TITLE, story.title)
+        putString(CommentsContract.EXTRA_PDF_TITLE, initial.pdfTitle)
+        putString(CommentsContract.EXTRA_VIDEO_TITLE, initial.videoTitle)
+        putString(CommentsContract.EXTRA_BY, story.author)
+        putString(CommentsContract.EXTRA_URL, story.url)
+        putInt(CommentsContract.EXTRA_TIME, story.createdAtEpochSeconds)
+        putIntArray(CommentsContract.EXTRA_KIDS, story.childIds.toIntArray())
+        putIntArray(CommentsContract.EXTRA_POLL_OPTIONS, story.pollOptionIds.toIntArray())
+        putInt(CommentsContract.EXTRA_DESCENDANTS, story.descendantCount)
+        putInt(CommentsContract.EXTRA_SCORE, story.score)
+        putString(CommentsContract.EXTRA_TEXT, story.text)
+        putBoolean(CommentsContract.EXTRA_IS_LINK, initial.isLink)
+        putBoolean(CommentsContract.EXTRA_IS_COMMENT, story.isComment)
+        putInt(CommentsContract.EXTRA_PARENT_ID, story.parentId)
+        putInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, initial.commentMasterId)
+        putString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE, initial.commentMasterTitle)
+        putString(CommentsContract.EXTRA_COMMENT_MASTER_URL, initial.commentMasterUrl)
+    }
     putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, showWebsite)
     if (scrollToCommentId > 0) {
         putInt(CommentsContract.EXTRA_SCROLL_TO_COMMENT, scrollToCommentId)
@@ -56,43 +44,43 @@ fun Story.toBundle(): Bundle = toDestination().toBundle()
 fun Bundle.toStoryDestinationOrNull(): StoryDestination? {
     val storyId = getInt(CommentsContract.EXTRA_ID, -1)
     if (storyId <= 0) return null
+    val hasSeed = containsKey(CommentsContract.EXTRA_TITLE) ||
+        containsKey(CommentsContract.EXTRA_BY) ||
+        containsKey(CommentsContract.EXTRA_URL) ||
+        containsKey(CommentsContract.EXTRA_TEXT) ||
+        containsKey(CommentsContract.EXTRA_KIDS) ||
+        containsKey(CommentsContract.EXTRA_POLL_OPTIONS)
     return StoryDestination(
         storyId = storyId,
-        title = getString(CommentsContract.EXTRA_TITLE),
-        pdfTitle = getString(CommentsContract.EXTRA_PDF_TITLE),
-        videoTitle = getString(CommentsContract.EXTRA_VIDEO_TITLE),
-        author = getString(CommentsContract.EXTRA_BY),
-        url = getString(CommentsContract.EXTRA_URL),
-        previewImageUrl = getString(CommentsContract.EXTRA_PREVIEW_IMAGE_URL),
-        previewImageUrlLoaded = getBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_URL_LOADED),
-        previewImageLoadFailed = getBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_LOAD_FAILED),
-        previewImageTintColorLoaded =
-            getBoolean(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR_LOADED),
-        previewImageTintColor = getInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_COLOR),
-        previewImageTintSourceUrl =
-            getString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_SOURCE_URL),
-        previewImageTintBaseColor = getInt(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_BASE_COLOR),
-        previewImageTintMode = getString(CommentsContract.EXTRA_PREVIEW_IMAGE_TINT_MODE),
-        faviconTintColorLoaded = getBoolean(CommentsContract.EXTRA_FAVICON_TINT_COLOR_LOADED),
-        faviconTintColor = getInt(CommentsContract.EXTRA_FAVICON_TINT_COLOR),
-        faviconTintSourceUrl = getString(CommentsContract.EXTRA_FAVICON_TINT_SOURCE_URL),
-        faviconTintBaseColor = getInt(CommentsContract.EXTRA_FAVICON_TINT_BASE_COLOR),
-        faviconTintMode = getString(CommentsContract.EXTRA_FAVICON_TINT_MODE),
-        createdAtEpochSeconds = getInt(CommentsContract.EXTRA_TIME),
-        childIds = getIntArray(CommentsContract.EXTRA_KIDS)?.toList().orEmpty(),
-        pollOptionIds = getIntArray(CommentsContract.EXTRA_POLL_OPTIONS)?.toList().orEmpty(),
-        descendantCount = getInt(CommentsContract.EXTRA_DESCENDANTS),
-        score = getInt(CommentsContract.EXTRA_SCORE),
-        text = getString(CommentsContract.EXTRA_TEXT),
-        isLink = getBoolean(CommentsContract.EXTRA_IS_LINK),
-        isComment = getBoolean(CommentsContract.EXTRA_IS_COMMENT),
-        parentId = getInt(CommentsContract.EXTRA_PARENT_ID),
-        commentMasterId = getInt(CommentsContract.EXTRA_COMMENT_MASTER_ID),
-        commentMasterTitle = getString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE),
-        commentMasterUrl = getString(CommentsContract.EXTRA_COMMENT_MASTER_URL),
-        relativePosition = getInt(CommentsContract.EXTRA_FORWARD),
         showWebsite = getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE),
         scrollToCommentId = getInt(CommentsContract.EXTRA_SCROLL_TO_COMMENT, -1),
+        seed = if (hasSeed) {
+            StoryNavigationSeed(
+                story = StorySnapshot(
+                    id = storyId,
+                    author = getString(CommentsContract.EXTRA_BY),
+                    title = getString(CommentsContract.EXTRA_TITLE),
+                    text = getString(CommentsContract.EXTRA_TEXT),
+                    url = getString(CommentsContract.EXTRA_URL),
+                    score = getInt(CommentsContract.EXTRA_SCORE),
+                    descendantCount = getInt(CommentsContract.EXTRA_DESCENDANTS),
+                    createdAtEpochSeconds = getInt(CommentsContract.EXTRA_TIME),
+                    childIds = getIntArray(CommentsContract.EXTRA_KIDS)?.toList().orEmpty(),
+                    pollOptionIds = getIntArray(CommentsContract.EXTRA_POLL_OPTIONS)
+                        ?.toList().orEmpty(),
+                    isComment = getBoolean(CommentsContract.EXTRA_IS_COMMENT),
+                    parentId = getInt(CommentsContract.EXTRA_PARENT_ID),
+                ),
+                pdfTitle = getString(CommentsContract.EXTRA_PDF_TITLE),
+                videoTitle = getString(CommentsContract.EXTRA_VIDEO_TITLE),
+                isLink = getBoolean(CommentsContract.EXTRA_IS_LINK),
+                commentMasterId = getInt(CommentsContract.EXTRA_COMMENT_MASTER_ID),
+                commentMasterTitle = getString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE),
+                commentMasterUrl = getString(CommentsContract.EXTRA_COMMENT_MASTER_URL),
+            )
+        } else {
+            null
+        },
     )
 }
 

@@ -3,19 +3,18 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ThemePreferences
-import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import com.simon.harmonichackernews.utils.Utils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,35 +29,23 @@ fun AppearanceSettingsScreen(
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
-    val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-    val refresh = rememberPreferenceRefresh()
     var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
-    val theme = prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)
-        ?: ThemePreferences.DEFAULT
-    val nighttimeTheme = prefs.getString(
-        ThemePreferences.NIGHTTIME_KEY,
-        ThemePreferences.DEFAULT_NIGHTTIME,
-    ) ?: ThemePreferences.DEFAULT_NIGHTTIME
-    val settings = AndroidUserSettings.get(context)
-    val tintEnabled = settings.story.tintCardUsingPreview
-    val state = AppearanceSettingsUiState(
+    val app = remember(context) { AndroidAppComposition.get(context) }
+    val repository = app.settings
+    val presenter = remember(app) { AppearanceSettingsPresenter(repository) }
+    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val theme = settings.appearance.theme
+    val nighttimeTheme = settings.appearance.nighttimeTheme
+    val state = presenter.state(
+        settings = settings,
         themeLabel = composeThemeLabel(theme),
-        specialNighttime = settings.general.specialNighttimeTheme,
         nighttimeRangeLabel = formatNighttimeRange(context),
         nighttimeThemeLabel = composeThemeLabel(
             nighttimeTheme,
             ThemePreferences.DEFAULT_NIGHTTIME,
         ),
-        fontLabel = AndroidSettingsResources.fontLabel(context, settings.story.font),
-        paletteTintSummary = if (tintEnabled) {
-            PaletteTintPreferences.summary(settings.story.paletteTintConfigKey)
-        } else {
-            "Enable in Stories settings"
-        },
-        paletteTintEnabled = tintEnabled,
+        fontLabel = AndroidSettingsResources.fontLabel(context, settings.story.fontChoice),
         showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
-        transparentStatusBar = settings.general.transparentStatusBar,
-        compactHeader = settings.story.compactHeader,
     )
     SharedAppearanceSettingsScreen(
         state = state,
@@ -66,11 +53,12 @@ fun AppearanceSettingsScreen(
         onBack = onBack,
         onNavigate = onNavigate,
         onBooleanChanged = { setting, value ->
-            prefs.edit().putBoolean(setting.preferenceKey, value).apply()
-            if (setting != AppearanceBooleanSetting.CompactHeader) onThemeChanged()
+            presenter.setBoolean(setting, value).forEach { effect ->
+                if (effect == SettingsPlatformEffect.ThemeChanged) onThemeChanged()
+            }
         },
         onDialogRequested = { dialog = it },
-        contentVersion = refresh,
+        contentVersion = settings.hashCode(),
     )
 
     when (dialog) {
@@ -100,13 +88,6 @@ fun AppearanceSettingsScreen(
         null -> Unit
     }
 }
-
-private val AppearanceBooleanSetting.preferenceKey: String
-    get() = when (this) {
-        AppearanceBooleanSetting.SpecialNighttime -> UserPreferenceKeys.SPECIAL_NIGHTTIME
-        AppearanceBooleanSetting.TransparentStatusBar -> UserPreferenceKeys.TRANSPARENT_STATUS_BAR
-        AppearanceBooleanSetting.CompactHeader -> UserPreferenceKeys.COMPACT_HEADER
-    }
 
 private fun formatNighttimeRange(context: Context): String {
     val hours = Utils.getNighttimeHours(context)

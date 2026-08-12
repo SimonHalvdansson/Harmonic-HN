@@ -10,12 +10,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
@@ -23,7 +23,7 @@ object RepliesChecker {
     const val CHANNEL_ID: String = "reply_notifications"
 
     private const val NOTIFICATION_GROUP_KEY = "com.simon.harmonichackernews.REPLY_NOTIFICATIONS"
-    private const val GROUP_NOTIFICATION_ID = 98373
+    private const val GROUP_NOTIFICATION_ID = ReplyNotificationPresentation.SUMMARY_NOTIFICATION_ID
 
     private const val JOB_ID = 98372
     private val CHECK_INTERVAL_MILLIS = 30L * 60L * 1000L
@@ -145,12 +145,10 @@ object RepliesChecker {
         ctx: Context,
         replies: List<HackerNewsReply>,
     ) {
-        if (replies.isEmpty()) {
-            return
-        }
-
-        if (replies.size == 1) {
-            RepliesChecker.showNotification(ctx, replies.get(0), false)
+        val batch = ReplyNotificationPresentation.present(replies)
+        if (batch.notifications.isEmpty()) return
+        if (batch.summary == null) {
+            RepliesChecker.showNotification(ctx, batch.notifications.single(), false)
             return
         }
 
@@ -160,24 +158,17 @@ object RepliesChecker {
 
         try {
             val notificationManager: NotificationManagerCompat = NotificationManagerCompat.from(ctx)
-            for (reply in replies) {
+            for (notification in batch.notifications) {
                 notificationManager.notify(
-                    reply.id,
-                    RepliesChecker.buildReplyNotification(ctx, reply, true).build()
+                    notification.id,
+                    RepliesChecker.buildReplyNotification(ctx, notification, true).build()
                 )
             }
-
-            var latestReply = replies.get(0)
-            for (reply in replies) {
-                if (reply.id > latestReply.id) {
-                    latestReply = reply
-                }
-            }
-
+            val summary = checkNotNull(batch.summary)
             val style: NotificationCompat.InboxStyle = NotificationCompat.InboxStyle()
-                .setBigContentTitle(replies.size.toString() + " new replies")
-            for (reply in replies) {
-                style.addLine(reply.by + ": " + reply.text)
+                .setBigContentTitle(summary.title)
+            for (notification in batch.notifications) {
+                style.addLine(notification.author.orEmpty() + ": " + notification.body)
             }
 
             val summaryBuilder: NotificationCompat.Builder =
@@ -189,13 +180,13 @@ object RepliesChecker {
                             R.mipmap.ic_launcher
                         )
                     )
-                    .setContentTitle(replies.size.toString() + " new replies")
-                    .setContentText("New Hacker News replies")
+                    .setContentTitle(summary.title)
+                    .setContentText(summary.body)
                     .setStyle(style)
                     .setContentIntent(
                         RepliesChecker.createReplyPendingIntent(
                             ctx,
-                            latestReply,
+                            summary,
                             RepliesChecker.GROUP_NOTIFICATION_ID
                         )
                     )
@@ -215,6 +206,12 @@ object RepliesChecker {
         ctx: Context,
         reply: HackerNewsReply,
         grouped: Boolean = false
+    ) = showNotification(ctx, ReplyNotificationPresentation.individual(reply), grouped)
+
+    private fun showNotification(
+        ctx: Context,
+        notification: ReplyNotificationPayload,
+        grouped: Boolean = false,
     ) {
         if (!RepliesChecker.canPostNotifications(ctx)) {
             return
@@ -222,8 +219,8 @@ object RepliesChecker {
 
         try {
             NotificationManagerCompat.from(ctx).notify(
-                reply.id,
-                RepliesChecker.buildReplyNotification(ctx, reply, grouped).build()
+                notification.id,
+                RepliesChecker.buildReplyNotification(ctx, notification, grouped).build()
             )
         } catch (e: SecurityException) {
             e.printStackTrace()
@@ -232,7 +229,7 @@ object RepliesChecker {
 
     private fun buildReplyNotification(
         ctx: Context,
-        reply: HackerNewsReply,
+        notification: ReplyNotificationPayload,
         grouped: Boolean
     ): NotificationCompat.Builder {
         val builder: NotificationCompat.Builder =
@@ -244,10 +241,12 @@ object RepliesChecker {
                         R.mipmap.ic_launcher
                     )
                 )
-                .setContentTitle("New reply from " + reply.by)
-                .setContentText(reply.text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(reply.text))
-                .setContentIntent(RepliesChecker.createReplyPendingIntent(ctx, reply, reply.id))
+                .setContentTitle(notification.title)
+                .setContentText(notification.body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(notification.body))
+                .setContentIntent(
+                    RepliesChecker.createReplyPendingIntent(ctx, notification, notification.id)
+                )
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
 
@@ -273,19 +272,10 @@ object RepliesChecker {
 
     private fun createReplyPendingIntent(
         ctx: Context,
-        reply: HackerNewsReply,
+        notification: ReplyNotificationPayload,
         requestCode: Int
     ): PendingIntent? {
-        val uri = Uri.parse("https://news.ycombinator.com/item")
-            .buildUpon()
-            .appendQueryParameter(
-                "id",
-                (if (reply.parentId > 0) reply.parentId else reply.id).toString()
-            )
-            .fragment(reply.id.toString())
-            .build()
-
-        val intent: Intent = Intent(Intent.ACTION_VIEW, uri)
+        val intent: Intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(notification.deepLink))
         intent.setClass(ctx, MainActivity::class.java)
         intent.setFlags(
             (Intent.FLAG_ACTIVITY_NEW_TASK
@@ -321,7 +311,7 @@ object RepliesChecker {
     }
 
     private fun useCase(ctx: Context): ReplyNotificationUseCase = ReplyNotificationUseCase(
-        NetworkComponent.replyScanner,
+        AndroidAppComposition.get(ctx).network.replyScanner,
         AndroidKeyValueStore.global(ctx.applicationContext),
     )
 

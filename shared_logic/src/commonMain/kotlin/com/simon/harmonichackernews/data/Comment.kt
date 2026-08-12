@@ -2,8 +2,6 @@ package com.simon.harmonichackernews.data
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
-import com.simon.harmonichackernews.utils.RelativeTimeFormatter
-import kotlin.time.Clock
 
 class Comment {
     var by: String? = null
@@ -26,7 +24,9 @@ class Comment {
     var kidsIds: IntArray? = null // For official HN API fallback - stores child comment IDs
 
     val timeFormatted: String
-        get() = RelativeTimeFormatter.format(time.toLong(), Clock.System.now().toEpochMilliseconds())
+        get() = ItemTimeFormatter.formatNow(time)
+
+    fun formatTime(nowMillis: Long): String = ItemTimeFormatter.format(time, nowMillis)
 
     val expandedAnchorText: String?
         get() {

@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,21 +20,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.preference.PreferenceManager
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.OpenRouterProviderIconLoader
+import com.simon.harmonichackernews.network.OpenRouterProviderIcon
 import com.simon.harmonichackernews.network.networkHeader
+import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
+import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 
 @Composable
 fun AiSummaryTextDialog(
-    preferenceKey: String,
+    setting: AiSummaryTextSetting,
     title: String,
     hint: String,
     defaultValue: String,
@@ -48,13 +49,9 @@ fun AiSummaryTextDialog(
     onSaved: () -> Unit,
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
-    val initialValue = remember(preferenceKey, defaultValue) {
-        if (preferenceKey == AiSummaryApiKeyStore.PREF_API_KEY) {
-            AiSummaryApiKeyStore.getApiKey(context)
-        } else {
-            prefs.getString(preferenceKey, defaultValue) ?: defaultValue
-        }
+    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val initialValue = remember(setting, defaultValue) {
+        repository.text(setting)
     }
     SharedAiSummaryTextDialog(
         title = title,
@@ -67,14 +64,10 @@ fun AiSummaryTextDialog(
         trimValue = trimValue,
         allowEmpty = allowEmpty,
         showReset = showReset,
-        asciiInput = preferenceKey == AiSummaryApiKeyStore.PREF_API_KEY,
+        asciiInput = setting == AiSummaryTextSetting.API_KEY,
         onSave = { savedValue ->
-            if (preferenceKey == AiSummaryApiKeyStore.PREF_API_KEY) {
-                if (!AiSummaryApiKeyStore.setApiKey(context, savedValue)) {
-                    return@SharedAiSummaryTextDialog "Couldn't securely save API key"
-                }
-            } else {
-                prefs.edit().putString(preferenceKey, savedValue).apply()
+            if (!repository.setText(setting, savedValue)) {
+                return@SharedAiSummaryTextDialog "Couldn't securely save API key"
             }
             onSaved()
             null
@@ -86,44 +79,17 @@ fun AiSummaryTextDialog(
 @Composable
 fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
-    val initialUrl = prefs.getString(
-        AndroidAiModelDefaults.PREF_BASE_URL,
-        AiSummaryProviders.defaultBaseUrl,
-    ) ?: AiSummaryProviders.defaultBaseUrl
+    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val initialUrl = repository.snapshot().baseUrl
     SharedAiSummaryBaseUrlDialog(
         initialUrl = initialUrl,
         presets = AiSummaryProviders.PROVIDERS.map { provider ->
             AiBaseUrlPreset(provider.id, provider.label, provider.baseUrl)
         },
         onSave = { savedUrl ->
-            val oldProvider = AiSummaryProviders.getProviderForBaseUrl(
-                prefs.getString(
-                    AndroidAiModelDefaults.PREF_BASE_URL,
-                    AiSummaryProviders.defaultBaseUrl,
-                ),
-            )
-            val newProvider = AiSummaryProviders.getProviderForBaseUrl(savedUrl)
-            val editor = prefs.edit().putString(AndroidAiModelDefaults.PREF_BASE_URL, savedUrl)
-            if (newProvider != null && newProvider.id != oldProvider?.id) {
-                val translated = if (oldProvider == null) {
-                    ""
-                } else {
-                    AiSummaryProviders.translateModelId(
-                        oldProvider,
-                        newProvider,
-                        prefs.getString(AndroidAiModelDefaults.PREF_MODEL, ""),
-                    )
-                }
-                if (translated.isNullOrEmpty()) {
-                    editor.remove(AndroidAiModelDefaults.PREF_MODEL)
-                } else {
-                    editor.putString(AndroidAiModelDefaults.PREF_MODEL, translated)
-                }
-            }
-            editor.apply()
-            if (newProvider != null && !prefs.contains(AndroidAiModelDefaults.PREF_MODEL)) {
-                AndroidAiModelDefaults.ensureProviderDefault(context, newProvider)
+            val update = repository.setBaseUrl(savedUrl)
+            if (update.needsDefaultModel) {
+                update.provider?.let { AndroidAiModelDefaults.ensureProviderDefault(context, it) }
             }
         },
         onDismiss = onDismiss,
@@ -133,29 +99,17 @@ fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
 @Composable
 fun AiModelSelectorDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
-    val baseUrl = prefs.getString(
-        AndroidAiModelDefaults.PREF_BASE_URL,
-        AiSummaryProviders.defaultBaseUrl,
-    ) ?: AiSummaryProviders.defaultBaseUrl
+    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val baseUrl = repository.snapshot().baseUrl
     val provider = AiSummaryProviders.getProviderForBaseUrl(baseUrl)
         ?: AiSummaryProviders.defaultProvider
-    val initialModel = AiSummaryProviders.getModelForRequest(
-        baseUrl,
-        prefs.getString(AndroidAiModelDefaults.PREF_MODEL, ""),
-    )
+    val initialModel = repository.modelForPicker()
     SharedAiModelSelectorDialog(
         initialModel = initialModel,
         provider = provider,
-        catalogRepository = NetworkComponent.aiModelCatalogRepository,
-        onSave = { selected ->
-            prefs.edit()
-                .putString(
-                    AndroidAiModelDefaults.PREF_MODEL,
-                    AiSummaryProviders.toProviderModelId(provider, selected),
-                )
-                .apply()
-        },
+        catalogRepository = appComposition.network.aiModelCatalogRepository,
+        onSave = repository::setModelForCurrentProvider,
         onDismiss = onDismiss,
         providerIcon = { providerSlug -> AiModelProviderIcon(providerSlug) },
     )
@@ -164,16 +118,20 @@ fun AiModelSelectorDialog(onDismiss: () -> Unit) {
 @Composable
 private fun AiModelProviderIcon(providerSlug: String) {
     val context = LocalContext.current
+    val appComposition = remember(context) { AndroidAppComposition.get(context) }
     var iconData by remember(providerSlug) { mutableStateOf<Any?>(null) }
 
-    DisposableEffect(providerSlug) {
-        var active = true
-        OpenRouterProviderIconLoader.resolve(providerSlug) { resolvedSlug, resolvedIcon ->
-            if (active && resolvedSlug.equals(providerSlug, ignoreCase = true)) {
-                iconData = resolvedIcon
+    LaunchedEffect(providerSlug, appComposition) {
+        iconData = runCatching {
+            when (
+                val icon = appComposition.network.openRouterProviderIconRepository
+                    .resolve(providerSlug).icon
+            ) {
+                is OpenRouterProviderIcon.RemoteUrl -> icon.url
+                is OpenRouterProviderIcon.SvgBytes -> icon.bytes
+                null -> null
             }
-        }
-        onDispose { active = false }
+        }.getOrNull()
     }
 
     Box(

@@ -15,14 +15,6 @@ internal object LocalSummaryManager {
         LocalSummaryCallbacks.availability(callback, false, false, UNAVAILABLE_MESSAGE)
     }
 
-    fun summarizeArticle(
-        context: Context?,
-        articleUrl: String?,
-        callback: LocalSummaryCallback?,
-    ) {
-        LocalSummaryCallbacks.failure(callback, UNAVAILABLE_MESSAGE)
-    }
-
     fun summarizeText(
         context: Context?,
         text: String?,

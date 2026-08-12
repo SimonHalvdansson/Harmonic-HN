@@ -66,7 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.settings.StoryPreviewTintState
+import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
+import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.presentation.SubmissionFilter
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.StoryItem
@@ -104,7 +105,7 @@ class SubmissionsComposeController(
         private set
     internal var emptyText by mutableStateOf("No submissions")
         private set
-    internal var displaySettings by mutableStateOf(initialDisplaySettings)
+    var displaySettings by mutableStateOf(initialDisplaySettings)
         private set
     internal var contentVersion by mutableIntStateOf(0)
         private set
@@ -205,6 +206,7 @@ class SubmissionsComposeController(
 @Composable
 fun SharedSubmissionsScreen(
     controller: SubmissionsComposeController,
+    previewResources: StoryListResourceRuntime,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -261,6 +263,7 @@ fun SharedSubmissionsScreen(
             contentVersion = controller.contentVersion,
             listState = listState,
             listener = controller.listener,
+            previewResources = previewResources,
             storyItemModel = storyItemModel,
             onOpenLink = onOpenLink,
         )
@@ -289,6 +292,7 @@ private fun SubmissionsList(
     contentVersion: Int,
     listState: LazyListState,
     listener: SubmissionsComposeController.Listener,
+    previewResources: StoryListResourceRuntime,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -349,16 +353,37 @@ private fun SubmissionsList(
                         listItem = true,
                         onLinkClick = { listener.onStoryLinkClick(story) },
                         onCommentClick = { listener.onStoryCommentsClick(story) },
+                        onPreviewLoadSuccess = {
+                            model.previewImageUrl?.let { imageUrl ->
+                                previewResources.completePreviewImageLoad(
+                                    story.id,
+                                    story.url.orEmpty(),
+                                    imageUrl,
+                                    success = true,
+                                )
+                            }
+                        },
+                        onPreviewLoadFailed = {
+                            model.previewImageUrl?.let { imageUrl ->
+                                previewResources.completePreviewImageLoad(
+                                    story.id,
+                                    story.url.orEmpty(),
+                                    imageUrl,
+                                    success = false,
+                                )
+                            }
+                        },
                         onPreviewTintExtracted = { tintColor ->
                             val sourceUrl = model.previewImageUrl
                             val baseColor = model.tintFallbackArgb
                             if (sourceUrl != null && baseColor != null) {
-                                StoryPreviewTintState.applyPreview(
-                                    story,
-                                    sourceUrl,
-                                    baseColor,
-                                    displaySettings.paletteTintMode,
-                                    tintColor,
+                                previewResources.recordTint(
+                                    story = story,
+                                    kind = StoryResourceTintKind.PREVIEW_IMAGE,
+                                    sourceUrl = sourceUrl,
+                                    baseColorArgb = baseColor,
+                                    paletteConfigKey = displaySettings.paletteTintMode,
+                                    tintColorArgb = tintColor,
                                 )
                             }
                         },
@@ -366,12 +391,13 @@ private fun SubmissionsList(
                             val sourceUrl = model.faviconUrl
                             val baseColor = model.tintFallbackArgb
                             if (sourceUrl != null && baseColor != null) {
-                                StoryPreviewTintState.applyFavicon(
-                                    story,
-                                    sourceUrl,
-                                    baseColor,
-                                    displaySettings.paletteTintMode,
-                                    tintColor,
+                                previewResources.recordTint(
+                                    story = story,
+                                    kind = StoryResourceTintKind.FAVICON,
+                                    sourceUrl = sourceUrl,
+                                    baseColorArgb = baseColor,
+                                    paletteConfigKey = displaySettings.paletteTintMode,
+                                    tintColorArgb = tintColor,
                                 )
                             }
                         },

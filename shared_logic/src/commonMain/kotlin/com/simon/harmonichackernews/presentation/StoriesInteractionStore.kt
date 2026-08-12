@@ -8,21 +8,21 @@ data class StoryFrontDatePickerRequest(
     val latestDay: Long,
 )
 
-data class StoryScrollRequest(val serial: Int, val dy: Int)
+data class StoryScrollRequest(val serial: Int, val delta: LayoutDelta) {
+    val dy: Int get() = delta.value
+}
 
 data class StoryPredictiveBackSettleRequest(val serial: Int, val target: Float)
 
 data class StoryPreviewOverlayState(
     val stories: List<Story>,
-    val sourcePositions: List<Int>,
-    val cardColors: List<Int>,
+    val cardBackgrounds: List<ArgbColor>,
     val initialPage: Int,
-)
+) {
+    val cardColors: List<Int> get() = cardBackgrounds.map(ArgbColor::value)
+}
 
-data class StoryPreviewTarget(
-    val story: Story,
-    val sourcePosition: Int,
-)
+data class StoryPreviewTarget(val story: Story)
 
 enum class StoryPreviewActionKind { Vote, Read, Bookmark, Favorite }
 
@@ -39,15 +39,22 @@ data class StoriesInteractionState(
     val storyPagingAlphas: Map<Int, Float> = emptyMap(),
     val storyPreviewOverlay: StoryPreviewOverlayState? = null,
     val storyPreviewDismissRequestVersion: Int = 0,
-    val storyPreviewPredictiveBackProgress: Float = 0f,
-    val storyPreviewPredictiveBackEdge: Int = 0,
-    val storyPreviewPredictiveBackTouchY: Float = 0f,
+    val storyPreviewBackGesture: BackGesture = BackGesture(),
     val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest? = null,
     val storyPreviewVoteLoadingId: Int = -1,
     val storyPreviewFavoriteLoadingId: Int = -1,
     val visibleStoryPreviewId: Int = -1,
     val suppressedStoryIds: Set<Int> = emptySet(),
-)
+) {
+    val storyPreviewPredictiveBackProgress: Float get() = storyPreviewBackGesture.progress
+    val storyPreviewPredictiveBackEdge: Int
+        get() = when (storyPreviewBackGesture.edge) {
+            BackGestureEdge.LEFT -> 0
+            BackGestureEdge.RIGHT -> 1
+            BackGestureEdge.UNKNOWN -> -1
+        }
+    val storyPreviewPredictiveBackTouchY: Float get() = storyPreviewBackGesture.pointerY
+}
 
 /**
  * Platform-neutral interaction state machine for the stories screen and its preview overlay.
@@ -55,18 +62,19 @@ data class StoriesInteractionState(
  * transitions, and estimated paging distance are shared by every UI shell.
  */
 class StoriesInteractionStore(
-    private val defaultStoryHeightPx: Int,
+    private val defaultStoryExtent: LayoutDistance,
 ) {
+    constructor(defaultStoryHeightPx: Int) : this(LayoutDistance(defaultStoryHeightPx))
     var state = StoriesInteractionState()
         private set
 
     private var requestSerial = 0
     private var mainStories: List<Story> = emptyList()
     private var searchStories: List<Story> = emptyList()
-    private val storyItemHeights = mutableMapOf<Int, Int>()
+    private val storyItemExtents = mutableMapOf<Int, LayoutDistance>()
 
     init {
-        require(defaultStoryHeightPx > 0) { "A positive default story height is required" }
+        require(defaultStoryExtent.value > 0) { "A positive default story height is required" }
     }
 
     fun updateContent(
@@ -82,7 +90,7 @@ class StoriesInteractionStore(
             mainStories.forEach { add(it.id) }
             searchStories.forEach { add(it.id) }
         }
-        storyItemHeights.keys.retainAll(currentStoryIds)
+        storyItemExtents.keys.retainAll(currentStoryIds)
         state = state.copy(
             searching = searching,
             searchDraft = when {
@@ -160,12 +168,16 @@ class StoriesInteractionStore(
     }
 
     fun requestScrollBy(dy: Int) {
-        if (dy == 0) return
+        requestScrollBy(LayoutDelta(dy))
+    }
+
+    fun requestScrollBy(delta: LayoutDelta) {
+        if (delta.value == 0) return
         state = state.copy(
             headerPinnedForPreview = true,
             scrollRequest = StoryScrollRequest(
                 serial = ++requestSerial,
-                dy = (state.scrollRequest?.dy ?: 0) + dy,
+                delta = LayoutDelta((state.scrollRequest?.dy ?: 0) + delta.value),
             ),
         )
     }
@@ -180,24 +192,32 @@ class StoriesInteractionStore(
 
     fun showStoryPreview(
         stories: List<Story>,
-        sourcePositions: List<Int>,
         cardColors: List<Int>,
         openedStoryId: Int,
     ): Boolean {
-        if (stories.isEmpty() || stories.size != sourcePositions.size ||
-            stories.size != cardColors.size
-        ) {
+        return showStoryPreviewWithBackgrounds(
+            stories,
+            cardColors.map(::ArgbColor),
+            openedStoryId,
+        )
+    }
+
+    fun showStoryPreviewWithBackgrounds(
+        stories: List<Story>,
+        cardBackgrounds: List<ArgbColor>,
+        openedStoryId: Int,
+    ): Boolean {
+        if (stories.isEmpty() || stories.size != cardBackgrounds.size) {
             return false
         }
         val initialPage = stories.indexOfFirst { it.id == openedStoryId }.takeIf { it >= 0 } ?: 0
         state = state.copy(
             storyPreviewDismissRequestVersion = 0,
-            storyPreviewPredictiveBackProgress = 0f,
+            storyPreviewBackGesture = BackGesture(),
             storyPreviewPredictiveBackSettleRequest = null,
             storyPreviewOverlay = StoryPreviewOverlayState(
                 stories = stories.toList(),
-                sourcePositions = sourcePositions.toList(),
-                cardColors = cardColors.toList(),
+                cardBackgrounds = cardBackgrounds.toList(),
                 initialPage = initialPage,
             ),
             visibleStoryPreviewId = stories[initialPage].id,
@@ -218,7 +238,7 @@ class StoriesInteractionStore(
         state = state.copy(
             storyPreviewOverlay = null,
             storyPreviewDismissRequestVersion = 0,
-            storyPreviewPredictiveBackProgress = 0f,
+            storyPreviewBackGesture = BackGesture(),
             storyPreviewPredictiveBackSettleRequest = null,
             storyPreviewVoteLoadingId = -1,
             storyPreviewFavoriteLoadingId = -1,
@@ -231,14 +251,22 @@ class StoriesInteractionStore(
     }
 
     fun updateStoryPreviewPredictiveBack(progress: Float, edge: Int, touchY: Float) {
+        updateStoryPreviewBackGesture(
+            BackGesture(
+                progress = progress.coerceIn(0f, 1f),
+                edge = BackGestureEdge.fromLegacyValue(edge),
+                pointerY = touchY,
+            ),
+        )
+    }
+
+    fun updateStoryPreviewBackGesture(gesture: BackGesture) {
         if (state.storyPreviewOverlay == null || state.storyPreviewDismissRequestVersion != 0) {
             return
         }
         state = state.copy(
             storyPreviewPredictiveBackSettleRequest = null,
-            storyPreviewPredictiveBackEdge = edge,
-            storyPreviewPredictiveBackTouchY = touchY,
-            storyPreviewPredictiveBackProgress = progress.coerceIn(0f, 1f),
+            storyPreviewBackGesture = gesture,
         )
     }
 
@@ -257,7 +285,9 @@ class StoriesInteractionStore(
     fun finishStoryPreviewPredictiveBackSettle(request: StoryPredictiveBackSettleRequest) {
         if (state.storyPreviewPredictiveBackSettleRequest != request) return
         state = state.copy(
-            storyPreviewPredictiveBackProgress = request.target,
+            storyPreviewBackGesture = state.storyPreviewBackGesture.copy(
+                progress = request.target,
+            ),
             storyPreviewPredictiveBackSettleRequest = null,
         )
     }
@@ -284,8 +314,7 @@ class StoriesInteractionStore(
     fun storyPreviewTarget(page: Int): StoryPreviewTarget? {
         val overlay = state.storyPreviewOverlay ?: return null
         val story = overlay.stories.getOrNull(page) ?: return null
-        val sourcePosition = overlay.sourcePositions.getOrNull(page) ?: return null
-        return StoryPreviewTarget(story, sourcePosition)
+        return StoryPreviewTarget(story)
     }
 
     fun beginStoryPreviewAction(page: Int, action: StoryPreviewActionKind): StoryPreviewTarget? {
@@ -320,7 +349,11 @@ class StoriesInteractionStore(
     }
 
     fun updateStoryItemHeight(storyId: Int, heightPx: Int) {
-        if (heightPx > 0) storyItemHeights[storyId] = heightPx
+        updateStoryItemExtent(storyId, LayoutDistance(heightPx.coerceAtLeast(0)))
+    }
+
+    fun updateStoryItemExtent(storyId: Int, extent: LayoutDistance) {
+        if (extent.value > 0) storyItemExtents[storyId] = extent
     }
 
     fun getStoryPagingDistance(firstStoryId: Int, secondStoryId: Int): Int {
@@ -331,12 +364,17 @@ class StoriesInteractionStore(
         val start = minOf(first, second)
         val end = maxOf(first, second)
         return (start until end).sumOf { index ->
-            storyItemHeights[activeStories[index].id]?.coerceAtLeast(1) ?: averageStoryHeight()
+            storyItemExtents[activeStories[index].id]?.value?.coerceAtLeast(1)
+                ?: averageStoryHeight()
         }
     }
 
     private fun averageStoryHeight(): Int {
-        val heights = storyItemHeights.values.filter { it > 0 }
-        return if (heights.isEmpty()) defaultStoryHeightPx else heights.sum() / heights.size
+        val heights = storyItemExtents.values.map(LayoutDistance::value).filter { it > 0 }
+        return if (heights.isEmpty()) {
+            defaultStoryExtent.value
+        } else {
+            heights.sum() / heights.size
+        }
     }
 }

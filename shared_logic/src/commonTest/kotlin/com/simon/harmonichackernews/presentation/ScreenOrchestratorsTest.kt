@@ -40,18 +40,12 @@ class ScreenOrchestratorsTest {
             StoriesPlatformEffect.OpenSubmitEditor,
             StoriesUiOrchestrator.menu(StoriesMenuAction.SUBMIT, null),
         )
-        assertEquals(
-            StoriesPlatformEffect.ClearHistory,
-            StoriesUiOrchestrator.menu(StoriesMenuAction.CLEAR_HISTORY, null),
-        )
+        assertEquals(null, StoriesUiOrchestrator.menu(StoriesMenuAction.CLEAR_HISTORY, null))
         assertEquals(
             StoriesPlatformEffect.RequestLogin,
             StoriesUiOrchestrator.menu(StoriesMenuAction.ACCOUNT, null),
         )
-        assertEquals(
-            StoriesPlatformEffect.Logout,
-            StoriesUiOrchestrator.menu(StoriesMenuAction.ACCOUNT, "simon"),
-        )
+        assertEquals(null, StoriesUiOrchestrator.menu(StoriesMenuAction.ACCOUNT, "simon"))
         assertEquals(
             StoriesPlatformEffect.OpenProfile("simon"),
             StoriesUiOrchestrator.menu(StoriesMenuAction.PROFILE, "simon"),

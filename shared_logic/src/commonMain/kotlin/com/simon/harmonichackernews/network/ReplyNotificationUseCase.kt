@@ -28,6 +28,55 @@ sealed interface LatestReplyLookupResult {
     data class Failed(val cause: Throwable) : LatestReplyLookupResult
 }
 
+data class ReplyNotificationPayload(
+    val id: Int,
+    val title: String,
+    val body: String,
+    val deepLink: String,
+    val author: String? = null,
+)
+
+data class ReplyNotificationBatch(
+    val notifications: List<ReplyNotificationPayload>,
+    val summary: ReplyNotificationPayload? = null,
+)
+
+/** Common notification copy, grouping, ordering and deep-link policy. */
+object ReplyNotificationPresentation {
+    fun present(replies: List<HackerNewsReply>): ReplyNotificationBatch {
+        val ordered = replies.distinctBy(HackerNewsReply::id).sortedBy(HackerNewsReply::id)
+        if (ordered.isEmpty()) return ReplyNotificationBatch(emptyList())
+        val notifications = ordered.map(::individual)
+        if (notifications.size == 1) return ReplyNotificationBatch(notifications)
+
+        val latest = ordered.last()
+        return ReplyNotificationBatch(
+            notifications = notifications,
+            summary = ReplyNotificationPayload(
+                id = SUMMARY_NOTIFICATION_ID,
+                title = "${ordered.size} new replies",
+                body = "New Hacker News replies",
+                deepLink = deepLink(latest),
+            ),
+        )
+    }
+
+    fun individual(reply: HackerNewsReply): ReplyNotificationPayload = ReplyNotificationPayload(
+        id = reply.id,
+        title = "New reply from ${reply.by}",
+        body = reply.text,
+        deepLink = deepLink(reply),
+        author = reply.by,
+    )
+
+    fun deepLink(reply: HackerNewsReply): String {
+        val parentId = reply.parentId.takeIf { it > 0 } ?: reply.id
+        return "https://news.ycombinator.com/item?id=$parentId#${reply.id}"
+    }
+
+    const val SUMMARY_NOTIFICATION_ID = 98_373
+}
+
 /** Common subscription, checkpoint and failure workflow for reply notifications. */
 class ReplyNotificationUseCase(
     private val scanner: ReplyScanner,

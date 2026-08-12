@@ -4,7 +4,12 @@ import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.CommentListDiff
 import com.simon.harmonichackernews.CommentThreadFilter
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.CommentPresentationSnapshot
+import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StorySnapshot
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.utils.CommentSorter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,14 +34,46 @@ data class VisibleComment(
     val hiddenReplyCount: Int,
 )
 
+data class PortableCommentItem(
+    val comment: CommentSnapshot,
+    val presentation: CommentPresentationSnapshot,
+)
+
+data class PortableVisibleComment(
+    val sourceIndex: Int,
+    val item: PortableCommentItem,
+    val hiddenReplyCount: Int,
+)
+
+data class PortableCommentThreadState(
+    val story: StorySnapshot? = null,
+    val allComments: List<PortableCommentItem> = emptyList(),
+    val displayedComments: List<PortableCommentItem> = emptyList(),
+    val sorting: String = CommentSorter.DEFAULT,
+    val commentsByOp: Boolean = false,
+    val hasCommentsByOp: Boolean = false,
+    val searchQuery: String = "",
+    val searchResults: List<PortableCommentItem> = emptyList(),
+    val searchResultIds: List<Int> = emptyList(),
+    val visibleComments: List<PortableVisibleComment> = emptyList(),
+    val revision: Long = 0,
+)
+
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
 class CommentThreadStore {
     val allComments: MutableList<Comment> = mutableListOf()
     val displayedComments: MutableList<Comment> = mutableListOf()
 
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
-    private val mutableState = MutableStateFlow(CommentThreadUiState())
-    val state: StateFlow<CommentThreadUiState> = mutableState.asStateFlow()
+    private val mutableState = MutableStateFlow(PortableCommentThreadState())
+    val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
+
+    /** Temporary mutable-model view for Android and shared UI migration only. */
+    private val mutableLegacyState = MutableStateFlow(CommentThreadUiState())
+    val legacyState: StateFlow<CommentThreadUiState> = mutableLegacyState.asStateFlow()
+
+    /** Source-compatible name for callers already migrated to immutable snapshots. */
+    val portableState: StateFlow<PortableCommentThreadState> get() = state
 
     fun reset(story: Story?, header: Comment = Comment(), sorting: String = CommentSorter.DEFAULT) {
         allComments.clear()
@@ -131,7 +168,7 @@ class CommentThreadStore {
             ?: allComments.firstOrNull { it.id == commentId }
 
     fun showCommentsByOp(): Boolean {
-        val story = state.value.story
+        val story = legacyState.value.story
         if (!CommentThreadFilter.hasCommentsByOp(story, allComments)) return false
         rebuildDisplayedComments(commentsByOp = true)
         publish(commentsByOp = true)
@@ -173,9 +210,9 @@ class CommentThreadStore {
 
     private fun rebuildDisplayedComments(commentsByOp: Boolean = state.value.commentsByOp) {
         val shouldFilterByOp = commentsByOp &&
-            CommentThreadFilter.hasCommentsByOp(state.value.story, allComments)
+            CommentThreadFilter.hasCommentsByOp(legacyState.value.story, allComments)
         val next = if (shouldFilterByOp) {
-            CommentThreadFilter.buildCommentsByOpThreadList(state.value.story, allComments)
+            CommentThreadFilter.buildCommentsByOpThreadList(legacyState.value.story, allComments)
         } else {
             allComments
         }
@@ -202,7 +239,7 @@ class CommentThreadStore {
     }
 
     private fun publish(
-        story: Story? = state.value.story,
+        story: Story? = legacyState.value.story,
         sorting: String = state.value.sorting,
         commentsByOp: Boolean = state.value.commentsByOp,
         searchQuery: String = state.value.searchQuery,
@@ -210,7 +247,10 @@ class CommentThreadStore {
         val hasCommentsByOp = CommentThreadFilter.hasCommentsByOp(story, allComments)
         val actualCommentsByOp = commentsByOp && hasCommentsByOp
         if (actualCommentsByOp != commentsByOp) rebuildDisplayedComments(commentsByOp = false)
-        mutableState.value = CommentThreadUiState(
+        val results = searchResults(searchQuery)
+        val visible = buildVisibleComments(displayedComments)
+        val revision = state.value.revision + 1
+        val nextLegacyState = CommentThreadUiState(
             story = story,
             allComments = allComments.toList(),
             displayedComments = displayedComments.toList(),
@@ -218,11 +258,42 @@ class CommentThreadStore {
             commentsByOp = actualCommentsByOp,
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
-            searchResults = searchResults(searchQuery),
-            visibleComments = buildVisibleComments(displayedComments),
-            revision = state.value.revision + 1,
+            searchResults = results,
+            visibleComments = visible,
+            revision = revision,
         )
+        val allSnapshots = allComments.associate { comment ->
+            comment.id to comment.toPortableItem()
+        }
+        val displayedSnapshots = displayedComments.map { it.toPortableItem() }
+        val nextState = PortableCommentThreadState(
+            story = story?.toSnapshot(),
+            allComments = allComments.map { it.toPortableItem() },
+            displayedComments = displayedSnapshots,
+            sorting = sorting,
+            commentsByOp = actualCommentsByOp,
+            hasCommentsByOp = hasCommentsByOp,
+            searchQuery = searchQuery,
+            searchResults = results.map { it.toPortableItem() },
+            searchResultIds = results.map(Comment::id),
+            visibleComments = visible.map { item ->
+                PortableVisibleComment(
+                    sourceIndex = item.sourceIndex,
+                    item = allSnapshots.getValue(item.comment.id),
+                    hiddenReplyCount = item.hiddenReplyCount,
+                )
+            },
+            revision = revision,
+        )
+        // Publish the detached snapshot before making mutable compatibility objects observable.
+        mutableState.value = nextState
+        mutableLegacyState.value = nextLegacyState
     }
+
+    private fun Comment.toPortableItem(): PortableCommentItem = PortableCommentItem(
+        comment = toSnapshot(),
+        presentation = presentationSnapshot(),
+    )
 
     private fun buildVisibleComments(source: List<Comment>): List<VisibleComment> {
         if (source.size <= 1) return emptyList()

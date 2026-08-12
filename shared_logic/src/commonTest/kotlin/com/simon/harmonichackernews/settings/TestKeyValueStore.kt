@@ -5,6 +5,10 @@ internal class TestKeyValueStore(
 ) : KeyValueStore {
     private val values = initialValues.toMutableMap()
 
+    override fun clear() {
+        values.clear()
+    }
+
     override fun contains(key: String): Boolean = key in values
 
     override fun remove(key: String) {

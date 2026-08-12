@@ -35,5 +35,8 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
+        getByName("desktopMain").dependencies {
+            implementation(libs.ktor.client.cio)
+        }
     }
 }

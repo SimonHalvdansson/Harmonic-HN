@@ -10,8 +10,14 @@ import kotlinx.coroutines.flow.callbackFlow
 /** Android persistence adapter for the shared typed settings implementation. */
 class AndroidUserSettings private constructor(
     delegate: UserSettings,
+    editor: StoredSettingsMutator,
 ) : UserSettings by delegate {
-    constructor(context: Context) : this(createDelegate(context.applicationContext))
+    val repository = AppSettingsRepository(delegate, editor)
+
+    constructor(context: Context) : this(
+        createDelegate(context.applicationContext),
+        StoredSettingsMutator(AndroidKeyValueStore.defaults(context.applicationContext)),
+    )
 
     companion object {
         @Volatile

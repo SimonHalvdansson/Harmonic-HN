@@ -106,6 +106,49 @@ object DisplayStylePreferences {
     const val CARD = "card"
 }
 
+enum class DisplayStyle(val storedValue: String) {
+    STANDARD(DisplayStylePreferences.STANDARD),
+    CARD(DisplayStylePreferences.CARD);
+
+    companion object {
+        fun fromStored(value: String?): DisplayStyle =
+            entries.firstOrNull { it.storedValue == value } ?: STANDARD
+    }
+}
+
+enum class CommentSortingPreference(val storedValue: String, val label: String) {
+    DEFAULT("Default", "Default"),
+    NEWEST_FIRST("Newest first", "Newest first"),
+    OLDEST_FIRST("Oldest first", "Oldest first"),
+    REPLY_COUNT("Reply count", "Reply count");
+
+    companion object {
+        fun fromStored(value: String?): CommentSortingPreference =
+            entries.firstOrNull { it.storedValue == value } ?: DEFAULT
+    }
+}
+
+enum class CommentsProvider(val storedValue: String, val label: String) {
+    ALGOLIA("algolia", "Algolia API"),
+    OFFICIAL("official", "Official Hacker News API");
+
+    companion object {
+        fun fromStored(value: String?): CommentsProvider =
+            entries.firstOrNull { it.storedValue == value } ?: ALGOLIA
+    }
+}
+
+enum class CommentVolumeNavigationMode(val storedValue: String, val label: String) {
+    DISABLED("disabled", "Disabled"),
+    TOP_LEVEL("top_level", "Top level comments"),
+    ALL("all", "All comments");
+
+    companion object {
+        fun fromStored(value: String?): CommentVolumeNavigationMode =
+            entries.firstOrNull { it.storedValue == value } ?: DISABLED
+    }
+}
+
 object CommentNavigationPreferences {
     const val DISABLED = "disabled"
     const val TOP_LEVEL = "top_level"
@@ -157,6 +200,25 @@ object WebViewPreferences {
     }
 
     fun clampBatteryPercent(value: Int): Int = value.coerceIn(0, 100)
+}
+
+enum class WebViewPreloadMode(val storedValue: String, val label: String) {
+    ALWAYS(WebViewPreferences.PRELOAD_ALWAYS, "Always"),
+    WIFI_ONLY(WebViewPreferences.PRELOAD_WIFI_ONLY, "Only on WiFi"),
+    NEVER(WebViewPreferences.PRELOAD_NEVER, "Never");
+
+    fun summary(minimumBattery: Int): String {
+        if (this == NEVER) return label
+        val battery = WebViewPreferences.clampBatteryPercent(minimumBattery)
+        return if (battery == 0) "$label, any battery level" else {
+            "$label, battery at least $battery%"
+        }
+    }
+
+    companion object {
+        fun fromStored(value: String?): WebViewPreloadMode =
+            entries.firstOrNull { it.storedValue == value } ?: NEVER
+    }
 }
 
 object StoryPreviewPreferences {

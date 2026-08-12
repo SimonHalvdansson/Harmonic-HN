@@ -6,7 +6,11 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.History
-import com.simon.harmonichackernews.platform.HistoryStore
+import com.simon.harmonichackernews.platform.HistoryStoreSnapshot
+import com.simon.harmonichackernews.platform.HackerNewsAccount
+import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.platform.ObservableHistoryStore
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsListPage
 import com.simon.harmonichackernews.network.HackerNewsApi
@@ -19,10 +23,14 @@ import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.settings.StoredUserSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -50,13 +58,20 @@ class StoriesPresenterTest {
                 favoriteRequest = { _, _ -> error("Not used") },
             ),
             historyStore = MemoryHistoryStore(),
+            accounts = MemoryAccounts(),
+            connectivity = AlwaysOnline,
+            userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
+            loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
             commentMasterResolver = CommentMasterResolver(UnusedHackerNewsRepository),
             nowMillis = { 1_000L },
             hydrateCachedStory = { false },
-            shouldFilterStory = { _, _ -> false },
-            hasAccountDetails = { false },
         )
-        runtime.initialize(StoryType.TOP_STORIES, restoring = false)
+        runtime.initialize(
+            preferredTypeLabel = StoryType.TOP_STORIES.label,
+            enabledAdditionalFrontpages = emptySet(),
+            hasAccount = false,
+            restoring = false,
+        )
         presenter.mainStoryList.replace(listOf(Story("Retained", 42, true, false)))
 
         runtime.openSearch()
@@ -87,7 +102,6 @@ class StoriesPresenterTest {
             storyFeedLoader = feedLoader,
             clickedStoryIds = { emptyList() },
             isStoryClicked = { false },
-            shouldFilterStory = { false },
             shouldHideClickedStories = { false },
         )
         val effect = async { presenter.effects.first() }
@@ -128,7 +142,6 @@ class StoriesPresenterTest {
             storyFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
             clickedStoryIds = { emptyList() },
             isStoryClicked = { false },
-            shouldFilterStory = { false },
             shouldHideClickedStories = { false },
         )
         val effect = async { presenter.effects.first() }
@@ -181,23 +194,68 @@ class StoriesPresenterTest {
         storyFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
         clickedStoryIds = { emptyList() },
         isStoryClicked = { false },
-        shouldFilterStory = { false },
         shouldHideClickedStories = { false },
     )
 
-    private class MemoryHistoryStore : HistoryStore {
+    private class MemoryHistoryStore : ObservableHistoryStore {
         private val items = mutableListOf<History>()
+        private val mutableHistoryState = MutableStateFlow(HistoryStoreSnapshot())
+        override val historyState: StateFlow<HistoryStoreSnapshot> = mutableHistoryState
         override fun initialize() = Unit
         override fun load(): List<History> = items.toList()
         override fun record(id: Int, createdAtMillis: Long) {
             items.removeAll { it.id == id }
             items += History(id, createdAtMillis)
+            publish()
         }
-        override fun remove(id: Int) { items.removeAll { it.id == id } }
-        override fun clear() = items.clear()
+        override fun remove(id: Int) {
+            items.removeAll { it.id == id }
+            publish()
+        }
+        override fun clear() {
+            items.clear()
+            publish()
+        }
         override fun contains(id: Int) = items.any { it.id == id }
         override val size: Int get() = items.size
         override val changeVersion: Long get() = items.hashCode().toLong()
+        override suspend fun initializeHistory() = initialize()
+        override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean {
+            val previousVersion = changeVersion
+            record(id, createdAtMillis)
+            return changeVersion != previousVersion
+        }
+        override suspend fun removeHistory(id: Int): Boolean {
+            val previousVersion = changeVersion
+            remove(id)
+            return changeVersion != previousVersion
+        }
+        override suspend fun clearHistory() = clear()
+
+        private fun publish() {
+            mutableHistoryState.value = HistoryStoreSnapshot(load(), changeVersion)
+        }
+    }
+
+    private class MemoryAccounts : ObservableHackerNewsAccountRepository {
+        private val mutableAccount = MutableStateFlow<HackerNewsAccount?>(null)
+        override val accountState: StateFlow<HackerNewsAccount?> = mutableAccount
+        override fun load(): HackerNewsAccount? = mutableAccount.value
+        override fun save(account: HackerNewsAccount): Boolean {
+            mutableAccount.value = account
+            return true
+        }
+        override fun clear(): Boolean {
+            mutableAccount.value = null
+            return true
+        }
+        override suspend fun saveAccount(account: HackerNewsAccount): Boolean = save(account)
+        override suspend fun clearAccount(): Boolean = clear()
+    }
+
+    private object AlwaysOnline : ConnectivityService {
+        override fun isOnline(): Boolean = true
+        override fun isUnmetered(): Boolean = true
     }
 
     private object UnusedAlgoliaRepository : AlgoliaRepository {

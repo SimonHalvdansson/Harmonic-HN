@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.utils.DomainNamePolicy
-import com.simon.harmonichackernews.utils.RelativeTimeFormatter
-import kotlin.time.Clock
 
 class Story {
     var by: String? = null
@@ -122,7 +120,9 @@ class Story {
     }
 
     val timeFormatted: String
-        get() = RelativeTimeFormatter.format(time.toLong(), Clock.System.now().toEpochMilliseconds())
+        get() = ItemTimeFormatter.formatNow(time)
+
+    fun formatTime(nowMillis: Long): String = ItemTimeFormatter.format(time, nowMillis)
 
     @Throws(Exception::class)
     fun getDisplayDomain(includeTopLevelDomain: Boolean): String? {

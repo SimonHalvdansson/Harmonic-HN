@@ -8,6 +8,10 @@ import androidx.preference.PreferenceManager
 class AndroidKeyValueStore private constructor(
     private val preferences: SharedPreferences,
 ) : KeyValueStore {
+    override fun clear() {
+        preferences.edit().clear().apply()
+    }
+
     override fun contains(key: String): Boolean = preferences.contains(key)
 
     override fun remove(key: String) {

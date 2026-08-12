@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
@@ -24,45 +23,33 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.simon.harmonichackernews.CommentsWebViewController.PageTextCallback
-import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.CommentThreadRepository
-import com.simon.harmonichackernews.network.CloudSummaryEvent
-import com.simon.harmonichackernews.network.HackerNewsActionResult
-import com.simon.harmonichackernews.network.HackerNewsUserService
-import com.simon.harmonichackernews.network.LocalSummaryCallback
+import com.simon.harmonichackernews.network.AndroidLocalStorySummaryBackend
 import com.simon.harmonichackernews.network.LocalSummaryManager
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.network.failureDetails
 import com.simon.harmonichackernews.network.showLoginPromptIfCredentialsMissing
 import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.ContentFilterRepository
-import com.simon.harmonichackernews.settings.WebViewPreferences
-import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter
-import com.simon.harmonichackernews.network.NetworkComponent
+import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
+import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
-import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.PlatformServices
-import com.simon.harmonichackernews.presentation.CommentsAction
-import com.simon.harmonichackernews.presentation.CommentMenuAction
-import com.simon.harmonichackernews.presentation.CommentsEffect
+import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
+import com.simon.harmonichackernews.platform.AndroidStoryPreviewResourceService
+import com.simon.harmonichackernews.presentation.ArchiveUrlResolver
+import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 import com.simon.harmonichackernews.presentation.CommentsPresenter
-import com.simon.harmonichackernews.presentation.CommentsSavedItemRequest
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
+import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
-import com.simon.harmonichackernews.presentation.CommentThreadStore
-import com.simon.harmonichackernews.presentation.SavedItemActionOutcome
+import com.simon.harmonichackernews.presentation.CommentsSettingsState
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
-import com.simon.harmonichackernews.presentation.VoteDirection
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
@@ -77,32 +64,31 @@ import com.simon.harmonichackernews.utils.ViewUtils
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Clock
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import com.simon.harmonichackernews.settings.UserSettings
 
 class CommentsCoordinator(
     private val activity: MainActivity,
     private val destination: StoryDestination,
     sessionKey: Int,
     savedInstanceState: Bundle?,
-    private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
+    private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
+    private val platformDependencies: CommentsPlatformDependencies =
+        appComposition.commentsPlatformDependencies(),
+    userSettings: UserSettings = appComposition.userSettings,
     private val clock: Clock = Clock.System,
 ) {
-    private val userSettings = AndroidUserSettings(activity)
-    private val externalLinks = platformServices.externalLinks
-    private val contentFilters = ContentFilterRepository(AndroidKeyValueStore.defaults(activity))
+    private val externalLinks = platformDependencies.externalLinks
+    private val contentFilters = appComposition.contentFilters
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val hackerNewsUserService = HackerNewsUserService(
-        NetworkComponent.hackerNewsSession,
-        platformServices.credentials,
-    )
+    private val hackerNewsUserService = appComposition.hackerNewsUser
     private val savedItemActions = SavedItemActionUseCase(
-        repository = SavedItemsRepository(AndroidKeyValueStore.global(activity)),
+        repository = appComposition.savedItems,
         nowMillis = { clock.now().toEpochMilliseconds() },
         voteRequest = { id, direction ->
             hackerNewsUserService.vote(id.toString(), direction)
@@ -114,27 +100,52 @@ class CommentsCoordinator(
     private val restoringSession = sessionState.initialized
     private val scrollProgress = sessionState.scrollProgress
     private var restoringStoredProgress = scrollProgress.initialized
-    private var callback: CommentsPaneCallback?
     private var started = false
     private var destroyed = false
     private val commentsPresenter = CommentsPresenter(
         coroutineScope,
         sessionState,
         CommentThreadRepository(
-            NetworkComponent.algoliaRepository,
-            NetworkComponent.hackerNewsRepository,
+            appComposition.network.algoliaRepository,
+            appComposition.network.hackerNewsRepository,
         ),
-        NetworkComponent.pollOptionsRepository,
+        appComposition.network.pollOptionsRepository,
         savedItemActions,
+        hackerNewsUserService,
+    )
+    private val aiSummarySettings = AndroidAiSummarySettings.repository(activity)
+    private val storySummaryRuntime = StorySummaryRuntime(
+        scope = coroutineScope,
+        cloudBackend = CloudStorySummaryBackend(appComposition.network.summaryUseCase) {
+            aiSummarySettings.cloudConfig()
+        },
+        localBackend = AndroidLocalStorySummaryBackend(
+            activity,
+            appComposition.network.summaryUseCase,
+        ),
     )
     private val commentsFeature = CommentsFeatureRuntime(
         scope = coroutineScope,
         sessionState = sessionState,
         presenter = commentsPresenter,
         nowMillis = { clock.now().toEpochMilliseconds() },
+        archiveUrlResolver = ArchiveUrlResolver(appComposition.network.linkPreviewRepository),
+        userSettings = userSettings,
+        loadContentFilters = contentFilters::load,
+        accounts = platformDependencies.accounts,
+        summarySettings = aiSummarySettings,
+        localSummaryAvailable = LocalSummaryManager::canAttemptLocalSummarization,
+        summaryRuntime = storySummaryRuntime,
+        hydrateCachedStory = { cachedStory ->
+            Utils.loadCachedStorySummary(activity, cachedStory)
+        },
+        loadCachedThread = { storyId -> Utils.loadCachedStory(activity, storyId) },
+        storeCachedThread = { storyId, response ->
+            Utils.cacheStory(activity, storyId, response)
+        },
+        previewResourceService = AndroidStoryPreviewResourceService { context },
+        storyResourceTints = appComposition.storyResourceTints,
     )
-    private val commentThread: CommentThreadStore = commentsPresenter.thread
-    private val comments: MutableList<Comment> get() = commentThread.displayedComments
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
@@ -142,32 +153,18 @@ class CommentsCoordinator(
     private var pendingReferenceLinkSummaryUrl: String? = null
     private var pendingReferenceLinkSummaryTitle: String? = null
     private var pendingPreviewImageDialogUrl: String? = null
-    private var uncachedStoryHeaderLoading = false
     private var progressIndicator: LinearProgressIndicator? = null
     private var linkPreviewController: LinkPreviewController? = null
     private var webViewController: CommentsWebViewController? = null
     private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
-    private var prefIntegratedWebview = true
-    private var preloadWebview: String? = "never"
-    private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
-    private var matchWebviewTheme = true
-    private var readerModeEnabled = true
-    private var readerModeDefault = false
     private var adBlockDisabledForSession = false
-    private var closeWebViewOnBack = false
     private var topInset = 0
     private val commentsLoaded: Boolean
         get() = commentsPresenter.state.value.loaded
-    private val showUpdate: Boolean
-        get() = commentsPresenter.state.value.showUpdate
-    private var hasAccountDetails = false
-    private var displaySettings: CommentDisplaySettings? = null
+    private var appliedCommentsThemeVersion = -1L
     private var backPressedCallback: OnBackPressedCallback? = null
-    private var username: String? = null
     private var story by sessionState::story
-    private var filteredUsers: MutableSet<String>? = null
-    private var scrollToCommentId by sessionState::scrollToCommentId
     private var originalStatusBarColor = Color.TRANSPARENT
     private var originalStatusBarColorCaptured = false
     private var commentsPaneStatusBarColor = Color.TRANSPARENT
@@ -182,8 +179,9 @@ class CommentsCoordinator(
         coroutineScope.launch {
             commentsFeature.effects.collect(::handleCommentsRuntimeEffect)
         }
-        callback = activity
-        filteredUsers = contentFilters.load().users.toMutableSet()
+        coroutineScope.launch {
+            commentsFeature.settingsState.collect { it?.let(::applyPlatformSettingsState) }
+        }
         webViewHost = CommentsWebViewHost(activity)
         initializeView(savedInstanceState)
     }
@@ -223,17 +221,9 @@ class CommentsCoordinator(
         activity.startActivity(intent)
     }
 
-    private fun loadInitialStorySummaryFromCache() {
-        if (story == null || story!!.loaded || story!!.id <= 0) {
-            return
-        }
-
-        Utils.loadCachedStorySummary(this.context, story)
-    }
-
     private fun initializeView(savedInstanceState: Bundle?) {
         val view = this.webViewRoot
-        var initialSorting = userSettings.comments.sorting
+        val restoredSorting = savedInstanceState?.getString(STATE_COMMENT_SORTING)
         if (savedInstanceState != null) {
             pendingReferenceLinkSummaryUrl = savedInstanceState.getString(
                 STATE_REFERENCE_LINK_SUMMARY_URL
@@ -257,28 +247,19 @@ class CommentsCoordinator(
             adBlockDisabledForSession = savedInstanceState.getBoolean(
                 STATE_ADBLOCK_DISABLED_FOR_SESSION, false
             )
-            if (!restoringSession) {
-                initialSorting = savedInstanceState.getString(STATE_COMMENT_SORTING)
-                    ?.takeIf(String::isNotEmpty)
-                    ?: initialSorting
-            }
         }
 
-        commentsFeature.initialize(
+        commentsFeature.initializeFromSettings(
             initialStory = destination.toStory(),
             showWebsite = destination.showWebsite,
             scrollToCommentId = destination.scrollToCommentId,
-            sorting = initialSorting,
             restoring = restoringSession,
+            restoredSorting = restoredSorting,
         )
 
         originalStatusBarColor = requireActivity().getWindow().getStatusBarColor()
         originalStatusBarColorCaptured = true
 
-        val readingPreferences = userSettings.reading
-        prefIntegratedWebview = readingPreferences.integratedWebView
-        loadInitialStorySummaryFromCache()
-        uncachedStoryHeaderLoading = story!!.id > 0 && !story!!.loaded
 
         commentsPaneStatusBarColor =
             StatusBarProtectionUtils.getPaneBackgroundColor(requireContext())
@@ -286,30 +267,23 @@ class CommentsCoordinator(
         appliedStatusBarProtectionKnown = false
         updateCommentsStatusBarAppearance()
 
-        integratedWebview = prefIntegratedWebview && story!!.isLink
-        preloadWebview = readingPreferences.preloadWebViewMode
-        preloadWebviewMinimumBattery = readingPreferences.preloadWebViewMinimumBattery
-        matchWebviewTheme = readingPreferences.matchWebViewTheme
-        readerModeEnabled = readingPreferences.readerModeEnabled
-        readerModeDefault = readingPreferences.readerModeDefault
+        refreshPresentationCapabilities()
+        val featureSettings = checkNotNull(commentsFeature.settingsState.value)
+        val readingPreferences = featureSettings.reading
+        integratedWebview = featureSettings.integratedWebView
         val blockAds = readingPreferences.blockAds && !adBlockDisabledForSession
-        closeWebViewOnBack = readingPreferences.closeWebViewOnBack
 
         progressIndicator = host.progressIndicator
         linkPreviewController = LinkPreviewController(
             story,
-            LinkPreviewController.Callbacks { this@CommentsCoordinator.onLinkPreviewChanged() })
+            LinkPreviewUseCase(appComposition.network.linkPreviewRepository),
+            LinkPreviewController.Callbacks(::syncComposeState),
+        )
         webViewController = CommentsWebViewController(
             this,
             story,
             linkPreviewController!!,
             object : CommentsWebViewController.Callbacks {
-                override fun onSwitchView(isAtWebView: Boolean) {
-                    if (callback != null) {
-                        callback!!.onSwitchView(isAtWebView)
-                    }
-                }
-
                 override fun syncOnBackPressedCallbackEnabledState() {
                     this@CommentsCoordinator.syncOnBackPressedCallbackEnabledState()
                 }
@@ -340,11 +314,11 @@ class CommentsCoordinator(
         webViewController!!.configure(
             showWebsite,
             integratedWebview,
-            preloadWebview,
-            preloadWebviewMinimumBattery,
-            matchWebviewTheme,
-            readerModeEnabled,
-            readerModeDefault,
+            readingPreferences.preloadWebViewMode,
+            readingPreferences.preloadWebViewMinimumBattery,
+            readingPreferences.matchWebViewTheme,
+            readingPreferences.readerModeEnabled,
+            readingPreferences.readerModeDefault,
             blockAds
         )
 
@@ -522,10 +496,6 @@ class CommentsCoordinator(
 
         syncOnBackPressedCallbackEnabledState()
 
-        if (callback != null) {
-            callback!!.onSwitchView(showWebsite)
-        }
-
         progressIndicator = host.progressIndicator
 
         val shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite
@@ -539,16 +509,6 @@ class CommentsCoordinator(
         // The pane color was already resolved from the active theme above. Reusing it avoids two
         // cold theme/preference/resource lookups on the comments-open frame.
         webViewController!!.setContainerBackgroundColor(commentsPaneStatusBarColor)
-
-        username = AccountUtils.getAccountUsername(requireContext())
-        hasAccountDetails = AccountUtils.hasAccountDetails(requireContext())
-        commentsFeature.configure(
-            hasAccount = hasAccountDetails,
-            useAlgolia = userSettings.reading.useAlgoliaApi,
-            filteredUsers = filteredUsers.orEmpty(),
-            collapseTopLevel = userSettings.comments.collapseTopLevel,
-        )
-        displaySettings = createCommentDisplaySettings()
 
         initializeComposeUi()
 
@@ -662,11 +622,6 @@ class CommentsCoordinator(
         val platformCallbacks = object : CommentsFeatureListener.PlatformCallbacks {
             override fun isRestoringScroll() = restoringStoredProgress
             override fun canHandleCommentAction() = isAdded && composeController != null
-            override fun isCommentVoteLoading(commentId: Int) =
-                composeController?.isCommentActionVoteLoading(commentId) == true
-            override fun isCommentDownvoted(commentId: Int) =
-                composeController?.isCommentActionDownvoted(commentId) == true
-
             override fun onCommentActionOverlayVisibilityChanged() {
                 syncOnBackPressedCallbackEnabledState()
                 updateCommentsStatusBarAppearance()
@@ -674,20 +629,6 @@ class CommentsCoordinator(
 
             override fun onLinkPreviewOverlayVisibilityChanged() =
                 syncOnBackPressedCallbackEnabledState()
-
-            override fun openHeaderLink() {
-                story?.takeIf { it.isLink }?.url?.let {
-                    externalLinks.open(ExternalLinkRequest(it))
-                }
-            }
-
-            override fun onHeaderPreviewLoaded() {
-                story?.id?.takeIf { it > 0 }?.let(activity::onStoryPreviewImageLoaded)
-            }
-
-            override fun onHeaderPreviewLoadFailed() {
-                story?.id?.takeIf { it > 0 }?.let(activity::onStoryPreviewImageLoadFailed)
-            }
 
             override fun scrollToSearchResult(commentId: Int) {
                 syncComposeState()
@@ -707,7 +648,6 @@ class CommentsCoordinator(
                 if (!expanded && integratedWebview && webViewController?.hasWebView() == false) {
                     webViewController?.initializeForVisibleWebsite()
                 }
-                callback?.onSwitchView(!expanded)
                 syncOnBackPressedCallbackEnabledState()
                 updateCommentsStatusBarAppearance()
             }
@@ -719,20 +659,12 @@ class CommentsCoordinator(
                 updateCommentsStatusBarAppearance()
             }
 
-            override fun votePollOption(optionId: Int) {
-                performVote(
-                    requireContext(),
-                    optionId,
-                    "up",
-                    successMessage = "Poll vote successful",
-                )
-            }
         }
         composeController = CommentsComposeController.create(
-            { userSettings.comments.smoothScroll },
+            { commentsFeature.settingsState.value?.smoothScroll ?: true },
             currentStory,
             showWebsite,
-            username,
+            commentsFeature.accountUser,
             commentsPresenter.savedItemState,
             CommentsFeatureListener(commentsFeature, platformCallbacks),
         )
@@ -754,15 +686,10 @@ class CommentsCoordinator(
         val readerAvailable =
             webViewController != null && webViewController!!.isReaderModeAvailable
         val readerEnabled = webViewController != null && webViewController!!.isReaderModeEnabled()
-        if (displaySettings == null) {
-            displaySettings = createCommentDisplaySettings()
-        }
         CommentsScreenStateFactory.create(
             feature = commentsFeature,
             platform = CommentsPlatformPresentation(
-                displaySettings = displaySettings!!,
                 adBlockActive = webViewController?.isBlockingAds == true,
-                integratedWebView = integratedWebview,
                 readerModeAvailable = readerAvailable,
                 readerModeEnabled = readerEnabled,
                 topInsetPx = topInset,
@@ -773,22 +700,51 @@ class CommentsCoordinator(
     }
 
     private fun requestComposeSummary() {
-        val controller = composeController
-        if (controller == null) {
-            return
+        val beginSummary: (String?) -> Unit = commentsFeature::startSummary
+        webViewController?.getLoadedPageText(
+            CommentsWebViewController.PageTextCallback(beginSummary),
+        ) ?: beginSummary(null)
+    }
+
+    /** Applies WebView/theme facilities after the shared runtime reconciles preference changes. */
+    private fun applyPlatformSettingsState(state: CommentsSettingsState) {
+        val wasIntegrated = integratedWebview
+        integratedWebview = state.integratedWebView
+        val reading = state.reading
+        webViewController?.let { controller ->
+            controller.setIntegratedWebview(integratedWebview)
+            controller.configure(
+                showWebsite,
+                integratedWebview,
+                reading.preloadWebViewMode,
+                reading.preloadWebViewMinimumBattery,
+                reading.matchWebViewTheme,
+                reading.readerModeEnabled,
+                reading.readerModeDefault,
+                reading.blockAds && !adBlockDisabledForSession,
+            )
+            if (integratedWebview && !wasIntegrated) controller.initialize()
         }
-        controller.updateStorySummaryLoading(true)
-        onRequest(Runnable { controller.refreshContent() }, Runnable {
-            controller.updateStorySummaryLoading(false)
-            controller.refreshContent()
-        })
+        if (state.themeRefreshVersion != appliedCommentsThemeVersion) {
+            appliedCommentsThemeVersion = state.themeRefreshVersion
+            context?.let { currentContext ->
+                webViewController?.setContainerBackgroundColor(
+                    ContextCompat.getColor(
+                        currentContext,
+                        ThemeUtils.getBackgroundColorResource(currentContext),
+                    ),
+                )
+            }
+        }
+        syncOnBackPressedCallbackEnabledState()
+        syncComposeState()
     }
 
     private fun handleCommentsPlatformEffect(effect: CommentsPlatformEffect) {
         when (effect) {
             is CommentsPlatformEffect.OpenUser -> requireActivity().showUserDialog(
                 effect.userName,
-                Runnable { updateUserTags() },
+                Runnable { commentsFeature.reconcileSettings() },
             )
             is CommentsPlatformEffect.OpenEditor -> startActivity(
                 ComposeEditorContract.createIntent(requireContext())
@@ -802,9 +758,9 @@ class CommentsCoordinator(
                 Toast.LENGTH_SHORT,
             ).show()
             is CommentsPlatformEffect.ShareText ->
-                platformServices.sharing.share(effect.text)
+                platformDependencies.sharing.share(effect.text)
             is CommentsPlatformEffect.CopyText -> {
-                platformServices.clipboard.copy(effect.label, effect.text)
+                platformDependencies.clipboard.copy(effect.label, effect.text)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                     Toast.makeText(
                         requireContext(),
@@ -813,20 +769,18 @@ class CommentsCoordinator(
                     ).show()
                 }
             }
-            CommentsPlatformEffect.Refresh -> onRetry()
+            CommentsPlatformEffect.ReloadLinkPreviews ->
+                linkPreviewController?.loadNetworkPreviews(context)
             CommentsPlatformEffect.Summarize -> requestComposeSummary()
             is CommentsPlatformEffect.OpenStory ->
-                Utils.openCommentsActivity(effect.itemId, -1, requireContext())
-            CommentsPlatformEffect.ShowSearch -> showComposeCommentSearch()
-            CommentsPlatformEffect.OpenBrowser -> onOpenInBrowser()
+                activity.openStory(effect.destination)
+            is CommentsPlatformEffect.OpenExternalLink -> externalLinks.open(
+                ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
+            )
+            CommentsPlatformEffect.ShowSearch -> composeController?.showCommentSearch()
             CommentsPlatformEffect.DisableAdBlock -> {
                 adBlockDisabledForSession = true
                 webViewController?.disableAdBlockAndReload()
-            }
-            is CommentsPlatformEffect.OpenArchive -> when (effect.provider) {
-                com.simon.harmonichackernews.presentation.ArchiveProvider.ORG -> openArchiveOrg()
-                com.simon.harmonichackernews.presentation.ArchiveProvider.IS -> openArchiveIs()
-                com.simon.harmonichackernews.presentation.ArchiveProvider.TODAY -> openArchiveToday()
             }
             CommentsPlatformEffect.ReloadWebsite -> {
                 val controller = webViewController ?: return
@@ -837,16 +791,10 @@ class CommentsCoordinator(
                 }
             }
             CommentsPlatformEffect.ExpandSheet -> composeController?.requestExpandSheet()
-            CommentsPlatformEffect.OpenWebsiteInBrowser -> webViewController?.let { clickBrowser() }
+            CommentsPlatformEffect.OpenWebsiteInBrowser ->
+                webViewController?.openCurrentOrStoryUrlInBrowser()
             CommentsPlatformEffect.ToggleReaderMode -> webViewController?.toggleReaderMode()
             CommentsPlatformEffect.ToggleDarkMode -> webViewController?.toggleDarkMode()
-        }
-    }
-
-    private fun showComposeCommentSearch() {
-        commentsFeature.resetCommentsByOp()
-        if (composeController != null) {
-            composeController!!.showCommentSearch()
         }
     }
 
@@ -860,7 +808,8 @@ class CommentsCoordinator(
             commentsController?.isCommentActionOverlayShowing() == true -> true
             websiteController?.isShowingCustomView == true -> true
             webViewVisible && websiteController?.isReaderModeEnabled() == true -> true
-            closeWebViewOnBack -> webViewVisible
+            commentsFeature.settingsState.value?.reading?.closeWebViewOnBack == true ->
+                webViewVisible
             else -> webViewVisible && websiteController?.canGoBack() == true
         }
         backPressedCallback?.isEnabled = enabled
@@ -923,7 +872,7 @@ class CommentsCoordinator(
         }
         val windowStatusBarColor =
             if (activity.isAdaptiveTwoPaneNavigation ||
-                userSettings.general.transparentStatusBar
+                commentsFeature.settingsState.value?.transparentStatusBar == true
             )
                 Color.TRANSPARENT
             else
@@ -945,7 +894,7 @@ class CommentsCoordinator(
         get() = composeController != null && composeController!!.isSheetExpanded()
 
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
-        if (!this.isAdded || story == null || story!!.id != storyId || !integratedWebview || webViewController == null) {
+        if (!isAdded || !commentsFeature.canSwitchStoryView(storyId) || webViewController == null) {
             return false
         }
         if (showWebsite) {
@@ -1000,12 +949,7 @@ class CommentsCoordinator(
         }
 
     fun onConfigurationChanged(newConfig: Configuration) {
-        // this is to make sure that action buttons in header get updated padding on rotations...
-        // yes it's ugly, I know
-        if (this.context != null && Utils.isTablet(this.resources)) {
-            displaySettings = createCommentDisplaySettings()
-            notifyHeaderChanged()
-        }
+        if (this.context != null) refreshPresentationCapabilities()
     }
 
     private fun setCommentsContentSideInsets(leftInset: Int, rightInset: Int) {
@@ -1023,14 +967,12 @@ class CommentsCoordinator(
         syncComposeState()
     }
 
-    private fun createCommentDisplaySettings(): CommentDisplaySettings {
-        val context = requireContext()
-        return CommentDisplaySettings.from(
-            userSettings.comments,
-            shouldShowInvertAction(),
-            Utils.isTablet(this.resources),
-            hasAccountDetails,
-            story != null && story!!.isLink && Utils.canProvideSummary(context)
+    private fun refreshPresentationCapabilities() {
+        commentsFeature.updatePresentationCapabilities(
+            CommentsPresentationCapabilities(
+                showInvertAction = shouldShowInvertAction(),
+                isTablet = Utils.isTablet(resources),
+            ),
         )
     }
 
@@ -1043,51 +985,15 @@ class CommentsCoordinator(
     fun onStart() {
         if (destroyed || started) return
         started = true
-
-        if (callback != null) {
-            callback!!.onSwitchView(
-                composeController != null
-                        && composeController!!.isWebsiteVisible()
-            )
-        }
-
-        val ctx = requireContext()
-        hasAccountDetails = AccountUtils.hasAccountDetails(ctx)
-        commentsFeature.configure(
-            hasAccount = hasAccountDetails,
-            useAlgolia = userSettings.reading.useAlgoliaApi,
-            filteredUsers = filteredUsers.orEmpty(),
-            collapseTopLevel = userSettings.comments.collapseTopLevel,
-        )
-        val latestSettings = createCommentDisplaySettings()
-        val themeChanged = displaySettings != null
-                && !TextUtils.equals(displaySettings!!.theme, latestSettings.theme)
-        displaySettings = latestSettings
-        if (themeChanged) {
-            val backgroundColor = ContextCompat.getColor(
-                ctx, ThemeUtils.getBackgroundColorResource(ctx)
-            )
-            if (webViewController != null) {
-                webViewController!!.setContainerBackgroundColor(backgroundColor)
-            }
-        }
+        refreshPresentationCapabilities()
+        commentsFeature.resume()
         syncComposeState()
     }
 
     fun onResume() {
         if (destroyed) return
 
-        val updateWasShowing = showUpdate
-        commentsFeature.configure(
-            hasAccount = hasAccountDetails,
-            useAlgolia = userSettings.reading.useAlgoliaApi,
-            filteredUsers = filteredUsers.orEmpty(),
-            collapseTopLevel = userSettings.comments.collapseTopLevel,
-        )
-        commentsFeature.evaluateUpdate(userSettings.story.alwaysShowTapToRefresh)
-        if (!updateWasShowing && showUpdate && composeController != null) {
-            composeController!!.clearSearchScrollTopTarget()
-        }
+        commentsFeature.resume()
         syncCommentsStatusBarProtection()
         syncComposeState()
     }
@@ -1124,42 +1030,35 @@ class CommentsCoordinator(
         if (adBlockDisabledForSession) {
             outState.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, true)
         }
-        outState.putString(STATE_COMMENT_SORTING, commentThread.state.value.sorting)
+        outState.putString(STATE_COMMENT_SORTING, commentsFeature.thread.state.value.sorting)
     }
 
     private fun restoreScrollProgress() {
-        val collapsedIds = scrollProgress.collapsedIDs.toSet()
-        val topCommentId = scrollProgress.topCommentId
-        val topCommentOffset = scrollProgress.topCommentOffset
-        commentsFeature.restoreCollapsedComments(collapsedIds)
+        val restoration = commentsFeature.restoreScrollProgress()
         restoringStoredProgress = false
-        if (composeController != null) {
+        if (composeController != null && restoration != null) {
             syncComposeState()
             composeController!!.scrollToComment(
-                topCommentId,
-                topCommentOffset,
+                restoration.commentId,
+                restoration.offset,
                 false
             )
         }
     }
 
     private fun scrollToTargetComment() {
-        if (scrollToCommentId == -1) return
-        for (i in comments.indices) {
-            if (comments[i].id == scrollToCommentId) {
-                commentsFeature.expandParents(comments[i])
-                if (composeController != null) {
-                    syncComposeState()
-                    composeController!!.scrollToComment(scrollToCommentId, topInset, false)
-                    scrollToCommentId = -1
-                    return
-                }
-                scrollToCommentId = -1
-                return
+        when (val target = commentsFeature.consumeCommentTarget()) {
+            CommentTargetResolution.None -> Unit
+            is CommentTargetResolution.Found -> {
+                syncComposeState()
+                composeController?.scrollToComment(target.commentId, topInset, false)
             }
+            is CommentTargetResolution.NotFound -> Toast.makeText(
+                context,
+                "Comment not found",
+                Toast.LENGTH_SHORT,
+            ).show()
         }
-        Toast.makeText(this.context, "Comment not found", Toast.LENGTH_SHORT).show()
-        scrollToCommentId = -1
     }
 
     fun onDestroy() {
@@ -1206,6 +1105,7 @@ class CommentsCoordinator(
         }
 
         commentsFeature.dispose()
+        linkPreviewController?.dispose()
         coroutineScope.cancel()
         if (webViewController != null) {
             webViewController!!.onDestroyView(rootView)
@@ -1215,7 +1115,6 @@ class CommentsCoordinator(
         }
 
         clearViewReferences()
-        callback = null
         destroyed = true
     }
 
@@ -1276,193 +1175,59 @@ class CommentsCoordinator(
         }
     }
 
-    fun onRetry() {
-        retryComments()
-    }
-
-    private fun retryComments() {
-        if (!this.isCommentsViewActive || story == null) {
-            Log.w(
-                TAG, ("Retry ignored: commentsViewActive=" + this.isCommentsViewActive
-                        + ", storyPresent=" + (story != null))
-            )
-            return
-        }
-        Log.d(TAG, "Retry requested for storyId=" + story!!.id)
-        commentsFeature.retry()
-        linkPreviewController?.loadNetworkPreviews(context)
-    }
-
-    fun onOpenInBrowser() {
-        externalLinks.open(
-            ExternalLinkRequest(
-                url = "https://news.ycombinator.com/item?id=" + story!!.id,
-                preferInApp = false,
-            ),
-        )
-    }
-
     private fun loadInitialStoryAndComments(restoreScrollFromCache: Boolean) {
         val context = this.context
         if (context == null || !this.isCommentsViewActive || story == null) {
             return
         }
 
-        val cachedResponse = Utils.loadCachedStory(context, story!!.id)
-        commentsFeature.load(cachedResponse, restoreScrollFromCache)
-        linkPreviewController?.loadNetworkPreviews(context)
-    }
-
-    private fun handleCommentsEffect(effect: CommentsEffect) {
-        when (effect) {
-            is CommentsEffect.ShowCommentActions ->
-                composeController?.showCommentActions(effect.comment)
-            is CommentsEffect.ThreadApplied -> {
-                if (!isCurrentCommentsLoad(effect.requestId, effect.storyId)) {
-                    Log.w(TAG, "Ignoring stale comments result for storyId=${effect.storyId}")
-                    return
-                }
-                if (effect.usedOfficialFallback) {
-                    context?.let {
-                        Toast.makeText(
-                            it,
-                            "Algolia API failed, using official HN API",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-                effect.responseToCache?.let { response ->
-                    Utils.cacheStory(requireContext(), effect.storyId, response)
-                }
-                if (effect.broadcastStoryUpdate) StoryUpdate.updateStory(story!!)
-                if (effect.contentApplied) {
-                    linkPreviewController?.loadNetworkPreviews(context)
-                    commentsPresenter.dispatch(CommentsAction.LoadPollOptions(story!!))
-                    val wasIntegratedWebview = integratedWebview
-                    integratedWebview = prefIntegratedWebview && story!!.isLink
-                    if (integratedWebview && !wasIntegratedWebview) {
-                        webViewController!!.setIntegratedWebview(true)
-                        webViewController!!.initialize()
-                    }
-                    syncComposeState()
-                    if (effect.restoreScroll && restoringStoredProgress &&
-                        scrollProgress.storyId == story!!.id
-                    ) {
-                        restoreScrollProgress()
-                    }
-                    completeCommentsLoad(effect.headerChanged)
-                }
-            }
-            is CommentsEffect.ThreadFailed -> {
-                val result = effect.result
-                Log.w(
-                    TAG,
-                    "${result.source} comments load failed for storyId=${effect.storyId}, " +
-                        "noInternet=${result.noInternet}",
-                    result.cause,
-                )
-                notifyHeaderChanged()
-            }
-            is CommentsEffect.PollOptionsChanged -> {
-                effect.failedOptionId?.let {
-                    Log.w(TAG, "Poll option request failed for id=$it")
-                }
-                if (story?.id == effect.storyId) notifyHeaderChanged()
-            }
-            is CommentsEffect.PollOptionsLookupFailed -> {
-                if (story?.id == effect.storyId) {
-                    Log.w(TAG, "Poll lookup failed for id=${effect.storyId}", effect.cause)
-                }
-            }
-            is CommentsEffect.SavedItemActionStarted -> {
-                when (val request = effect.request) {
-                    is CommentsSavedItemRequest.CommentFavorite ->
-                        composeController?.setCommentActionFavoriteLoading(request.itemId, true)
-                    is CommentsSavedItemRequest.CommentVote ->
-                        composeController?.setCommentActionVoteLoading(
-                            request.itemId,
-                            request.direction.toCommentAction(),
-                        )
-                    is CommentsSavedItemRequest.StoryFavorite,
-                    is CommentsSavedItemRequest.StoryVote -> syncComposeState()
-                }
-            }
-            is CommentsEffect.SavedItemActionCompleted ->
-                completeSavedItemAction(effect)
-        }
+        commentsFeature.loadInitial(restoreScrollFromCache)
     }
 
     private fun handleCommentsRuntimeEffect(effect: CommentsRuntimeEffect) {
         when (effect) {
-            is CommentsRuntimeEffect.Presenter -> handleCommentsEffect(effect.effect)
             is CommentsRuntimeEffect.Platform -> handleCommentsPlatformEffect(effect.effect)
-            is CommentsRuntimeEffect.StateChanged -> {
-                syncComposeState()
+            is CommentsRuntimeEffect.StateChanged -> syncComposeState()
+            is CommentsRuntimeEffect.ShowCommentActions ->
+                composeController?.showCommentActions(effect.comment)
+            is CommentsRuntimeEffect.BroadcastStoryUpdate ->
+                StoryUpdate.updateStory(effect.story)
+            is CommentsRuntimeEffect.ThreadReady -> {
+                if (!isCommentsViewActive) return
+                commentsFeature.settingsState.value?.let(::applyPlatformSettingsState)
+                if (effect.restoreScroll && restoringStoredProgress &&
+                    scrollProgress.storyId == story?.id
+                ) restoreScrollProgress()
+                completeCommentsLoad(effect.headerChanged)
             }
+            is CommentsRuntimeEffect.Diagnostic ->
+                Log.w(TAG, effect.message, effect.cause)
+            is CommentsRuntimeEffect.ActionFailed ->
+                showActionFailure(effect.presentation)
         }
     }
 
-    private fun completeSavedItemAction(effect: CommentsEffect.SavedItemActionCompleted) {
-        val failure = effect.outcome as? SavedItemActionOutcome.Failure
-        when (val request = effect.request) {
-            is CommentsSavedItemRequest.CommentFavorite -> {
-                composeController?.setCommentActionFavoriteLoading(request.itemId, false)
-                failure?.let { showFavoriteFailure(it, adding = !it.action.previousPresent) }
-            }
-            is CommentsSavedItemRequest.CommentVote -> {
-                composeController?.finishCommentActionVote(
-                    request.itemId,
-                    if (failure == null) request.direction == "down" else request.previousDownvoted,
-                )
-                failure?.let { showVoteFailure(requireContext(), it.result) }
-            }
-            is CommentsSavedItemRequest.StoryFavorite -> {
-                syncComposeState()
-                failure?.let { showFavoriteFailure(it, adding = !it.action.previousPresent) }
-            }
-            is CommentsSavedItemRequest.StoryVote -> {
-                syncComposeState()
-                failure?.let { showVoteFailure(requireContext(), it.result) }
-            }
-        }
-    }
-
-    private fun showFavoriteFailure(
-        failure: SavedItemActionOutcome.Failure,
-        adding: Boolean,
+    private fun showActionFailure(
+        presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
     ) {
         val context = context ?: return
-        failure.result.showLoginPromptIfCredentialsMissing(context)
-        val (summary, response) = failure.result.failureDetails()
-        if (!adding) requireActivity().showFailureDetailDialog(summary, response)
+        if (presentation.requestLoginIfMissing) {
+            presentation.result.showLoginPromptIfCredentialsMissing(context)
+        }
+        val (summary, response) = presentation.result.failureDetails()
+        if (presentation.showDetails) requireActivity().showFailureDetailDialog(summary, response)
         Toast.makeText(
             context,
-            if (adding) "Couldn't add favorite" else "Couldn't update favorite",
+            presentation.message,
             Toast.LENGTH_SHORT,
         ).show()
-    }
-
-    private fun String.toCommentAction(): CommentMenuAction = when (this) {
-        VoteDirection.UP.wireValue -> CommentMenuAction.UPVOTE
-        VoteDirection.DOWN.wireValue -> CommentMenuAction.DOWNVOTE
-        else -> CommentMenuAction.UNVOTE
-    }
-
-    private fun onLinkPreviewChanged() {
-        notifyHeaderChanged()
-    }
-
-    private fun notifyHeaderChanged() {
-        syncComposeState()
     }
 
     private fun completeCommentsLoad(updateHeaderAfterLoad: Boolean) {
         if (!this.isCommentsViewActive) {
             return
         }
-        if (updateHeaderAfterLoad) {
-            refreshHeaderAfterStoryLoad()
-        }
+        if (updateHeaderAfterLoad) syncComposeState()
         val commentsView = view ?: return
         commentsView.post {
             if (!isCommentsViewActive) {
@@ -1476,70 +1241,14 @@ class CommentsCoordinator(
     private fun restorePendingCommentAction() {
         if (pendingCommentActionId == -1) return
         val controller = composeController ?: return
-        val comment = findCommentById(pendingCommentActionId) ?: return
+        val comment = commentsFeature.comment(pendingCommentActionId) ?: return
         pendingCommentActionId = -1
         controller.restoreCommentActions(comment)
         syncOnBackPressedCallbackEnabledState()
     }
 
-    private fun refreshHeaderAfterStoryLoad() {
-        if (!this.isCommentsViewActive) {
-            return
-        }
-
-        if (uncachedStoryHeaderLoading && story!!.loaded) {
-            uncachedStoryHeaderLoading = false
-        }
-        notifyHeaderChanged()
-    }
-
     private val isCommentsViewActive: Boolean
         get() = this.view != null
-
-    private fun isCurrentCommentsLoad(loadGeneration: Int, storyId: Int): Boolean {
-        return commentsPresenter.isCurrentThreadLoad(loadGeneration, storyId) &&
-            story?.id == storyId &&
-            isCommentsViewActive
-    }
-
-    private fun hasCommentsByOp(): Boolean {
-        return commentThread.state.value.hasCommentsByOp
-    }
-
-    fun clickBrowser() {
-        webViewController!!.openCurrentOrStoryUrlInBrowser()
-    }
-
-    private fun openArchiveOrg() {
-        Toast.makeText(this.context, "Contacting archive.org API...", Toast.LENGTH_SHORT).show()
-        ArchiveOrgUrlGetter.getArchiveUrl(
-            story!!.url,
-            requireContext(),
-            object : ArchiveOrgUrlGetter.GetterCallback {
-                override fun onSuccess(url: String?) {
-                    url?.let { externalLinks.open(ExternalLinkRequest(it)) }
-                }
-
-                override fun onFailure(reason: String?) {
-                    val context = this@CommentsCoordinator.context
-                    if (context != null) {
-                        Toast.makeText(context, "Error: " + reason, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            })
-    }
-
-    private fun openArchiveIs() {
-        externalLinks.open(
-            ExternalLinkRequest("https://archive.is/newest/" + Uri.encode(story!!.url)),
-        )
-    }
-
-    private fun openArchiveToday() {
-        externalLinks.open(
-            ExternalLinkRequest("https://archive.today/newest/" + Uri.encode(story!!.url)),
-        )
-    }
 
     @JvmOverloads
     fun navigateToNextComment(topLevelOnly: Boolean = true, scaleLongScrollSpeed: Boolean = false) {
@@ -1556,160 +1265,6 @@ class CommentsCoordinator(
         if (composeController != null) {
             composeController!!.navigatePrevious(topLevelOnly, scaleLongScrollSpeed)
         }
-    }
-
-    private fun findCommentById(commentId: Int): Comment? {
-        return commentThread.findComment(commentId)
-    }
-
-    private fun updateUserTags() {
-        composeController?.refreshContent()
-    }
-
-    private fun performVote(
-        context: Context,
-        id: Int,
-        direction: String,
-        successMessage: String? = null,
-        onSuccess: () -> Unit = {},
-        onFailure: (String?, String?) -> Unit = { _, _ -> },
-    ) {
-        coroutineScope.launch {
-            val result = hackerNewsUserService.vote(id.toString(), direction)
-            if (result is HackerNewsActionResult.Success) {
-                successMessage?.let {
-                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                }
-                onSuccess()
-                return@launch
-            }
-            result.showLoginPromptIfCredentialsMissing(context)
-            val (summary, detail) = result.failureDetails()
-            MainActivity.showFailureDetailForActiveUi(summary, detail)
-            Toast.makeText(
-                context,
-                "Vote unsuccessful, see dialog for response",
-                Toast.LENGTH_SHORT,
-            ).show()
-            onFailure(summary, detail)
-        }
-    }
-
-    private fun showVoteFailure(context: Context, result: HackerNewsActionResult) {
-        result.showLoginPromptIfCredentialsMissing(context)
-        val (summary, detail) = result.failureDetails()
-        MainActivity.showFailureDetailForActiveUi(summary, detail)
-        Toast.makeText(
-            context,
-            "Vote unsuccessful, see dialog for response",
-            Toast.LENGTH_SHORT,
-        ).show()
-    }
-
-    fun onRequest(onUpdate: Runnable, onDone: Runnable) {
-        if (story == null || TextUtils.isEmpty(story!!.url)) {
-            onDone.run()
-            return
-        }
-        if (!Utils.isAiSummaryEnabled(requireContext())) {
-            onDone.run()
-            return
-        }
-
-        val context = requireContext()
-        val mode = AndroidAiSummarySettings.mode(context)
-
-        if (webViewController != null) {
-            webViewController!!.getLoadedPageText(
-                PageTextCallback { text: String? ->
-                    summarizeStory(
-                        context,
-                        mode,
-                        text,
-                        onUpdate,
-                        onDone
-                    )
-                })
-            return
-        }
-
-        summarizeStory(context, mode, null, onUpdate, onDone)
-    }
-
-    private fun summarizeStory(
-        context: Context,
-        mode: String,
-        articleText: String?,
-        onUpdate: Runnable,
-        onDone: Runnable
-    ) {
-        val hasArticleText = !TextUtils.isEmpty(articleText)
-        if (mode == AndroidAiSummarySettings.MODE_LOCAL) {
-            val callback = object : LocalSummaryCallback {
-                override fun onDebugInfo(debugInfo: String?) {
-                    onUpdate.run()
-                }
-
-                override fun onProgress(summary: String?) {
-                    story!!.summary = summary
-                    onUpdate.run()
-                }
-
-                override fun onSuccess(summary: String?) {
-                    story!!.summary = summary
-                    story!!.summaryGeneratedSuccessfully = true
-                    onDone.run()
-                }
-
-                override fun onFailure(error: String?) {
-                    story!!.summary = "Failed to generate local summary: " + error
-                    story!!.summaryGeneratedSuccessfully = false
-                    onDone.run()
-                }
-            }
-            if (hasArticleText) {
-                LocalSummaryManager.summarizeText(context, articleText, callback)
-            } else {
-                LocalSummaryManager.summarizeArticle(context, story!!.url, callback)
-            }
-        } else {
-            val config = AndroidAiSummarySettings.cloudConfig(context)
-            val summaryFlow = if (hasArticleText) {
-                NetworkComponent.summaryUseCase.summarizeText(config, articleText)
-            } else {
-                NetworkComponent.summaryUseCase.summarizeArticle(config, story!!.url.orEmpty())
-            }
-            coroutineScope.launch {
-                try {
-                    summaryFlow.collect { event ->
-                        when (event) {
-                            is CloudSummaryEvent.DebugInfo -> onUpdate.run()
-                            is CloudSummaryEvent.Progress -> {
-                                story!!.summary = event.summary
-                                onUpdate.run()
-                            }
-                            is CloudSummaryEvent.Success -> {
-                                story!!.summary = event.summary
-                                story!!.summaryGeneratedSuccessfully = true
-                                onDone.run()
-                            }
-                        }
-                    }
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    story!!.summary = "Failed to generate summary: " +
-                        (error.message?.takeUnless(String::isEmpty) ?: "Unknown error")
-                    story!!.summaryGeneratedSuccessfully = false
-                    onDone.run()
-                }
-            }
-        }
-    }
-
-
-    interface CommentsPaneCallback {
-        fun onSwitchView(isAtWebView: Boolean)
     }
 
     companion object {

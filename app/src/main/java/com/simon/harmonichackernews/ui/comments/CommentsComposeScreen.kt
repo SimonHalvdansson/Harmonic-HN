@@ -2,13 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import android.text.Html
 import android.text.format.DateFormat
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -19,14 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,16 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -57,22 +44,20 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.FaviconLoader
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.presentation.CommentTextPolicy
+import com.simon.harmonichackernews.network.FaviconUrlBuilder
+import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Date
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -206,17 +191,29 @@ private fun CommentsHeader(
 ) {
     val context = LocalContext.current
     val story = remember(controller.story, contentVersion) { controller.story }
+    val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
     val storyPosterTag = remember(story.by, contentVersion) {
         UserTagsRepository(AndroidKeyValueStore.defaults(context)).tagFor(story.by)
     }
-    val tintBaseColor = remember(context, settings.theme) {
-        PreviewImageTintUtils.getTintBaseColor(context)
-    }
+    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
     val paletteTintMode = remember(context, settings.paletteTintMode) {
         PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     }
     val faviconTintSource = remember(story.url, settings.faviconProvider) {
-        runCatching { FaviconLoader.getFaviconUrl(story.url, settings.faviconProvider) }.getOrNull()
+        runCatching { FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider) }
+            .getOrNull()
+    }
+    val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
+    val resourceTint = previewResource?.previewTint
+    val tintStore = remember(context) { AndroidAppComposition.get(context).storyResourceTints }
+    val persistedPreviewTint = previewImageUrl?.let { sourceUrl ->
+        tintStore.read(
+            story.id,
+            StoryResourceTintKind.PREVIEW_IMAGE,
+            sourceUrl,
+            tintBaseColor,
+            StoryPreviewTintState.storedMode(paletteTintMode),
+        )?.tintColorArgb
     }
     val initialTint = remember(
         story.id,
@@ -233,16 +230,26 @@ private fun CommentsHeader(
         tintBaseColor,
         paletteTintMode,
         faviconTintSource,
+        previewImageUrl,
+        resourceTint,
+        persistedPreviewTint,
     ) {
         when {
-            PreviewImageTintUtils.isStoryPreviewImageTintColorCurrent(
+            resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
+                resourceTint.baseColorArgb == tintBaseColor &&
+                StoryPreviewTintState.isModeCurrent(
+                    resourceTint.paletteConfigKey,
+                    paletteTintMode,
+                ) -> resourceTint.tintColorArgb
+            persistedPreviewTint != null -> persistedPreviewTint
+            StoryPreviewTintState.isPreviewCurrent(
                 story,
                 tintBaseColor,
                 paletteTintMode,
             ) -> story.previewImageTintColor
             story.faviconTintColorLoaded &&
                 story.faviconTintBaseColor == tintBaseColor &&
-                PreviewImageTintUtils.isTintModeCurrent(story.faviconTintMode, paletteTintMode) &&
+                StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteTintMode) &&
                 story.faviconTintSourceUrl == faviconTintSource -> story.faviconTintColor
             else -> null
         }
@@ -277,18 +284,31 @@ private fun CommentsHeader(
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
     ) { visibleBackground, onTintLoaded ->
-        HeaderPreviewImage(
-            story = story,
+        val previewUrl = previewResource?.imageUrl ?: story.previewImageUrl
+        SharedHeaderPreviewImage(
+            imageUrl = previewUrl,
+            initiallyFailed = previewResource?.imageLoadFailed ?: story.previewImageLoadFailed,
             visible = settings.showHeaderPreviewImage,
             suppressed = controller.headerPreviewSuppressed,
-            tintBaseColor = tintBaseColor,
+            tintBaseColorArgb = tintBaseColor,
             paletteTintConfigKey = paletteTintMode,
-            onTintLoaded = onTintLoaded,
-            onPreviewLoaded = controller.listener::onHeaderPreviewLoaded,
-            onPreviewLoadFailed = controller.listener::onHeaderPreviewLoadFailed,
+            onTintExtracted = { tintColor ->
+                onTintLoaded(tintColor)
+                previewUrl?.let { sourceUrl ->
+                    controller.listener.onHeaderPreviewTintExtracted(
+                        sourceUrl,
+                        tintBaseColor,
+                        paletteTintMode,
+                        tintColor,
+                    )
+                }
+            },
+            onImageResult = { success ->
+                previewUrl?.let { controller.listener.onHeaderPreviewImageResult(it, success) }
+            },
             onClick = controller.listener::onHeaderClick,
             onLongClick = { bounds ->
-                story.previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
+                previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
                     controller.showImagePreview(
                         imageUrl = imageUrl,
                         description = if (story.title.isNullOrBlank()) {
@@ -305,109 +325,19 @@ private fun CommentsHeader(
     }
 }
 
-@Composable
-private fun HeaderPreviewImage(
-    story: Story,
-    visible: Boolean,
-    suppressed: Boolean,
-    tintBaseColor: Int,
-    paletteTintConfigKey: String,
-    onTintLoaded: (Int) -> Unit,
-    onPreviewLoaded: () -> Unit,
-    onPreviewLoadFailed: () -> Unit,
-    onClick: () -> Unit,
-    onLongClick: (androidx.compose.ui.geometry.Rect) -> Unit,
-) {
-    val context = LocalContext.current
-    var previewUrl by remember(story.id, story.previewImageUrl) { mutableStateOf(story.previewImageUrl) }
-    var previewLoadFailed by remember(story.id, story.previewImageUrl) {
-        mutableStateOf(story.previewImageLoadFailed)
-    }
-    var loadedPainter by remember(story.id, story.previewImageUrl) {
-        mutableStateOf<Painter?>(null)
-    }
-    val extractedTint = rememberPainterPaletteTint(
-        painter = loadedPainter,
-        baseColorArgb = tintBaseColor,
-        paletteTintConfigKey = paletteTintConfigKey,
-        enabled = visible,
-    )
-    LaunchedEffect(extractedTint) {
-        extractedTint?.let(onTintLoaded)
-    }
-    var bounds by remember(story.id) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    DisposableEffect(story.id, story.url, visible, story.previewImageLoadFailed) {
-        val request = if (
-            visible && story.isLink && !story.url.isNullOrBlank() && !story.previewImageLoadFailed
-        ) {
-            StoryPreviewImageLoader.loadPreviewContent(context, story.id, story.url, false) { url, _ ->
-                story.previewImageUrl = url
-                story.previewImageUrlLoaded = true
-                story.previewImageLoadFailed = url.isNullOrBlank()
-                previewUrl = url
-                previewLoadFailed = url.isNullOrBlank()
-                if (url.isNullOrBlank()) onPreviewLoadFailed()
-            }
-        } else {
-            null
-        }
-        onDispose { request?.cancel() }
-    }
-    AnimatedVisibility(
-        visible = visible && !previewUrl.isNullOrBlank() && !previewLoadFailed,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
-    ) {
-        val request = remember(context, previewUrl) {
-            ImageRequest.Builder(context)
-                .data(previewUrl)
-                .allowHardware(false)
-                .build()
-        }
-        AsyncImage(
-            model = request,
-            contentDescription = "Story preview image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
-                .height(176.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .graphicsLayer(alpha = if (suppressed) 0f else 1f)
-                .onGloballyPositioned { bounds = it.boundsInWindow() }
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = { onLongClick(bounds) },
-                ),
-            contentScale = ContentScale.Crop,
-            onSuccess = { state ->
-                previewLoadFailed = false
-                story.previewImageLoadFailed = false
-                onPreviewLoaded()
-                loadedPainter = state.painter
-            },
-            onError = {
-                previewLoadFailed = true
-                story.previewImageLoadFailed = true
-                onPreviewLoadFailed()
-            },
-        )
-    }
-}
-
 private fun htmlToAnnotated(
     html: String,
     linkStyles: TextLinkStyles,
     listener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
-    AnnotatedString.fromHtml(preserveLegacyParagraphSpacing(html), linkStyles, listener)
+    AnnotatedString.fromHtml(
+        CommentTextPolicy.preserveLegacyParagraphSpacing(html),
+        linkStyles,
+        listener,
+    )
 }.getOrElse {
     AnnotatedString(Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString())
 }
-
-private fun preserveLegacyParagraphSpacing(html: String): String = html
-    .replace(Regex("<p\\s*>", RegexOption.IGNORE_CASE), "<br><br>")
-    .replace(Regex("</p>\\s*<p", RegexOption.IGNORE_CASE), "</p><br><p")
-    .replace(Regex("</div>\\s*<div", RegexOption.IGNORE_CASE), "</div><br><div")
 
 private val legacyTextStyle = TextStyle(
     platformStyle = PlatformTextStyle(includeFontPadding = true),

@@ -17,10 +17,14 @@ enum class ContentFilterDialog { StoryTitle, Domain, User }
 
 data class TaggedUserUi(val username: String, val tag: String)
 
+data class FiltersTagsSettingsUiState(
+    val tags: List<TaggedUserUi>,
+    val hideJobs: Boolean,
+)
+
 @Composable
 fun SharedFiltersTagsSettingsScreen(
-    tags: List<TaggedUserUi>,
-    hideJobs: Boolean,
+    state: FiltersTagsSettingsUiState,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onHideJobsChanged: (Boolean) -> Unit,
@@ -60,14 +64,14 @@ fun SharedFiltersTagsSettingsScreen(
                     title = "Hide job posts",
                     summary = "Includes \"Who is hiring\" posts",
                     icon = Res.drawable.ic_action_work_off,
-                    checked = hideJobs,
+                    checked = state.hideJobs,
                     onCheckedChange = onHideJobsChanged,
                 )
             }
         }
         item {
             SettingsCategory("Tagged users") {
-                if (tags.isEmpty()) {
+                if (state.tags.isEmpty()) {
                     SettingRow(
                         title = "No user with tags",
                         icon = null,
@@ -75,7 +79,7 @@ fun SharedFiltersTagsSettingsScreen(
                         onClick = {},
                     )
                 } else {
-                    tags.forEachIndexed { index, entry ->
+                    state.tags.forEachIndexed { index, entry ->
                         SettingRow(
                             title = if (entry.tag.isBlank()) {
                                 entry.username
@@ -101,7 +105,7 @@ fun SharedFiltersTagsSettingsScreen(
                                 }
                             },
                         )
-                        if (index != tags.lastIndex) SettingsDivider()
+                        if (index != state.tags.lastIndex) SettingsDivider()
                     }
                 }
             }

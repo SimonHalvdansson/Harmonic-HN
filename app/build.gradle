@@ -66,7 +66,6 @@ abstract class GenerateAdblocklistTask extends DefaultTask {
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -223,12 +222,10 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
-    implementation(libs.ksoup)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)

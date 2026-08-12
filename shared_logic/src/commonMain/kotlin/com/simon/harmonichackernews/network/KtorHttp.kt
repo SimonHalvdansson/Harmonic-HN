@@ -27,14 +27,7 @@ import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readLine
 import io.ktor.utils.io.readRemaining
-import kotlinx.io.IOException
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.readByteArray
-import kotlin.concurrent.Volatile
 
 class NetworkUrl private constructor(internal val value: Url) {
     val scheme: String get() = value.protocol.name
@@ -162,59 +155,11 @@ class HttpRequest private constructor(
     }
 }
 
-interface HttpCallback {
-    fun onFailure(call: HttpCall, error: IOException)
-    fun onResponse(call: HttpCall, response: HttpResponse)
-}
-
-class HttpCall internal constructor(
+class KtorHttpClient(
     private val client: HttpClient,
-    private val scope: CoroutineScope,
-    private val request: HttpRequest,
-    private val readTimeoutMillis: Long,
+    private val readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
 ) {
-    @Volatile
-    private var job: Job? = null
-
-    @Volatile
-    private var canceled = false
-
-    fun enqueue(callback: HttpCallback) {
-        if (canceled) return
-        val launchedJob = scope.launch {
-            try {
-                callback.onResponse(this@HttpCall, await())
-            } catch (_: CancellationException) {
-                // Cancellation is a caller decision and intentionally has no failure callback.
-            } catch (error: Throwable) {
-                callback.onFailure(
-                    this@HttpCall,
-                    error as? IOException ?: IOException(error.message, error),
-                )
-            }
-        }
-        job = launchedJob
-        if (canceled) launchedJob.cancel()
-    }
-
-    @Throws(IOException::class)
-    fun execute(): HttpResponse = try {
-        runBlocking { await() }
-    } catch (error: Throwable) {
-        throw error as? IOException ?: IOException(error.message, error)
-    }
-
-    /** Primary non-blocking execution path. Blocking and callback APIs are compatibility adapters. */
-    suspend fun await(): HttpResponse = executeInternal()
-
-    fun cancel() {
-        canceled = true
-        job?.cancel()
-    }
-
-    fun isCanceled(): Boolean = canceled || job?.isCancelled == true
-
-    private suspend fun executeInternal(): HttpResponse {
+    suspend fun execute(request: HttpRequest): HttpResponse {
         val response = client.request(request.url.toString()) {
             method = request.method
             timeout {
@@ -234,36 +179,21 @@ class HttpCall internal constructor(
         )
     }
 
-    private companion object {
-        const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 30_000L
-    }
-}
-
-class KtorHttpClient(
-    private val client: HttpClient,
-    private val scope: CoroutineScope,
-    private val readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
-) {
-    fun newCall(request: HttpRequest): HttpCall =
-        HttpCall(client, scope, request, readTimeoutMillis)
-
-    suspend fun execute(request: HttpRequest): HttpResponse = newCall(request).await()
-
-    fun newBuilder(): Builder = Builder(client, scope, readTimeoutMillis)
+    fun newBuilder(): Builder = Builder(client, readTimeoutMillis)
 
     class Builder internal constructor(
         private val client: HttpClient,
-        private val scope: CoroutineScope,
         private var readTimeoutMillis: Long,
     ) {
         fun readTimeoutMillis(timeoutMillis: Long): Builder = apply {
             readTimeoutMillis = timeoutMillis
         }
 
-        fun build(): KtorHttpClient = KtorHttpClient(client, scope, readTimeoutMillis)
+        fun build(): KtorHttpClient = KtorHttpClient(client, readTimeoutMillis)
     }
 
     companion object {
+        const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 30_000L
         private const val DEFAULT_READ_TIMEOUT_MILLIS = 30_000L
     }
 }
@@ -276,23 +206,10 @@ class HttpResponse internal constructor(
     val message: String get() = delegate.status.description
     val isSuccessful: Boolean get() = code in 200..299
     val requestUrl: NetworkUrl get() = NetworkUrl.parse(delegate.call.request.url.toString())
-    var body: HttpResponseBody = responseBody
-        private set
+    val body: HttpResponseBody = responseBody
 
     fun header(name: String, defaultValue: String? = null): String? =
         delegate.headers[name] ?: defaultValue
-
-    @Throws(IOException::class)
-    fun peekBody(maxBytes: Long): HttpResponseBody {
-        require(maxBytes in 0..Int.MAX_VALUE.toLong()) { "Invalid body preview limit" }
-        val originalBody = body
-        val bytes = originalBody.readAtMost(maxBytes.toInt() + 1)
-        if (bytes.size > maxBytes) {
-            throw IOException("Response body exceeded the preview limit")
-        }
-        body = HttpResponseBody(ByteReadChannel(bytes), delegate.headers)
-        return HttpResponseBody(ByteReadChannel(bytes), delegate.headers)
-    }
 
     override fun close() {
         body.close()
@@ -305,50 +222,23 @@ class HttpResponseBody internal constructor(
     private val channel: ByteReadChannel,
     private val headers: io.ktor.http.Headers,
 ) : AutoCloseable {
-    private val source = HttpBodySource(channel)
-
     fun contentLength(): Long = headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: -1L
 
     fun contentType(): HttpMediaType? = headers[HttpHeaders.ContentType]?.let(::HttpMediaType)
 
-    @Throws(IOException::class)
-    fun string(): String = runBlocking { readText() }
-
     suspend fun readText(): String = channel.readRemaining().readText()
-
-    @Throws(IOException::class)
-    fun bytes(): ByteArray = runBlocking { readBytes() }
 
     suspend fun readBytes(): ByteArray = channel.readRemaining().readByteArray()
 
-    fun source(): HttpBodySource = source
+    suspend fun readAvailable(
+        buffer: ByteArray,
+        offset: Int = 0,
+        length: Int = buffer.size,
+    ): Int = channel.readAvailable(buffer, offset, length)
 
-    internal fun readAtMost(maxBytes: Int): ByteArray {
-        val output = ByteArray(maxBytes)
-        val buffer = ByteArray(8 * 1024)
-        var outputSize = 0
-        while (outputSize < maxBytes) {
-            val read = source.read(buffer, 0, minOf(buffer.size, maxBytes - outputSize))
-            if (read == -1) break
-            buffer.copyInto(output, outputSize, 0, read)
-            outputSize += read
-        }
-        return output.copyOf(outputSize)
-    }
+    suspend fun readUtf8Line(): String? = channel.readLine(LineEnding.Lenient)
 
     override fun close() {
         channel.cancel()
     }
-}
-
-class HttpBodySource internal constructor(private val channel: ByteReadChannel) {
-    @Throws(IOException::class)
-    fun read(buffer: ByteArray, offset: Int = 0, length: Int = buffer.size): Int = runBlocking {
-        channel.readAvailable(buffer, offset, length)
-    }
-
-    @Throws(IOException::class)
-    fun readUtf8Line(): String? = runBlocking { channel.readLine(LineEnding.Lenient) }
-
-    suspend fun readUtf8LineAsync(): String? = channel.readLine(LineEnding.Lenient)
 }

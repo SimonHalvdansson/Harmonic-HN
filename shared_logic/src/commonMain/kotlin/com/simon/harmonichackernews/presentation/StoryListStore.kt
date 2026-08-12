@@ -1,6 +1,10 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StoryPresentationSnapshot
+import com.simon.harmonichackernews.data.StorySnapshot
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,12 +42,31 @@ data class StoryListUiState(
     val revision: Long = 0,
 )
 
+data class StoryListItemSnapshot(
+    val story: StorySnapshot,
+    val presentation: StoryPresentationSnapshot,
+)
+
+/** Native-safe list state with no mutable model references. */
+data class PortableStoryListState(
+    val items: List<StoryListItemSnapshot> = emptyList(),
+    val visibleStoryCount: Int = Int.MAX_VALUE,
+    val loadedThroughIndex: Int = -1,
+    val paginationEnabled: Boolean = false,
+    val loading: Boolean = false,
+    val refreshing: Boolean = false,
+    val loadMoreInProgress: Boolean = false,
+    val canLoadMore: Boolean = false,
+    val showingCached: Boolean = false,
+    val failure: StoryLoadFailure? = null,
+    val revision: Long = 0,
+)
+
 /**
  * Platform-neutral owner for a story list's loading and paging state.
  *
- * The mutable item collection is deliberately exposed to migration-era callers so Android can
- * continue enriching canonical [Story] instances in place. All structural changes should go
- * through this store, which publishes immutable snapshots for Compose and future KMP clients.
+ * Android compatibility callers can still enrich legacy [Story] instances in place. Canonical
+ * [state] snapshots never expose those mutable objects.
  */
 class StoryListStore(
     private val pageSize: Int = DEFAULT_PAGE_SIZE,
@@ -51,8 +74,15 @@ class StoryListStore(
     val stories: MutableList<Story> = mutableListOf()
     private val paginationSession = StoryPaginationSession(pageSize)
 
-    private val mutableState = MutableStateFlow(StoryListUiState())
-    val state: StateFlow<StoryListUiState> = mutableState.asStateFlow()
+    private val mutableState = MutableStateFlow(PortableStoryListState())
+    val state: StateFlow<PortableStoryListState> = mutableState.asStateFlow()
+
+    /** Temporary mutable-model view for Android and shared UI migration only. */
+    private val mutableLegacyState = MutableStateFlow(StoryListUiState())
+    val legacyState: StateFlow<StoryListUiState> = mutableLegacyState.asStateFlow()
+
+    /** Source-compatible name for callers already migrated to immutable snapshots. */
+    val portableState: StateFlow<PortableStoryListState> get() = state
 
     val visibleStoryItemCount: Int
         get() = state.value.visibleStoryCount
@@ -328,7 +358,8 @@ class StoryListStore(
         failure: StoryLoadFailure? = state.value.failure,
     ) {
         val current = state.value
-        mutableState.value = StoryListUiState(
+        val revision = current.revision + 1
+        val nextLegacyState = StoryListUiState(
             stories = stories.toList(),
             visibleStoryCount = visibleStoryCount,
             loadedThroughIndex = loadedThroughIndex,
@@ -339,8 +370,26 @@ class StoryListStore(
             canLoadMore = canLoadMore,
             showingCached = showingCached,
             failure = failure,
-            revision = current.revision + 1,
+            revision = revision,
         )
+        val nextState = PortableStoryListState(
+            items = stories.map { story ->
+                StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+            },
+            visibleStoryCount = visibleStoryCount,
+            loadedThroughIndex = loadedThroughIndex,
+            paginationEnabled = paginationEnabled,
+            loading = loading,
+            refreshing = refreshing,
+            loadMoreInProgress = loadMoreInProgress,
+            canLoadMore = canLoadMore,
+            showingCached = showingCached,
+            failure = failure,
+            revision = revision,
+        )
+        // Publish detached snapshots before exposing mutable compatibility objects.
+        mutableState.value = nextState
+        mutableLegacyState.value = nextLegacyState
     }
 
     companion object {

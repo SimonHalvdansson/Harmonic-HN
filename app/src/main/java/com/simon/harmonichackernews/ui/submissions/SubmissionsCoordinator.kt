@@ -1,27 +1,25 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ScreenStateViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.network.AlgoliaRepository
-import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.platform.AndroidPlatformServices
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.PlatformServices
+import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.presentation.SubmissionFilter
+import com.simon.harmonichackernews.presentation.SubmissionsFeatureRuntime
+import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
-import com.simon.harmonichackernews.presentation.SubmissionsStore
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import com.simon.harmonichackernews.presentation.CommentMasterResolver
-import com.simon.harmonichackernews.utils.Utils
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
@@ -33,68 +31,54 @@ class SubmissionsCoordinator(
     sessionKey: Int,
     private val userName: String,
     private val navigator: Navigator,
-    private val algoliaRepository: AlgoliaRepository = NetworkComponent.algoliaRepository,
-    private val userSettings: UserSettings = AndroidUserSettings(activity),
-    private val platformServices: PlatformServices = AndroidPlatformServices.create(activity),
+    private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
+    private val algoliaRepository: AlgoliaRepository = appComposition.network.algoliaRepository,
+    private val userSettings: UserSettings = appComposition.userSettings,
+    private val platformDependencies: SubmissionsPlatformDependencies =
+        appComposition.submissionsPlatformDependencies(),
 ) {
     fun interface Navigator {
-        fun openStory(story: Story, showWebsite: Boolean)
+        fun openStory(destination: StoryDestination)
     }
 
     private val sessionState: SubmissionsSessionState =
         ViewModelProvider(activity)[ScreenStateViewModel::class.java]
             .submissionsStateFor(sessionKey, userName, algoliaRepository)
-    private val store: SubmissionsStore = sessionState.submissions
-    private var submissions: List<Story> = emptyList()
-    private val commentMasterResolver = CommentMasterResolver(NetworkComponent.hackerNewsRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val runtime = SubmissionsFeatureRuntime(
+        scope = coroutineScope,
+        sessionState = sessionState,
+        commentMasterResolver = CommentMasterResolver(appComposition.network.hackerNewsRepository),
+        useIntegratedWebView = { userSettings.reading.integratedWebView },
+    )
     val composeController: SubmissionsComposeController
-    private var submissionsLoadJob: Job? = null
 
     init {
         composeController = SubmissionsComposeController(
             userName = userName,
-            initialFilter = store.state.value.filter,
+            initialFilter = runtime.state.value.filter,
             initialDisplaySettings = StoryDisplaySettings
                 .from(userSettings.story)
                 .withShowIndex(false),
             listener = object : SubmissionsComposeController.Listener {
                 override fun onFilterSelected(filter: SubmissionFilter) {
-                    store.selectFilter(filter)
+                    runtime.selectFilter(filter)
                 }
 
                 override fun onRefresh() {
-                    loadSubmissions(true)
+                    runtime.refresh()
                 }
 
-                override fun onStoryLinkClick(story: Story) {
-                    if (story.isLink) {
-                        if (userSettings.reading.integratedWebView) {
-                            openComments(story, true)
-                        } else {
-                            story.url?.let {
-                                platformServices.externalLinks.open(ExternalLinkRequest(it))
-                            }
-                        }
-                    } else {
-                        openComments(story, false)
-                    }
-                }
+                override fun onStoryLinkClick(story: Story) = runtime.openStoryLink(story)
 
-                override fun onStoryCommentsClick(story: Story) {
-                    openComments(story, false)
-                }
+                override fun onStoryCommentsClick(story: Story) = runtime.openStoryComments(story)
 
-                override fun onCommentStoryClick(story: Story) {
-                    openCommentMasterStory(story)
-                }
+                override fun onCommentStoryClick(story: Story) = runtime.openCommentMaster(story)
 
-                override fun onCommentRepliesClick(story: Story) {
-                    openComments(story, false)
-                }
+                override fun onCommentRepliesClick(story: Story) = runtime.openCommentReplies(story)
 
                 override fun onLoadMore() {
-                    loadSubmissions(false)
+                    runtime.loadMore()
                 }
 
                 override fun onScrollStateChanged(
@@ -102,47 +86,41 @@ class SubmissionsCoordinator(
                     firstVisibleStoryTop: Int,
                     appBarCollapsed: Boolean,
                 ) {
-                    sessionState.firstVisibleStoryPosition = firstVisibleStoryPosition
-                    sessionState.firstVisibleStoryTop = firstVisibleStoryTop
-                    sessionState.appBarCollapsed = appBarCollapsed
+                    runtime.recordScrollPosition(
+                        firstVisibleStoryPosition,
+                        firstVisibleStoryTop,
+                        appBarCollapsed,
+                    )
                 }
             },
         )
         composeController.updateDisplaySettings(
             StoryDisplaySettings.from(userSettings.story).withShowIndex(false)
         )
-        if (sessionState.initialized) {
+        coroutineScope.launch { runtime.state.collect(::render) }
+        coroutineScope.launch { runtime.effects.collect(::handleEffect) }
+        runtime.initialize()?.let { restoration ->
             composeController.restoreScrollState(
-                firstVisiblePosition = sessionState.firstVisibleStoryPosition,
-                firstVisibleTop = sessionState.firstVisibleStoryTop,
-                appBarCollapsed = sessionState.appBarCollapsed,
+                firstVisiblePosition = restoration.firstVisibleStoryPosition,
+                firstVisibleTop = restoration.firstVisibleStoryTop,
+                appBarCollapsed = restoration.appBarCollapsed,
             )
-        } else {
-            sessionState.initialized = true
-        }
-        coroutineScope.launch {
-            store.state.collect(::render)
-        }
-        if (!store.state.value.loadedSuccessfully && !store.state.value.loading) {
-            loadSubmissions(true)
         }
     }
 
     fun close() {
-        cancelSubmissionsLoad()
-        store.cancelLoad()
+        runtime.dispose()
         coroutineScope.cancel()
     }
 
     private fun render(state: SubmissionsUiState) {
-        submissions = state.items
         composeController.updateLoading(
             state.loading,
             state.showInitialLoading,
             state.refreshing,
         )
         composeController.updateContent(
-            submissions,
+            state.items,
             state.filter,
             state.hasUnfilteredItems,
             state.canLoadMore,
@@ -152,50 +130,12 @@ class SubmissionsCoordinator(
         )
     }
 
-    private fun openCommentMasterStory(story: Story) {
-        val masterStory = story.toCommentMasterStory()
-        if (masterStory == null) {
-            openComments(story, false)
-            return
-        }
-        if (masterStory.loaded) {
-            openComments(masterStory, false)
-            return
-        }
-
-        coroutineScope.launch {
-            try {
-                val resolved = commentMasterResolver.resolve(story)
-                if (submissions.contains(story)) store.contentChanged()
-                openComments(resolved, false)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                error.printStackTrace()
-                openComments(masterStory, false)
-            }
+    private fun handleEffect(effect: SubmissionsRuntimeEffect) {
+        when (effect) {
+            is SubmissionsRuntimeEffect.OpenStory ->
+                navigator.openStory(effect.destination)
+            is SubmissionsRuntimeEffect.OpenExternalLink ->
+                platformDependencies.externalLinks.open(ExternalLinkRequest(effect.url))
         }
     }
-
-    private fun openComments(story: Story, showWebsite: Boolean) {
-        navigator.openStory(story, showWebsite)
-    }
-
-    private fun loadSubmissions(resetResultLimit: Boolean) {
-        cancelSubmissionsLoad()
-        submissionsLoadJob = coroutineScope.launch {
-            if (resetResultLimit) {
-                store.refresh()
-            } else {
-                store.loadMore()
-            }
-            submissionsLoadJob = null
-        }
-    }
-
-    private fun cancelSubmissionsLoad() {
-        submissionsLoadJob?.cancel()
-        submissionsLoadJob = null
-    }
-
 }
