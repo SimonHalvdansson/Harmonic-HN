@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import androidx.core.net.toUri
 
 object RepliesChecker {
     const val CHANNEL_ID: String = "reply_notifications"
@@ -63,7 +64,7 @@ object RepliesChecker {
         if (normalizedUsername.isEmpty()) {
             return DebugNotificationResult.USER_NOT_FOUND
         }
-        return RepliesChecker.sendLatestDebugNotificationInternal(appContext, normalizedUsername)
+        return sendLatestDebugNotificationInternal(appContext, normalizedUsername)
     }
 
     fun notificationsAreActive(ctx: Context): Boolean {
@@ -75,8 +76,8 @@ object RepliesChecker {
     }
 
     fun createNotificationChannel(ctx: Context) {
-        val channel: NotificationChannel = NotificationChannel(
-            RepliesChecker.CHANNEL_ID,
+        val channel = NotificationChannel(
+            CHANNEL_ID,
             "Replies",
             NotificationManager.IMPORTANCE_DEFAULT
         )
@@ -84,9 +85,7 @@ object RepliesChecker {
 
         val notificationManager: NotificationManager? =
             ctx.getSystemService<NotificationManager?>(NotificationManager::class.java)
-        if (notificationManager != null) {
-            notificationManager.createNotificationChannel(channel)
-        }
+        notificationManager?.createNotificationChannel(channel)
     }
 
     private suspend fun enableInternal(
@@ -275,7 +274,7 @@ object RepliesChecker {
         notification: ReplyNotificationPayload,
         requestCode: Int
     ): PendingIntent? {
-        val intent: Intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(notification.deepLink))
+        val intent: Intent = Intent(Intent.ACTION_VIEW, notification.deepLink.toUri())
         intent.setClass(ctx, MainActivity::class.java)
         intent.setFlags(
             (Intent.FLAG_ACTIVITY_NEW_TASK

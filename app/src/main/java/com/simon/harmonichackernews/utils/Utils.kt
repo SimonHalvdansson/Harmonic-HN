@@ -178,14 +178,6 @@ object Utils {
         return storyCache(ctx).articleUrl(id)
     }
 
-    fun deleteCachedArticleSnapshot(ctx: Context?, id: Int) {
-        if (ctx == null || id <= 0) {
-            return
-        }
-
-        storyCache(ctx).removeArticle(id)
-    }
-
     fun getArticleCacheDir(ctx: Context): File {
         return File(ctx.filesDir, "article_cache")
     }
@@ -235,13 +227,6 @@ object Utils {
             return true
         }
         return false
-    }
-
-    fun getColorViaAttr(ctx: Context, attr: Int): Int {
-        val typedValue = TypedValue()
-        val theme = ctx.theme
-        theme.resolveAttribute(attr, typedValue, true)
-        return typedValue.data
     }
 
     fun setNighttimeHours(
@@ -296,42 +281,13 @@ object Utils {
         }
         val uri = builder.build()
 
-        val intent: Intent = Intent(Intent.ACTION_VIEW, uri)
+        val intent = Intent(Intent.ACTION_VIEW, uri)
         intent.setClass(context, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (context !is Activity) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-    }
-
-    fun canProvideSummary(ctx: Context): Boolean {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val explicitlyEnabled = if (prefs.contains("pref_ai_summary_enabled")) {
-            prefs.getBoolean("pref_ai_summary_enabled", false)
-        } else {
-            null
-        }
-        return AiSummaryAvailabilityPolicy.canProvideSummary(
-            explicitlyEnabled = explicitlyEnabled,
-            mode = prefs.getString("pref_ai_summary_mode", "cloud") ?: "cloud",
-            localAvailable = LocalSummaryManager.canAttemptLocalSummarization(),
-            cloudApiKeyAvailable = AiSummaryApiKeyStore.hasApiKey(ctx),
-        )
-    }
-
-    fun isAiSummaryEnabled(ctx: Context): Boolean {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val explicitlyEnabled = if (prefs.contains("pref_ai_summary_enabled")) {
-            prefs.getBoolean("pref_ai_summary_enabled", false)
-        } else {
-            null
-        }
-        return AiSummaryAvailabilityPolicy.isEnabled(
-            explicitlyEnabled = explicitlyEnabled,
-            localAvailable = LocalSummaryManager.canAttemptLocalSummarization(),
-            cloudApiKeyAvailable = AiSummaryApiKeyStore.hasApiKey(ctx),
-        )
     }
 
     fun isNetworkAvailable(context: Context): Boolean {

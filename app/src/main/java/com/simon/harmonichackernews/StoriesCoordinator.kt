@@ -53,13 +53,13 @@ class StoriesCoordinator(
     savedInstanceState: Bundle?,
     private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
     private val userSettings: UserSettings = appComposition.userSettings,
-    private val platformDependencies: StoriesPlatformDependencies =
+    platformDependencies: StoriesPlatformDependencies =
         appComposition.storiesPlatformDependencies(),
     private val hackerNewsApi: HackerNewsApi = appComposition.network.hackerNewsApi,
     private val hackerNewsRepository: HackerNewsRepository =
         appComposition.network.hackerNewsRepository,
     private val algoliaRepository: AlgoliaRepository = appComposition.network.algoliaRepository,
-    private val storyFeedRepository: StoryFeedRepository = StoryFeedRepository(
+    storyFeedRepository: StoryFeedRepository = StoryFeedRepository(
         hackerNewsRepository,
         appComposition.network.hackerNewsWebRepository,
     ),

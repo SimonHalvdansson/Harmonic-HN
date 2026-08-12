@@ -27,8 +27,6 @@ object HistoriesUtils {
         if (ledger.record(id, createdAtMillis)) persist(context)
     }
 
-    fun getHistoryById(id: Int): History? = ledger.find(id)
-
     fun removeHistoryById(context: Context, id: Int) {
         ensureInitialized(context)
         if (ledger.remove(id)) persist(context)
