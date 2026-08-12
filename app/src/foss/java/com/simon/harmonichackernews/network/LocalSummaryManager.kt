@@ -24,6 +24,4 @@ internal object LocalSummaryManager {
     }
 
     fun isLocalSummaryReady(context: Context?): Boolean = false
-
-    fun isLocalSummaryConfigurationKnown(context: Context?): Boolean = true
 }

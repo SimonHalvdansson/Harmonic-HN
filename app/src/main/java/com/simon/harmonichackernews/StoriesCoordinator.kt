@@ -13,7 +13,6 @@ import com.simon.harmonichackernews.network.HackerNewsApi
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.failureDetails
 import com.simon.harmonichackernews.network.StoryFeedRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.AndroidStoryPreviewResourceService
@@ -33,7 +32,6 @@ import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companio
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
-import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
@@ -238,7 +236,7 @@ class StoriesCoordinator(
         when (effect) {
             StoriesPlatformEffect.OpenSettings ->
                 activity.startActivity(create(activity))
-            StoriesPlatformEffect.RequestLogin -> AccountUtils.showLoginPrompt(activity)
+            StoriesPlatformEffect.RequestLogin -> activity.showLoginPrompt()
             is StoriesPlatformEffect.OpenProfile ->
                 activity.showUserDialog(effect.userName, null)
             StoriesPlatformEffect.ShowCacheDialog -> activity.showCacheStoriesDialog()
@@ -269,13 +267,15 @@ class StoriesCoordinator(
             }
             is StoriesRuntimeEffect.CacheStories ->
                 storyCacheController?.cacheStories(effect.request)
-            StoriesRuntimeEffect.LoginRequired -> AccountUtils.showLoginPrompt(activity)
+            StoriesRuntimeEffect.LoginRequired -> activity.showLoginPrompt()
             is StoriesRuntimeEffect.UserMessage ->
                 Toast.makeText(activity, effect.message, Toast.LENGTH_SHORT).show()
             is StoriesRuntimeEffect.SavedActionFailed -> {
-                val (summary, detail) = effect.presentation.result.failureDetails()
                 if (effect.presentation.showDetails) {
-                    MainActivity.showFailureDetailForActiveUi(summary, detail)
+                    MainActivity.showFailureDetailForActiveUi(
+                        effect.presentation.failureSummary,
+                        effect.presentation.failureDetail,
+                    )
                 }
                 Toast.makeText(
                     activity,

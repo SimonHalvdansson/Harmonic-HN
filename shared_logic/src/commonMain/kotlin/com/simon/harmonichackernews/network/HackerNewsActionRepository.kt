@@ -36,6 +36,12 @@ data class HackerNewsCaptchaChallenge(
     }
 }
 
+enum class HackerNewsActionFailureReason {
+    GENERAL,
+    MISSING_CREDENTIALS,
+    INVALID_CREDENTIALS,
+}
+
 sealed interface HackerNewsActionResult {
     data class Success(
         val itemId: Int? = null,
@@ -45,7 +51,7 @@ sealed interface HackerNewsActionResult {
     data class Failure(
         val summary: String,
         val detail: String? = null,
-        val invalidCredentials: Boolean = false,
+        val reason: HackerNewsActionFailureReason = HackerNewsActionFailureReason.GENERAL,
     ) : HackerNewsActionResult
 
     data class Captcha(val challenge: HackerNewsCaptchaChallenge) : HackerNewsActionResult
@@ -338,7 +344,7 @@ class KtorHackerNewsActionRepository(
             HackerNewsActionResult.Failure(
                 summary = "Bad login",
                 detail = "Your session has expired or credentials are invalid. Logged out.",
-                invalidCredentials = true,
+                reason = HackerNewsActionFailureReason.INVALID_CREDENTIALS,
             ),
         )
 

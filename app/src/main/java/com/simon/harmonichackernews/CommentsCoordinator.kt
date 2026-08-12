@@ -31,8 +31,6 @@ import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.AndroidLocalStorySummaryBackend
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.network.failureDetails
-import com.simon.harmonichackernews.network.showLoginPromptIfCredentialsMissing
 import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
@@ -55,7 +53,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
-import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -751,7 +748,7 @@ class CommentsCoordinator(
                     .putExtras(effect.destination.toBundle()),
             )
             CommentsPlatformEffect.RequestLogin ->
-                AccountUtils.showLoginPrompt(requireContext())
+                requireActivity().showLoginPrompt()
             is CommentsPlatformEffect.ShowMessage -> Toast.makeText(
                 requireContext(),
                 effect.message,
@@ -1211,11 +1208,13 @@ class CommentsCoordinator(
         presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
     ) {
         val context = context ?: return
-        if (presentation.requestLoginIfMissing) {
-            presentation.result.showLoginPromptIfCredentialsMissing(context)
+        if (presentation.requestLogin) requireActivity().showLoginPrompt()
+        if (presentation.showDetails) {
+            requireActivity().showFailureDetailDialog(
+                presentation.failureSummary,
+                presentation.failureDetail,
+            )
         }
-        val (summary, response) = presentation.result.failureDetails()
-        if (presentation.showDetails) requireActivity().showFailureDetailDialog(summary, response)
         Toast.makeText(
             context,
             presentation.message,

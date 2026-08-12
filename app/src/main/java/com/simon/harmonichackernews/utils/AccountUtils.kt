@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.utils
 
 import android.content.Context
-import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 
@@ -99,9 +98,4 @@ object AccountUtils {
                 .apply()
         }
     }
-
-    fun showLoginPrompt(): Boolean = MainActivity.showLoginPrompt()
-
-    @Suppress("UNUSED_PARAMETER")
-    fun showLoginPrompt(ctx: Context?): Boolean = showLoginPrompt()
 }

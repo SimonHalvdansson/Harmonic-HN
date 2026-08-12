@@ -137,7 +137,10 @@ class HackerNewsUserService(
     }
 
     private fun sanitize(result: HackerNewsActionResult): HackerNewsActionResult {
-        if (result is HackerNewsActionResult.Failure && result.invalidCredentials) {
+        if (
+            result is HackerNewsActionResult.Failure &&
+            result.reason == HackerNewsActionFailureReason.INVALID_CREDENTIALS
+        ) {
             accounts.clear()
         }
         return result
@@ -147,5 +150,6 @@ class HackerNewsUserService(
         HackerNewsActionResult.Failure(
             summary = "Couldn't read credentials",
             detail = "Check your saved login.",
+            reason = HackerNewsActionFailureReason.MISSING_CREDENTIALS,
         )
 }

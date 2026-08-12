@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.HackerNewsActionFailureReason
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 
 /** Portable user-facing outcome; the host only renders details/login/toast facilities. */
@@ -8,7 +9,27 @@ data class ActionFailurePresentation(
     val message: String,
     val showDetails: Boolean,
     val requestLoginIfMissing: Boolean = false,
-)
+) {
+    val requestLogin: Boolean
+        get() = requestLoginIfMissing &&
+            (result as? HackerNewsActionResult.Failure)?.reason ==
+            HackerNewsActionFailureReason.MISSING_CREDENTIALS
+
+    val failureSummary: String
+        get() = when (result) {
+            is HackerNewsActionResult.Failure -> result.summary
+            is HackerNewsActionResult.Captcha -> "Captcha required"
+            is HackerNewsActionResult.Success -> "Action failed"
+        }
+
+    val failureDetail: String?
+        get() = when (result) {
+            is HackerNewsActionResult.Failure -> result.detail
+            is HackerNewsActionResult.Captcha ->
+                "HN requires a captcha for this action. Please try again in a browser."
+            is HackerNewsActionResult.Success -> null
+        }
+}
 
 /** Typed user intents shared by every stories screen implementation. */
 enum class StorySearchOption { SORT, DATE, POINTS, COMMENTS }

@@ -150,6 +150,10 @@ class MainActivity : BaseActivity() {
         mainNavigationController?.showUserDialog(userName, onTagChanged)
     }
 
+    fun showLoginPrompt() {
+        mainNavigationController?.showLoginDialog()
+    }
+
     fun showFailureDetailDialog(
         title: String?,
         message: String?,
@@ -424,12 +428,6 @@ class MainActivity : BaseActivity() {
 
         fun finishActiveSearchBackProgress(): Boolean {
             return getCurrentMainActivity()?.finishSearchBackProgress() == true
-        }
-
-        fun showLoginPrompt(): Boolean {
-            val controller = getCurrentMainActivity()?.mainNavigationController ?: return false
-            controller.showLoginDialog()
-            return true
         }
 
         fun showFailureDetailForActiveUi(
