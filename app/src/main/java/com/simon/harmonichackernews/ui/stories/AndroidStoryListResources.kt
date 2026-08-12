@@ -2,12 +2,15 @@ package com.simon.harmonichackernews.ui.stories
 
 import android.content.Context
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import coil3.Image
 import coil3.imageLoader
 import coil3.request.Disposable
 import coil3.request.ImageRequest
 import coil3.target.Target
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.PreviewPrefetchPlanner
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconLoader.getFaviconUrl
 import com.simon.harmonichackernews.network.LinkSummary
@@ -35,6 +38,18 @@ class AndroidStoryListResources(
 ) {
     private val previewRequests: MutableMap<Story, PreviewImageRequest> = IdentityHashMap()
     private val imagePrefetches: MutableMap<Story, Disposable> = IdentityHashMap()
+    private val prefetchHandler = Handler(Looper.getMainLooper())
+    private val prefetchPlanner = PreviewPrefetchPlanner(
+        batchSize = PREVIEW_RAMP_BATCH_SIZE,
+        visibleThreshold = VISIBLE_PREFETCH_THRESHOLD,
+    )
+    private var currentStories: List<Story> = emptyList()
+    private val prefetchRamp = object : Runnable {
+        override fun run() {
+            prefetchPlanner.startNextBatch()
+            drainPreviewPrefetches()
+        }
+    }
     private var storyResourceChangedListener: ((Story) -> Unit)? = null
     var settings: StoryDisplaySettings = settings
         private set
@@ -133,7 +148,47 @@ class AndroidStoryListResources(
         previewRequests[story] = request
     }
 
+    fun prefetchStory(context: Context?, story: Story?, stories: List<Story>) {
+        if (context == null || story == null) return
+        imagePrefetchContext = context
+        currentStories = stories
+        prefetchPlanner.enqueue(story, stories).forEach { prefetchPreviewImage(context, it) }
+        scheduleNextPreviewBatch()
+    }
+
+    fun prefetchNearViewport(
+        context: Context?,
+        stories: List<Story>,
+        initialLoadCount: Int,
+        firstVisibleItem: Int = -1,
+        lastVisibleItem: Int = -1,
+        paginationVisibleCount: Int? = null,
+    ) {
+        if (context == null || stories.isEmpty() || previewImageMode == StoryPreviewPreferences.OFF) {
+            return
+        }
+        imagePrefetchContext = context
+        currentStories = stories
+        val range = prefetchPlanner.prefetchRange(
+            storyCount = stories.size,
+            initialLoadCount = initialLoadCount,
+            firstVisibleItem = firstVisibleItem,
+            lastVisibleItem = lastVisibleItem,
+            paginationVisibleCount = paginationVisibleCount,
+        ) ?: return
+        beginPrefetchRamp(range.last)
+        range.forEach { prefetchStory(context, stories[it], stories) }
+    }
+
+    fun resetPrefetches() {
+        prefetchHandler.removeCallbacks(prefetchRamp)
+        prefetchPlanner.reset()
+        currentStories = emptyList()
+        imagePrefetchContext = null
+    }
+
     fun dispose() {
+        resetPrefetches()
         storyResourceChangedListener = null
         for ((story, request) in previewRequests) {
             request.cancel()
@@ -295,7 +350,33 @@ class AndroidStoryListResources(
     private fun publishStoryResourceChange(story: Story) =
         storyResourceChangedListener?.invoke(story)
 
+    private fun beginPrefetchRamp(targetIndex: Int) {
+        prefetchPlanner.begin(targetIndex, enabled = previewImageMode != StoryPreviewPreferences.OFF)
+    }
+
+    private fun drainPreviewPrefetches() {
+        val stories = currentStories
+        if (stories.isEmpty()) return
+        prefetchPlanner.drain(stories).forEach { story ->
+            // The themed Context is supplied on every explicit request; a queued item will also
+            // be requested again by the shared runtime if this drain races a screen teardown.
+            imagePrefetchContext?.let { prefetchPreviewImage(it, story) }
+        }
+        scheduleNextPreviewBatch()
+    }
+
+    private var imagePrefetchContext: Context? = null
+
+    private fun scheduleNextPreviewBatch() {
+        if (prefetchPlanner.requestNextBatchSchedule()) {
+            prefetchHandler.postDelayed(prefetchRamp, PREVIEW_RAMP_DELAY_MS)
+        }
+    }
+
     companion object {
         private const val LARGE_PREVIEW_IMAGE_DEFAULT_HEIGHT_DP = 176
+        private const val VISIBLE_PREFETCH_THRESHOLD = 17
+        private const val PREVIEW_RAMP_BATCH_SIZE = 10
+        private const val PREVIEW_RAMP_DELAY_MS = 450L
     }
 }

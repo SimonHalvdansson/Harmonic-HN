@@ -15,6 +15,7 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -28,6 +29,39 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
+    @Test
+    fun featureRuntimeOwnsInitializationSearchAndPlatformDecisionRouting() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+        )
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L }
+        val story = Story("Shared", 42, true, false)
+        runtime.initialize(story, showWebsite = true, scrollToCommentId = 7, "new", false)
+
+        assertEquals(story, runtime.story)
+        assertEquals("new", runtime.thread.state.value.sorting)
+        assertTrue(session.showWebsite)
+        assertEquals(7, session.scrollToCommentId)
+
+        runtime.setSearchQuery("kotlin")
+        assertEquals("kotlin", runtime.thread.state.value.searchQuery)
+
+        val effect = async {
+            runtime.effects.filterIsInstance<CommentsRuntimeEffect.Platform>().first()
+        }
+        runCurrent()
+        runtime.header(CommentsHeaderAction.REPLY)
+        assertIs<CommentsPlatformEffect.RequestLogin>(effect.await().effect)
+    }
+
     @Test
     fun algoliaLoadAppliesThreadStateBeforeEmittingPlatformWork() = runTest {
         val response = """

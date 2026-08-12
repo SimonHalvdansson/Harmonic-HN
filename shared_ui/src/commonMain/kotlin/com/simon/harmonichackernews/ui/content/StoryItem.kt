@@ -62,6 +62,8 @@ import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_comment
 import com.simon.harmonichackernews.resources.ic_public
@@ -452,8 +454,9 @@ private fun StoryPreviewImage(
             animationSpec = tween(240, easing = ContentMotionEasing),
             label = "story image load",
         )
+        val request = rememberPaletteCompatibleImageRequest(model.previewImageUrl)
         AsyncImage(
-            model = model.previewImageUrl,
+            model = request,
             contentDescription = null,
             modifier = modifier.graphicsLayer {
                 alpha = loadProgress
@@ -554,8 +557,9 @@ private fun StoryMeta(
                             ),
                     )
                     if (!failed) {
+                        val request = rememberPaletteCompatibleImageRequest(model.faviconUrl)
                         AsyncImage(
-                            model = model.faviconUrl,
+                            model = request,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -604,6 +608,17 @@ private fun StoryMeta(
                 style = legacyTextStyle,
             )
         }
+    }
+}
+
+@Composable
+private fun rememberPaletteCompatibleImageRequest(url: String): ImageRequest {
+    val context = LocalPlatformContext.current
+    return remember(context, url) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .paletteCompatible()
+            .build()
     }
 }
 

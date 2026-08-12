@@ -243,7 +243,9 @@ fun CommentItem(
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
                 hiddenPreview = hiddenPreview.takeIf { textCollapsed },
-                hiddenReplyCount = hiddenReplyCount.takeIf { it > 0 && textCollapsed },
+                hiddenReplyCount = hiddenReplyCount.takeIf {
+                    it > 0 && !forceExpanded && !comment.expanded
+                },
                 emphasized = style.emphasizeMeta,
                 fontFamily = typography.family,
                 animateChanges = style.animateChanges,
