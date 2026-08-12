@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -57,6 +58,8 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
@@ -68,7 +71,7 @@ import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.content.rememberCoilPaletteTint
+import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.Date
@@ -320,11 +323,11 @@ private fun HeaderPreviewImage(
     var previewLoadFailed by remember(story.id, story.previewImageUrl) {
         mutableStateOf(story.previewImageLoadFailed)
     }
-    var loadedImage by remember(story.id, story.previewImageUrl) {
-        mutableStateOf<coil3.Image?>(null)
+    var loadedPainter by remember(story.id, story.previewImageUrl) {
+        mutableStateOf<Painter?>(null)
     }
-    val extractedTint = rememberCoilPaletteTint(
-        image = loadedImage,
+    val extractedTint = rememberPainterPaletteTint(
+        painter = loadedPainter,
         baseColorArgb = tintBaseColor,
         paletteTintConfigKey = paletteTintConfigKey,
         enabled = visible,
@@ -355,8 +358,14 @@ private fun HeaderPreviewImage(
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
+        val request = remember(context, previewUrl) {
+            ImageRequest.Builder(context)
+                .data(previewUrl)
+                .allowHardware(false)
+                .build()
+        }
         AsyncImage(
-            model = previewUrl,
+            model = request,
             contentDescription = "Story preview image",
             modifier = Modifier
                 .fillMaxWidth()
@@ -374,7 +383,7 @@ private fun HeaderPreviewImage(
                 previewLoadFailed = false
                 story.previewImageLoadFailed = false
                 onPreviewLoaded()
-                loadedImage = state.result.image
+                loadedPainter = state.painter
             },
             onError = {
                 previewLoadFailed = true

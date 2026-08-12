@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
@@ -439,9 +440,9 @@ private fun StoryPreviewImage(
 ) {
     if (model.previewImageUrl != null) {
         var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
-        var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
-        val extractedTint = rememberCoilPaletteTint(
-            image = loadedImage,
+        var loadedPainter by remember(model.previewImageUrl) { mutableStateOf<Painter?>(null) }
+        val extractedTint = rememberPainterPaletteTint(
+            painter = loadedPainter,
             baseColorArgb = tintBaseColorArgb,
             paletteTintConfigKey = paletteTintConfigKey,
             enabled = extractTint,
@@ -466,7 +467,7 @@ private fun StoryPreviewImage(
             contentScale = ContentScale.Crop,
             onSuccess = { success ->
                 loaded = true
-                loadedImage = success.result.image
+                loadedPainter = success.painter
             },
             onError = { onLoadFailed() },
         )
@@ -525,9 +526,9 @@ private fun StoryMeta(
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
                 var failed by remember(model.faviconUrl) { mutableStateOf(false) }
-                var loadedImage by remember(model.faviconUrl) { mutableStateOf<coil3.Image?>(null) }
-                val extractedTint = rememberCoilPaletteTint(
-                    image = loadedImage,
+                var loadedPainter by remember(model.faviconUrl) { mutableStateOf<Painter?>(null) }
+                val extractedTint = rememberPainterPaletteTint(
+                    painter = loadedPainter,
                     baseColorArgb = tintBaseColorArgb,
                     paletteTintConfigKey = paletteTintConfigKey,
                     enabled = extractTint,
@@ -566,7 +567,7 @@ private fun StoryMeta(
                                 .graphicsLayer(alpha = dimAlpha * loadAlpha),
                             onSuccess = { success ->
                                 loaded = true
-                                loadedImage = success.result.image
+                                loadedPainter = success.painter
                             },
                             onError = { failed = true },
                         )
