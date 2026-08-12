@@ -91,6 +91,8 @@ internal class CommentsWebViewController(
     }
 
     internal interface Callbacks {
+        fun startActivity(intent: Intent)
+
         fun syncOnBackPressedCallbackEnabledState()
 
         fun onReaderModeChanged(enabled: Boolean)
@@ -378,11 +380,11 @@ internal class CommentsWebViewController(
         try {
             val currentUrl = checkNotNull(webView?.url) { "WebView URL not available" }
             intent.data = Uri.parse(currentUrl)
-            coordinator.startActivity(intent)
+            callbacks.startActivity(intent)
         } catch (e: Exception) {
             try {
                 intent.data = Uri.parse(checkNotNull(story?.url))
-                coordinator.startActivity(intent)
+                callbacks.startActivity(intent)
             } catch (e2: Exception) {
                 Utils.toast("Couldn't open URL", coordinator.context)
             }

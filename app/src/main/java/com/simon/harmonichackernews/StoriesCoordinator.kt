@@ -23,10 +23,11 @@ import com.simon.harmonichackernews.presentation.StoriesPresenter
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
-import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
+import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.UserSettings
-import com.simon.harmonichackernews.ui.settings.SettingsIntents.create
+import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
@@ -49,6 +50,7 @@ import kotlinx.coroutines.launch
 class StoriesCoordinator(
     private val activity: MainActivity,
     savedInstanceState: Bundle?,
+    private val navigation: MainNavigationController,
     private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
     private val userSettings: UserSettings = appComposition.userSettings,
     platformDependencies: StoriesPlatformDependencies =
@@ -207,7 +209,6 @@ class StoriesCoordinator(
 
             override fun onSearchStateChanged(searching: Boolean) {
                 composeController?.endPredictiveBack()
-                activity.setSearchBackEnabled(searching)
                 syncComposeState()
             }
             override fun showFrontDatePicker() {
@@ -228,33 +229,28 @@ class StoriesCoordinator(
             savedItemActions,
             StoriesFeatureListener(storiesFeature, platformCallbacks),
         )
-        activity.attachStoriesComposeController(composeController!!)
+        navigation.attachStoriesComposeController(composeController!!)
         syncComposeState()
     }
 
     private fun handleStoriesPlatformEffect(effect: StoriesPlatformEffect) {
         when (effect) {
             StoriesPlatformEffect.OpenSettings ->
-                activity.startActivity(create(activity))
-            StoriesPlatformEffect.RequestLogin -> activity.showLoginPrompt()
+                navigation.openSettings(null)
+            StoriesPlatformEffect.RequestLogin -> navigation.showLoginDialog()
             is StoriesPlatformEffect.OpenProfile ->
-                activity.showUserDialog(effect.userName, null)
-            StoriesPlatformEffect.ShowCacheDialog -> activity.showCacheStoriesDialog()
-            StoriesPlatformEffect.OpenSubmitEditor -> {
-                val submitIntent = ComposeEditorContract.createIntent(activity)
-                submitIntent.putExtra(
-                    ComposeEditorContract.EXTRA_TYPE,
-                    ComposeEditorContract.TYPE_POST
-                )
-                activity.startActivity(submitIntent)
-            }
+                navigation.showUserDialog(effect.userName, null)
+            StoriesPlatformEffect.ShowCacheDialog -> navigation.showCacheStoriesDialog()
+            StoriesPlatformEffect.OpenSubmitEditor -> navigation.openEditor(
+                EditorDestination(type = EditorType.POST),
+            )
         }
         syncComposeState()
     }
 
     private fun handleStoriesRuntimeEffect(effect: StoriesRuntimeEffect) {
         when (effect) {
-            is StoriesRuntimeEffect.OpenStory -> activity.openStory(effect.destination)
+            is StoriesRuntimeEffect.OpenStory -> navigation.openStory(effect.destination)
             is StoriesRuntimeEffect.OpenExternalLink ->
                 externalLinks.open(ExternalLinkRequest(effect.url))
             is StoriesRuntimeEffect.Platform -> handleStoriesPlatformEffect(effect.effect)
@@ -267,14 +263,15 @@ class StoriesCoordinator(
             }
             is StoriesRuntimeEffect.CacheStories ->
                 storyCacheController?.cacheStories(effect.request)
-            StoriesRuntimeEffect.LoginRequired -> activity.showLoginPrompt()
+            StoriesRuntimeEffect.LoginRequired -> navigation.showLoginDialog()
             is StoriesRuntimeEffect.UserMessage ->
                 Toast.makeText(activity, effect.message, Toast.LENGTH_SHORT).show()
             is StoriesRuntimeEffect.SavedActionFailed -> {
                 if (effect.presentation.showDetails) {
-                    MainActivity.showFailureDetailForActiveUi(
+                    navigation.showFailureDetailDialog(
                         effect.presentation.failureSummary,
                         effect.presentation.failureDetail,
+                        null,
                     )
                 }
                 Toast.makeText(
@@ -383,7 +380,7 @@ class StoriesCoordinator(
     }
 
     private val isFoldableSplitLayout: Boolean
-        get() = !destroyed && activity.isAdaptiveFoldableNavigation
+        get() = !destroyed && navigation.isAdaptiveFoldable()
 
     fun onStart() {
         started = true
@@ -443,7 +440,7 @@ class StoriesCoordinator(
     private fun clearControllerReferences() {
         val controller = composeController
         if (controller != null) {
-            activity.detachStoriesComposeController(controller)
+            navigation.detachStoriesComposeController(controller)
         }
         if (storyCacheController != null) {
             storyCacheController!!.dispose()

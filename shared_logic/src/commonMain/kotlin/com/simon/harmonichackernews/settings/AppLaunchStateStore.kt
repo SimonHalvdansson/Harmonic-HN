@@ -7,6 +7,12 @@ object AppLaunchPreferenceKeys {
     const val LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
 }
 
+enum class AppLaunchDialog {
+    NONE,
+    WELCOME,
+    CHANGELOG,
+}
+
 /** Portable one-time welcome and app-upgrade state backed by a platform key-value store. */
 class AppLaunchStateStore(
     private val preferences: KeyValueStore,
@@ -23,5 +29,18 @@ class AppLaunchStateStore(
         if (currentVersion <= previousVersion) return false
         preferences.putInt(AppLaunchPreferenceKeys.LAST_VERSION, currentVersion)
         return true
+    }
+
+    fun consumeLaunchDialog(
+        currentVersion: Int,
+        showChangelog: Boolean,
+    ): AppLaunchDialog {
+        val showWelcome = shouldShowWelcomeDialog
+        val upgraded = consumeVersionUpgrade(currentVersion)
+        return when {
+            showWelcome -> AppLaunchDialog.WELCOME
+            upgraded && showChangelog -> AppLaunchDialog.CHANGELOG
+            else -> AppLaunchDialog.NONE
+        }
     }
 }

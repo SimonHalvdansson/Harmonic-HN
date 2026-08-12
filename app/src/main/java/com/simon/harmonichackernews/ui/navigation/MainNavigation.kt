@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.navigation
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -83,6 +84,7 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
@@ -131,6 +133,9 @@ import com.simon.harmonichackernews.navigation.MainUserRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.AppLaunchDialog
+import com.simon.harmonichackernews.settings.AppLaunchStateStore
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.Utils
 import java.util.concurrent.CancellationException
@@ -260,6 +265,12 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     fun openStory(destination: StoryDestination) {
+        if (
+            commentsCoordinator?.switchStoryViewIfMatching(
+                destination.storyId,
+                destination.showWebsite,
+            ) == true
+        ) return
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
         navigationState.openStory(destination)
@@ -437,11 +448,6 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         syncNavigationState()
     }
 
-    fun switchOpenStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean =
-        commentsCoordinator?.switchStoryViewIfMatching(storyId, showWebsite) == true
-
-    fun getStoriesCoordinator(): StoriesCoordinator? = storiesCoordinator
-
     fun getCommentsCoordinator(): CommentsCoordinator? = commentsCoordinator
 
     fun isAdaptiveTwoPane(): Boolean = adaptiveTwoPane
@@ -451,6 +457,20 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     fun attachStoriesCoordinator(coordinator: StoriesCoordinator) {
         storiesCoordinator = coordinator
     }
+
+    fun onStart() = storiesCoordinator?.onStart()
+
+    fun onResume() = storiesCoordinator?.onResume()
+
+    fun onStop() = storiesCoordinator?.onStop()
+
+    fun onDestroy() = storiesCoordinator?.onDestroy()
+
+    fun onConfigurationChanged(newConfig: Configuration) {
+        commentsCoordinator?.onConfigurationChanged(newConfig)
+    }
+
+    fun applySettingsChanges() = storiesCoordinator?.onResume()
 
     internal fun detachStoriesCoordinator(coordinator: StoriesCoordinator) {
         if (storiesCoordinator === coordinator) storiesCoordinator = null
@@ -527,6 +547,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     }
 
     fun saveState(outState: Bundle) {
+        storiesCoordinator?.onSaveInstanceState(outState)
         storyRequest?.let { request ->
             outState.putInt(STATE_REQUEST_SERIAL, request.serial)
             outState.putInt(STATE_STORY_ID, request.route.storyId)
@@ -620,6 +641,23 @@ object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
         val controller = MainNavigationController(savedState)
+        when (
+            AppLaunchStateStore(AndroidKeyValueStore.global(activity)).consumeLaunchDialog(
+                currentVersion = BuildConfig.VERSION_CODE,
+                showChangelog = AndroidUserSettings.get(activity).general.showChangelog,
+            )
+        ) {
+            AppLaunchDialog.WELCOME -> controller.showWelcomeDialog()
+            AppLaunchDialog.CHANGELOG -> controller.showChangelogDialog()
+            AppLaunchDialog.NONE -> Unit
+        }
+        val storiesCoordinator = StoriesCoordinator(
+            activity = activity,
+            savedInstanceState = savedState,
+            navigation = controller,
+        )
+        controller.attachStoriesCoordinator(storiesCoordinator)
+        storiesCoordinator.composeController?.let(controller::attachStoriesComposeController)
         val composeView = ComposeView(activity).apply {
             id = R.id.main_navigation_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -883,7 +921,7 @@ private fun MainNavigation(
         if (needsRestart) {
             activity.restartAfterSettingsChange()
         } else {
-            activity.applySettingsChanges()
+            controller.applySettingsChanges()
         }
     }
 
@@ -1015,6 +1053,31 @@ private fun MainNavigation(
             controller.closeCoulombGas()
         } catch (_: CancellationException) {
             // A cancelled gesture leaves the simulation open.
+        }
+    }
+
+    val storiesController = controller.storiesComposeController
+    PredictiveBackHandler(
+        enabled = storiesController?.searching == true &&
+            storyRequest == null &&
+            settingsRequest == null &&
+            submissionsRequest == null &&
+            editorRequest == null &&
+            !coulombGasVisible,
+    ) { events ->
+        val searchController = storiesController ?: return@PredictiveBackHandler
+        var started = false
+        try {
+            events.collect { event ->
+                if (started) {
+                    searchController.updateSearchBack(event.progress)
+                } else {
+                    started = searchController.startSearchBack(event.progress)
+                }
+            }
+            searchController.finishSearchBack()
+        } catch (_: CancellationException) {
+            if (started) searchController.cancelSearchBack()
         }
     }
 
@@ -1214,7 +1277,7 @@ private fun MainNavigation(
                                 navigator = SubmissionsCoordinator.Navigator { destination ->
                                     controller.prepareToOpenStoryFromSubmissions()
                                     controller.closeSettings()
-                                    activity.openStory(destination)
+                                    controller.openStory(destination)
                                 },
                             )
                         }
@@ -1274,6 +1337,7 @@ private fun MainNavigation(
                                 ComposeEditorCoordinator(
                                     activity,
                                     request.destination,
+                                    controller,
                                     controller::closeEditor,
                                 )
                             }
@@ -1523,6 +1587,7 @@ private fun CommentsPane(
             request.destination,
             request.serial,
             controller.consumeCommentsSavedState(request.serial),
+            navigation = controller,
         )
         coordinator = activeCoordinator
         controller.attachCommentsCoordinator(activeCoordinator)

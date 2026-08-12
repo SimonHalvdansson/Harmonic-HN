@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.platform.AndroidConnectivityService
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
+import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class ComposeEditorCoordinator(
     private val activity: MainActivity,
     destination: EditorDestination,
+    private val navigation: MainNavigationController,
     private val onFinished: () -> Unit,
 ) {
     private val id = destination.itemId
@@ -64,12 +66,12 @@ class ComposeEditorCoordinator(
                 ).show()
                 onFinished()
             }
-            is EditorWorkflowResult.Failure -> activity.showFailureDetailDialog(
+            is EditorWorkflowResult.Failure -> navigation.showFailureDetailDialog(
                 result.title,
                 result.message,
                 result.commentDraft,
             )
-            is EditorWorkflowResult.Captcha -> activity.showCaptchaDialog(
+            is EditorWorkflowResult.Captcha -> navigation.showCaptchaDialog(
                 result.challenge,
                 object : CaptchaResultCallback {
                     override fun onCaptchaResponse(

@@ -25,7 +25,6 @@ import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.AndroidLocalStorySummaryBackend
@@ -52,7 +51,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
-import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
+import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -74,6 +73,7 @@ class CommentsCoordinator(
     private val destination: StoryDestination,
     sessionKey: Int,
     savedInstanceState: Bundle?,
+    private val navigation: MainNavigationController,
     private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
     private val platformDependencies: CommentsPlatformDependencies =
         appComposition.commentsPlatformDependencies(),
@@ -214,10 +214,6 @@ class CommentsCoordinator(
     val isAdded: Boolean
         get() = !destroyed
 
-    fun startActivity(intent: Intent) {
-        activity.startActivity(intent)
-    }
-
     private fun initializeView(savedInstanceState: Bundle?) {
         val view = this.webViewRoot
         val restoredSorting = savedInstanceState?.getString(STATE_COMMENT_SORTING)
@@ -281,6 +277,10 @@ class CommentsCoordinator(
             story,
             linkPreviewController!!,
             object : CommentsWebViewController.Callbacks {
+                override fun startActivity(intent: Intent) {
+                    activity.startActivity(intent)
+                }
+
                 override fun syncOnBackPressedCallbackEnabledState() {
                     this@CommentsCoordinator.syncOnBackPressedCallbackEnabledState()
                 }
@@ -443,7 +443,7 @@ class CommentsCoordinator(
                     return
                 }
 
-                requireActivity().closeStory()
+                navigation.closeStory()
             }
 
             fun willExpandBottomSheetOnBack(): Boolean {
@@ -665,7 +665,7 @@ class CommentsCoordinator(
             commentsPresenter.savedItemState,
             CommentsFeatureListener(commentsFeature, platformCallbacks),
         )
-        activity.attachCommentsComposeController(composeController!!)
+        navigation.attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
         if (restoringSession && restoringStoredProgress) restoreScrollProgress()
@@ -739,16 +739,13 @@ class CommentsCoordinator(
 
     private fun handleCommentsPlatformEffect(effect: CommentsPlatformEffect) {
         when (effect) {
-            is CommentsPlatformEffect.OpenUser -> requireActivity().showUserDialog(
+            is CommentsPlatformEffect.OpenUser -> navigation.showUserDialog(
                 effect.userName,
                 Runnable { commentsFeature.reconcileSettings() },
             )
-            is CommentsPlatformEffect.OpenEditor -> startActivity(
-                ComposeEditorContract.createIntent(requireContext())
-                    .putExtras(effect.destination.toBundle()),
-            )
+            is CommentsPlatformEffect.OpenEditor -> navigation.openEditor(effect.destination)
             CommentsPlatformEffect.RequestLogin ->
-                requireActivity().showLoginPrompt()
+                navigation.showLoginDialog()
             is CommentsPlatformEffect.ShowMessage -> Toast.makeText(
                 requireContext(),
                 effect.message,
@@ -770,7 +767,7 @@ class CommentsCoordinator(
                 linkPreviewController?.loadNetworkPreviews(context)
             CommentsPlatformEffect.Summarize -> requestComposeSummary()
             is CommentsPlatformEffect.OpenStory ->
-                activity.openStory(effect.destination)
+                navigation.openStory(effect.destination)
             is CommentsPlatformEffect.OpenExternalLink -> externalLinks.open(
                 ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
             )
@@ -868,7 +865,7 @@ class CommentsCoordinator(
             return
         }
         val windowStatusBarColor =
-            if (activity.isAdaptiveTwoPaneNavigation ||
+            if (navigation.isAdaptiveTwoPane() ||
                 commentsFeature.settingsState.value?.transparentStatusBar == true
             )
                 Color.TRANSPARENT
@@ -1108,7 +1105,7 @@ class CommentsCoordinator(
             webViewController!!.onDestroyView(rootView)
         }
         if (controllerToDetach != null) {
-            activity.detachCommentsComposeController(controllerToDetach)
+            navigation.detachCommentsComposeController(controllerToDetach)
         }
 
         clearViewReferences()
@@ -1208,11 +1205,12 @@ class CommentsCoordinator(
         presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
     ) {
         val context = context ?: return
-        if (presentation.requestLogin) requireActivity().showLoginPrompt()
+        if (presentation.requestLogin) navigation.showLoginDialog()
         if (presentation.showDetails) {
-            requireActivity().showFailureDetailDialog(
+            navigation.showFailureDetailDialog(
                 presentation.failureSummary,
                 presentation.failureDetail,
+                null,
             )
         }
         Toast.makeText(

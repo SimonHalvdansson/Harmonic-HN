@@ -12,11 +12,11 @@ import android.util.Log
 import android.util.TypedValue
 import android.widget.Toast
 import androidx.preference.PreferenceManager
-import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheRepository
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
@@ -163,17 +163,8 @@ object Utils {
         return AndroidStoryCacheRepositories.get(context)
     }
 
-    fun shouldShowWelcomeDialog(ctx: Context): Boolean {
-        return AppLaunchStateStore(AndroidKeyValueStore.global(ctx)).shouldShowWelcomeDialog
-    }
-
     fun markWelcomeDialogShown(ctx: Context) {
         AppLaunchStateStore(AndroidKeyValueStore.global(ctx)).markWelcomeDialogShown()
-    }
-
-    fun justUpdated(ctx: Context): Boolean {
-        return AppLaunchStateStore(AndroidKeyValueStore.global(ctx))
-            .consumeVersionUpgrade(BuildConfig.VERSION_CODE)
     }
 
     fun isOnWiFi(ctx: Context): Boolean {
@@ -240,7 +231,13 @@ object Utils {
     }
 
     fun openCommentsActivity(id: Int, scrollToCommentId: Int, context: Context) {
-        if (context is MainActivity && context.openCommentsItem(id, scrollToCommentId)) {
+        if (context is MainActivity && id > 0) {
+            context.navigationController.openStory(
+                StoryDestination(
+                    storyId = id,
+                    scrollToCommentId = scrollToCommentId,
+                ),
+            )
             return
         }
         val builder = Uri.parse("https://news.ycombinator.com/item").buildUpon()
