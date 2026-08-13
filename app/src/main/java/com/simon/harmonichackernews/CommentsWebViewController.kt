@@ -58,11 +58,17 @@ import com.simon.harmonichackernews.presentation.WebContentAssets
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.presentation.ReaderModePageDecision
-import com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol
+import com.simon.harmonichackernews.presentation.ReaderModeAvailabilityCadence
+import com.simon.harmonichackernews.presentation.ReaderModeSourceAssembler
 import com.simon.harmonichackernews.presentation.ReaderModeScriptStatus
 import com.simon.harmonichackernews.presentation.ReaderModeTheme
 import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
 import com.simon.harmonichackernews.presentation.WebContentRuntime
+import com.simon.harmonichackernews.presentation.WebContentCopy
+import com.simon.harmonichackernews.presentation.WebContentController
+import com.simon.harmonichackernews.presentation.WebContentDriver
+import com.simon.harmonichackernews.presentation.WebContentDriverState
+import com.simon.harmonichackernews.presentation.WebContentTiming
 import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
@@ -74,20 +80,19 @@ import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.cache.SharedStoryCacheService
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
-import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.io.RandomAccessFile
-import java.nio.charset.StandardCharsets
-import java.util.Locale
 import kotlin.math.min
 import com.simon.harmonichackernews.serialization.JsonStringCodec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 internal class CommentsWebViewController(
     private val coordinator: CommentsCoordinator,
@@ -139,6 +144,8 @@ internal class CommentsWebViewController(
     private var matchWebviewTheme = true
     private lateinit var readingPreferences: ReadingPreferences
     private val readerMode = webContentRuntime.reader
+    private val webContentDriver = AndroidWebContentDriver()
+    private val webContentController = WebContentController(webContentRuntime, webContentDriver)
     private val readerModeFeatureEnabled: Boolean get() = readerMode.state.featureEnabled
     var isBlockingAds: Boolean = true
         private set
@@ -160,12 +167,7 @@ internal class CommentsWebViewController(
     private var retryingFailedWebViewUrl = false
     val isReaderModeAvailable: Boolean get() = readerMode.state.available
     private val readerModeEnabled: Boolean get() = readerMode.state.enabled
-    private var readerModeInitialAvailabilityGraceUsed = false
-    private var readerModeInitialAvailabilityGraceGeneration = -1
-    private var readerModeUnavailableDelayGeneration = -1
-    private var readerModeAvailabilityRecheckGeneration = -1
-    private var readerModeAvailabilityRecheckUsed = false
-    private var readerModeInitialAvailabilityGraceStartedAtMs = 0L
+    private val readerModeAvailabilityCadence = ReaderModeAvailabilityCadence()
     private var touchGestureStartScrollX = 0
     private var touchGestureStartScrollY = 0
     private var touchGestureStartScrollCaptured = false
@@ -201,7 +203,7 @@ internal class CommentsWebViewController(
         this.preloadWebviewMinimumBattery = readingPreferences.preloadWebViewMinimumBattery
         this.matchWebviewTheme = readingPreferences.matchWebViewTheme
         updateReaderModeState {
-            readerMode.configure(
+            webContentController.configureReader(
                 readingPreferences.readerModeEnabled,
                 integratedWebview,
                 readingPreferences.readerModeDefault,
@@ -234,26 +236,10 @@ internal class CommentsWebViewController(
     }
 
     fun getLoadedPageText(callback: PageTextCallback) {
-        val targetWebView = webView
-        if (!canReadLoadedPageText(targetWebView)) {
-            callback.onResult(null)
-            return
-        }
-
-        val generation = webContentLoad.state.generation
-        checkNotNull(targetWebView).evaluateJavascript(
-            "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
-            ValueCallback { result: String? ->
-                if (generation != webContentLoad.state.generation || !canReadLoadedPageText(targetWebView)) {
-                    callback.onResult(null)
-                    return@ValueCallback
-                }
-                callback.onResult(decodeJavascriptString(result))
-            }
-        )
+        webContentController.readPageText(callback::onResult)
     }
 
-    fun canGoBack(): Boolean = webView?.canGoBack() == true
+    fun canGoBack(): Boolean = webContentDriver.currentState().canGoBack
 
     val isShowingCustomView: Boolean
         get() = customView != null
@@ -362,11 +348,11 @@ internal class CommentsWebViewController(
     fun retryLastFailedUrl() {
         val failedUrl = lastFailedWebViewUrl?.takeUnless(String::isEmpty) ?: return
         retryingFailedWebViewUrl = true
-        loadUrl(failedUrl)
+        webContentController.load(failedUrl, readingPreferences.archiveRedirectDomains)
     }
 
     fun reload() {
-        webView?.reload()
+        webContentController.reload()
     }
 
     fun openCurrentOrStoryUrlInBrowser() {
@@ -380,7 +366,7 @@ internal class CommentsWebViewController(
                 intent.data = Uri.parse(checkNotNull(story?.url))
                 callbacks.startActivity(intent)
             } catch (e2: Exception) {
-                coordinator.showMessage("Couldn't open URL")
+                coordinator.showMessage(WebContentCopy.OPEN_URL_FAILED)
             }
         }
     }
@@ -390,7 +376,7 @@ internal class CommentsWebViewController(
         val currentWebView = webView ?: return
         currentWebView.reload()
 
-        coordinator.showMessage("Disabled AdBlock, refreshing WebView")
+        coordinator.showMessage(WebContentCopy.AD_BLOCK_DISABLED)
     }
 
     fun toggleReaderMode() {
@@ -406,7 +392,7 @@ internal class CommentsWebViewController(
 
         val currentUrl = currentWebView.url
         if (showingErrorPage || PDF_LOADER_URL == currentUrl || isErrorPageUrl(currentUrl)) {
-            coordinator.showMessage("Reader mode unavailable for this page")
+            coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
             return
         }
 
@@ -420,7 +406,7 @@ internal class CommentsWebViewController(
             )
         }) {
             ReaderModeToggleDecision.Unavailable -> {
-                coordinator.showMessage("Reader mode unavailable for this page")
+                coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
                 return
             }
             ReaderModeToggleDecision.LoadThenEnable -> {
@@ -428,7 +414,7 @@ internal class CommentsWebViewController(
                     startedLoading = true
                     loadUrl(story?.url)
                 }
-                coordinator.showMessage("Reader mode will open after the page loads")
+                coordinator.showMessage(WebContentCopy.READER_PENDING)
                 return
             }
             is ReaderModeToggleDecision.Apply -> applyReaderMode(decision.enabled)
@@ -450,54 +436,50 @@ internal class CommentsWebViewController(
         if (TextUtils.isEmpty(script)) {
             setReaderModeUnavailableNow()
             if (showFeedback) {
-                coordinator.showMessage("Reader mode unavailable")
+                coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE)
             }
             return
         }
 
-        val command = ReaderModeScriptProtocol.applyCommand(
+        val generation = webContentLoad.state.generation
+        webContentController.evaluateReaderMode(
             script = script.orEmpty(),
             theme = getReaderModeTheme(context),
             enabled = enable,
-        )
-        val generation = webContentLoad.state.generation
-        targetWebView.evaluateJavascript(command, ValueCallback { result: String? ->
+        ) { status ->
             val callbackContext = coordinator.context
             if (callbackContext == null || targetWebView !== webView || generation != webContentLoad.state.generation || coordinator.view == null) {
-                return@ValueCallback
+                return@evaluateReaderMode
             }
 
-            val status = ReaderModeScriptProtocol.parseStatus(result)
             when (status) {
                 ReaderModeScriptStatus.ENABLED,
                 ReaderModeScriptStatus.DISABLED -> {
-                    readerModeInitialAvailabilityGraceGeneration = -1
-                    readerModeUnavailableDelayGeneration = -1
-                    readerModeAvailabilityRecheckGeneration = -1
+                    readerModeAvailabilityCadence.onAvailable()
                     updateReaderModeState { readerMode.applyResult(status) }
                 }
                 ReaderModeScriptStatus.NO_ARTICLE -> {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     setReaderModeEnabled(false)
                     if (showFeedback) {
-                        coordinator.showMessage("Couldn't find readable article")
+                        coordinator.showMessage(WebContentCopy.READER_NO_ARTICLE)
                     }
                 }
                 ReaderModeScriptStatus.UNAVAILABLE -> {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     setReaderModeEnabled(false)
                     if (showFeedback) {
-                        coordinator.showMessage("Reader mode unavailable for this page")
+                        coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
                     }
                 }
                 ReaderModeScriptStatus.FAILED -> {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     if (showFeedback) {
-                        coordinator.showMessage("Couldn't open reader mode")
+                        coordinator.showMessage(WebContentCopy.READER_OPEN_FAILED)
                     }
                 }
             }
-        })
+        }
     }
 
     private fun checkReaderModeAvailability(view: WebView, generation: Int) {
@@ -513,20 +495,18 @@ internal class CommentsWebViewController(
             return
         }
 
-        view.evaluateJavascript(
-            ReaderModeScriptProtocol.availabilityCommand(script.orEmpty()),
-            ValueCallback { result: String? ->
-                val callbackContext = coordinator.context
-                if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
-                    return@ValueCallback
-                }
-                if (ReaderModeScriptProtocol.isAvailable(result)) {
-                    setReaderModeConfirmedAvailable()
-                } else {
-                    setReaderModeUnavailableRespectingInitialGrace(generation)
-                    scheduleReaderModeAvailabilityRecheck(view, generation)
-                }
-            })
+        webContentController.evaluateReaderModeAvailability(script.orEmpty()) { available ->
+            val callbackContext = coordinator.context
+            if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
+                return@evaluateReaderModeAvailability
+            }
+            if (available) {
+                setReaderModeConfirmedAvailable()
+            } else {
+                setReaderModeUnavailableRespectingInitialGrace(generation)
+                scheduleReaderModeAvailabilityRecheck(view, generation)
+            }
+        }
     }
 
     private fun canCheckReaderModeAvailability(
@@ -543,91 +523,68 @@ internal class CommentsWebViewController(
     }
 
     private fun setReaderModeConfirmedAvailable() {
-        readerModeInitialAvailabilityGraceGeneration = -1
-        readerModeUnavailableDelayGeneration = -1
-        readerModeAvailabilityRecheckGeneration = -1
+        readerModeAvailabilityCadence.onAvailable()
         updateReaderModeState { readerMode.confirmAvailable() }
     }
 
     private fun setReaderModeUnavailableNow() {
-        readerModeInitialAvailabilityGraceGeneration = -1
-        readerModeUnavailableDelayGeneration = -1
+        readerModeAvailabilityCadence.onUnavailableNow()
         updateReaderModeState { readerMode.setUnavailable() }
     }
 
     private fun setReaderModeUnavailableRespectingInitialGrace(generation: Int) {
-        if (!isReaderModeInitialAvailabilityGraceActive(generation)) {
+        val remaining = readerModeAvailabilityCadence.unavailableDelayMillis(
+            generation,
+            SystemClock.uptimeMillis(),
+        )
+        if (remaining == null) {
             setReaderModeUnavailableNow()
             return
         }
 
-        val elapsed = SystemClock.uptimeMillis() - readerModeInitialAvailabilityGraceStartedAtMs
-        val remaining: Long = READER_MODE_INITIAL_AVAILABILITY_GRACE_MS - elapsed
-        if (remaining <= 0) {
-            setReaderModeUnavailableNow()
-            return
-        }
-
-        readerModeUnavailableDelayGeneration = generation
         webViewHandler.postDelayed(Runnable {
-            if (readerModeUnavailableDelayGeneration == generation && generation == webContentLoad.state.generation && isReaderModeInitialAvailabilityGraceActive(
-                    generation
-                )
-            ) {
+            if (readerModeAvailabilityCadence.shouldApplyDelayedUnavailable(
+                    generation,
+                    webContentLoad.state.generation,
+                )) {
                 setReaderModeUnavailableNow()
             }
         }, remaining)
     }
 
     private fun scheduleReaderModeAvailabilityRecheck(view: WebView, generation: Int) {
-        if (readerModeAvailabilityRecheckUsed
-            || view !== webView || generation != webContentLoad.state.generation
-        ) {
+        if (view !== webView || !readerModeAvailabilityCadence.scheduleRecheck(
+                generation,
+                webContentLoad.state.generation,
+            )) {
             return
         }
 
-        readerModeAvailabilityRecheckUsed = true
-        readerModeAvailabilityRecheckGeneration = generation
         webViewHandler.postDelayed(Runnable {
-            if (readerModeAvailabilityRecheckGeneration == generation && generation == webContentLoad.state.generation && view === webView) {
+            if (view === webView && readerModeAvailabilityCadence.shouldRunRecheck(
+                    generation,
+                    webContentLoad.state.generation,
+                )) {
                 checkReaderModeAvailability(view, generation)
             }
-        }, READER_MODE_AVAILABILITY_RECHECK_DELAY_MS)
+        }, WebContentTiming.READER_AVAILABILITY_RECHECK_DELAY_MILLIS)
     }
 
     private fun updateReaderModeAvailabilityForLoadStart(url: String?, generation: Int) {
-        readerModeAvailabilityRecheckGeneration = -1
-        readerModeAvailabilityRecheckUsed = false
-        if (!readerModeFeatureEnabled || !integratedWebview || TextUtils.isEmpty(url)
-            || PDF_LOADER_URL == url
-            || isErrorPageUrl(url)
-        ) {
-            readerModeInitialAvailabilityGraceGeneration = -1
-            readerModeUnavailableDelayGeneration = -1
+        val eligible = readerModeFeatureEnabled && integratedWebview && !TextUtils.isEmpty(url) &&
+            PDF_LOADER_URL != url && !isErrorPageUrl(url)
+        val initiallyAvailable = readerModeAvailabilityCadence.onLoadStarted(
+            generation = generation,
+            eligible = eligible,
+            nowMillis = SystemClock.uptimeMillis(),
+        )
+        if (!eligible) {
             updateReaderModeState { readerMode.onIneligiblePageLoadStarted() }
             return
         }
-
-        if (!readerModeInitialAvailabilityGraceUsed || this.isReaderModeInitialAvailabilityGraceActive) {
-            if (!readerModeInitialAvailabilityGraceUsed) {
-                readerModeInitialAvailabilityGraceUsed = true
-                readerModeInitialAvailabilityGraceStartedAtMs = SystemClock.uptimeMillis()
-            }
-            readerModeInitialAvailabilityGraceGeneration = generation
-            updateReaderModeState { readerMode.onEligiblePageLoadStarted(initiallyAvailable = true) }
-        } else {
-            updateReaderModeState { readerMode.onEligiblePageLoadStarted(initiallyAvailable = false) }
+        updateReaderModeState {
+            readerMode.onEligiblePageLoadStarted(initiallyAvailable = initiallyAvailable)
         }
-    }
-
-    private val isReaderModeInitialAvailabilityGraceActive: Boolean
-        get() = readerModeInitialAvailabilityGraceGeneration >= 0
-                && (SystemClock.uptimeMillis() - readerModeInitialAvailabilityGraceStartedAtMs
-                < READER_MODE_INITIAL_AVAILABILITY_GRACE_MS)
-
-    private fun isReaderModeInitialAvailabilityGraceActive(generation: Int): Boolean {
-        return readerModeInitialAvailabilityGraceGeneration == generation
-                && this.isReaderModeInitialAvailabilityGraceActive
     }
 
     private fun setReaderModeEnabled(enabled: Boolean) {
@@ -639,7 +596,7 @@ internal class CommentsWebViewController(
         change()
         val current = readerMode.state
         if (previous.available != current.available) {
-            if (current.available) readerModeUnavailableDelayGeneration = -1
+            if (current.available) readerModeAvailabilityCadence.onAvailable()
             callbacks.onReaderModeAvailabilityChanged(current.available)
         }
         if (previous.enabled != current.enabled) {
@@ -661,10 +618,10 @@ internal class CommentsWebViewController(
         }
 
         try {
-            val builder = StringBuilder()
-            appendAssetFile(context, READER_MODE_READABILITY_SCRIPT_ASSET, builder)
-            appendAssetFile(context, READER_MODE_SCRIPT_ASSET, builder)
-            readerModeScript = builder.toString()
+            readerModeScript = ReaderModeSourceAssembler.script(
+                readabilitySource = readAssetFile(context, READER_MODE_READABILITY_SCRIPT_ASSET),
+                readerModeSource = readAssetFile(context, READER_MODE_SCRIPT_ASSET),
+            )
             return readerModeScript
         } catch (e: IOException) {
             Log.e("MY_APP_TAG", "Failed to load reader mode script", e)
@@ -673,16 +630,8 @@ internal class CommentsWebViewController(
     }
 
     @Throws(IOException::class)
-    private fun appendAssetFile(context: Context, assetPath: String, builder: StringBuilder) {
-        context.getAssets().open(assetPath).use { inputStream ->
-            BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8)).use { reader ->
-                var line: String?
-                while ((reader.readLine().also { line = it }) != null) {
-                    builder.append(line).append('\n')
-                }
-            }
-        }
-    }
+    private fun readAssetFile(context: Context, assetPath: String): String =
+        context.assets.open(assetPath).bufferedReader(Charsets.UTF_8).use { it.readText() }
 
     private fun getReaderModeTheme(context: Context): ReaderModeTheme {
         var backgroundColor = Color.TRANSPARENT
@@ -729,21 +678,17 @@ internal class CommentsWebViewController(
 
         return ReaderModeTheme(
             light = isLightMode,
-            backgroundColor = colorToCss(backgroundColor),
-            textColor = colorToCss(textColor),
-            headingColor = colorToCss(headingColor),
-            secondaryTextColor = colorToCss(secondaryTextColor),
-            linkColor = colorToCss(linkColor),
-            dividerColor = colorToCss(dividerColor),
-            codeBackgroundColor = colorToCss(codeBackgroundColor),
+            backgroundColor = ReaderModeSourceAssembler.cssColor(backgroundColor),
+            textColor = ReaderModeSourceAssembler.cssColor(textColor),
+            headingColor = ReaderModeSourceAssembler.cssColor(headingColor),
+            secondaryTextColor = ReaderModeSourceAssembler.cssColor(secondaryTextColor),
+            linkColor = ReaderModeSourceAssembler.cssColor(linkColor),
+            dividerColor = ReaderModeSourceAssembler.cssColor(dividerColor),
+            codeBackgroundColor = ReaderModeSourceAssembler.cssColor(codeBackgroundColor),
             fontFaceCss = readerModeFontFaceCss,
             font = readerModeFont,
             fontSizePx = readerModeFontSize,
         )
-    }
-
-    private fun colorToCss(color: Int): String {
-        return String.format(Locale.US, "#%06X", 0xFFFFFF and color)
     }
 
     private fun getReaderModeFontFaceCss(context: Context, font: String?): String {
@@ -800,8 +745,7 @@ internal class CommentsWebViewController(
             return ""
         }
 
-        return ("@font-face{font-family:'HarmonicReaderFont';font-style:normal;font-weight:400;src:url(" + regularFontData + ") format('truetype');}"
-                + "@font-face{font-family:'HarmonicReaderFont';font-style:normal;font-weight:700;src:url(" + boldFontData + ") format('truetype');}")
+        return ReaderModeSourceAssembler.fontFaceCss(regularFontData, boldFontData)
     }
 
     private fun getFontDataUrl(context: Context, fontResource: Int): String {
@@ -813,9 +757,8 @@ internal class CommentsWebViewController(
                 while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
                     outputStream.write(buffer, 0, bytesRead)
                 }
-                return "data:font/ttf;base64," + Base64.encodeToString(
-                    outputStream.toByteArray(),
-                    Base64.NO_WRAP
+                return ReaderModeSourceAssembler.fontDataUrl(
+                    Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP),
                 )
             }
         } catch (e: IOException) {
@@ -963,7 +906,8 @@ internal class CommentsWebViewController(
             return
         }
 
-        val generation = webContentLoad.begin()
+        val generation = webContentController.onLoadStarted()
+        webContentDriver.publish(url = url, loading = true, pageReady = false)
 
         webViewBackdrop?.apply {
             removeCallbacks(webViewBackdropFadeInRunnable)
@@ -977,7 +921,7 @@ internal class CommentsWebViewController(
 
         webViewHandler.postDelayed(
             Runnable { handleWebViewLoadTimeout(view, url, generation) },
-            WEBVIEW_LOAD_TIMEOUT_MS
+            WebContentTiming.LOAD_TIMEOUT_MILLIS
         )
     }
 
@@ -1004,7 +948,7 @@ internal class CommentsWebViewController(
             if (webContentLoad.shouldSettleCommittedLoad(generation)) {
                 finishWebViewLoadUi(view, generation, false)
             }
-        }, WEBVIEW_VISIBLE_LOAD_GRACE_MS)
+        }, WebContentTiming.VISIBLE_LOAD_GRACE_MILLIS)
     }
 
     private fun showWebViewProgress(progress: Int) {
@@ -1050,9 +994,17 @@ internal class CommentsWebViewController(
     }
 
     private fun finishWebViewLoadUi(view: WebView, generation: Int, completeProgress: Boolean) {
-        if (view !== webView || !webContentLoad.finish(generation)) {
+        if (view !== webView || !webContentController.onLoadFinished(generation)) {
             return
         }
+        webContentDriver.publish(
+            url = view.url,
+            loading = false,
+            pageReady = true,
+            canGoBack = view.canGoBack(),
+            showingError = showingErrorPage,
+            showingCachedContent = showingCachedArticlePage,
+        )
 
         view.setBackgroundColor(Color.WHITE)
         hideWebViewLoadingBackdrop()
@@ -1146,7 +1098,7 @@ internal class CommentsWebViewController(
     }
 
     fun loadStoryUrl() {
-        loadUrl(story?.url)
+        webContentController.load(story?.url, readingPreferences.archiveRedirectDomains)
     }
 
     private fun showCustomView(view: View, callback: CustomViewCallback) {
@@ -1377,7 +1329,7 @@ internal class CommentsWebViewController(
                                 url.orEmpty(),
                             )
                         ) {
-                            coordinator.showMessage("Couldn't open download link")
+                            coordinator.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
                         }
                     }
                 }
@@ -1399,7 +1351,7 @@ internal class CommentsWebViewController(
         val generation = ++pendingSummaryGeneration
         webViewHandler.postDelayed(
             Runnable { finishPendingSummary(generation, "", null) },
-            SUMMARY_LOAD_TIMEOUT_MS
+            WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS
         )
 
         val currentWebView = webView
@@ -1485,7 +1437,7 @@ internal class CommentsWebViewController(
         showingCachedArticlePage = true
         view.stopLoading()
         clearWebViewHistoryOnNextFinish = true
-        coordinator.showMessage("Showing cached webview content")
+        coordinator.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
         view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
         return true
     }
@@ -1497,7 +1449,8 @@ internal class CommentsWebViewController(
     private fun destroy(rendererProcessGone: Boolean) {
         cancelProgressAnimator()
         currentPdfFilePath = null
-        webContentLoad.reset()
+        webContentController.reset()
+        webContentDriver.publish(WebContentDriverState())
         pendingSummaryOnDone = null
         webViewHandler.removeCallbacksAndMessages(null)
         linkPreviewController.cancelPendingNitterLinkPreviewRead()
@@ -1589,6 +1542,78 @@ internal class CommentsWebViewController(
         customViewCallback = null
         pdfAndroidJavascriptBridge = null
         currentPdfFilePath = null
+        webContentDriver.publish(WebContentDriverState())
+    }
+
+    /** Native WebView adapter for the shared web-content controller. */
+    private inner class AndroidWebContentDriver : WebContentDriver {
+        private val mutableState = MutableStateFlow(WebContentDriverState())
+        override val state: StateFlow<WebContentDriverState> = mutableState.asStateFlow()
+
+        override fun load(url: String) = loadUrl(url)
+
+        override fun reload() {
+            webView?.reload()
+        }
+
+        override fun goBack(): Boolean {
+            val view = webView?.takeIf { it.canGoBack() } ?: return false
+            view.goBack()
+            return true
+        }
+
+        override fun evaluateJavaScript(script: String, onResult: (String?) -> Unit) {
+            webView?.evaluateJavascript(script, ValueCallback { onResult(it) }) ?: onResult(null)
+        }
+
+        override fun readPageText(onResult: (String?) -> Unit) {
+            val targetWebView = webView
+            if (!canReadLoadedPageText(targetWebView)) {
+                onResult(null)
+                return
+            }
+            val generation = webContentLoad.state.generation
+            checkNotNull(targetWebView).evaluateJavascript(
+                "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
+            ) { result ->
+                if (generation != webContentLoad.state.generation ||
+                    !canReadLoadedPageText(targetWebView)
+                ) {
+                    onResult(null)
+                } else {
+                    onResult(decodeJavascriptString(result))
+                }
+            }
+        }
+
+        fun currentState(): WebContentDriverState = mutableState.value.copy(
+            currentUrl = webView?.url,
+            canGoBack = webView?.canGoBack() == true,
+            showingError = showingErrorPage,
+            showingCachedContent = showingCachedArticlePage,
+        )
+
+        fun publish(state: WebContentDriverState) {
+            mutableState.value = state
+        }
+
+        fun publish(
+            url: String? = currentState().currentUrl,
+            loading: Boolean = currentState().loading,
+            pageReady: Boolean = currentState().pageReady,
+            canGoBack: Boolean = currentState().canGoBack,
+            showingError: Boolean = currentState().showingError,
+            showingCachedContent: Boolean = currentState().showingCachedContent,
+        ) {
+            mutableState.value = WebContentDriverState(
+                currentUrl = url,
+                loading = loading,
+                pageReady = pageReady,
+                canGoBack = canGoBack,
+                showingError = showingError,
+                showingCachedContent = showingCachedContent,
+            )
+        }
     }
 
     private inner class MyWebViewClient : WebViewClient() {
@@ -1611,7 +1636,7 @@ internal class CommentsWebViewController(
             if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            webContentLoad.commitVisible()
+            webContentController.onPageCommitVisible()
             scheduleVisibleCommitSettle(currentView)
         }
 
@@ -1883,12 +1908,6 @@ internal class CommentsWebViewController(
         private val OFFLINE_PAGE_URL = "file:///android_asset/${WebContentAssets.OFFLINE_PAGE}"
         private val READER_MODE_READABILITY_SCRIPT_ASSET = WebContentAssets.READABILITY_SCRIPT
         private val READER_MODE_SCRIPT_ASSET = WebContentAssets.READER_MODE_SCRIPT
-        private const val WEBVIEW_VISIBLE_LOAD_GRACE_MS: Long = 1500
-        private const val READER_MODE_INITIAL_AVAILABILITY_GRACE_MS: Long = 2000
-        private const val READER_MODE_AVAILABILITY_RECHECK_DELAY_MS: Long = 2500
-        private const val WEBVIEW_LOAD_TIMEOUT_MS: Long = 45000
-        private const val SUMMARY_LOAD_TIMEOUT_MS: Long = 30000
-
         private fun decodeJavascriptString(result: String?): String? {
             if (result == null || "null" == result) {
                 return ""

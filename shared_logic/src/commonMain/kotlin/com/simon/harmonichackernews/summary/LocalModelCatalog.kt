@@ -6,13 +6,13 @@ enum class LocalModelRuntime {
     LLAMA_CPP,
 }
 
-enum class LocalModelBrand {
-    GOOGLE,
-    PRISM,
-    QWEN,
-    NVIDIA,
-    MISTRAL,
-    LIQUID,
+enum class LocalModelBrand(val artworkKey: String) {
+    GOOGLE("model_logo_google"),
+    PRISM("model_logo_prism"),
+    QWEN("model_logo_qwen"),
+    NVIDIA("model_logo_nvidia"),
+    MISTRAL("model_logo_mistral"),
+    LIQUID("model_logo_liquid"),
 }
 
 data class LocalModelDefinition(

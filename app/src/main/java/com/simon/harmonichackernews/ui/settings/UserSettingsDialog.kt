@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
+import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.months
 import kotlinx.coroutines.launch
@@ -36,28 +38,54 @@ fun UserSettingsDialog(
     val appComposition = LocalHarmonicUiDependencies.current
     val userTags = appComposition.userTags
     val monthNames = stringArrayResource(Res.array.months)
-    val runtime = remember(userName, monthNames) {
-        appComposition.createUserProfileRuntime(userName, monthNames)
+    val session = remember(userName, monthNames, coroutineScope) {
+        appComposition.createUserProfileSession(coroutineScope, userName, monthNames)
     }
+    val runtime = session.runtime
     val runtimeState by runtime.state.collectAsState()
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
-    var permissionActionPending by remember(userName) { mutableStateOf(false) }
-
-    LaunchedEffect(runtime) {
-        runtime.load()
-    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted && permissionActionPending) {
-            coroutineScope.launch { runtime.enableNotifications() }
-        } else if (!granted) {
-            runtime.notificationPermissionDenied()
-        }
-        permissionActionPending = false
+        session.notificationPermissionResult(granted)
     }
+
+    LaunchedEffect(session) {
+        session.start()
+        session.effects.collect { effect ->
+            when (effect) {
+                is UserProfileSessionEffect.OpenSubmissions -> {
+                    onDismiss()
+                    appComposition.navigation.openSubmissions(effect.username)
+                }
+                is UserProfileSessionEffect.RequestNotificationPermission -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        session.notificationPermissionResult(granted = true)
+                    }
+                }
+                is UserProfileSessionEffect.ComposeReportEmail -> {
+                    val intent = Intent(
+                        Intent.ACTION_SENDTO,
+                        Uri.parse(
+                            "mailto:hn@ycombinator.com?subject=" +
+                                Uri.encode("Reporting user ${effect.username}"),
+                        ),
+                    )
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(Intent.createChooser(intent, "Send report via"))
+                    }
+                }
+                is UserProfileSessionEffect.Message ->
+                    appComposition.userMessages.show(effect.text)
+                UserProfileSessionEffect.Dismiss -> onDismiss()
+            }
+        }
+    }
+    DisposableEffect(session) { onDispose(session::dispose) }
 
     val state = when (val loadState = runtimeState.loadState) {
         UserProfileLoadState.Loading -> UserDialogUiState.Loading
@@ -81,50 +109,25 @@ fun UserSettingsDialog(
         notificationLoading = runtimeState.notificationLoading,
         notificationStatus = runtimeState.notificationStatus,
         onDismiss = onDismiss,
-        onRetry = { coroutineScope.launch { runtime.retry() } },
-        onOpenSubmissions = { targetUser ->
-            onDismiss()
-            appComposition.navigation.openSubmissions(targetUser)
-        },
+        onRetry = session::retry,
+        onOpenSubmissions = session::openSubmissions,
         onEditTag = { tagDialogOpen = true },
-        onToggleBlocked = {
-            runtime.toggleBlocked()?.let { outcome ->
-                appComposition.userMessages.show(outcome.message)
-                if (outcome.dismissProfile) onDismiss()
-            }
-        },
+        onToggleBlocked = { session.toggleBlocked() },
         onToggleNotifications = {
-            if (runtimeState.notificationsActive) {
-                runtime.disableNotifications()
-            } else if (
+            val permissionGranted = !(
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.POST_NOTIFICATIONS,
                 ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionActionPending = true
-                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                coroutineScope.launch { runtime.enableNotifications() }
-            }
-        },
-        onReport = { targetUser ->
-            val intent = Intent(
-                Intent.ACTION_SENDTO,
-                Uri.parse(
-                    "mailto:hn@ycombinator.com?subject=" +
-                        Uri.encode("Reporting user $targetUser"),
-                ),
             )
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(Intent.createChooser(intent, "Send report via"))
-            }
+            session.toggleNotifications(permissionGranted)
         },
+        onReport = session::report,
     )
 
     if (tagDialogOpen) {
-        UserTagDialog(
+        SharedUserTagRoute(
             userName = userName,
             currentTag = currentTag,
             onDismiss = { tagDialogOpen = false },

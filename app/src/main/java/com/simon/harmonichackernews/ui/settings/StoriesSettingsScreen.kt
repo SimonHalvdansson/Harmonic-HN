@@ -6,9 +6,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
@@ -32,9 +30,7 @@ fun StoriesSettingsScreen(
     SharedStoriesSettingsRoute(
         repository = repository,
         previewModel = previewModel,
-        faviconIcon = painterResource(
-            AndroidSettingsResources.faviconProviderIcon(story.faviconProvider),
-        ),
+        faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,
         onBack = onBack,
         onPlatformEffect = { effect ->
@@ -45,7 +41,7 @@ fun StoriesSettingsScreen(
             }
         },
         faviconDialog = { selected, _, onSelected, dismiss ->
-            FaviconProviderDialog(
+            SharedFaviconProviderRoute(
                 selected = selected,
                 onProviderSelected = onSelected,
                 onDismiss = dismiss,

@@ -64,7 +64,7 @@ import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
-import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
+import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
@@ -148,7 +148,7 @@ class MainNavigationController internal constructor(
     internal val coulombGasVisible get() = navigationState.coulombGasVisible
     internal val closeRequest get() = navigationState.closeRequest
 
-    private var captchaCallback: CaptchaResultCallback? = null
+    private var captchaCallback: CaptchaResultHandler? = null
     private var userTagChangedCallback: Runnable? = null
     private val restoredStoryRoute = savedState
         ?.getInt(STATE_STORY_ID, 0)
@@ -296,7 +296,7 @@ class MainNavigationController internal constructor(
 
     fun showCaptchaDialog(
         challenge: HackerNewsCaptchaChallenge,
-        callback: CaptchaResultCallback,
+        callback: CaptchaResultHandler,
     ) {
         captchaCallback?.onCaptchaCancelled()
         navigationState.showCaptchaDialog(challenge)
@@ -909,24 +909,8 @@ private fun MainNavigation(
     }
 
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    val storyFromSettingsDestinationReady = storyOpenedFromSettings && storyRequest != null
-
-    SharedMainDestinationLayers(
-        state = MainDestinationLayerState(
-            settingsVisible = settingsRequest != null || storyOpenedFromSettings,
-            settingsCoversBase = settingsRequest != null && !storyOpenedFromSettings,
-            settingsBehindStory = storyFromSettingsDestinationReady,
-            settingsSemanticsHidden =
-                submissionsRequest != null || editorRequest != null || coulombGasVisible,
-            submissionsVisible = submissionsRequest != null,
-            submissionsCoversBase =
-                submissionsRequest != null && !storyOpenedFromSubmissions,
-            submissionsBehindStory = storyOpenedFromSubmissions,
-            submissionsSemanticsHidden = editorRequest != null || coulombGasVisible,
-            editorVisible = editorRequest != null,
-            editorSemanticsHidden = coulombGasVisible,
-            immersiveVisible = coulombGasVisible,
-        ),
+    SharedHarmonicAppRoot(
+        navigation = navigationSnapshot,
         transitionOffsetPx = settingsTransitionOffsetPx,
         completedSettingsPredictiveBack = completedSettingsPredictiveBack,
         completedSubmissionsPredictiveBack = completedSubmissionsPredictiveBack,

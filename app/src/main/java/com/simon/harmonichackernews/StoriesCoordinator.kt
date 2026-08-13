@@ -3,16 +3,15 @@ package com.simon.harmonichackernews
 import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
-import android.text.format.DateFormat
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.StoriesFeatureHost
-import com.simon.harmonichackernews.app.StoriesFeatureSessionEvent
 import com.simon.harmonichackernews.app.createStoriesFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
@@ -24,12 +23,11 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
-import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
+import com.simon.harmonichackernews.ui.session.StoriesScreenSession
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
-import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,13 +57,18 @@ class StoriesCoordinator(
     private var storyUpdateListener: StoryUpdateListener? = null
     private val featureSession = appComposition.createStoriesFeatureSession(
         StoriesFeatureHost(
-        scope = coroutineScope,
-        sessionState = sessionState,
-        platform = platformDependencies,
-        userSettings = userSettings,
+            scope = coroutineScope,
+            sessionState = sessionState,
+            platform = platformDependencies,
+            userSettings = userSettings,
         ),
     )
     private val storiesFeature = featureSession.runtime
+    private val screenSession = StoriesScreenSession(
+        coroutineScope,
+        featureSession,
+        ::storiesPlatformPresentation,
+    )
     private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
@@ -93,9 +96,13 @@ class StoriesCoordinator(
         setupLinkSummaryBackCallback()
         storyCacheController = createStoryCacheController()
         coroutineScope.launch {
-            featureSession.events.collect(::handleFeatureSessionEvent)
+            screenSession.state.collect { state ->
+                state?.let { composeController?.updateContent(it) }
+            }
         }
-        featureSession.start()
+        coroutineScope.launch { screenSession.effects.collect(::handleStoriesRuntimeEffect) }
+        coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
+        screenSession.start()
         initializeComposeUi()
 
         storyUpdateListener = StoryUpdateListener { story: Story? ->
@@ -196,39 +203,32 @@ class StoriesCoordinator(
         }
     }
 
-    private fun handleFeatureSessionEvent(event: StoriesFeatureSessionEvent) {
-        when (event) {
-            is StoriesFeatureSessionEvent.Runtime -> handleStoriesRuntimeEffect(event.effect)
-            is StoriesFeatureSessionEvent.Settings -> applyPlatformSettingsState(event.state)
-            StoriesFeatureSessionEvent.ContentChanged -> syncComposeState()
-        }
-    }
-
     private fun syncComposeState() {
         val controller = composeController ?: return
-        val context = context ?: return
+        screenSession.refreshPresentation()
+        screenSession.state.value?.let(controller::updateContent)
+    }
+
+    private fun storiesPlatformPresentation(): StoriesPlatformPresentation {
         val cache = storyCacheController
         val lastUpdated = storiesFeature.lastUpdatedMillisForHeader()?.let { millis ->
-            "Last updated: " + DateFormat.getTimeFormat(context).format(Date(millis))
+            PresentationCopy.lastUpdated(
+                appComposition.platform.capabilities.timeFormatting.requireService().time(millis),
+            )
         }
-        controller.updateContent(
-            StoriesScreenStateFactory.create(
-                feature = storiesFeature,
-                platform = StoriesPlatformPresentation(
-                    searchSortLabels = StorySearchController.sortLabels.toList(),
-                    searchDateLabels = StorySearchController.dateRangeLabels.toList(),
-                    searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
-                    searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
-                    lastUpdatedText = lastUpdated,
-                    cacheInProgress = cache?.isCachingStories == true,
-                    cacheProgressVisible = cache?.isProgressVisible == true,
-                    cacheProgress = cache?.progress ?: 0,
-                    cacheProgressMax = cache?.progressMax ?: 1,
-                    cacheProgressStatus = cache?.getProgressStatus() ?: "Caching stories",
-                    contentInsetStartPx = splitStoriesContentPaddingStart,
-                    previewResources = storiesFeature.previewResourceStates,
-                ),
-            ),
+        return StoriesPlatformPresentation(
+            searchSortLabels = StorySearchController.sortLabels.toList(),
+            searchDateLabels = StorySearchController.dateRangeLabels.toList(),
+            searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
+            searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
+            lastUpdatedText = lastUpdated,
+            cacheInProgress = cache?.isCachingStories == true,
+            cacheProgressVisible = cache?.isProgressVisible == true,
+            cacheProgress = cache?.progress ?: 0,
+            cacheProgressMax = cache?.progressMax ?: 1,
+            cacheProgressStatus = cache?.getProgressStatus() ?: PresentationCopy.CACHE_STORIES,
+            contentInsetStartPx = splitStoriesContentPaddingStart,
+            previewResources = storiesFeature.previewResourceStates,
         )
     }
 
@@ -300,16 +300,16 @@ class StoriesCoordinator(
 
     fun onStart() {
         started = true
-        featureSession.onStart()
+        screenSession.onStart()
     }
 
     fun onStop() {
         started = false
-        featureSession.onStop()
+        screenSession.onStop()
     }
 
     fun onResume() {
-        featureSession.onResume()
+        screenSession.onResume()
         syncComposeState()
     }
 
@@ -342,7 +342,7 @@ class StoriesCoordinator(
         if (storyUpdateListener != null) {
             StoryUpdate.clearStoryUpdatedListener(storyUpdateListener)
         }
-        featureSession.dispose()
+        screenSession.dispose()
         coroutineScope.cancel()
         clearControllerReferences()
         started = false

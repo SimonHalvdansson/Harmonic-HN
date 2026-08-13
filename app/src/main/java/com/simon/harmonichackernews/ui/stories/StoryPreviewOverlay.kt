@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.stories
 
-import android.text.Html
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -11,6 +10,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.AndroidDisplay
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
 internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
@@ -57,9 +57,7 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
             bookmarksEnabled = bookmarksEnabled,
             faviconUrl = faviconUrl,
             textStyle = storyPreviewTextStyle,
-            htmlToPlainText = { html ->
-                Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString()
-            },
+            htmlToPlainText = HtmlTextUtils::plainText,
             onPreviewImageLoaded = controller.listener::onStoryPreviewImageLoaded,
             onPreviewImageError = controller.listener::onStoryPreviewImageLoadFailed,
             modifier = modifier,

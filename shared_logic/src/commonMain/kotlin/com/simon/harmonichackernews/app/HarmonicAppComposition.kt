@@ -14,6 +14,8 @@ import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkGraph
 import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.network.WidgetConfigurationService
+import com.simon.harmonichackernews.network.WidgetRefreshRuntime
+import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.network.ReplyNotificationRuntime
 import com.simon.harmonichackernews.network.ReplyNotificationUseCase
@@ -32,6 +34,7 @@ import com.simon.harmonichackernews.presentation.UserProfileBlockPort
 import com.simon.harmonichackernews.presentation.UserProfileLoader
 import com.simon.harmonichackernews.presentation.UserProfileNotificationPort
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
+import com.simon.harmonichackernews.presentation.UserProfileSession
 import com.simon.harmonichackernews.presentation.WebContentService
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
@@ -48,12 +51,14 @@ import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.NighttimeScheduleStore
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.settings.UserTagsRepository
+import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
 import com.simon.harmonichackernews.summary.ExtractingStorySummaryBackend
 import com.simon.harmonichackernews.summary.PlatformLocalStorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.summary.UnavailableStorySummaryBackend
 import com.simon.harmonichackernews.summary.LocalModelService
+import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.CoroutineScope
 import kotlin.time.Clock
@@ -141,6 +146,7 @@ class HarmonicAppComposition(
         runtimeStore = widgetRuntimeStore,
         repository = network.hackerNewsRepository,
     )
+    val widgetRefresh = WidgetRefreshRuntime(widgets, nowMillis)
     val hackerNewsUser = HackerNewsUserService(
         session = network.hackerNewsSession,
         accounts = platform.accounts,
@@ -192,6 +198,21 @@ class HarmonicAppComposition(
         },
     )
 
+    fun createUserProfileSession(
+        scope: CoroutineScope,
+        username: String,
+        monthNames: List<String>,
+    ): UserProfileSession = UserProfileSession(
+        scope,
+        createUserProfileRuntime(username, monthNames),
+        username,
+    )
+
+    fun createDataSettingsRuntime(
+        scope: CoroutineScope,
+        today: () -> com.simon.harmonichackernews.platform.LocalCalendarDate,
+    ): DataSettingsRuntime = DataSettingsRuntime(scope, dataSettings, today)
+
     fun createStoryCacheRuntime(scope: CoroutineScope): StoryCacheRuntime {
         val useCase = StoryCacheUseCase(
             hackerNewsRepository = network.hackerNewsRepository,
@@ -223,6 +244,17 @@ class HarmonicAppComposition(
             ),
         )
     }
+
+    fun createReferenceLinkPreviewRuntime(scope: CoroutineScope): ReferenceLinkPreviewRuntime =
+        ReferenceLinkPreviewRuntime(
+            scope = scope,
+            previews = previewResources,
+            summaries = network.linkSummaryRepository,
+            connectivity = platform.capabilities.connectivity.requireService(),
+        )
+
+    fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
+        LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels)
 
     /** Compatibility view for callers that only need an optional capability. */
     val platformCapabilities get() = platform.capabilities

@@ -7,14 +7,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.text.format.DateFormat
 import android.view.View
 import android.widget.RemoteViews
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.HarmonicLog
-import java.util.Date
 
 class StoriesWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(
@@ -241,7 +239,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             if (lastUpdated == 0L) {
                 return ""
             }
-            return DateFormat.getTimeFormat(context).format(Date(lastUpdated))
+            return context.harmonicAppComposition.platform.capabilities.timeFormatting
+                .requireService().time(lastUpdated)
         }
     }
 }

@@ -1,9 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
-import android.content.Context
-import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
@@ -16,15 +13,15 @@ fun AppearanceSettingsScreen(
     onNavigate: (SettingsSection) -> Unit,
     onThemeChanged: () -> Unit,
 ) {
-    val context = LocalContext.current
     val resources = LocalResources.current
-    val repository = LocalHarmonicUiDependencies.current.settings
+    val app = LocalHarmonicUiDependencies.current
+    val repository = app.settings
     SharedAppearanceSettingsRoute(
         repository = repository,
         labels = AppearanceRouteLabels(
             nighttimeRange = formatNighttimeRange(
-                context,
-                LocalHarmonicUiDependencies.current.appearance.schedule,
+                app.appearance.schedule,
+                app.platform.capabilities.timeFormatting.requireService().uses24HourClock(),
             ),
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
         ),
@@ -48,7 +45,7 @@ fun AppearanceSettingsScreen(
                     onDismiss = dismiss,
                     onRangeSelected = onThemeChanged,
                 )
-                AppearanceSettingsDialog.Font -> FontSelectionDialog(
+                AppearanceSettingsDialog.Font -> SharedFontSelectionRoute(
                     readerMode = false,
                     onDismiss = dismiss,
                 )
@@ -63,9 +60,9 @@ fun AppearanceSettingsScreen(
 }
 
 private fun formatNighttimeRange(
-    context: Context,
     schedule: com.simon.harmonichackernews.settings.NighttimeSchedule,
+    use24HourClock: Boolean,
 ): String = ThemeSelectionPolicy.formatSchedule(
     schedule = schedule,
-    use24HourClock = DateFormat.is24HourFormat(context),
+    use24HourClock = use24HourClock,
 )

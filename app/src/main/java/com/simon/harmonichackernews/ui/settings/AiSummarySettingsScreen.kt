@@ -2,14 +2,14 @@
 
 package com.simon.harmonichackernews.ui.settings
 
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource as androidPainterResource
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
@@ -32,43 +32,29 @@ fun AiSummarySettingsScreen(
     val localModels = checkNotNull(appComposition.localModels) {
         "Android local-model service was not installed"
     }
-    val localSummary = appComposition.localSummaryEngine
-    val canAttemptLocalSummary = localSummary?.canAttempt() == true
     val localModelState by localModels.state.collectAsState()
     var localRefresh by remember { mutableIntStateOf(0) }
-    var localAvailable by remember {
-        mutableStateOf(canAttemptLocalSummary)
+    val scope = rememberCoroutineScope()
+    val settingsRuntime = remember(appComposition, scope) {
+        appComposition.createLocalSummarySettingsRuntime(scope)
     }
-    var nanoAvailabilityResolved by remember { mutableStateOf(false) }
-    var nanoAvailable by remember { mutableStateOf(false) }
+    val availabilityState by settingsRuntime.state.collectAsState()
 
-    LaunchedEffect(localSummary) {
-        if (localSummary == null || !canAttemptLocalSummary) {
-            nanoAvailabilityResolved = true
-            return@LaunchedEffect
-        }
-        val availability = localSummary.availability()
-        localAvailable = availability.available
-        nanoAvailabilityResolved = true
-        nanoAvailable = availability.available && !availability.downloadableFallbackRequired
-        if (
-            !nanoAvailable &&
-            localModels.selectedModel.id == LocalModelCatalog.MODEL_GEMINI_NANO
-        ) {
-            localModels.selectFirstReadyOrClear()
-        }
-        localRefresh++
+    LaunchedEffect(settingsRuntime) {
+        settingsRuntime.resolve()
+    }
+    DisposableEffect(settingsRuntime) {
+        onDispose(settingsRuntime::dispose)
     }
 
-    val localConfigurationReady = localSummary?.isReady() == true
     SharedAiSummarySettingsRoute(
         repository = repository,
         modelDefaults = appComposition.aiModelDefaults,
-        localSummarizationSupported = canAttemptLocalSummary,
-        localConfigurationReady = localConfigurationReady,
-        localModeAvailable = localAvailable,
+        localSummarizationSupported = availabilityState.supported,
+        localConfigurationReady = availabilityState.configurationReady,
+        localModeAvailable = availabilityState.available,
         showNavigation = showNavigation,
-        contentVersion = localRefresh + localModelState.hashCode(),
+        contentVersion = localRefresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,
         onLocalModeUnavailable = {
             appComposition.userMessages.show(
@@ -78,8 +64,8 @@ fun AiSummarySettingsScreen(
         },
         localModelsContent = {
             LocalModelsPanel(
-                nanoAvailabilityResolved = nanoAvailabilityResolved,
-                nanoAvailable = nanoAvailable,
+                nanoAvailabilityResolved = availabilityState.availabilityResolved,
+                nanoAvailable = availabilityState.nanoAvailable,
                 localModels = localModels,
                 onRefresh = { localRefresh++ },
             )

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import android.content.Context
 import android.os.Looper
 import com.simon.harmonichackernews.BuildConfig
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.cache.HttpCache
@@ -23,8 +24,6 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
         "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE
 
     private val networkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val transportClient: HttpClient by lazy { createClient() }
-
     private val authenticatedClientProvider = object : AuthenticatedHttpClientProvider {
         @Volatile
         private var activeClient: HttpClient? = null
@@ -47,13 +46,13 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
 
     /** Shared network graph owned by the Android application composition. */
     val graph: NetworkGraph by lazy {
-        NetworkGraph(
-            transportClient = transportClient,
+        NetworkGraphFactory.create(NetworkGraphEnvironment(
             scope = networkScope,
+            engine = { CIO.create() },
             authenticatedClientProvider = authenticatedClientProvider,
             userAgent = userAgent,
             cacheMaintenance = this,
-        )
+        ))
     }
 
     @Volatile
@@ -69,7 +68,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
         return requestQueueInstance ?: run {
             val cacheDirectory = File(
                 appContext.cacheDir,
-                HTTP_CACHE_DIRECTORY,
+                StorageKeyPolicy.HTTP_CACHE_DIRECTORY,
             ).apply { mkdirs() }
             val cacheStorage = FileStorage(cacheDirectory)
             responseCache = cacheStorage
@@ -102,8 +101,4 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
     private fun createClient(
         configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {},
     ): HttpClient = createHarmonicHttpClient(CIO.create(), userAgent, configure)
-
-    private companion object {
-        const val HTTP_CACHE_DIRECTORY = "ktor_http_cache"
-    }
 }

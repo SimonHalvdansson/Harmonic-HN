@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.data
 import android.os.Bundle
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryNavigationSeed
@@ -12,6 +13,7 @@ import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 
 /** Android persistence/intent encoding for the shared navigation model. */
 fun StoryDestination.toBundle(): Bundle = Bundle().apply {
+    putString(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA, AppDestinationCodec.encode(this@toBundle))
     putInt(CommentsContract.EXTRA_ID, storyId)
     seed?.let { initial ->
         val story = initial.story
@@ -42,6 +44,8 @@ fun StoryDestination.toBundle(): Bundle = Bundle().apply {
 fun Story.toBundle(): Bundle = toDestination().toBundle()
 
 fun Bundle.toStoryDestinationOrNull(): StoryDestination? {
+    (AppDestinationCodec.decode(getString(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA))
+        as? StoryDestination)?.let { return it }
     val storyId = getInt(CommentsContract.EXTRA_ID, -1)
     if (storyId <= 0) return null
     val hasSeed = containsKey(CommentsContract.EXTRA_TITLE) ||
@@ -85,6 +89,7 @@ fun Bundle.toStoryDestinationOrNull(): StoryDestination? {
 }
 
 fun EditorDestination.toBundle(): Bundle = Bundle().apply {
+    putString(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA, AppDestinationCodec.encode(this@toBundle))
     putInt(ComposeEditorContract.EXTRA_ID, itemId)
     putInt(
         ComposeEditorContract.EXTRA_TYPE,
@@ -99,7 +104,9 @@ fun EditorDestination.toBundle(): Bundle = Bundle().apply {
     putString(ComposeEditorContract.EXTRA_USER, userName)
 }
 
-fun Bundle.toEditorDestination(): EditorDestination = EditorDestination(
+fun Bundle.toEditorDestination(): EditorDestination =
+    (AppDestinationCodec.decode(getString(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA))
+        as? EditorDestination) ?: EditorDestination(
     itemId = getInt(ComposeEditorContract.EXTRA_ID, -1),
     type = when (getInt(ComposeEditorContract.EXTRA_TYPE, ComposeEditorContract.TYPE_POST)) {
         ComposeEditorContract.TYPE_TOP_COMMENT -> EditorType.TOP_LEVEL_COMMENT
@@ -109,4 +116,4 @@ fun Bundle.toEditorDestination(): EditorDestination = EditorDestination(
     parentText = getString(ComposeEditorContract.EXTRA_PARENT_TEXT),
     postTitle = getString(ComposeEditorContract.EXTRA_POST_TITLE),
     userName = getString(ComposeEditorContract.EXTRA_USER),
-)
+    )

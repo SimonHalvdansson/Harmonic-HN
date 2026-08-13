@@ -8,6 +8,10 @@ import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.AppLaunchRequest
 import com.simon.harmonichackernews.navigation.AppLaunchResult
 import com.simon.harmonichackernews.navigation.AppLaunchRouter
+import com.simon.harmonichackernews.navigation.AppDestinationCodec
+import com.simon.harmonichackernews.navigation.EditorDestination
+import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.SubmissionsDestination
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.ui.settings.SettingsIntents
@@ -35,10 +39,12 @@ internal class MainLaunchIntentRouter(
             getStringExtra(SettingsIntents.EXTRA_SETTINGS_SECTION),
         )
         action == ComposeEditorContract.ACTION_OPEN_EDITOR -> AppLaunchRequest.Editor(
-            (extras?.let(::Bundle) ?: Bundle()).toEditorDestination(),
+            decodedDestination<EditorDestination>()
+                ?: (extras?.let(::Bundle) ?: Bundle()).toEditorDestination(),
         )
         action == SubmissionsContract.ACTION_OPEN_SUBMISSIONS -> AppLaunchRequest.Submissions(
-            getStringExtra(SubmissionsContract.EXTRA_USER),
+            decodedDestination<SubmissionsDestination>()?.userName
+                ?: getStringExtra(SubmissionsContract.EXTRA_USER),
         )
         action == CoulombGasContract.ACTION_OPEN -> AppLaunchRequest.CoulombGas
         Intent.ACTION_VIEW.equals(action, ignoreCase = true) ->
@@ -51,7 +57,12 @@ internal class MainLaunchIntentRouter(
 
     private fun Intent.directStoryDestination() =
         (extras?.let(::Bundle) ?: Bundle()).let { arguments ->
-            if (arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0) null
+            decodedDestination<StoryDestination>() ?: if (
+                arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0
+            ) null
             else arguments.toStoryDestinationOrNull()
         }
+
+    private inline fun <reified T> Intent.decodedDestination(): T? =
+        AppDestinationCodec.decode(getStringExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA)) as? T
 }

@@ -5,6 +5,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
+import com.simon.harmonichackernews.presentation.UserProfileSession
+import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
+import com.simon.harmonichackernews.settings.DataSettingsRuntime
+import com.simon.harmonichackernews.platform.LocalCalendarDate
+import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Explicit application-scoped dependencies for shared and platform Compose surfaces.
@@ -45,6 +51,23 @@ class HarmonicUiDependencies(private val app: HarmonicAppComposition) {
 
     fun createUserProfileRuntime(username: String, monthNames: List<String>): UserProfileRuntime =
         app.createUserProfileRuntime(username, monthNames)
+
+    fun createUserProfileSession(
+        scope: CoroutineScope,
+        username: String,
+        monthNames: List<String>,
+    ): UserProfileSession = app.createUserProfileSession(scope, username, monthNames)
+
+    fun createReferenceLinkPreviewRuntime(scope: CoroutineScope): ReferenceLinkPreviewRuntime =
+        app.createReferenceLinkPreviewRuntime(scope)
+
+    fun createDataSettingsRuntime(
+        scope: CoroutineScope,
+        today: () -> LocalCalendarDate,
+    ): DataSettingsRuntime = app.createDataSettingsRuntime(scope, today)
+
+    fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
+        app.createLocalSummarySettingsRuntime(scope)
 }
 
 val LocalHarmonicUiDependencies = staticCompositionLocalOf<HarmonicUiDependencies> {

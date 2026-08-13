@@ -14,11 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,18 +33,13 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
-import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.link_summary_collapse_image
 import com.simon.harmonichackernews.resources.link_summary_expand_image
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.AndroidDisplay
-import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import org.jetbrains.compose.resources.stringResource
-
-private const val PdfContentTypeError = "This link contains application/pdf, not a web page"
 
 @Composable
 internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
@@ -61,59 +57,35 @@ private fun ReferencePreviewCard(
     controller: CommentsComposeController,
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
-    val context = LocalContext.current
     val appComposition = LocalHarmonicUiDependencies.current
-    var attempt by remember(state) { mutableIntStateOf(0) }
-    var summary by remember(state) {
-        mutableStateOf(
-            when {
-                !state.resolvedTitle.isNullOrBlank() -> ReferenceSummaryUiState(
-                    loading = true,
-                    showFallback = true,
-                )
-                else -> ReferenceSummaryUiState(loading = true)
-            },
-        )
+    val scope = rememberCoroutineScope()
+    val runtime = remember(state.originalUrl, appComposition, scope) {
+        appComposition.createReferenceLinkPreviewRuntime(scope)
     }
+    val runtimeState by runtime.state.collectAsState()
 
-    LaunchedEffect(state, attempt) {
-        val cached = if (attempt == 0) {
-            appComposition.previewResources.cachedLinkSummary(state.originalUrl)?.takeIf {
-                HackerNewsLinks.parseItemLink(state.originalUrl) == null ||
-                    it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
-            }
-        } else {
-            null
-        }
-        if (cached != null) {
-            cached.finalUrl.takeIf(String::isNotBlank)?.let {
-                controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
-            }
-            summary = ReferenceSummaryUiState(result = cached)
-        } else {
-            if (attempt > 0) summary = summary.copy(retrying = true)
-            try {
-                val result = appComposition.network.linkSummaryRepository.load(
-                    state.originalUrl,
-                    state.fallbackTitle,
-                )
-                appComposition.previewResources.saveLinkSummary(state.originalUrl, result)
-                controller.updateLinkPreviewVisibleUrl(state.originalUrl, result.finalUrl)
-                summary = ReferenceSummaryUiState(result = result)
-            } catch (error: Throwable) {
-                val message = error.message ?: "The page could not be read"
-                summary = when {
-                    message.trim().equals(PdfContentTypeError, ignoreCase = true) ->
-                        ReferenceSummaryUiState(showFallback = true)
-                    attempt == 0 && !state.resolvedTitle.isNullOrBlank() ->
-                        ReferenceSummaryUiState(showFallback = true)
-                    else -> ReferenceSummaryUiState(showFallback = true, error = message)
-                }
-            }
+    LaunchedEffect(runtime, state) {
+        runtime.load(state.originalUrl, state.fallbackTitle, state.resolvedTitle)
+    }
+    DisposableEffect(runtime) {
+        onDispose(runtime::dispose)
+    }
+    LaunchedEffect(runtimeState.url) {
+        runtimeState.url.takeIf { it.isNotBlank() && it != state.originalUrl }?.let {
+            controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
         }
     }
 
-    val currentUrl = controller.linkPreviewVisibleUrl ?: state.originalUrl
+    val summary = ReferenceSummaryUiState(
+        loading = runtimeState.loading,
+        showFallback = runtimeState.showFallback,
+        result = runtimeState.summary,
+        error = runtimeState.error,
+        retrying = runtimeState.retrying,
+    )
+    val currentUrl = runtimeState.url.takeIf(String::isNotBlank)
+        ?: controller.linkPreviewVisibleUrl
+        ?: state.originalUrl
     val userSettings = appComposition.userSettings
     val preferredFont = controller.displaySettings?.font ?: userSettings.story.font
     val commentTextSize = controller.displaySettings?.preferredTextSize
@@ -123,7 +95,6 @@ private fun ReferencePreviewCard(
     val favicon = remember(currentUrl, faviconProvider) {
         runCatching { FaviconUrlBuilder.faviconUrl(currentUrl, faviconProvider) }.getOrNull()
     }
-    val offline = summary.error != null && !AndroidNetworkStatus.isOnline(context)
     SharedReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
@@ -131,7 +102,7 @@ private fun ReferencePreviewCard(
         preferredFont = preferredFont,
         commentTextSize = commentTextSize,
         favicon = favicon,
-        offline = offline,
+        offline = runtimeState.offline,
         textStyle = linkPreviewTextStyle,
         referenceImage = { imageUrl, loading, expanded, ratio, onRatio, onClick, modifier ->
             ReferencePreviewImage(
@@ -146,7 +117,7 @@ private fun ReferencePreviewCard(
         },
         onOpen = { appComposition.links.open(currentUrl) },
         onRetry = {
-            if (AndroidNetworkStatus.isOnline(context) && !summary.retrying) attempt++
+            runtime.retry(state.originalUrl, state.fallbackTitle, state.resolvedTitle)
         },
     )
 }

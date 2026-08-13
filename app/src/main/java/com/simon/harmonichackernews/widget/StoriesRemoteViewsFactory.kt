@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toSnapshot
-import com.simon.harmonichackernews.network.WidgetFeedResult
+import com.simon.harmonichackernews.network.WidgetRefreshResult
 import com.simon.harmonichackernews.presentation.WidgetStoryFormatter
 import com.simon.harmonichackernews.utils.HarmonicLog.debug as log
 import kotlin.time.TimeSource
@@ -33,7 +33,6 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
     override fun onDataSetChanged() {
         val startedAt = TimeSource.Monotonic.markNow()
-        var terminalStatePosted = false
         val runtime = widgets.runtime(appWidgetId)
         val skipFetch = runtime.skipFetch
         val refreshing = runtime.refreshing
@@ -44,61 +43,37 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         )
 
         try {
-            if (skipFetch && stories.isNotEmpty()) {
-                if (refreshing) {
-                    log("WidgetFactory skip fetch and reconcile refresh widgetId=$appWidgetId")
-                    postRefreshDone()
-                    terminalStatePosted = true
-                } else {
-                    log("WidgetFactory skip fetch widgetId=$appWidgetId")
-                }
-                return
-            }
-
             val configuration = widgets.configuration(appWidgetId)
             log("WidgetFactory fetch ids widgetId=$appWidgetId url=${configuration.feedUrl}")
             val result = runBlocking(Dispatchers.IO) {
-                widgets.load(appWidgetId)
+                app.widgetRefresh.refresh(appWidgetId, stories.isNotEmpty())
             }
-            val loaded = result as? WidgetFeedResult.Loaded
-            if (loaded == null) {
-                log("WidgetFactory no stories fetched widgetId=$appWidgetId")
-                postRefreshError()
-                terminalStatePosted = true
-                return
+            when (result) {
+                WidgetRefreshResult.UseExisting -> {
+                    log("WidgetFactory reused existing stories widgetId=$appWidgetId")
+                    postRefreshDone()
+                }
+                is WidgetRefreshResult.Loaded -> {
+                    log(
+                        "WidgetFactory fetch complete widgetId=$appWidgetId" +
+                            " stories=${result.stories.size}" +
+                            " available=${result.availableStoryCount}" +
+                            " storyErrors=${result.failedStoryCount}" +
+                            " timedOut=${result.timedOut}" +
+                            " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
+                    )
+                    stories.clear()
+                    stories.addAll(result.stories)
+                    postRefreshDone()
+                }
+                is WidgetRefreshResult.Failed -> {
+                    log("WidgetFactory refresh failed widgetId=$appWidgetId error=${result.cause}")
+                    postRefreshError()
+                }
             }
-
-            log(
-                "WidgetFactory fetch complete widgetId=$appWidgetId" +
-                    " stories=${loaded.stories.size}" +
-                    " available=${loaded.availableStoryCount}" +
-                    " storyErrors=${loaded.failedStoryCount}" +
-                    " timedOut=${loaded.timedOut}" +
-                    " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
-            )
-
-            stories.clear()
-            stories.addAll(loaded.stories)
-
-            widgets.markUpdated(appWidgetId, System.currentTimeMillis())
-            widgets.setSkipFetch(appWidgetId, true)
-            postRefreshDone()
-            terminalStatePosted = true
         } catch (t: Throwable) {
-            log("WidgetFactory onDataSetChanged failed widgetId=$appWidgetId error=$t")
+            log("WidgetFactory host failure widgetId=$appWidgetId error=$t")
             postRefreshError()
-            terminalStatePosted = true
-        } finally {
-            val refreshingNow = widgets.runtime(appWidgetId).refreshing
-            log(
-                "WidgetFactory onDataSetChanged end widgetId=$appWidgetId" +
-                    " terminalPosted=$terminalStatePosted refreshingNow=$refreshingNow" +
-                    " elapsedMs=${startedAt.elapsedNow().inWholeMilliseconds}"
-            )
-            if (!terminalStatePosted && refreshingNow) {
-                log("WidgetFactory forcing refresh error widgetId=$appWidgetId")
-                postRefreshError()
-            }
         }
     }
 

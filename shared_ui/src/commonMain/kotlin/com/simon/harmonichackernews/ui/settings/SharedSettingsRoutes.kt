@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
+import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.settings.DebugBooleanPreference
@@ -29,12 +30,6 @@ import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
-
-private val SuggestedArchiveDomains = listOf(
-    "ft.com", "wsj.com", "bloomberg.com", "economist.com", "foreignpolicy.com",
-    "nytimes.com", "washingtonpost.com", "theatlantic.com", "newyorker.com",
-    "technologyreview.com",
-)
 
 /**
  * Portable Data settings route. Hosts provide the counts and perform the genuinely platform
@@ -399,7 +394,7 @@ fun SharedWebLinksSettingsRoute(
             inputLabel = "Domain",
             initialItems = reading.archiveRedirectDomains,
             emptyMessage = "No archive redirect domains",
-            suggestedItems = SuggestedArchiveDomains,
+            suggestedItems = ArchiveRedirectDomainCatalog.suggested,
             suggestionsLabel = "Suggested domains",
             parseInput = ArchiveRedirectPolicy::parseDomains,
             emptyInputError = "Enter a domain",

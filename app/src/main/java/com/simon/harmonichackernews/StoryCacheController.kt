@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.cache.StoryCacheRequest
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.cache.StoryCacheState
 import com.simon.harmonichackernews.cache.StoryCacheStatus
+import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,12 +40,11 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         get() = state.progressMax
 
     fun getProgressStatus(): String = when (state.status) {
-        StoryCacheStatus.IDLE -> CACHE_PROGRESS_STATUS_CACHING
-        StoryCacheStatus.CACHING -> "Caching ${state.total}" +
-            if (state.total == 1) " story" else " stories"
-        StoryCacheStatus.FINISHED -> CACHE_PROGRESS_STATUS_FINISHED
-        StoryCacheStatus.EMPTY -> CACHE_PROGRESS_STATUS_EMPTY
-        StoryCacheStatus.FAILED -> CACHE_PROGRESS_STATUS_FAILED
+        StoryCacheStatus.IDLE -> PresentationCopy.CACHE_STORIES
+        StoryCacheStatus.CACHING -> PresentationCopy.cachingStories(state.total)
+        StoryCacheStatus.FINISHED -> PresentationCopy.CACHE_FINISHED
+        StoryCacheStatus.EMPTY -> PresentationCopy.CACHE_EMPTY
+        StoryCacheStatus.FAILED -> PresentationCopy.CACHE_FAILED
     }
 
     fun cacheStories(request: StoryCacheRequest) {
@@ -61,12 +61,5 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
             created.state.collect { callbacks.onCacheProgressChanged() }
         }
         return created
-    }
-
-    private companion object {
-        const val CACHE_PROGRESS_STATUS_CACHING = "Caching stories"
-        const val CACHE_PROGRESS_STATUS_FINISHED = "Finished"
-        const val CACHE_PROGRESS_STATUS_FAILED = "Caching failed"
-        const val CACHE_PROGRESS_STATUS_EMPTY = "No stories to cache"
     }
 }

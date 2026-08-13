@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.text.format.DateFormat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -24,28 +25,14 @@ import com.simon.harmonichackernews.utils.ShareUtils
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import java.io.File
-import java.security.MessageDigest
+import java.util.Calendar
+import java.util.Date
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class AndroidCredentialStore(context: Context) :
-    CredentialStore,
-    ObservableHackerNewsAccountRepository {
+class AndroidCredentialStore(context: Context) : CredentialStore {
     private val appContext = context.applicationContext
     private val aiCredentials = AndroidAiSummaryApiKeyStore(appContext)
-    private val mutableAccountState = MutableStateFlow<HackerNewsAccount?>(null)
-    private val accountMutationMutex = Mutex()
-    override val accountState: StateFlow<HackerNewsAccount?> = mutableAccountState.asStateFlow()
-
-    init {
-        publishAccount()
-    }
-
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.getApiKey()
         CredentialIds.HACKER_NEWS_USERNAME -> AndroidHackerNewsAccountStorage.load(appContext)?.username
@@ -56,14 +43,16 @@ class AndroidCredentialStore(context: Context) :
     override fun write(id: String, value: String): Boolean =
         when (id) {
             CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.setApiKey(value)
-            CredentialIds.HACKER_NEWS_USERNAME -> load()?.let { current ->
+            CredentialIds.HACKER_NEWS_USERNAME ->
+                AndroidHackerNewsAccountStorage.load(appContext)?.let { current ->
                 AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(value, current.password))
             } ?: false
-            CredentialIds.HACKER_NEWS_PASSWORD -> load()?.let { current ->
+            CredentialIds.HACKER_NEWS_PASSWORD ->
+                AndroidHackerNewsAccountStorage.load(appContext)?.let { current ->
                 AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(current.username, value))
             } ?: false
             else -> false
-        }.also { if (it) publishAccount() }
+        }
 
     override fun remove(id: String): Boolean =
         when (id) {
@@ -71,26 +60,16 @@ class AndroidCredentialStore(context: Context) :
             CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD ->
                 AndroidHackerNewsAccountStorage.clear(appContext)
             else -> false
-        }.also { if (it) publishAccount() }
+        }
+}
 
+/** Android only supplies the atomic encrypted vault; shared code adds observation and locking. */
+class AndroidHackerNewsAccountRepository(context: Context) : HackerNewsAccountRepository {
+    private val appContext = context.applicationContext
     override fun load(): HackerNewsAccount? = AndroidHackerNewsAccountStorage.load(appContext)
-
     override fun save(account: HackerNewsAccount): Boolean =
-        AndroidHackerNewsAccountStorage.save(appContext, account).also { publishAccount() }
-
-    override fun clear(): Boolean = AndroidHackerNewsAccountStorage.clear(appContext).also {
-        publishAccount()
-    }
-
-    override suspend fun saveAccount(account: HackerNewsAccount): Boolean =
-        accountMutationMutex.withLock { withContext(Dispatchers.IO) { save(account) } }
-
-    override suspend fun clearAccount(): Boolean =
-        accountMutationMutex.withLock { withContext(Dispatchers.IO) { clear() } }
-
-    private fun publishAccount() {
-        mutableAccountState.value = AndroidHackerNewsAccountStorage.load(appContext)
-    }
+        AndroidHackerNewsAccountStorage.save(appContext, account)
+    override fun clear(): Boolean = AndroidHackerNewsAccountStorage.clear(appContext)
 }
 
 class AndroidBookmarkStore(context: Context) : ObservableBookmarkStore by StoredBookmarkStore(
@@ -116,6 +95,24 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
     override fun isOnline(): Boolean = AndroidNetworkStatus.isOnline(appContext)
 
     override fun isUnmetered(): Boolean = AndroidNetworkStatus.isUnmetered(appContext)
+}
+
+class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {
+    private val appContext = context.applicationContext
+
+    override fun time(epochMillis: Long): String =
+        DateFormat.getTimeFormat(appContext).format(Date(epochMillis))
+
+    override fun localDate(epochMillis: Long): LocalCalendarDate {
+        val calendar = Calendar.getInstance().apply { timeInMillis = epochMillis }
+        return LocalCalendarDate(
+            year = calendar.get(Calendar.YEAR),
+            month = calendar.get(Calendar.MONTH) + 1,
+            day = calendar.get(Calendar.DAY_OF_MONTH),
+        )
+    }
+
+    override fun uses24HourClock(): Boolean = DateFormat.is24HourFormat(appContext)
 }
 
 class AndroidExternalLinkOpener(
@@ -144,7 +141,10 @@ class AndroidShareService(context: Context) : ShareService {
 }
 
 class AndroidCacheStore(context: Context) : CacheStore {
-    private val root = File(context.applicationContext.cacheDir, "shared_cache")
+    private val root = File(
+        context.applicationContext.cacheDir,
+        StorageKeyPolicy.SHARED_CACHE_DIRECTORY,
+    )
 
     override suspend fun read(namespace: String, key: String): ByteArray? = withContext(
         Dispatchers.IO,
@@ -177,7 +177,10 @@ class AndroidCacheStore(context: Context) : CacheStore {
 }
 
 class AndroidFileStore(context: Context) : FileStore {
-    private val root = File(context.applicationContext.filesDir, "shared_files")
+    private val root = File(
+        context.applicationContext.filesDir,
+        StorageKeyPolicy.SHARED_FILES_DIRECTORY,
+    )
 
     override suspend fun read(reference: String): ByteArray? = withContext(Dispatchers.IO) {
         resolve(reference).takeIf(File::isFile)?.readBytes()
@@ -264,9 +267,12 @@ fun createAndroidPlatformDependencies(
     bookmarkStore: ObservableBookmarkStore = AndroidBookmarkStore(context),
     userMessages: UserMessageStore = UserMessageStore(),
 ): AppPlatformDependencies {
-    val accounts = AndroidCredentialStore(context)
+    val credentials = AndroidCredentialStore(context)
+    val accounts = ObservableAccountRepositoryAdapter(
+        AndroidHackerNewsAccountRepository(context),
+    )
     return AppPlatformDependencies(
-        credentials = accounts,
+        credentials = credentials,
         accounts = accounts,
         capabilities = OptionalPlatformCapabilities(
             bookmarks = PlatformCapability.Available(bookmarkStore),
@@ -285,13 +291,9 @@ fun createAndroidPlatformDependencies(
             ),
             articles = PlatformCapability.Available(AndroidArticleViewer(context, userMessages)),
             localSummary = createAndroidLocalSummaryCapability(context, localModels),
+            timeFormatting = PlatformCapability.Available(AndroidTimeFormatter(context)),
         ),
     )
 }
 
-private fun safeName(value: String): String {
-    require(value.isNotBlank()) { "A non-blank storage key is required" }
-    return MessageDigest.getInstance("SHA-256")
-        .digest(value.encodeToByteArray())
-        .joinToString("") { byte -> "%02x".format(byte) }
-}
+private fun safeName(value: String): String = StorageKeyPolicy.safeName(value)

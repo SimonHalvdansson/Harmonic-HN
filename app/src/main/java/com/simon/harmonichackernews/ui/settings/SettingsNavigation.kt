@@ -155,7 +155,8 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.WebLinks -> WebLinksSettingsScreen(
+                SettingsSection.WebLinks -> SharedWebLinksSettingsRoute(
+                    repository = dependencies.settings,
                     showNavigation = singlePane,
                     onBack = onBack,
                 )

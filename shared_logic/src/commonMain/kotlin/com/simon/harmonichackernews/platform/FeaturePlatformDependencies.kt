@@ -36,6 +36,7 @@ data class OptionalPlatformCapabilities(
         unavailable("Reply notifications"),
     val articles: PlatformCapability<ArticleViewer> = unavailable("Article viewer"),
     val localSummary: PlatformCapability<LocalSummaryEngine> = unavailable("Local summaries"),
+    val timeFormatting: PlatformCapability<PlatformTimeFormatter> = unavailable("Time formatting"),
 ) {
     companion object {
         private fun unavailable(name: String): PlatformCapability.Unavailable =

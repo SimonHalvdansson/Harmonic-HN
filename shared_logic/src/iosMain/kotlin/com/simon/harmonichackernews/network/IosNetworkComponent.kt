@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
-import io.ktor.client.plugins.cookies.HttpCookies
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,17 +12,11 @@ class IosNetworkComponent(
     userAgent: String,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val authenticatedClients = ResettableAuthenticatedHttpClientProvider {
-        createHarmonicHttpClient(Darwin.create(), userAgent) {
-            install(HttpCookies)
-        }
-    }
-
-    val graph = NetworkGraph(
-        transportClient = createHarmonicHttpClient(Darwin.create(), userAgent),
+    val graph = NetworkGraphFactory.create(NetworkGraphEnvironment(
         scope = scope,
-        authenticatedClientProvider = authenticatedClients,
-    )
+        userAgent = userAgent,
+        engine = { Darwin.create() },
+    ))
 
     val httpClient: HttpClient get() = graph.transportClient
     val hackerNewsApi: HackerNewsApi get() = graph.hackerNewsApi

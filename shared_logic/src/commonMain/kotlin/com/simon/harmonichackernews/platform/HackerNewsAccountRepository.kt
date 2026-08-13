@@ -80,3 +80,30 @@ class CredentialBackedHackerNewsAccountRepository(
 
     override suspend fun clearAccount(): Boolean = mutationMutex.withLock { clear() }
 }
+
+/**
+ * Adds observable/suspend semantics to an atomic platform account vault. Platforms only implement
+ * secure atomic read/write/remove; shared code owns publication and mutation serialization.
+ */
+class ObservableAccountRepositoryAdapter(
+    private val delegate: HackerNewsAccountRepository,
+) : ObservableHackerNewsAccountRepository {
+    private val mutationMutex = Mutex()
+    private val mutableAccountState = MutableStateFlow(delegate.load())
+    override val accountState: StateFlow<HackerNewsAccount?> = mutableAccountState.asStateFlow()
+
+    override fun load(): HackerNewsAccount? = delegate.load().also { mutableAccountState.value = it }
+
+    override fun save(account: HackerNewsAccount): Boolean = delegate.save(account).also { saved ->
+        mutableAccountState.value = if (saved) account else delegate.load()
+    }
+
+    override fun clear(): Boolean = delegate.clear().also {
+        mutableAccountState.value = delegate.load()
+    }
+
+    override suspend fun saveAccount(account: HackerNewsAccount): Boolean =
+        mutationMutex.withLock { save(account) }
+
+    override suspend fun clearAccount(): Boolean = mutationMutex.withLock { clear() }
+}

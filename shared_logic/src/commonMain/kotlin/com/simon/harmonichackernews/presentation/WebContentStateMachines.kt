@@ -8,6 +8,28 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+data class WebContentDriverState(
+    val currentUrl: String? = null,
+    val loading: Boolean = false,
+    val pageReady: Boolean = false,
+    val canGoBack: Boolean = false,
+    val showingError: Boolean = false,
+    val showingCachedContent: Boolean = false,
+)
+
+/**
+ * Small browser boundary implemented by WebView, WKWebView and a desktop web engine.
+ * No feature code needs to know which native view evaluates scripts or keeps history.
+ */
+interface WebContentDriver {
+    val state: StateFlow<WebContentDriverState>
+    fun load(url: String)
+    fun reload()
+    fun goBack(): Boolean
+    fun evaluateJavaScript(script: String, onResult: (String?) -> Unit = {})
+    fun readPageText(onResult: (String?) -> Unit)
+}
+
 data class WebPreloadEnvironment(
     val unmeteredConnection: Boolean,
     val batteryPercent: Int?,
@@ -27,6 +49,123 @@ object WebContentAssets {
     const val OFFLINE_PAGE = "webview_error.html"
     const val READABILITY_SCRIPT = "vendor/mozilla/readability/0.6.0/Readability.min.js"
     const val READER_MODE_SCRIPT = "reader_mode.js"
+}
+
+/** Timing policy shared by WebView, WKWebView and desktop browser adapters. */
+object WebContentTiming {
+    const val VISIBLE_LOAD_GRACE_MILLIS: Long = 1_500
+    const val READER_INITIAL_AVAILABILITY_GRACE_MILLIS: Long = 2_000
+    const val READER_AVAILABILITY_RECHECK_DELAY_MILLIS: Long = 2_500
+    const val LOAD_TIMEOUT_MILLIS: Long = 45_000
+    const val SUMMARY_LOAD_TIMEOUT_MILLIS: Long = 30_000
+}
+
+/** User-facing web-content copy kept identical across platform shells. */
+object WebContentCopy {
+    const val OPEN_URL_FAILED = "Couldn't open URL"
+    const val AD_BLOCK_DISABLED = "Disabled AdBlock, refreshing WebView"
+    const val READER_UNAVAILABLE_FOR_PAGE = "Reader mode unavailable for this page"
+    const val READER_PENDING = "Reader mode will open after the page loads"
+    const val READER_UNAVAILABLE = "Reader mode unavailable"
+    const val READER_NO_ARTICLE = "Couldn't find readable article"
+    const val READER_OPEN_FAILED = "Couldn't open reader mode"
+    const val DOWNLOAD_LINK_FAILED = "Couldn't open download link"
+    const val SHOWING_CACHED_CONTENT = "Showing cached webview content"
+}
+
+/** Pure assembly helpers; hosts only load bytes/assets and resolve native theme colors. */
+object ReaderModeSourceAssembler {
+    fun script(readabilitySource: String, readerModeSource: String): String = buildString {
+        append(readabilitySource.trimEnd()).append('\n')
+        append(readerModeSource.trimEnd()).append('\n')
+    }
+
+    fun cssColor(argb: Int): String = "#" + (argb and 0x00ff_ffff)
+        .toString(16)
+        .uppercase()
+        .padStart(6, '0')
+
+    fun fontDataUrl(base64: String): String = "data:font/ttf;base64,$base64"
+
+    fun fontFaceCss(regularDataUrl: String, boldDataUrl: String): String {
+        if (regularDataUrl.isBlank() || boldDataUrl.isBlank()) return ""
+        return "@font-face{font-family:'HarmonicReaderFont';font-style:normal;" +
+            "font-weight:400;src:url($regularDataUrl) format('truetype');}" +
+            "@font-face{font-family:'HarmonicReaderFont';font-style:normal;" +
+            "font-weight:700;src:url($boldDataUrl) format('truetype');}"
+    }
+}
+
+/**
+ * Portable grace/recheck bookkeeping for reader-mode availability. Native hosts supply only a
+ * monotonic clock and their delayed-callback primitive.
+ */
+class ReaderModeAvailabilityCadence {
+    private var initialGraceUsed = false
+    private var initialGraceStartedAtMillis = 0L
+    private var initialGraceGeneration = -1
+    private var unavailableDelayGeneration = -1
+    private var recheckGeneration = -1
+    private var recheckUsed = false
+
+    fun onLoadStarted(generation: Int, eligible: Boolean, nowMillis: Long): Boolean {
+        recheckGeneration = -1
+        recheckUsed = false
+        unavailableDelayGeneration = -1
+        if (!eligible) {
+            initialGraceGeneration = -1
+            return false
+        }
+        val retainInitialAvailability = !initialGraceUsed || isGraceActive(nowMillis)
+        if (!retainInitialAvailability) return false
+        if (!initialGraceUsed) {
+            initialGraceUsed = true
+            initialGraceStartedAtMillis = nowMillis
+        }
+        initialGraceGeneration = generation
+        return true
+    }
+
+    fun onAvailable() {
+        initialGraceGeneration = -1
+        unavailableDelayGeneration = -1
+        recheckGeneration = -1
+    }
+
+    fun onUnavailableNow() {
+        initialGraceGeneration = -1
+        unavailableDelayGeneration = -1
+    }
+
+    /** Returns a delay when unavailability should be deferred, or null when it applies now. */
+    fun unavailableDelayMillis(generation: Int, nowMillis: Long): Long? {
+        if (initialGraceGeneration != generation || !isGraceActive(nowMillis)) return null
+        val remaining = WebContentTiming.READER_INITIAL_AVAILABILITY_GRACE_MILLIS -
+            (nowMillis - initialGraceStartedAtMillis)
+        if (remaining <= 0) return null
+        unavailableDelayGeneration = generation
+        return remaining
+    }
+
+    fun shouldApplyDelayedUnavailable(
+        generation: Int,
+        currentGeneration: Int,
+    ): Boolean = unavailableDelayGeneration == generation &&
+        generation == currentGeneration && initialGraceGeneration == generation
+
+    fun scheduleRecheck(generation: Int, currentGeneration: Int): Boolean {
+        if (recheckUsed || generation != currentGeneration) return false
+        recheckUsed = true
+        recheckGeneration = generation
+        return true
+    }
+
+    fun shouldRunRecheck(generation: Int, currentGeneration: Int): Boolean =
+        recheckGeneration == generation && generation == currentGeneration
+
+    private fun isGraceActive(nowMillis: Long): Boolean = initialGraceGeneration >= 0 &&
+        nowMillis - initialGraceStartedAtMillis <
+        WebContentTiming.READER_INITIAL_AVAILABILITY_GRACE_MILLIS
 }
 
 /** Cross-platform preload, redirect, cache-fallback, and error-page policy. */
@@ -333,6 +472,80 @@ class WebContentRuntime internal constructor(
 ) {
     val load = WebContentLoadStateMachine()
     val reader = ReaderModeStateMachine()
+}
+
+/**
+ * Portable command controller layered over a native [WebContentDriver]. URL decisions, reader
+ * protocol and state-machine transitions therefore stay identical across hosts.
+ */
+class WebContentController(
+    private val runtime: WebContentRuntime,
+    private val driver: WebContentDriver,
+) {
+    val driverState: StateFlow<WebContentDriverState> get() = driver.state
+    val loadState: WebContentLoadState get() = runtime.load.state
+    val readerState: ReaderModeState get() = runtime.reader.state
+
+    fun configureReader(featureEnabled: Boolean, integrated: Boolean, defaultEnabled: Boolean) {
+        runtime.reader.configure(featureEnabled, integrated, defaultEnabled)
+    }
+
+    fun load(url: String?, archiveDomains: Collection<String>): WebContentUrlPlan? {
+        val plan = WebContentPolicy.resolveUrl(url, archiveDomains) ?: return null
+        driver.load(plan.loadUrl)
+        return plan
+    }
+
+    fun reload() = driver.reload()
+
+    fun goBack(): Boolean = driver.goBack()
+
+    fun readPageText(onResult: (String?) -> Unit) = driver.readPageText(onResult)
+
+    fun onLoadStarted(): Int = runtime.load.begin()
+    fun onPageCommitVisible(generation: Int = runtime.load.state.generation): Boolean =
+        runtime.load.commitVisible(generation)
+    fun onLoadFinished(generation: Int = runtime.load.state.generation): Boolean =
+        runtime.load.finish(generation)
+    fun reset() = runtime.load.reset()
+
+    fun applyReaderMode(
+        script: String,
+        theme: ReaderModeTheme,
+        enabled: Boolean,
+        onResult: (ReaderModeScriptStatus) -> Unit = {},
+    ) {
+        evaluateReaderMode(script, theme, enabled) { status ->
+            runtime.reader.applyResult(status)
+            onResult(status)
+        }
+    }
+
+    fun evaluateReaderMode(
+        script: String,
+        theme: ReaderModeTheme,
+        enabled: Boolean,
+        onResult: (ReaderModeScriptStatus) -> Unit,
+    ) {
+        driver.evaluateJavaScript(ReaderModeScriptProtocol.applyCommand(script, theme, enabled)) {
+            val status = ReaderModeScriptProtocol.parseStatus(it)
+            onResult(status)
+        }
+    }
+
+    fun checkReaderModeAvailability(script: String, onResult: (Boolean) -> Unit) {
+        evaluateReaderModeAvailability(script) { available ->
+            if (available) runtime.reader.confirmAvailable() else runtime.reader.setUnavailable()
+            onResult(available)
+        }
+    }
+
+    fun evaluateReaderModeAvailability(script: String, onResult: (Boolean) -> Unit) {
+        driver.evaluateJavaScript(ReaderModeScriptProtocol.availabilityCommand(script)) {
+            val available = ReaderModeScriptProtocol.isAvailable(it)
+            onResult(available)
+        }
+    }
 }
 
 class WebContentService {

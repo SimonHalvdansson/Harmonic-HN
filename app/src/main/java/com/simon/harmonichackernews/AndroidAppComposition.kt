@@ -3,6 +3,7 @@ package com.simon.harmonichackernews
 import android.content.Context
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.AppMetadata
+import com.simon.harmonichackernews.app.AppBootstrapPolicy
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.network.AndroidNetworkEnvironment
 import com.simon.harmonichackernews.network.PreviewCachePolicy
@@ -14,7 +15,8 @@ import com.simon.harmonichackernews.platform.StoredBookmarkStore
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.utils.AndroidDownloadStore
-import com.simon.harmonichackernews.utils.androidSha256Hex
+import com.simon.harmonichackernews.network.StableHash
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.utils.AndroidStoryCacheFileStore
 import com.simon.harmonichackernews.utils.AndroidStoryCacheMetadataStore
 import com.simon.harmonichackernews.data.StoryCacheKeys
@@ -65,12 +67,21 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
         appDataStore = appDataStore,
         savedItemsRepository = savedItems,
         previewCacheStore = AndroidKeyValueStore.named(context, PreviewCachePolicy.STORE_NAME),
-        widgetConfigurationStore = AndroidKeyValueStore.named(context, "widget_config"),
-        widgetRuntimeStore = AndroidKeyValueStore.named(context, "widget_stories_cache"),
+        widgetConfigurationStore = AndroidKeyValueStore.named(
+            context,
+            AppBootstrapPolicy.WIDGET_CONFIGURATION_STORE,
+        ),
+        widgetRuntimeStore = AndroidKeyValueStore.named(
+            context,
+            AppBootstrapPolicy.WIDGET_RUNTIME_STORE,
+        ),
         settingsChanges = settingsStore.changes,
         currentMinutesFromMidnight = {
             Calendar.getInstance().let { calendar ->
-                calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+                AppBootstrapPolicy.minutesFromMidnight(
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                )
             }
         },
         systemDark = { ThemeUtils.uiModeNight(context) },
@@ -94,8 +105,11 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             },
         ),
         pdfDownloadStore = AndroidDownloadStore(
-            root = File(context.externalCacheDir ?: context.cacheDir, "pdf_cache"),
-            fileNameForKey = { url -> androidSha256Hex(url) + ".pdf" },
+            root = File(
+                context.externalCacheDir ?: context.cacheDir,
+                StorageKeyPolicy.PDF_CACHE_DIRECTORY,
+            ),
+            fileNameForKey = { url -> StableHash.sha256Hex(url) + ".pdf" },
             targetSuffix = ".pdf",
         ),
         userMessages = userMessages,

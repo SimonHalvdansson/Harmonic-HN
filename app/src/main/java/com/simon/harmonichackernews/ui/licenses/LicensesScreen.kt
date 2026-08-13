@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.LicenseEntry
-import com.simon.harmonichackernews.app.LocalAiLicenseCatalog
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 private val AndroidLicenses = listOf(
@@ -48,7 +47,5 @@ fun LicensesScreen(
 }
 
 private fun licenseEntries(includeLocalAi: Boolean): List<LicenseEntryUi> = buildList {
-    addAll(AndroidLicenses)
-    if (includeLocalAi) addAll(LocalAiLicenseCatalog.entries)
-    addAll(CommonLicenseCatalog.entries)
+    addAll(CommonLicenseCatalog.complete(AndroidLicenses, includeLocalAi))
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
 import com.simon.harmonichackernews.app.SubmissionsFeatureSessionEvent
+import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.data.Story
@@ -51,6 +52,7 @@ class SubmissionsCoordinator(
         userSettings = userSettings,
     )
     private val runtime = featureSession.runtime
+    private val screenSession = SubmissionsScreenSession(coroutineScope, featureSession)
     val composeController: SubmissionsComposeController
 
     init {
@@ -98,14 +100,12 @@ class SubmissionsCoordinator(
             StoryDisplaySettings.from(userSettings.story).withShowIndex(false)
         )
         coroutineScope.launch {
-            featureSession.events.collect { event ->
-                when (event) {
-                    is SubmissionsFeatureSessionEvent.State -> render(event.state)
-                    is SubmissionsFeatureSessionEvent.Runtime -> handleEffect(event.effect)
-                }
-            }
+            screenSession.state.collect(::render)
         }
-        featureSession.start()?.let { restoration ->
+        coroutineScope.launch {
+            screenSession.effects.collect(::handleEffect)
+        }
+        screenSession.start()?.let { restoration ->
             composeController.restoreScrollState(
                 firstVisiblePosition = restoration.firstVisibleStoryPosition,
                 firstVisibleTop = restoration.firstVisibleStoryTop,
@@ -115,7 +115,7 @@ class SubmissionsCoordinator(
     }
 
     fun close() {
-        featureSession.dispose()
+        screenSession.dispose()
         coroutineScope.cancel()
     }
 

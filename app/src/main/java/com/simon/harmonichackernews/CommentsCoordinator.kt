@@ -24,7 +24,6 @@ import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
-import com.simon.harmonichackernews.app.CommentsFeatureSessionEvent
 import com.simon.harmonichackernews.app.createCommentsFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
@@ -40,8 +39,8 @@ import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsSettingsState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
-import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
+import com.simon.harmonichackernews.ui.session.CommentsScreenSession
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
@@ -88,6 +87,11 @@ class CommentsCoordinator(
     )
     private val commentsPresenter = featureSession.presenter
     private val commentsFeature = featureSession.runtime
+    private val screenSession = CommentsScreenSession(
+        coroutineScope,
+        featureSession,
+        ::commentsPlatformPresentation,
+    )
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
@@ -118,8 +122,10 @@ class CommentsCoordinator(
     private var composeController: CommentsComposeController? = null
 
     init {
+        coroutineScope.launch { screenSession.effects.collect(::handleCommentsRuntimeEffect) }
+        coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
         coroutineScope.launch {
-            featureSession.events.collect(::handleFeatureSessionEvent)
+            screenSession.state.collect { state -> state?.let { composeController?.updateContent(it) } }
         }
         webViewHost = CommentsWebViewHost(activity)
         initializeView(savedInstanceState)
@@ -184,7 +190,7 @@ class CommentsCoordinator(
             )
         }
 
-        featureSession.start(
+        screenSession.start(
             initialStory = destination.toStory(),
             showWebsite = destination.showWebsite,
             scrollToCommentId = destination.scrollToCommentId,
@@ -623,21 +629,19 @@ class CommentsCoordinator(
         if (!restoringStoredProgress) {
             commentsFeature.captureCollapsedComments()
         }
-        val readerAvailable =
-            webViewController != null && webViewController!!.isReaderModeAvailable
-        val readerEnabled = webViewController != null && webViewController!!.isReaderModeEnabled()
-        CommentsScreenStateFactory.create(
-            feature = commentsFeature,
-            platform = CommentsPlatformPresentation(
-                adBlockActive = webViewController?.isBlockingAds == true,
-                readerModeAvailable = readerAvailable,
-                readerModeEnabled = readerEnabled,
-                topInsetPx = topInset,
-                contentInsetLeftPx = commentsContentInsetLeft,
-                contentInsetRightPx = commentsContentInsetRight,
-            ),
-        )?.let(controller::updateContent)
+        screenSession.refreshPresentation()
+        screenSession.state.value?.let(controller::updateContent)
     }
+
+    private fun commentsPlatformPresentation(): CommentsPlatformPresentation =
+        CommentsPlatformPresentation(
+            adBlockActive = webViewController?.isBlockingAds == true,
+            readerModeAvailable = webViewController?.isReaderModeAvailable == true,
+            readerModeEnabled = webViewController?.isReaderModeEnabled() == true,
+            topInsetPx = topInset,
+            contentInsetLeftPx = commentsContentInsetLeft,
+            contentInsetRightPx = commentsContentInsetRight,
+        )
 
     private fun requestComposeSummary() {
         val beginSummary: (String?) -> Unit = commentsFeature::startSummary
@@ -732,10 +736,10 @@ class CommentsCoordinator(
             commentsController?.isLinkPreviewOverlayShowing() == true -> true
             commentsController?.isCommentActionOverlayShowing() == true -> true
             websiteController?.isShowingCustomView == true -> true
-            webViewVisible && websiteController?.isReaderModeEnabled() == true -> true
+            webViewVisible && websiteController.isReaderModeEnabled() -> true
             commentsFeature.settingsState.value?.reading?.closeWebViewOnBack == true ->
                 webViewVisible
-            else -> webViewVisible && websiteController?.canGoBack() == true
+            else -> webViewVisible && websiteController.canGoBack()
         }
         backPressedCallback?.isEnabled = enabled
     }
@@ -911,14 +915,14 @@ class CommentsCoordinator(
         if (destroyed || started) return
         started = true
         refreshPresentationCapabilities()
-        featureSession.onResume()
+        screenSession.onResume()
         syncComposeState()
     }
 
     fun onResume() {
         if (destroyed) return
 
-        featureSession.onResume()
+        screenSession.onResume()
         syncCommentsStatusBarProtection()
         syncComposeState()
     }
@@ -1025,7 +1029,7 @@ class CommentsCoordinator(
             backPressedCallback = null
         }
 
-        featureSession.dispose()
+        screenSession.dispose()
         linkPreviewController?.dispose()
         coroutineScope.cancel()
         if (webViewController != null) {
@@ -1125,13 +1129,6 @@ class CommentsCoordinator(
                 Log.w(TAG, effect.message, effect.cause)
             is CommentsRuntimeEffect.ActionFailed ->
                 showActionFailure(effect.presentation)
-        }
-    }
-
-    private fun handleFeatureSessionEvent(event: CommentsFeatureSessionEvent) {
-        when (event) {
-            is CommentsFeatureSessionEvent.Runtime -> handleCommentsRuntimeEffect(event.effect)
-            is CommentsFeatureSessionEvent.Settings -> applyPlatformSettingsState(event.state)
         }
     }
 

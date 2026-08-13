@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
 import android.text.Html
-import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -49,12 +48,10 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.CommentTextPolicy
-import com.simon.harmonichackernews.ui.content.storyHeaderTintPresentation
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
 import com.simon.harmonichackernews.utils.HtmlTextUtils
-import java.util.Date
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** Android shell for system insets, nested-scroll interop, and image/cache facilities. */
@@ -170,11 +167,8 @@ private fun CommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val storyPosterTag = remember(story.by, contentVersion) {
-        dependencies.userTags.tagFor(story.by)
-    }
     val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
-    val tintPresentation = remember(
+    val headerPresentation = remember(
         story.id,
         story.previewImageUrl,
         story.previewImageTintColorLoaded,
@@ -190,17 +184,23 @@ private fun CommentsHeader(
         settings.faviconProvider,
         settings.paletteTintMode,
         tintBaseColor,
+        controller.lastRefreshed,
         contentVersion,
     ) {
-        storyHeaderTintPresentation(
+        CommentsHeaderPresentationFactory.create(
             story = story,
             previewResource = previewResource,
             faviconProvider = settings.faviconProvider,
             paletteTintMode = settings.paletteTintMode,
             tintBaseColor = tintBaseColor,
             tintStore = dependencies.storyResourceTints,
+            userTags = dependencies.userTags,
+            lastRefreshedMillis = controller.lastRefreshed,
+            formatTime = dependencies.platform.capabilities.timeFormatting
+                .requireService()::time,
         )
     }
+    val tintPresentation = headerPresentation.tint
     val paletteTintMode = tintPresentation.paletteMode
     val previewImageUrl = tintPresentation.previewImageUrl
     val previewPlatform = remember(context) {
@@ -213,23 +213,17 @@ private fun CommentsHeader(
             annotatedHtml = ::htmlToAnnotated,
         )
     }
-    val lastRefreshedText = controller.lastRefreshed
-        .takeIf { it > 0L }
-        ?.let { value ->
-            "Last refreshed: " + DateFormat.getTimeFormat(context).format(Date(value))
-        }
-
     SharedCommentsHeader(
         controller = controller,
         settings = settings,
         contentVersion = contentVersion,
-        storyPosterTag = storyPosterTag,
+        storyPosterTag = headerPresentation.posterTag,
         tintBaseColor = tintBaseColor,
         initialTint = tintPresentation.initialTintArgb,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),
         actionHorizontalPadding = dimensionResource(R.dimen.comments_header_action_padding),
         bookmarksEnabled = dependencies.userSettings.general.bookmarksEnabled,
-        lastRefreshedText = lastRefreshedText,
+        lastRefreshedText = headerPresentation.lastRefreshedText,
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
     ) { visibleBackground, onTintLoaded ->

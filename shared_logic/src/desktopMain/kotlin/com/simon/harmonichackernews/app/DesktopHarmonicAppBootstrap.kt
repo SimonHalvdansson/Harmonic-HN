@@ -1,15 +1,14 @@
 package com.simon.harmonichackernews.app
 
 import com.simon.harmonichackernews.network.NetworkGraph
-import com.simon.harmonichackernews.network.ResettableAuthenticatedHttpClientProvider
-import com.simon.harmonichackernews.network.createHarmonicHttpClient
+import com.simon.harmonichackernews.network.NetworkGraphEnvironment
+import com.simon.harmonichackernews.network.NetworkGraphFactory
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CredentialBackedHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.CredentialStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.cookies.HttpCookies
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,18 +33,13 @@ class DesktopHarmonicAppBootstrap(
     systemDark: () -> Boolean = { false },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val authenticatedClients = ResettableAuthenticatedHttpClientProvider {
-        createHarmonicHttpClient(CIO.create(), userAgent) {
-            install(HttpCookies)
-        }
-    }
     private var closed = false
 
-    val network = NetworkGraph(
-        transportClient = createHarmonicHttpClient(CIO.create(), userAgent),
+    val network: NetworkGraph = NetworkGraphFactory.create(NetworkGraphEnvironment(
         scope = scope,
-        authenticatedClientProvider = authenticatedClients,
-    )
+        userAgent = userAgent,
+        engine = { CIO.create() },
+    ))
     val app = HarmonicAppComposition(
         network = network,
         platform = platform,

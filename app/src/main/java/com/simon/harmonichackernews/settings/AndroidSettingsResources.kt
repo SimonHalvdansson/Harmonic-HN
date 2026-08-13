@@ -4,18 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import com.simon.harmonichackernews.R
 
-/** Resource and device queries that cannot be implemented in common settings code. */
+/** Device query that cannot be implemented in common settings code. */
 object AndroidSettingsResources {
-    fun faviconProviderIcon(provider: String): Int = when (
-        FaviconPreferences.sanitizeProvider(provider)
-    ) {
-        FaviconPreferences.DUCK_DUCK_GO -> R.drawable.ic_favicon_provider_duckduckgo
-        FaviconPreferences.TWENTY -> R.drawable.ic_favicon_provider_twenty
-        else -> R.drawable.ic_favicon_provider_google
-    }
-
     fun batteryPercent(context: Context): Int? {
         val status = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             ?: return null

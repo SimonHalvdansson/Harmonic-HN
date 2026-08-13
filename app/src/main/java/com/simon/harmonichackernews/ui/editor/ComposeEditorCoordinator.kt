@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.app.createEditorFeatureSession
 import com.simon.harmonichackernews.app.EditorFeatureSessionEvent
-import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
+import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
@@ -76,7 +76,7 @@ class ComposeEditorCoordinator(
             )
             is EditorWorkflowResult.Captcha -> navigation.showCaptchaDialog(
                 result.challenge,
-                object : CaptchaResultCallback {
+                object : CaptchaResultHandler {
                     override fun onCaptchaResponse(
                         challenge: com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge,
                         captchaResponse: String,

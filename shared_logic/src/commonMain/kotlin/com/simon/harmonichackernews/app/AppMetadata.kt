@@ -43,6 +43,13 @@ object CommonLicenseCatalog {
 
     fun withPlatform(platformEntries: List<LicenseEntry>): List<LicenseEntry> =
         (platformEntries + entries).distinctBy { it.name to it.url }
+
+    fun complete(
+        platformEntries: List<LicenseEntry>,
+        includeLocalAi: Boolean,
+    ): List<LicenseEntry> = withPlatform(
+        platformEntries + if (includeLocalAi) LocalAiLicenseCatalog.entries else emptyList(),
+    )
 }
 
 /** Optional local-inference dependencies shared by hosts that bundle the local AI runtime. */
