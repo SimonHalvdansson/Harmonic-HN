@@ -11,7 +11,6 @@ import com.simon.harmonichackernews.resources.font_values
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
-import com.simon.harmonichackernews.utils.FontUtils
 import org.jetbrains.compose.resources.stringArrayResource
 
 private val SuggestedArchiveDomains = listOf(
@@ -29,7 +28,6 @@ private val SuggestedArchiveDomains = listOf(
 
 @Composable
 fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
-    val context = LocalContext.current
     val labels = stringArrayResource(Res.array.font_entries)
     val values = stringArrayResource(Res.array.font_values)
     val app = LocalHarmonicUiDependencies.current
@@ -51,7 +49,6 @@ fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
                 webPresenter.setReaderFont(value)
             } else {
                 appearancePresenter.setFont(value)
-                FontUtils.init(context)
             }
         },
         onDismiss = onDismiss,

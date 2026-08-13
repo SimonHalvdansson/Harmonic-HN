@@ -7,14 +7,19 @@ import androidx.work.Configuration
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
 class HarmonicApplication : Application(), Configuration.Provider {
+    private val localAiSupport: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
+    internal val composition by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        createAndroidAppComposition(this)
+    }
+
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
-        LOCAL_AI_SUPPORT.install(this)
+        localAiSupport.install(this)
     }
 
     override fun onCreate() {
         super.onCreate()
-        AndroidAppComposition.initialize(this)
+        composition
     }
 
     override val workManagerConfiguration: Configuration
@@ -28,6 +33,5 @@ class HarmonicApplication : Application(), Configuration.Provider {
     companion object {
         private const val WORK_MANAGER_JOB_ID_MIN = 10000
         private const val WORK_MANAGER_JOB_ID_MAX = 20000
-        private val LOCAL_AI_SUPPORT: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
     }
 }

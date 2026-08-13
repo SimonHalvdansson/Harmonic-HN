@@ -6,13 +6,9 @@ import android.graphics.Color
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowCompat
-import androidx.preference.PreferenceManager
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.ThemePreferences
-import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
-import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import java.util.Calendar
 
 object ThemeUtils {
     /**
@@ -79,11 +75,7 @@ object ThemeUtils {
             window.setNavigationBarColor(navBarColor)
         }
 
-        if (AndroidKeyValueStore.defaults(activity).getBoolean(
-                UserPreferenceKeys.TRANSPARENT_STATUS_BAR,
-                false,
-            )
-        ) {
+        if (activity.harmonicAppComposition.userSettings.general.transparentStatusBar) {
             window.setStatusBarColor(Color.TRANSPARENT)
         }
     }
@@ -121,37 +113,6 @@ object ThemeUtils {
     }
 
     fun getPreferredTheme(ctx: Context): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        return ThemeUtils.getPreferredTheme(
-            ctx,
-            AndroidKeyValueStore.defaults(ctx).getBoolean(
-                UserPreferenceKeys.SPECIAL_NIGHTTIME,
-                false,
-            ),
-            prefs.getString(
-                ThemePreferences.NIGHTTIME_KEY,
-                ThemePreferences.DEFAULT_NIGHTTIME,
-            )!!
-        )
-    }
-
-    fun getPreferredTheme(
-        ctx: Context,
-        useSpecialNighttimeTheme: Boolean,
-        nighttimeTheme: String
-    ): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        val currentCalendar = Calendar.getInstance()
-        return ThemeSelectionPolicy.select(
-            configuredTheme = prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-            nighttimeTheme = nighttimeTheme,
-            useSpecialNighttimeTheme = useSpecialNighttimeTheme,
-            schedule = AndroidAppearanceState.nighttimeScheduleValue(ctx),
-            currentMinutesFromMidnight =
-                currentCalendar.get(Calendar.HOUR_OF_DAY) * 60 +
-                    currentCalendar.get(Calendar.MINUTE),
-            systemDark = uiModeNight(ctx),
-        )
-            .theme
+        return ctx.harmonicAppComposition.appearance.selection().theme
     }
 }

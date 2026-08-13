@@ -2,6 +2,10 @@ package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
+import com.simon.harmonichackernews.summary.StorySummaryEvent
+import com.simon.harmonichackernews.summary.LocalSummaryAvailability
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /** Ports for facilities whose implementations belong to an Android, iOS, or other app shell. */
 interface CredentialStore {
@@ -103,6 +107,20 @@ data class SummaryResult(
 )
 
 interface LocalSummaryEngine {
+    fun canAttempt(): Boolean = true
+    suspend fun availability(): LocalSummaryAvailability = LocalSummaryAvailability(
+        available = isAvailable(),
+        downloadableFallbackRequired = false,
+    )
     suspend fun isAvailable(): Boolean
+    fun isReady(): Boolean = canAttempt()
     suspend fun summarize(request: SummaryRequest): SummaryResult
+
+    fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> = flow {
+        val result = summarize(request)
+        result.debugInfo?.takeIf(String::isNotBlank)?.let {
+            emit(StorySummaryEvent.DebugInfo(it))
+        }
+        emit(StorySummaryEvent.Success(result.text))
+    }
 }

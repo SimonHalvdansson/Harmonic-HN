@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
@@ -71,7 +72,7 @@ fun SharedCommentsSettingsScreen(
     contentVersion: Int = 0,
 ) {
     SettingsPage(
-        title = "Comments",
+        title = stringResource(Res.string.settings_section_comments),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

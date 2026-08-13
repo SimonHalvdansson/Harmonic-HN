@@ -26,7 +26,6 @@ import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
-import com.simon.harmonichackernews.utils.AndroidAppearanceState
 
 fun composeThemeLabel(value: String, fallback: String = ThemePreferences.DEFAULT): String {
     return harmonicThemeLabel(value, fallback)
@@ -166,17 +165,19 @@ fun NighttimeRangeDialog(
     onRangeSelected: () -> Unit,
 ) {
     val context = LocalContext.current
-    val current = remember(context) { AndroidAppearanceState.nighttimeSchedule(context) }
+    val appearance = LocalHarmonicUiDependencies.current.appearance
+    val current = remember(appearance) { appearance.schedule.toIntArray() }
     SharedNighttimeRangeDialog(
         initialHours = current,
         is24Hour = DateFormat.is24HourFormat(context),
         onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-            AndroidAppearanceState.saveNighttimeSchedule(
-                fromHour,
-                fromMinute,
-                toHour,
-                toMinute,
-                context,
+            appearance.saveSchedule(
+                com.simon.harmonichackernews.settings.NighttimeSchedule(
+                    fromHour,
+                    fromMinute,
+                    toHour,
+                    toMinute,
+                ),
             )
             onRangeSelected()
         },
@@ -204,7 +205,7 @@ fun WelcomeSettingsDialog(
             storyPreferences.previewImageMode != StoryPreviewPreferences.OFF,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
-            if (!styleChooser) AndroidAppearanceState.markWelcomeShown(context)
+            if (!styleChooser) app.appearance.markWelcomeShown()
             onDismiss()
         },
         onDismiss = onDismiss,

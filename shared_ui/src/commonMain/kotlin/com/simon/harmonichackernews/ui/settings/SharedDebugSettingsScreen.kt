@@ -35,6 +35,7 @@ import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 enum class DebugSettingsDialog {
     WELCOME,
@@ -142,7 +143,7 @@ fun SharedDebugSettingsScreen(
     var lastVersionTap by remember { mutableStateOf<TimeMark?>(null) }
 
     SettingsPage(
-        title = "Debug",
+        title = stringResource(Res.string.settings_section_debug),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

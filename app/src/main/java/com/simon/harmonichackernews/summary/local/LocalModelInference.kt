@@ -3,9 +3,14 @@ package com.simon.harmonichackernews.summary.local
 import android.content.Context
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelService
 
 /** Streaming text summarization through an installed local-AI runtime feature. */
-object LocalModelInference {
+class LocalModelInference(
+  context: Context,
+  private val models: LocalModelService,
+) {
+  private val appContext = context.applicationContext
   private val inferenceLock = Any()
   private val engines = mutableMapOf<LocalModelRuntime, LocalInferenceEngine>()
 
@@ -17,35 +22,31 @@ object LocalModelInference {
     fun onLoaded(loadMillis: Long)
   }
 
-  @JvmStatic
   fun summarize(
-    context: Context,
     text: String,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
   ): String = synchronized(inferenceLock) {
-    summarizeLocked(context, text, progressCallback, loadCallback)
+    summarizeLocked(text, progressCallback, loadCallback)
   }
 
   private fun summarizeLocked(
-    context: Context,
     text: String,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
   ): String {
-    val appContext = context.applicationContext
-    val model = LocalModelManager.getSelectedModel(appContext)
-    if (!LocalAiRuntimeManager.isRuntimeInstalled(appContext, model.runtime)) {
+    val model = models.selectedModel
+    if (!models.isRuntimeInstalled(model.runtime)) {
       throw IllegalStateException(
-        "${LocalAiRuntimeManager.getRuntimeLabel(model.runtime)} is not installed",
+        "${models.runtimeLabel(model.runtime)} is not installed",
       )
     }
 
-    val modelPath = LocalModelManager.getSelectedModelPath(appContext)
+    val modelPath = models.installedPath()
     val prepared = LocalSummaryPreparation.prepare(
       text = text,
       modelContextTokens = model.contextTokens,
-      totalMemoryBytes = LocalModelManager.getTotalMemoryBytes(appContext),
+      totalMemoryBytes = androidTotalMemoryBytes(appContext),
     )
 
     return getEngine(model.runtime).summarize(
@@ -60,16 +61,19 @@ object LocalModelInference {
     )
   }
 
-  private fun getEngine(runtime: LocalModelRuntime): LocalInferenceEngine {
+  private fun getEngine(
+    runtime: LocalModelRuntime,
+  ): LocalInferenceEngine {
     return engines.getOrPut(runtime) {
-      val className = LocalAiRuntimeManager.getEngineClassName(runtime)
+      val className = models.engineClassName(runtime)
+        ?: throw IllegalStateException("${models.runtimeLabel(runtime)} has no inference engine")
       try {
         Class.forName(className)
           .getDeclaredConstructor()
           .newInstance() as LocalInferenceEngine
       } catch (exception: ReflectiveOperationException) {
         throw IllegalStateException(
-          "Could not load ${LocalAiRuntimeManager.getRuntimeLabel(runtime)}",
+          "Could not load ${models.runtimeLabel(runtime)}",
           exception,
         )
       }

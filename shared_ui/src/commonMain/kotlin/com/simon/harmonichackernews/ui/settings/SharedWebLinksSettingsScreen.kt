@@ -17,7 +17,9 @@ import com.simon.harmonichackernews.resources.ic_link_preview_x
 import com.simon.harmonichackernews.resources.ic_open_in_browser
 import com.simon.harmonichackernews.resources.ic_shuffle
 import com.simon.harmonichackernews.resources.ic_web_asset
+import com.simon.harmonichackernews.resources.settings_section_web_links
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.stringResource
 
 data class WebLinksSettingsUiState(
     val integratedWebView: Boolean,
@@ -73,7 +75,7 @@ fun SharedWebLinksSettingsScreen(
 ) {
     val readerControlsEnabled = state.integratedWebView && state.readerModeEnabled
     SettingsPage(
-        title = "Web and links",
+        title = stringResource(Res.string.settings_section_web_links),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

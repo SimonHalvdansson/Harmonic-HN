@@ -26,6 +26,10 @@ interface KeyValueStore {
     fun getInt(key: String, default: Int): Int
     fun putInt(key: String, value: Int)
 
+    fun getLong(key: String, default: Long): Long =
+        getString(key)?.toLongOrNull() ?: default
+    fun putLong(key: String, value: Long) = putString(key, value.toString())
+
     fun getFloat(key: String, default: Float): Float
     fun putFloat(key: String, value: Float)
 

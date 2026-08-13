@@ -17,8 +17,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.concurrent.Volatile
 
-object NetworkComponent {
-    val USER_AGENT: String =
+internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMaintenance {
+    private val appContext = context.applicationContext
+    val userAgent: String =
         "Harmonic-HN-Android/" + BuildConfig.VERSION_NAME + "/" + BuildConfig.BUILD_TYPE
 
     private val networkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -30,26 +31,28 @@ object NetworkComponent {
 
         override fun get(): HttpClient {
             activeClient?.let { return it }
-            return synchronized(NetworkComponent::class.java) {
+            return synchronized(this@AndroidNetworkEnvironment) {
                 activeClient ?: createClient { install(HttpCookies) }
                     .also { activeClient = it }
             }
         }
 
         override fun reset() {
-            synchronized(NetworkComponent::class.java) {
+            synchronized(this@AndroidNetworkEnvironment) {
                 activeClient?.close()
                 activeClient = null
             }
         }
     }
 
-    /** Shared network graph used by the application composition and legacy Android bridges. */
+    /** Shared network graph owned by the Android application composition. */
     val graph: NetworkGraph by lazy {
         NetworkGraph(
             transportClient = transportClient,
             scope = networkScope,
             authenticatedClientProvider = authenticatedClientProvider,
+            userAgent = userAgent,
+            cacheMaintenance = this,
         )
     }
 
@@ -58,14 +61,14 @@ object NetworkComponent {
 
     private var requestQueueInstance: RequestQueue? = null
 
-    private fun getRequestQueueInstance(context: Context): RequestQueue {
+    private fun getRequestQueueInstance(): RequestQueue {
         check(
             !(BuildConfig.DEBUG && !Looper.getMainLooper().isCurrentThread())
         ) { "getRequestQueueInstance currently doesn't support multithreaded access" }
 
         return requestQueueInstance ?: run {
             val cacheDirectory = File(
-                context.applicationContext.cacheDir,
+                appContext.cacheDir,
                 HTTP_CACHE_DIRECTORY,
             ).apply { mkdirs() }
             val cacheStorage = FileStorage(cacheDirectory)
@@ -84,10 +87,9 @@ object NetworkComponent {
         }
     }
 
-    fun removeCachedStoryResponses(context: Context?, storyId: Int) {
-        if (context == null || storyId <= 0) return
-
-        getRequestQueueInstance(context)
+    override fun removeCachedStoryResponses(storyId: Int) {
+        if (storyId <= 0) return
+        getRequestQueueInstance()
         val cacheStorage = responseCache ?: return
         networkScope.launch {
             cacheStorage.removeAll(Url("https://hn.algolia.com/api/v1/items/$storyId"))
@@ -99,7 +101,9 @@ object NetworkComponent {
 
     private fun createClient(
         configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {},
-    ): HttpClient = createHarmonicHttpClient(CIO.create(), USER_AGENT, configure)
+    ): HttpClient = createHarmonicHttpClient(CIO.create(), userAgent, configure)
 
-    private const val HTTP_CACHE_DIRECTORY = "ktor_http_cache"
+    private companion object {
+        const val HTTP_CACHE_DIRECTORY = "ktor_http_cache"
+    }
 }

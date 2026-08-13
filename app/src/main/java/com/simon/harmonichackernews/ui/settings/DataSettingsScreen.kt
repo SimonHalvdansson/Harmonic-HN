@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -15,16 +14,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.data.BookmarkImportPolicy
-import com.simon.harmonichackernews.data.SavedItemCodec
-import com.simon.harmonichackernews.data.SavedItemSource
-import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
 import com.simon.harmonichackernews.settings.BookmarkExportDecision
+import com.simon.harmonichackernews.settings.BookmarkImportResult
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
-import com.simon.harmonichackernews.utils.AndroidStoryCache
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import java.util.Calendar
 import kotlinx.coroutines.launch
@@ -39,9 +34,7 @@ fun DataSettingsScreen(
     val scope = rememberCoroutineScope()
     val appComposition = LocalHarmonicUiDependencies.current
     val settingsRepository = appComposition.settings
-    val settingsReset = appComposition.settingsReset
-    val savedItems = appComposition.savedItems
-    val historyStore = appComposition.platform.capabilities.history.getOrNull()
+    val dataSettings = appComposition.dataSettings
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<DataSettingsDialog?>(null) }
     var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
@@ -52,10 +45,11 @@ fun DataSettingsScreen(
     ) { uri ->
         uri?.let { outputUri ->
             runCatching {
+                val content = dataSettings.exportBookmarks() ?: return@runCatching
                 AndroidTextDocuments.write(
                     context,
                     outputUri,
-                    SavedItemCodec.encode(savedItems.loadItems(SavedItemSource.BOOKMARKS)),
+                    content,
                 )
             }.onFailure {
                 appComposition.userMessages.show("Write error")
@@ -68,21 +62,21 @@ fun DataSettingsScreen(
     ) { uri ->
         uri?.let { inputUri ->
             runCatching {
-                importBookmarks(
-                    context = context,
-                    uri = inputUri,
+                dataSettings.importBookmarks(
+                    content = AndroidTextDocuments.read(context, inputUri),
                     overwrite = overwriteBookmarksOnImport,
-                    savedItems = savedItems,
                 )
-            }.onSuccess { importedCount ->
-                if (importedCount == null) {
-                    appComposition.userMessages.show("File contained no bookmarks")
-                } else {
+            }.onSuccess { result ->
+                when (result) {
+                    BookmarkImportResult.Empty ->
+                        appComposition.userMessages.show("File contained no bookmarks")
+                    is BookmarkImportResult.Imported -> {
                     localRefresh++
-                    val action = if (overwriteBookmarksOnImport) "Loaded " else "Added "
+                    val action = if (result.overwroteExisting) "Loaded " else "Added "
                     appComposition.userMessages.show(
-                        action + formatBookmarkCount(importedCount),
+                        action + formatBookmarkCount(result.count),
                     )
+                    }
                 }
             }.onFailure {
                 appComposition.userMessages.show("Read error")
@@ -90,25 +84,23 @@ fun DataSettingsScreen(
         }
     }
 
-    val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
+    val dataSnapshot = dataSettings.snapshot()
+    val bookmarkCount = dataSnapshot.bookmarkCount
     SharedDataSettingsRoute(
         repository = settingsRepository,
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount,
-            history = historyStore?.load()?.size ?: 0,
-            postCache = AndroidStoryCache.itemCount(context),
-            tintCache = appComposition.storyResourceTints.count(),
+            history = dataSnapshot.historyCount,
+            postCache = dataSnapshot.postCacheCount,
+            tintCache = dataSnapshot.tintCacheCount,
         ),
-        loggedIn = appComposition.platform.accounts.load() != null,
+        loggedIn = dataSnapshot.loggedIn,
         showNavigation = showNavigation,
         onBack = onBack,
         onAction = { action ->
             when (action) {
                 DataSettingsAction.AddBookmarksToFavorites -> {
-                    favoriteIds = savedItems.loadItems(
-                        SavedItemSource.BOOKMARKS,
-                        sortedByCreated = true,
-                    ).map { it.id }.toIntArray()
+                    favoriteIds = dataSettings.bookmarkIdsByNewest().toIntArray()
                 }
                 DataSettingsAction.ExportBookmarks -> {
                     when (DataSettingsPolicy.exportDecision(bookmarkCount)) {
@@ -119,26 +111,19 @@ fun DataSettingsScreen(
                 }
                 DataSettingsAction.ImportBookmarks -> dialog = DataSettingsDialog.Import
                 DataSettingsAction.ClearHistory -> {
-                    val oldCount = historyStore?.load()?.size ?: 0
-                    historyStore?.clear()
+                    val message = dataSettings.clearHistory()
                     localRefresh++
-                    DataSettingsPolicy.clearedItemsMessage(oldCount, "entry", "entries")
-                        ?.let { appComposition.userMessages.show(it) }
+                    message?.let { appComposition.userMessages.show(it) }
                 }
                 DataSettingsAction.ClearPostCache -> {
-                    val oldCount = AndroidStoryCache.clear(context)
                     scope.launch {
-                        appComposition.previewResources.clear()
+                        val message = dataSettings.clearPostCache()
                         localRefresh++
-                        DataSettingsPolicy.clearedItemsMessage(
-                            oldCount,
-                            "cached post",
-                            "cached posts",
-                        )?.let { appComposition.userMessages.show(it) }
+                        message?.let { appComposition.userMessages.show(it) }
                     }
                 }
                 DataSettingsAction.ClearTintCache -> {
-                    appComposition.storyResourceTints.clear()
+                    dataSettings.clearTintCache()
                     localRefresh++
                     appComposition.userMessages.show("Tint cache cleared")
                 }
@@ -171,7 +156,7 @@ fun DataSettingsScreen(
             positiveLabel = "Reset",
             negativeLabel = "Cancel",
             onPositive = {
-                settingsReset.execute()
+                dataSettings.resetSettings()
                 appComposition.userMessages.show("Settings reset")
                 onRequestRestart()
                 dialog = null
@@ -211,23 +196,6 @@ fun DataSettingsScreen(
             },
         )
     }
-}
-
-private fun importBookmarks(
-    context: Context,
-    uri: Uri,
-    overwrite: Boolean,
-    savedItems: SavedItemsRepository,
-): Int? {
-    val content = AndroidTextDocuments.read(context, uri)
-    val result = BookmarkImportPolicy.apply(
-        content = content,
-        current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
-        overwrite = overwrite,
-    )
-    if (result == null) return null
-    savedItems.saveItems(SavedItemSource.BOOKMARKS, result.items)
-    return result.importedCount
 }
 
 private fun bookmarksFilename(): String {

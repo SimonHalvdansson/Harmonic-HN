@@ -42,6 +42,9 @@ import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.app.LicenseEntry
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.settings_section_licenses
+import org.jetbrains.compose.resources.stringResource
 
 typealias LicenseEntryUi = LicenseEntry
 
@@ -71,7 +74,7 @@ fun SharedLicensesScreen(
             ),
     ) {
         SharedHarmonicTopAppBar(
-            title = "Third-party licenses",
+            title = stringResource(Res.string.settings_section_licenses),
             onBack = onBack,
             navigationContentDescription = "Back to About",
             toolbarHeight = topBarHeight,

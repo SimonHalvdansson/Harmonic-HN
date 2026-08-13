@@ -8,7 +8,7 @@ import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 
 /** Retains content state whose Android coordinators are recreated with the Activity. */
 class ScreenStateViewModel(application: Application) : AndroidViewModel(application) {
-    private val sessions = AndroidAppComposition.get(application).sessions
+    private val sessions = application.harmonicAppComposition.sessions
 
     fun commentsStateFor(key: Int, storyId: Int): CommentsSessionState =
         sessions.commentsStateFor(key, storyId)

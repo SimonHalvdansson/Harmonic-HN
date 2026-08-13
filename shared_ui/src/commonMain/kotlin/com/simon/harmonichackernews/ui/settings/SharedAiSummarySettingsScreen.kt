@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AiSummaryMode
 
@@ -33,7 +34,7 @@ fun SharedAiSummarySettingsScreen(
 ) {
     val cloudMode = state.mode == AiSummaryMode.CLOUD
     SettingsPage(
-        title = "AI summarization",
+        title = stringResource(Res.string.settings_section_ai_summary),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

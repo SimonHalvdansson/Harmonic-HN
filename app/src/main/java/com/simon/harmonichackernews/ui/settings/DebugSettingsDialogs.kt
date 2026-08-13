@@ -13,7 +13,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.network.RepliesChecker
+import com.simon.harmonichackernews.network.LatestReplyLookupResult
+import com.simon.harmonichackernews.network.ReplySubscriptionResult
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import kotlinx.coroutines.launch
 
 private data class PendingDebugNotificationRequest(
@@ -26,8 +28,9 @@ private data class PendingDebugNotificationRequest(
 fun DebugNotificationsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val initialUsername = remember { RepliesChecker.getConfiguredUsername(context) }
-    val initiallyActive = remember { RepliesChecker.notificationsAreActive(context) }
+    val runtime = checkNotNull(LocalHarmonicUiDependencies.current.replyNotifications)
+    val initialUsername = remember { runtime.configuredUsername }
+    val initiallyActive = remember { runtime.isEnabled }
     var pendingRequest by remember {
         mutableStateOf<PendingDebugNotificationRequest?>(null)
     }
@@ -35,7 +38,7 @@ fun DebugNotificationsDialog(onDismiss: () -> Unit) {
     fun perform(request: PendingDebugNotificationRequest) {
         when (request.action) {
             DebugNotificationAction.DISABLE -> {
-                RepliesChecker.disable(context)
+                runtime.disable()
                 request.onResult(
                     DebugNotificationActionResult(
                         outcome = DebugNotificationOutcome.DISABLED,
@@ -44,7 +47,7 @@ fun DebugNotificationsDialog(onDismiss: () -> Unit) {
                 )
             }
             DebugNotificationAction.ENABLE -> coroutineScope.launch {
-                val success = RepliesChecker.enable(context, request.username)
+                val success = runtime.enable(request.username) is ReplySubscriptionResult.Enabled
                 request.onResult(
                     DebugNotificationActionResult(
                         outcome = if (success) {
@@ -52,28 +55,26 @@ fun DebugNotificationsDialog(onDismiss: () -> Unit) {
                         } else {
                             DebugNotificationOutcome.ENABLE_FAILED
                         },
-                        configuredUsername = RepliesChecker.getConfiguredUsername(context),
-                        notificationsActive = RepliesChecker.notificationsAreActive(context),
+                        configuredUsername = runtime.configuredUsername,
+                        notificationsActive = runtime.isEnabled,
                     ),
                 )
             }
             DebugNotificationAction.TEST -> coroutineScope.launch {
-                val outcome = when (
-                    RepliesChecker.sendLatestDebugNotification(context, request.username)
-                ) {
-                    RepliesChecker.DebugNotificationResult.SENT ->
+                val outcome = when (runtime.publishLatest(request.username)) {
+                    is LatestReplyLookupResult.Found ->
                         DebugNotificationOutcome.TEST_SENT
-                    RepliesChecker.DebugNotificationResult.NO_RECENT_REPLY ->
+                    LatestReplyLookupResult.NoRecentReply ->
                         DebugNotificationOutcome.NO_RECENT_REPLY
-                    RepliesChecker.DebugNotificationResult.USER_NOT_FOUND ->
+                    LatestReplyLookupResult.UserNotFound ->
                         DebugNotificationOutcome.USER_NOT_FOUND
-                    RepliesChecker.DebugNotificationResult.FAILED ->
+                    is LatestReplyLookupResult.Failed ->
                         DebugNotificationOutcome.TEST_FAILED
                 }
                 request.onResult(
                     DebugNotificationActionResult(
                         outcome = outcome,
-                        notificationsActive = RepliesChecker.notificationsAreActive(context),
+                        notificationsActive = runtime.isEnabled,
                     ),
                 )
             }
@@ -92,7 +93,7 @@ fun DebugNotificationsDialog(onDismiss: () -> Unit) {
                 request.onResult(
                     DebugNotificationActionResult(
                         outcome = DebugNotificationOutcome.PERMISSION_DENIED,
-                        notificationsActive = RepliesChecker.notificationsAreActive(context),
+                        notificationsActive = runtime.isEnabled,
                     ),
                 )
             }

@@ -10,7 +10,7 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.utils.ExternalUrlPolicy
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.defaultBrowserPackageName
@@ -20,7 +20,7 @@ import com.simon.harmonichackernews.utils.isInvalidViewHandlerPackage
 object AndroidExternalLinkLauncher {
     fun openCustomTab(context: Context, url: String?, shareable: Boolean = true): Boolean {
         val originalUrl = url ?: return false
-        if (AndroidAppComposition.get(context).userSettings.reading.externalBrowser ||
+        if (context.harmonicAppComposition.userSettings.reading.externalBrowser ||
             !isCustomTabSupported(context)
         ) {
             return openExternalBrowser(context, originalUrl)

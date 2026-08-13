@@ -71,7 +71,7 @@ class MainActivity : BaseActivity() {
     }
 
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val volumeNavigationMode = AndroidAppComposition.get(this)
+        val volumeNavigationMode = harmonicAppComposition
             .userSettings.comments.volumeNavigationMode
         if (CommentNavigationPreferences.DISABLED != volumeNavigationMode) {
             val topLevelOnly =

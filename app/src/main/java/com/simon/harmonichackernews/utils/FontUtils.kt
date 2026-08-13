@@ -3,23 +3,10 @@ package com.simon.harmonichackernews.utils
 import android.content.Context
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
-import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.TextPreferences
 
 object FontUtils {
-    var activeRegular: Typeface? = null
-    var activeBold: Typeface? = null
-
-    var font: String? = null
-
-    fun init(ctx: Context) {
-        font = AndroidAppComposition.get(ctx).userSettings.story.font
-
-        activeRegular = getRegularTypeface(ctx, font)
-        activeBold = getBoldTypeface(ctx, font)
-    }
-
     fun getRegularTypeface(ctx: Context, font: String?): Typeface? {
         when (TextPreferences.sanitizeFont(font)) {
             "productsans" -> return ResourcesCompat.getFont(ctx, R.font.product_sans)

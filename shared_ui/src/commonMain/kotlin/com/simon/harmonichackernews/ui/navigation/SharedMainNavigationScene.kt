@@ -1,17 +1,21 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.PathEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
@@ -21,9 +25,17 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
@@ -105,6 +117,78 @@ fun SharedMainNavigationScene(
         popTransitionSpec = { mainPopTransition() },
         predictivePopTransitionSpec = { mainPopTransition() },
     )
+}
+
+/**
+ * Shared single-pane destination composition. Platform hosts may supply predictive-back graphics
+ * modifiers, while ownership of list/detail retention, transitions, semantics and z-order remains
+ * common across Android, iOS and desktop.
+ */
+@Composable
+fun SharedSinglePaneNavigationScene(
+    storyRequest: MainStoryRequest?,
+    lastStoryRequest: MainStoryRequest?,
+    completedPredictivePop: Boolean,
+    predictiveBackActive: Boolean,
+    showStoriesPane: Boolean,
+    stories: @Composable () -> Unit,
+    comments: @Composable (MainStoryRequest) -> Unit,
+    modifier: Modifier = Modifier,
+    storiesPredictiveModifier: Modifier = Modifier,
+    commentsPredictiveModifier: Modifier = Modifier,
+) {
+    val displayedRequest = storyRequest ?: lastStoryRequest
+    var paneWidth by remember { mutableIntStateOf(0) }
+    val storiesOffset by animateFloatAsState(
+        targetValue = if (storyRequest == null) 0f else -0.2f,
+        animationSpec = if (storyRequest == null) {
+            snap()
+        } else {
+            tween(
+                durationMillis = NavigationTransitionDurationMillis,
+                easing = navigationEasing(),
+            )
+        },
+        label = "stories navigation offset",
+    )
+
+    Box(modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { paneWidth = it.width }
+                .graphicsLayer {
+                    alpha = if (showStoriesPane) 1f else 0f
+                    translationX = if (!predictiveBackActive && !completedPredictivePop) {
+                        paneWidth * storiesOffset
+                    } else {
+                        0f
+                    }
+                }
+                .then(
+                    if (showStoriesPane) Modifier else Modifier.clearAndSetSemantics { },
+                )
+                .then(storiesPredictiveModifier),
+        ) {
+            stories()
+        }
+
+        AnimatedVisibility(
+            visible = storyRequest != null,
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(1f)
+                .then(commentsPredictiveModifier),
+            enter = commentsOpenEnter(),
+            exit = if (completedPredictivePop) ExitTransition.None else commentsPopExit(),
+        ) {
+            if (storyRequest != null || !completedPredictivePop) {
+                displayedRequest?.let { request ->
+                    key(request.serial) { comments(request) }
+                }
+            }
+        }
+    }
 }
 
 private fun mainOpenTransition(): ContentTransform = ContentTransform(

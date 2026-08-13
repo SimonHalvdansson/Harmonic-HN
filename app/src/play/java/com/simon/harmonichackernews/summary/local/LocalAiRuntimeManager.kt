@@ -16,6 +16,7 @@ import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListene
 import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 import java.lang.ref.WeakReference
@@ -24,15 +25,15 @@ import java.util.HashSet
 import java.util.concurrent.CopyOnWriteArraySet
 
 /** Installs Play-delivered local-AI runtimes before their model download starts.  */
-object LocalAiRuntimeManager {
-    private const val MODULE_RUNTIME = "local_ai_runtime"
-    private const val ENGINE_LLAMA =
+private class LocalAiRuntimeManager {
+    private val MODULE_RUNTIME = "local_ai_runtime"
+    private val ENGINE_LLAMA =
         "com.simon.harmonichackernews.localai.llama.LlamaInferenceEngine"
-    private const val ENGINE_LITERT =
+    private val ENGINE_LITERT =
         "com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine"
-    private const val DELIVERY_PREFS = "local_ai_runtime_delivery"
-    private const val KEY_PENDING_MODEL_PREFIX = "pending_model_"
-    private const val CONFIRMATION_REQUEST_CODE = 0x4c41
+    private val DELIVERY_PREFS = "local_ai_runtime_delivery"
+    private val KEY_PENDING_MODEL_PREFIX = "pending_model_"
+    private val CONFIRMATION_REQUEST_CODE = 0x4c41
 
     private val LOCK = Any()
     private val LISTENERS: MutableSet<StatusListener> = CopyOnWriteArraySet()
@@ -44,6 +45,7 @@ object LocalAiRuntimeManager {
     private var installManager: SplitInstallManager? = null
     private var confirmationActivity: WeakReference<Activity> = WeakReference(null)
     private var initialized = false
+    private var modelDownloadStarter: ((String) -> String?)? = null
 
     private val INSTALL_LISTENER: SplitInstallStateUpdatedListener =
         SplitInstallStateUpdatedListener { installState: SplitInstallSessionState ->
@@ -114,14 +116,10 @@ object LocalAiRuntimeManager {
         return requireNotNull(installManager).installedModules.contains(getModuleName(runtime))
     }
 
-    fun requestRuntimeAndModelDownload(context: Context, modelId: String?): String? {
+    fun requestRuntimeAndModelDownload(context: Context, model: LocalModelDefinition): String? {
         initialize(context)
-        val model = LocalModelManager.getModel(modelId)
         if (!model.downloadable) {
             return "${model.displayName} is built into supported devices."
-        }
-        if (!LocalModelManager.isModelSupported(model)) {
-            return "${LocalModelManager.getModelUnsupportedReason(model)}."
         }
 
         findActivity(context)?.let { confirmationActivity = WeakReference(it) }
@@ -437,7 +435,8 @@ object LocalAiRuntimeManager {
             return
         }
         clearPendingModel(runtime)
-        val error = LocalModelManager.downloadModel(requireNotNull(appContext), modelId)
+        val error = modelDownloadStarter?.invoke(modelId)
+            ?: "The local-model download service is not ready."
         if (!error.isNullOrEmpty()) {
             setStatus(
                 status(
@@ -630,4 +629,45 @@ object LocalAiRuntimeManager {
         fun onRuntimeStatusChanged()
     }
 
+    internal fun setModelDownloadStarter(starter: (String) -> String?) {
+        modelDownloadStarter = starter
+    }
+
+}
+
+internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRuntimeDelivery {
+    val manager = LocalAiRuntimeManager()
+    return object : AndroidLocalRuntimeDelivery {
+        private var listener: LocalAiRuntimeManager.StatusListener? = null
+
+        override val included: Boolean get() = manager.isLocalAiIncluded()
+
+        override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
+            manager.getStatus(context, runtime)
+
+        override fun isInstalled(runtime: LocalModelRuntime): Boolean =
+            manager.isRuntimeInstalled(context, runtime)
+
+        override fun request(model: com.simon.harmonichackernews.summary.LocalModelDefinition): String? =
+            manager.requestRuntimeAndModelDownload(context, model)
+
+        override fun cancel(runtime: LocalModelRuntime) =
+            manager.cancelRuntimeInstall(context, runtime)
+
+        override fun setObserver(observer: () -> Unit) {
+            listener?.let(manager::removeStatusListener)
+            val created = LocalAiRuntimeManager.StatusListener(observer)
+            listener = created
+            manager.addStatusListener(context, created)
+        }
+
+        override fun setModelDownloadStarter(starter: (String) -> String?) =
+            manager.setModelDownloadStarter(starter)
+
+        override fun engineClassName(runtime: LocalModelRuntime): String? =
+            manager.getEngineClassName(runtime)
+
+        override fun runtimeLabel(runtime: LocalModelRuntime): String =
+            manager.getRuntimeLabel(runtime)
+    }
 }

@@ -45,6 +45,7 @@ interface LocalModelTransferScheduler {
     fun isActive(modelId: String): Boolean
     fun enqueue(model: LocalModelDefinition)
     fun cancel(modelId: String, onCancelled: () -> Unit)
+    fun setObserver(observer: () -> Unit) = Unit
 }
 
 sealed interface LocalModelDownloadResult {

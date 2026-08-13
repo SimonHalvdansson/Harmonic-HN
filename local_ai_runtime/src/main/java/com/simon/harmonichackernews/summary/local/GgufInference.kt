@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.summary.local
 
+import com.simon.harmonichackernews.summary.LocalModelCatalog
+
 /** Streaming llama.cpp inference for the downloadable GGUF model catalog. */
 object GgufInference {
   private const val MAX_OUTPUT_TOKENS = 256
@@ -27,7 +29,7 @@ object GgufInference {
 
     try {
       val responsePrefix =
-        if (LocalModelManager.MODEL_QWEN_08B == modelId) "- " else ""
+        if (LocalModelCatalog.MODEL_QWEN_08B == modelId) "- " else ""
       if (!nativeStart(systemInstruction, text, responsePrefix, MAX_OUTPUT_TOKENS)) {
         throw IllegalStateException(nativeError("Could not process the summary input"))
       }

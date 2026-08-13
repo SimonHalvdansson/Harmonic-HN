@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.platform
 
+import com.simon.harmonichackernews.network.ReplyNotificationPlatform
+
 /** Explicit availability state for an optional platform facility. */
 sealed interface PlatformCapability<out T> {
     data class Available<T>(val service: T) : PlatformCapability<T>
@@ -30,6 +32,8 @@ data class OptionalPlatformCapabilities(
     val clipboard: PlatformCapability<ClipboardService> = unavailable("Clipboard"),
     val connectivity: PlatformCapability<ConnectivityService> = unavailable("Connectivity"),
     val notifications: PlatformCapability<NotificationScheduler> = unavailable("Notifications"),
+    val replyNotifications: PlatformCapability<ReplyNotificationPlatform> =
+        unavailable("Reply notifications"),
     val articles: PlatformCapability<ArticleViewer> = unavailable("Article viewer"),
     val localSummary: PlatformCapability<LocalSummaryEngine> = unavailable("Local summaries"),
 ) {

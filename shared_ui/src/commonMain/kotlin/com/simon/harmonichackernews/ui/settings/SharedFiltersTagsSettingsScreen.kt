@@ -11,7 +11,9 @@ import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_person
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_title
+import com.simon.harmonichackernews.resources.settings_section_filters_tags
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 enum class ContentFilterDialog { StoryTitle, Domain, User }
 
@@ -35,7 +37,7 @@ fun SharedFiltersTagsSettingsScreen(
     contentVersion: Int = 0,
 ) {
     SettingsPage(
-        title = "Filters and tags",
+        title = stringResource(Res.string.settings_section_filters_tags),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="common_cancel">Cancel</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_stories">Stories</string>
+    <string name="settings_section_comments">Comments</string>
+    <string name="settings_section_web_links">Web and links</string>
+    <string name="settings_section_filters_tags">Filters and tags</string>
+    <string name="settings_section_ai_summary">AI summarization</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_section_debug">Debug</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_section_licenses">Third-party licenses</string>
     <string name="cache_stories_title">Cache stories</string>
     <string name="cache_stories_action">Cache</string>
     <string name="cache_stories_explanation">Downloads top Hacker News stories for offline reading. When the built-in web view is enabled, linked articles are cached too. Larger batches use more data, time, and storage.</string>
@@ -11,7 +22,7 @@
     <string name="login_dialog_password">Password</string>
     <string name="login_dialog_local_information">Information is only saved locally and used for HN API.</string>
     <string name="login_dialog_how_it_works">How does login work?</string>
-    <string name="login_dialog_information">Since Hacker News does not supply an official API for actions which require login, Harmonic cannot authenticate once and obtain a secret token to use in the future. Instead, actions which require login are performed by sending HTTPS POST requests to Hacker News with your username and password in the request body. This means your password must be stored on your device. It is stored encrypted using AES-256 GCM with management carried out by Google’s AndroidX Security library, and is only used in HTTPS POST form bodies sent to news.ycombinator.com.</string>
+    <string name="login_dialog_information">Since Hacker News does not supply an official API for actions which require login, Harmonic cannot authenticate once and obtain a secret token to use in the future. Instead, actions which require login are performed by sending HTTPS POST requests to Hacker News with your username and password in the request body. This means your password must be stored on your device. It is kept in the operating system’s secure encrypted storage and is only used in HTTPS POST form bodies sent to news.ycombinator.com.</string>
     <string name="login_dialog_troubleshooting">If you have issues with login, try the official HN website to confirm whether the issue is with Harmonic or the website.</string>
     <string name="login_dialog_create_account_explanation">Don’t have an account? Create it on the HN website.</string>
     <string name="login_dialog_create_account">Create an account</string>
@@ -60,4 +71,13 @@
     <string name="ai_model_required">Enter or select a model</string>
     <string name="ai_model_item_description">%1$s, input %2$s, output %3$s per million tokens%4$s</string>
     <string name="ai_model_selected_description">, selected</string>
+    <string name="widget_config_title">Configure Widget</string>
+    <string name="widget_config_top_stories">Top Stories</string>
+    <string name="widget_config_new_stories">New Stories</string>
+    <string name="widget_config_best_stories">Best Stories</string>
+    <string name="widget_config_ask_hn">Ask HN</string>
+    <string name="widget_config_show_hn">Show HN</string>
+    <string name="widget_config_jobs">Jobs</string>
+    <string name="widget_config_story_count_label">Number of stories to show</string>
+    <string name="widget_config_confirm">Confirm</string>
 </resources>

@@ -100,3 +100,33 @@ class NighttimeScheduleStore(
     private fun readInt(key: String, default: Int): Int =
         store.getString(key, default.toString())?.toIntOrNull() ?: default
 }
+
+/** Application-scoped appearance policy and persistence shared by every host UI. */
+class AppearanceRuntime(
+    private val settings: KeyValueStore,
+    private val scheduleStore: NighttimeScheduleStore,
+    private val launchState: AppLaunchStateStore,
+    private val currentMinutesFromMidnight: () -> Int,
+    private val systemDark: () -> Boolean,
+) {
+    val schedule: NighttimeSchedule get() = scheduleStore.load()
+
+    fun selection(): ThemeSelection = ThemeSelectionPolicy.select(
+        configuredTheme = settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+        nighttimeTheme = settings.getString(
+            ThemePreferences.NIGHTTIME_KEY,
+            ThemePreferences.DEFAULT_NIGHTTIME,
+        ),
+        useSpecialNighttimeTheme = settings.getBoolean(
+            UserPreferenceKeys.SPECIAL_NIGHTTIME,
+            false,
+        ),
+        schedule = schedule,
+        currentMinutesFromMidnight = currentMinutesFromMidnight(),
+        systemDark = systemDark(),
+    )
+
+    fun saveSchedule(schedule: NighttimeSchedule) = scheduleStore.save(schedule)
+
+    fun markWelcomeShown() = launchState.markWelcomeDialogShown()
+}

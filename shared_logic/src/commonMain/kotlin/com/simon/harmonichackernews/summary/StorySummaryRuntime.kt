@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.summary
 import com.simon.harmonichackernews.network.CloudSummaryConfig
 import com.simon.harmonichackernews.network.CloudSummaryEvent
 import com.simon.harmonichackernews.network.SummaryUseCase
+import com.simon.harmonichackernews.platform.LocalSummaryEngine
+import com.simon.harmonichackernews.platform.SummaryRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,6 +38,22 @@ sealed interface StorySummaryEvent {
 
 fun interface StorySummaryBackend {
     fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent>
+}
+
+/** Adapts the platform inference capability to the shared streaming summary runtime. */
+class PlatformLocalStorySummaryBackend(
+    private val engine: LocalSummaryEngine,
+) : StorySummaryBackend {
+    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> =
+        engine.summarizeEvents(SummaryRequest(text = input.articleText.orEmpty()))
+}
+
+class UnavailableStorySummaryBackend(
+    private val reason: String,
+) : StorySummaryBackend {
+    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
+        emit(StorySummaryEvent.Failure(reason))
+    }
 }
 
 data class LocalSummaryAvailability(

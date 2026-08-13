@@ -28,6 +28,67 @@ interface StoryCacheMetadataStore {
     fun keys(): Set<String>
 }
 
+/** Non-persistent cache storage used by previews and hosts that have not supplied a filesystem. */
+class InMemoryStoryCacheFileStore : StoryCacheFileStore {
+    private data class Entry(
+        val value: ByteArray,
+        var modifiedAtMillis: Long = 0L,
+    )
+
+    private val entries = mutableMapOf<String, MutableMap<String, Entry>>()
+
+    override fun read(namespace: String, key: String): ByteArray? =
+        entries[namespace]?.get(key)?.value?.copyOf()
+
+    override fun readText(namespace: String, key: String, charsetName: String): String? =
+        read(namespace, key)?.decodeToString()
+
+    override fun write(namespace: String, key: String, value: ByteArray): Boolean {
+        entries.getOrPut(namespace, ::mutableMapOf)[key] = Entry(value.copyOf())
+        return true
+    }
+
+    override fun remove(namespace: String, key: String): Boolean =
+        entries[namespace]?.remove(key) != null
+
+    override fun list(namespace: String): List<CacheFileInfo> = entries[namespace]
+        ?.map { (key, entry) -> CacheFileInfo(key, entry.value.size.toLong()) }
+        .orEmpty()
+
+    override fun clear(namespace: String) {
+        entries.remove(namespace)
+    }
+
+    override fun touch(namespace: String, key: String, modifiedAtMillis: Long) {
+        entries[namespace]?.get(key)?.modifiedAtMillis = modifiedAtMillis
+    }
+}
+
+/** Non-persistent metadata companion for [InMemoryStoryCacheFileStore]. */
+class InMemoryStoryCacheMetadataStore : StoryCacheMetadataStore {
+    private val strings = mutableMapOf<String, String>()
+    private val sets = mutableMapOf<String, Set<String>>()
+
+    override fun getString(key: String): String? = strings[key]
+
+    override fun putString(key: String, value: String?) {
+        if (value == null) strings.remove(key) else strings[key] = value
+    }
+
+    override fun remove(key: String) {
+        strings.remove(key)
+        sets.remove(key)
+    }
+
+    override fun getStringSet(key: String): Set<String> = sets[key].orEmpty()
+
+    override fun putStringSet(key: String, value: Set<String>) {
+        sets[key] = value.toSet()
+    }
+
+    override fun keys(): Set<String> = strings.keys + sets.keys
+}
+
 object StoryCacheKeys {
     const val INDEX = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
     const val ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"

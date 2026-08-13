@@ -109,6 +109,31 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun closeCoulombGas() = mutate { closeCoulombGas() }
     fun detailRemovedFromBackStack() = mutate { detailRemovedFromBackStack() }
 
+    /** Route-only lifecycle snapshot; transient story presentation data is deliberately omitted. */
+    fun restoration(): MainNavigationRestoration = state.value.let { snapshot ->
+        MainNavigationRestoration(
+            storyRoute = snapshot.storyRequest?.route,
+            storyRequestSerial = snapshot.storyRequest?.serial ?: 0,
+            settingsOpen = snapshot.settingsRequest != null || snapshot.storyOpenedFromSettings,
+            settingsRequestSerial = snapshot.settingsRequestSerial,
+            settingsSectionRoute = snapshot.currentSettingsSectionRoute,
+            settingsNeedsRestart = snapshot.settingsNeedsRestart,
+            welcomeDialogVisible = snapshot.welcomeDialogVisible,
+            changelogDialogVisible = snapshot.changelogDialogVisible,
+            cacheStoriesDialogVisible = snapshot.cacheStoriesDialogVisible,
+            loginDialogVisible = snapshot.loginDialogVisible,
+            userDialogUserName = snapshot.userRequest?.userName,
+            userDialogSerial = snapshot.userRequest?.serial ?: 0,
+            editorDestination = snapshot.editorRequest?.destination,
+            editorRequestSerial = snapshot.editorRequest?.serial ?: 0,
+            submissionsUserName = snapshot.submissionsRequest?.userName,
+            submissionsRequestSerial = snapshot.submissionsRequest?.serial ?: 0,
+            storyOpenedFromSubmissions = snapshot.storyOpenedFromSubmissions,
+            storyOpenedFromSettings = snapshot.storyOpenedFromSettings,
+            coulombGasVisible = snapshot.coulombGasVisible,
+        )
+    }
+
     /** Rehydrates the application-scoped store before a host starts rendering it. */
     fun restore(restored: MainNavigationRestoration) {
         machine = MainNavigationState(restored)

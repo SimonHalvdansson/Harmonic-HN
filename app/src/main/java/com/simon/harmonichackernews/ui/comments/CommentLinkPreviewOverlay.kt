@@ -33,12 +33,10 @@ import coil3.request.crossfade
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.LinkSummaryParser
-import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.link_summary_collapse_image
 import com.simon.harmonichackernews.resources.link_summary_expand_image
-import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.AndroidDisplay
@@ -164,6 +162,7 @@ private fun ReferencePreviewImage(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val appComposition = LocalHarmonicUiDependencies.current
     val shape = if (expanded) {
         RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     } else {
@@ -189,7 +188,7 @@ private fun ReferencePreviewImage(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
-                    .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .networkHeader("User-Agent", appComposition.network.userAgent)
                     .crossfade(true)
                     .build(),
                 contentDescription = stringResource(
@@ -215,6 +214,7 @@ private fun ReferencePreviewImage(
 @Composable
 private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
     val context = LocalContext.current
+    val appComposition = LocalHarmonicUiDependencies.current
     var imageRatio by remember(state.imageUrl, state.sourceBounds) {
         mutableFloatStateOf(
             state.sourceBounds?.let { bounds ->
@@ -231,7 +231,7 @@ private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(state.imageUrl)
-                .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
+                .networkHeader("User-Agent", appComposition.network.userAgent)
                 .build(),
             contentDescription = state.description,
             modifier = Modifier

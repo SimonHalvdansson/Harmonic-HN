@@ -1,11 +1,12 @@
 package com.simon.harmonichackernews.ui.submissions
 
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ScreenStateViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
-import com.simon.harmonichackernews.app.createSubmissionsFeatureRuntime
+import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
+import com.simon.harmonichackernews.app.SubmissionsFeatureSessionEvent
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.data.Story
@@ -30,7 +31,7 @@ class SubmissionsCoordinator(
     sessionKey: Int,
     private val userName: String,
     private val navigator: Navigator,
-    private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
+    private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
     private val algoliaRepository: AlgoliaRepository = appComposition.network.algoliaRepository,
     private val userSettings: UserSettings = appComposition.userSettings,
     private val platformDependencies: SubmissionsPlatformDependencies =
@@ -44,11 +45,12 @@ class SubmissionsCoordinator(
         ViewModelProvider(activity)[ScreenStateViewModel::class.java]
             .submissionsStateFor(sessionKey, userName, algoliaRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val runtime = appComposition.createSubmissionsFeatureRuntime(
+    private val featureSession = appComposition.createSubmissionsFeatureSession(
         scope = coroutineScope,
         sessionState = sessionState,
         userSettings = userSettings,
     )
+    private val runtime = featureSession.runtime
     val composeController: SubmissionsComposeController
 
     init {
@@ -95,9 +97,15 @@ class SubmissionsCoordinator(
         composeController.updateDisplaySettings(
             StoryDisplaySettings.from(userSettings.story).withShowIndex(false)
         )
-        coroutineScope.launch { runtime.state.collect(::render) }
-        coroutineScope.launch { runtime.effects.collect(::handleEffect) }
-        runtime.initialize()?.let { restoration ->
+        coroutineScope.launch {
+            featureSession.events.collect { event ->
+                when (event) {
+                    is SubmissionsFeatureSessionEvent.State -> render(event.state)
+                    is SubmissionsFeatureSessionEvent.Runtime -> handleEffect(event.effect)
+                }
+            }
+        }
+        featureSession.start()?.let { restoration ->
             composeController.restoreScrollState(
                 firstVisiblePosition = restoration.firstVisibleStoryPosition,
                 firstVisibleTop = restoration.firstVisibleStoryTop,
@@ -107,7 +115,7 @@ class SubmissionsCoordinator(
     }
 
     fun close() {
-        runtime.dispose()
+        featureSession.dispose()
         coroutineScope.cancel()
     }
 

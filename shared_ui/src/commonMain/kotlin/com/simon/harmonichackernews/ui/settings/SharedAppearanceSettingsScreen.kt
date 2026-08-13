@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_dark_mode
 import com.simon.harmonichackernews.resources.ic_design_services
@@ -12,6 +13,7 @@ import com.simon.harmonichackernews.resources.ic_palette
 import com.simon.harmonichackernews.resources.ic_schedule
 import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
+import com.simon.harmonichackernews.resources.settings_section_appearance
 
 data class AppearanceSettingsUiState(
     val themeLabel: String,
@@ -40,7 +42,7 @@ fun SharedAppearanceSettingsScreen(
     contentVersion: Int = 0,
 ) {
     SettingsPage(
-        title = "Appearance",
+        title = stringResource(Res.string.settings_section_appearance),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

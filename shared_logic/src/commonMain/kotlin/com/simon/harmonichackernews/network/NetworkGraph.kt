@@ -15,6 +15,14 @@ interface AuthenticatedHttpClientProvider {
     fun close() = reset()
 }
 
+fun interface NetworkCacheMaintenance {
+    fun removeCachedStoryResponses(storyId: Int)
+
+    data object None : NetworkCacheMaintenance {
+        override fun removeCachedStoryResponses(storyId: Int) = Unit
+    }
+}
+
 /**
  * Simple resettable provider for platform shells that do not need extra synchronization.
  */
@@ -41,6 +49,8 @@ class NetworkGraph(
     val transportClient: HttpClient,
     private val scope: CoroutineScope,
     private val authenticatedClientProvider: AuthenticatedHttpClientProvider,
+    val userAgent: String = "Harmonic-HN",
+    private val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
 ) {
     val httpClient: KtorHttpClient = KtorHttpClient(transportClient)
 
@@ -82,6 +92,10 @@ class NetworkGraph(
 
             override fun reset() = authenticatedClientProvider.reset()
         }
+
+    fun removeCachedStoryResponses(storyId: Int) {
+        if (storyId > 0) cacheMaintenance.removeCachedStoryResponses(storyId)
+    }
 
     fun close() {
         authenticatedClientProvider.close()

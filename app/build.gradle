@@ -150,6 +150,11 @@ android {
     }
 
     sourceSets {
+        main {
+            // Web content is a cross-platform feature; Android exposes the common resource bundle
+            // through AssetManager for WebView's synchronous script/page loading APIs.
+            assets.srcDir("../shared_resources/src/commonMain/composeResources/files/web")
+        }
         debug {
             kotlin.srcDirs += "src/foss/java"
         }

@@ -9,6 +9,8 @@ import java.io.FileOutputStream
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -122,3 +124,7 @@ internal class AndroidDownloadStore(
         }
     }
 }
+
+internal fun androidSha256Hex(value: String): String = MessageDigest.getInstance("SHA-256")
+    .digest(value.toByteArray(StandardCharsets.UTF_8))
+    .joinToString("") { byte -> "%02x".format(byte) }

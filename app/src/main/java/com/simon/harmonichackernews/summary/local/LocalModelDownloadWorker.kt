@@ -12,12 +12,11 @@ import androidx.work.Data
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.DownloadSink
-import com.simon.harmonichackernews.network.HttpTransferEngine
 import com.simon.harmonichackernews.network.KtorTransferClient
-import com.simon.harmonichackernews.network.TransferOptions
-import com.simon.harmonichackernews.network.TransferRequest
+import com.simon.harmonichackernews.network.ResumableDownloadDestination
+import com.simon.harmonichackernews.network.ResumableDownloadService
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
 import java.io.File
 import java.io.FileOutputStream
@@ -53,66 +52,24 @@ class LocalModelDownloadWorker(
             return failure("Android couldn't restart the download in the background")
         }
 
-        val outputFile = LocalModelManager.getModelFile(
+        val outputFile = modelFile(
             applicationContext,
             modelId,
             fileName,
         )
-        val partialFile = LocalModelManager.getPartialModelFile(
+        val partialFile = partialModelFile(
             applicationContext,
             modelId,
             fileName,
         )
-        val parent = partialFile.parentFile
-        if (parent == null || (!parent.exists() && !parent.mkdirs())) {
-            return failure("Could not create model storage")
-        }
-        if (outputFile.exists() && outputFile.length() != expectedBytes && !outputFile.delete()) {
-            return failure("Could not replace the incomplete model")
-        }
-        if (outputFile.length() == expectedBytes) {
-            return Result.success()
-        }
-        if (partialFile.length() > expectedBytes && !partialFile.delete()) {
-            return failure("Could not replace the invalid partial download")
-        }
-        if (partialFile.length() == expectedBytes) {
-            if (outputFile.exists() && !outputFile.delete()) {
-                return failure("Could not replace the existing model")
-            }
-            if (!partialFile.renameTo(outputFile)) {
-                return failure("Could not finish installing the model")
-            }
-            publishProgress(modelName, expectedBytes, expectedBytes)
-            return Result.success()
-        }
-
-        val partialBytes = partialFile.length()
         try {
-            val headers = buildMap {
-                put("Accept-Encoding", "identity")
-                if (partialBytes > 0L) put("Range", "bytes=$partialBytes-")
-            }
             var lastUpdateAt = 0L
-            HttpTransferEngine(
-                KtorTransferClient(AndroidAppComposition.get(applicationContext).network.httpClient),
-            ).transfer(
-                request = TransferRequest(modelUrl, headers),
-                sinkForResponse = { response ->
-                    ModelDownloadSink(
-                        file = partialFile,
-                        append = response.statusCode == HTTP_PARTIAL && partialBytes > 0L,
-                    )
-                },
-                optionsForResponse = { response ->
-                    val resumed = response.statusCode == HTTP_PARTIAL && partialBytes > 0L
-                    TransferOptions(
-                        initialBytes = if (resumed) partialBytes else 0L,
-                        expectedTotalBytes = expectedBytes,
-                        maxTotalBytes = expectedBytes,
-                        acceptsStatus = { it == HTTP_OK || it == HTTP_PARTIAL },
-                    )
-                },
+            ResumableDownloadService(
+                KtorTransferClient(applicationContext.harmonicAppComposition.network.httpClient),
+            ).download(
+                url = modelUrl,
+                expectedBytes = expectedBytes,
+                destination = AndroidModelDownloadDestination(outputFile, partialFile),
                 onProgress = { progress ->
                     val now = System.currentTimeMillis()
                     if (now - lastUpdateAt >= PROGRESS_INTERVAL_MILLIS) {
@@ -121,19 +78,6 @@ class LocalModelDownloadWorker(
                     }
                 },
             )
-            if (partialFile.length() != expectedBytes) {
-                return failure(
-                    "Downloaded model size was ${partialFile.length()} bytes; " +
-                        "expected $expectedBytes",
-                )
-            }
-            if (outputFile.exists() && !outputFile.delete()) {
-                return failure("Could not replace the existing model")
-            }
-            if (!partialFile.renameTo(outputFile)) {
-                return failure("Could not finish installing the model")
-            }
-            publishProgress(modelName, expectedBytes, expectedBytes)
             return Result.success()
         } catch (error: CancellationException) {
             throw error
@@ -210,12 +154,42 @@ class LocalModelDownloadWorker(
         const val KEY_ERROR = "error"
 
         private const val CHANNEL_ID = "local_model_download"
-        private const val HTTP_OK = 200
-        private const val HTTP_PARTIAL = 206
         private const val PROGRESS_INTERVAL_MILLIS = 500L
 
         private fun errorMessage(throwable: Throwable): String =
             throwable.message?.takeIf(String::isNotEmpty) ?: "Unknown download error"
+    }
+
+    private class AndroidModelDownloadDestination(
+        private val completed: File,
+        private val partial: File,
+    ) : ResumableDownloadDestination {
+        override suspend fun prepare(): Boolean = withContext(Dispatchers.IO) {
+            partial.parentFile?.let { it.isDirectory || it.mkdirs() } == true
+        }
+
+        override suspend fun completedBytes(): Long = withContext(Dispatchers.IO) {
+            completed.takeIf(File::isFile)?.length() ?: 0L
+        }
+
+        override suspend fun partialBytes(): Long = withContext(Dispatchers.IO) {
+            partial.takeIf(File::isFile)?.length() ?: 0L
+        }
+
+        override suspend fun removeCompleted(): Boolean = withContext(Dispatchers.IO) {
+            !completed.exists() || completed.delete()
+        }
+
+        override suspend fun removePartial(): Boolean = withContext(Dispatchers.IO) {
+            !partial.exists() || partial.delete()
+        }
+
+        override suspend fun openPartial(append: Boolean): DownloadSink =
+            withContext(Dispatchers.IO) { ModelDownloadSink(partial, append) }
+
+        override suspend fun promotePartial(): Boolean = withContext(Dispatchers.IO) {
+            (!completed.exists() || completed.delete()) && partial.renameTo(completed)
+        }
     }
 
     /** Closing on abort deliberately preserves the resumable partial file. */

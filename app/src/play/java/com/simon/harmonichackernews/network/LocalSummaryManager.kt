@@ -10,26 +10,31 @@ import com.google.mlkit.genai.summarization.Summarization
 import com.google.mlkit.genai.summarization.SummarizationRequest
 import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
+import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
 import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryInput
-import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
-import com.simon.harmonichackernews.summary.local.LocalModelManager
+import com.simon.harmonichackernews.platform.LocalSummaryEngine
+import com.simon.harmonichackernews.platform.PlatformCapability
+import com.simon.harmonichackernews.platform.SummaryRequest
+import com.simon.harmonichackernews.platform.SummaryResult
 import java.util.concurrent.ExecutionException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-/** Play-distribution readiness checks for Gemini Nano and downloadable local models. */
-internal object LocalSummaryManager {
-    private const val TAG = "LocalSummaryManager"
+/** Application-owned readiness checks for Gemini Nano and downloadable local models. */
+private class PlayLocalSummaryStatus {
+    private val tag = "PlayLocalSummaryStatus"
 
     @Volatile
     private var cachedLocalFeatureStatus: Int = Int.MIN_VALUE
@@ -55,7 +60,7 @@ internal object LocalSummaryManager {
                     "Gemini Nano availability check was interrupted",
                 )
             } catch (error: Throwable) {
-                Log.w(TAG, "Gemini Nano availability check failed", unwrap(error))
+                Log.w(tag, "Gemini Nano availability check failed", unwrap(error))
                 cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE
                 downloadableModelAvailability()
             } finally {
@@ -64,15 +69,13 @@ internal object LocalSummaryManager {
         }
     }
 
-    fun isLocalSummaryReady(context: Context?): Boolean {
-        if (context == null) return false
-        val selected = LocalModelManager.getSelectedModel(context)
-        if (selected.id == LocalModelManager.MODEL_GEMINI_NANO) {
+    fun isLocalSummaryReady(models: LocalModelService): Boolean {
+        val selected = models.selectedModel
+        if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
             return isLocalFeatureUsable(cachedLocalFeatureStatus)
         }
-        return LocalModelManager.isModelSupported(selected) &&
-            LocalModelManager.isSelectedModelDownloaded(context) &&
-            LocalAiRuntimeManager.isRuntimeInstalled(context, selected.runtime)
+        return models.isSupported(selected) && models.isDownloaded(selected) &&
+            models.isRuntimeInstalled(selected.runtime)
     }
 
     private fun resolvedAvailability(status: Int): LocalSummaryAvailability =
@@ -117,8 +120,40 @@ internal object LocalSummaryManager {
 }
 
 /** Direct implementation of the shared streaming backend; no callback compatibility layer. */
-internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBackend {
+internal class AndroidLocalSummaryBackend(
+    context: Context,
+    private val models: LocalModelService,
+) : StorySummaryBackend, LocalSummaryEngine {
     private val appContext = context.applicationContext
+    private val status = PlayLocalSummaryStatus()
+    private val inference = LocalModelInference(appContext, models)
+
+    override fun canAttempt(): Boolean = status.canAttemptLocalSummarization()
+
+    override suspend fun availability(): LocalSummaryAvailability =
+        status.checkLocalSummaryAvailability(appContext)
+
+    override suspend fun isAvailable(): Boolean =
+        availability().available
+
+    override fun isReady(): Boolean = status.isLocalSummaryReady(models)
+
+    override suspend fun summarize(request: SummaryRequest): SummaryResult {
+        var result: SummaryResult? = null
+        var debugInfo: String? = null
+        summarize(StorySummaryInput(articleUrl = "", articleText = request.text)).collect { event ->
+            when (event) {
+                is StorySummaryEvent.DebugInfo -> debugInfo = event.value
+                is StorySummaryEvent.Progress -> Unit
+                is StorySummaryEvent.Success -> result = SummaryResult(event.text, debugInfo)
+                is StorySummaryEvent.Failure -> error(event.message)
+            }
+        }
+        return result ?: error("Local summary provider completed without a result")
+    }
+
+    override fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> =
+        summarize(StorySummaryInput(articleUrl = "", articleText = request.text))
 
     override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = channelFlow {
         val content = LocalSummaryPreparation.prepareManagedText(input.articleText.orEmpty())
@@ -127,8 +162,8 @@ internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBacken
             return@channelFlow
         }
         try {
-            val selected = LocalModelManager.getSelectedModel(appContext)
-            val result = if (selected.id == LocalModelManager.MODEL_GEMINI_NANO) {
+            val selected = models.selectedModel
+            val result = if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
                 send(StorySummaryEvent.DebugInfo("Gemini Nano · load —"))
                 summarizeWithGeminiNano(content)
             } else {
@@ -149,7 +184,7 @@ internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBacken
             Thread.currentThread().interrupt()
             send(StorySummaryEvent.Failure("Local summarization was interrupted"))
         } catch (error: Throwable) {
-            val detail = LocalSummaryManager.unwrap(error).message?.takeIf(String::isNotBlank)
+            val detail = status.unwrap(error).message?.takeIf(String::isNotBlank)
                 ?: "Unknown error"
             send(StorySummaryEvent.Failure("Local summarization failed: $detail"))
         }
@@ -160,18 +195,17 @@ internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBacken
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
     ): String = withContext(Dispatchers.IO) {
-        val selected = LocalModelManager.getSelectedModel(appContext)
-        check(LocalModelManager.isModelSupported(selected)) {
-            LocalModelManager.getModelUnsupportedReason(selected)
+        val selected = models.selectedModel
+        check(models.isSupported(selected)) {
+            models.unsupportedReason(selected)
         }
-        check(LocalModelManager.isSelectedModelDownloaded(appContext)) {
+        check(models.isDownloaded(selected)) {
             "Download the selected local model before using it"
         }
-        check(LocalAiRuntimeManager.isRuntimeInstalled(appContext, selected.runtime)) {
+        check(models.isRuntimeInstalled(selected.runtime)) {
             "Install the selected model runtime before using it"
         }
-        LocalModelInference.summarize(
-            appContext,
+        inference.summarize(
             content,
             LocalModelInference.ProgressCallback(onProgress),
             LocalModelInference.LoadCallback(onLoaded),
@@ -180,10 +214,10 @@ internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBacken
 
     private suspend fun summarizeWithGeminiNano(content: String): String =
         withContext(Dispatchers.IO) {
-            val summarizer = Summarization.getClient(LocalSummaryManager.createOptions(appContext))
+            val summarizer = Summarization.getClient(status.createOptions(appContext))
             try {
                 val status = summarizer.checkFeatureStatus().get()
-                if (!LocalSummaryManager.isLocalFeatureUsable(status)) {
+                if (!this@AndroidLocalSummaryBackend.status.isLocalFeatureUsable(status)) {
                     error(
                         "Gemini Nano is unavailable. Select another local model in AI " +
                             "summarization settings.",
@@ -216,3 +250,9 @@ internal class AndroidLocalSummaryBackend(context: Context) : StorySummaryBacken
             })
         }
 }
+
+internal fun createAndroidLocalSummaryCapability(
+    context: Context,
+    models: LocalModelService,
+): PlatformCapability<LocalSummaryEngine> =
+    PlatformCapability.Available(AndroidLocalSummaryBackend(context, models))

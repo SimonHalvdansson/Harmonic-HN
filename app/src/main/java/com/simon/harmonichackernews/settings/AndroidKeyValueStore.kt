@@ -3,11 +3,22 @@ package com.simon.harmonichackernews.settings
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 /** Android adapter that preserves the app's existing SharedPreferences storage. */
 class AndroidKeyValueStore private constructor(
     private val preferences: SharedPreferences,
 ) : KeyValueStore {
+    val changes: Flow<Unit>
+        get() = callbackFlow {
+            val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                trySend(Unit)
+            }
+            preferences.registerOnSharedPreferenceChangeListener(listener)
+            awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
     override fun clear() {
         preferences.edit().clear().apply()
     }
@@ -36,6 +47,12 @@ class AndroidKeyValueStore private constructor(
 
     override fun putInt(key: String, value: Int) {
         preferences.edit().putInt(key, value).apply()
+    }
+
+    override fun getLong(key: String, default: Long): Long = preferences.getLong(key, default)
+
+    override fun putLong(key: String, value: Long) {
+        preferences.edit().putLong(key, value).apply()
     }
 
     override fun getFloat(key: String, default: Float): Float =

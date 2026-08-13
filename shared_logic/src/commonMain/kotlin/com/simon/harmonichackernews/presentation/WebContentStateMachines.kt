@@ -1,7 +1,12 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.utils.AdHostBlocklist
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class WebPreloadEnvironment(
     val unmeteredConnection: Boolean,
@@ -15,6 +20,14 @@ data class WebContentUrlPlan(
 )
 
 enum class WebContentFailure { DNS, SSL, GENERIC, OFFLINE }
+
+/** Relative paths in the common embedded-web resource bundle packaged by every host. */
+object WebContentAssets {
+    const val PDF_VIEWER_INDEX = "pdf/index.html"
+    const val OFFLINE_PAGE = "webview_error.html"
+    const val READABILITY_SCRIPT = "vendor/mozilla/readability/0.6.0/Readability.min.js"
+    const val READER_MODE_SCRIPT = "reader_mode.js"
+}
 
 /** Cross-platform preload, redirect, cache-fallback, and error-page policy. */
 object WebContentPolicy {
@@ -221,4 +234,108 @@ class ReaderModeStateMachine {
             ReaderModeScriptStatus.FAILED -> state
         }
     }
+}
+
+data class ReaderModeTheme(
+    val light: Boolean,
+    val backgroundColor: String,
+    val textColor: String,
+    val headingColor: String,
+    val secondaryTextColor: String,
+    val linkColor: String,
+    val dividerColor: String,
+    val codeBackgroundColor: String,
+    val fontFaceCss: String = "",
+    val font: String? = null,
+    val fontSizePx: Int,
+)
+
+/** Shared reader-mode JavaScript protocol and theme serialization. */
+object ReaderModeScriptProtocol {
+    fun applyCommand(script: String, theme: ReaderModeTheme, enabled: Boolean): String =
+        script + "\nHarmonicReaderMode.setTheme(${themeJson(theme)});" +
+            "\nHarmonicReaderMode.${if (enabled) "enable" else "disable"}();"
+
+    fun availabilityCommand(script: String): String =
+        script + "\nHarmonicReaderMode.isAvailable();"
+
+    fun parseStatus(result: String?): ReaderModeScriptStatus = when (normalize(result)) {
+        "enabled" -> ReaderModeScriptStatus.ENABLED
+        "disabled" -> ReaderModeScriptStatus.DISABLED
+        "no_article" -> ReaderModeScriptStatus.NO_ARTICLE
+        "unavailable" -> ReaderModeScriptStatus.UNAVAILABLE
+        else -> ReaderModeScriptStatus.FAILED
+    }
+
+    fun isAvailable(result: String?): Boolean = normalize(result) == "available"
+
+    fun fontFamily(font: String?): String = when (TextPreferences.sanitizeFont(font)) {
+        "robotoslab", "georgia" -> "Georgia, 'Times New Roman', serif"
+        "jetbrainsmono", "googlesanscode" ->
+            "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace"
+        else -> "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    }
+
+    private fun themeJson(theme: ReaderModeTheme): String {
+        val fallback = fontFamily(theme.font)
+        val family = if (theme.fontFaceCss.isBlank()) fallback else "'HarmonicReaderFont', $fallback"
+        return buildString {
+            append("{\"isLight\":").append(theme.light)
+            append(",\"backgroundColor\":").append(json(theme.backgroundColor))
+            append(",\"textColor\":").append(json(theme.textColor))
+            append(",\"headingColor\":").append(json(theme.headingColor))
+            append(",\"secondaryTextColor\":").append(json(theme.secondaryTextColor))
+            append(",\"linkColor\":").append(json(theme.linkColor))
+            append(",\"dividerColor\":").append(json(theme.dividerColor))
+            append(",\"codeBackgroundColor\":").append(json(theme.codeBackgroundColor))
+            append(",\"fontFaceCss\":").append(json(theme.fontFaceCss))
+            append(",\"fontFamily\":").append(json(family))
+            append(",\"headingFontFamily\":").append(json(family))
+            append(",\"fontSizePx\":").append(theme.fontSizePx).append('}')
+        }
+    }
+
+    private fun normalize(result: String?): String = result.orEmpty().trim()
+        .let { if (it.length >= 2 && it.startsWith('"') && it.endsWith('"')) it.substring(1, it.lastIndex) else it }
+
+    private fun json(value: String): String = buildString(value.length + 2) {
+        append('"')
+        value.forEach { character ->
+            when (character) {
+                '\\', '"' -> append('\\').append(character)
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(character)
+            }
+        }
+        append('"')
+    }
+}
+
+/** Application-scoped decoded ad-host data without a platform singleton. */
+class AdBlocklistService {
+    private val mutableHosts = MutableStateFlow(AdHostBlocklist.empty())
+    val hosts: StateFlow<AdHostBlocklist> = mutableHosts.asStateFlow()
+
+    fun install(encoded: ByteArray): Int {
+        val decoded = AdHostBlocklist.decode(encoded)
+        mutableHosts.value = decoded
+        return decoded.size
+    }
+
+    fun contains(host: String?): Boolean = mutableHosts.value.contains(host)
+}
+
+/** Per-browser portable runtime; native hosts retain rendering and JavaScript evaluation. */
+class WebContentRuntime internal constructor(
+    val adBlocklist: AdBlocklistService,
+) {
+    val load = WebContentLoadStateMachine()
+    val reader = ReaderModeStateMachine()
+}
+
+class WebContentService {
+    val adBlocklist = AdBlocklistService()
+    fun createRuntime(): WebContentRuntime = WebContentRuntime(adBlocklist)
 }

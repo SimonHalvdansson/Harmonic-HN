@@ -19,15 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.network.RepliesChecker
-import com.simon.harmonichackernews.presentation.UserProfileBlockPort
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
-import com.simon.harmonichackernews.presentation.UserProfileLoader
-import com.simon.harmonichackernews.presentation.UserProfileNotificationPort
-import com.simon.harmonichackernews.presentation.UserProfileRuntime
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.months
-import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringArrayResource
 
@@ -40,28 +34,10 @@ fun UserSettingsDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val appComposition = LocalHarmonicUiDependencies.current
-    val contentFilters = appComposition.contentFilters
     val userTags = appComposition.userTags
     val monthNames = stringArrayResource(Res.array.months)
     val runtime = remember(userName, monthNames) {
-        UserProfileRuntime(
-            username = userName,
-            monthNames = monthNames,
-            loader = UserProfileLoader { appComposition.network.hackerNewsApi.getUser(it) },
-            accounts = appComposition.platform.accounts,
-            blocks = object : UserProfileBlockPort {
-                override fun isBlocked(username: String): Boolean =
-                    contentFilters.containsUser(username)
-
-                override fun setBlocked(username: String, blocked: Boolean): Boolean =
-                    if (blocked) {
-                        contentFilters.addUser(username)
-                    } else {
-                        contentFilters.removeUser(username)
-                    }
-            },
-            notifications = AndroidUserProfileNotificationPort(context),
-        )
+        appComposition.createUserProfileRuntime(userName, monthNames)
     }
     val runtimeState by runtime.state.collectAsState()
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
@@ -108,7 +84,7 @@ fun UserSettingsDialog(
         onRetry = { coroutineScope.launch { runtime.retry() } },
         onOpenSubmissions = { targetUser ->
             onDismiss()
-            context.startActivity(SubmissionsContract.createIntent(context, targetUser))
+            appComposition.navigation.openSubmissions(targetUser)
         },
         onEditTag = { tagDialogOpen = true },
         onToggleBlocked = {
@@ -159,18 +135,4 @@ fun UserSettingsDialog(
             },
         )
     }
-}
-
-private class AndroidUserProfileNotificationPort(context: android.content.Context) :
-    UserProfileNotificationPort {
-    private val appContext = context.applicationContext
-
-    override fun configuredUsername(): String? = RepliesChecker.getConfiguredUsername(appContext)
-
-    override suspend fun enable(username: String): Boolean = RepliesChecker.enable(
-        appContext,
-        username,
-    )
-
-    override fun disable() = RepliesChecker.disable(appContext)
 }

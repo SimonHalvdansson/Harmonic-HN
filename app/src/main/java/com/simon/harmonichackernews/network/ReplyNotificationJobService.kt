@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import android.app.job.JobParameters
 import android.app.job.JobService
+import com.simon.harmonichackernews.harmonicAppComposition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,11 @@ class ReplyNotificationJobService : JobService() {
         checkJob?.cancel()
         checkJob = serviceScope.launch {
             try {
-                val success = RepliesChecker.checkNow(this@ReplyNotificationJobService)
+                val result = checkNotNull(
+                    this@ReplyNotificationJobService.harmonicAppComposition.replyNotifications,
+                ).checkNow()
+                val success = result !is ReplyCheckResult.Failed &&
+                    result != ReplyCheckResult.UserNotFound
                 jobFinished(params, !success)
             } catch (error: CancellationException) {
                 throw error

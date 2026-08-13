@@ -6,8 +6,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
 import com.simon.harmonichackernews.R
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
+import com.simon.harmonichackernews.presentation.AdBlocklistService
 import kotlin.math.roundToInt
 
 object HarmonicLog {
@@ -42,27 +41,14 @@ object AndroidNetworkStatus {
     }
 }
 
-object AndroidAdBlocklist {
-    @Volatile
-    var hosts: AdHostBlocklist = AdHostBlocklist.empty()
-        private set
-
-    private val loading = AtomicBoolean(false)
-    private val executor = Executors.newSingleThreadExecutor()
-
-    fun load(resources: Resources) {
-        if (!hosts.isEmpty || !loading.compareAndSet(false, true)) return
-        executor.execute {
-            try {
-                val decoded = resources.openRawResource(R.raw.adblockserverlist).use { input ->
-                    AdHostBlocklist.decode(input.readBytes())
-                }
-                if (!decoded.isEmpty) hosts = decoded
-            } catch (error: Exception) {
-                Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", error)
-            } finally {
-                loading.set(false)
-            }
+/** Loads the Android-generated binary into the application-scoped common blocklist. */
+fun loadAndroidAdBlocklist(resources: Resources, target: AdBlocklistService) {
+    Thread({
+        try {
+            val encoded = resources.openRawResource(R.raw.adblockserverlist).use { it.readBytes() }
+            target.install(encoded)
+        } catch (error: Exception) {
+            Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", error)
         }
-    }
+    }, "Harmonic-adblock-loader").start()
 }

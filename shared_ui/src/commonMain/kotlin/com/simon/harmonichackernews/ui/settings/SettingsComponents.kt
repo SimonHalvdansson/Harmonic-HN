@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.core.animateDpAsState
@@ -327,7 +328,7 @@ fun SettingsListScreen(
             ),
     ) {
         SettingsTopAppBar(
-            title = "Settings",
+            title = stringResource(Res.string.settings_title),
             onBack = onBack,
         )
 
@@ -352,7 +353,7 @@ fun SettingsListScreen(
                             entry.section == SettingsSection.About &&
                             selectedSection == SettingsSection.Licenses
                         SettingsNavigationRow(
-                            title = entry.section.title,
+                            title = stringResource(entry.section.titleResource),
                             icon = entry.icon,
                             selected = showSelection && isSelected,
                             onClick = { onSectionSelected(entry.section) },

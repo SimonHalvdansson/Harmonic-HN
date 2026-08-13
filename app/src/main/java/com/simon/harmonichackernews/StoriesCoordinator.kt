@@ -9,6 +9,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.StoriesFeatureHost
+import com.simon.harmonichackernews.app.StoriesFeatureSessionEvent
 import com.simon.harmonichackernews.app.createStoriesFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
@@ -25,14 +26,11 @@ import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companio
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
-import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
-import com.simon.harmonichackernews.utils.AndroidStoryCache
 import java.util.Date
 import kotlin.math.roundToInt
-import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,17 +41,15 @@ class StoriesCoordinator(
     private val activity: MainActivity,
     savedInstanceState: Bundle?,
     private val navigation: MainNavigationController,
-    private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
+    private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
     private val userSettings: UserSettings = appComposition.userSettings,
     platformDependencies: StoriesPlatformDependencies =
         appComposition.storiesPlatformDependencies(),
-    private val clock: Clock = Clock.System,
 ) {
     private val connectivity = platformDependencies.connectivity
     private val externalLinks = platformDependencies.externalLinks
     private val historyStore = platformDependencies.history
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val savedItems = appComposition.savedItems
     private val storiesViewModel = ViewModelProvider(activity)[StoriesViewModel::class.java]
     private val sessionState = storiesViewModel.state
     private var started = false
@@ -67,22 +63,13 @@ class StoriesCoordinator(
         sessionState = sessionState,
         platform = platformDependencies,
         userSettings = userSettings,
-        nowMillis = { clock.now().toEpochMilliseconds() },
-        hydrateCachedStory = { story -> AndroidStoryCache.hydrate(context, story) },
-        loadCachedStories = { AndroidStoryCache.recentStories(activity) },
-        hasCachedStories = { AndroidStoryCache.hasRecentStories(activity) },
         ),
     )
-    private val storiesPresenter = featureSession.presenter
     private val storiesFeature = featureSession.runtime
-    private var restoredStateForCurrentView = false
     private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
 
-    private var appliedFontRefreshVersion = -1L
-    private val searching: Boolean
-        get() = storiesPresenter.state.value.searching
     init {
         initializeComposeController(savedInstanceState)
     }
@@ -103,38 +90,13 @@ class StoriesCoordinator(
             )
         }
 
-        storiesFeature.initializeHistory()
-        val restoringSession = sessionState.initialized
         setupLinkSummaryBackCallback()
         storyCacheController = createStoryCacheController()
-
-        setupStoryResources()
-        restoredStateForCurrentView = restoringSession
+        coroutineScope.launch {
+            featureSession.events.collect(::handleFeatureSessionEvent)
+        }
+        featureSession.start()
         initializeComposeUi()
-        coroutineScope.launch {
-            storiesFeature.effects.collect(::handleStoriesRuntimeEffect)
-        }
-        coroutineScope.launch {
-            storiesFeature.settingsState.collect(::applyPlatformSettingsState)
-        }
-        coroutineScope.launch {
-            savedItems.changes.collect { change ->
-                storiesFeature.notifySavedItemsChanged(change.source)
-                if (storiesFeature.refreshBookmarksIfNeeded(started)) syncComposeState()
-            }
-        }
-        sessionState.initialized = true
-
-        if (restoredStateForCurrentView) {
-            syncComposeState()
-            if (storiesFeature.shouldRefreshRestoredState()) {
-                storiesFeature.refresh(showSwipeRefreshIndicator = false)
-            } else if (!searching) {
-                storiesFeature.resumeRetainedLoads()
-            }
-        } else {
-            storiesFeature.refresh(showSwipeRefreshIndicator = false)
-        }
 
         storyUpdateListener = StoryUpdateListener { story: Story? ->
             if (story == null) {
@@ -234,6 +196,14 @@ class StoriesCoordinator(
         }
     }
 
+    private fun handleFeatureSessionEvent(event: StoriesFeatureSessionEvent) {
+        when (event) {
+            is StoriesFeatureSessionEvent.Runtime -> handleStoriesRuntimeEffect(event.effect)
+            is StoriesFeatureSessionEvent.Settings -> applyPlatformSettingsState(event.state)
+            StoriesFeatureSessionEvent.ContentChanged -> syncComposeState()
+        }
+    }
+
     private fun syncComposeState() {
         val controller = composeController ?: return
         val context = context ?: return
@@ -284,11 +254,6 @@ class StoriesCoordinator(
     private val splitStoriesContentPaddingStart: Int
         get() = resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
 
-    private fun setupStoryResources() {
-        storiesFeature.storyResources?.setResourceChangedListener(::syncComposeState)
-        storiesFeature.initialize(restoring = sessionState.initialized)
-    }
-
     private fun setupLinkSummaryBackCallback() {
         if (linkSummaryBackCallback != null) {
             return
@@ -335,15 +300,16 @@ class StoriesCoordinator(
 
     fun onStart() {
         started = true
-        if (storiesFeature.refreshBookmarksIfNeeded(hostStarted = true)) syncComposeState()
+        featureSession.onStart()
     }
 
     fun onStop() {
         started = false
+        featureSession.onStop()
     }
 
     fun onResume() {
-        storiesFeature.resume(hostStarted = started)
+        featureSession.onResume()
         syncComposeState()
     }
 
@@ -351,10 +317,6 @@ class StoriesCoordinator(
     private fun applyPlatformSettingsState(
         state: com.simon.harmonichackernews.presentation.StoriesSettingsState,
     ) {
-        if (state.fontRefreshVersion != appliedFontRefreshVersion) {
-            appliedFontRefreshVersion = state.fontRefreshVersion
-            FontUtils.init(activity)
-        }
         syncComposeState()
     }
 
@@ -380,8 +342,7 @@ class StoriesCoordinator(
         if (storyUpdateListener != null) {
             StoryUpdate.clearStoryUpdatedListener(storyUpdateListener)
         }
-        storiesFeature.storyResources?.setResourceChangedListener(null)
-        storiesFeature.dispose()
+        featureSession.dispose()
         coroutineScope.cancel()
         clearControllerReferences()
         started = false

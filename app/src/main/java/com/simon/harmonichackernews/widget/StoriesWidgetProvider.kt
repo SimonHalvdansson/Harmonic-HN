@@ -11,6 +11,7 @@ import android.text.format.DateFormat
 import android.view.View
 import android.widget.RemoteViews
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.util.Date
@@ -43,7 +44,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 HarmonicLog.debug("WidgetProvider refresh request widgetId=$appWidgetId")
                 // Refresh only the tapped widget
-                StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
+                widgetService(context).setSkipFetch(appWidgetId, false)
                 showRefreshing(context, appWidgetManager, appWidgetId)
                 appWidgetManager.notifyAppWidgetViewDataChanged(
                     appWidgetId,
@@ -56,7 +57,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
                     ComponentName(context, StoriesWidgetProvider::class.java)
                 )
                 for (id in appWidgetIds) {
-                    StoriesRemoteViewsFactory.setSkipFetch(context, id, false)
+                    widgetService(context).setSkipFetch(id, false)
                     showRefreshing(context, appWidgetManager, id)
                 }
                 appWidgetManager.notifyAppWidgetViewDataChanged(
@@ -70,8 +71,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         HarmonicLog.debug("WidgetProvider onDeleted count=${appWidgetIds.size}")
         for (appWidgetId in appWidgetIds) {
-            WidgetConfigActivity.clearPreferences(context, appWidgetId)
-            StoriesRemoteViewsFactory.clearPreferences(context, appWidgetId)
+            widgetService(context).clear(appWidgetId)
         }
     }
 
@@ -85,8 +85,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetId: Int
         ) {
             HarmonicLog.debug("WidgetProvider updateWidget widgetId=$appWidgetId start")
-            StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
-            StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true)
+            widgetService(context).setSkipFetch(appWidgetId, false)
+            widgetService(context).setRefreshing(appWidgetId, true)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
 
@@ -107,11 +107,11 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            val refreshing = StoriesRemoteViewsFactory.isRefreshing(context, appWidgetId)
+            val refreshing = widgetService(context).runtime(appWidgetId).refreshing
             HarmonicLog.debug(
                 "WidgetProvider refreshWidgetSilently widgetId=$appWidgetId refreshing=$refreshing"
             )
-            StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
+            widgetService(context).setSkipFetch(appWidgetId, false)
 
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
@@ -144,7 +144,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetId: Int
         ) {
             HarmonicLog.debug("WidgetProvider showRefreshing widgetId=$appWidgetId")
-            StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true)
+            widgetService(context).setRefreshing(appWidgetId, true)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
             views.setViewVisibility(R.id.widget_refresh_button, android.view.View.GONE)
@@ -156,7 +156,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
 
         fun updateRefreshDone(context: Context, appWidgetId: Int) {
             HarmonicLog.debug("WidgetProvider updateRefreshDone widgetId=$appWidgetId")
-            StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false)
+            widgetService(context).setRefreshing(appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
@@ -171,7 +171,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
 
         fun updateRefreshError(context: Context, appWidgetId: Int) {
             HarmonicLog.debug("WidgetProvider updateRefreshError widgetId=$appWidgetId")
-            StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false)
+            widgetService(context).setRefreshing(appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
@@ -229,7 +229,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             )
             views.setPendingIntentTemplate(R.id.widget_stories_list, itemPendingIntent)
 
-            val feedName = WidgetConfigActivity.getFeedName(context, appWidgetId)
+            val feedName = widgetService(context).configuration(appWidgetId).feedName
             views.setTextViewText(
                 R.id.widget_title,
                 feedName ?: "Top stories"
@@ -237,11 +237,21 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         }
 
         fun formatUpdatedTime(context: Context, appWidgetId: Int): String {
-            val lastUpdated = StoriesRemoteViewsFactory.getLastUpdated(context, appWidgetId)
+            val lastUpdated = widgetService(context).runtime(appWidgetId).lastUpdatedMillis
             if (lastUpdated == 0L) {
                 return ""
             }
             return DateFormat.getTimeFormat(context).format(Date(lastUpdated))
         }
     }
+}
+
+private fun widgetService(context: Context) = context.harmonicAppComposition.widgets
+
+fun setSkipFetchForAllWidgets(context: Context, skip: Boolean) {
+    val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(
+        ComponentName(context, StoriesWidgetProvider::class.java),
+    )
+    val widgets = widgetService(context)
+    ids.forEach { widgets.setSkipFetch(it, skip) }
 }

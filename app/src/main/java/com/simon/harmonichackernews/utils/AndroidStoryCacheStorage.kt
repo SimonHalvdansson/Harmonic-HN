@@ -7,8 +7,6 @@ import com.simon.harmonichackernews.data.CacheFileInfo
 import com.simon.harmonichackernews.data.StoryCacheFileStore
 import com.simon.harmonichackernews.data.StoryCacheKeys
 import com.simon.harmonichackernews.data.StoryCacheMetadataStore
-import com.simon.harmonichackernews.data.StoryCacheRepository
-import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -109,26 +107,4 @@ internal class AndroidStoryCacheMetadataStore(
     }
 
     override fun keys(): Set<String> = preferences.all.keys
-}
-
-internal object AndroidStoryCacheRepositories {
-    @Volatile
-    private var shared: StoryCacheRepository? = null
-
-    fun get(context: Context): StoryCacheRepository {
-        shared?.let { return it }
-        return synchronized(this) {
-            shared ?: context.applicationContext.let { appContext ->
-                StoryCacheRepository(
-                    files = AndroidStoryCacheFileStore(appContext),
-                    metadata = AndroidStoryCacheMetadataStore(
-                        appContext.getSharedPreferences(
-                            AppLaunchPreferenceKeys.STORE_NAME,
-                            Context.MODE_PRIVATE,
-                        ),
-                    ),
-                )
-            }.also { shared = it }
-        }
-    }
 }

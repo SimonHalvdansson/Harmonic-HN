@@ -6,7 +6,6 @@ import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
-import com.simon.harmonichackernews.settings.ThemePreferences
 import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.platform.StoredBookmarkStore
@@ -51,9 +50,6 @@ class IosHarmonicAppBootstrap(
         savedItemsRepository = savedItems,
         previewCacheStore = previewCache,
         settingsChanges = preferences.changes,
-        currentTheme = {
-            preferences.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)
-        },
     )
 
     fun close() {

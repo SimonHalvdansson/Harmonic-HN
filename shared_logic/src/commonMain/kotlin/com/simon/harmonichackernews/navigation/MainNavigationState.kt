@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.navigation
 
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 data class MainStoryRequest(
     val serial: Int,
@@ -44,6 +46,7 @@ data class MainFailureRequest(
     val clipboardText: String?,
 )
 
+@Serializable
 data class MainNavigationRestoration(
     val storyDestination: StoryDestination? = null,
     val storyRequestSerial: Int = 0,
@@ -66,6 +69,25 @@ data class MainNavigationRestoration(
     val coulombGasVisible: Boolean = false,
     val storyRoute: StoryRoute? = storyDestination?.route,
 )
+
+/** Stable, platform-independent encoding stored by Android, iOS, and desktop lifecycle hosts. */
+object MainNavigationRestorationCodec {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    fun encode(restoration: MainNavigationRestoration): String =
+        json.encodeToString(MainNavigationRestoration.serializer(), restoration)
+
+    fun decode(value: String?): MainNavigationRestoration? = value
+        ?.takeIf(String::isNotBlank)
+        ?.let { encoded ->
+            runCatching {
+                json.decodeFromString(MainNavigationRestoration.serializer(), encoded)
+            }.getOrNull()
+        }
+}
 
 /** Pure navigation state and transition policy shared by every platform shell. */
 class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRestoration()) {

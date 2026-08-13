@@ -24,15 +24,11 @@ import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
+import com.simon.harmonichackernews.app.CommentsFeatureSessionEvent
 import com.simon.harmonichackernews.app.createCommentsFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
-import com.simon.harmonichackernews.network.AndroidLocalSummaryBackend
-import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
-import com.simon.harmonichackernews.summary.ExtractingStorySummaryBackend
-import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
@@ -51,11 +47,9 @@ import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
-import com.simon.harmonichackernews.utils.AndroidStoryCache
 import com.simon.harmonichackernews.utils.ViewUtils
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -70,11 +64,10 @@ class CommentsCoordinator(
     sessionKey: Int,
     savedInstanceState: Bundle?,
     private val navigation: MainNavigationController,
-    private val appComposition: HarmonicAppComposition = AndroidAppComposition.get(activity),
+    private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
     private val platformDependencies: CommentsPlatformDependencies =
         appComposition.commentsPlatformDependencies(),
     userSettings: UserSettings = appComposition.userSettings,
-    private val clock: Clock = Clock.System,
 ) {
     private val externalLinks = platformDependencies.externalLinks
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -85,33 +78,12 @@ class CommentsCoordinator(
     private var restoringStoredProgress = scrollProgress.initialized
     private var started = false
     private var destroyed = false
-    private val aiSummarySettings = appComposition.aiSummarySettings
-    private val storySummaryRuntime = StorySummaryRuntime(
-        scope = coroutineScope,
-        cloudBackend = CloudStorySummaryBackend(appComposition.network.summaryUseCase) {
-            aiSummarySettings.cloudConfig()
-        },
-        localBackend = ExtractingStorySummaryBackend(
-            useCase = appComposition.network.summaryUseCase,
-            textBackend = AndroidLocalSummaryBackend(activity),
-        ),
-    )
     private val featureSession = appComposition.createCommentsFeatureSession(
         CommentsFeatureHost(
             scope = coroutineScope,
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
-            nowMillis = { clock.now().toEpochMilliseconds() },
-            summaryRuntime = storySummaryRuntime,
-            localSummaryAvailable = LocalSummaryManager::canAttemptLocalSummarization,
-            hydrateCachedStory = { cachedStory ->
-                AndroidStoryCache.hydrate(activity, cachedStory)
-            },
-            loadCachedThread = { storyId -> AndroidStoryCache.loadPayload(activity, storyId) },
-            storeCachedThread = { storyId, response ->
-                AndroidStoryCache.store(activity, storyId, response)
-            },
         ),
     )
     private val commentsPresenter = featureSession.presenter
@@ -147,10 +119,7 @@ class CommentsCoordinator(
 
     init {
         coroutineScope.launch {
-            commentsFeature.effects.collect(::handleCommentsRuntimeEffect)
-        }
-        coroutineScope.launch {
-            commentsFeature.settingsState.collect { it?.let(::applyPlatformSettingsState) }
+            featureSession.events.collect(::handleFeatureSessionEvent)
         }
         webViewHost = CommentsWebViewHost(activity)
         initializeView(savedInstanceState)
@@ -215,7 +184,7 @@ class CommentsCoordinator(
             )
         }
 
-        commentsFeature.initializeFromSettings(
+        featureSession.start(
             initialStory = destination.toStory(),
             showWebsite = destination.showWebsite,
             scrollToCommentId = destination.scrollToCommentId,
@@ -250,6 +219,10 @@ class CommentsCoordinator(
             this,
             story,
             linkPreviewController!!,
+            appComposition.webContent.createRuntime(),
+            appComposition.storyCache,
+            appComposition.pdfDownloads,
+            coroutineScope,
             object : CommentsWebViewController.Callbacks {
                 override fun startActivity(intent: Intent) {
                     activity.startActivity(intent)
@@ -938,14 +911,14 @@ class CommentsCoordinator(
         if (destroyed || started) return
         started = true
         refreshPresentationCapabilities()
-        commentsFeature.resume()
+        featureSession.onResume()
         syncComposeState()
     }
 
     fun onResume() {
         if (destroyed) return
 
-        commentsFeature.resume()
+        featureSession.onResume()
         syncCommentsStatusBarProtection()
         syncComposeState()
     }
@@ -1052,7 +1025,7 @@ class CommentsCoordinator(
             backPressedCallback = null
         }
 
-        commentsFeature.dispose()
+        featureSession.dispose()
         linkPreviewController?.dispose()
         coroutineScope.cancel()
         if (webViewController != null) {
@@ -1152,6 +1125,13 @@ class CommentsCoordinator(
                 Log.w(TAG, effect.message, effect.cause)
             is CommentsRuntimeEffect.ActionFailed ->
                 showActionFailure(effect.presentation)
+        }
+    }
+
+    private fun handleFeatureSessionEvent(event: CommentsFeatureSessionEvent) {
+        when (event) {
+            is CommentsFeatureSessionEvent.Runtime -> handleCommentsRuntimeEffect(event.effect)
+            is CommentsFeatureSessionEvent.Settings -> applyPlatformSettingsState(event.state)
         }
     }
 

@@ -5,100 +5,53 @@ import android.os.Bundle
 import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
+import com.simon.harmonichackernews.navigation.AppLaunchRequest
+import com.simon.harmonichackernews.navigation.AppLaunchResult
+import com.simon.harmonichackernews.navigation.AppLaunchRouter
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.ui.settings.SettingsIntents
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
-import com.simon.harmonichackernews.utils.HackerNewsItemLink
-import com.simon.harmonichackernews.utils.HackerNewsLinks
 
-/** Converts Android entry intents into portable navigation destinations. */
+/** Android decoder for the platform-neutral application launch router. */
 internal class MainLaunchIntentRouter(
     private val navigation: MainNavigationController,
 ) {
-    fun route(intent: Intent?): Boolean {
-        if (intent == null) return false
+    private val launches = AppLaunchRouter(navigation.navigationState)
 
-        if (SettingsIntents.ACTION_OPEN_SETTINGS == intent.action) {
-            navigation.openSettings(
-                intent.getStringExtra(SettingsIntents.EXTRA_SETTINGS_SECTION),
-            )
-            return true
+    fun route(intent: Intent?): Boolean = when (
+        val result = launches.route(intent?.toLaunchRequest() ?: AppLaunchRequest.Unknown)
+    ) {
+        AppLaunchResult.Routed -> true
+        AppLaunchResult.Ignored -> false
+        is AppLaunchResult.Invalid -> {
+            navigation.showMessage(result.message)
+            false
         }
-
-        if (ComposeEditorContract.ACTION_OPEN_EDITOR == intent.action) {
-            val destination = (intent.extras?.let(::Bundle) ?: Bundle()).toEditorDestination()
-            if (!destination.isValid) {
-                showMessage("Invalid comment id")
-                return false
-            }
-            navigation.openEditor(destination)
-            return true
-        }
-
-        if (SubmissionsContract.ACTION_OPEN_SUBMISSIONS == intent.action) {
-            val userName = intent.getStringExtra(SubmissionsContract.EXTRA_USER)
-            if (userName.isNullOrEmpty()) {
-                showMessage("Invalid username")
-                return false
-            }
-            navigation.openSubmissions(userName)
-            return true
-        }
-
-        if (CoulombGasContract.ACTION_OPEN == intent.action) {
-            navigation.openCoulombGas()
-            return true
-        }
-
-        return routeStory(intent)
     }
 
-    private fun routeStory(intent: Intent): Boolean {
-        val arguments = intent.extras?.let(::Bundle) ?: Bundle()
-        var hackerNewsLink: HackerNewsItemLink? = null
-        var commentsIntent = false
-
-        if (Intent.ACTION_VIEW.equals(intent.action, ignoreCase = true)) {
-            commentsIntent = true
-            hackerNewsLink = HackerNewsLinks.parseItemLink(intent.data?.toString())
-        } else if (Intent.ACTION_SEND.equals(intent.action, ignoreCase = true)) {
-            commentsIntent = true
-            hackerNewsLink = HackerNewsLinks.findItemLink(
-                intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
-            )
-        }
-
-        var itemId = arguments.getInt(CommentsContract.EXTRA_ID, -1)
-        hackerNewsLink?.let { link ->
-            itemId = link.itemId
-            if (link.scrollToCommentId > 0) {
-                arguments.putInt(
-                    CommentsContract.EXTRA_SCROLL_TO_COMMENT,
-                    link.scrollToCommentId,
-                )
-            }
-        }
-
-        if (itemId <= 0) {
-            if (commentsIntent) showMessage("Unable to parse story")
-            return false
-        }
-
-        arguments.putInt(CommentsContract.EXTRA_ID, itemId)
-        if (!arguments.containsKey(CommentsContract.EXTRA_TITLE)) {
-            arguments.putString(CommentsContract.EXTRA_TITLE, "")
-        }
-        arguments.putBoolean(
-            CommentsContract.EXTRA_SHOW_WEBSITE,
-            arguments.getBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, false),
+    private fun Intent.toLaunchRequest(): AppLaunchRequest = when {
+        action == SettingsIntents.ACTION_OPEN_SETTINGS -> AppLaunchRequest.Settings(
+            getStringExtra(SettingsIntents.EXTRA_SETTINGS_SECTION),
         )
-        val destination = arguments.toStoryDestinationOrNull() ?: return false
-        navigation.openStory(destination)
-        return true
+        action == ComposeEditorContract.ACTION_OPEN_EDITOR -> AppLaunchRequest.Editor(
+            (extras?.let(::Bundle) ?: Bundle()).toEditorDestination(),
+        )
+        action == SubmissionsContract.ACTION_OPEN_SUBMISSIONS -> AppLaunchRequest.Submissions(
+            getStringExtra(SubmissionsContract.EXTRA_USER),
+        )
+        action == CoulombGasContract.ACTION_OPEN -> AppLaunchRequest.CoulombGas
+        Intent.ACTION_VIEW.equals(action, ignoreCase = true) ->
+            AppLaunchRequest.ViewUrl(data?.toString())
+        Intent.ACTION_SEND.equals(action, ignoreCase = true) -> AppLaunchRequest.SharedText(
+            getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+        )
+        else -> AppLaunchRequest.Story(directStoryDestination())
     }
 
-    private fun showMessage(message: String) {
-        navigation.showMessage(message)
-    }
+    private fun Intent.directStoryDestination() =
+        (extras?.let(::Bundle) ?: Bundle()).let { arguments ->
+            if (arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0) null
+            else arguments.toStoryDestinationOrNull()
+        }
 }

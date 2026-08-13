@@ -2,17 +2,13 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.os.Build
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.utils.AndroidStoryCache
 
 private const val OpenWithoutCacheStoryId = 49089500
 
 @Composable
 fun DebugSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
-    val context = LocalContext.current
     val app = LocalHarmonicUiDependencies.current
     SharedDebugSettingsRoute(
         repository = app.settings,
@@ -26,8 +22,8 @@ fun DebugSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
         onBack = onBack,
         onOpenHnId = { app.navigation.openStory(StoryDestination(it)) },
         onOpenWithoutCache = {
-            AndroidStoryCache.remove(context, OpenWithoutCacheStoryId)
-            NetworkComponent.removeCachedStoryResponses(context, OpenWithoutCacheStoryId)
+            app.storyCache.remove(OpenWithoutCacheStoryId)
+            app.network.removeCachedStoryResponses(OpenWithoutCacheStoryId)
             app.navigation.openStory(StoryDestination(OpenWithoutCacheStoryId))
         },
         onOpenLink = { app.links.open(it) },

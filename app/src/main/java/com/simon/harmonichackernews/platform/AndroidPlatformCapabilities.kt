@@ -15,14 +15,14 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.network.createAndroidLocalSummaryCapability
+import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
-import com.simon.harmonichackernews.summary.local.LocalModelInference
-import com.simon.harmonichackernews.summary.local.LocalModelManager
-import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
+import com.simon.harmonichackernews.utils.AndroidAiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.ShareUtils
 import com.simon.harmonichackernews.presentation.UserMessageStore
+import com.simon.harmonichackernews.summary.LocalModelService
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -37,14 +37,17 @@ class AndroidCredentialStore(context: Context) :
     CredentialStore,
     ObservableHackerNewsAccountRepository {
     private val appContext = context.applicationContext
-    override val accountState: StateFlow<HackerNewsAccount?> = processAccountState.asStateFlow()
+    private val aiCredentials = AndroidAiSummaryApiKeyStore(appContext)
+    private val mutableAccountState = MutableStateFlow<HackerNewsAccount?>(null)
+    private val accountMutationMutex = Mutex()
+    override val accountState: StateFlow<HackerNewsAccount?> = mutableAccountState.asStateFlow()
 
     init {
         publishAccount()
     }
 
     override fun read(id: String): String? = when (id) {
-        CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
+        CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.getApiKey()
         CredentialIds.HACKER_NEWS_USERNAME -> AndroidHackerNewsAccountStorage.load(appContext)?.username
         CredentialIds.HACKER_NEWS_PASSWORD -> AndroidHackerNewsAccountStorage.load(appContext)?.password
         else -> null
@@ -52,7 +55,7 @@ class AndroidCredentialStore(context: Context) :
 
     override fun write(id: String, value: String): Boolean =
         when (id) {
-            CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.setApiKey(appContext, value)
+            CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.setApiKey(value)
             CredentialIds.HACKER_NEWS_USERNAME -> load()?.let { current ->
                 AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(value, current.password))
             } ?: false
@@ -64,7 +67,7 @@ class AndroidCredentialStore(context: Context) :
 
     override fun remove(id: String): Boolean =
         when (id) {
-            CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.clearApiKey(appContext)
+            CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.clearApiKey()
             CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD ->
                 AndroidHackerNewsAccountStorage.clear(appContext)
             else -> false
@@ -86,12 +89,7 @@ class AndroidCredentialStore(context: Context) :
         accountMutationMutex.withLock { withContext(Dispatchers.IO) { clear() } }
 
     private fun publishAccount() {
-        processAccountState.value = AndroidHackerNewsAccountStorage.load(appContext)
-    }
-
-    private companion object {
-        val processAccountState = MutableStateFlow<HackerNewsAccount?>(null)
-        val accountMutationMutex = Mutex()
+        mutableAccountState.value = AndroidHackerNewsAccountStorage.load(appContext)
     }
 }
 
@@ -260,56 +258,35 @@ class AndroidNotificationScheduler(context: Context) : NotificationScheduler {
     }
 }
 
-class AndroidLocalSummaryEngine(context: Context) : LocalSummaryEngine {
-    private val appContext = context.applicationContext
-
-    override suspend fun isAvailable(): Boolean = withContext(Dispatchers.IO) {
-        val model = LocalModelManager.getSelectedModel(appContext)
-        LocalModelManager.isSelectedModelDownloaded(appContext) &&
-            LocalAiRuntimeManager.isRuntimeInstalled(appContext, model.runtime)
-    }
-
-    override suspend fun summarize(request: SummaryRequest): SummaryResult = withContext(
-        Dispatchers.IO,
-    ) {
-        var loadMillis = 0L
-        val text = LocalModelInference.summarize(
-            appContext,
-            request.text,
-            LocalModelInference.ProgressCallback {},
-            LocalModelInference.LoadCallback { loadMillis = it },
-        )
-        SummaryResult(text = text, debugInfo = "modelLoadMillis=$loadMillis")
-    }
-}
-
-object AndroidPlatformDependencies {
-    fun create(
-        context: Context,
-        bookmarkStore: ObservableBookmarkStore = AndroidBookmarkStore(context),
-        userMessages: UserMessageStore = UserMessageStore(),
-    ): AppPlatformDependencies {
-        val accounts = AndroidCredentialStore(context)
-        return AppPlatformDependencies(
-            credentials = accounts,
-            accounts = accounts,
-            capabilities = OptionalPlatformCapabilities(
-                bookmarks = PlatformCapability.Available(bookmarkStore),
-                history = PlatformCapability.Available(AndroidHistoryStore(context)),
-                cache = PlatformCapability.Available(AndroidCacheStore(context)),
-                files = PlatformCapability.Available(AndroidFileStore(context)),
-                externalLinks = PlatformCapability.Available(
-                    AndroidExternalLinkOpener(context, userMessages),
-                ),
-                sharing = PlatformCapability.Available(AndroidShareService(context)),
-                clipboard = PlatformCapability.Available(AndroidClipboardService(context)),
-                connectivity = PlatformCapability.Available(AndroidConnectivityService(context)),
-                notifications = PlatformCapability.Available(AndroidNotificationScheduler(context)),
-                articles = PlatformCapability.Available(AndroidArticleViewer(context, userMessages)),
-                localSummary = PlatformCapability.Available(AndroidLocalSummaryEngine(context)),
+fun createAndroidPlatformDependencies(
+    context: Context,
+    localModels: LocalModelService,
+    bookmarkStore: ObservableBookmarkStore = AndroidBookmarkStore(context),
+    userMessages: UserMessageStore = UserMessageStore(),
+): AppPlatformDependencies {
+    val accounts = AndroidCredentialStore(context)
+    return AppPlatformDependencies(
+        credentials = accounts,
+        accounts = accounts,
+        capabilities = OptionalPlatformCapabilities(
+            bookmarks = PlatformCapability.Available(bookmarkStore),
+            history = PlatformCapability.Available(AndroidHistoryStore(context)),
+            cache = PlatformCapability.Available(AndroidCacheStore(context)),
+            files = PlatformCapability.Available(AndroidFileStore(context)),
+            externalLinks = PlatformCapability.Available(
+                AndroidExternalLinkOpener(context, userMessages),
             ),
-        )
-    }
+            sharing = PlatformCapability.Available(AndroidShareService(context)),
+            clipboard = PlatformCapability.Available(AndroidClipboardService(context)),
+            connectivity = PlatformCapability.Available(AndroidConnectivityService(context)),
+            notifications = PlatformCapability.Available(AndroidNotificationScheduler(context)),
+            replyNotifications = PlatformCapability.Available(
+                AndroidReplyNotificationPlatform(context),
+            ),
+            articles = PlatformCapability.Available(AndroidArticleViewer(context, userMessages)),
+            localSummary = createAndroidLocalSummaryCapability(context, localModels),
+        ),
+    )
 }
 
 private fun safeName(value: String): String {

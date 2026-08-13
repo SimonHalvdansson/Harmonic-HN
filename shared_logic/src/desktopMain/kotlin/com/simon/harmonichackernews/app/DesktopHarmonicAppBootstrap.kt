@@ -30,7 +30,8 @@ class DesktopHarmonicAppBootstrap(
     appDataStore: KeyValueStore,
     previewCacheStore: KeyValueStore,
     settingsChanges: Flow<Unit>,
-    currentTheme: () -> String? = { null },
+    currentMinutesFromMidnight: () -> Int = { 0 },
+    systemDark: () -> Boolean = { false },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val authenticatedClients = ResettableAuthenticatedHttpClientProvider {
@@ -52,7 +53,8 @@ class DesktopHarmonicAppBootstrap(
         appDataStore = appDataStore,
         previewCacheStore = previewCacheStore,
         settingsChanges = settingsChanges,
-        currentTheme = currentTheme,
+        currentMinutesFromMidnight = currentMinutesFromMidnight,
+        systemDark = systemDark,
     )
 
     fun close() {

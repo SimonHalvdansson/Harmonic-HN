@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.resources.*
@@ -79,7 +80,7 @@ fun SharedStoriesSettingsScreen(
     contentVersion: Int = 0,
 ) {
     SettingsPage(
-        title = "Stories",
+        title = stringResource(Res.string.settings_section_stories),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

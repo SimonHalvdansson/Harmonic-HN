@@ -51,11 +51,13 @@ import com.simon.harmonichackernews.resources.ic_attribution
 import com.simon.harmonichackernews.resources.ic_link_preview_github
 import com.simon.harmonichackernews.resources.ic_policy
 import com.simon.harmonichackernews.resources.ic_system_update_alt
+import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 const val DefaultAboutBody =
     "Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 " +
@@ -102,7 +104,7 @@ fun SharedAboutScreen(
             ),
     ) {
         SharedHarmonicTopAppBar(
-            title = "About",
+            title = stringResource(Res.string.settings_section_about),
             onBack = if (showNavigation) onBack else null,
             toolbarHeight = topBarHeight,
             navigationHeight = topBarNavigationHeight,

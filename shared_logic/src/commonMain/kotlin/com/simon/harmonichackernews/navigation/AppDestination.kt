@@ -33,6 +33,7 @@ data class StoryNavigationSeed(
 )
 
 /** A stable route with an optional transient domain seed; no rendering/resource state is routed. */
+@Serializable
 data class StoryDestination(
     val storyId: Int,
     val showWebsite: Boolean = false,
@@ -53,12 +54,14 @@ fun StoryRoute.toDestination(): StoryDestination = StoryDestination(
     scrollToCommentId = scrollToCommentId,
 )
 
+@Serializable
 enum class EditorType {
     POST,
     TOP_LEVEL_COMMENT,
     COMMENT_REPLY,
 }
 
+@Serializable
 data class EditorDestination(
     val type: EditorType = EditorType.POST,
     val itemId: Int = -1,
@@ -70,6 +73,7 @@ data class EditorDestination(
         get() = type == EditorType.POST || itemId > 0
 }
 
+@Serializable
 data class SubmissionsDestination(val userName: String) : AppDestination {
     init {
         require(userName.isNotBlank()) { "A username is required" }

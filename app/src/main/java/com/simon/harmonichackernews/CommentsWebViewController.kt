@@ -53,25 +53,25 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
-import com.simon.harmonichackernews.presentation.WebContentLoadStateMachine
 import com.simon.harmonichackernews.presentation.WebContentFailure
+import com.simon.harmonichackernews.presentation.WebContentAssets
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.presentation.ReaderModePageDecision
+import com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol
 import com.simon.harmonichackernews.presentation.ReaderModeScriptStatus
-import com.simon.harmonichackernews.presentation.ReaderModeStateMachine
+import com.simon.harmonichackernews.presentation.ReaderModeTheme
 import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
-import com.simon.harmonichackernews.utils.FileDownloader
-import com.simon.harmonichackernews.utils.FileDownloader.FileDownloaderCallback
+import com.simon.harmonichackernews.presentation.WebContentRuntime
+import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.AndroidAdBlocklist
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
-import com.simon.harmonichackernews.utils.AndroidStoryCache
+import com.simon.harmonichackernews.cache.SharedStoryCacheService
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.BufferedReader
@@ -86,11 +86,17 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import kotlin.math.min
 import com.simon.harmonichackernews.serialization.JsonStringCodec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 internal class CommentsWebViewController(
     private val coordinator: CommentsCoordinator,
     private val story: Story?,
     private val linkPreviewController: LinkPreviewController,
+    webContentRuntime: WebContentRuntime,
+    private val storyCache: SharedStoryCacheService,
+    private val pdfDownloads: PdfDownloadService,
+    private val coroutineScope: CoroutineScope,
     private val callbacks: Callbacks
 ) {
 
@@ -132,7 +138,7 @@ internal class CommentsWebViewController(
     private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
     private var matchWebviewTheme = true
     private lateinit var readingPreferences: ReadingPreferences
-    private val readerMode = ReaderModeStateMachine()
+    private val readerMode = webContentRuntime.reader
     private val readerModeFeatureEnabled: Boolean get() = readerMode.state.featureEnabled
     var isBlockingAds: Boolean = true
         private set
@@ -141,7 +147,8 @@ internal class CommentsWebViewController(
     private var showingErrorPage = false
     private var showingCachedArticlePage = false
     private var clearWebViewHistoryOnNextFinish = false
-    private val webContentLoad = WebContentLoadStateMachine()
+    private val webContentLoad = webContentRuntime.load
+    private val adBlocklist = webContentRuntime.adBlocklist
     private var lastFailedWebViewUrl: String? = null
     private var lastRequestedWebViewUrl: String? = null
     private var pendingSummaryOnDone: Runnable? = null
@@ -448,9 +455,11 @@ internal class CommentsWebViewController(
             return
         }
 
-        val command = (script
-                + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
-                + "\nHarmonicReaderMode." + (if (enable) "enable" else "disable") + "();")
+        val command = ReaderModeScriptProtocol.applyCommand(
+            script = script.orEmpty(),
+            theme = getReaderModeTheme(context),
+            enabled = enable,
+        )
         val generation = webContentLoad.state.generation
         targetWebView.evaluateJavascript(command, ValueCallback { result: String? ->
             val callbackContext = coordinator.context
@@ -458,13 +467,7 @@ internal class CommentsWebViewController(
                 return@ValueCallback
             }
 
-            val status = when (normalizeJavascriptResult(result)) {
-                "enabled" -> ReaderModeScriptStatus.ENABLED
-                "disabled" -> ReaderModeScriptStatus.DISABLED
-                "no_article" -> ReaderModeScriptStatus.NO_ARTICLE
-                "unavailable" -> ReaderModeScriptStatus.UNAVAILABLE
-                else -> ReaderModeScriptStatus.FAILED
-            }
+            val status = ReaderModeScriptProtocol.parseStatus(result)
             when (status) {
                 ReaderModeScriptStatus.ENABLED,
                 ReaderModeScriptStatus.DISABLED -> {
@@ -511,13 +514,13 @@ internal class CommentsWebViewController(
         }
 
         view.evaluateJavascript(
-            script + "\nHarmonicReaderMode.isAvailable();",
+            ReaderModeScriptProtocol.availabilityCommand(script.orEmpty()),
             ValueCallback { result: String? ->
                 val callbackContext = coordinator.context
                 if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
                     return@ValueCallback
                 }
-                if ("available" == normalizeJavascriptResult(result)) {
+                if (ReaderModeScriptProtocol.isAvailable(result)) {
                     setReaderModeConfirmedAvailable()
                 } else {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
@@ -681,19 +684,7 @@ internal class CommentsWebViewController(
         }
     }
 
-    private fun normalizeJavascriptResult(result: String?): String {
-        if (result == null) {
-            return ""
-        }
-
-        var normalized = result.trim { it <= ' ' }
-        if (normalized.length >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
-            normalized = normalized.substring(1, normalized.length - 1)
-        }
-        return normalized
-    }
-
-    private fun getReaderModeThemeJson(context: Context): String {
+    private fun getReaderModeTheme(context: Context): ReaderModeTheme {
         var backgroundColor = Color.TRANSPARENT
         try {
             backgroundColor =
@@ -734,42 +725,25 @@ internal class CommentsWebViewController(
         )
         val readerModeFont = readingPreferences.readerModeFont
         val readerModeFontFaceCss = getReaderModeFontFaceCss(context, readerModeFont)
-        val readerModeFontFamily = if (TextUtils.isEmpty(readerModeFontFaceCss))
-            getReaderModeSystemFontFamily(readerModeFont)
-        else
-            "'HarmonicReaderFont', " + getReaderModeSystemFontFamily(readerModeFont)
         val readerModeFontSize = readingPreferences.readerModeFontSize
 
-        return String.format(
-            Locale.US,
-            "{\"isLight\":%s,\"backgroundColor\":\"%s\",\"textColor\":\"%s\",\"headingColor\":\"%s\",\"secondaryTextColor\":\"%s\",\"linkColor\":\"%s\",\"dividerColor\":\"%s\",\"codeBackgroundColor\":\"%s\",\"fontFaceCss\":%s,\"fontFamily\":%s,\"headingFontFamily\":%s,\"fontSizePx\":%d}",
-            if (isLightMode) "true" else "false",
-            colorToCss(backgroundColor),
-            colorToCss(textColor),
-            colorToCss(headingColor),
-            colorToCss(secondaryTextColor),
-            colorToCss(linkColor),
-            colorToCss(dividerColor),
-            colorToCss(codeBackgroundColor),
-            jsonString(readerModeFontFaceCss),
-            jsonString(readerModeFontFamily),
-            jsonString(readerModeFontFamily),
-            readerModeFontSize
+        return ReaderModeTheme(
+            light = isLightMode,
+            backgroundColor = colorToCss(backgroundColor),
+            textColor = colorToCss(textColor),
+            headingColor = colorToCss(headingColor),
+            secondaryTextColor = colorToCss(secondaryTextColor),
+            linkColor = colorToCss(linkColor),
+            dividerColor = colorToCss(dividerColor),
+            codeBackgroundColor = colorToCss(codeBackgroundColor),
+            fontFaceCss = readerModeFontFaceCss,
+            font = readerModeFont,
+            fontSizePx = readerModeFontSize,
         )
     }
 
     private fun colorToCss(color: Int): String {
         return String.format(Locale.US, "#%06X", 0xFFFFFF and color)
-    }
-
-    private fun getReaderModeSystemFontFamily(font: String?): String {
-        when (TextPreferences.sanitizeFont(font)) {
-            "productsans", "googlesansflexrounded", "googlesans", "verdana" -> return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            "robotoslab", "georgia" -> return "Georgia, 'Times New Roman', serif"
-            "jetbrainsmono", "googlesanscode" -> return "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace"
-            "devicedefault" -> return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            else -> return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        }
     }
 
     private fun getReaderModeFontFaceCss(context: Context, font: String?): String {
@@ -850,24 +824,6 @@ internal class CommentsWebViewController(
         }
     }
 
-    private fun jsonString(value: String?): String {
-        val safeValue = if (value != null) value else ""
-        val builder = StringBuilder(safeValue.length + 2)
-        builder.append('"')
-        for (i in 0..<safeValue.length) {
-            val c = safeValue.get(i)
-            when (c) {
-                '\\', '"' -> builder.append('\\').append(c)
-                '\n' -> builder.append("\\n")
-                '\r' -> builder.append("\\r")
-                '\t' -> builder.append("\\t")
-                else -> builder.append(c)
-            }
-        }
-        builder.append('"')
-        return builder.toString()
-    }
-
     fun toggleDarkMode() {
         val currentWebView = webView ?: return
         val settings = currentWebView.settings
@@ -906,10 +862,6 @@ internal class CommentsWebViewController(
         val currentWebView = orInflateWebView ?: return
         webView = currentWebView
         initializedWebView = true
-
-        if (this.isBlockingAds && AndroidAdBlocklist.hosts.isEmpty) {
-            AndroidAdBlocklist.load(context.getResources())
-        }
 
         currentWebView.webViewClient = MyWebViewClient()
 
@@ -1385,17 +1337,14 @@ internal class CommentsWebViewController(
         if (ctx == null) {
             return
         }
-        val fileDownloader = FileDownloader(ctx)
         coordinator.showMessage("Loading PDF...", UserMessageDuration.LONG)
-        fileDownloader.downloadFile(url, PDF_MIME_TYPE, object : FileDownloaderCallback {
-            override fun onFailure(error: IOException?) {
+        coroutineScope.launch {
+            runCatching { pdfDownloads.download(url) }
+                .onSuccess { filePath -> loadUrl(PDF_LOADER_URL, filePath) }
+                .onFailure {
                 showDownloadButton(url, contentDisposition, mimetype)
-            }
-
-            override fun onSuccess(filePath: String?) {
-                loadUrl(PDF_LOADER_URL, filePath)
-            }
-        })
+                }
+        }
     }
 
     private fun showDownloadButton(url: String?, contentDisposition: String?, mimetype: String?) {
@@ -1521,11 +1470,11 @@ internal class CommentsWebViewController(
             currentStory == null || !currentStory.isLink || currentStory.id <= 0
         ) return false
 
-        val html = AndroidStoryCache.loadArticle(context, currentStory.id)
+        val html = storyCache.loadArticle(currentStory.id)
             ?.takeUnless(String::isEmpty)
             ?: return false
 
-        var baseUrl = AndroidStoryCache.articleUrl(context, currentStory.id)
+        var baseUrl = storyCache.articleUrl(currentStory.id)
         if (TextUtils.isEmpty(baseUrl)) {
             baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else currentStory.url
         }
@@ -1758,9 +1707,9 @@ internal class CommentsWebViewController(
                 return super.shouldInterceptRequest(view, request)
             }
             val EMPTY = ByteArrayInputStream("".toByteArray())
-            if (!AndroidAdBlocklist.hosts.isEmpty) {
+            if (!adBlocklist.hosts.value.isEmpty) {
                 val host = request.getUrl().getHost()
-                if (host != null && AndroidAdBlocklist.hosts.contains(host)) {
+                if (host != null && adBlocklist.contains(host)) {
                     HarmonicLog.debug("Blocked: " + request.getUrl())
                     return WebResourceResponse("text/plain", "utf-8", EMPTY)
                 }
@@ -1930,11 +1879,10 @@ internal class CommentsWebViewController(
 
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
-        private const val PDF_LOADER_URL = "file:///android_asset/pdf/index.html"
-        private const val OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html"
-        private const val READER_MODE_READABILITY_SCRIPT_ASSET =
-            "vendor/mozilla/readability/0.6.0/Readability.min.js"
-        private const val READER_MODE_SCRIPT_ASSET = "reader_mode.js"
+        private val PDF_LOADER_URL = "file:///android_asset/${WebContentAssets.PDF_VIEWER_INDEX}"
+        private val OFFLINE_PAGE_URL = "file:///android_asset/${WebContentAssets.OFFLINE_PAGE}"
+        private val READER_MODE_READABILITY_SCRIPT_ASSET = WebContentAssets.READABILITY_SCRIPT
+        private val READER_MODE_SCRIPT_ASSET = WebContentAssets.READER_MODE_SCRIPT
         private const val WEBVIEW_VISIBLE_LOAD_GRACE_MS: Long = 1500
         private const val READER_MODE_INITIAL_AVAILABILITY_GRACE_MS: Long = 2000
         private const val READER_MODE_AVAILABILITY_RECHECK_DELAY_MS: Long = 2500

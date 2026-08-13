@@ -3,19 +3,14 @@ package com.simon.harmonichackernews
 import android.content.Context
 import com.simon.harmonichackernews.cache.StoryCacheRequest
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
-import com.simon.harmonichackernews.cache.StoryCacheSink
 import com.simon.harmonichackernews.cache.StoryCacheState
 import com.simon.harmonichackernews.cache.StoryCacheStatus
-import com.simon.harmonichackernews.cache.StoryCacheUseCase
-import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
-import com.simon.harmonichackernews.utils.AndroidStoryCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Android lifecycle and persistence adapter for the shared story-cache workflow. */
 internal class StoryCacheController(private val callbacks: Callbacks) {
@@ -60,30 +55,12 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
 
     private fun getOrCreateRuntime(context: Context): StoryCacheRuntime {
         runtime?.let { return it }
-        val network = AndroidAppComposition.get(context).network
-        val useCase = StoryCacheUseCase(
-            hackerNewsRepository = network.hackerNewsRepository,
-            algoliaRepository = network.algoliaRepository,
-            sink = AndroidStoryCacheSink(context),
-        )
-        val created = StoryCacheRuntime(scope, useCase::execute)
+        val created = context.harmonicAppComposition.createStoryCacheRuntime(scope)
         runtime = created
         scope.launch {
             created.state.collect { callbacks.onCacheProgressChanged() }
         }
         return created
-    }
-
-    private class AndroidStoryCacheSink(context: Context) : StoryCacheSink {
-        private val appContext = context.applicationContext
-        private val articleDownloader = ArticleSnapshotDownloader(appContext)
-
-        override suspend fun cacheStory(id: Int, payload: String) {
-            withContext(Dispatchers.IO) { AndroidStoryCache.store(appContext, id, payload) }
-        }
-
-        override suspend fun cacheArticle(id: Int, url: String): Boolean =
-            articleDownloader.download(id, url)
     }
 
     private companion object {

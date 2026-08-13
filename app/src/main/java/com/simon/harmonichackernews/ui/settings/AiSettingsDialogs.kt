@@ -26,7 +26,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.AiSummaryProviders
-import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.OpenRouterProviderIcon
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
@@ -156,7 +155,7 @@ private fun AiModelProviderIcon(providerSlug: String) {
             val request = remember(context, resolvedIcon) {
                 ImageRequest.Builder(context)
                     .data(resolvedIcon)
-                    .networkHeader("User-Agent", NetworkComponent.USER_AGENT)
+                    .networkHeader("User-Agent", appComposition.network.userAgent)
                     .crossfade(100)
                     .build()
             }

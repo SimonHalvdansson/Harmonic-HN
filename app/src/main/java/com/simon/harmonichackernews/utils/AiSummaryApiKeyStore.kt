@@ -4,29 +4,24 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.preference.PreferenceManager
-import kotlin.concurrent.Volatile
 
-object AiSummaryApiKeyStore {
-    const val PREF_API_KEY = "pref_ai_summary_api_key"
-
-    private const val TAG = "AiSummaryApiKeyStore"
-    private const val ENCRYPTED_PREFS_NAME = "HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS"
-    private const val MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_ai_summary_"
-
-    @Volatile
-    private var encryptedPreferences: SharedPreferences? = null
-
-    @Volatile
+class AndroidAiSummaryApiKeyStore(context: Context) {
+    private val appContext = context.applicationContext
     private var cachedHasApiKey: Boolean? = null
+    private val encryptedPreferences: SharedPreferences by lazy {
+        EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(
+            appContext,
+            ENCRYPTED_PREFS_NAME,
+            MASTER_KEY_ALIAS,
+        )
+    }
 
-    fun getApiKey(context: Context): String {
-        val appContext = context.applicationContext
+    fun getApiKey(): String {
         val legacyPreferences =
             PreferenceManager.getDefaultSharedPreferences(appContext)
         val legacyValue = legacyPreferences.getString(PREF_API_KEY, null)
 
         try {
-            val encryptedPreferences = getEncryptedPreferences(appContext)
             if (encryptedPreferences.contains(PREF_API_KEY)) {
                 val encryptedValue = encryptedPreferences.getString(PREF_API_KEY, "").orEmpty()
                 removeLegacyValue(legacyPreferences)
@@ -50,15 +45,14 @@ object AiSummaryApiKeyStore {
         return resolvedValue
     }
 
-    fun hasApiKey(context: Context): Boolean {
+    fun hasApiKey(): Boolean {
         val cachedValue = cachedHasApiKey
-        return cachedValue ?: getApiKey(context).isNotEmpty()
+        return cachedValue ?: getApiKey().isNotEmpty()
     }
 
-    fun setApiKey(context: Context, apiKey: String?): Boolean {
-        val appContext = context.applicationContext
+    fun setApiKey(apiKey: String?): Boolean {
         try {
-            val saved = getEncryptedPreferences(appContext)
+            val saved = encryptedPreferences
                 .edit()
                 .putString(PREF_API_KEY, apiKey.orEmpty())
                 .commit()
@@ -73,10 +67,9 @@ object AiSummaryApiKeyStore {
         }
     }
 
-    fun clearApiKey(context: Context): Boolean {
-        val appContext = context.applicationContext
+    fun clearApiKey(): Boolean {
         val cleared = try {
-            getEncryptedPreferences(appContext)
+            encryptedPreferences
                 .edit()
                 .remove(PREF_API_KEY)
                 .commit()
@@ -89,21 +82,16 @@ object AiSummaryApiKeyStore {
         return cleared
     }
 
-    @Throws(Exception::class)
-    private fun getEncryptedPreferences(context: Context): SharedPreferences {
-        encryptedPreferences?.let { return it }
-        return synchronized(this) {
-            encryptedPreferences ?: EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(
-                context.applicationContext,
-                ENCRYPTED_PREFS_NAME,
-                MASTER_KEY_ALIAS,
-            ).also { encryptedPreferences = it }
-        }
-    }
-
     private fun removeLegacyValue(legacyPreferences: SharedPreferences) {
         if (legacyPreferences.contains(PREF_API_KEY)) {
             legacyPreferences.edit().remove(PREF_API_KEY).apply()
         }
+    }
+
+    private companion object {
+        const val PREF_API_KEY = "pref_ai_summary_api_key"
+        const val TAG = "AiSummaryApiKeyStore"
+        const val ENCRYPTED_PREFS_NAME = "HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS"
+        const val MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_ai_summary_"
     }
 }

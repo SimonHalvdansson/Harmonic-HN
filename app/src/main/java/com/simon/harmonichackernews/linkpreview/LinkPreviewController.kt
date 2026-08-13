@@ -4,14 +4,8 @@ import android.content.Context
 import android.webkit.WebView
 import com.simon.harmonichackernews.data.NitterInfo
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.LinkPreviewData
-import com.simon.harmonichackernews.network.LinkPreviewPreferences
-import com.simon.harmonichackernews.network.LinkPreviewRuntime
-import com.simon.harmonichackernews.network.LinkPreviewRuntimeState
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.network.NitterLinkPreviewPreferences
-import com.simon.harmonichackernews.network.NitterLinkPreviewRuntime
-import com.simon.harmonichackernews.network.NitterLinkPreviewState
+import com.simon.harmonichackernews.network.StoryLinkPreviewSession
 import com.simon.harmonichackernews.network.WebPageExtractor
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import kotlin.coroutines.resume
@@ -20,163 +14,64 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
+/** Android WebView adapter for the shared story link-preview session. */
 class LinkPreviewController(
-    private val story: Story?,
+    story: Story?,
     useCase: LinkPreviewUseCase,
-    private val readingPreferences: ReadingPreferences,
-    private val callbacks: Callbacks,
+    readingPreferences: ReadingPreferences,
+    callbacks: Callbacks,
 ) {
     fun interface Callbacks {
         fun onPreviewChanged()
     }
 
-    private val previewScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val previewRuntime = LinkPreviewRuntime(
-        previewScope,
-        useCase,
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val session = StoryLinkPreviewSession(
+        scope = scope,
+        story = story,
+        useCase = useCase,
+        readingPreferences = readingPreferences,
+        onPreviewChanged = callbacks::onPreviewChanged,
     )
-    private val nitterPreviewRuntime = NitterLinkPreviewRuntime(previewScope)
-    private var networkPreviewState = LinkPreviewRuntimeState()
-    private var nitterPreviewState = NitterLinkPreviewState()
-
-    init {
-        previewScope.launch { previewRuntime.state.collect(::applyNetworkPreviewState) }
-        previewScope.launch { nitterPreviewRuntime.state.collect(::applyNitterPreviewState) }
-    }
 
     fun loadNetworkPreviews(context: Context?) {
-        val currentStory = story
-        val url = currentStory?.url
-        if (context == null || currentStory == null || url == null || currentStory.linkPreviewLoading || currentStory.hasLoadedLinkPreview()) {
-            return
-        }
+        if (context != null) session.loadNetworkPreviews()
+    }
 
-        previewRuntime.load(
-            url,
-            LinkPreviewPreferences(
-                arxiv = readingPreferences.previewArxiv,
-                github = readingPreferences.previewGithub,
-                gitLab = readingPreferences.previewGitlab,
-                stackExchange = readingPreferences.previewStackExchange,
-                wikipedia = readingPreferences.previewWikipedia,
-            ),
-            alreadyLoaded = currentStory.hasLoadedLinkPreview(),
+    fun shouldInitializeWebViewForPreview(context: Context?): Boolean =
+        context != null && session.shouldInitializeWebPage()
+
+    fun prepareWebViewLoad(context: Context?, webView: WebView?, url: String): String =
+        session.prepareLoad(
+            url = url,
+            extractor = if (context != null && webView != null) AndroidExtractor(webView) else null,
         )
-    }
-
-    private fun applyNetworkPreviewState(state: LinkPreviewRuntimeState) {
-        val currentStory = story ?: return
-        networkPreviewState = state
-        var previewChanged = false
-        when (val preview = state.preview) {
-            is LinkPreviewData.Arxiv -> {
-                currentStory.arxivInfo = preview.value
-                previewChanged = true
-            }
-            is LinkPreviewData.GitHub -> {
-                currentStory.repoInfo = preview.value
-                previewChanged = true
-            }
-            is LinkPreviewData.GitLab -> {
-                currentStory.gitLabInfo = preview.value
-                previewChanged = true
-            }
-            is LinkPreviewData.StackExchange -> {
-                currentStory.stackExchangeInfo = preview.value
-                previewChanged = true
-            }
-            is LinkPreviewData.Wikipedia -> {
-                currentStory.wikiInfo = preview.value
-                previewChanged = true
-            }
-            null -> Unit
-        }
-        syncPreviewLoading(previewChanged)
-    }
-
-    private fun applyNitterPreviewState(state: NitterLinkPreviewState) {
-        val currentStory = story ?: return
-        nitterPreviewState = state
-        val previewChanged = state.preview != null && currentStory.nitterInfo !== state.preview
-        state.preview?.let { currentStory.nitterInfo = it }
-        syncPreviewLoading(previewChanged)
-    }
-
-    private fun syncPreviewLoading(previewChanged: Boolean) {
-        val currentStory = story ?: return
-        val loading = networkPreviewState.loading || nitterPreviewState.loading
-        if (currentStory.linkPreviewLoading != loading || previewChanged) {
-            currentStory.linkPreviewLoading = loading
-            callbacks.onPreviewChanged()
-        }
-    }
-
-    fun dispose() {
-        cancelPendingNitterLinkPreviewRead()
-        previewRuntime.dispose()
-        nitterPreviewRuntime.dispose()
-        previewScope.cancel()
-    }
-
-    fun shouldInitializeWebViewForPreview(context: Context?): Boolean {
-        if (context == null) return false
-        return nitterPreviewRuntime.shouldInitializeWebPage(
-            story?.url,
-            nitterPreferences(),
-        )
-    }
-
-    fun prepareWebViewLoad(context: Context?, webView: WebView?, url: String): String {
-        if (context == null || webView == null) {
-            cancelPendingNitterLinkPreviewRead()
-            return url
-        }
-        return nitterPreviewRuntime.prepareLoad(
-            requestedUrl = url,
-            preferences = nitterPreferences(),
-            alreadyLoaded = story?.nitterInfo != null,
-            extractor = AndroidNitterWebPageExtractor(webView, context),
-        )
-    }
 
     fun onWebViewPageFinished(context: Context?, view: WebView, url: String?) {
-        if (context == null) return
-        nitterPreviewRuntime.onPageFinished(
-            loadedUrl = url,
-            preferences = nitterPreferences(),
-            alreadyLoaded = story?.nitterInfo != null,
-            extractor = AndroidNitterWebPageExtractor(view, context),
-        )
+        if (context != null) session.onPageFinished(url, AndroidExtractor(view))
     }
 
     fun onWebViewOfflineFallback(context: Context?) {
-        if (context != null) nitterPreviewRuntime.offlineFallback()
+        if (context != null) session.offlineFallback()
     }
 
-    fun cancelPendingNitterLinkPreviewRead() {
-        nitterPreviewRuntime.cancel()
+    fun cancelPendingNitterLinkPreviewRead() = session.cancelNitterRead()
+
+    fun dispose() {
+        session.dispose()
+        scope.cancel()
     }
 
-    private fun nitterPreferences(): NitterLinkPreviewPreferences {
-        return NitterLinkPreviewPreferences(
-            previewEnabled = readingPreferences.previewX,
-            redirectEnabled = readingPreferences.redirectNitter,
-        )
-    }
-
-    private class AndroidNitterWebPageExtractor(
+    private class AndroidExtractor(
         private val webView: WebView,
-        private val context: Context,
     ) : WebPageExtractor<NitterInfo> {
         override val currentUrl: String?
             get() = webView.url
 
         override suspend fun extract(): NitterInfo? = suspendCancellableCoroutine { continuation ->
-            NitterGetter.getInfo(webView, context, object : NitterGetter.GetterCallback {
+            NitterGetter.getInfo(webView, object : NitterGetter.GetterCallback {
                 override fun onSuccess(nitterInfo: NitterInfo?) {
                     if (continuation.isActive) continuation.resume(nitterInfo)
                 }

@@ -6,5 +6,5 @@ import com.simon.harmonichackernews.presentation.StoriesSessionState
 
 /** Android lifecycle handle for the application composition's platform-neutral story session. */
 class StoriesViewModel(application: Application) : AndroidViewModel(application) {
-    val state: StoriesSessionState = AndroidAppComposition.get(application).sessions.stories
+    val state: StoriesSessionState = application.harmonicAppComposition.sessions.stories
 }

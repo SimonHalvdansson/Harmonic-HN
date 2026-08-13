@@ -8,7 +8,6 @@ import androidx.compose.ui.platform.LocalResources
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.utils.AndroidAppearanceState
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -23,7 +22,10 @@ fun AppearanceSettingsScreen(
     SharedAppearanceSettingsRoute(
         repository = repository,
         labels = AppearanceRouteLabels(
-            nighttimeRange = formatNighttimeRange(context),
+            nighttimeRange = formatNighttimeRange(
+                context,
+                LocalHarmonicUiDependencies.current.appearance.schedule,
+            ),
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
         ),
         showNavigation = showNavigation,
@@ -60,7 +62,10 @@ fun AppearanceSettingsScreen(
     )
 }
 
-private fun formatNighttimeRange(context: Context): String = ThemeSelectionPolicy.formatSchedule(
-    schedule = AndroidAppearanceState.nighttimeScheduleValue(context),
+private fun formatNighttimeRange(
+    context: Context,
+    schedule: com.simon.harmonichackernews.settings.NighttimeSchedule,
+): String = ThemeSelectionPolicy.formatSchedule(
+    schedule = schedule,
     use24HourClock = DateFormat.is24HourFormat(context),
 )

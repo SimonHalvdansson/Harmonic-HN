@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.app
 
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.network.StoryFeedRepository
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
@@ -20,29 +20,235 @@ import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.settings.UserSettings
-import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
+import com.simon.harmonichackernews.presentation.StoriesSettingsState
+import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
+import com.simon.harmonichackernews.presentation.CommentsSettingsState
+import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
+import com.simon.harmonichackernews.presentation.SubmissionsUiState
+import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
+import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.EditorWorkflowResult
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 
-data class StoriesFeatureSession(
+sealed interface StoriesFeatureSessionEvent {
+    data class Runtime(val effect: StoriesRuntimeEffect) : StoriesFeatureSessionEvent
+    data class Settings(val state: StoriesSettingsState) : StoriesFeatureSessionEvent
+    data object ContentChanged : StoriesFeatureSessionEvent
+}
+
+class StoriesFeatureSession internal constructor(
     val presenter: StoriesPresenter,
     val runtime: StoriesFeatureRuntime,
-)
+    private val scope: CoroutineScope,
+    private val sessionState: StoriesSessionState,
+    private val observeSavedItems: suspend (suspend (SavedItemSource) -> Unit) -> Unit,
+) {
+    private val mutableEvents = MutableSharedFlow<StoriesFeatureSessionEvent>(
+        extraBufferCapacity = 64,
+    )
+    private val jobs = mutableListOf<Job>()
+    private var started = false
+    private var hostStarted = false
+    val events: SharedFlow<StoriesFeatureSessionEvent> = mutableEvents.asSharedFlow()
 
-data class CommentsFeatureSession(
+    /** Starts retained state, settings, effects and saved-item synchronization exactly once. */
+    fun start(): Boolean {
+        if (started) return sessionState.initialized
+        started = true
+        runtime.initializeHistory()
+        val restoring = sessionState.initialized
+        runtime.storyResources?.setResourceChangedListener {
+            mutableEvents.tryEmit(StoriesFeatureSessionEvent.ContentChanged)
+        }
+        runtime.initialize(restoring)
+        jobs += scope.launch {
+            runtime.effects.collect { mutableEvents.emit(StoriesFeatureSessionEvent.Runtime(it)) }
+        }
+        jobs += scope.launch {
+            runtime.settingsState.collect {
+                mutableEvents.emit(StoriesFeatureSessionEvent.Settings(it))
+            }
+        }
+        jobs += scope.launch {
+            observeSavedItems { source ->
+                runtime.notifySavedItemsChanged(source)
+                if (runtime.refreshBookmarksIfNeeded(hostStarted)) {
+                    mutableEvents.emit(StoriesFeatureSessionEvent.ContentChanged)
+                }
+            }
+        }
+        sessionState.initialized = true
+        if (restoring) {
+            mutableEvents.tryEmit(StoriesFeatureSessionEvent.ContentChanged)
+            when {
+                runtime.shouldRefreshRestoredState() ->
+                    runtime.refresh(showSwipeRefreshIndicator = false)
+                !presenter.state.value.searching -> runtime.resumeRetainedLoads()
+            }
+        } else {
+            runtime.refresh(showSwipeRefreshIndicator = false)
+        }
+        return restoring
+    }
+
+    fun onStart() {
+        hostStarted = true
+        if (runtime.refreshBookmarksIfNeeded(hostStarted = true)) {
+            mutableEvents.tryEmit(StoriesFeatureSessionEvent.ContentChanged)
+        }
+    }
+
+    fun onStop() {
+        hostStarted = false
+    }
+
+    fun onResume() {
+        runtime.resume(hostStarted)
+        mutableEvents.tryEmit(StoriesFeatureSessionEvent.ContentChanged)
+    }
+
+    fun dispose() {
+        runtime.storyResources?.setResourceChangedListener(null)
+        jobs.forEach(Job::cancel)
+        jobs.clear()
+        runtime.dispose()
+    }
+}
+
+sealed interface CommentsFeatureSessionEvent {
+    data class Runtime(val effect: CommentsRuntimeEffect) : CommentsFeatureSessionEvent
+    data class Settings(val state: CommentsSettingsState) : CommentsFeatureSessionEvent
+}
+
+class CommentsFeatureSession internal constructor(
     val presenter: CommentsPresenter,
     val runtime: CommentsFeatureRuntime,
-)
+    private val scope: CoroutineScope,
+) {
+    private val mutableEvents = MutableSharedFlow<CommentsFeatureSessionEvent>(
+        extraBufferCapacity = 64,
+    )
+    private val jobs = mutableListOf<Job>()
+    private var started = false
+    val events: SharedFlow<CommentsFeatureSessionEvent> = mutableEvents.asSharedFlow()
 
-/** Portable host hooks that cannot be supplied by the shared application graph yet. */
+    fun start(
+        initialStory: com.simon.harmonichackernews.data.Story,
+        showWebsite: Boolean,
+        scrollToCommentId: Int,
+        restoring: Boolean,
+        restoredSorting: String?,
+    ) {
+        if (!started) {
+            started = true
+            jobs += scope.launch {
+                runtime.effects.collect {
+                    mutableEvents.emit(CommentsFeatureSessionEvent.Runtime(it))
+                }
+            }
+            jobs += scope.launch {
+                runtime.settingsState.collect { state ->
+                    state?.let { mutableEvents.emit(CommentsFeatureSessionEvent.Settings(it)) }
+                }
+            }
+        }
+        runtime.initializeFromSettings(
+            initialStory = initialStory,
+            showWebsite = showWebsite,
+            scrollToCommentId = scrollToCommentId,
+            restoring = restoring,
+            restoredSorting = restoredSorting,
+        )
+    }
+
+    fun onResume() = runtime.resume()
+
+    fun dispose() {
+        jobs.forEach(Job::cancel)
+        jobs.clear()
+        runtime.dispose()
+    }
+}
+
+sealed interface SubmissionsFeatureSessionEvent {
+    data class State(val state: SubmissionsUiState) : SubmissionsFeatureSessionEvent
+    data class Runtime(val effect: SubmissionsRuntimeEffect) : SubmissionsFeatureSessionEvent
+}
+
+class SubmissionsFeatureSession internal constructor(
+    val runtime: SubmissionsFeatureRuntime,
+    private val scope: CoroutineScope,
+) {
+    private val mutableEvents = MutableSharedFlow<SubmissionsFeatureSessionEvent>(
+        extraBufferCapacity = 64,
+    )
+    private val jobs = mutableListOf<Job>()
+    val events: SharedFlow<SubmissionsFeatureSessionEvent> = mutableEvents.asSharedFlow()
+
+    fun start(): SubmissionsScrollRestoration? {
+        jobs += scope.launch {
+            runtime.state.collect {
+                mutableEvents.emit(SubmissionsFeatureSessionEvent.State(it))
+            }
+        }
+        jobs += scope.launch {
+            runtime.effects.collect {
+                mutableEvents.emit(SubmissionsFeatureSessionEvent.Runtime(it))
+            }
+        }
+        return runtime.initialize()
+    }
+
+    fun dispose() {
+        jobs.forEach(Job::cancel)
+        jobs.clear()
+        runtime.dispose()
+    }
+}
+
+sealed interface EditorFeatureSessionEvent {
+    data class Submitting(val value: Boolean) : EditorFeatureSessionEvent
+    data class Result(val value: EditorWorkflowResult) : EditorFeatureSessionEvent
+}
+
+class EditorFeatureSession internal constructor(
+    private val scope: CoroutineScope,
+    private val workflow: EditorSubmissionWorkflow,
+    private val mutableEvents: MutableSharedFlow<EditorFeatureSessionEvent>,
+) {
+    val events: SharedFlow<EditorFeatureSessionEvent> = mutableEvents.asSharedFlow()
+    val isSubmitting: Boolean get() = workflow.isSubmitting
+
+    fun submit(submission: EditorSubmission) {
+        scope.launch { mutableEvents.emit(EditorFeatureSessionEvent.Result(workflow.submit(submission))) }
+    }
+
+    fun respondToCaptcha(challenge: HackerNewsCaptchaChallenge, response: String) {
+        scope.launch {
+            mutableEvents.emit(
+                EditorFeatureSessionEvent.Result(workflow.respondToCaptcha(challenge, response)),
+            )
+        }
+    }
+
+    fun cancelCaptcha() {
+        mutableEvents.tryEmit(EditorFeatureSessionEvent.Result(workflow.cancelCaptcha()))
+    }
+}
+
+/** Lifecycle inputs supplied by a screen host. Portable services come from the app graph. */
 data class StoriesFeatureHost(
     val scope: CoroutineScope,
     val sessionState: StoriesSessionState,
     val platform: StoriesPlatformDependencies,
     val userSettings: UserSettings,
-    val nowMillis: () -> Long,
-    val hydrateCachedStory: (Story) -> Boolean,
-    val loadCachedStories: () -> List<Story>,
-    val hasCachedStories: () -> Boolean,
 )
 
 data class CommentsFeatureHost(
@@ -50,12 +256,6 @@ data class CommentsFeatureHost(
     val sessionState: CommentsSessionState,
     val platform: CommentsPlatformDependencies,
     val userSettings: UserSettings,
-    val nowMillis: () -> Long,
-    val summaryRuntime: StorySummaryRuntime,
-    val localSummaryAvailable: () -> Boolean,
-    val hydrateCachedStory: (Story) -> Boolean,
-    val loadCachedThread: (Int) -> String?,
-    val storeCachedThread: (Int, String) -> Unit,
 )
 
 /**
@@ -67,7 +267,7 @@ fun HarmonicAppComposition.createStoriesFeatureSession(
 ): StoriesFeatureSession {
     val actions = SavedItemActionUseCase(
         repository = savedItems,
-        nowMillis = host.nowMillis,
+        nowMillis = nowMillis,
         voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
         favoriteRequest = hackerNewsUser::setFavorite,
     )
@@ -99,14 +299,20 @@ fun HarmonicAppComposition.createStoriesFeatureSession(
         userSettings = host.userSettings,
         loadContentFilters = contentFilters::load,
         commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
-        nowMillis = host.nowMillis,
-        hydrateCachedStory = host.hydrateCachedStory,
-        loadCachedStories = host.loadCachedStories,
-        hasCachedStories = host.hasCachedStories,
+        nowMillis = nowMillis,
+        hydrateCachedStory = storyCache::hydrateStory,
+        loadCachedStories = storyCache::recentStories,
+        hasCachedStories = storyCache::hasRecentStories,
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return StoriesFeatureSession(presenter, runtime)
+    return StoriesFeatureSession(
+        presenter = presenter,
+        runtime = runtime,
+        scope = host.scope,
+        sessionState = host.sessionState,
+        observeSavedItems = { emit -> savedItems.changes.collect { emit(it.source) } },
+    )
 }
 
 fun HarmonicAppComposition.createCommentsFeatureSession(
@@ -114,7 +320,7 @@ fun HarmonicAppComposition.createCommentsFeatureSession(
 ): CommentsFeatureSession {
     val actions = SavedItemActionUseCase(
         repository = savedItems,
-        nowMillis = host.nowMillis,
+        nowMillis = nowMillis,
         voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
         favoriteRequest = hackerNewsUser::setFavorite,
     )
@@ -130,45 +336,54 @@ fun HarmonicAppComposition.createCommentsFeatureSession(
         scope = host.scope,
         sessionState = host.sessionState,
         presenter = presenter,
-        nowMillis = host.nowMillis,
+        nowMillis = nowMillis,
         archiveUrlResolver = ArchiveUrlResolver(network.linkPreviewRepository),
         userSettings = host.userSettings,
         loadContentFilters = contentFilters::load,
         accounts = host.platform.accounts,
         summarySettings = aiSummarySettings,
-        localSummaryAvailable = host.localSummaryAvailable,
-        summaryRuntime = host.summaryRuntime,
-        hydrateCachedStory = host.hydrateCachedStory,
-        loadCachedThread = host.loadCachedThread,
-        storeCachedThread = host.storeCachedThread,
+        localSummaryAvailable = { localSummaryCanAttempt },
+        summaryRuntime = createStorySummaryRuntime(host.scope),
+        hydrateCachedStory = storyCache::hydrateStory,
+        loadCachedThread = storyCache::loadStoryPayload,
+        storeCachedThread = { storyId, payload ->
+            storyCache.repository.storeStory(storyId, payload, nowMillis())
+        },
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return CommentsFeatureSession(presenter, runtime)
+    return CommentsFeatureSession(presenter, runtime, host.scope)
 }
 
-fun HarmonicAppComposition.createSubmissionsFeatureRuntime(
+fun HarmonicAppComposition.createSubmissionsFeatureSession(
     scope: CoroutineScope,
     sessionState: SubmissionsSessionState,
     userSettings: UserSettings = this.userSettings,
-): SubmissionsFeatureRuntime = SubmissionsFeatureRuntime(
+): SubmissionsFeatureSession = SubmissionsFeatureSession(
+    runtime = SubmissionsFeatureRuntime(
+        scope = scope,
+        sessionState = sessionState,
+        commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
+        useIntegratedWebView = { userSettings.reading.integratedWebView },
+    ),
     scope = scope,
-    sessionState = sessionState,
-    commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
-    useIntegratedWebView = { userSettings.reading.integratedWebView },
 )
 
-fun HarmonicAppComposition.createEditorWorkflow(
+fun HarmonicAppComposition.createEditorFeatureSession(
+    scope: CoroutineScope,
     type: EditorType,
     itemId: Int,
     titleMaxLength: Int,
-    onSubmittingChanged: (Boolean) -> Unit,
     connectivity: ConnectivityService = platform.capabilities.connectivity.requireService(),
-): EditorSubmissionWorkflow = EditorSubmissionWorkflow(
-    type = type,
-    itemId = itemId,
-    titleMaxLength = titleMaxLength,
-    service = hackerNewsUser,
-    connectivity = connectivity,
-    onSubmittingChanged = onSubmittingChanged,
-)
+): EditorFeatureSession {
+    val events = MutableSharedFlow<EditorFeatureSessionEvent>(extraBufferCapacity = 16)
+    val workflow = EditorSubmissionWorkflow(
+        type = type,
+        itemId = itemId,
+        titleMaxLength = titleMaxLength,
+        service = hackerNewsUser,
+        connectivity = connectivity,
+        onSubmittingChanged = { events.tryEmit(EditorFeatureSessionEvent.Submitting(it)) },
+    )
+    return EditorFeatureSession(scope, workflow, events)
+}

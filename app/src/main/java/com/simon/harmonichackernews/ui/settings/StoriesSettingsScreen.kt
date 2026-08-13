@@ -12,8 +12,8 @@ import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.widget.StoriesRemoteViewsFactory
 import com.simon.harmonichackernews.widget.StoriesWidgetProvider
+import com.simon.harmonichackernews.widget.setSkipFetchForAllWidgets
 
 @Composable
 fun StoriesSettingsScreen(
@@ -58,7 +58,7 @@ private fun refreshStoryWidgets(context: Context) {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, StoriesWidgetProvider::class.java))
     if (ids.isNotEmpty()) {
-        StoriesRemoteViewsFactory.setSkipFetchAll(context, true)
+        setSkipFetchForAllWidgets(context, true)
         manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_stories_list)
     }
 }

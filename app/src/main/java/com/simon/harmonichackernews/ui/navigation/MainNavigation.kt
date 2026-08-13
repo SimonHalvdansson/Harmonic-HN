@@ -6,20 +6,10 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.PathEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
@@ -33,11 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
-import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
-import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
-import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
@@ -46,8 +32,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,16 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -75,14 +55,6 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberDecoratedNavEntries
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.scene.SceneInfo
-import androidx.navigation3.scene.rememberSceneState
-import androidx.navigation3.ui.NavDisplay
-import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
@@ -118,9 +90,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
-import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.EditorDestination
@@ -128,6 +99,7 @@ import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainCaptchaRequest
 import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
+import com.simon.harmonichackernews.navigation.MainNavigationRestorationCodec
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
@@ -189,7 +161,9 @@ class MainNavigationController internal constructor(
                     savedState?.getInt(STATE_STORY_SCROLL_TO_COMMENT_ID, -1) ?: -1,
             )
         }
-    private val restoredNavigation = MainNavigationRestoration(
+    private val restoredNavigation = MainNavigationRestorationCodec.decode(
+        savedState?.getString(STATE_NAVIGATION_RESTORATION),
+    ) ?: MainNavigationRestoration(
             storyDestination = if (restoredStoryRoute == null) {
                 savedState?.getBundle(STATE_STORY_ARGUMENTS)?.toStoryDestinationOrNull()
             } else {
@@ -480,14 +454,11 @@ class MainNavigationController internal constructor(
 
     fun saveState(outState: Bundle) {
         storiesCoordinator?.onSaveInstanceState(outState)
+        outState.putString(
+            STATE_NAVIGATION_RESTORATION,
+            MainNavigationRestorationCodec.encode(navigationState.restoration()),
+        )
         storyRequest?.let { request ->
-            outState.putInt(STATE_REQUEST_SERIAL, request.serial)
-            outState.putInt(STATE_STORY_ID, request.route.storyId)
-            outState.putBoolean(STATE_STORY_SHOW_WEBSITE, request.route.showWebsite)
-            outState.putInt(
-                STATE_STORY_SCROLL_TO_COMMENT_ID,
-                request.route.scrollToCommentId,
-            )
             commentsCoordinator?.let { coordinator ->
                 val commentsState = Bundle()
                 coordinator.onSaveInstanceState(commentsState)
@@ -495,49 +466,10 @@ class MainNavigationController internal constructor(
                 outState.putBundle(STATE_COMMENTS_STATE, commentsState)
             }
         }
-        if (settingsRequest != null || storyOpenedFromSettings) {
-            outState.putBoolean(STATE_SETTINGS_OPEN, true)
-            outState.putInt(
-                STATE_SETTINGS_REQUEST_SERIAL,
-                navigationState.settingsRequestSerial,
-            )
-            outState.putString(
-                STATE_SETTINGS_SECTION,
-                navigationState.currentSettingsSectionRoute,
-            )
-            outState.putBoolean(
-                STATE_SETTINGS_NEEDS_RESTART,
-                navigationState.settingsNeedsRestart,
-            )
-        }
-        outState.putBoolean(STATE_WELCOME_DIALOG_VISIBLE, welcomeDialogVisible)
-        outState.putBoolean(STATE_CHANGELOG_DIALOG_VISIBLE, changelogDialogVisible)
-        outState.putBoolean(STATE_CACHE_STORIES_DIALOG_VISIBLE, cacheStoriesDialogVisible)
-        outState.putBoolean(STATE_LOGIN_DIALOG_VISIBLE, loginDialogVisible)
-        userRequest?.let { request ->
-            outState.putInt(STATE_USER_DIALOG_SERIAL, request.serial)
-            outState.putString(STATE_USER_DIALOG_NAME, request.userName)
-        }
-        editorRequest?.let { request ->
-            outState.putInt(STATE_EDITOR_REQUEST_SERIAL, request.serial)
-            outState.putBundle(STATE_EDITOR_ARGUMENTS, request.destination.toBundle())
-        }
-        submissionsRequest?.let { request ->
-            outState.putInt(STATE_SUBMISSIONS_REQUEST_SERIAL, request.serial)
-            outState.putString(STATE_SUBMISSIONS_USER, request.userName)
-        }
-        outState.putBoolean(
-            STATE_STORY_OPENED_FROM_SUBMISSIONS,
-            storyOpenedFromSubmissions,
-        )
-        outState.putBoolean(
-            STATE_STORY_OPENED_FROM_SETTINGS,
-            storyOpenedFromSettings,
-        )
-        outState.putBoolean(STATE_COULOMB_GAS_VISIBLE, coulombGasVisible)
     }
 
     private companion object {
+        const val STATE_NAVIGATION_RESTORATION = "main_navigation_restoration_v2"
         const val STATE_REQUEST_SERIAL = "main_navigation_request_serial"
         const val STATE_STORY_ID = "main_navigation_story_id"
         const val STATE_STORY_SHOW_WEBSITE = "main_navigation_story_show_website"
@@ -572,7 +504,7 @@ class MainNavigationController internal constructor(
 object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
-        val appComposition = AndroidAppComposition.get(activity)
+        val appComposition = activity.harmonicAppComposition
         val controller = MainNavigationController(
             appComposition.navigation,
             appComposition.userMessages,
@@ -979,28 +911,42 @@ private fun MainNavigation(
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val storyFromSettingsDestinationReady = storyOpenedFromSettings && storyRequest != null
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (
-                        (settingsRequest != null && !storyOpenedFromSettings) ||
-                        (submissionsRequest != null && !storyOpenedFromSubmissions) ||
-                        editorRequest != null ||
-                        coulombGasVisible
-                    ) {
-                        Modifier.clearAndSetSemantics { }
-                    } else {
-                        Modifier
-                    },
-                )
-                .then(activeSettingsBackAnimation?.enterModifier ?: Modifier),
-        ) {
+    SharedMainDestinationLayers(
+        state = MainDestinationLayerState(
+            settingsVisible = settingsRequest != null || storyOpenedFromSettings,
+            settingsCoversBase = settingsRequest != null && !storyOpenedFromSettings,
+            settingsBehindStory = storyFromSettingsDestinationReady,
+            settingsSemanticsHidden =
+                submissionsRequest != null || editorRequest != null || coulombGasVisible,
+            submissionsVisible = submissionsRequest != null,
+            submissionsCoversBase =
+                submissionsRequest != null && !storyOpenedFromSubmissions,
+            submissionsBehindStory = storyOpenedFromSubmissions,
+            submissionsSemanticsHidden = editorRequest != null || coulombGasVisible,
+            editorVisible = editorRequest != null,
+            editorSemanticsHidden = coulombGasVisible,
+            immersiveVisible = coulombGasVisible,
+        ),
+        transitionOffsetPx = settingsTransitionOffsetPx,
+        completedSettingsPredictiveBack = completedSettingsPredictiveBack,
+        completedSubmissionsPredictiveBack = completedSubmissionsPredictiveBack,
+        completedEditorPredictiveBack = completedEditorPredictiveBack,
+        modifier = Modifier.background(HarmonicTheme.colors.background),
+        basePredictiveModifier = activeSettingsBackAnimation?.enterModifier ?: Modifier,
+        settingsPredictiveModifier = activeSettingsBackAnimation?.exitModifier ?: Modifier,
+        submissionsPredictiveModifier = activeSubmissionsBackAnimation?.exitModifier ?: Modifier,
+        editorPredictiveModifier = activeEditorBackAnimation?.exitModifier ?: Modifier,
+        storyPreview = controller.storiesComposeController
+            ?.takeIf { it.storyPreviewOverlay != null }
+            ?.let { storiesController ->
+                { StoryPreviewOverlay(storiesController) }
+            },
+        linkPreview = controller.commentsComposeController
+            ?.takeIf { it.linkPreviewOverlay != null }
+            ?.let { commentsController ->
+                { CommentLinkPreviewOverlay(commentsController) }
+            },
+        base = {
             if (isTwoPane) {
                 SharedMainNavigationScene(
                     storyRequest = storyRequest,
@@ -1027,73 +973,34 @@ private fun MainNavigation(
                     },
                 )
             } else {
-                SinglePaneNavigation(
-                    controller = controller,
-                    animation = activeBackAnimation,
+                SharedSinglePaneNavigationScene(
+                    storyRequest = storyRequest,
+                    lastStoryRequest = controller.lastStoryRequest,
                     completedPredictivePop = completedPredictivePop,
+                    predictiveBackActive = activeBackAnimation != null,
                     showStoriesPane = !storyOpenedFromSubmissions,
-                    storiesStatusBarColor = paneStatusBarColor,
-                    commentsStatusBarColor = statusBarColor,
-                    statusBarHeight = statusBarHeight,
-                )
-            }
-        }
-
-        controller.storiesComposeController?.let { storiesController ->
-            if (storiesController.storyPreviewOverlay != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(4f),
-                ) {
-                    StoryPreviewOverlay(storiesController)
-                }
-            }
-        }
-
-        controller.commentsComposeController?.let { commentsController ->
-            if (commentsController.linkPreviewOverlay != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(4.5f),
-                ) {
-                    CommentLinkPreviewOverlay(commentsController)
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            // Keep Settings composed while its story is open so returning reveals the existing
-            // settings back stack instead of briefly rendering Stories and recreating Settings.
-            visible = settingsRequest != null || storyOpenedFromSettings,
-            modifier = Modifier
-                .fillMaxSize()
-                // openStory updates the navigation state before NavDisplay receives its new
-                // destination. Keep Settings above Stories during that one-frame handoff, then
-                // move it behind the normal Comments transition once the destination is ready.
-                .zIndex(if (storyFromSettingsDestinationReady) -1f else 5f)
-                .then(
-                    if (
-                        (settingsRequest != null && !storyOpenedFromSettings) ||
-                        storyFromSettingsDestinationReady ||
-                        submissionsRequest != null ||
-                        editorRequest != null ||
-                        coulombGasVisible
-                    ) {
-                        Modifier.clearAndSetSemantics { }
-                    } else {
-                        Modifier
+                    storiesPredictiveModifier = activeBackAnimation?.enterModifier ?: Modifier,
+                    commentsPredictiveModifier = activeBackAnimation?.exitModifier ?: Modifier,
+                    stories = {
+                        StoriesPane(controller)
+                        StatusBarProtection(
+                            color = paneStatusBarColor,
+                            statusBarHeight = statusBarHeight,
+                        )
+                    },
+                    comments = { request ->
+                        CommentsPane(
+                            request = request,
+                            controller = controller,
+                            statusBarColor = statusBarColor,
+                            statusBarHeight = statusBarHeight,
+                            drawStatusBarProtection = true,
+                        )
                     },
                 )
-                .then(activeSettingsBackAnimation?.exitModifier ?: Modifier),
-            enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = if (completedSettingsPredictiveBack) {
-                ExitTransition.None
-            } else {
-                settingsPopExit(settingsTransitionOffsetPx)
-            },
-        ) {
+            }
+        },
+        settings = {
             if (
                 settingsRequest != null ||
                 storyOpenedFromSettings ||
@@ -1137,32 +1044,8 @@ private fun MainNavigation(
                     }
                 }
             }
-        }
-
-        AnimatedVisibility(
-            visible = submissionsRequest != null,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(if (storyOpenedFromSubmissions) -1f else 7f)
-                .then(
-                    if (
-                        storyOpenedFromSubmissions ||
-                        editorRequest != null ||
-                        coulombGasVisible
-                    ) {
-                        Modifier.clearAndSetSemantics { }
-                    } else {
-                        Modifier
-                    },
-                )
-                .then(activeSubmissionsBackAnimation?.exitModifier ?: Modifier),
-            enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = if (completedSubmissionsPredictiveBack) {
-                ExitTransition.None
-            } else {
-                settingsPopExit(settingsTransitionOffsetPx)
-            },
-        ) {
+        },
+        submissions = {
             if (submissionsRequest != null || !completedSubmissionsPredictiveBack) {
                 controller.lastSubmissionsRequest?.let { request ->
                     key(request.serial) {
@@ -1185,28 +1068,8 @@ private fun MainNavigation(
                     }
                 }
             }
-        }
-
-        AnimatedVisibility(
-            visible = editorRequest != null,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(10f)
-                .then(
-                    if (coulombGasVisible) {
-                        Modifier.clearAndSetSemantics { }
-                    } else {
-                        Modifier
-                    },
-                )
-                .then(activeEditorBackAnimation?.exitModifier ?: Modifier),
-            enter = settingsOpenEnter(settingsTransitionOffsetPx),
-            exit = if (completedEditorPredictiveBack) {
-                ExitTransition.None
-            } else {
-                settingsPopExit(settingsTransitionOffsetPx)
-            },
-        ) {
+        },
+        editor = {
             if (editorRequest != null || !completedEditorPredictiveBack) {
                 controller.lastEditorRequest?.let { request ->
                     key(request.serial) {
@@ -1256,16 +1119,8 @@ private fun MainNavigation(
                     }
                 }
             }
-        }
-
-        AnimatedVisibility(
-            visible = coulombGasVisible,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(20f),
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(180)),
-        ) {
+        },
+        immersive = {
             DisposableEffect(activity) {
                 activity.setImmersiveContentEnabled(true)
                 onDispose {
@@ -1273,9 +1128,9 @@ private fun MainNavigation(
                 }
             }
             CoulombGasScreen()
-        }
-
-        if (controller.welcomeDialogVisible) {
+        },
+        foreground = {
+            if (controller.welcomeDialogVisible) {
             WelcomeSettingsDialog(
                 styleChooser = false,
                 onDismiss = controller::dismissWelcomeDialog,
@@ -1347,103 +1202,15 @@ private fun MainNavigation(
             }
         }
 
-        UserMessageSnackbarHost(
-            messages = uiDependencies.userMessages,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(100f),
-        )
-    }
-
-}
-
-@Composable
-private fun SinglePaneNavigation(
-    controller: MainNavigationController,
-    animation: DefaultActivityPredictiveBackAnimation?,
-    completedPredictivePop: Boolean,
-    showStoriesPane: Boolean,
-    storiesStatusBarColor: Color,
-    commentsStatusBarColor: Color,
-    statusBarHeight: Dp,
-) {
-    val storyRequest = controller.storyRequest
-    val displayedRequest = storyRequest ?: controller.lastStoryRequest
-    var paneWidth by remember { mutableIntStateOf(0) }
-    val storiesOffset by animateFloatAsState(
-        targetValue = if (storyRequest == null) 0f else -0.2f,
-        animationSpec = if (storyRequest == null) {
-            snap()
-        } else {
-            tween(
-                durationMillis = NavigationTransitionDurationMillis,
-                easing = navigationEasing(),
+            UserMessageSnackbarHost(
+                messages = uiDependencies.userMessages,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(100f),
             )
         },
-        label = "stories navigation offset",
     )
 
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .onSizeChanged { paneWidth = it.width }
-                .graphicsLayer {
-                    alpha = if (showStoriesPane) 1f else 0f
-                    translationX = if (animation == null && !completedPredictivePop) {
-                        paneWidth * storiesOffset
-                    } else {
-                        0f
-                    }
-                }
-                .then(
-                    if (showStoriesPane) {
-                        Modifier
-                    } else {
-                        Modifier.clearAndSetSemantics { }
-                    },
-                )
-                .then(animation?.enterModifier ?: Modifier),
-        ) {
-            StoriesPane(controller)
-            StatusBarProtection(
-                color = storiesStatusBarColor,
-                statusBarHeight = statusBarHeight,
-            )
-        }
-
-        // Keep the visibility host alive while Stories is showing. Recreating it with
-        // visible=true skipped the enter transition on every open after a predictive pop.
-        // Predictive back already animates Comments fully away, so that completed path disposes
-        // immediately while ordinary back presses retain the normal pop animation.
-        AnimatedVisibility(
-            visible = storyRequest != null,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(1f)
-                .then(animation?.exitModifier ?: Modifier),
-            enter = commentsOpenEnter(),
-            exit = if (completedPredictivePop) ExitTransition.None else commentsPopExit(),
-        ) {
-            // AnimatedVisibility can retain its last content for one frame even with a snap
-            // exit. Stop emitting the committed predictive-back destination so removing its
-            // finished graphics transform cannot reveal it again.
-            if (storyRequest != null || !completedPredictivePop) {
-                displayedRequest?.let { request ->
-                    key(request.serial) {
-                        CommentsPane(
-                            request = request,
-                            controller = controller,
-                            statusBarColor = commentsStatusBarColor,
-                            statusBarHeight = statusBarHeight,
-                            drawStatusBarProtection = true,
-                        )
-                    }
-                }
-            }
-        }
-
-    }
 }
 
 @Composable
@@ -1544,70 +1311,4 @@ private fun StatusBarProtection(
     )
 }
 
-private const val NavigationTransitionDurationMillis = 450
-private const val NavigationFadeDurationMillis = 90
 private const val LEGACY_COMMENTS_PANE_WEIGHT = 5f
-
-private fun navigationEasing(): Easing = PathEasing(
-    Path().apply {
-        moveTo(0f, 0f)
-        cubicTo(0.05f, 0f, 0.133333f, 0.06f, 0.166666f, 0.4f)
-        cubicTo(0.208333f, 0.82f, 0.25f, 1f, 1f, 1f)
-    },
-)
-
-private fun commentsOpenEnter(): EnterTransition = slideInHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    initialOffsetX = { it },
-) + fadeIn(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 45,
-        easing = LinearEasing,
-    ),
-)
-
-private fun commentsPopExit(): ExitTransition = slideOutHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    targetOffsetX = { it },
-) + fadeOut(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 35,
-        easing = LinearEasing,
-    ),
-)
-
-private fun settingsOpenEnter(offsetPx: Int): EnterTransition = slideInHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    initialOffsetX = { offsetPx },
-) + fadeIn(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 50,
-        easing = LinearEasing,
-    ),
-)
-
-private fun settingsPopExit(offsetPx: Int): ExitTransition = slideOutHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    targetOffsetX = { offsetPx },
-) + fadeOut(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 35,
-        easing = LinearEasing,
-    ),
-)

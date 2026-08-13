@@ -1,7 +1,16 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.cache.SharedStoryCacheService
+import com.simon.harmonichackernews.data.BookmarkImportPolicy
+import com.simon.harmonichackernews.data.SavedItemCodec
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.data.StoryResourceTintRepository
+import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
+import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.HistoryStore
 
 data class DataSettingsSnapshot(
     val bookmarksEnabled: Boolean,
@@ -48,6 +57,76 @@ object DataSettingsPolicy {
 
     fun bookmarksFilename(year: Int, month: Int, day: Int): String =
         "HarmonicBookmarks$year-$month-$day.txt"
+}
+
+sealed interface BookmarkImportResult {
+    data object Empty : BookmarkImportResult
+    data class Imported(val count: Int, val overwroteExisting: Boolean) : BookmarkImportResult
+}
+
+/**
+ * Portable Data-settings workflow. Document selection and OS app-link settings are intentionally
+ * left to the host; all repository reads, import/export policy and destructive actions live here.
+ */
+class DataSettingsService(
+    private val settings: AppSettingsRepository,
+    private val settingsReset: SettingsResetUseCase,
+    private val savedItems: SavedItemsRepository,
+    private val accounts: HackerNewsAccountRepository,
+    private val history: HistoryStore?,
+    private val storyCache: SharedStoryCacheService,
+    private val previewResources: StoryPreviewRepository,
+    private val storyResourceTints: StoryResourceTintRepository,
+) {
+    fun snapshot(): DataSettingsSnapshot = DataSettingsPolicy.snapshot(
+        settings = settings.snapshot(),
+        counts = DataSettingsCounts(
+            bookmarks = bookmarkCount(),
+            history = history?.size ?: 0,
+            postCache = storyCache.itemCount(),
+            tintCache = storyResourceTints.count(),
+        ),
+        loggedIn = accounts.load() != null,
+    )
+
+    fun bookmarkCount(): Int = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
+
+    fun bookmarkIdsByNewest(): List<Int> = savedItems.loadItems(
+        source = SavedItemSource.BOOKMARKS,
+        sortedByCreated = true,
+    ).map { it.id }
+
+    fun exportBookmarks(): String? = savedItems.loadItems(SavedItemSource.BOOKMARKS)
+        .takeIf { it.isNotEmpty() }
+        ?.let(SavedItemCodec::encode)
+
+    fun importBookmarks(content: String, overwrite: Boolean): BookmarkImportResult {
+        val result = BookmarkImportPolicy.apply(
+            content = content,
+            current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
+            overwrite = overwrite,
+        ) ?: return BookmarkImportResult.Empty
+        savedItems.saveItems(SavedItemSource.BOOKMARKS, result.items)
+        return BookmarkImportResult.Imported(result.importedCount, overwrite)
+    }
+
+    fun clearHistory(): String? {
+        val count = history?.size ?: 0
+        history?.clear()
+        return DataSettingsPolicy.clearedItemsMessage(count, "entry", "entries")
+    }
+
+    suspend fun clearPostCache(): String? {
+        val count = storyCache.clear()
+        previewResources.clear()
+        return DataSettingsPolicy.clearedItemsMessage(count, "cached post", "cached posts")
+    }
+
+    fun clearTintCache() {
+        storyResourceTints.clear()
+    }
+
+    fun resetSettings() = settingsReset.execute()
 }
 
 /** Resets settings while deliberately preserving user content and Hacker News login credentials. */

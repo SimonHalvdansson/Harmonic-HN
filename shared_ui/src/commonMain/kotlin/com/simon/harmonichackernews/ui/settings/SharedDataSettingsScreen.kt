@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.DataSettingsSnapshot
 
@@ -27,7 +28,7 @@ fun SharedDataSettingsScreen(
 ) {
     val hasBookmarks = state.bookmarkCount > 0
     SettingsPage(
-        title = "Data",
+        title = stringResource(Res.string.settings_section_data),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,

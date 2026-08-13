@@ -2,15 +2,15 @@ package com.simon.harmonichackernews.ui.editor
 
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.app.createEditorWorkflow
+import com.simon.harmonichackernews.app.createEditorFeatureSession
+import com.simon.harmonichackernews.app.EditorFeatureSessionEvent
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
-import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import kotlinx.coroutines.launch
 
@@ -28,23 +28,33 @@ class ComposeEditorCoordinator(
     val postTitle: String? = destination.postTitle
     val user: String? = destination.userName
     private var controller: ComposeEditorController? = null
-    private val appComposition = AndroidAppComposition.get(activity)
-    private val workflow = appComposition.createEditorWorkflow(
+    private val appComposition = activity.harmonicAppComposition
+    private val session = appComposition.createEditorFeatureSession(
+        scope = activity.lifecycleScope,
         type = type,
         itemId = id,
         titleMaxLength = titleMaxLength,
-        onSubmittingChanged = { value -> controller?.setSubmitting(value) },
     )
+
+    init {
+        activity.lifecycleScope.launch {
+            session.events.collect { event ->
+                when (event) {
+                    is EditorFeatureSessionEvent.Submitting ->
+                        controller?.setSubmitting(event.value)
+                    is EditorFeatureSessionEvent.Result -> handleResult(event.value)
+                }
+            }
+        }
+    }
 
     fun attachController(controller: ComposeEditorController) {
         this.controller = controller
-        controller.setSubmitting(workflow.isSubmitting)
+        controller.setSubmitting(session.isSubmitting)
     }
 
     fun submit(submission: EditorSubmission) {
-        activity.lifecycleScope.launch {
-            handleResult(workflow.submit(submission))
-        }
+        session.submit(submission)
     }
 
     private fun handleResult(result: EditorWorkflowResult) {
@@ -71,13 +81,11 @@ class ComposeEditorCoordinator(
                         challenge: com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge,
                         captchaResponse: String,
                     ) {
-                        activity.lifecycleScope.launch {
-                            handleResult(workflow.respondToCaptcha(challenge, captchaResponse))
-                        }
+                        session.respondToCaptcha(challenge, captchaResponse)
                     }
 
                     override fun onCaptchaCancelled() {
-                        handleResult(workflow.cancelCaptcha())
+                        session.cancelCaptcha()
                     }
                 },
             )

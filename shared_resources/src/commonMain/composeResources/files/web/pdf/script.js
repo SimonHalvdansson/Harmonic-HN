@@ -1,4 +1,4 @@
-// It expects PdfAndroidJavascriptBridge to be injected from the Android side
+// It expects PdfAndroidJavascriptBridge to be injected by the platform web-content adapter
 (function () {
   var pdfViewer;
 

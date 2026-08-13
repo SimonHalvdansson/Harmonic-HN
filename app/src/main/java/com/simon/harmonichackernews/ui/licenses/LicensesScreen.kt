@@ -8,10 +8,10 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.LicenseEntry
 import com.simon.harmonichackernews.app.LocalAiLicenseCatalog
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 private val AndroidLicenses = listOf(
     LicenseEntry("AndroidX", "Google", "Apache License 2.0", "https://developer.android.com/jetpack/androidx"),
@@ -30,7 +30,8 @@ fun LicensesScreen(
     singlePane: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val licenses = remember { licenseEntries() }
+    val includeLocalAi = LocalHarmonicUiDependencies.current.localModels?.isIncluded == true
+    val licenses = remember(includeLocalAi) { licenseEntries(includeLocalAi) }
     SharedLicensesScreen(
         licenses = licenses,
         onBack = onBack,
@@ -46,8 +47,8 @@ fun LicensesScreen(
     )
 }
 
-private fun licenseEntries(): List<LicenseEntryUi> = buildList {
+private fun licenseEntries(includeLocalAi: Boolean): List<LicenseEntryUi> = buildList {
     addAll(AndroidLicenses)
-    if (LocalAiRuntimeManager.isLocalAiIncluded()) addAll(LocalAiLicenseCatalog.entries)
+    if (includeLocalAi) addAll(LocalAiLicenseCatalog.entries)
     addAll(CommonLicenseCatalog.entries)
 }
