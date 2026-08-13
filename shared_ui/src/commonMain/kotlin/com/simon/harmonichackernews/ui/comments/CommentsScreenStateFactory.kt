@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
+import com.simon.harmonichackernews.presentation.CommentsState
 
 data class CommentsPlatformPresentation(
     val adBlockActive: Boolean,
@@ -14,13 +14,13 @@ data class CommentsPlatformPresentation(
 /** Builds the portable comments rendering snapshot from the common feature state. */
 object CommentsScreenStateFactory {
     fun create(
-        feature: CommentsFeatureRuntime,
+        feature: CommentsState,
         platform: CommentsPlatformPresentation,
     ): CommentsScreenState? {
         val story = feature.story ?: return null
-        val settings = feature.settingsState.value ?: return null
-        val state = feature.state
-        val thread = feature.state.thread
+        val settings = feature.settings ?: return null
+        val state = feature.presenter
+        val thread = state.thread
         return CommentsScreenState(
             story = story,
             accountUser = feature.accountUser,

@@ -51,10 +51,12 @@ class DesktopHarmonicAppBootstrap(
         platform = platform,
         host = host,
     )
+    val scene = app.createScene()
 
     fun close() {
         if (closed) return
         closed = true
+        scene.close()
         network.close()
         scope.cancel()
     }
@@ -101,7 +103,7 @@ class DesktopHarmonicAppBootstrap(
 }
 
 private data object SideEffectFreeExternalLinkOpener : ExternalLinkOpener {
-    override fun open(request: ExternalLinkRequest) = Unit
+    override fun open(request: ExternalLinkRequest): Boolean = true
 }
 
 private data object SideEffectFreeShareService : ShareService {

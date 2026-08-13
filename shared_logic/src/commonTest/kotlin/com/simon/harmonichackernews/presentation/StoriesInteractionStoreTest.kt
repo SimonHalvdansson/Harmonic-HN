@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StoryPresentationSnapshot
+import com.simon.harmonichackernews.data.StorySnapshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -124,5 +125,8 @@ class StoriesInteractionStoreTest {
 
     private fun store(defaultHeight: Int = 100) = StoriesInteractionStore(defaultHeight)
 
-    private fun story(id: Int) = Story("Story $id", id, true, false)
+    private fun story(id: Int) = StoryListItemSnapshot(
+        story = StorySnapshot(id = id, title = "Story $id"),
+        presentation = StoryPresentationSnapshot(loaded = true),
+    )
 }

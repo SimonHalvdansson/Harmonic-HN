@@ -15,15 +15,10 @@ import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.network.ReplyNotificationRuntime
 import com.simon.harmonichackernews.network.ReplyNotificationUseCase
-import com.simon.harmonichackernews.navigation.MainNavigationStore
-import com.simon.harmonichackernews.navigation.AppLinkNavigator
-import com.simon.harmonichackernews.navigation.AppLaunchRouter
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
-import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.platform.ConfiguredExternalLinkOpener
-import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.presentation.UserProfileBlockPort
@@ -69,12 +64,8 @@ class HarmonicAppComposition(
     val metadata: AppMetadata = host.metadata
     val localModels = host.localModels
     val nowMillis = host.nowMillis
-    val userMessages = host.userMessages
-    val sessions = ScreenSessionRegistry()
-    val navigation = MainNavigationStore()
     val storyUpdates = StoryUpdateBus()
     val webContent = WebContentService()
-    val launches = AppLaunchRouter(navigation)
     val launchState = AppLaunchStateStore(host.appDataStore)
     val appearance = AppearanceRuntime(
         settings = host.settingsStore,
@@ -91,7 +82,6 @@ class HarmonicAppComposition(
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser
     }
-    val links = AppLinkNavigator(navigation, externalLinks)
     val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore))
     val contentFilters = ContentFilterRepository(host.settingsStore)
     val userTags = UserTagsRepository(host.settingsStore)
@@ -150,6 +140,11 @@ class HarmonicAppComposition(
         previewResources = previewResources,
         storyResourceTints = storyResourceTints,
     )
+
+    /** Creates navigation, retained screen state, and transient messages for one host scene. */
+    fun createScene(
+        userMessages: UserMessageStore = UserMessageStore(),
+    ): HarmonicSceneComposition = HarmonicSceneComposition(this, userMessages)
 
     fun createUserProfileRuntime(
         username: String,
@@ -241,7 +236,6 @@ class HarmonicAppComposition(
         accounts = platform.accounts,
         history = platform.history,
         connectivity = platform.connectivity,
-        externalLinks = externalLinks,
     )
 
     fun commentsPlatformDependencies(): CommentsPlatformDependencies =
@@ -252,8 +246,4 @@ class HarmonicAppComposition(
             clipboard = platform.clipboard,
         )
 
-    fun submissionsPlatformDependencies(): SubmissionsPlatformDependencies =
-        SubmissionsPlatformDependencies(
-            externalLinks = externalLinks,
-        )
 }

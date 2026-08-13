@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.data.Story
-
 data class StoryFrontDatePickerRequest(
     val initialDay: Long,
     val earliestDay: Long,
@@ -15,14 +13,14 @@ data class StoryScrollRequest(val serial: Int, val delta: LayoutDelta) {
 data class StoryPredictiveBackSettleRequest(val serial: Int, val target: Float)
 
 data class StoryPreviewOverlayState(
-    val stories: List<Story>,
+    val stories: List<StoryListItemSnapshot>,
     val cardBackgrounds: List<ArgbColor>,
     val initialPage: Int,
 ) {
     val cardColors: List<Int> get() = cardBackgrounds.map(ArgbColor::value)
 }
 
-data class StoryPreviewTarget(val story: Story)
+data class StoryPreviewTarget(val story: StoryListItemSnapshot)
 
 enum class StoryPreviewActionKind { Vote, Read, Bookmark, Favorite }
 
@@ -69,8 +67,8 @@ class StoriesInteractionStore(
         private set
 
     private var requestSerial = 0
-    private var mainStories: List<Story> = emptyList()
-    private var searchStories: List<Story> = emptyList()
+    private var mainStories: List<StoryListItemSnapshot> = emptyList()
+    private var searchStories: List<StoryListItemSnapshot> = emptyList()
     private val storyItemExtents = mutableMapOf<Int, LayoutDistance>()
 
     init {
@@ -78,8 +76,8 @@ class StoriesInteractionStore(
     }
 
     fun updateContent(
-        mainStories: List<Story>,
-        searchStories: List<Story>,
+        mainStories: List<StoryListItemSnapshot>,
+        searchStories: List<StoryListItemSnapshot>,
         searching: Boolean,
         lastSearch: String,
     ) {
@@ -191,7 +189,7 @@ class StoriesInteractionStore(
     }
 
     fun showStoryPreview(
-        stories: List<Story>,
+        stories: List<StoryListItemSnapshot>,
         cardColors: List<Int>,
         openedStoryId: Int,
     ): Boolean {
@@ -203,7 +201,7 @@ class StoriesInteractionStore(
     }
 
     fun showStoryPreviewWithBackgrounds(
-        stories: List<Story>,
+        stories: List<StoryListItemSnapshot>,
         cardBackgrounds: List<ArgbColor>,
         openedStoryId: Int,
     ): Boolean {

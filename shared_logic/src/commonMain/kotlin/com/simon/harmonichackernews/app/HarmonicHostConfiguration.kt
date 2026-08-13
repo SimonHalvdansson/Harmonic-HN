@@ -5,7 +5,6 @@ import com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.DownloadStore
-import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.summary.LocalModelService
@@ -35,7 +34,6 @@ class HarmonicHostConfiguration(
     val articleSnapshotStore: DownloadStore? = null,
     val pdfDownloadStore: DownloadStore? = null,
     val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
-    val userMessages: UserMessageStore = UserMessageStore(),
 ) {
     companion object {
         /** Explicitly non-persistent configuration for previews and host-contract smoke checks. */

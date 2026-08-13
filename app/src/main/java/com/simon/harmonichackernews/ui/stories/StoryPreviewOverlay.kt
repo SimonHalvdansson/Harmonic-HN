@@ -6,7 +6,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.AndroidDisplay

@@ -7,6 +7,8 @@ import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
@@ -41,7 +43,7 @@ sealed interface StoriesRuntimeEffect {
         val storyId: Int,
         val action: StoryPreviewActionKind,
     ) : StoriesRuntimeEffect
-    data class StoryChanged(val story: Story? = null) : StoriesRuntimeEffect
+    data class StoryChanged(val storyId: Int? = null) : StoriesRuntimeEffect
     data object LoginRequired : StoriesRuntimeEffect
     data class UserMessage(val message: String) : StoriesRuntimeEffect
     data class SavedActionFailed(
@@ -62,7 +64,7 @@ data class StoriesSettingsState(
 )
 
 data class StoryPreviewDeck(
-    val stories: List<Story>,
+    val stories: List<StoryListItemSnapshot>,
     val cardColors: List<Int>,
     val openedStoryId: Int,
 )
@@ -678,7 +680,9 @@ class StoriesFeatureRuntime(
         if (stories.isEmpty()) return null
         stories.forEach { storyResources?.request(it) }
         return StoryPreviewDeck(
-            stories = stories,
+            stories = stories.map { story ->
+                StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+            },
             cardColors = stories.map { story ->
                 storyResources?.resolveCardBackgroundColor(story, tintBaseColorArgb)
                     ?: tintBaseColorArgb
@@ -1334,7 +1338,7 @@ class StoriesFeatureRuntime(
             mainStories.contains(story) -> mainStore.contentChanged()
             searchStories.contains(story) -> searchStore.contentChanged()
         }
-        emit(StoriesRuntimeEffect.StoryChanged(story))
+        emit(StoriesRuntimeEffect.StoryChanged(story?.id))
     }
 
     private fun emit(effect: StoriesRuntimeEffect) {

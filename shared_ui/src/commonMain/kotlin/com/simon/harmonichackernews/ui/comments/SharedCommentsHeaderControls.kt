@@ -58,7 +58,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
@@ -124,7 +124,7 @@ data class PollOptionUi(
 
 @Composable
 fun StorySummary(
-    story: Story,
+    story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
 ) {
     AnimatedVisibility(
@@ -165,7 +165,7 @@ fun StorySummary(
 
 @Composable
 fun HeaderMeta(
-    story: Story,
+    story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
     storyPosterTag: String = "",
     textStyle: TextStyle,

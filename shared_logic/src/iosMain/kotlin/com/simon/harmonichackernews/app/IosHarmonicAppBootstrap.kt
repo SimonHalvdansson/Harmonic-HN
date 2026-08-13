@@ -8,7 +8,6 @@ import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
 import platform.Foundation.NSUserDefaults
-import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import kotlinx.io.files.Path
 
@@ -20,7 +19,6 @@ class IosHostRuntimeBindings(
     val filesDirectory: String,
     val cacheDirectory: String,
     val localModels: LocalModelService? = null,
-    val userMessages: UserMessageStore = UserMessageStore(),
 ) {
     init {
         require(filesDirectory.isNotBlank()) { "The iOS files directory is required" }
@@ -79,9 +77,11 @@ class IosHarmonicAppBootstrap(
             articleSnapshotStore = persistentStorage.articleSnapshotStore,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels,
-            userMessages = runtime.userMessages,
         ),
     )
+
+    /** Creates independent navigation and screen state for one UIWindowScene. */
+    fun createScene(): HarmonicSceneComposition = app.createScene()
 
     fun close() {
         network.close()

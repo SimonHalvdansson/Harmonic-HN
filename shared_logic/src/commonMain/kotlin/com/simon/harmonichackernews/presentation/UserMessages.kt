@@ -24,4 +24,9 @@ class UserMessageStore {
         val message = text?.takeIf(String::isNotBlank) ?: return
         pendingMessages.trySend(UserMessage(message, duration))
     }
+
+    /** Stops delivery when the scene that owns this queue is permanently destroyed. */
+    fun close() {
+        pendingMessages.close()
+    }
 }

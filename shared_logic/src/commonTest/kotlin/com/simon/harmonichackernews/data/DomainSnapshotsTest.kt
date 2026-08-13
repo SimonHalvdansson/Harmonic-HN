@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 class DomainSnapshotsTest {
     @Test
@@ -55,5 +56,35 @@ class DomainSnapshotsTest {
         val story = Story().apply { time = 100 }
 
         assertEquals("1m", story.formatTime(nowMillis = 160_000))
+    }
+
+    @Test
+    fun commentsHeaderEnrichmentIsDeepCopiedIntoImmutablePresentation() {
+        val option = PollOption().apply {
+            id = 5
+            text = "Kotlin"
+            points = 12
+            loaded = true
+        }
+        val repo = RepoInfo().apply {
+            name = "harmonic"
+            owner = "simon"
+            stars = 99
+        }
+        val story = Story().apply {
+            id = 42
+            pollOptionArrayList = arrayListOf(option)
+            repoInfo = repo
+        }
+
+        val snapshot = story.presentationSnapshot()
+        option.text = "Changed"
+        repo.name = "changed"
+        story.pollOptionArrayList = null
+        story.repoInfo = null
+
+        assertEquals("Kotlin", snapshot.pollOptions.single().text)
+        assertEquals("harmonic", snapshot.repoInfo?.name)
+        assertNull(story.repoInfo)
     }
 }

@@ -10,7 +10,6 @@ import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.utils.AndroidAiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.ShareUtils
-import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import java.util.Calendar
 import java.util.Date
@@ -98,18 +97,14 @@ class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {
 
 class AndroidExternalLinkOpener(
     context: Context,
-    private val userMessages: UserMessageStore,
 ) : ExternalLinkOpener {
     private val context = context
 
-    override fun open(request: ExternalLinkRequest) {
-        val opened = if (request.preferInApp) {
+    override fun open(request: ExternalLinkRequest): Boolean = if (request.preferInApp) {
             AndroidExternalLinkLauncher.openCustomTab(context, request)
         } else {
             AndroidExternalLinkLauncher.openExternalBrowser(context, request)
         }
-        if (!opened) userMessages.show("Couldn't open link to: ${request.url}")
-    }
 }
 
 class AndroidShareService(context: Context) : ShareService {
@@ -124,7 +119,6 @@ class AndroidShareService(context: Context) : ShareService {
 fun createAndroidPlatformDependencies(
     context: Context,
     localModels: LocalModelService,
-    userMessages: UserMessageStore = UserMessageStore(),
 ): AppPlatformDependencies {
     val credentials = AndroidCredentialStore(context)
     val accounts = ObservableAccountRepositoryAdapter(
@@ -134,7 +128,7 @@ fun createAndroidPlatformDependencies(
         credentials = credentials,
         accounts = accounts,
         history = AndroidHistoryStore(context),
-        externalLinks = AndroidExternalLinkOpener(context, userMessages),
+        externalLinks = AndroidExternalLinkOpener(context),
         sharing = AndroidShareService(context),
         clipboard = AndroidClipboardService(context),
         connectivity = AndroidConnectivityService(context),

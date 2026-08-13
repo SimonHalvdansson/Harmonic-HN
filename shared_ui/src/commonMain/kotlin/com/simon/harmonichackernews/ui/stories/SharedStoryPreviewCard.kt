@@ -59,7 +59,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -81,7 +82,7 @@ data class StoryPreviewSummaryState(
 @Composable
 fun SharedStoryPreviewCard(
     controller: StoriesComposeController,
-    story: Story,
+    story: StoryListItemSnapshot,
     page: Int,
     cardColor: Color,
     settings: StoryDisplaySettings,
@@ -110,7 +111,7 @@ fun SharedStoryPreviewCard(
     val favoriteLoading = controller.storyPreviewFavoriteLoadingId == story.id
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
         ?: previewResource?.imageUrl?.takeIf(String::isNotBlank)
-        ?: story.previewImageUrl?.takeIf(String::isNotBlank)
+        ?: story.presentation.previewImage.url?.takeIf(String::isNotBlank)
     var imageLoadFailed by remember(story.id, imageUrl, previewResource?.imageLoadFailed) {
         mutableStateOf(
             imageUrl != null &&
@@ -131,19 +132,19 @@ fun SharedStoryPreviewCard(
         }
     }
     val title = summaryState.result?.title?.takeIf(String::isNotBlank)
-        ?: story.pdfTitle?.takeIf(String::isNotBlank)
-        ?: story.videoTitle?.takeIf(String::isNotBlank)
+        ?: story.presentation.pdfTitle?.takeIf(String::isNotBlank)
+        ?: story.presentation.videoTitle?.takeIf(String::isNotBlank)
         ?: story.title.orEmpty()
     val domain = if (story.isLink) {
         story.url?.let { DomainNamePolicy.fromUrl(it) ?: it }
     } else {
-        story.by
+        story.author
     }
     val meta = buildString {
         append(story.score)
         append(if (story.score == 1) " point" else " points")
         if (!domain.isNullOrBlank()) append(" • ").append(domain)
-        append(" • ").append(story.timeFormatted)
+        append(" • ").append(ItemTimeFormatter.formatNow(story.createdAtEpochSeconds))
     }
 
     Surface(
@@ -340,7 +341,7 @@ fun SharedStoryPreviewCard(
                             .height(56.dp)
                             .padding(start = 4.dp)
                             .semantics {
-                                contentDescription = "Comments (${story.descendants})"
+                                contentDescription = "Comments (${story.descendantCount})"
                             },
                         colors = ButtonDefaults.elevatedButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -354,7 +355,7 @@ fun SharedStoryPreviewCard(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            if (hasAccount) story.descendants.toString() else "Comments",
+                            if (hasAccount) story.descendantCount.toString() else "Comments",
                             maxLines = 1,
                             overflow = TextOverflow.Clip,
                             fontSize = 13.sp,

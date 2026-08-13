@@ -57,7 +57,7 @@ fun SharedStoryPreviewOverlay(
     controller: StoriesComposeController,
     tablet: Boolean,
     cardContent: @Composable (
-        story: com.simon.harmonichackernews.data.Story,
+        story: com.simon.harmonichackernews.presentation.StoryListItemSnapshot,
         page: Int,
         cardColor: Color,
         modifier: Modifier,

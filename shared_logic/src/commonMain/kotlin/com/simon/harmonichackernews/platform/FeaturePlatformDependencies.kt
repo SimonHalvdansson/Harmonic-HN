@@ -27,7 +27,6 @@ data class StoriesPlatformDependencies(
     val accounts: ObservableHackerNewsAccountRepository,
     val history: ObservableHistoryStore,
     val connectivity: ConnectivityService,
-    val externalLinks: ExternalLinkOpener,
 )
 
 /** Platform facilities used by the comments shell. */
@@ -36,9 +35,4 @@ data class CommentsPlatformDependencies(
     val externalLinks: ExternalLinkOpener,
     val sharing: ShareService,
     val clipboard: ClipboardService,
-)
-
-/** Platform facilities used by the submissions shell. */
-data class SubmissionsPlatformDependencies(
-    val externalLinks: ExternalLinkOpener,
 )

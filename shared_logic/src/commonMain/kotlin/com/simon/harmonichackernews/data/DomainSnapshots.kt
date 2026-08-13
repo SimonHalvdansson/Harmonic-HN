@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
+import com.simon.harmonichackernews.utils.ArxivResolver
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 
@@ -28,10 +29,137 @@ data class StoryPresentationSnapshot(
     val loaded: Boolean = false,
     val clicked: Boolean = false,
     val loadingFailed: Boolean = false,
+    val isLink: Boolean = false,
+    val isFrontpageLink: Boolean = false,
+    val pdfTitle: String? = null,
+    val videoTitle: String? = null,
     val previewImage: ResourceLoadSnapshot = ResourceLoadSnapshot(),
     val favicon: ResourceLoadSnapshot = ResourceLoadSnapshot(),
+    val previewTint: ResourceTintSnapshot? = null,
+    val faviconTint: ResourceTintSnapshot? = null,
+    val linkSummaryDescription: String? = null,
+    val linkSummaryLoaded: Boolean = false,
+    val linkSummaryLoading: Boolean = false,
+    val commentMaster: CommentMasterSnapshot? = null,
     val summary: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
+    val pollOptions: List<PollOptionSnapshot> = emptyList(),
+    val repoInfo: RepoInfoSnapshot? = null,
+    val gitLabInfo: GitLabInfoSnapshot? = null,
+    val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
+    val arxivInfo: ArxivInfoSnapshot? = null,
+    val wikiInfo: WikipediaInfoSnapshot? = null,
+    val nitterInfo: NitterInfoSnapshot? = null,
+    val linkPreviewLoading: Boolean = false,
+)
+
+@Serializable
+data class PollOptionSnapshot(
+    val loaded: Boolean,
+    val loadFailed: Boolean,
+    val text: String?,
+    val points: Int,
+    val id: Int,
+)
+
+@Serializable
+data class RepoInfoSnapshot(
+    val name: String?,
+    val owner: String?,
+    val about: String?,
+    val website: String?,
+    val license: String?,
+    val language: String?,
+    val stars: Int,
+    val watching: Int,
+    val forks: Int,
+) {
+    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
+    fun formatWatching(): String = "${LinkPreviewFormatUtils.kFormat(watching)} watching"
+    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
+    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+}
+
+@Serializable
+data class GitLabInfoSnapshot(
+    val name: String?,
+    val namespace: String?,
+    val description: String?,
+    val website: String?,
+    val language: String?,
+    val visibility: String?,
+    val stars: Int,
+    val forks: Int,
+) {
+    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
+    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
+    fun formatVisibility(): String? = visibility?.replaceFirstChar { it.uppercase() }
+    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+}
+
+@Serializable
+data class StackExchangeInfoSnapshot(
+    val title: String?,
+    val author: String?,
+    val questionText: String?,
+    val tags: List<String?>,
+    val site: String?,
+    val score: Int,
+    val answerCount: Int,
+    val viewCount: Int,
+    val isAnswered: Boolean,
+    val hasAcceptedAnswer: Boolean,
+) {
+    fun formatScore(): String = LinkPreviewFormatUtils.formatCount(score, "point", "points")
+    fun formatAnswerCount(): String =
+        LinkPreviewFormatUtils.formatCount(answerCount, "answer", "answers")
+    fun formatViewCount(): String = LinkPreviewFormatUtils.formatCount(viewCount, "view", "views")
+    fun formatAnswerState(): String = when {
+        hasAcceptedAnswer -> "Accepted answer"
+        isAnswered -> "Answered"
+        else -> "Unanswered"
+    }
+    fun formatTags(): String? = tags.takeIf(List<String?>::isNotEmpty)?.joinToString(", ")
+    fun formatBy(): String? = questionText ?: author?.let { "$it on $site" } ?: site
+    fun formatAuthor(): String? = author ?: site
+}
+
+@Serializable
+data class ArxivInfoSnapshot(
+    val arxivAbstract: String?,
+    val authors: List<String?>,
+    val primaryCategory: String?,
+    val arxivID: String?,
+    val secondaryCategories: List<String?>,
+    val publishedDate: String?,
+) {
+    fun concatNames(): String = authors.joinToString(", ")
+    fun formatDate(): String = publishedDate.orEmpty().take(10)
+    fun formatSubjects(): String = buildString {
+        append(ArxivResolver.resolveFull(primaryCategory))
+        secondaryCategories.forEach { append("; "); append(ArxivResolver.resolveFull(it)) }
+    }
+    val pDFURL: String get() = "https://arxiv.org/pdf/$arxivID.pdf"
+}
+
+@Serializable data class WikipediaInfoSnapshot(val summary: String?)
+
+@Serializable
+data class NitterInfoSnapshot(
+    val text: String?,
+    val userName: String?,
+    val userTag: String?,
+    val date: String?,
+    val replyCount: String?,
+    val reposts: String?,
+    val likes: String?,
+    val imgSrc: String?,
+    val hasVideo: Boolean,
+    val beforeUserName: String?,
+    val beforeUserTag: String?,
+    val beforeText: String?,
+    val beforeDate: String?,
+    val beforeImgSrc: String?,
 )
 
 @Serializable
@@ -40,6 +168,27 @@ data class ResourceLoadSnapshot(
     val loading: Boolean = false,
     val loaded: Boolean = false,
     val failed: Boolean = false,
+)
+
+@Serializable
+data class ResourceTintSnapshot(
+    val colorArgb: Int,
+    val loaded: Boolean,
+    val sourceUrl: String? = null,
+    val baseColorArgb: Int = 0,
+    val mode: String? = null,
+)
+
+@Serializable
+data class CommentMasterSnapshot(
+    val id: Int = 0,
+    val title: String? = null,
+    val url: String? = null,
+    val author: String? = null,
+    val score: Int = 0,
+    val createdAtEpochSeconds: Int = 0,
+    val descendantCount: Int = 0,
+    val loaded: Boolean = false,
 )
 
 /** Immutable, serializable comment content; expansion and tree layout remain presentation state. */
@@ -83,6 +232,10 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     loaded = loaded,
     clicked = clicked,
     loadingFailed = loadingFailed,
+    isLink = isLink,
+    isFrontpageLink = isFrontpageLink,
+    pdfTitle = pdfTitle,
+    videoTitle = videoTitle,
     previewImage = ResourceLoadSnapshot(
         url = previewImageUrl,
         loading = previewImageUrlLoading || previewImageLoading,
@@ -95,8 +248,71 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
         loaded = faviconTintColorLoaded,
         failed = faviconTintColorLoadFailed,
     ),
+    previewTint = ResourceTintSnapshot(
+        colorArgb = previewImageTintColor,
+        loaded = previewImageTintColorLoaded,
+        sourceUrl = previewImageTintSourceUrl,
+        baseColorArgb = previewImageTintBaseColor,
+        mode = previewImageTintMode,
+    ),
+    faviconTint = ResourceTintSnapshot(
+        colorArgb = faviconTintColor,
+        loaded = faviconTintColorLoaded,
+        sourceUrl = faviconTintSourceUrl,
+        baseColorArgb = faviconTintBaseColor,
+        mode = faviconTintMode,
+    ),
+    linkSummaryDescription = linkSummaryDescription,
+    linkSummaryLoaded = linkSummaryLoaded,
+    linkSummaryLoading = linkSummaryLoading,
+    commentMaster = CommentMasterSnapshot(
+        id = commentMasterId,
+        title = commentMasterTitle,
+        url = commentMasterUrl,
+        author = commentMasterBy,
+        score = commentMasterScore,
+        createdAtEpochSeconds = commentMasterTime,
+        descendantCount = commentMasterDescendants,
+        loaded = commentMasterLoaded,
+    ),
     summary = summary,
     summaryGeneratedSuccessfully = summaryGeneratedSuccessfully,
+    pollOptions = pollOptionArrayList.orEmpty().map {
+        PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)
+    },
+    repoInfo = repoInfo?.let {
+        RepoInfoSnapshot(
+            it.name, it.owner, it.about, it.website, it.license, it.language,
+            it.stars, it.watching, it.forks,
+        )
+    },
+    gitLabInfo = gitLabInfo?.let {
+        GitLabInfoSnapshot(
+            it.name, it.namespace, it.description, it.website, it.language, it.visibility,
+            it.stars, it.forks,
+        )
+    },
+    stackExchangeInfo = stackExchangeInfo?.let {
+        StackExchangeInfoSnapshot(
+            it.title, it.author, it.questionText, it.tags?.toList().orEmpty(), it.site,
+            it.score, it.answerCount, it.viewCount, it.isAnswered, it.hasAcceptedAnswer,
+        )
+    },
+    arxivInfo = arxivInfo?.let {
+        ArxivInfoSnapshot(
+            it.arxivAbstract, it.authors.toList(), it.primaryCategory, it.arxivID,
+            it.secondaryCategories.toList(), it.publishedDate,
+        )
+    },
+    wikiInfo = wikiInfo?.let { WikipediaInfoSnapshot(it.summary) },
+    nitterInfo = nitterInfo?.let {
+        NitterInfoSnapshot(
+            it.text, it.userName, it.userTag, it.date, it.replyCount, it.reposts, it.likes,
+            it.imgSrc, it.hasVideo, it.beforeUserName, it.beforeUserTag, it.beforeText,
+            it.beforeDate, it.beforeImgSrc,
+        )
+    },
+    linkPreviewLoading = linkPreviewLoading,
 )
 
 fun Story.applySnapshot(snapshot: StorySnapshot): Story = apply {

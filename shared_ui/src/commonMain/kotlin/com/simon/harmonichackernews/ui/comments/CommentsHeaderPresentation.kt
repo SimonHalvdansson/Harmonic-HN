@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.platform.PresentationCopy
@@ -17,7 +17,7 @@ data class CommentsHeaderPresentation(
 /** Canonical comments-header mapping; hosts inject only locale-aware clock text. */
 object CommentsHeaderPresentationFactory {
     fun create(
-        story: Story,
+        story: StoryListItemSnapshot,
         previewResource: StoryPreviewResourceState?,
         faviconProvider: String,
         paletteTintMode: String,

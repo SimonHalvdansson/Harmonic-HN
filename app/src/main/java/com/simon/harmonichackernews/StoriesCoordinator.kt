@@ -4,16 +4,15 @@ import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
-import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.StoriesFeatureHost
-import com.simon.harmonichackernews.app.createStoriesFeatureSession
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.app.createStoriesStore
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
+import com.simon.harmonichackernews.presentation.StoriesState
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.resources.*
@@ -22,7 +21,7 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
-import com.simon.harmonichackernews.ui.session.StoriesScreenSession
+import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
@@ -40,29 +39,18 @@ class StoriesCoordinator(
     platformDependencies: StoriesPlatformDependencies =
         appComposition.storiesPlatformDependencies(),
 ) {
-    private val connectivity = platformDependencies.connectivity
-    private val externalLinks = platformDependencies.externalLinks
-    private val historyStore = platformDependencies.history
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val storiesViewModel = ViewModelProvider(activity)[StoriesViewModel::class.java]
-    private val sessionState = storiesViewModel.state
-    private var started = false
+    private val sessionState = navigation.scene.sessions.stories
     private var destroyed = false
     var composeController: StoriesComposeController? = null
         private set
-    private val featureSession = appComposition.createStoriesFeatureSession(
+    private val storiesStore = appComposition.createStoriesStore(
         StoriesFeatureHost(
             scope = coroutineScope,
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
         ),
-    )
-    private val storiesFeature = featureSession.runtime
-    private val screenSession = StoriesScreenSession(
-        coroutineScope,
-        featureSession,
-        ::storiesPlatformPresentation,
     )
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
@@ -85,9 +73,15 @@ class StoriesCoordinator(
         }
 
         setupLinkSummaryBackCallback()
-        coroutineScope.launch { screenSession.effects.collect(::handleStoriesRuntimeEffect) }
-        coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
-        screenSession.start()
+        coroutineScope.launch { storiesStore.effects.collect(::handleStoriesRuntimeEffect) }
+        coroutineScope.launch {
+            storiesStore.state.collect { state ->
+                composeController?.updateContent(
+                    StoriesScreenStateFactory.create(state, storiesPlatformPresentation(state)),
+                )
+            }
+        }
+        storiesStore.start()
         initializeComposeUi()
 
         restoreLinkSummaryAfterRecreation()
@@ -96,17 +90,16 @@ class StoriesCoordinator(
     private fun initializeComposeUi() {
         if (composeController != null) return
         val platformCallbacks = object : StoriesFeatureListener.PlatformCallbacks {
-            override val hostStarted: Boolean get() = started
-
             override fun onSearchStateChanged(searching: Boolean) {
                 composeController?.endPredictiveBack()
                 syncComposeState()
             }
             override fun showFrontDatePicker() {
+                val state = storiesStore.state.value
                 composeController?.showFrontDatePicker(
-                    storiesFeature.frontPageDay.selectedMillis,
-                    storiesFeature.frontPageDay.earliestMillis,
-                    storiesFeature.frontPageDay.latestMillis,
+                    state.frontDateSelectedMillis,
+                    state.frontDateEarliestMillis,
+                    state.frontDateLatestMillis,
                 )
             }
             override fun onStoryPreviewVisibilityChanged(showing: Boolean) {
@@ -115,9 +108,10 @@ class StoriesCoordinator(
 
             override fun isSplitLayout(): Boolean = isFoldableSplitLayout
         }
-        composeController = screenSession.createController(
-            (96f * resources.displayMetrics.density).roundToInt(),
-            platformCallbacks,
+        composeController = StoriesComposeController.create(
+            defaultStoryHeightPx = (96f * resources.displayMetrics.density).roundToInt(),
+            savedItemState = storiesStore.savedItemState,
+            listener = StoriesFeatureListener(storiesStore, platformCallbacks),
         )
         navigation.attachStoriesComposeController(composeController!!)
         syncComposeState()
@@ -142,14 +136,14 @@ class StoriesCoordinator(
         when (effect) {
             is StoriesRuntimeEffect.OpenStory -> navigation.openStory(effect.destination)
             is StoriesRuntimeEffect.OpenExternalLink ->
-                externalLinks.open(ExternalLinkRequest(effect.url))
+                navigation.scene.links.openExternal(ExternalLinkRequest(effect.url))
             is StoriesRuntimeEffect.Platform -> handleStoriesPlatformEffect(effect.effect)
             is StoriesRuntimeEffect.PreviewActionCompleted ->
                 composeController?.finishStoryPreviewAction(effect.storyId, effect.action)
             is StoriesRuntimeEffect.StoryChanged -> {
-                val changedStory = effect.story
-                if (changedStory == null) syncComposeState()
-                else composeController?.invalidateStory(changedStory.id)
+                val changedStoryId = effect.storyId
+                if (changedStoryId == null) syncComposeState()
+                else composeController?.invalidateStory(changedStoryId)
             }
             StoriesRuntimeEffect.LoginRequired -> navigation.showLoginDialog()
             is StoriesRuntimeEffect.UserMessage ->
@@ -168,12 +162,15 @@ class StoriesCoordinator(
     }
 
     private fun syncComposeState() {
-        composeController ?: return
-        screenSession.refreshPresentation()
+        val controller = composeController ?: return
+        val state = storiesStore.state.value
+        controller.updateContent(
+            StoriesScreenStateFactory.create(state, storiesPlatformPresentation(state)),
+        )
     }
 
-    private fun storiesPlatformPresentation(): StoriesPlatformPresentation {
-        val lastUpdated = storiesFeature.lastUpdatedMillisForHeader()?.let { millis ->
+    private fun storiesPlatformPresentation(state: StoriesState): StoriesPlatformPresentation {
+        val lastUpdated = state.lastUpdatedMillis?.let { millis ->
             PresentationCopy.lastUpdated(
                 appComposition.platform.timeFormatting.time(millis),
             )
@@ -194,12 +191,10 @@ class StoriesCoordinator(
             if (composeController == null) {
                 return@post
             }
-            storiesFeature.previewStory(storyId)?.let { story ->
-                storiesFeature.previewDeck(
-                    story.id,
-                    PreviewImageTintUtils.getTintBaseColor(activity),
-                )?.let { composeController?.showStoryPreview(it) }
-            }
+            storiesStore.previewDeck(
+                storyId,
+                PreviewImageTintUtils.getTintBaseColor(activity),
+            )?.let { composeController?.showStoryPreview(it) }
         }
     }
 
@@ -251,24 +246,15 @@ class StoriesCoordinator(
         get() = !destroyed && navigation.isAdaptiveFoldable()
 
     fun onStart() {
-        started = true
-        screenSession.onStart()
+        storiesStore.onStart()
     }
 
     fun onStop() {
-        started = false
-        screenSession.onStop()
+        storiesStore.onStop()
     }
 
     fun onResume() {
-        screenSession.onResume()
-        syncComposeState()
-    }
-
-    /** Executes only Android facilities selected by the shared settings reconciler. */
-    private fun applyPlatformSettingsState(
-        state: com.simon.harmonichackernews.presentation.StoriesSettingsState,
-    ) {
+        storiesStore.onResume()
         syncComposeState()
     }
 
@@ -291,10 +277,9 @@ class StoriesCoordinator(
             linkSummaryBackCallback!!.remove()
             linkSummaryBackCallback = null
         }
-        screenSession.dispose()
+        storiesStore.close()
         coroutineScope.cancel()
         clearControllerReferences()
-        started = false
         destroyed = true
     }
 

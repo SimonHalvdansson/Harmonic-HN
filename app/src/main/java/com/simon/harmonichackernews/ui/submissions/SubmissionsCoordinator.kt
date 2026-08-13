@@ -2,8 +2,7 @@ package com.simon.harmonichackernews.ui.submissions
 
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.MainActivity
-import com.simon.harmonichackernews.ScreenStateViewModel
-import androidx.lifecycle.ViewModelProvider
+import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
 import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
@@ -12,7 +11,6 @@ import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import kotlinx.coroutines.CoroutineScope
@@ -28,19 +26,17 @@ class SubmissionsCoordinator(
     sessionKey: Int,
     private val userName: String,
     private val navigator: Navigator,
+    private val scene: HarmonicSceneComposition,
     private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
     private val algoliaRepository: AlgoliaRepository = appComposition.network.algoliaRepository,
     private val userSettings: UserSettings = appComposition.userSettings,
-    private val platformDependencies: SubmissionsPlatformDependencies =
-        appComposition.submissionsPlatformDependencies(),
 ) {
     fun interface Navigator {
         fun openStory(destination: StoryDestination)
     }
 
     private val sessionState: SubmissionsSessionState =
-        ViewModelProvider(activity)[ScreenStateViewModel::class.java]
-            .submissionsStateFor(sessionKey, userName, algoliaRepository)
+        scene.sessions.submissionsStateFor(sessionKey, userName, algoliaRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val featureSession = appComposition.createSubmissionsFeatureSession(
         scope = coroutineScope,
@@ -72,7 +68,7 @@ class SubmissionsCoordinator(
             is SubmissionsRuntimeEffect.OpenStory ->
                 navigator.openStory(effect.destination)
             is SubmissionsRuntimeEffect.OpenExternalLink ->
-                platformDependencies.externalLinks.open(ExternalLinkRequest(effect.url))
+                scene.links.openExternal(ExternalLinkRequest(effect.url))
         }
     }
 }

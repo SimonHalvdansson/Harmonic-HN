@@ -117,7 +117,7 @@ import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
@@ -146,7 +146,12 @@ private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 @Composable
 fun SharedStoriesScreen(
     controller: StoriesComposeController,
-    storyItemModel: (Story, Int, StoryDisplaySettings, StoryPreviewResourceState?) -> StoryItemUiModel,
+    storyItemModel: (
+        StoryListItemSnapshot,
+        Int,
+        StoryDisplaySettings,
+        StoryPreviewResourceState?,
+    ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
@@ -319,10 +324,15 @@ private fun FrontPageDatePickerContent(
 private fun StoriesList(
     controller: StoriesComposeController,
     settings: StoryDisplaySettings,
-    stories: List<Story>,
+    stories: List<StoryListItemSnapshot>,
     listState: LazyListState,
     searchMode: Boolean,
-    storyItemModel: (Story, Int, StoryDisplaySettings, StoryPreviewResourceState?) -> StoryItemUiModel,
+    storyItemModel: (
+        StoryListItemSnapshot,
+        Int,
+        StoryDisplaySettings,
+        StoryPreviewResourceState?,
+    ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
@@ -998,7 +1008,7 @@ private fun StoryLoadingItem(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SavedCommentStoryItem(
-    story: Story,
+    story: StoryListItemSnapshot,
     settings: StoryDisplaySettings,
     onStory: () -> Unit,
     onReplies: () -> Unit,
@@ -1014,7 +1024,7 @@ private fun SavedCommentStoryItem(
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
-                text = "On “${story.commentMasterTitle ?: "Loading story…"}”",
+                text = "On “${story.presentation.commentMaster?.title ?: "Loading story…"}”",
                 fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
                 fontSize = typography.storyTitleSize.sp,
@@ -1044,7 +1054,10 @@ private fun SavedCommentStoryItem(
     }
 }
 
-private fun StoryDisplaySettings.toItemStyle(story: Story, model: StoryItemUiModel) = StoryItemStyle(
+private fun StoryDisplaySettings.toItemStyle(
+    story: StoryListItemSnapshot,
+    model: StoryItemUiModel,
+) = StoryItemStyle(
     previewImageMode = previewImageMode,
     borderlessLargeImage = borderlessLargePreviewImage,
     compact = compactView,
@@ -1058,7 +1071,7 @@ private fun StoryDisplaySettings.toItemStyle(story: Story, model: StoryItemUiMod
     commentsOnLeft = leftAlign,
     tintCard = tintCardUsingPreview,
     cardStyle = cardStyle,
-    useHotnessIcon = hotness > 0 && story.score + story.descendants > hotness,
+    useHotnessIcon = hotness > 0 && story.score + story.descendantCount > hotness,
     preferredFont = font,
     textSize = storyTextSize,
     dimmed = grayOutClicked && story.clicked,

@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
 import com.simon.harmonichackernews.presentation.UserProfileSession
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
@@ -18,17 +19,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Explicit application-scoped dependencies for shared and platform Compose surfaces.
+ * Explicit application- and scene-scoped dependencies for shared and platform Compose surfaces.
  *
  * UI code reads this environment instead of recovering repositories from an Android Context.
  * Native contexts remain appropriate only for actual platform effects such as intents and images.
  */
-class HarmonicUiDependencies(private val app: HarmonicAppComposition) {
+class HarmonicUiDependencies(
+    private val app: HarmonicAppComposition,
+    val scene: HarmonicSceneComposition,
+) {
     val network = app.network
     val metadata = app.metadata
-    val navigation = app.navigation
-    val launches = app.launches
-    val links = app.links
+    val navigation = scene.navigation
+    val launches = scene.launches
+    val links = scene.links
     val webContent = app.webContent
     val pdfDownloads = app.pdfDownloads
     val widgets = app.widgets
@@ -52,7 +56,7 @@ class HarmonicUiDependencies(private val app: HarmonicAppComposition) {
     val dataSettings = app.dataSettings
     val launchState = app.launchState
     val appearance = app.appearance
-    val userMessages = app.userMessages
+    val userMessages = scene.userMessages
 
     fun createUserProfileRuntime(username: String, monthNames: List<String>): UserProfileRuntime =
         app.createUserProfileRuntime(username, monthNames)

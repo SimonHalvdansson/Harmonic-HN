@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +33,64 @@ enum class StoryHistorySyncResult {
 data class StoryListItemSnapshot(
     val story: StorySnapshot,
     val presentation: StoryPresentationSnapshot,
-)
+) {
+    val id: Int get() = story.id
+    val author: String? get() = story.author
+    val title: String? get() = story.title
+    val text: String? get() = story.text
+    val url: String? get() = story.url
+    val score: Int get() = story.score
+    val descendantCount: Int get() = story.descendantCount
+    val createdAtEpochSeconds: Int get() = story.createdAtEpochSeconds
+    val isComment: Boolean get() = story.isComment
+    val isJob: Boolean get() = story.isJob
+    val loaded: Boolean get() = presentation.loaded
+    val clicked: Boolean get() = presentation.clicked
+    val loadingFailed: Boolean get() = presentation.loadingFailed
+    val isLink: Boolean get() = presentation.isLink
+    val isFrontpageLink: Boolean get() = presentation.isFrontpageLink
+    val by: String? get() = author
+    val descendants: Int get() = descendantCount
+    val time: Int get() = createdAtEpochSeconds
+    val parentId: Int get() = story.parentId
+    val commentMasterId: Int get() = presentation.commentMaster?.id ?: 0
+    val kids: List<Int> get() = story.childIds
+    val pdfTitle: String? get() = presentation.pdfTitle
+    val videoTitle: String? get() = presentation.videoTitle
+    val summary: String? get() = presentation.summary
+    val summaryGeneratedSuccessfully: Boolean
+        get() = presentation.summaryGeneratedSuccessfully
+    val previewImageUrl: String? get() = presentation.previewImage.url
+    val previewImageLoadFailed: Boolean get() = presentation.previewImage.failed
+    val previewImageTintColorLoaded: Boolean get() = presentation.previewTint?.loaded == true
+    val previewImageTintColor: Int get() = presentation.previewTint?.colorArgb ?: 0
+    val previewImageTintBaseColor: Int get() = presentation.previewTint?.baseColorArgb ?: 0
+    val previewImageTintMode: String? get() = presentation.previewTint?.mode
+    val faviconTintSourceUrl: String? get() = presentation.faviconTint?.sourceUrl
+    val faviconTintColorLoaded: Boolean get() = presentation.faviconTint?.loaded == true
+    val faviconTintColor: Int get() = presentation.faviconTint?.colorArgb ?: 0
+    val faviconTintBaseColor: Int get() = presentation.faviconTint?.baseColorArgb ?: 0
+    val faviconTintMode: String? get() = presentation.faviconTint?.mode
+    val pollOptionArrayList get() = presentation.pollOptions.takeIf(List<*>::isNotEmpty)
+    val repoInfo get() = presentation.repoInfo
+    val gitLabInfo get() = presentation.gitLabInfo
+    val stackExchangeInfo get() = presentation.stackExchangeInfo
+    val arxivInfo get() = presentation.arxivInfo
+    val wikiInfo get() = presentation.wikiInfo
+    val nitterInfo get() = presentation.nitterInfo
+    val linkPreviewLoading: Boolean get() = presentation.linkPreviewLoading
+    val timeFormatted: String get() = ItemTimeFormatter.formatNow(time)
+
+    fun getDisplayDomain(includeTopLevelDomain: Boolean): String? =
+        DomainNamePolicy.fromUrl(url.orEmpty())?.let {
+            DomainNamePolicy.formatForDisplay(it, includeTopLevelDomain)
+        }
+
+    fun hasLoadedLinkPreview(): Boolean = repoInfo != null || gitLabInfo != null ||
+        stackExchangeInfo != null || arxivInfo != null || wikiInfo != null || nitterInfo != null
+
+    fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
+}
 
 /** Native-safe list state with no mutable model references. */
 data class PortableStoryListState(

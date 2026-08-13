@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,29 +22,29 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.app.HarmonicSceneComposition
+import com.simon.harmonichackernews.app.StoriesFeatureHost
+import com.simon.harmonichackernews.app.createStoriesStore
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.presentation.EmbeddedWebContentSession
-import com.simon.harmonichackernews.presentation.StoryFeedRefreshPolicy
+import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.PresentationCopy
+import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
+import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
 import com.simon.harmonichackernews.presentation.WebContentDriver
 import com.simon.harmonichackernews.presentation.WebContentDriverState
-import com.simon.harmonichackernews.settings.StoryBooleanPreference
-import com.simon.harmonichackernews.settings.StoryStringPreference
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
-import com.simon.harmonichackernews.ui.content.HarmonicMenuText
-import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.editor.SharedEditorScreen
 import com.simon.harmonichackernews.ui.navigation.SharedHarmonicAppRoot
 import com.simon.harmonichackernews.ui.navigation.SharedSinglePaneNavigationScene
@@ -51,7 +52,11 @@ import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SharedSettingsNavigationShell
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
-import com.simon.harmonichackernews.ui.stories.SharedStoriesRoot
+import com.simon.harmonichackernews.ui.stories.SharedStoriesRoute
+import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
+import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
+import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.utils.HackerNewsLinks
@@ -70,13 +75,15 @@ fun main() {
                 onCloseRequest = ::exitApplication,
                 title = "Harmonic KMP smoke host",
             ) {
-                ProvideHarmonicUiDependencies(HarmonicUiDependencies(bootstrap.app)) {
+                ProvideHarmonicUiDependencies(
+                    HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
+                ) {
                     HarmonicTheme(
                         colors = desktopPalette.colors,
                         colorScheme = desktopPalette.colorScheme,
                     ) {
                         Surface(Modifier.fillMaxSize()) {
-                            DesktopSmokeContent(bootstrap.app)
+                            DesktopSmokeContent(bootstrap.app, bootstrap.scene)
                         }
                     }
                 }
@@ -88,8 +95,11 @@ fun main() {
 }
 
 @Composable
-private fun DesktopSmokeContent(app: HarmonicAppComposition) {
-    val navigation by app.navigation.state.collectAsState()
+private fun DesktopSmokeContent(
+    app: HarmonicAppComposition,
+    scene: HarmonicSceneComposition,
+) {
+    val navigation by scene.navigation.state.collectAsState()
     val transitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     SharedHarmonicAppRoot(
         navigation = navigation,
@@ -104,13 +114,13 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
                 completedPredictivePop = false,
                 predictiveBackActive = false,
                 showStoriesPane = true,
-                stories = { DesktopStoriesContent(app) },
+                stories = { DesktopStoriesContent(app, scene) },
                 comments = { request ->
                     DesktopCommentsBrowserContract(
                         app = app,
                         storyId = request.storyId,
                         scrollToCommentId = request.route.scrollToCommentId,
-                        onClose = app.navigation::detailRemovedFromBackStack,
+                        onClose = scene.navigation::detailRemovedFromBackStack,
                     )
                 },
             )
@@ -118,6 +128,7 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
         settings = {
             DesktopSettingsShell(
                 app = app,
+                scene = scene,
                 initialSection = SettingsSection.fromRoute(
                     navigation.currentSettingsSectionRoute.orEmpty(),
                 ),
@@ -127,7 +138,7 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
             DesktopSmokeDestination(
                 title = "Shared submissions destination",
                 detail = navigation.submissionsRequest?.userName.orEmpty(),
-                onClose = app.navigation::closeSubmissions,
+                onClose = scene.navigation::closeSubmissions,
             )
         },
         editor = {
@@ -138,7 +149,7 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
                     postTitle = destination.postTitle,
                     user = destination.userName,
                     submitting = false,
-                    onClose = app.navigation::closeEditor,
+                    onClose = scene.navigation::closeEditor,
                     onSubmit = {},
                 )
             }
@@ -147,7 +158,7 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
             DesktopSmokeDestination(
                 title = "Shared immersive destination",
                 detail = "Coulomb gas host layer",
-                onClose = app.navigation::closeCoulombGas,
+                onClose = scene.navigation::closeCoulombGas,
             )
         },
         foreground = {},
@@ -155,119 +166,123 @@ private fun DesktopSmokeContent(app: HarmonicAppComposition) {
 }
 
 @Composable
-private fun DesktopStoriesContent(app: HarmonicAppComposition) {
-    val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
-    var menuExpanded by remember { mutableStateOf(false) }
-    var searchMode by remember { mutableStateOf(false) }
-    val refreshSource = remember {
-        StoryFeedRefreshPolicy.plan(
-            searching = false,
-            storyType = StoryType.TOP_STORIES,
-            showSwipeRefreshIndicator = false,
-            showMainLoadingIndicator = false,
-            listIsEmpty = true,
-        ).source
+private fun DesktopStoriesContent(
+    app: HarmonicAppComposition,
+    scene: HarmonicSceneComposition,
+) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val defaultStoryHeightPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    val store = remember(app, scene, scope) {
+        app.createStoriesStore(
+            StoriesFeatureHost(
+                scope = scope,
+                sessionState = scene.sessions.stories,
+                platform = app.storiesPlatformDependencies(),
+                userSettings = app.userSettings,
+            ),
+        )
     }
+    val controller = remember(store, defaultStoryHeightPx) {
+        lateinit var created: StoriesComposeController
+        val callbacks = object : StoriesFeatureListener.PlatformCallbacks {
+            override fun onSearchStateChanged(searching: Boolean) {
+                created.endPredictiveBack()
+            }
 
-    SharedStoriesRoot(
-        searching = searchMode,
-        suppressSearchAutoFocus = false,
-        predictiveBackActive = false,
-        predictiveBackProgress = 0f,
-        backgroundColor = desktopPalette.colors.background,
-        mainLayer = {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text("Shared stories smoke host", style = MaterialTheme.typography.headlineMedium)
-                Text("Refresh policy selected: $refreshSource")
-                Text("Real shared graph: CIO network, settings, sessions, and navigation are ready")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            app.settings.setStoryString(
-                                StoryStringPreference.DISPLAY_STYLE,
-                                if (settings.story.cardStyle) "standard" else "card",
-                            )
-                        },
-                    ) {
-                        Text(if (settings.story.cardStyle) "Use standard row" else "Use card row")
-                    }
-                    Button(
-                        onClick = {
-                            app.settings.setStoryBoolean(
-                                StoryBooleanPreference.COMPACT_VIEW,
-                                !settings.story.compactView,
-                            )
-                        },
-                    ) {
-                        Text(
-                            if (settings.story.compactView) {
-                                "Use comfortable spacing"
-                            } else {
-                                "Use compact spacing"
-                            },
-                        )
-                    }
-                    Button(onClick = { menuExpanded = true }) { Text("Shared menu") }
-                    Button(
-                        onClick = {
-                            app.navigation.openEditor(EditorDestination(EditorType.POST))
-                        },
-                    ) { Text("Shared editor") }
-                    Button(onClick = { searchMode = true }) { Text("Shared search root") }
-                    Button(onClick = { app.navigation.openSettings(null) }) { Text("Settings") }
-                    Button(
-                        onClick = { app.navigation.openStory(StoryDestination(storyId = 8863)) },
-                    ) { Text("Comments host") }
-                    Button(
-                        onClick = { app.navigation.openSubmissions("pg") },
-                    ) { Text("Submissions") }
-                    HarmonicDropdownMenu(
-                        expanded = menuExpanded,
-                        onDismiss = { menuExpanded = false },
-                    ) {
-                        HarmonicMenuText(
-                            text = "Desktop target compiled this menu",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
-                    }
-                }
-                StoryItem(
-                    model = SettingsStoryPreviewModel,
-                    style = StoryItemStyle(
-                        previewImageMode = "large",
-                        borderlessLargeImage = false,
-                        compact = settings.story.compactView,
-                        showSummary = true,
-                        showFavicon = true,
-                        showPoints = true,
-                        compactPoints = false,
-                        includeTopLevelDomain = true,
-                        showCommentCount = true,
-                        showIndex = true,
-                        commentsOnLeft = false,
-                        tintCard = true,
-                        cardStyle = settings.story.cardStyle,
-                        useHotnessIcon = false,
-                        preferredFont = "googlesansflexrounded",
-                        textSize = 17.5f,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
+            override fun showFrontDatePicker() {
+                val state = store.state.value
+                created.showFrontDatePicker(
+                    state.frontDateSelectedMillis,
+                    state.frontDateEarliestMillis,
+                    state.frontDateLatestMillis,
                 )
             }
-        },
-        searchLayer = {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text("Shared search layer", style = MaterialTheme.typography.headlineMedium)
-                Text("This verifies the portable stories root on the desktop target.")
-                Button(onClick = { searchMode = false }) { Text("Back to stories") }
+
+            override fun onStoryPreviewVisibilityChanged(showing: Boolean) = Unit
+            override fun isSplitLayout(): Boolean = false
+        }
+        created = StoriesComposeController.create(
+            defaultStoryHeightPx = defaultStoryHeightPx,
+            savedItemState = store.savedItemState,
+            listener = StoriesFeatureListener(store, callbacks),
+        )
+        created
+    }
+    val state by store.state.collectAsState()
+    val colors = HarmonicTheme.colors
+    val filterColors = remember(colors) {
+        HarmonicFilterButtonColors(
+            checkedBackground = colors.storyNormal,
+            checkedText = colors.background,
+            checkedStroke = colors.storyNormal,
+            uncheckedText = colors.storyNormal,
+            uncheckedStroke = colors.outlineVariant,
+        )
+    }
+
+    DisposableEffect(store) {
+        store.start()
+        store.onStart()
+        onDispose {
+            store.onStop()
+            store.close()
+        }
+    }
+    LaunchedEffect(state, controller) {
+        val lastUpdatedText = state.lastUpdatedMillis?.let { millis ->
+            PresentationCopy.lastUpdated(app.platform.timeFormatting.time(millis))
+        }
+        controller.updateContent(
+            StoriesScreenStateFactory.create(
+                state,
+                StoriesPlatformPresentation(lastUpdatedText, contentInsetStartPx = 0),
+            ),
+        )
+    }
+    LaunchedEffect(store, controller, scene) {
+        store.effects.collect { effect ->
+            when (effect) {
+                is StoriesRuntimeEffect.OpenStory ->
+                    scene.navigation.openStory(effect.destination)
+                is StoriesRuntimeEffect.OpenExternalLink ->
+                    scene.links.openExternal(ExternalLinkRequest(effect.url))
+                is StoriesRuntimeEffect.Platform -> when (val platform = effect.effect) {
+                    StoriesPlatformEffect.OpenSettings -> scene.navigation.openSettings(null)
+                    StoriesPlatformEffect.RequestLogin -> scene.navigation.showLoginDialog()
+                    is StoriesPlatformEffect.OpenProfile ->
+                        scene.navigation.showUserDialog(platform.userName)
+                    StoriesPlatformEffect.ShowCacheDialog ->
+                        scene.navigation.showCacheStoriesDialog()
+                    StoriesPlatformEffect.OpenSubmitEditor ->
+                        scene.navigation.openEditor(EditorDestination(EditorType.POST))
+                }
+                is StoriesRuntimeEffect.PreviewActionCompleted ->
+                    controller.finishStoryPreviewAction(effect.storyId, effect.action)
+                is StoriesRuntimeEffect.StoryChanged ->
+                    effect.storyId?.let(controller::invalidateStory)
+                StoriesRuntimeEffect.LoginRequired -> scene.navigation.showLoginDialog()
+                is StoriesRuntimeEffect.UserMessage -> scene.userMessages.show(effect.message)
+                is StoriesRuntimeEffect.SavedActionFailed -> {
+                    if (effect.presentation.showDetails) {
+                        scene.navigation.showFailureDetailDialog(
+                            effect.presentation.failureSummary,
+                            effect.presentation.failureDetail,
+                            null,
+                        )
+                    }
+                    scene.userMessages.show(effect.presentation.message)
+                }
             }
-        },
+        }
+    }
+
+    SharedStoriesRoute(
+        controller = controller,
+        tintStore = app.storyResourceTints,
+        commentText = { AnnotatedString(it) },
+        filterColors = filterColors,
+        extraCompactSelectedText = false,
+        compactSelectedText = false,
     )
 }
 
@@ -291,6 +306,7 @@ private fun DesktopSmokeDestination(
 @Composable
 private fun DesktopSettingsShell(
     app: HarmonicAppComposition,
+    scene: HarmonicSceneComposition,
     initialSection: SettingsSection?,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -311,9 +327,9 @@ private fun DesktopSettingsShell(
         directive = directive,
         isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty(),
         tabletPaneHorizontalPadding = 24.dp,
-        onBackFromSettings = app.navigation::closeSettings,
+        onBackFromSettings = scene.navigation::closeSettings,
         onSectionChanged = { section ->
-            app.navigation.updateSettingsSection(section.route)
+            scene.navigation.updateSettingsSection(section.route)
         },
         renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
             SettingsListScreen(

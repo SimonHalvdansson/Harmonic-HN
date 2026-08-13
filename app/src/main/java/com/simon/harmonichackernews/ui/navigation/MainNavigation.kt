@@ -54,9 +54,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.HarmonicSceneViewModel
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoriesCoordinator
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
@@ -101,6 +103,7 @@ import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
 import com.simon.harmonichackernews.navigation.MainNavigationRestorationCodec
 import com.simon.harmonichackernews.navigation.MainNavigationStore
+import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
@@ -109,7 +112,6 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.presentation.UserMessageDuration
-import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.utils.ThemeUtils
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -123,10 +125,11 @@ import kotlinx.coroutines.withContext
  */
 @Stable
 class MainNavigationController internal constructor(
-    internal val navigationState: MainNavigationStore,
-    private val userMessages: UserMessageStore,
+    internal val scene: HarmonicSceneComposition,
     savedState: Bundle? = null,
 ) {
+    internal val navigationState: MainNavigationStore = scene.navigation
+    private val userMessages = scene.userMessages
     internal val storyRequest get() = navigationState.storyRequest
     internal val lastStoryRequest get() = navigationState.lastStoryRequest
     internal val settingsRequest get() = navigationState.settingsRequest
@@ -505,9 +508,9 @@ object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
         val appComposition = activity.harmonicAppComposition
+        val scene = ViewModelProvider(activity)[HarmonicSceneViewModel::class.java].scene
         val controller = MainNavigationController(
-            appComposition.navigation,
-            appComposition.userMessages,
+            scene,
             savedState,
         )
         when (
@@ -532,7 +535,7 @@ object MainNavigationHost {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 ProvideHarmonicUiDependencies(
-                    HarmonicUiDependencies(appComposition),
+                    HarmonicUiDependencies(appComposition, scene),
                 ) {
                     HarmonicTheme {
                         MainNavigation(
@@ -1038,6 +1041,7 @@ private fun MainNavigation(
                                 activity = activity,
                                 sessionKey = request.serial,
                                 userName = request.userName,
+                                scene = controller.scene,
                                 navigator = SubmissionsCoordinator.Navigator { destination ->
                                     controller.prepareToOpenStoryFromSubmissions()
                                     controller.closeSettings()

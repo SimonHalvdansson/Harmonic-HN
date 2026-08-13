@@ -2,12 +2,11 @@ package com.simon.harmonichackernews.ui.stories
 
 import com.simon.harmonichackernews.presentation.SavedListKind
 import com.simon.harmonichackernews.presentation.SavedListPresentationPolicy
-import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
+import com.simon.harmonichackernews.presentation.StoriesState
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationInput
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationPolicy
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.StorySearchController
-import com.simon.harmonichackernews.cache.StoryCacheState
 import com.simon.harmonichackernews.cache.StoryCacheStatus
 import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.resources.Res
@@ -24,32 +23,30 @@ data class StoriesPlatformPresentation(
 /** Maps common stories state plus a narrow platform snapshot into shared UI state. */
 object StoriesScreenStateFactory {
     fun create(
-        feature: StoriesFeatureRuntime,
+        state: StoriesState,
         platform: StoriesPlatformPresentation,
-        storyCache: StoryCacheState,
     ): StoriesScreenState {
-        val presenterState = feature.presenter.state.value
-        val listState = feature.activeStore.state.value
-        val searchState = feature.searchOptions.state.value
-        val type = feature.currentType
+        val listState = state.activeList
+        val type = state.currentType
+        val storyCache = state.cache
         val shell = StoriesShellPresentationPolicy.present(
             StoriesShellPresentationInput(
-                searching = feature.searching,
-                submittedSearch = presenterState.searchDraft.trim().isNotEmpty(),
-                storyCount = feature.activeStories.size,
-                searchLoading = searchState.loading,
+                searching = state.searching,
+                submittedSearch = state.searchDraft.trim().isNotEmpty(),
+                storyCount = state.activeItems.size,
+                searchLoading = state.search.loading,
                 loadingFailed = listState.failure != null,
                 notFound = listState.failure == StoryLoadFailure.NOT_FOUND,
-                rateLimited = feature.loadingFailedRateLimited,
-                online = feature.online,
+                rateLimited = state.loadingFailedRateLimited,
+                online = state.online,
                 bookmarks = type.isBookmarks,
                 history = type.isHistory,
                 userItems = type.isUserItemList,
-                userItemsInitialLoadInProgress = feature.isUserItemsInitialLoadInProgress,
-                refreshIndicatorShowing = feature.refreshIndicatorShowing,
+                userItemsInitialLoadInProgress = state.userItemsInitialLoadInProgress,
+                refreshIndicatorShowing = state.refreshIndicatorShowing,
                 showingCached = listState.showingCached,
                 cacheInProgress = storyCache.isCaching,
-                visibleStoryCount = feature.activeStore.visibleStoryItemCount,
+                visibleStoryCount = state.activeVisibleItemCount,
             ),
         )
         val savedKind = when {
@@ -65,57 +62,55 @@ object StoriesScreenStateFactory {
             SavedListKind.BOOKMARKS -> Res.drawable.ic_bookmark
         }
         return StoriesScreenState(
-            mainStories = feature.mainStories,
-            searchStories = feature.searchStories,
-            previewResources = feature.previewResourceStates,
-            displaySettings = feature.settingsState.value.displaySettings,
-            typeLabels = feature.availableStoryTypes.map { it.label },
-            selectedTypeIndex = feature.selectedStoryTypeIndex(),
-            searching = feature.searching,
-            lastSearch = presenterState.searchDraft,
-            searchSortLabel = feature.searchOptions.sortLabel,
-            searchDateLabel = feature.searchOptions.dateRangeLabel,
-            searchPointsLabel = feature.searchOptions.minimumPointsLabel,
-            searchCommentsLabel = feature.searchOptions.minimumCommentsLabel,
+            mainStories = state.mainList.items,
+            searchStories = state.searchList.items,
+            previewResources = state.previewResources,
+            displaySettings = state.displaySettings,
+            typeLabels = state.availableStoryTypes.map { it.label },
+            selectedTypeIndex = state.selectedTypeIndex,
+            searching = state.searching,
+            lastSearch = state.searchDraft,
+            searchSortLabel = state.search.sortLabel,
+            searchDateLabel = state.search.dateLabel,
+            searchPointsLabel = state.search.pointsLabel,
+            searchCommentsLabel = state.search.commentsLabel,
             searchSortLabels = StorySearchController.sortLabels.toList(),
             searchDateLabels = StorySearchController.dateRangeLabels.toList(),
             searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
             searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
-            searchOnlyClicked = searchState.options.onlyClicked,
+            searchOnlyClicked = state.search.options.onlyClicked,
             loading = shell.showLoading,
-            refreshing = feature.refreshIndicatorShowing,
+            refreshing = state.refreshIndicatorShowing,
             loadingFailed = listState.failure != null,
             loadingFailedServerError = listState.failure == StoryLoadFailure.NOT_FOUND,
             loadingFailedMessage = shell.loadingFailureMessage,
             showingCached = listState.showingCached,
-            showCachedAction = listState.failure != null && !feature.searching &&
-                feature.cachedStoriesAvailable,
+            showCachedAction = listState.failure != null && !state.searching &&
+                state.cachedStoriesAvailable,
             showEmptySavedList = shell.showEmptySavedList,
             emptySavedListText = SavedListPresentationPolicy.emptyMessage(
                 savedKind,
-                feature.savedFilter,
-                feature.savedSourceHasItems,
+                state.savedFilter,
+                state.savedSourceHasItems,
             ),
             emptySavedListIcon = emptyIcon,
             showEmptySearch = shell.showEmptySearch,
-            showUpdate = presenterState.updateAvailable,
+            showUpdate = state.updateAvailable,
             lastUpdatedText = platform.lastUpdatedText,
-            showLoadMore = feature.activeStore.hasLoadMore,
+            showLoadMore = state.activeHasLoadMore,
             loadMoreLoading = listState.loadMoreInProgress,
-            mainVisibleCount = feature.mainStore.visibleStoryItemCount,
-            searchVisibleCount = feature.searchStore.visibleStoryItemCount,
-            showSavedFilter = !feature.searching && type.usesSavedItemFilter() &&
-                feature.savedSourceHasItems,
-            savedFilter = feature.savedFilter,
-            showFrontDate = !feature.searching && type.isFront,
-            frontDateLabel = feature.frontPageDay.requestParameter,
-            frontPreviousEnabled = feature.frontPageDay.selectedMillis >
-                feature.frontPageDay.earliestMillis,
-            frontNextEnabled = feature.frontPageDay.selectedMillis <
-                feature.frontPageDay.latestMillis,
-            loggedIn = feature.loggedIn,
+            mainVisibleCount = state.mainVisibleItemCount,
+            searchVisibleCount = state.searchVisibleItemCount,
+            showSavedFilter = !state.searching && type.usesSavedItemFilter() &&
+                state.savedSourceHasItems,
+            savedFilter = state.savedFilter,
+            showFrontDate = !state.searching && type.isFront,
+            frontDateLabel = state.frontDateLabel,
+            frontPreviousEnabled = state.frontDateSelectedMillis > state.frontDateEarliestMillis,
+            frontNextEnabled = state.frontDateSelectedMillis < state.frontDateLatestMillis,
+            loggedIn = state.loggedIn,
             canCache = shell.canCacheStories,
-            canClearHistory = feature.canClearHistory,
+            canClearHistory = state.canClearHistory,
             cacheProgressVisible = storyCache.progressVisible,
             cacheProgress = storyCache.completed,
             cacheProgressMax = storyCache.progressMax,

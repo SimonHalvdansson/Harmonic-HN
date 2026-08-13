@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.navigation
 
 import com.simon.harmonichackernews.platform.ExternalLinkOpener
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 /** A destination resolved without knowing which native navigation framework will execute it. */
@@ -42,6 +43,7 @@ object LinkNavigationPolicy {
 sealed interface LinkNavigationResult {
     data object Opened : LinkNavigationResult
     data object Invalid : LinkNavigationResult
+    data object Failed : LinkNavigationResult
 }
 
 /**
@@ -51,6 +53,7 @@ sealed interface LinkNavigationResult {
 class AppLinkNavigator(
     private val navigation: MainNavigationStore,
     private val externalLinks: ExternalLinkOpener,
+    private val userMessages: UserMessageStore? = null,
 ) {
     fun open(
         url: String?,
@@ -68,7 +71,8 @@ class AppLinkNavigator(
     }
 
     fun openExternal(request: ExternalLinkRequest): LinkNavigationResult {
-        externalLinks.open(request)
-        return LinkNavigationResult.Opened
+        if (externalLinks.open(request)) return LinkNavigationResult.Opened
+        userMessages?.show("Couldn't open link to: ${request.url}")
+        return LinkNavigationResult.Failed
     }
 }

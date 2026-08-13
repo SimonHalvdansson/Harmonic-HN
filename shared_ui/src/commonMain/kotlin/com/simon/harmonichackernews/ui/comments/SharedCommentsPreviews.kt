@@ -123,7 +123,7 @@ import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.CommentNavigationRequest
 import com.simon.harmonichackernews.presentation.CommentScrollRequest
@@ -177,7 +177,7 @@ fun CommentsPreviewPlatformProvider(
 }
 
 @Composable
-fun HeaderLinkInfo(story: Story, settings: CommentDisplaySettings) {
+fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySettings) {
     if (!story.loaded || !story.isLink || story.isComment || story.url.isNullOrBlank()) return
     val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(preferredFont = settings.font)
@@ -219,7 +219,7 @@ fun HeaderLinkInfo(story: Story, settings: CommentDisplaySettings) {
 
 @Composable
 fun HeaderStoryBody(
-    story: Story,
+    story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
     suppressedReferenceUrl: String?,
     onReferenceLongClick: (
@@ -386,7 +386,7 @@ private fun HeaderReferenceRow(
 
 @Composable
 fun LinkPreviewContent(
-    story: Story,
+    story: StoryListItemSnapshot,
     contentVersion: Int,
     settings: CommentDisplaySettings,
 ) {
@@ -534,7 +534,7 @@ private fun PreviewInfoColumns(left: @Composable ColumnScope.() -> Unit, right: 
 }
 
 @Composable
-private fun GitHubPreview(story: Story) {
+private fun GitHubPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.repoInfo ?: return
     Column {
@@ -558,7 +558,7 @@ private fun GitHubPreview(story: Story) {
 }
 
 @Composable
-private fun GitLabPreview(story: Story) {
+private fun GitLabPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.gitLabInfo ?: return
     Column {
@@ -581,7 +581,7 @@ private fun GitLabPreview(story: Story) {
 }
 
 @Composable
-private fun StackExchangePreview(story: Story) {
+private fun StackExchangePreview(story: StoryListItemSnapshot) {
     val info = story.stackExchangeInfo ?: return
     Column {
         PreviewHeader("Stack Exchange:")
@@ -608,7 +608,7 @@ private fun StackExchangePreview(story: Story) {
 }
 
 @Composable
-private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
+private fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplaySettings) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.arxivInfo ?: return
     val typography = rememberContentTypography(preferredFont = settings.font)
@@ -657,7 +657,7 @@ private fun ArxivPreview(story: Story, settings: CommentDisplaySettings) {
 }
 
 @Composable
-private fun WikipediaPreview(story: Story) {
+private fun WikipediaPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.wikiInfo ?: return
     Column {
@@ -674,7 +674,7 @@ private fun WikipediaPreview(story: Story) {
 }
 
 @Composable
-private fun NitterPreview(story: Story) {
+private fun NitterPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.nitterInfo ?: return
     Column {

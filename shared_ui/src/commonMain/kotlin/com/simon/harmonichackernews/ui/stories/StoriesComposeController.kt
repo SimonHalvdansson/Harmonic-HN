@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
-import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.SavedItemFilter
@@ -25,8 +25,8 @@ import org.jetbrains.compose.resources.DrawableResource
 
 /** One immutable rendering snapshot shared by every stories-screen host. */
 data class StoriesScreenState(
-    val mainStories: List<Story> = emptyList(),
-    val searchStories: List<Story> = emptyList(),
+    val mainStories: List<StoryListItemSnapshot> = emptyList(),
+    val searchStories: List<StoryListItemSnapshot> = emptyList(),
     val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
     val displaySettings: StoryDisplaySettings? = null,
     val typeLabels: List<String> = emptyList(),
@@ -83,8 +83,8 @@ class StoriesComposeController private constructor(
     var screenState by mutableStateOf(StoriesScreenState())
         private set
 
-    val mainStories: List<Story> get() = screenState.mainStories
-    val searchStories: List<Story> get() = screenState.searchStories
+    val mainStories: List<StoryListItemSnapshot> get() = screenState.mainStories
+    val searchStories: List<StoryListItemSnapshot> get() = screenState.searchStories
     val previewResources: Map<Int, StoryPreviewResourceState> get() = screenState.previewResources
     val displaySettings: StoryDisplaySettings? get() = screenState.displaySettings
     val typeLabels: List<String> get() = screenState.typeLabels
@@ -313,7 +313,7 @@ class StoriesComposeController private constructor(
     }
 
     fun showStoryPreview(
-        stories: List<Story>,
+        stories: List<StoryListItemSnapshot>,
         cardColors: IntArray,
         openedStoryId: Int,
     ) {
@@ -332,7 +332,7 @@ class StoriesComposeController private constructor(
         showStoryPreview(deck.stories, deck.cardColors.toIntArray(), deck.openedStoryId)
 
     fun restoreStoryPreview(
-        stories: List<Story>,
+        stories: List<StoryListItemSnapshot>,
         cardColors: IntArray,
         openedStoryId: Int,
     ) = showStoryPreview(stories, cardColors, openedStoryId)
@@ -465,18 +465,18 @@ class StoriesComposeController private constructor(
         fun onFrontDateSelected(day: Long)
         fun onMoreAction(action: StoriesMenuAction)
         fun onCacheStoriesConfirmed(storyCount: Int)
-        fun onLinkClick(story: Story)
-        fun onCommentClick(story: Story)
-        fun onCommentStoryClick(story: Story)
-        fun onCommentRepliesClick(story: Story)
+        fun onLinkClick(story: StoryListItemSnapshot)
+        fun onCommentClick(story: StoryListItemSnapshot)
+        fun onCommentStoryClick(story: StoryListItemSnapshot)
+        fun onCommentRepliesClick(story: StoryListItemSnapshot)
         fun onStoryLongClick(
-            story: Story,
+            story: StoryListItemSnapshot,
             tintBaseColorArgb: Int,
         ): com.simon.harmonichackernews.presentation.StoryPreviewDeck?
         fun onStoryPreviewImageLoaded(storyId: Int, pageUrl: String, imageUrl: String)
         fun onStoryPreviewImageLoadFailed(storyId: Int, pageUrl: String, imageUrl: String)
         fun onStoryTintExtracted(
-            story: Story,
+            story: StoryListItemSnapshot,
             sourceUrl: String,
             baseColorArgb: Int,
             paletteConfigKey: String,
@@ -486,9 +486,12 @@ class StoriesComposeController private constructor(
         fun onVisibleStoryRange(lastVisibleIndex: Int)
         fun onStoryPreviewStopScroll()
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
-        fun onStoryPreviewNavigate(story: Story, showWebsite: Boolean): Boolean
+        fun onStoryPreviewNavigate(
+            story: StoryListItemSnapshot,
+            showWebsite: Boolean,
+        ): Boolean
         fun onStoryPreviewAction(
-            story: Story,
+            story: StoryListItemSnapshot,
             action: StoryPreviewActionKind,
         )
     }

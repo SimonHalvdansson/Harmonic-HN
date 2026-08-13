@@ -64,14 +64,15 @@ object ExternalLinkPolicy {
 }
 
 interface ExternalLinkOpener {
-    fun open(request: ExternalLinkRequest)
+    /** Returns whether a native destination accepted the request. */
+    fun open(request: ExternalLinkRequest): Boolean
 }
 
 class ConfiguredExternalLinkOpener(
     private val delegate: ExternalLinkOpener,
     private val externalBrowser: () -> Boolean,
 ) : ExternalLinkOpener {
-    override fun open(request: ExternalLinkRequest) = delegate.open(
+    override fun open(request: ExternalLinkRequest): Boolean = delegate.open(
         ExternalLinkPolicy.applyExternalBrowserPreference(request, externalBrowser()),
     )
 }

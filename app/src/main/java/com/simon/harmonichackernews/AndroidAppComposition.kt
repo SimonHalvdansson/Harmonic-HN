@@ -12,7 +12,6 @@ import com.simon.harmonichackernews.network.AndroidNetworkEnvironment
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.summary.local.createAndroidLocalModelService
@@ -28,7 +27,6 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
     val network = AndroidNetworkEnvironment(context)
     val settingsStore = AndroidKeyValueStore.defaults(context)
     val appDataStore = AndroidKeyValueStore.global(context)
-    val userMessages = UserMessageStore()
     val localModels = createAndroidLocalModelService(context)
     val filesRoot = Path(context.filesDir.absolutePath)
     val persistentStorage = HarmonicPersistentStorageFactory.create(
@@ -50,7 +48,6 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
         platform = createAndroidPlatformDependencies(
             context,
             localModels = localModels,
-            userMessages = userMessages,
         ),
         host = HarmonicHostConfiguration(
             metadata = AppMetadata(
@@ -86,7 +83,6 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             storyCacheRepository = persistentStorage.storyCacheRepository,
             articleSnapshotStore = persistentStorage.articleSnapshotStore,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
-            userMessages = userMessages,
         ),
     )
 }

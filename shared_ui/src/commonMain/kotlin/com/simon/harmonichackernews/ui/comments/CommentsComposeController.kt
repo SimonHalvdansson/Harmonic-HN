@@ -9,14 +9,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
 data class CommentsScreenState(
-    val story: Story,
+    val story: StoryListItemSnapshot,
     val accountUser: String? = null,
     val comments: List<PortableCommentItem> = emptyList(),
     val visibleComments: List<PortableVisibleComment> = emptyList(),
@@ -53,7 +52,7 @@ data class CommentsScreenState(
 class CommentsComposeController private constructor(
     shouldSmoothScroll: () -> Boolean,
     private val savedItemState: SavedItemStateReader,
-    initialStory: Story,
+    initialStory: StoryListItemSnapshot,
     val initialShowWebsite: Boolean,
     accountUser: String?,
     val listener: Listener,
@@ -63,7 +62,7 @@ class CommentsComposeController private constructor(
     )
         private set
 
-    val story: Story get() = screenState.story
+    val story: StoryListItemSnapshot get() = screenState.story
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
     val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
@@ -627,7 +626,7 @@ class CommentsComposeController private constructor(
     companion object {
         fun create(
             shouldSmoothScroll: () -> Boolean,
-            story: Story,
+            story: StoryListItemSnapshot,
             showWebsite: Boolean,
             accountUser: String?,
             savedItemState: SavedItemStateReader,

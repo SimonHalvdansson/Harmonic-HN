@@ -19,12 +19,11 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
-import com.simon.harmonichackernews.app.createCommentsFeatureSession
+import com.simon.harmonichackernews.app.createCommentsStore
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.navigation.StoryDestination
@@ -41,10 +40,11 @@ import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsSettingsState
+import com.simon.harmonichackernews.presentation.CommentsState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
-import com.simon.harmonichackernews.ui.session.CommentsScreenSession
+import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -71,29 +71,23 @@ class CommentsCoordinator(
         appComposition.commentsPlatformDependencies(),
     userSettings: UserSettings = appComposition.userSettings,
 ) {
-    private val externalLinks = platformDependencies.externalLinks
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val screenStateViewModel = ViewModelProvider(activity)[ScreenStateViewModel::class.java]
-    private val sessionState = screenStateViewModel.commentsStateFor(sessionKey, destination.storyId)
+    private val sessionState = navigation.scene.sessions.commentsStateFor(
+        sessionKey,
+        destination.storyId,
+    )
     private val restoringSession = sessionState.initialized
     private val scrollProgress = sessionState.scrollProgress
     private var restoringStoredProgress = scrollProgress.initialized
     private var started = false
     private var destroyed = false
-    private val featureSession = appComposition.createCommentsFeatureSession(
+    private val commentsStore = appComposition.createCommentsStore(
         CommentsFeatureHost(
             scope = coroutineScope,
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
         ),
-    )
-    private val commentsPresenter = featureSession.presenter
-    private val commentsFeature = featureSession.runtime
-    private val screenSession = CommentsScreenSession(
-        coroutineScope,
-        featureSession,
-        ::commentsPlatformPresentation,
     )
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
@@ -106,8 +100,9 @@ class CommentsCoordinator(
     private var integratedWebview = true
     private var topInset = 0
     private val commentsLoaded: Boolean
-        get() = commentsPresenter.state.value.loaded
+        get() = commentsStore.state.value.presenter.loaded
     private var appliedCommentsThemeVersion = -1L
+    private var appliedCommentsSettingsVersion = -1L
     private var backPressedCallback: OnBackPressedCallback? = null
     private var story by sessionState::story
     private var originalStatusBarColor = Color.TRANSPARENT
@@ -121,8 +116,16 @@ class CommentsCoordinator(
     private var composeController: CommentsComposeController? = null
 
     init {
-        coroutineScope.launch { screenSession.effects.collect(::handleCommentsRuntimeEffect) }
-        coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
+        coroutineScope.launch { commentsStore.effects.collect(::handleCommentsRuntimeEffect) }
+        coroutineScope.launch {
+            commentsStore.state.collect { state ->
+                state.settings?.takeIf { it.version != appliedCommentsSettingsVersion }?.let {
+                    appliedCommentsSettingsVersion = it.version
+                    applyPlatformSettingsState(it)
+                }
+                renderCommentsState(state)
+            }
+        }
         webViewHost = CommentsWebViewHost(activity)
         initializeView(savedInstanceState)
     }
@@ -168,7 +171,7 @@ class CommentsCoordinator(
         checkNotNull(host) { "Comments WebView host was not created" }
         topInset = 0
 
-        screenSession.start(
+        commentsStore.start(
             initialStory = destination.toStory(),
             showWebsite = destination.showWebsite,
             scrollToCommentId = destination.scrollToCommentId,
@@ -187,7 +190,7 @@ class CommentsCoordinator(
         updateCommentsStatusBarAppearance()
 
         refreshPresentationCapabilities()
-        val featureSettings = checkNotNull(commentsFeature.settingsState.value)
+        val featureSettings = checkNotNull(commentsStore.state.value.settings)
         val readingPreferences = featureSettings.reading
         integratedWebview = featureSettings.integratedWebView
         val blockAds = readingPreferences.blockAds && !hostRestoration.adBlockDisabled
@@ -213,7 +216,9 @@ class CommentsCoordinator(
                 }
 
                 override fun openExternalLink(url: String) {
-                    externalLinks.open(ExternalLinkRequest(url, preferInApp = false))
+                    navigation.scene.links.openExternal(
+                        ExternalLinkRequest(url, preferInApp = false),
+                    )
                 }
 
                 override fun syncOnBackPressedCallbackEnabledState() {
@@ -539,10 +544,16 @@ class CommentsCoordinator(
             }
 
         }
-        composeController = screenSession.createController(
-            currentStory,
-            showWebsite,
-            platformCallbacks,
+        val storySnapshot = checkNotNull(commentsStore.state.value.story)
+        composeController = CommentsComposeController.create(
+            shouldSmoothScroll = {
+                commentsStore.state.value.settings?.smoothScroll ?: true
+            },
+            story = storySnapshot,
+            showWebsite = showWebsite,
+            accountUser = commentsStore.state.value.accountUser,
+            savedItemState = commentsStore.savedItemState,
+            listener = CommentsFeatureListener(commentsStore, platformCallbacks),
         )
         navigation.attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
@@ -557,9 +568,16 @@ class CommentsCoordinator(
             return
         }
         if (!restoringStoredProgress) {
-            commentsFeature.captureCollapsedComments()
+            commentsStore.captureCollapsedComments()
         }
-        screenSession.refreshPresentation()
+        renderCommentsState(commentsStore.state.value)
+    }
+
+    private fun renderCommentsState(state: CommentsState) {
+        val controller = composeController ?: return
+        CommentsScreenStateFactory.create(state, commentsPlatformPresentation())?.let {
+            controller.updateContent(it)
+        }
     }
 
     private fun commentsPlatformPresentation(): CommentsPlatformPresentation =
@@ -573,7 +591,7 @@ class CommentsCoordinator(
         )
 
     private fun requestComposeSummary() {
-        val beginSummary: (String?) -> Unit = commentsFeature::startSummary
+        val beginSummary: (String?) -> Unit = commentsStore::startSummary
         webViewController?.getLoadedPageText(
             CommentsWebViewController.PageTextCallback(beginSummary),
         ) ?: beginSummary(null)
@@ -613,7 +631,7 @@ class CommentsCoordinator(
         when (effect) {
             is CommentsPlatformEffect.OpenUser -> navigation.showUserDialog(
                 effect.userName,
-                Runnable { commentsFeature.reconcileSettings() },
+                Runnable { commentsStore.reconcileSettings() },
             )
             is CommentsPlatformEffect.OpenEditor -> navigation.openEditor(effect.destination)
             CommentsPlatformEffect.RequestLogin ->
@@ -632,7 +650,7 @@ class CommentsCoordinator(
             CommentsPlatformEffect.Summarize -> requestComposeSummary()
             is CommentsPlatformEffect.OpenStory ->
                 navigation.openStory(effect.destination)
-            is CommentsPlatformEffect.OpenExternalLink -> externalLinks.open(
+            is CommentsPlatformEffect.OpenExternalLink -> navigation.scene.links.openExternal(
                 ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
             )
             CommentsPlatformEffect.ShowSearch -> composeController?.showCommentSearch()
@@ -670,7 +688,7 @@ class CommentsCoordinator(
                 websiteVisible = websiteVisible,
                 webHistoryAvailable = websiteController?.canGoBack() == true,
                 closeWebsiteOnBack =
-                    commentsFeature.settingsState.value?.reading?.closeWebViewOnBack == true,
+                    commentsStore.state.value.settings?.reading?.closeWebViewOnBack == true,
             ),
         )
     }
@@ -736,7 +754,7 @@ class CommentsCoordinator(
         }
         val windowStatusBarColor =
             if (navigation.isAdaptiveTwoPane() ||
-                commentsFeature.settingsState.value?.transparentStatusBar == true
+                commentsStore.state.value.settings?.transparentStatusBar == true
             )
                 Color.TRANSPARENT
             else
@@ -758,7 +776,7 @@ class CommentsCoordinator(
         get() = composeController != null && composeController!!.isSheetExpanded()
 
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
-        if (!isAdded || !commentsFeature.canSwitchStoryView(storyId) || webViewController == null) {
+        if (!isAdded || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {
             return false
         }
         if (showWebsite) {
@@ -832,7 +850,7 @@ class CommentsCoordinator(
     }
 
     private fun refreshPresentationCapabilities() {
-        commentsFeature.updatePresentationCapabilities(
+        commentsStore.updatePresentationCapabilities(
             CommentsPresentationCapabilities(
                 showInvertAction = shouldShowInvertAction(),
                 isTablet = AndroidDisplay.isTablet(resources),
@@ -850,14 +868,14 @@ class CommentsCoordinator(
         if (destroyed || started) return
         started = true
         refreshPresentationCapabilities()
-        screenSession.onResume()
+        commentsStore.onResume()
         syncComposeState()
     }
 
     fun onResume() {
         if (destroyed) return
 
-        screenSession.onResume()
+        commentsStore.onResume()
         syncCommentsStatusBarProtection()
         syncComposeState()
     }
@@ -884,7 +902,7 @@ class CommentsCoordinator(
             else -> null
         }
         return hostRestoration.copy(
-            sorting = commentsFeature.thread.state.value.sorting,
+            sorting = commentsStore.state.value.thread.sorting,
             commentActionId = controller?.getVisibleCommentActionId()
                 ?.takeIf { it != -1 }
                 ?: hostRestoration.commentActionId,
@@ -932,7 +950,7 @@ class CommentsCoordinator(
     }
 
     private fun restoreScrollProgress() {
-        val restoration = commentsFeature.restoreScrollProgress()
+        val restoration = commentsStore.restoreScrollProgress()
         restoringStoredProgress = false
         if (composeController != null && restoration != null) {
             syncComposeState()
@@ -945,7 +963,7 @@ class CommentsCoordinator(
     }
 
     private fun scrollToTargetComment() {
-        when (val target = commentsFeature.consumeCommentTarget()) {
+        when (val target = commentsStore.consumeCommentTarget()) {
             CommentTargetResolution.None -> Unit
             is CommentTargetResolution.Found -> {
                 syncComposeState()
@@ -983,7 +1001,7 @@ class CommentsCoordinator(
             backPressedCallback = null
         }
 
-        screenSession.dispose()
+        commentsStore.close()
         linkPreviewController?.dispose()
         coroutineScope.cancel()
         if (webViewController != null) {
@@ -1057,7 +1075,7 @@ class CommentsCoordinator(
             return
         }
 
-        commentsFeature.loadInitial(restoreScrollFromCache)
+        commentsStore.loadInitial(restoreScrollFromCache)
     }
 
     private fun handleCommentsRuntimeEffect(effect: CommentsRuntimeEffect) {
@@ -1068,7 +1086,7 @@ class CommentsCoordinator(
                 composeController?.showCommentActions(effect.comment)
             is CommentsRuntimeEffect.ThreadReady -> {
                 if (!isCommentsViewActive) return
-                commentsFeature.settingsState.value?.let(::applyPlatformSettingsState)
+                commentsStore.state.value.settings?.let(::applyPlatformSettingsState)
                 if (effect.restoreScroll && restoringStoredProgress &&
                     scrollProgress.storyId == story?.id
                 ) restoreScrollProgress()
@@ -1122,7 +1140,7 @@ class CommentsCoordinator(
         val pendingCommentActionId = hostRestoration.commentActionId
         if (pendingCommentActionId == -1) return
         val controller = composeController ?: return
-        val comment = commentsFeature.comment(pendingCommentActionId) ?: return
+        val comment = commentsStore.comment(pendingCommentActionId) ?: return
         hostRestoration = hostRestoration.copy(commentActionId = -1)
         controller.restoreCommentActions(comment)
         syncOnBackPressedCallbackEnabledState()

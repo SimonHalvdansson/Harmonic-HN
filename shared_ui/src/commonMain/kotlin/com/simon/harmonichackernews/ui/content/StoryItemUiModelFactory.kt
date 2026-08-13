@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.ui.content
 
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 
@@ -43,6 +46,35 @@ fun StoryItemResourcePresentation.withPreviewResource(
 
 /** Pure Story/resource-snapshot to shared row-model mapping used by every platform list. */
 object StoryItemUiModelFactory {
+    fun create(
+        item: StoryListItemSnapshot,
+        position: Int? = null,
+        resources: StoryItemResourcePresentation = StoryItemResourcePresentation(),
+        loadingTitle: String = "Loading…",
+        failedTitle: String = "Tap to retry",
+    ): StoryItemUiModel {
+        val fullDomain = item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
+        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
+        return StoryItemUiModel(
+            index = position?.let { "${it + 1}." }.orEmpty(),
+            title = item.title ?: if (item.loadingFailed) failedTitle else loadingTitle,
+            summary = resources.summary
+                ?: item.presentation.linkSummaryDescription
+                ?: item.presentation.summary.orEmpty(),
+            points = item.score,
+            domain = fullDomain,
+            domainWithoutTopLevel = shortDomain,
+            age = ItemTimeFormatter.formatNow(item.createdAtEpochSeconds),
+            commentCount = item.descendantCount,
+            faviconUrl = resources.faviconUrl,
+            previewImageUrl = resources.previewImageUrl,
+            previewImageLoadFailed = resources.previewImageLoadFailed,
+            faviconTintArgb = resources.faviconTintArgb,
+            previewImageTintArgb = resources.previewImageTintArgb,
+            tintFallbackArgb = resources.tintFallbackArgb,
+        )
+    }
+
     fun create(
         story: Story,
         position: Int? = null,

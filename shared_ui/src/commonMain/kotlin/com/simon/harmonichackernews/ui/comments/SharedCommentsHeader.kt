@@ -76,7 +76,7 @@ fun SharedCommentsHeader(
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
-    // Story is a mutable model. Include the bridge revision whenever taking derived snapshots.
+    // Keep derived header objects keyed to the immutable story revision supplied by the store.
     val story = remember(controller.story, contentVersion) { controller.story }
     val pollOptions = remember(story.pollOptionArrayList, contentVersion) {
         story.pollOptionArrayList?.map { option ->
