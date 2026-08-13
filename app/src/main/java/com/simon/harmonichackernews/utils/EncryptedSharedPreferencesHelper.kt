@@ -86,9 +86,9 @@ object EncryptedSharedPreferencesHelper {
             // Delete the encrypted prefs file
             if (sharedPrefsFile.exists()) {
                 val deleted = sharedPrefsFile.delete()
-                Utils.log("EncryptedSharedPref: Shared pref file deleted=" + deleted + "; path=" + sharedPrefsFile.getAbsolutePath())
+                HarmonicLog.debug("EncryptedSharedPref: Shared pref file deleted=" + deleted + "; path=" + sharedPrefsFile.getAbsolutePath())
             } else {
-                Utils.log("EncryptedSharedPref: Shared pref file non-existent; path=" + sharedPrefsFile.getAbsolutePath())
+                HarmonicLog.debug("EncryptedSharedPref: Shared pref file non-existent; path=" + sharedPrefsFile.getAbsolutePath())
             }
 
             // Delete the master key
@@ -97,7 +97,7 @@ object EncryptedSharedPreferencesHelper {
             keyStore.deleteEntry(masterKeyAlias)
             return true
         } catch (e: Exception) {
-            Utils.log("EncryptedSharedPref: Error occurred while trying to reset shared pref=" + e)
+            HarmonicLog.debug("EncryptedSharedPref: Error occurred while trying to reset shared pref=" + e)
             return false
         }
     }

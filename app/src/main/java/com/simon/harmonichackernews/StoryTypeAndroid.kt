@@ -1,10 +1,6 @@
 package com.simon.harmonichackernews
 
-import android.content.Context
 import android.content.res.Resources
-import com.simon.harmonichackernews.settings.AndroidSettingsResources
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import kotlin.math.min
 
 object StoryTypeAndroid {
 

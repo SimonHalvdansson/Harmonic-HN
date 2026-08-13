@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
@@ -17,7 +17,7 @@ import com.simon.harmonichackernews.settings.CommentsProvider
 fun CommentsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val repository = app.settings
     val presenter = remember(app) { CommentsSettingsPresenter(repository) }
     val settings by repository.updates.collectAsState(initial = repository.snapshot())

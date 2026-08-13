@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.font_entries
@@ -32,7 +32,7 @@ fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val labels = stringArrayResource(Res.array.font_entries)
     val values = stringArrayResource(Res.array.font_values)
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val webPresenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
     val appearancePresenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
     val snapshot = app.settings.snapshot()
@@ -61,7 +61,7 @@ fun FontSelectionDialog(readerMode: Boolean, onDismiss: () -> Unit) {
 @Composable
 fun PreloadWebViewDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
     val reading = presenter.snapshot.reading
     SharedPreloadWebViewDialog(
@@ -77,7 +77,7 @@ fun PreloadWebViewDialog(onDismiss: () -> Unit) {
 @Composable
 fun ArchiveRedirectDomainsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
     SharedStringListEditorDialog(
         title = "Redirect to archive version",
@@ -107,7 +107,7 @@ fun FilterListDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) {
         FiltersTagsSettingsPresenter(app.settings, app.contentFilters, app.userTags)
     }
@@ -135,7 +135,7 @@ fun UserTagDialog(
     onSaved: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) {
         FiltersTagsSettingsPresenter(app.settings, app.contentFilters, app.userTags)
     }

@@ -31,6 +31,11 @@ data class LocalModelTransferStatus(
     val error: String = "",
 )
 
+data class LocalModelManagerState(
+    val selectedModelId: String = LocalModelCatalog.MODEL_GEMINI_NANO,
+    val statuses: Map<String, LocalModelTransferStatus> = emptyMap(),
+)
+
 /** Owns persisted model selection and portable download-state interpretation. */
 class LocalModelStateStore(
     private val models: List<LocalModelDefinition>,

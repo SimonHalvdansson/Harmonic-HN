@@ -58,7 +58,7 @@ sealed interface CommentsAction {
     data class SetShowUpdate(val show: Boolean) : CommentsAction
     data class SetStoryVoteLoading(val loading: Boolean) : CommentsAction
     data class SetStoryFavoriteLoading(val loading: Boolean) : CommentsAction
-    data class RequestCommentActions(val comment: Comment) : CommentsAction
+    data class RequestCommentActions(val comment: PortableCommentItem) : CommentsAction
     data class ToggleBookmark(val itemId: Int) : CommentsAction
     data class ToggleStoryVote(val itemId: Int, val isComment: Boolean) : CommentsAction
     data class ToggleStoryFavorite(val itemId: Int, val isComment: Boolean) : CommentsAction
@@ -85,7 +85,7 @@ sealed interface CommentsAction {
 }
 
 sealed interface CommentsEffect {
-    data class ShowCommentActions(val comment: Comment) : CommentsEffect
+    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsEffect
     data class ThreadApplied(
         val requestId: Int,
         val storyId: Int,

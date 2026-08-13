@@ -30,15 +30,15 @@ import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -63,7 +63,6 @@ import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.Utils
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -76,8 +75,6 @@ private data object SettingsListDestination : NavKey
 private data class SettingsDetailDestination(
     val section: SettingsSection,
 ) : NavKey
-
-private const val SettingsListSavedRoute = "__settings_list__"
 
 private const val ActivityTransitionDurationMillis = 450
 private const val ActivityEnterAlphaDelayMillis = 50
@@ -220,49 +217,24 @@ fun SettingsShell(
     } else {
         0.dp
     }
-    val backStack = rememberSaveable(
-        saver = listSaver(
-            save = { stack ->
-                stack.map { destination ->
-                    when (destination) {
-                        SettingsListDestination -> SettingsListSavedRoute
-                        is SettingsDetailDestination -> destination.section.route
-                        else -> error("Unknown settings destination: $destination")
-                    }
-                }
-            },
-            restore = { savedRoutes ->
-                mutableStateListOf<NavKey>().apply {
-                    savedRoutes.forEach { route ->
-                        if (route == SettingsListSavedRoute) {
-                            add(SettingsListDestination)
-                        } else {
-                            SettingsSection.fromRoute(route)?.let { section ->
-                                add(SettingsDetailDestination(section))
-                            }
-                        }
-                    }
-                    if (isEmpty()) add(SettingsListDestination)
-                    if (isTwoPane && lastOrNull() !is SettingsDetailDestination) {
-                        add(SettingsDetailDestination(SettingsSection.Appearance))
-                    }
-                }
+    val navigation = rememberSaveable(
+        saver = Saver<SettingsNavigationStore, List<String>>(
+            save = { it.savedRoutes() },
+            restore = { routes ->
+                SettingsNavigationStore(twoPane = isTwoPane, restoredRoutes = routes)
             },
         ),
     ) {
-        mutableStateListOf<NavKey>().apply {
+        SettingsNavigationStore(initialSection = initialSection, twoPane = isTwoPane)
+    }
+    val navigationState by navigation.state.collectAsState()
+    val backStack = remember(navigationState.detailStack) {
+        buildList<NavKey> {
             add(SettingsListDestination)
-            val initialDetailSection = initialSection ?: if (isTwoPane) {
-                SettingsSection.Appearance
-            } else {
-                null
-            }
-            initialDetailSection?.let { add(SettingsDetailDestination(it)) }
+            navigationState.detailStack.forEach { add(SettingsDetailDestination(it)) }
         }
     }
-    val selectedSection =
-        (backStack.lastOrNull() as? SettingsDetailDestination)?.section
-            ?: SettingsSection.Appearance
+    val selectedSection = navigationState.selectedSection
     val detailPaneTransition = updateTransition(
         targetState = selectedSection,
         label = "Settings detail pane",
@@ -284,37 +256,20 @@ fun SettingsShell(
         section: SettingsSection,
         preserveCurrentDetail: Boolean = false,
     ) {
-        if ((backStack.lastOrNull() as? SettingsDetailDestination)?.section == section) {
-            return
-        }
-        if (!preserveCurrentDetail) {
-            while (backStack.lastOrNull() is SettingsDetailDestination) {
-                backStack.removeLastOrNull()
-            }
-        }
-        backStack.add(SettingsDetailDestination(section))
+        navigation.navigateTo(section, preserveCurrentDetail)
     }
 
     fun popSettingsBackStack() {
-        if (backStack.size > 1) {
-            backStack.removeLastOrNull()
-        } else {
-            onBackFromSettings()
-        }
+        if (!navigation.navigateBack()) onBackFromSettings()
     }
 
     fun navigateBack() {
-        if (backStack.size <= 1) {
-            onBackFromSettings()
-            return
-        }
         if (isBackAnimationRunning) return
         popSettingsBackStack()
     }
 
     PredictiveBackHandler(
-        enabled = (showDetailNavigation && backStack.size > 1) ||
-            (!showDetailNavigation && backStack.size > 2),
+        enabled = navigationState.canNavigateBackWithinSettings,
     ) { events ->
         if (!showDetailNavigation) {
             try {
@@ -367,9 +322,7 @@ fun SettingsShell(
     }
 
     LaunchedEffect(isTwoPane) {
-        if (isTwoPane && backStack.lastOrNull() !is SettingsDetailDestination) {
-            backStack.add(SettingsDetailDestination(SettingsSection.Appearance))
-        }
+        navigation.updateLayout(isTwoPane)
     }
 
     val settingsEntryProvider = entryProvider<NavKey> {
@@ -463,8 +416,9 @@ fun SettingsShell(
                             ChangelogDialogController.show()
                         },
                         onOpenLicenses = {
-                            backStack.add(
-                                SettingsDetailDestination(SettingsSection.Licenses),
+                            navigation.navigateTo(
+                                SettingsSection.Licenses,
+                                preserveCurrentDetail = true,
                             )
                         },
                         onOpenPrivacy = {

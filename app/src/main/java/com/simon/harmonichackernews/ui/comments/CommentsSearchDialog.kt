@@ -5,19 +5,19 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.presentation.PortableCommentItem
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 
 @Composable
 fun CommentsSearchDialog(
     searchTerm: String,
-    visibleComments: List<Comment>,
+    visibleComments: List<PortableCommentItem>,
     settings: CommentDisplaySettings,
     storyAuthor: String?,
     accountUser: String?,
     onSearchTermChanged: (String) -> Unit,
     onDismiss: () -> Unit,
-    onCommentSelected: (Comment) -> Unit,
+    onCommentSelected: (PortableCommentItem) -> Unit,
 ) {
     val context = LocalContext.current
     SharedCommentsSearchDialog(
@@ -30,6 +30,6 @@ fun CommentsSearchDialog(
         onSearchTermChanged = onSearchTermChanged,
         onDismiss = onDismiss,
         onCommentSelected = onCommentSelected,
-        onOpenLink = { url -> Utils.openLinkMaybeHN(context, url) },
+        onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
     )
 }

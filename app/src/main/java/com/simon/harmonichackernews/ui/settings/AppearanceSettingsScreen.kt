@@ -11,11 +11,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ThemePreferences
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidAppearanceState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,7 +30,7 @@ fun AppearanceSettingsScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
     var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val repository = app.settings
     val presenter = remember(app) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
@@ -90,7 +90,7 @@ fun AppearanceSettingsScreen(
 }
 
 private fun formatNighttimeRange(context: Context): String {
-    val hours = Utils.getNighttimeHours(context)
+    val hours = AndroidAppearanceState.nighttimeSchedule(context)
     if (DateFormat.is24HourFormat(context)) {
         return String.format(
             Locale.getDefault(),

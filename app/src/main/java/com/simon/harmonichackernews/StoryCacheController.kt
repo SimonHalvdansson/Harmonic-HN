@@ -8,7 +8,7 @@ import com.simon.harmonichackernews.cache.StoryCacheState
 import com.simon.harmonichackernews.cache.StoryCacheStatus
 import com.simon.harmonichackernews.cache.StoryCacheUseCase
 import com.simon.harmonichackernews.utils.ArticleSnapshotDownloader
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidStoryCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,7 +79,7 @@ internal class StoryCacheController(private val callbacks: Callbacks) {
         private val articleDownloader = ArticleSnapshotDownloader(appContext)
 
         override suspend fun cacheStory(id: Int, payload: String) {
-            withContext(Dispatchers.IO) { Utils.cacheStory(appContext, id, payload) }
+            withContext(Dispatchers.IO) { AndroidStoryCache.store(appContext, id, payload) }
         }
 
         override suspend fun cacheArticle(id: Int, url: String): Boolean =

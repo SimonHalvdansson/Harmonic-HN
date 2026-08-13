@@ -4,13 +4,13 @@ import android.content.Context
 import com.simon.harmonichackernews.summary.local.GgufInference
 import com.simon.harmonichackernews.summary.local.LocalInferenceEngine
 import com.simon.harmonichackernews.summary.local.LocalModelInference
-import com.simon.harmonichackernews.summary.local.LocalModelManager
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 
 /** llama.cpp implementation loaded after the local-AI runtime feature is installed. */
 class LlamaInferenceEngine : LocalInferenceEngine {
   override fun summarize(
     context: Context,
-    model: LocalModelManager.ModelInfo,
+    model: LocalModelDefinition,
     modelPath: String,
     contextTokens: Int,
     systemInstruction: String,

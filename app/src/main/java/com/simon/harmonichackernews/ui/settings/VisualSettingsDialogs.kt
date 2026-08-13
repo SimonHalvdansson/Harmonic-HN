@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource as androidPainterResource
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.FaviconPreferences
@@ -32,7 +32,7 @@ fun FaviconProviderDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { StoriesSettingsPresenter(app.settings) }
     val selected = presenter.snapshot.story.faviconProvider
 
@@ -61,7 +61,7 @@ fun ThreadDepthIndicatorsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { CommentsSettingsPresenter(app.settings) }
     var mode by remember {
         mutableStateOf(

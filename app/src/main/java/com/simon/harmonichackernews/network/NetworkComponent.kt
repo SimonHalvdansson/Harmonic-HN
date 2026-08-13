@@ -11,14 +11,9 @@ import io.ktor.client.plugins.cache.storage.FileStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import java.io.File
 import kotlin.concurrent.Volatile
 
@@ -61,94 +56,9 @@ object NetworkComponent {
     @Volatile
     private var responseCache: CacheStorage? = null
 
-    val httpClientInstance: KtorHttpClient by lazy {
-        graph.httpClient
-    }
-
-    val hackerNewsApi: HackerNewsApi by lazy { graph.hackerNewsApi }
-
-    val hackerNewsRepository: HackerNewsRepository by lazy {
-        graph.hackerNewsRepository
-    }
-
-    val pollOptionsRepository: PollOptionsRepository by lazy {
-        graph.pollOptionsRepository
-    }
-
-    val replyScanner: ReplyScanner by lazy {
-        graph.replyScanner
-    }
-
-    val algoliaRepository: AlgoliaRepository by lazy {
-        graph.algoliaRepository
-    }
-
-    val linkPreviewRepository: LinkPreviewRepository by lazy {
-        graph.linkPreviewRepository
-    }
-
-    val linkSummaryRepository: LinkSummaryRepository by lazy {
-        graph.linkSummaryRepository
-    }
-
-    val previewContentCoordinator: PreviewContentCoordinator by lazy {
-        graph.previewContentCoordinator
-    }
-
-    val cloudSummaryRepository: CloudSummaryRepository by lazy {
-        graph.cloudSummaryRepository
-    }
-
-    val summaryUseCase: SummaryUseCase by lazy {
-        graph.summaryUseCase
-    }
-
-    val aiModelCatalogRepository: AiModelCatalogRepository by lazy {
-        graph.aiModelCatalogRepository
-    }
-
-    val openRouterProviderIconRepository: OpenRouterProviderIconRepository by lazy {
-        graph.openRouterProviderIconRepository
-    }
-
-    val hackerNewsWebRepository: HackerNewsWebRepository by lazy {
-        graph.hackerNewsWebRepository
-    }
-
-    val hackerNewsSession: HackerNewsAuthenticatedSession by lazy { graph.hackerNewsSession }
-
-    /** Callback bridge for Android callers while shared repositories remain suspend-first. */
-    fun <T> launchCallbackRequest(
-        request: suspend () -> T,
-        onSuccess: (T) -> Unit,
-        onFailure: (Throwable) -> Unit,
-    ): Job = networkScope.launch {
-        try {
-            val result = request()
-            withContext(Dispatchers.Main.immediate) { onSuccess(result) }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            withContext(Dispatchers.Main.immediate) { onFailure(error) }
-        }
-    }
-
     private var requestQueueInstance: RequestQueue? = null
 
-    val httpClientInstanceWithCookies: KtorHttpClient
-        get() = graph.httpClientWithCookies
-
-    val authenticatedHackerNewsWebRepository: HackerNewsWebRepository
-        get() = graph.authenticatedHackerNewsWebRepository
-
-    val hackerNewsActionRepository: HackerNewsActionRepository
-        get() = graph.hackerNewsActionRepository
-
-    fun resetHttpClientCookieInstance() {
-        authenticatedClientProvider.reset()
-    }
-
-    fun getRequestQueueInstance(context: Context): RequestQueue {
+    private fun getRequestQueueInstance(context: Context): RequestQueue {
         check(
             !(BuildConfig.DEBUG && !Looper.getMainLooper().isCurrentThread())
         ) { "getRequestQueueInstance currently doesn't support multithreaded access" }

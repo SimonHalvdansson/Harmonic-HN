@@ -41,6 +41,7 @@ data class OptionalPlatformCapabilities(
 
 /** Minimum dependencies for the long-lived shared application graph. */
 data class AppPlatformDependencies(
+    val credentials: CredentialStore,
     val accounts: ObservableHackerNewsAccountRepository,
     val capabilities: OptionalPlatformCapabilities = OptionalPlatformCapabilities(),
 )
@@ -65,51 +66,3 @@ data class CommentsPlatformDependencies(
 data class SubmissionsPlatformDependencies(
     val externalLinks: ExternalLinkOpener,
 )
-
-/** Compatibility conversion for hosts still constructing the legacy all-services bag. */
-fun PlatformServices.toAppPlatformDependencies(): AppPlatformDependencies =
-    AppPlatformDependencies(
-        accounts = (credentials as? ObservableHackerNewsAccountRepository)
-            ?: CredentialBackedHackerNewsAccountRepository(credentials),
-        capabilities = OptionalPlatformCapabilities(
-            bookmarks = PlatformCapability.Available(
-                (bookmarks as? ObservableBookmarkStore)
-                    ?: LegacyObservableBookmarkStoreAdapter(bookmarks),
-            ),
-            history = PlatformCapability.Available(
-                (history as? ObservableHistoryStore)
-                    ?: LegacyObservableHistoryStoreAdapter(history),
-            ),
-            cache = PlatformCapability.Available(cache),
-            files = PlatformCapability.Available(files),
-            externalLinks = PlatformCapability.Available(externalLinks),
-            sharing = PlatformCapability.Available(sharing),
-            clipboard = PlatformCapability.Available(clipboard),
-            connectivity = PlatformCapability.Available(connectivity),
-            notifications = PlatformCapability.Available(notifications),
-            articles = PlatformCapability.Available(articles),
-            localSummary = PlatformCapability.Available(localSummary),
-        ),
-    )
-
-fun PlatformServices.toStoriesDependencies(): StoriesPlatformDependencies =
-    StoriesPlatformDependencies(
-        accounts = (credentials as? ObservableHackerNewsAccountRepository)
-            ?: CredentialBackedHackerNewsAccountRepository(credentials),
-        history = (history as? ObservableHistoryStore)
-            ?: LegacyObservableHistoryStoreAdapter(history),
-        connectivity = connectivity,
-        externalLinks = externalLinks,
-    )
-
-fun PlatformServices.toCommentsDependencies(): CommentsPlatformDependencies =
-    CommentsPlatformDependencies(
-        accounts = (credentials as? ObservableHackerNewsAccountRepository)
-            ?: CredentialBackedHackerNewsAccountRepository(credentials),
-        externalLinks = externalLinks,
-        sharing = sharing,
-        clipboard = clipboard,
-    )
-
-fun PlatformServices.toSubmissionsDependencies(): SubmissionsPlatformDependencies =
-    SubmissionsPlatformDependencies(externalLinks)

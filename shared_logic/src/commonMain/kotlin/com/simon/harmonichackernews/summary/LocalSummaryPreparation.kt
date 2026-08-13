@@ -9,6 +9,7 @@ data class LocalSummaryInput(
 )
 
 object LocalSummaryPreparation {
+    const val MINIMUM_ARTICLE_CHARS = 400
     const val SYSTEM_INSTRUCTION =
         "Summarize the article as a concise, information-dense bullet-point list. " +
             "Focus on the key takeaways and noteworthy facts. Keep the entire summary under 500 " +
@@ -35,6 +36,12 @@ object LocalSummaryPreparation {
             contextTokens = contextTokens,
         )
     }
+
+    /** Normalization used by managed on-device summarizers whose token budget is host-controlled. */
+    fun prepareManagedText(text: String, maximumWords: Int = 3_000): String =
+        truncateWords(text, maximumWords)
+
+    fun isLongEnough(text: String): Boolean = text.length >= MINIMUM_ARTICLE_CHARS
 
     private fun truncateWords(text: String, maximumWords: Int): String {
         val trimmed = text.trim()

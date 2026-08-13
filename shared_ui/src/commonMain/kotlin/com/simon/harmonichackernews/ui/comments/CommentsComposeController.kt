@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
@@ -19,8 +18,8 @@ import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 data class CommentsScreenState(
     val story: Story,
     val accountUser: String? = null,
-    val comments: List<Comment> = emptyList(),
-    val visibleComments: List<VisibleComment> = emptyList(),
+    val comments: List<PortableCommentItem> = emptyList(),
+    val visibleComments: List<PortableVisibleComment> = emptyList(),
     val displaySettings: CommentDisplaySettings? = null,
     val commentsLoaded: Boolean = false,
     val commentsRefreshInProgress: Boolean = false,
@@ -48,7 +47,7 @@ data class CommentsScreenState(
     val commentVoteLoadingAction: CommentMenuAction? = null,
     val downvotedCommentIds: Set<Int> = emptySet(),
     val searchQuery: String = "",
-    val searchResults: List<Comment> = emptyList(),
+    val searchResults: List<PortableCommentItem> = emptyList(),
 )
 
 class CommentsComposeController private constructor(
@@ -66,8 +65,8 @@ class CommentsComposeController private constructor(
 
     val story: Story get() = screenState.story
     val accountUser: String? get() = screenState.accountUser
-    val comments: List<Comment> get() = screenState.comments
-    val visibleComments: List<VisibleComment> get() = screenState.visibleComments
+    val comments: List<PortableCommentItem> get() = screenState.comments
+    val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
     val displaySettings: CommentDisplaySettings? get() = screenState.displaySettings
     val commentsLoaded: Boolean get() = screenState.commentsLoaded
     val commentsRefreshInProgress: Boolean get() = screenState.commentsRefreshInProgress
@@ -89,7 +88,7 @@ class CommentsComposeController private constructor(
     val headerPreviewResource: StoryPreviewResourceState?
         get() = screenState.headerPreviewResource
     val searchQuery: String get() = screenState.searchQuery
-    val searchResults: List<Comment> get() = screenState.searchResults
+    val searchResults: List<PortableCommentItem> get() = screenState.searchResults
     val contentInsetLeftPx: Int get() = screenState.contentInsetLeftPx
     val contentInsetRightPx: Int get() = screenState.contentInsetRightPx
     var statusBarHeaderColor by mutableStateOf<Color?>(null)
@@ -327,7 +326,7 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
-    fun showCommentActions(comment: Comment) {
+    fun showCommentActions(comment: PortableCommentItem) {
         // Long presses can arrive from multiple comments before Compose has a chance to render
         // the overlay. Keep the overlay single-owner so a rejected second request cannot leave
         // its source comment suppressed without a corresponding dialog.
@@ -337,7 +336,7 @@ class CommentsComposeController private constructor(
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
-    fun restoreCommentActions(comment: Comment) {
+    fun restoreCommentActions(comment: PortableCommentItem) {
         if (!interactionStore.showCommentActions(comment, stopScroll = false)) return
         commentActionSourceBounds = null
         syncInteractionState()
@@ -412,7 +411,7 @@ class CommentsComposeController private constructor(
         listener.onSearchQueryChanged("")
     }
 
-    fun selectSearchResult(comment: Comment) {
+    fun selectSearchResult(comment: PortableCommentItem) {
         interactionStore.dismissCommentSearch()
         syncInteractionState()
         listener.onSearchQueryChanged("")
@@ -589,7 +588,7 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
-    fun updateScrollPosition(state: LazyListState, visibleComments: List<Comment>) {
+    fun updateScrollPosition(state: LazyListState, visibleComments: List<PortableCommentItem>) {
         val commentIndex = state.firstVisibleItemIndex - 1
         firstVisibleCommentId = visibleComments.getOrNull(commentIndex)?.id ?: 0
         firstVisibleCommentOffset = state.firstVisibleItemScrollOffset
@@ -597,9 +596,9 @@ class CommentsComposeController private constructor(
     }
 
     interface Listener {
-        fun onToggleComment(comment: Comment, position: Int)
+        fun onToggleComment(comment: PortableCommentItem, position: Int)
         fun onScrollPositionChanged(commentId: Int, offset: Int) {}
-        fun onCommentAction(comment: Comment, action: CommentMenuAction)
+        fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction)
         fun onCommentActionOverlayVisibilityChanged(showing: Boolean)
         fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean)
         fun onHeaderClick()
@@ -613,7 +612,7 @@ class CommentsComposeController private constructor(
         fun onHeaderAction(action: CommentsHeaderAction)
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)
-        fun onSearchResultSelected(comment: Comment)
+        fun onSearchResultSelected(comment: PortableCommentItem)
         fun onSearchQueryChanged(query: String)
         fun onSortComments(sortType: String)
         fun onSheetAction(action: CommentsSheetAction)
@@ -646,7 +645,7 @@ class CommentsComposeController private constructor(
 }
 
 data class CommentActionOverlayState(
-    val comment: Comment,
+    val comment: PortableCommentItem,
     val sourceBounds: androidx.compose.ui.geometry.Rect?,
 )
 

@@ -45,20 +45,18 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.CommentTextPolicy
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 import java.util.Date
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -139,11 +137,10 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
 @Composable
 internal fun CommentsScreen(controller: CommentsComposeController) {
     val context = LocalContext.current
+    val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
-    val commentPreferences = AndroidUserSettings.get(context).comments
-    val userTagsRepository = remember(context) {
-        UserTagsRepository(AndroidKeyValueStore.defaults(context))
-    }
+    val commentPreferences = dependencies.userSettings.comments
+    val userTagsRepository = dependencies.userTags
     val userTags = remember(controller.contentVersion) { userTagsRepository.tags() }
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     SharedCommentsScreen(
@@ -153,7 +150,7 @@ internal fun CommentsScreen(controller: CommentsComposeController) {
         showScrollbar = commentPreferences.showScrollbar,
         smoothScroll = commentPreferences.smoothScroll,
         userTags = userTags,
-        onOpenLink = { url -> Utils.openLinkMaybeHN(context, url) },
+        onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
         headerContent = {
             settings?.let {
                 CommentsHeader(
@@ -190,10 +187,11 @@ private fun CommentsHeader(
     contentVersion: Int,
 ) {
     val context = LocalContext.current
+    val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
     val storyPosterTag = remember(story.by, contentVersion) {
-        UserTagsRepository(AndroidKeyValueStore.defaults(context)).tagFor(story.by)
+        dependencies.userTags.tagFor(story.by)
     }
     val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
     val paletteTintMode = remember(context, settings.paletteTintMode) {
@@ -205,7 +203,7 @@ private fun CommentsHeader(
     }
     val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
     val resourceTint = previewResource?.previewTint
-    val tintStore = remember(context) { AndroidAppComposition.get(context).storyResourceTints }
+    val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
     val persistedPreviewTint = previewImageUrl?.let { sourceUrl ->
         tintStore.read(
             story.id,
@@ -257,8 +255,8 @@ private fun CommentsHeader(
     val previewPlatform = remember(context) {
         CommentsPreviewPlatform(
             textStyle = legacyTextStyle,
-            openLink = { url -> Utils.openLinkMaybeHN(context, url) },
-            downloadPdf = { url -> Utils.downloadPDF(context, url) },
+            openLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
+            downloadPdf = { url -> AndroidLinkNavigation.openPdf(context, url) },
             openCustomTab = { url -> AndroidExternalLinkLauncher.openCustomTab(context, url) },
             plainText = { html -> Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString() },
             annotatedHtml = ::htmlToAnnotated,
@@ -279,7 +277,7 @@ private fun CommentsHeader(
         initialTint = initialTint,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),
         actionHorizontalPadding = dimensionResource(R.dimen.comments_header_action_padding),
-        bookmarksEnabled = AndroidUserSettings.get(context).general.bookmarksEnabled,
+        bookmarksEnabled = dependencies.userSettings.general.bookmarksEnabled,
         lastRefreshedText = lastRefreshedText,
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
@@ -342,40 +340,3 @@ private fun htmlToAnnotated(
 private val legacyTextStyle = TextStyle(
     platformStyle = PlatformTextStyle(includeFontPadding = true),
 )
-
-@Preview(name = "Phone", device = Devices.PHONE, showBackground = true)
-@Preview(name = "Foldable", device = Devices.FOLDABLE, showBackground = true)
-@Preview(name = "Tablet", device = Devices.TABLET, showBackground = true)
-@Composable
-private fun CommentsHeaderPreview() {
-    val story = remember {
-        Story().apply {
-            id = 1
-            loaded = true
-            isLink = true
-            title = "Nvidia RTX Spark"
-            url = "https://nvidia.com"
-            by = "shenli3514"
-            score = 428
-            descendants = 417
-            time = (System.currentTimeMillis() / 1000L).toInt() - 3600
-            text = "A small preview of the story text with <a href=\"https://example.com\">a link</a>."
-        }
-    }
-    val context = LocalContext.current
-    HarmonicTheme {
-        Column(Modifier.background(HarmonicTheme.colors.background)) {
-            HeaderMeta(
-                story = story,
-                settings = CommentDisplaySettings.from(
-                    AndroidUserSettings(context).comments,
-                    true,
-                    false,
-                    true,
-                    false,
-                ),
-                textStyle = legacyTextStyle,
-            )
-        }
-    }
-}

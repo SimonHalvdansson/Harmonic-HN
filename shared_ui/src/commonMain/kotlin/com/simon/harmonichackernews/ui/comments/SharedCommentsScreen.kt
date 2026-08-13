@@ -57,7 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
-import com.simon.harmonichackernews.presentation.VisibleComment
+import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
@@ -530,7 +530,7 @@ fun EmptyCommentsScreen() {
 
 private fun findNavigationTarget(
     state: LazyListState,
-    comments: List<VisibleComment>,
+    comments: List<PortableVisibleComment>,
     forward: Boolean,
     topLevelOnly: Boolean,
     topOffsetPx: Int,

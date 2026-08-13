@@ -12,7 +12,6 @@ import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
-import com.simon.harmonichackernews.platform.AndroidStoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
@@ -20,21 +19,22 @@ import com.simon.harmonichackernews.ui.content.StoryItemResourcePresentation
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.StoryItemUiModelFactory
 import com.simon.harmonichackernews.ui.content.withPreviewResource
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 /** Android cache and link adapters around the platform-neutral submissions screen. */
 @Composable
 internal fun SubmissionsScreen(controller: SubmissionsComposeController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val previewResources = remember(context) {
+    val appComposition = LocalHarmonicUiDependencies.current
+    val previewResources = remember(scope, appComposition) {
         StoryListResourceRuntime(
             scope = scope,
-            service = AndroidStoryPreviewResourceService { context },
+            service = appComposition.previewResources,
             settings = controller.displaySettings,
-            tintStore = AndroidAppComposition.get(context).storyResourceTints,
+            tintStore = appComposition.storyResourceTints,
         )
     }
     SideEffect { previewResources.updateSettings(controller.displaySettings) }
@@ -53,7 +53,7 @@ internal fun SubmissionsScreen(controller: SubmissionsComposeController) {
                 previewResources = previewResources,
             )
         },
-        onOpenLink = { Utils.openLinkMaybeHN(context, it) },
+        onOpenLink = { AndroidLinkNavigation.openMaybeHackerNews(context, it) },
     )
 }
 

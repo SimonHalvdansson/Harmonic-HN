@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.network.NitterLinkPreviewPreferences
 import com.simon.harmonichackernews.network.NitterLinkPreviewRuntime
 import com.simon.harmonichackernews.network.NitterLinkPreviewState
 import com.simon.harmonichackernews.network.WebPageExtractor
-import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.ReadingPreferences
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +27,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class LinkPreviewController(
     private val story: Story?,
     useCase: LinkPreviewUseCase,
+    private val readingPreferences: ReadingPreferences,
     private val callbacks: Callbacks,
 ) {
     fun interface Callbacks {
@@ -54,15 +55,14 @@ class LinkPreviewController(
             return
         }
 
-        val preferences = AndroidUserSettings.get(context).reading
         previewRuntime.load(
             url,
             LinkPreviewPreferences(
-                arxiv = preferences.previewArxiv,
-                github = preferences.previewGithub,
-                gitLab = preferences.previewGitlab,
-                stackExchange = preferences.previewStackExchange,
-                wikipedia = preferences.previewWikipedia,
+                arxiv = readingPreferences.previewArxiv,
+                github = readingPreferences.previewGithub,
+                gitLab = readingPreferences.previewGitlab,
+                stackExchange = readingPreferences.previewStackExchange,
+                wikipedia = readingPreferences.previewWikipedia,
             ),
             alreadyLoaded = currentStory.hasLoadedLinkPreview(),
         )
@@ -126,7 +126,7 @@ class LinkPreviewController(
         if (context == null) return false
         return nitterPreviewRuntime.shouldInitializeWebPage(
             story?.url,
-            nitterPreferences(context),
+            nitterPreferences(),
         )
     }
 
@@ -137,7 +137,7 @@ class LinkPreviewController(
         }
         return nitterPreviewRuntime.prepareLoad(
             requestedUrl = url,
-            preferences = nitterPreferences(context),
+            preferences = nitterPreferences(),
             alreadyLoaded = story?.nitterInfo != null,
             extractor = AndroidNitterWebPageExtractor(webView, context),
         )
@@ -147,7 +147,7 @@ class LinkPreviewController(
         if (context == null) return
         nitterPreviewRuntime.onPageFinished(
             loadedUrl = url,
-            preferences = nitterPreferences(context),
+            preferences = nitterPreferences(),
             alreadyLoaded = story?.nitterInfo != null,
             extractor = AndroidNitterWebPageExtractor(view, context),
         )
@@ -161,11 +161,10 @@ class LinkPreviewController(
         nitterPreviewRuntime.cancel()
     }
 
-    private fun nitterPreferences(context: Context): NitterLinkPreviewPreferences {
-        val reading = AndroidUserSettings.get(context).reading
+    private fun nitterPreferences(): NitterLinkPreviewPreferences {
         return NitterLinkPreviewPreferences(
-            previewEnabled = reading.previewX,
-            redirectEnabled = reading.redirectNitter,
+            previewEnabled = readingPreferences.previewX,
+            redirectEnabled = readingPreferences.redirectNitter,
         )
     }
 

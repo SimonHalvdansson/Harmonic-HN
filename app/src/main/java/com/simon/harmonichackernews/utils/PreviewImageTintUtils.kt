@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Color
 import com.google.android.material.color.MaterialColors
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader.clearCachedPreviewImageTintColors
 
 /** Android cache/theme adapter around the shared palette extraction and tint-state policy. */
 object PreviewImageTintUtils {
@@ -17,8 +16,4 @@ object PreviewImageTintUtils {
             Color.TRANSPARENT,
         ),
     )
-
-    fun clearTintColorCaches(context: Context?) {
-        clearCachedPreviewImageTintColors(context)
-    }
 }

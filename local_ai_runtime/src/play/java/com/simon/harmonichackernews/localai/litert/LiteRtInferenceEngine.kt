@@ -12,7 +12,7 @@ import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.simon.harmonichackernews.summary.local.LocalInferenceEngine
 import com.simon.harmonichackernews.summary.local.LocalModelInference
-import com.simon.harmonichackernews.summary.local.LocalModelManager
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReference
 class LiteRtInferenceEngine : LocalInferenceEngine {
   override fun summarize(
     context: Context,
-    model: LocalModelManager.ModelInfo,
+    model: LocalModelDefinition,
     modelPath: String,
     contextTokens: Int,
     systemInstruction: String,

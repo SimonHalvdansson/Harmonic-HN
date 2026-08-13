@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import androidx.compose.runtime.remember
 
@@ -15,7 +15,7 @@ import androidx.compose.runtime.remember
 fun WebLinksSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val repository = app.settings
     val presenter = remember(app) { WebLinksSettingsPresenter(repository) }
     val appSettings by repository.updates.collectAsState(initial = repository.snapshot())

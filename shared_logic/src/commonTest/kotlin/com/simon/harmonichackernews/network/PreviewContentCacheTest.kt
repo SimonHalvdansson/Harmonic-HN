@@ -45,33 +45,6 @@ class PreviewContentCacheTest {
         assertTrue(store.contains(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "hash:https://example.com/article"))
     }
 
-    @Test
-    fun tintMemoryAndPersistentLruArePlatformNeutral() {
-        val store = TestKeyValueStore(
-            mapOf(
-                PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY to "legacy-tint-key",
-                "legacy-tint-key" to 123,
-            ),
-        )
-        val cache = cache()
-
-        cache.saveTintColor(
-            store = store,
-            storyId = 42,
-            imageUrl = "https://example.com/image.png",
-            baseColor = 10,
-            tintColor = 20,
-        )
-
-        assertFalse(store.contains("legacy-tint-key"))
-        assertEquals(1, cache.tintColorCount(store))
-        assertEquals(20, cache.loadTintColor(null, 42, "https://example.com/image.png", 10))
-        assertEquals(
-            20,
-            cache().loadTintColor(store, 42, "https://example.com/image.png", 10),
-        )
-    }
-
     private fun cache(maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES) =
         PreviewContentCache(
             stableHash = { "hash:$it" },

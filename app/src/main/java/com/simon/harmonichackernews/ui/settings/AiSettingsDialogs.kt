@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,15 +24,14 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.NetworkComponent
 import com.simon.harmonichackernews.network.OpenRouterProviderIcon
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
-import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
-import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.launch
 
 @Composable
 fun AiSummaryTextDialog(
@@ -49,7 +49,8 @@ fun AiSummaryTextDialog(
     onSaved: () -> Unit,
 ) {
     val context = LocalContext.current
-    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
+    val repository = appComposition.aiSummarySettings
     val initialValue = remember(setting, defaultValue) {
         repository.text(setting)
     }
@@ -79,7 +80,9 @@ fun AiSummaryTextDialog(
 @Composable
 fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
+    val repository = appComposition.aiSummarySettings
+    val scope = rememberCoroutineScope()
     val initialUrl = repository.snapshot().baseUrl
     SharedAiSummaryBaseUrlDialog(
         initialUrl = initialUrl,
@@ -89,7 +92,9 @@ fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
         onSave = { savedUrl ->
             val update = repository.setBaseUrl(savedUrl)
             if (update.needsDefaultModel) {
-                update.provider?.let { AndroidAiModelDefaults.ensureProviderDefault(context, it) }
+                update.provider?.let { provider ->
+                    scope.launch { appComposition.aiModelDefaults.ensureProviderDefault(provider) }
+                }
             }
         },
         onDismiss = onDismiss,
@@ -99,8 +104,8 @@ fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
 @Composable
 fun AiModelSelectorDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val appComposition = remember(context) { AndroidAppComposition.get(context) }
-    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
+    val repository = appComposition.aiSummarySettings
     val baseUrl = repository.snapshot().baseUrl
     val provider = AiSummaryProviders.getProviderForBaseUrl(baseUrl)
         ?: AiSummaryProviders.defaultProvider
@@ -118,7 +123,7 @@ fun AiModelSelectorDialog(onDismiss: () -> Unit) {
 @Composable
 private fun AiModelProviderIcon(providerSlug: String) {
     val context = LocalContext.current
-    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
     var iconData by remember(providerSlug) { mutableStateOf<Any?>(null) }
 
     LaunchedEffect(providerSlug, appComposition) {

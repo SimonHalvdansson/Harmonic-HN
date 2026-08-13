@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import org.jetbrains.compose.resources.painterResource
@@ -35,12 +35,12 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun SharedCommentSearchScreen(
     searchTerm: String,
-    visibleComments: List<Comment>,
+    visibleComments: List<PortableCommentItem>,
     mutedColor: Color,
     fontFamily: FontFamily,
     onSearchTermChanged: (String) -> Unit,
     requestFocus: Boolean,
-    commentContent: @Composable (Comment) -> Unit,
+    commentContent: @Composable (PortableCommentItem) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -83,7 +83,7 @@ fun SharedCommentSearchScreen(
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
-            items(visibleComments, key = Comment::id) { comment -> commentContent(comment) }
+            items(visibleComments, key = PortableCommentItem::id) { comment -> commentContent(comment) }
         }
     }
 }

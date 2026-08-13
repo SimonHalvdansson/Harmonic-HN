@@ -30,19 +30,20 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader
 import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.link_summary_collapse_image
 import com.simon.harmonichackernews.resources.link_summary_expand_image
-import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HackerNewsLinks
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidDisplay
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
+import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import org.jetbrains.compose.resources.stringResource
 
 private const val PdfContentTypeError = "This link contains application/pdf, not a web page"
@@ -52,7 +53,7 @@ internal fun CommentLinkPreviewOverlay(controller: CommentsComposeController) {
     val context = LocalContext.current
     SharedCommentLinkPreviewOverlay(
         controller = controller,
-        tablet = controller.displaySettings?.isTablet == true || Utils.isTablet(context.resources),
+        tablet = controller.displaySettings?.isTablet == true || AndroidDisplay.isTablet(context.resources),
         referenceContent = { state -> ReferencePreviewCard(controller, state) },
         imageContent = ::ImageOnlyPreviewCard,
     )
@@ -64,18 +65,11 @@ private fun ReferencePreviewCard(
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val context = LocalContext.current
-    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
     var attempt by remember(state) { mutableIntStateOf(0) }
-    val initialCached = remember(state.originalUrl) {
-        StoryPreviewImageLoader.getCachedLinkSummary(context, state.originalUrl)?.takeIf { cached ->
-            HackerNewsLinks.parseItemLink(state.originalUrl) == null ||
-                cached.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
-        }
-    }
     var summary by remember(state) {
         mutableStateOf(
             when {
-                initialCached != null -> ReferenceSummaryUiState(result = initialCached)
                 !state.resolvedTitle.isNullOrBlank() -> ReferenceSummaryUiState(
                     loading = true,
                     showFallback = true,
@@ -86,10 +80,19 @@ private fun ReferencePreviewCard(
     }
 
     LaunchedEffect(state, attempt) {
-        if (attempt == 0 && initialCached != null) {
-            initialCached.finalUrl.takeIf(String::isNotBlank)?.let {
+        val cached = if (attempt == 0) {
+            appComposition.previewResources.cachedLinkSummary(state.originalUrl)?.takeIf {
+                HackerNewsLinks.parseItemLink(state.originalUrl) == null ||
+                    it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
+            }
+        } else {
+            null
+        }
+        if (cached != null) {
+            cached.finalUrl.takeIf(String::isNotBlank)?.let {
                 controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
             }
+            summary = ReferenceSummaryUiState(result = cached)
         } else {
             if (attempt > 0) summary = summary.copy(retrying = true)
             try {
@@ -97,7 +100,7 @@ private fun ReferencePreviewCard(
                     state.originalUrl,
                     state.fallbackTitle,
                 )
-                StoryPreviewImageLoader.saveCachedLinkSummary(context, state.originalUrl, result)
+                appComposition.previewResources.saveLinkSummary(state.originalUrl, result)
                 controller.updateLinkPreviewVisibleUrl(state.originalUrl, result.finalUrl)
                 summary = ReferenceSummaryUiState(result = result)
             } catch (error: Throwable) {
@@ -114,7 +117,7 @@ private fun ReferencePreviewCard(
     }
 
     val currentUrl = controller.linkPreviewVisibleUrl ?: state.originalUrl
-    val userSettings = AndroidUserSettings.get(context)
+    val userSettings = appComposition.userSettings
     val preferredFont = controller.displaySettings?.font ?: userSettings.story.font
     val commentTextSize = controller.displaySettings?.preferredTextSize
         ?: userSettings.comments.textSize
@@ -123,7 +126,7 @@ private fun ReferencePreviewCard(
     val favicon = remember(currentUrl, faviconProvider) {
         runCatching { FaviconUrlBuilder.faviconUrl(currentUrl, faviconProvider) }.getOrNull()
     }
-    val offline = summary.error != null && !Utils.isNetworkAvailable(context)
+    val offline = summary.error != null && !AndroidNetworkStatus.isOnline(context)
     SharedReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
@@ -144,9 +147,9 @@ private fun ReferencePreviewCard(
                 modifier = modifier,
             )
         },
-        onOpen = { Utils.openLinkMaybeHN(context, currentUrl) },
+        onOpen = { AndroidLinkNavigation.openMaybeHackerNews(context, currentUrl) },
         onRetry = {
-            if (Utils.isNetworkAvailable(context) && !summary.retrying) attempt++
+            if (AndroidNetworkStatus.isOnline(context) && !summary.retrying) attempt++
         },
     )
 }

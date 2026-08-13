@@ -40,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentMenuAction
 import com.simon.harmonichackernews.ui.common.SharedTransformOverlay
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
@@ -102,7 +102,7 @@ fun SharedCommentActionOverlay(
 private fun CommentActionCardContent(
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
-    comment: Comment,
+    comment: PortableCommentItem,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
     textStyle: TextStyle,

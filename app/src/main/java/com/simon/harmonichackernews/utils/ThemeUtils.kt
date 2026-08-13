@@ -159,7 +159,7 @@ object ThemeUtils {
 
     private fun isNighttimeThemeTime(ctx: Context): Boolean {
         val currentCalendar = Calendar.getInstance()
-        val nighttimeHours = Utils.getNighttimeHours(ctx)
+        val nighttimeHours = AndroidAppearanceState.nighttimeSchedule(ctx)
 
         val startTime = TimeUnit.HOURS.toMinutes(nighttimeHours[0].toLong()) + nighttimeHours[1]
         val endTime = TimeUnit.HOURS.toMinutes(nighttimeHours[2].toLong()) + nighttimeHours[3]

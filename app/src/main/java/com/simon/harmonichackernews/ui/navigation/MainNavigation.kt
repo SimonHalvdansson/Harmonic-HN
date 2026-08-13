@@ -116,6 +116,10 @@ import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesScreen
 import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.HarmonicUiDependencies
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toEditorDestination
@@ -132,12 +136,9 @@ import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
 import com.simon.harmonichackernews.navigation.MainUserRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.AppLaunchDialog
-import com.simon.harmonichackernews.settings.AppLaunchStateStore
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -641,10 +642,11 @@ object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
         val controller = MainNavigationController(savedState)
+        val appComposition = AndroidAppComposition.get(activity)
         when (
-            AppLaunchStateStore(AndroidKeyValueStore.global(activity)).consumeLaunchDialog(
+            appComposition.launchState.consumeLaunchDialog(
                 currentVersion = BuildConfig.VERSION_CODE,
-                showChangelog = AndroidUserSettings.get(activity).general.showChangelog,
+                showChangelog = appComposition.userSettings.general.showChangelog,
             )
         ) {
             AppLaunchDialog.WELCOME -> controller.showWelcomeDialog()
@@ -662,11 +664,15 @@ object MainNavigationHost {
             id = R.id.main_navigation_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                HarmonicTheme {
-                    MainNavigation(
-                        activity = activity,
-                        controller = controller,
-                    )
+                ProvideHarmonicUiDependencies(
+                    HarmonicUiDependencies(appComposition),
+                ) {
+                    HarmonicTheme {
+                        MainNavigation(
+                            activity = activity,
+                            controller = controller,
+                        )
+                    }
                 }
             }
         }
@@ -1353,7 +1359,7 @@ private fun MainNavigation(
                                 submitting = editorController.submitting,
                                 onClose = controller::closeEditor,
                                 onSubmit = coordinator::submit,
-                                onOpenLink = { url -> Utils.openLinkMaybeHN(activity, url) },
+                                onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(activity, url) },
                             )
                         }
                     }
@@ -1401,7 +1407,8 @@ private fun MainNavigation(
 
         if (controller.cacheStoriesDialogVisible) {
             CacheStoriesDialog(
-                initialStoryCount = AndroidUserSettings.get(activity).cache.storiesToCache,
+                initialStoryCount = LocalHarmonicUiDependencies.current.userSettings
+                    .cache.storiesToCache,
                 onDismiss = controller::dismissCacheStoriesDialog,
                 onConfirm = controller::confirmCacheStories,
             )

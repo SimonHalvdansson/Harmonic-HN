@@ -14,7 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoryTypeAndroid
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
@@ -33,7 +33,7 @@ fun StoriesSettingsScreen(
     val resources = LocalResources.current
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val repository = app.settings
     val presenter = remember(app) { StoriesSettingsPresenter(repository) }
     val appSettings by repository.updates.collectAsState(initial = repository.snapshot())

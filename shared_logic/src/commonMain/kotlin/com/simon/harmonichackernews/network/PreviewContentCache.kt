@@ -12,17 +12,15 @@ data class CachedPreviewImageUrl(
  *
  * A platform supplies its existing key-value store and stable hash implementation. The caller is
  * responsible for serializing access when the backing store can be reached from multiple threads.
- * This keeps persistence format, negative hits, LRU eviction and in-memory tint/summary state
+ * This keeps persistence format, negative hits, LRU eviction and in-memory summary state
  * identical on Android, iOS and desktop without imposing a filesystem implementation on common.
  */
 class PreviewContentCache(
     private val stableHash: (String) -> String = StableHash::sha256Hex,
     private val maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
     private val maxSummaryEntries: Int = 300,
-    private val maxMemoryTintEntries: Int = 48,
 ) {
     private val summaries = mutableMapOf<String, LinkSummary>()
-    private val tintColors = linkedMapOf<String, Int>()
     private val cacheOrders = mutableMapOf<String, List<String>>()
 
     fun loadPreviewImage(
@@ -54,60 +52,6 @@ class PreviewContentCache(
         writeOrder(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, orderUpdate.order)
     }
 
-    fun cacheTintColor(storyId: Int, imageUrl: String?, baseColor: Int, tintColor: Int) {
-        val key = tintKey(storyId, imageUrl, baseColor) ?: return
-        tintColors.remove(key)
-        tintColors[key] = tintColor
-        while (tintColors.size > maxMemoryTintEntries) tintColors.remove(tintColors.keys.first())
-    }
-
-    fun saveTintColor(
-        store: KeyValueStore?,
-        storyId: Int,
-        imageUrl: String?,
-        baseColor: Int,
-        tintColor: Int,
-    ) {
-        val key = tintKey(storyId, imageUrl, baseColor) ?: return
-        cacheTintColor(storyId, imageUrl, baseColor, tintColor)
-        if (store == null) return
-
-        val orderedKeys = readOrder(store, PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)
-        var legacyKeysRemoved = 0
-        val currentKeys = orderedKeys.filterTo(mutableListOf()) { orderedKey ->
-            val keep = PreviewCachePolicy.isCurrentTintKey(orderedKey) ||
-                legacyKeysRemoved >= LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE
-            if (!keep) {
-                store.remove(orderedKey)
-                legacyKeysRemoved++
-            }
-            keep
-        }
-        val orderUpdate = PreviewCachePolicy.touch(currentKeys, key, maxDiskEntries)
-        store.putInt(key, tintColor)
-        orderUpdate.evicted.forEach(store::remove)
-        writeOrder(store, PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY, orderUpdate.order)
-    }
-
-    fun loadTintColor(
-        store: KeyValueStore?,
-        storyId: Int,
-        imageUrl: String?,
-        baseColor: Int,
-    ): Int? {
-        val key = tintKey(storyId, imageUrl, baseColor) ?: return null
-        tintColors[key]?.let { tintColor ->
-            tintColors.remove(key)
-            tintColors[key] = tintColor
-            return tintColor
-        }
-        if (store == null || !store.contains(key)) return null
-        return store.getInt(key, baseColor).also { tintColor ->
-            cacheTintColor(storyId, imageUrl, baseColor, tintColor)
-            touch(store, PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY, key)
-        }
-    }
-
     fun loadLinkSummary(store: KeyValueStore?, normalizedUrl: String?): LinkSummary? {
         if (normalizedUrl.isNullOrEmpty()) return null
         summaries[normalizedUrl]?.let { return it }
@@ -136,19 +80,10 @@ class PreviewContentCache(
         writeOrder(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, orderUpdate.order)
     }
 
-    fun tintColorCount(store: KeyValueStore?): Int =
-        if (store == null) 0 else readOrder(store, PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY).size
-
     /** Clears process memory and invalidates cached order snapshots after platform storage cleanup. */
     fun reset() {
         summaries.clear()
-        tintColors.clear()
         cacheOrders.clear()
-    }
-
-    fun clearTintMemoryAndOrderSnapshot() {
-        tintColors.clear()
-        cacheOrders.remove(PreviewCachePolicy.PREVIEW_TINT_ORDER_KEY)
     }
 
     private fun touch(store: KeyValueStore, orderKey: String, key: String) {
@@ -187,13 +122,4 @@ class PreviewContentCache(
     private fun linkSummaryKey(normalizedUrl: String): String =
         PreviewCachePolicy.LINK_SUMMARY_PREFIX + stableHash(normalizedUrl)
 
-    private fun tintKey(storyId: Int, imageUrl: String?, baseColor: Int): String? {
-        if (storyId <= 0 || imageUrl.isNullOrEmpty()) return null
-        return PreviewCachePolicy.PREVIEW_TINT_PREFIX +
-            "$storyId:$baseColor:${PreviewCachePolicy.TINT_VERSION}:${stableHash(imageUrl)}"
-    }
-
-    private companion object {
-        const val LEGACY_TINT_CACHE_KEYS_REMOVED_PER_SAVE = 8
-    }
 }

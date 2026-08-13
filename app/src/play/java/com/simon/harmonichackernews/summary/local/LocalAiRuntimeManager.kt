@@ -15,6 +15,9 @@ import com.google.android.play.core.splitinstall.SplitInstallSessionState
 import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListener
 import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
+import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 import java.lang.ref.WeakReference
 import java.util.EnumMap
 import java.util.HashSet
@@ -33,8 +36,8 @@ object LocalAiRuntimeManager {
 
     private val LOCK = Any()
     private val LISTENERS: MutableSet<StatusListener> = CopyOnWriteArraySet()
-    private val STATUSES: MutableMap<LocalModelManager.Runtime, Status> =
-        EnumMap(LocalModelManager.Runtime::class.java)
+    private val STATUSES: MutableMap<LocalModelRuntime, LocalRuntimeInstallStatus> =
+        EnumMap(LocalModelRuntime::class.java)
     private val CONFIRMATION_REQUESTED: MutableSet<Int> = HashSet()
 
     private var appContext: Context? = null
@@ -59,12 +62,12 @@ object LocalAiRuntimeManager {
         LISTENERS.remove(listener)
     }
 
-    fun getStatus(context: Context, runtime: LocalModelManager.Runtime): Status {
+    fun getStatus(context: Context, runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
         initialize(context)
-        if (runtime == LocalModelManager.Runtime.GEMINI_NANO) {
+        if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return status(
                 runtime,
-                State.INSTALLED,
+                LocalRuntimeInstallState.INSTALLED,
                 0L,
                 0L,
                 "",
@@ -74,14 +77,14 @@ object LocalAiRuntimeManager {
         }
         synchronized(LOCK) {
             val tracked = STATUSES[runtime]
-            if (tracked != null && tracked.state != State.INSTALLED) {
+            if (tracked != null && tracked.state != LocalRuntimeInstallState.INSTALLED) {
                 return tracked
             }
         }
         return if (isRuntimeInstalled(context, runtime))
             status(
                 runtime,
-                State.INSTALLED,
+                LocalRuntimeInstallState.INSTALLED,
                 0L,
                 0L,
                 "",
@@ -91,7 +94,7 @@ object LocalAiRuntimeManager {
         else
             status(
                 runtime,
-                State.NOT_INSTALLED,
+                LocalRuntimeInstallState.NOT_INSTALLED,
                 0L,
                 0L,
                 "",
@@ -102,9 +105,9 @@ object LocalAiRuntimeManager {
 
     fun isRuntimeInstalled(
         context: Context,
-        runtime: LocalModelManager.Runtime
+        runtime: LocalModelRuntime
     ): Boolean {
-        if (runtime == LocalModelManager.Runtime.GEMINI_NANO) {
+        if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return true
         }
         initialize(context)
@@ -130,10 +133,10 @@ object LocalAiRuntimeManager {
             }
             return "Wait for the current ${getRuntimeLabel(model.runtime)} installation to finish."
         }
-        val otherRuntime = if (model.runtime == LocalModelManager.Runtime.LLAMA_CPP) {
-            LocalModelManager.Runtime.LITERT_LM
+        val otherRuntime = if (model.runtime == LocalModelRuntime.LLAMA_CPP) {
+            LocalModelRuntime.LITERT_LM
         } else {
-            LocalModelManager.Runtime.LLAMA_CPP
+            LocalModelRuntime.LLAMA_CPP
         }
         if (getStatus(context, otherRuntime).isActive) {
             return "Wait for the current local AI runtime installation to finish."
@@ -148,7 +151,7 @@ object LocalAiRuntimeManager {
         setStatus(
             status(
                 model.runtime,
-                State.PENDING,
+                LocalRuntimeInstallState.PENDING,
                 0L,
                 0L,
                 "",
@@ -169,7 +172,7 @@ object LocalAiRuntimeManager {
                 setStatus(
                     status(
                         model.runtime,
-                        State.PENDING,
+                        LocalRuntimeInstallState.PENDING,
                         latest.bytesDownloaded,
                         latest.totalBytes,
                         "",
@@ -188,7 +191,7 @@ object LocalAiRuntimeManager {
 
     fun cancelRuntimeInstall(
         context: Context,
-        runtime: LocalModelManager.Runtime
+        runtime: LocalModelRuntime
     ) {
         initialize(context)
         val current = getStatus(context, runtime)
@@ -199,7 +202,7 @@ object LocalAiRuntimeManager {
         setStatus(
             status(
                 runtime,
-                State.CANCELED,
+                LocalRuntimeInstallState.CANCELED,
                 current.bytesDownloaded,
                 current.totalBytes,
                 "",
@@ -209,17 +212,17 @@ object LocalAiRuntimeManager {
         )
     }
 
-    fun getRuntimeLabel(runtime: LocalModelManager.Runtime): String = when (runtime) {
-        LocalModelManager.Runtime.LLAMA_CPP,
-        LocalModelManager.Runtime.LITERT_LM,
+    fun getRuntimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.LLAMA_CPP,
+        LocalModelRuntime.LITERT_LM,
         -> "local AI runtime"
-        LocalModelManager.Runtime.GEMINI_NANO -> "Gemini Nano"
+        LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
     }
 
-    fun getEngineClassName(runtime: LocalModelManager.Runtime): String = when (runtime) {
-        LocalModelManager.Runtime.LLAMA_CPP -> ENGINE_LLAMA
-        LocalModelManager.Runtime.LITERT_LM -> ENGINE_LITERT
-        LocalModelManager.Runtime.GEMINI_NANO ->
+    fun getEngineClassName(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.LLAMA_CPP -> ENGINE_LLAMA
+        LocalModelRuntime.LITERT_LM -> ENGINE_LITERT
+        LocalModelRuntime.GEMINI_NANO ->
             throw IllegalArgumentException("Gemini Nano does not use a feature runtime")
     }
 
@@ -245,8 +248,8 @@ object LocalAiRuntimeManager {
 
     private fun resumeInstalledPendingDownloads() {
         for (runtime in arrayOf(
-            LocalModelManager.Runtime.LLAMA_CPP,
-            LocalModelManager.Runtime.LITERT_LM,
+            LocalModelRuntime.LLAMA_CPP,
+            LocalModelRuntime.LITERT_LM,
         )) {
             if (isRuntimeInstalledWithoutInitialization(runtime)
                 && getPendingModel(runtime).isNotEmpty()
@@ -259,7 +262,7 @@ object LocalAiRuntimeManager {
     }
 
     private fun handleInstallState(installState: SplitInstallSessionState) {
-        val runtime: LocalModelManager.Runtime? = getRuntimeForModules(installState.moduleNames())
+        val runtime: LocalModelRuntime? = getRuntimeForModules(installState.moduleNames())
         if (runtime == null) {
             return
         }
@@ -268,7 +271,7 @@ object LocalAiRuntimeManager {
             SplitInstallSessionStatus.PENDING -> setStatus(
                 status(
                     runtime,
-                    State.PENDING,
+                    LocalRuntimeInstallState.PENDING,
                     installState.bytesDownloaded(),
                     installState.totalBytesToDownload(),
                     "",
@@ -280,7 +283,7 @@ object LocalAiRuntimeManager {
             SplitInstallSessionStatus.DOWNLOADING -> setStatus(
                 status(
                     runtime,
-                    State.DOWNLOADING,
+                    LocalRuntimeInstallState.DOWNLOADING,
                     installState.bytesDownloaded(),
                     installState.totalBytesToDownload(),
                     "",
@@ -292,7 +295,7 @@ object LocalAiRuntimeManager {
             SplitInstallSessionStatus.DOWNLOADED, SplitInstallSessionStatus.INSTALLING -> setStatus(
                 status(
                     runtime,
-                    State.INSTALLING,
+                    LocalRuntimeInstallState.INSTALLING,
                     installState.bytesDownloaded(),
                     installState.totalBytesToDownload(),
                     "",
@@ -305,7 +308,7 @@ object LocalAiRuntimeManager {
                 setStatus(
                     status(
                         runtime,
-                        State.PENDING,
+                        LocalRuntimeInstallState.PENDING,
                         installState.bytesDownloaded(),
                         installState.totalBytesToDownload(),
                         "",
@@ -331,7 +334,7 @@ object LocalAiRuntimeManager {
             SplitInstallSessionStatus.CANCELING -> setStatus(
                 status(
                     runtime,
-                    State.PENDING,
+                    LocalRuntimeInstallState.PENDING,
                     installState.bytesDownloaded(),
                     installState.totalBytesToDownload(),
                     "",
@@ -345,7 +348,7 @@ object LocalAiRuntimeManager {
                 setStatus(
                     status(
                         runtime,
-                        State.CANCELED,
+                        LocalRuntimeInstallState.CANCELED,
                         installState.bytesDownloaded(),
                         installState.totalBytesToDownload(),
                         "",
@@ -360,7 +363,7 @@ object LocalAiRuntimeManager {
     }
 
     private fun requestConfirmation(
-        runtime: LocalModelManager.Runtime,
+        runtime: LocalModelRuntime,
         state: SplitInstallSessionState
     ) {
         synchronized(LOCK) {
@@ -395,12 +398,12 @@ object LocalAiRuntimeManager {
         }
     }
 
-    private fun onRuntimeInstalled(runtime: LocalModelManager.Runtime) {
+    private fun onRuntimeInstalled(runtime: LocalModelRuntime) {
         SplitCompat.install(requireNotNull(appContext))
         setStatus(
             status(
                 runtime,
-                State.INSTALLED,
+                LocalRuntimeInstallState.INSTALLED,
                 0L,
                 0L,
                 "",
@@ -408,15 +411,15 @@ object LocalAiRuntimeManager {
                 0
             )
         )
-        val otherRuntime = if (runtime == LocalModelManager.Runtime.LLAMA_CPP) {
-            LocalModelManager.Runtime.LITERT_LM
+        val otherRuntime = if (runtime == LocalModelRuntime.LLAMA_CPP) {
+            LocalModelRuntime.LITERT_LM
         } else {
-            LocalModelManager.Runtime.LLAMA_CPP
+            LocalModelRuntime.LLAMA_CPP
         }
         setStatus(
             status(
                 otherRuntime,
-                State.INSTALLED,
+                LocalRuntimeInstallState.INSTALLED,
                 0L,
                 0L,
                 "",
@@ -428,7 +431,7 @@ object LocalAiRuntimeManager {
         startPendingModelDownload(otherRuntime)
     }
 
-    private fun startPendingModelDownload(runtime: LocalModelManager.Runtime) {
+    private fun startPendingModelDownload(runtime: LocalModelRuntime) {
         val modelId = getPendingModel(runtime)
         if (modelId.isEmpty()) {
             return
@@ -439,7 +442,7 @@ object LocalAiRuntimeManager {
             setStatus(
                 status(
                     runtime,
-                    State.FAILED,
+                    LocalRuntimeInstallState.FAILED,
                     0L,
                     0L,
                     error,
@@ -451,7 +454,7 @@ object LocalAiRuntimeManager {
     }
 
     private fun failInstall(
-        runtime: LocalModelManager.Runtime,
+        runtime: LocalModelRuntime,
         error: String, sessionId: Int
     ) {
         synchronized(LOCK) {
@@ -460,7 +463,7 @@ object LocalAiRuntimeManager {
         setStatus(
             status(
                 runtime,
-                State.FAILED,
+                LocalRuntimeInstallState.FAILED,
                 0L,
                 0L,
                 error,
@@ -470,12 +473,12 @@ object LocalAiRuntimeManager {
         )
     }
 
-    private fun getTrackedStatus(runtime: LocalModelManager.Runtime): Status {
+    private fun getTrackedStatus(runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
         synchronized(LOCK) {
             return STATUSES[runtime]
                 ?: status(
                     runtime,
-                    State.NOT_INSTALLED,
+                    LocalRuntimeInstallState.NOT_INSTALLED,
                     0L,
                     0L,
                     "",
@@ -485,21 +488,26 @@ object LocalAiRuntimeManager {
         }
     }
 
-    private fun setStatus(status: Status) {
+    private fun setStatus(status: LocalRuntimeInstallStatus) {
         synchronized(LOCK) {
-            STATUSES[status.runtime] = status
+            STATUSES[requireNotNull(status.runtime)] = status
         }
         notifyListeners()
     }
 
     private fun status(
-        runtime: LocalModelManager.Runtime, state: State,
+        runtime: LocalModelRuntime, state: LocalRuntimeInstallState,
         bytesDownloaded: Long, totalBytes: Long, error: String,
         pendingModelId: String, sessionId: Int
-    ): Status {
-        return Status(
-            runtime, state, bytesDownloaded, totalBytes,
-            error, pendingModelId, sessionId,
+    ): LocalRuntimeInstallStatus {
+        return LocalRuntimeInstallStatus(
+            state = state,
+            pendingModelId = pendingModelId,
+            downloadedBytes = bytesDownloaded,
+            totalBytes = totalBytes,
+            runtime = runtime,
+            error = error,
+            sessionId = sessionId,
         )
     }
 
@@ -514,35 +522,35 @@ object LocalAiRuntimeManager {
         }
     }
 
-    private fun getModuleName(runtime: LocalModelManager.Runtime): String = when (runtime) {
-        LocalModelManager.Runtime.LLAMA_CPP,
-        LocalModelManager.Runtime.LITERT_LM,
+    private fun getModuleName(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.LLAMA_CPP,
+        LocalModelRuntime.LITERT_LM,
         -> MODULE_RUNTIME
-        LocalModelManager.Runtime.GEMINI_NANO ->
+        LocalModelRuntime.GEMINI_NANO ->
             throw IllegalArgumentException("Gemini Nano has no feature module")
     }
 
     private fun getRuntimeForModules(
         modules: List<String>,
-    ): LocalModelManager.Runtime? {
+    ): LocalModelRuntime? {
         if (!modules.contains(MODULE_RUNTIME)) {
             return null
         }
         synchronized(LOCK) {
-            val llama = STATUSES[LocalModelManager.Runtime.LLAMA_CPP]
+            val llama = STATUSES[LocalModelRuntime.LLAMA_CPP]
             if (llama != null && llama.isActive) {
-                return LocalModelManager.Runtime.LLAMA_CPP
+                return LocalModelRuntime.LLAMA_CPP
             }
-            val litert = STATUSES[LocalModelManager.Runtime.LITERT_LM]
+            val litert = STATUSES[LocalModelRuntime.LITERT_LM]
             if (litert != null && litert.isActive) {
-                return LocalModelManager.Runtime.LITERT_LM
+                return LocalModelRuntime.LITERT_LM
             }
         }
-        if (getPendingModel(LocalModelManager.Runtime.LLAMA_CPP).isNotEmpty()) {
-            return LocalModelManager.Runtime.LLAMA_CPP
+        if (getPendingModel(LocalModelRuntime.LLAMA_CPP).isNotEmpty()) {
+            return LocalModelRuntime.LLAMA_CPP
         }
-        if (getPendingModel(LocalModelManager.Runtime.LITERT_LM).isNotEmpty()) {
-            return LocalModelManager.Runtime.LITERT_LM
+        if (getPendingModel(LocalModelRuntime.LITERT_LM).isNotEmpty()) {
+            return LocalModelRuntime.LITERT_LM
         }
         return null
     }
@@ -550,26 +558,26 @@ object LocalAiRuntimeManager {
     private val deliveryPreferences: SharedPreferences
         get() = requireNotNull(appContext).getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
 
-    private fun setPendingModel(runtime: LocalModelManager.Runtime, modelId: String) {
+    private fun setPendingModel(runtime: LocalModelRuntime, modelId: String) {
         deliveryPreferences.edit()
             .putString(KEY_PENDING_MODEL_PREFIX + runtime.name, modelId)
             .apply()
     }
 
-    private fun getPendingModel(runtime: LocalModelManager.Runtime): String {
+    private fun getPendingModel(runtime: LocalModelRuntime): String {
         return deliveryPreferences.getString(
             KEY_PENDING_MODEL_PREFIX + runtime.name, ""
         ).orEmpty()
     }
 
-    private fun clearPendingModel(runtime: LocalModelManager.Runtime) {
+    private fun clearPendingModel(runtime: LocalModelRuntime) {
         deliveryPreferences.edit()
             .remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
             .apply()
     }
 
     private fun isRuntimeInstalledWithoutInitialization(
-        runtime: LocalModelManager.Runtime
+        runtime: LocalModelRuntime
     ): Boolean {
         val manager = installManager ?: return false
         return manager.installedModules.contains(getModuleName(runtime))
@@ -622,41 +630,4 @@ object LocalAiRuntimeManager {
         fun onRuntimeStatusChanged()
     }
 
-    enum class State {
-        NOT_INSTALLED,
-        PENDING,
-        DOWNLOADING,
-        INSTALLING,
-        INSTALLED,
-        FAILED,
-        CANCELED
-    }
-
-    class Status internal constructor(
-        val runtime: LocalModelManager.Runtime,
-        val state: State,
-        val bytesDownloaded: Long,
-        val totalBytes: Long,
-        val error: String,
-        val pendingModelId: String,
-        val sessionId: Int,
-    ) {
-
-        val isActive: Boolean
-            get() = when (state) {
-                State.PENDING,
-                State.DOWNLOADING,
-                State.INSTALLING,
-                -> true
-                else -> false
-            }
-
-        val progressPercent: Int
-            get() {
-                if (totalBytes <= 0L) {
-                    return 0
-                }
-                return (bytesDownloaded * 100L / totalBytes).coerceAtMost(100L).toInt()
-            }
-    }
 }

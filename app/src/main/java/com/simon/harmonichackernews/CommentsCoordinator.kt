@@ -27,17 +27,16 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.network.CommentThreadRepository
-import com.simon.harmonichackernews.network.AndroidLocalStorySummaryBackend
+import com.simon.harmonichackernews.network.AndroidLocalSummaryBackend
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
 import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
+import com.simon.harmonichackernews.summary.ExtractingStorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
-import com.simon.harmonichackernews.platform.AndroidStoryPreviewResourceService
 import com.simon.harmonichackernews.presentation.ArchiveUrlResolver
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
@@ -55,7 +54,8 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidDisplay
+import com.simon.harmonichackernews.utils.AndroidStoryCache
 import com.simon.harmonichackernews.utils.ViewUtils
 import kotlin.math.max
 import kotlin.math.min
@@ -110,15 +110,15 @@ class CommentsCoordinator(
         savedItemActions,
         hackerNewsUserService,
     )
-    private val aiSummarySettings = AndroidAiSummarySettings.repository(activity)
+    private val aiSummarySettings = appComposition.aiSummarySettings
     private val storySummaryRuntime = StorySummaryRuntime(
         scope = coroutineScope,
         cloudBackend = CloudStorySummaryBackend(appComposition.network.summaryUseCase) {
             aiSummarySettings.cloudConfig()
         },
-        localBackend = AndroidLocalStorySummaryBackend(
-            activity,
-            appComposition.network.summaryUseCase,
+        localBackend = ExtractingStorySummaryBackend(
+            useCase = appComposition.network.summaryUseCase,
+            textBackend = AndroidLocalSummaryBackend(activity),
         ),
     )
     private val commentsFeature = CommentsFeatureRuntime(
@@ -134,13 +134,13 @@ class CommentsCoordinator(
         localSummaryAvailable = LocalSummaryManager::canAttemptLocalSummarization,
         summaryRuntime = storySummaryRuntime,
         hydrateCachedStory = { cachedStory ->
-            Utils.loadCachedStorySummary(activity, cachedStory)
+            AndroidStoryCache.hydrate(activity, cachedStory)
         },
-        loadCachedThread = { storyId -> Utils.loadCachedStory(activity, storyId) },
+        loadCachedThread = { storyId -> AndroidStoryCache.loadPayload(activity, storyId) },
         storeCachedThread = { storyId, response ->
-            Utils.cacheStory(activity, storyId, response)
+            AndroidStoryCache.store(activity, storyId, response)
         },
-        previewResourceService = AndroidStoryPreviewResourceService { context },
+        previewResourceService = appComposition.previewResources,
         storyResourceTints = appComposition.storyResourceTints,
     )
     private var webViewHost: CommentsWebViewHost?
@@ -270,6 +270,7 @@ class CommentsCoordinator(
         linkPreviewController = LinkPreviewController(
             story,
             LinkPreviewUseCase(appComposition.network.linkPreviewRepository),
+            readingPreferences,
             LinkPreviewController.Callbacks(::syncComposeState),
         )
         webViewController = CommentsWebViewController(
@@ -311,11 +312,7 @@ class CommentsCoordinator(
         webViewController!!.configure(
             showWebsite,
             integratedWebview,
-            readingPreferences.preloadWebViewMode,
-            readingPreferences.preloadWebViewMinimumBattery,
-            readingPreferences.matchWebViewTheme,
-            readingPreferences.readerModeEnabled,
-            readingPreferences.readerModeDefault,
+            readingPreferences,
             blockAds
         )
 
@@ -470,7 +467,7 @@ class CommentsCoordinator(
                 val cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
                 var contentPaddingLeft = 0
                 var contentPaddingRight = 0
-                if (Utils.isTablet(this@CommentsCoordinator.resources)) {
+                if (AndroidDisplay.isTablet(this@CommentsCoordinator.resources)) {
                     contentPaddingRight =
                         this@CommentsCoordinator.resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
                 }
@@ -713,11 +710,7 @@ class CommentsCoordinator(
             controller.configure(
                 showWebsite,
                 integratedWebview,
-                reading.preloadWebViewMode,
-                reading.preloadWebViewMinimumBattery,
-                reading.matchWebViewTheme,
-                reading.readerModeEnabled,
-                reading.readerModeDefault,
+                reading,
                 reading.blockAds && !adBlockDisabledForSession,
             )
             if (integratedWebview && !wasIntegrated) controller.initialize()
@@ -810,8 +803,8 @@ class CommentsCoordinator(
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {
-        val standardMargin = Utils.pxFromDpInt(
-            this.resources, (if (Utils.isTablet(
+        val standardMargin = AndroidDisplay.dpToPxInt(
+            this.resources, (if (AndroidDisplay.isTablet(
                     this.resources
                 )
             ) 81 else 68).toFloat()
@@ -965,7 +958,7 @@ class CommentsCoordinator(
         commentsFeature.updatePresentationCapabilities(
             CommentsPresentationCapabilities(
                 showInvertAction = shouldShowInvertAction(),
-                isTablet = Utils.isTablet(resources),
+                isTablet = AndroidDisplay.isTablet(resources),
             ),
         )
     }

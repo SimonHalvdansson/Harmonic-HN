@@ -55,15 +55,25 @@ import com.google.android.material.snackbar.Snackbar
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
+import com.simon.harmonichackernews.presentation.WebContentLoadStateMachine
+import com.simon.harmonichackernews.presentation.ReaderModePageDecision
+import com.simon.harmonichackernews.presentation.ReaderModeScriptStatus
+import com.simon.harmonichackernews.presentation.ReaderModeStateMachine
+import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
 import com.simon.harmonichackernews.utils.FileDownloader
 import com.simon.harmonichackernews.utils.FileDownloader.FileDownloaderCallback
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
-import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidAdBlocklist
+import com.simon.harmonichackernews.utils.AndroidDisplay
+import com.simon.harmonichackernews.utils.AndroidNetworkStatus
+import com.simon.harmonichackernews.utils.AndroidStoryCache
+import com.simon.harmonichackernews.utils.AndroidToast
+import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -127,8 +137,9 @@ internal class CommentsWebViewController(
     private var preloadWebview: String? = "never"
     private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
     private var matchWebviewTheme = true
-    private var readerModeFeatureEnabled = true
-    private var readerModeDefault = false
+    private lateinit var readingPreferences: ReadingPreferences
+    private val readerMode = ReaderModeStateMachine()
+    private val readerModeFeatureEnabled: Boolean get() = readerMode.state.featureEnabled
     var isBlockingAds: Boolean = true
         private set
     private var startedLoading = false
@@ -136,10 +147,7 @@ internal class CommentsWebViewController(
     private var showingErrorPage = false
     private var showingCachedArticlePage = false
     private var clearWebViewHistoryOnNextFinish = false
-    private var webViewLoadInProgress = false
-    private var webViewLoadUiSettled = true
-    private var webViewLoadCommittedVisible = false
-    private var webViewLoadGeneration = 0
+    private val webContentLoad = WebContentLoadStateMachine()
     private var lastFailedWebViewUrl: String? = null
     private var lastRequestedWebViewUrl: String? = null
     private var pendingSummaryOnDone: Runnable? = null
@@ -149,22 +157,8 @@ internal class CommentsWebViewController(
     private var pdfAndroidJavascriptBridge: PdfAndroidJavascriptBridge? = null
     private var currentPdfFilePath: String? = null
     private var retryingFailedWebViewUrl = false
-    var isReaderModeAvailable: Boolean = false
-        private set(available) {
-            if (available) {
-                readerModeUnavailableDelayGeneration = -1
-            }
-            val effectiveAvailable = readerModeFeatureEnabled && available
-            if (field == effectiveAvailable) {
-                return
-            }
-
-            field = effectiveAvailable
-            callbacks.onReaderModeAvailabilityChanged(effectiveAvailable)
-        }
-    private var readerModeEnabled = false
-    private var readerModePending = false
-    private var readerModeDisabledForCurrentPage = false
+    val isReaderModeAvailable: Boolean get() = readerMode.state.available
+    private val readerModeEnabled: Boolean get() = readerMode.state.enabled
     private var readerModeInitialAvailabilityGraceUsed = false
     private var readerModeInitialAvailabilityGraceGeneration = -1
     private var readerModeUnavailableDelayGeneration = -1
@@ -196,29 +190,28 @@ internal class CommentsWebViewController(
     fun configure(
         showWebsite: Boolean,
         integratedWebview: Boolean,
-        preloadWebview: String?,
-        preloadWebviewMinimumBattery: Int,
-        matchWebviewTheme: Boolean,
-        readerModeFeatureEnabled: Boolean,
-        readerModeDefault: Boolean,
+        readingPreferences: ReadingPreferences,
         blockAds: Boolean
     ) {
         this.showWebsite = showWebsite
         this.integratedWebview = integratedWebview
-        this.preloadWebview = preloadWebview
-        this.preloadWebviewMinimumBattery = preloadWebviewMinimumBattery
-        this.matchWebviewTheme = matchWebviewTheme
-        this.readerModeFeatureEnabled = readerModeFeatureEnabled
-        this.readerModeDefault = readerModeFeatureEnabled && readerModeDefault
+        this.readingPreferences = readingPreferences
+        this.preloadWebview = readingPreferences.preloadWebViewMode
+        this.preloadWebviewMinimumBattery = readingPreferences.preloadWebViewMinimumBattery
+        this.matchWebviewTheme = readingPreferences.matchWebViewTheme
+        updateReaderModeState {
+            readerMode.configure(
+                readingPreferences.readerModeEnabled,
+                integratedWebview,
+                readingPreferences.readerModeDefault,
+            )
+        }
         this.isBlockingAds = blockAds
     }
 
     fun setIntegratedWebview(integratedWebview: Boolean) {
         this.integratedWebview = integratedWebview
-        if (!integratedWebview) {
-            setReaderModeUnavailableNow()
-            setReaderModeEnabled(false)
-        }
+        updateReaderModeState { readerMode.setIntegrated(integratedWebview) }
     }
 
     fun initializeForVisibleWebsite() {
@@ -246,11 +239,11 @@ internal class CommentsWebViewController(
             return
         }
 
-        val generation = webViewLoadGeneration
+        val generation = webContentLoad.state.generation
         checkNotNull(targetWebView).evaluateJavascript(
             "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
             ValueCallback { result: String? ->
-                if (generation != webViewLoadGeneration || !canReadLoadedPageText(targetWebView)) {
+                if (generation != webContentLoad.state.generation || !canReadLoadedPageText(targetWebView)) {
                     callback.onResult(null)
                     return@ValueCallback
                 }
@@ -386,7 +379,7 @@ internal class CommentsWebViewController(
                 intent.data = Uri.parse(checkNotNull(story?.url))
                 callbacks.startActivity(intent)
             } catch (e2: Exception) {
-                Utils.toast("Couldn't open URL", coordinator.context)
+                AndroidToast.show("Couldn't open URL", coordinator.context)
             }
         }
     }
@@ -401,7 +394,7 @@ internal class CommentsWebViewController(
             "Disabled AdBlock, refreshing WebView",
             Snackbar.LENGTH_SHORT
         )
-        ViewCompat.setElevation(snackbar.view, Utils.pxFromDp(coordinator.resources, 24f))
+        ViewCompat.setElevation(snackbar.view, AndroidDisplay.dpToPx(coordinator.resources, 24f))
         snackbar.show()
     }
 
@@ -423,39 +416,39 @@ internal class CommentsWebViewController(
             return
         }
 
-        val enableReaderMode = !readerModeEnabled
-        readerModeDisabledForCurrentPage = !enableReaderMode
-        if (!startedLoading || currentUrl.isNullOrEmpty() ||
-            (currentWebView.progress < 100 && webViewLoadInProgress)
-        ) {
-            val storyUrl = story?.url
-            if (storyUrl.isNullOrEmpty()) {
+        val pageReady = startedLoading && !currentUrl.isNullOrEmpty() &&
+            !(currentWebView.progress < 100 && webContentLoad.state.inProgress)
+        when (val decision = updateReaderModeStateWithResult {
+            readerMode.toggle(
+                pageEligible = true,
+                pageReady = pageReady,
+                storyUrlAvailable = !story?.url.isNullOrEmpty(),
+            )
+        }) {
+            ReaderModeToggleDecision.Unavailable -> {
                 Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT)
                     .show()
                 return
             }
-            readerModePending = true
-            if (!startedLoading) {
-                startedLoading = true
-                loadUrl(storyUrl)
+            ReaderModeToggleDecision.LoadThenEnable -> {
+                if (!startedLoading) {
+                    startedLoading = true
+                    loadUrl(story?.url)
+                }
+                Toast.makeText(
+                    context,
+                    "Reader mode will open after the page loads",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
             }
-            Toast.makeText(
-                context,
-                "Reader mode will open after the page loads",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
+            is ReaderModeToggleDecision.Apply -> applyReaderMode(decision.enabled)
         }
-
-        applyReaderMode(enableReaderMode)
     }
 
     fun disableReaderMode() {
-        if (!readerModeEnabled) {
-            return
-        }
-        readerModeDisabledForCurrentPage = true
-        applyReaderMode(false)
+        val decision = updateReaderModeStateWithResult { readerMode.disable() } ?: return
+        applyReaderMode(decision.enabled)
     }
 
     private fun applyReaderMode(enable: Boolean, showFeedback: Boolean = true) {
@@ -476,45 +469,56 @@ internal class CommentsWebViewController(
         val command = (script
                 + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
                 + "\nHarmonicReaderMode." + (if (enable) "enable" else "disable") + "();")
-        val generation = webViewLoadGeneration
+        val generation = webContentLoad.state.generation
         targetWebView.evaluateJavascript(command, ValueCallback { result: String? ->
             val callbackContext = coordinator.context
-            if (callbackContext == null || targetWebView !== webView || generation != webViewLoadGeneration || coordinator.view == null) {
+            if (callbackContext == null || targetWebView !== webView || generation != webContentLoad.state.generation || coordinator.view == null) {
                 return@ValueCallback
             }
 
-            val status = normalizeJavascriptResult(result)
-            if ("enabled" == status) {
-                setReaderModeConfirmedAvailable()
-                setReaderModeEnabled(true)
-            } else if ("disabled" == status) {
-                setReaderModeConfirmedAvailable()
-                setReaderModeEnabled(false)
-            } else if ("no_article" == status) {
-                setReaderModeUnavailableRespectingInitialGrace(generation)
-                setReaderModeEnabled(false)
-                if (showFeedback) {
-                    Toast.makeText(
-                        callbackContext,
-                        "Couldn't find readable article",
-                        Toast.LENGTH_SHORT
-                    ).show()
+            val status = when (normalizeJavascriptResult(result)) {
+                "enabled" -> ReaderModeScriptStatus.ENABLED
+                "disabled" -> ReaderModeScriptStatus.DISABLED
+                "no_article" -> ReaderModeScriptStatus.NO_ARTICLE
+                "unavailable" -> ReaderModeScriptStatus.UNAVAILABLE
+                else -> ReaderModeScriptStatus.FAILED
+            }
+            when (status) {
+                ReaderModeScriptStatus.ENABLED,
+                ReaderModeScriptStatus.DISABLED -> {
+                    readerModeInitialAvailabilityGraceGeneration = -1
+                    readerModeUnavailableDelayGeneration = -1
+                    readerModeAvailabilityRecheckGeneration = -1
+                    updateReaderModeState { readerMode.applyResult(status) }
                 }
-            } else if ("unavailable" == status) {
-                setReaderModeUnavailableRespectingInitialGrace(generation)
-                setReaderModeEnabled(false)
-                if (showFeedback) {
-                    Toast.makeText(
-                        callbackContext,
-                        "Reader mode unavailable for this page",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                ReaderModeScriptStatus.NO_ARTICLE -> {
+                    setReaderModeUnavailableRespectingInitialGrace(generation)
+                    setReaderModeEnabled(false)
+                    if (showFeedback) {
+                        Toast.makeText(
+                            callbackContext,
+                            "Couldn't find readable article",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
-            } else {
-                setReaderModeUnavailableRespectingInitialGrace(generation)
-                if (showFeedback) {
-                    Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT)
-                        .show()
+                ReaderModeScriptStatus.UNAVAILABLE -> {
+                    setReaderModeUnavailableRespectingInitialGrace(generation)
+                    setReaderModeEnabled(false)
+                    if (showFeedback) {
+                        Toast.makeText(
+                            callbackContext,
+                            "Reader mode unavailable for this page",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                ReaderModeScriptStatus.FAILED -> {
+                    setReaderModeUnavailableRespectingInitialGrace(generation)
+                    if (showFeedback) {
+                        Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT)
+                            .show()
+                    }
                 }
             }
         })
@@ -554,7 +558,7 @@ internal class CommentsWebViewController(
         generation: Int,
         context: Context?
     ): Boolean {
-        if (!readerModeFeatureEnabled || !integratedWebview || view !== webView || generation != webViewLoadGeneration || context == null || coordinator.view == null) {
+        if (!readerModeFeatureEnabled || !integratedWebview || view !== webView || generation != webContentLoad.state.generation || context == null || coordinator.view == null) {
             return false
         }
 
@@ -566,13 +570,13 @@ internal class CommentsWebViewController(
         readerModeInitialAvailabilityGraceGeneration = -1
         readerModeUnavailableDelayGeneration = -1
         readerModeAvailabilityRecheckGeneration = -1
-        this.isReaderModeAvailable = true
+        updateReaderModeState { readerMode.confirmAvailable() }
     }
 
     private fun setReaderModeUnavailableNow() {
         readerModeInitialAvailabilityGraceGeneration = -1
         readerModeUnavailableDelayGeneration = -1
-        this.isReaderModeAvailable = false
+        updateReaderModeState { readerMode.setUnavailable() }
     }
 
     private fun setReaderModeUnavailableRespectingInitialGrace(generation: Int) {
@@ -590,7 +594,7 @@ internal class CommentsWebViewController(
 
         readerModeUnavailableDelayGeneration = generation
         webViewHandler.postDelayed(Runnable {
-            if (readerModeUnavailableDelayGeneration == generation && generation == webViewLoadGeneration && isReaderModeInitialAvailabilityGraceActive(
+            if (readerModeUnavailableDelayGeneration == generation && generation == webContentLoad.state.generation && isReaderModeInitialAvailabilityGraceActive(
                     generation
                 )
             ) {
@@ -601,7 +605,7 @@ internal class CommentsWebViewController(
 
     private fun scheduleReaderModeAvailabilityRecheck(view: WebView, generation: Int) {
         if (readerModeAvailabilityRecheckUsed
-            || view !== webView || generation != webViewLoadGeneration
+            || view !== webView || generation != webContentLoad.state.generation
         ) {
             return
         }
@@ -609,7 +613,7 @@ internal class CommentsWebViewController(
         readerModeAvailabilityRecheckUsed = true
         readerModeAvailabilityRecheckGeneration = generation
         webViewHandler.postDelayed(Runnable {
-            if (readerModeAvailabilityRecheckGeneration == generation && generation == webViewLoadGeneration && view === webView) {
+            if (readerModeAvailabilityRecheckGeneration == generation && generation == webContentLoad.state.generation && view === webView) {
                 checkReaderModeAvailability(view, generation)
             }
         }, READER_MODE_AVAILABILITY_RECHECK_DELAY_MS)
@@ -622,7 +626,9 @@ internal class CommentsWebViewController(
             || PDF_LOADER_URL == url
             || isErrorPageUrl(url)
         ) {
-            setReaderModeUnavailableNow()
+            readerModeInitialAvailabilityGraceGeneration = -1
+            readerModeUnavailableDelayGeneration = -1
+            updateReaderModeState { readerMode.onIneligiblePageLoadStarted() }
             return
         }
 
@@ -632,9 +638,9 @@ internal class CommentsWebViewController(
                 readerModeInitialAvailabilityGraceStartedAtMs = SystemClock.uptimeMillis()
             }
             readerModeInitialAvailabilityGraceGeneration = generation
-            this.isReaderModeAvailable = true
+            updateReaderModeState { readerMode.onEligiblePageLoadStarted(initiallyAvailable = true) }
         } else {
-            setReaderModeUnavailableNow()
+            updateReaderModeState { readerMode.onEligiblePageLoadStarted(initiallyAvailable = false) }
         }
     }
 
@@ -649,13 +655,28 @@ internal class CommentsWebViewController(
     }
 
     private fun setReaderModeEnabled(enabled: Boolean) {
-        if (readerModeEnabled == enabled) {
-            return
-        }
+        updateReaderModeState { readerMode.setEnabled(enabled) }
+    }
 
-        readerModeEnabled = enabled
-        callbacks.onReaderModeChanged(enabled)
-        callbacks.syncOnBackPressedCallbackEnabledState()
+    private inline fun updateReaderModeState(change: () -> Unit) {
+        val previous = readerMode.state
+        change()
+        val current = readerMode.state
+        if (previous.available != current.available) {
+            if (current.available) readerModeUnavailableDelayGeneration = -1
+            callbacks.onReaderModeAvailabilityChanged(current.available)
+        }
+        if (previous.enabled != current.enabled) {
+            callbacks.onReaderModeChanged(current.enabled)
+            callbacks.syncOnBackPressedCallbackEnabledState()
+        }
+    }
+
+    private inline fun <T> updateReaderModeStateWithResult(change: () -> T): T {
+        var result: T? = null
+        updateReaderModeState { result = change() }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
     }
 
     private fun getReaderModeScript(context: Context): String? {
@@ -738,7 +759,6 @@ internal class CommentsWebViewController(
             com.google.android.material.R.attr.colorSurfaceContainerHigh,
             backgroundColor
         )
-        val readingPreferences = AndroidUserSettings.get(context).reading
         val readerModeFont = readingPreferences.readerModeFont
         val readerModeFontFaceCss = getReaderModeFontFaceCss(context, readerModeFont)
         val readerModeFontFamily = if (TextUtils.isEmpty(readerModeFontFaceCss))
@@ -914,8 +934,8 @@ internal class CommentsWebViewController(
         webView = currentWebView
         initializedWebView = true
 
-        if (this.isBlockingAds && Utils.adservers.isEmpty) {
-            Utils.loadAdservers(context.getResources())
+        if (this.isBlockingAds && AndroidAdBlocklist.hosts.isEmpty) {
+            AndroidAdBlocklist.load(context.getResources())
         }
 
         currentWebView.webViewClient = MyWebViewClient()
@@ -995,7 +1015,7 @@ internal class CommentsWebViewController(
 
     private fun shouldPreloadStoryUrl(context: Context): Boolean {
         val enabledForConnection = WebViewPreferences.PRELOAD_ALWAYS == preloadWebview
-                || (WebViewPreferences.PRELOAD_WIFI_ONLY == preloadWebview && Utils.isOnWiFi(
+                || (WebViewPreferences.PRELOAD_WIFI_ONLY == preloadWebview && AndroidNetworkStatus.isUnmetered(
             context
         ))
         return enabledForConnection
@@ -1008,7 +1028,7 @@ internal class CommentsWebViewController(
     private fun archiveRedirectUrl(context: Context, url: String?): String? =
         ArchiveRedirectPolicy.redirectUrl(
             url,
-            AndroidUserSettings.get(context).reading.archiveRedirectDomains,
+            readingPreferences.archiveRedirectDomains,
         )
 
     private fun isCurrentWebViewCallback(view: WebView?): Boolean {
@@ -1020,10 +1040,7 @@ internal class CommentsWebViewController(
             return
         }
 
-        webViewLoadGeneration++
-        webViewLoadInProgress = true
-        webViewLoadUiSettled = false
-        webViewLoadCommittedVisible = false
+        val generation = webContentLoad.begin()
 
         webViewBackdrop?.apply {
             removeCallbacks(webViewBackdropFadeInRunnable)
@@ -1035,7 +1052,6 @@ internal class CommentsWebViewController(
 
         showWebViewProgress(0)
 
-        val generation = webViewLoadGeneration
         webViewHandler.postDelayed(
             Runnable { handleWebViewLoadTimeout(view, url, generation) },
             WEBVIEW_LOAD_TIMEOUT_MS
@@ -1043,11 +1059,11 @@ internal class CommentsWebViewController(
     }
 
     private fun handleWebViewLoadTimeout(view: WebView, url: String?, generation: Int) {
-        if (view !== webView || generation != webViewLoadGeneration || !webViewLoadInProgress) {
+        if (view !== webView || !webContentLoad.isActive(generation)) {
             return
         }
 
-        if (webViewLoadCommittedVisible) {
+        if (webContentLoad.state.committedVisible) {
             finishWebViewLoadUi(view, generation, false)
             return
         }
@@ -1060,9 +1076,9 @@ internal class CommentsWebViewController(
     }
 
     private fun scheduleVisibleCommitSettle(view: WebView) {
-        val generation = webViewLoadGeneration
+        val generation = webContentLoad.state.generation
         webViewHandler.postDelayed(Runnable {
-            if (webViewLoadCommittedVisible && webViewLoadInProgress) {
+            if (webContentLoad.shouldSettleCommittedLoad(generation)) {
                 finishWebViewLoadUi(view, generation, false)
             }
         }, WEBVIEW_VISIBLE_LOAD_GRACE_MS)
@@ -1104,19 +1120,16 @@ internal class CommentsWebViewController(
         }
 
         if (newProgress >= 100) {
-            finishWebViewLoadUi(view, webViewLoadGeneration, true)
-        } else if (!webViewLoadUiSettled) {
+            finishWebViewLoadUi(view, webContentLoad.state.generation, true)
+        } else if (!webContentLoad.state.uiSettled) {
             currentProgressIndicator.setVisibility(View.VISIBLE)
         }
     }
 
     private fun finishWebViewLoadUi(view: WebView, generation: Int, completeProgress: Boolean) {
-        if (view !== webView || generation != webViewLoadGeneration) {
+        if (view !== webView || !webContentLoad.finish(generation)) {
             return
         }
-
-        webViewLoadInProgress = false
-        webViewLoadUiSettled = true
 
         view.setBackgroundColor(Color.WHITE)
         hideWebViewLoadingBackdrop()
@@ -1172,7 +1185,7 @@ internal class CommentsWebViewController(
         }
         retryingFailedWebViewUrl = false
         currentWebView.stopLoading()
-        finishWebViewLoadUi(currentWebView, webViewLoadGeneration, false)
+        finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
         clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
         showingErrorPage = true
         showingCachedArticlePage = false
@@ -1306,8 +1319,6 @@ internal class CommentsWebViewController(
         if (!isErrorPageUrl(targetUrl)) {
             showingErrorPage = false
             showingCachedArticlePage = false
-            setReaderModeEnabled(false)
-            readerModeDisabledForCurrentPage = false
             lastRequestedWebViewUrl = targetUrl
             if (PDF_LOADER_URL != targetUrl) {
                 currentPdfFilePath = null
@@ -1346,7 +1357,7 @@ internal class CommentsWebViewController(
             return
         }
         beginWebViewLoad(targetWebView, targetUrl)
-        updateReaderModeAvailabilityForLoadStart(targetUrl, webViewLoadGeneration)
+        updateReaderModeAvailabilityForLoadStart(targetUrl, webContentLoad.state.generation)
         targetWebView.loadUrl(targetUrl)
         if (isErrorPageUrl(targetUrl)) {
             showingErrorPage = true
@@ -1475,7 +1486,7 @@ internal class CommentsWebViewController(
         )
 
         val currentWebView = webView
-        if (!webViewLoadInProgress || (currentWebView?.progress ?: 0) >= 100) {
+        if (!webContentLoad.state.inProgress || (currentWebView?.progress ?: 0) >= 100) {
             completePendingSummaryIfReady(currentWebView)
         }
     }
@@ -1502,7 +1513,7 @@ internal class CommentsWebViewController(
 
     private fun canReadLoadedPageText(targetWebView: WebView?): Boolean {
         return targetWebView != null && targetWebView === webView && startedLoading
-                && !webViewLoadInProgress && targetWebView.getProgress() >= 100 && !showingErrorPage && !TextUtils.isEmpty(
+                && !webContentLoad.state.inProgress && targetWebView.getProgress() >= 100 && !showingErrorPage && !TextUtils.isEmpty(
             targetWebView.getUrl()
         ) && !isErrorPageUrl(targetWebView.getUrl())
     }
@@ -1542,11 +1553,11 @@ internal class CommentsWebViewController(
             currentStory == null || !currentStory.isLink || currentStory.id <= 0
         ) return false
 
-        val html = Utils.loadCachedArticleSnapshot(context, currentStory.id)
+        val html = AndroidStoryCache.loadArticle(context, currentStory.id)
             ?.takeUnless(String::isEmpty)
             ?: return false
 
-        var baseUrl = Utils.loadCachedArticleUrl(context, currentStory.id)
+        var baseUrl = AndroidStoryCache.articleUrl(context, currentStory.id)
         if (TextUtils.isEmpty(baseUrl)) {
             baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else currentStory.url
         }
@@ -1569,10 +1580,7 @@ internal class CommentsWebViewController(
     private fun destroy(rendererProcessGone: Boolean) {
         cancelProgressAnimator()
         currentPdfFilePath = null
-        webViewLoadGeneration++
-        webViewLoadInProgress = false
-        webViewLoadUiSettled = true
-        webViewLoadCommittedVisible = false
+        webContentLoad.reset()
         pendingSummaryOnDone = null
         webViewHandler.removeCallbacksAndMessages(null)
         linkPreviewController.cancelPendingNitterLinkPreviewRead()
@@ -1675,11 +1683,9 @@ internal class CommentsWebViewController(
             }
             beginWebViewLoad(currentView, url)
             if (!isErrorPageUrl(url)) {
-                setReaderModeEnabled(false)
-                readerModeDisabledForCurrentPage = false
                 lastRequestedWebViewUrl = url
             }
-            updateReaderModeAvailabilityForLoadStart(url, webViewLoadGeneration)
+            updateReaderModeAvailabilityForLoadStart(url, webContentLoad.state.generation)
         }
 
         override fun onPageCommitVisible(view: WebView?, url: String?) {
@@ -1688,7 +1694,7 @@ internal class CommentsWebViewController(
             if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            webViewLoadCommittedVisible = true
+            webContentLoad.commitVisible()
             scheduleVisibleCommitSettle(currentView)
         }
 
@@ -1698,7 +1704,7 @@ internal class CommentsWebViewController(
             if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            finishWebViewLoadUi(currentView, webViewLoadGeneration, true)
+            finishWebViewLoadUi(currentView, webContentLoad.state.generation, true)
 
             if (retryingFailedWebViewUrl) {
                 retryingFailedWebViewUrl = false
@@ -1718,27 +1724,19 @@ internal class CommentsWebViewController(
 
             linkPreviewController.onWebViewPageFinished(coordinator.context, view, url)
 
-            val finishedGeneration = webViewLoadGeneration
-            if (readerModePending && !showingErrorPage && (PDF_LOADER_URL != url)) {
-                readerModePending = false
-                view.post(Runnable {
+            val finishedGeneration = webContentLoad.state.generation
+            val pageEligible = !showingErrorPage && PDF_LOADER_URL != url && !isErrorPageUrl(url)
+            when (val decision = updateReaderModeStateWithResult {
+                readerMode.onPageFinished(pageEligible)
+            }) {
+                is ReaderModePageDecision.Apply -> view.post(Runnable {
                     if (isCurrentWebViewCallback(view)) {
-                        applyReaderMode(true)
+                        applyReaderMode(decision.enabled, decision.showFeedback)
                     }
                 })
-            } else if (integratedWebview
-                && readerModeDefault
-                && !readerModeDisabledForCurrentPage && !readerModeEnabled && !showingErrorPage && (PDF_LOADER_URL != url) && !isErrorPageUrl(
-                    url
-                )
-            ) {
-                view.post(Runnable {
-                    if (isCurrentWebViewCallback(view)) {
-                        applyReaderMode(true, false)
-                    }
-                })
-            } else {
-                view.post(Runnable { checkReaderModeAvailability(view, finishedGeneration) })
+                ReaderModePageDecision.CheckAvailability ->
+                    view.post(Runnable { checkReaderModeAvailability(view, finishedGeneration) })
+                ReaderModePageDecision.None -> Unit
             }
         }
 
@@ -1792,10 +1790,10 @@ internal class CommentsWebViewController(
                 return super.shouldInterceptRequest(view, request)
             }
             val EMPTY = ByteArrayInputStream("".toByteArray())
-            if (!Utils.adservers.isEmpty) {
+            if (!AndroidAdBlocklist.hosts.isEmpty) {
                 val host = request.getUrl().getHost()
-                if (host != null && Utils.adservers.contains(host)) {
-                    Utils.log("Blocked: " + request.getUrl())
+                if (host != null && AndroidAdBlocklist.hosts.contains(host)) {
+                    HarmonicLog.debug("Blocked: " + request.getUrl())
                     return WebResourceResponse("text/plain", "utf-8", EMPTY)
                 }
             }
@@ -1827,7 +1825,7 @@ internal class CommentsWebViewController(
             }
             val context = coordinator.context
             if (context != null && wasCurrentWebView) {
-                Utils.toast("WebView crashed, reinitializing", context)
+                AndroidToast.show("WebView crashed, reinitializing", context)
                 restartWebView()
             }
 

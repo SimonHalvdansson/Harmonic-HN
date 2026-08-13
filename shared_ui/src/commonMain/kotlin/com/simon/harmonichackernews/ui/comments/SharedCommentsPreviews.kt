@@ -123,9 +123,7 @@ import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
-import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.presentation.VisibleComment
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.CommentNavigationRequest
 import com.simon.harmonichackernews.presentation.CommentScrollRequest

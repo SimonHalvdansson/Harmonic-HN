@@ -15,11 +15,18 @@ data class LocalRuntimeInstallStatus(
     val pendingModelId: String = "",
     val downloadedBytes: Long = 0L,
     val totalBytes: Long = 0L,
+    val runtime: LocalModelRuntime? = null,
+    val error: String = "",
+    val sessionId: Int = 0,
 ) {
     val active: Boolean
         get() = state == LocalRuntimeInstallState.PENDING ||
             state == LocalRuntimeInstallState.DOWNLOADING ||
             state == LocalRuntimeInstallState.INSTALLING
+
+    val isActive: Boolean get() = active
+    val bytesDownloaded: Long get() = downloadedBytes
+    val progressPercent: Int get() = localModelProgressPercent(downloadedBytes, totalBytes)
 }
 
 enum class LocalModelPresentationAction {

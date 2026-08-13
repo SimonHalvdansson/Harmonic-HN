@@ -13,10 +13,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.network.NetworkComponent
-import com.simon.harmonichackernews.settings.AndroidUserSettings
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.settings.DebugBooleanPreference
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidLinkNavigation
+import com.simon.harmonichackernews.utils.AndroidStoryCache
 
 private const val OpenWithoutCacheStoryId = 49089500
 
@@ -26,7 +27,7 @@ fun DebugSettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val repository = remember(context) { AndroidUserSettings.get(context).repository }
+    val repository = LocalHarmonicUiDependencies.current.settings
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
 
@@ -48,13 +49,13 @@ fun DebugSettingsScreen(
         onShowAiSummaryDebugInfoChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.SHOW_AI_SUMMARY_INFO, it)
         },
-        onOpenHnId = { Utils.openCommentsActivity(it, -1, context) },
+        onOpenHnId = { AndroidLinkNavigation.openStory(it, -1, context) },
         onOpenWithoutCache = {
-            Utils.removeStoryFromCaches(context, OpenWithoutCacheStoryId)
+            AndroidStoryCache.remove(context, OpenWithoutCacheStoryId)
             NetworkComponent.removeCachedStoryResponses(context, OpenWithoutCacheStoryId)
-            Utils.openCommentsActivity(OpenWithoutCacheStoryId, -1, context)
+            AndroidLinkNavigation.openStory(OpenWithoutCacheStoryId, -1, context)
         },
-        onOpenLink = { Utils.openLinkMaybeHN(context, it) },
+        onOpenLink = { AndroidLinkNavigation.openMaybeHackerNews(context, it) },
         onDialogRequested = { dialog = it },
         onEasterEggRequested = {
             context.startActivity(CoulombGasContract.createIntent(context))

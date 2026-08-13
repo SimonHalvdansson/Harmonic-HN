@@ -9,12 +9,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
 fun FiltersTagsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val settingsRepository = app.settings
     val presenter = remember(app) {
         FiltersTagsSettingsPresenter(app.settings, app.contentFilters, app.userTags)

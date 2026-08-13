@@ -11,14 +11,11 @@ import com.simon.harmonichackernews.settings.KeyValueStore
  * content without first implementing unrelated facilities such as notifications or local AI.
  */
 class IosPlatformBindings(
-    val accounts: ObservableHackerNewsAccountRepository,
+    val credentials: CredentialStore,
+    val accounts: ObservableHackerNewsAccountRepository =
+        CredentialBackedHackerNewsAccountRepository(credentials),
     val capabilities: OptionalPlatformCapabilities = OptionalPlatformCapabilities(),
 ) {
-    /** Minimal Swift-facing bootstrap: Keychain-backed credentials and no optional facilities. */
-    constructor(credentials: CredentialStore) : this(
-        accounts = CredentialBackedHackerNewsAccountRepository(credentials),
-    )
-
     /** Compatibility constructor for hosts that already provide the complete legacy service set. */
     constructor(
         credentials: CredentialStore,
@@ -32,7 +29,7 @@ class IosPlatformBindings(
         articles: ArticleViewer,
         localSummary: LocalSummaryEngine,
     ) : this(
-        accounts = CredentialBackedHackerNewsAccountRepository(credentials),
+        credentials = credentials,
         capabilities = OptionalPlatformCapabilities(
             cache = PlatformCapability.Available(cache),
             files = PlatformCapability.Available(files),
@@ -77,6 +74,7 @@ fun createIosPlatformDependencies(
     appDataStore: KeyValueStore,
     bindings: IosPlatformBindings,
 ): AppPlatformDependencies = AppPlatformDependencies(
+    credentials = bindings.credentials,
     accounts = bindings.accounts,
     capabilities = bindings.capabilities.copy(
         bookmarks = PlatformCapability.Available(

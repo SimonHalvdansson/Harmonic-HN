@@ -20,14 +20,13 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.ColorUtils
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidAppearanceState
 
 fun composeThemeLabel(value: String, fallback: String = ThemePreferences.DEFAULT): String {
     return harmonicThemeLabel(value, fallback)
@@ -40,7 +39,7 @@ fun ThemeSelectionDialog(
     onThemeChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
     val selected = if (nighttime) {
         presenter.snapshot.appearance.nighttimeTheme
@@ -167,12 +166,12 @@ fun NighttimeRangeDialog(
     onRangeSelected: () -> Unit,
 ) {
     val context = LocalContext.current
-    val current = remember(context) { Utils.getNighttimeHours(context) }
+    val current = remember(context) { AndroidAppearanceState.nighttimeSchedule(context) }
     SharedNighttimeRangeDialog(
         initialHours = current,
         is24Hour = DateFormat.is24HourFormat(context),
         onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-            Utils.setNighttimeHours(
+            AndroidAppearanceState.saveNighttimeSchedule(
                 fromHour,
                 fromMinute,
                 toHour,
@@ -191,10 +190,10 @@ fun WelcomeSettingsDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
     LaunchedEffect(Unit) {
-        AndroidAiModelDefaults.ensureInitialDefault(context)
+        app.aiModelDefaults.ensureInitialDefault()
     }
     val storyPreferences = presenter.snapshot.story
     SharedWelcomeSettingsDialog(
@@ -205,7 +204,7 @@ fun WelcomeSettingsDialog(
             storyPreferences.previewImageMode != StoryPreviewPreferences.OFF,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
-            if (!styleChooser) Utils.markWelcomeDialogShown(context)
+            if (!styleChooser) AndroidAppearanceState.markWelcomeShown(context)
             onDismiss()
         },
         onDismiss = onDismiss,
@@ -240,7 +239,7 @@ fun PaletteTintDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { AndroidAppComposition.get(context) }
+    val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
     val paletteConfig = presenter.snapshot.story.paletteTintConfigKey
     SharedPaletteTintDialog(

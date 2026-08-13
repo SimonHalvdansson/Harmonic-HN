@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 sealed interface CommentsRuntimeEffect {
     data class Platform(val effect: CommentsPlatformEffect) : CommentsRuntimeEffect
     data class StateChanged(val refreshNavigation: Boolean = false) : CommentsRuntimeEffect
-    data class ShowCommentActions(val comment: Comment) : CommentsRuntimeEffect
+    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsRuntimeEffect
     data class BroadcastStoryUpdate(val story: Story) : CommentsRuntimeEffect
     data class ThreadReady(
         val restoreScroll: Boolean,
@@ -379,7 +379,8 @@ class CommentsFeatureRuntime(
     fun canSwitchStoryView(storyId: Int): Boolean =
         story?.id == storyId && settingsState.value?.integratedWebView == true
 
-    fun comment(commentId: Int): Comment? = thread.findComment(commentId)
+    fun comment(commentId: Int): PortableCommentItem? =
+        thread.state.value.allComments.firstOrNull { it.id == commentId }
 
     fun evaluateUpdate(alwaysShow: Boolean) {
         presenter.dispatch(
@@ -392,13 +393,13 @@ class CommentsFeatureRuntime(
         changed()
     }
 
-    fun toggleExpanded(comment: Comment) {
-        presenter.dispatch(CommentsAction.ToggleExpanded(comment.id))
+    fun toggleExpanded(commentId: Int) {
+        presenter.dispatch(CommentsAction.ToggleExpanded(commentId))
         changed(refreshNavigation = true)
     }
 
-    fun expandParents(comment: Comment) {
-        presenter.dispatch(CommentsAction.ExpandParents(comment.id))
+    fun expandParents(commentId: Int) {
+        presenter.dispatch(CommentsAction.ExpandParents(commentId))
         changed(refreshNavigation = true)
     }
 
@@ -422,7 +423,7 @@ class CommentsFeatureRuntime(
         sessionState.scrollToCommentId = -1
         val comment = thread.findComment(commentId)
             ?: return CommentTargetResolution.NotFound(commentId)
-        expandParents(comment)
+        expandParents(comment.id)
         return CommentTargetResolution.Found(commentId)
     }
 
@@ -454,7 +455,7 @@ class CommentsFeatureRuntime(
         changed(refreshNavigation = true)
     }
 
-    fun requestCommentActions(comment: Comment) =
+    fun requestCommentActions(comment: PortableCommentItem) =
         presenter.dispatch(CommentsAction.RequestCommentActions(comment))
 
     fun votePollOption(optionId: Int) =
@@ -528,7 +529,7 @@ class CommentsFeatureRuntime(
 
     fun commentAction(
         action: CommentMenuAction,
-        comment: Comment,
+        comment: PortableCommentItem,
         voteLoading: Boolean,
         downvoted: Boolean,
     ) {
@@ -536,7 +537,7 @@ class CommentsFeatureRuntime(
             CommentsUiOrchestrator.comment(
                 action = action,
                 context = CommentActionContext(
-                    comment = comment,
+                    comment = comment.comment,
                     storyTitle = story?.title,
                     hasAccount = hasAccount,
                     voteLoading = voteLoading,

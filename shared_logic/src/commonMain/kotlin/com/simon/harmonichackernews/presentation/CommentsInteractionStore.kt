@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.data.Comment
-
 data class CommentNavigationRequest(
     val serial: Int,
     val forward: Boolean,
@@ -61,7 +59,7 @@ data class CommentsInteractionState(
     val searchDialogVisible: Boolean = false,
     val predictiveBackActive: Boolean = false,
     val predictiveBackProgress: Float = 0f,
-    val commentAction: Comment? = null,
+    val commentAction: PortableCommentItem? = null,
     val commentActionDismissRequestVersion: Int = 0,
     val commentActionBackGesture: BackGesture = BackGesture(),
     val commentActionFavoriteLoadingId: Int = -1,
@@ -246,7 +244,7 @@ class CommentsInteractionStore(
         )
     }
 
-    fun showCommentActions(comment: Comment, stopScroll: Boolean): Boolean {
+    fun showCommentActions(comment: PortableCommentItem, stopScroll: Boolean): Boolean {
         if (state.commentAction != null) return false
         state = state.copy(
             commentAction = comment,

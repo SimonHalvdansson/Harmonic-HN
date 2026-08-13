@@ -15,7 +15,6 @@ import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.StoryFeedRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.AndroidStoryPreviewResourceService
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
@@ -37,7 +36,7 @@ import com.simon.harmonichackernews.utils.FontUtils
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
 import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidStoryCache
 import java.util.Date
 import kotlin.math.roundToInt
 import kotlin.time.Clock
@@ -114,10 +113,10 @@ class StoriesCoordinator(
         loadContentFilters = contentFilters::load,
         commentMasterResolver = commentMasterResolver,
         nowMillis = { clock.now().toEpochMilliseconds() },
-        hydrateCachedStory = { story -> Utils.loadCachedStorySummary(context, story) },
-        loadCachedStories = { Utils.loadCachedStories(activity) },
-        hasCachedStories = { Utils.hasCachedStories(activity) },
-        previewResourceService = AndroidStoryPreviewResourceService { context },
+        hydrateCachedStory = { story -> AndroidStoryCache.hydrate(context, story) },
+        loadCachedStories = { AndroidStoryCache.recentStories(activity) },
+        hasCachedStories = { AndroidStoryCache.hasRecentStories(activity) },
+        previewResourceService = appComposition.previewResources,
         storyResourceTints = appComposition.storyResourceTints,
     )
     private var restoredStateForCurrentView = false

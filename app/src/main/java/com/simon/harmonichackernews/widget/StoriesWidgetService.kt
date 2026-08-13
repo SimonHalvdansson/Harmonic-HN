@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.widget
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.widget.RemoteViewsService
-import com.simon.harmonichackernews.utils.Utils.log
+import com.simon.harmonichackernews.utils.HarmonicLog.debug as log
 
 class StoriesWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {

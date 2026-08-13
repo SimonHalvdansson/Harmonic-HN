@@ -6,7 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
@@ -17,14 +17,14 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 @Composable
 fun SharedCommentsSearchDialog(
     searchTerm: String,
-    visibleComments: List<Comment>,
+    visibleComments: List<PortableCommentItem>,
     settings: CommentDisplaySettings,
     storyAuthor: String?,
     accountUser: String?,
     maxDialogHeight: Dp,
     onSearchTermChanged: (String) -> Unit,
     onDismiss: () -> Unit,
-    onCommentSelected: (Comment) -> Unit,
+    onCommentSelected: (PortableCommentItem) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
     SettingsAlertDialog(
@@ -53,11 +53,11 @@ fun SharedCommentsSearchDialog(
 fun SharedCommentsSearchContent(
     searchTerm: String,
     onSearchTermChanged: (String) -> Unit,
-    visibleComments: List<Comment>,
+    visibleComments: List<PortableCommentItem>,
     settings: CommentDisplaySettings,
     storyAuthor: String?,
     accountUser: String?,
-    onCommentSelected: (Comment) -> Unit,
+    onCommentSelected: (PortableCommentItem) -> Unit,
     onOpenLink: (String) -> Unit,
     requestFocus: Boolean,
 ) {

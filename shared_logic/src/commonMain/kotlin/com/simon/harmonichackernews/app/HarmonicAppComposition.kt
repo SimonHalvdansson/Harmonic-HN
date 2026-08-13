@@ -4,19 +4,22 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkGraph
+import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
-import com.simon.harmonichackernews.platform.PlatformServices
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
-import com.simon.harmonichackernews.platform.toAppPlatformDependencies
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.settings.AppSettingsRepository
+import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
+import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredSettingsMutator
 import com.simon.harmonichackernews.settings.StoredUserSettings
+import com.simon.harmonichackernews.settings.SettingsResetUseCase
+import com.simon.harmonichackernews.settings.AppLaunchStateStore
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import kotlinx.coroutines.flow.Flow
@@ -33,25 +36,10 @@ class HarmonicAppComposition(
     val platform: AppPlatformDependencies,
     settingsStore: KeyValueStore,
     appDataStore: KeyValueStore,
+    previewCacheStore: KeyValueStore,
     settingsChanges: Flow<Unit>,
     currentTheme: () -> String? = { null },
 ) {
-    constructor(
-        network: NetworkGraph,
-        platformServices: PlatformServices,
-        settingsStore: KeyValueStore,
-        appDataStore: KeyValueStore,
-        settingsChanges: Flow<Unit>,
-        currentTheme: () -> String? = { null },
-    ) : this(
-        network = network,
-        platform = platformServices.toAppPlatformDependencies(),
-        settingsStore = settingsStore,
-        appDataStore = appDataStore,
-        settingsChanges = settingsChanges,
-        currentTheme = currentTheme,
-    )
-
     val sessions = ScreenSessionRegistry()
     val navigation = MainNavigationStore()
     val userSettings: UserSettings = StoredUserSettings(
@@ -64,6 +52,26 @@ class HarmonicAppComposition(
     val userTags = UserTagsRepository(settingsStore)
     val savedItems = SavedItemsRepository(appDataStore)
     val storyResourceTints = StoryResourceTintRepository(appDataStore)
+    val aiSummarySettings = AiSummarySettingsRepository(
+        store = settingsStore,
+        credentials = platform.credentials,
+        changes = settingsChanges,
+    )
+    val aiModelDefaults = AiModelDefaultsUseCase(
+        settings = aiSummarySettings,
+        catalog = network.aiModelCatalogRepository,
+    )
+    val settingsReset = SettingsResetUseCase(
+        defaultSettings = settingsStore,
+        globalSettings = appDataStore,
+        credentials = platform.credentials,
+    )
+    val launchState = AppLaunchStateStore(appDataStore)
+    val previewResources = StoryPreviewRepository(
+        coordinator = network.previewContentCoordinator,
+        linkSummaries = network.linkSummaryRepository,
+        store = previewCacheStore,
+    )
     val hackerNewsUser = HackerNewsUserService(
         session = network.hackerNewsSession,
         accounts = platform.accounts,

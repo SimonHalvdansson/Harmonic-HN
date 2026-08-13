@@ -3,8 +3,8 @@ package com.simon.harmonichackernews.utils
 import android.content.Context
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
+import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.TextPreferences
 
 object FontUtils {
@@ -14,7 +14,7 @@ object FontUtils {
     var font: String? = null
 
     fun init(ctx: Context) {
-        font = AndroidUserSettings.get(ctx).story.font
+        font = AndroidAppComposition.get(ctx).userSettings.story.font
 
         activeRegular = getRegularTypeface(ctx, font)
         activeBold = getBoldTypeface(ctx, font)

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.presentation.CommentMenuAction
+import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
@@ -13,13 +13,14 @@ class CommentsFeatureListener(
     private val feature: CommentsFeatureRuntime,
     private val platform: PlatformCallbacks,
 ) : CommentsComposeController.Listener {
-    override fun onToggleComment(comment: Comment, position: Int) = feature.toggleExpanded(comment)
+    override fun onToggleComment(comment: PortableCommentItem, position: Int) =
+        feature.toggleExpanded(comment.id)
 
     override fun onScrollPositionChanged(commentId: Int, offset: Int) {
         if (!platform.isRestoringScroll()) feature.recordScrollPosition(commentId, offset)
     }
 
-    override fun onCommentAction(comment: Comment, action: CommentMenuAction) {
+    override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) {
         if (!platform.canHandleCommentAction()) return
         feature.commentAction(
             action = action,
@@ -51,8 +52,8 @@ class CommentsFeatureListener(
     override fun onShareAction(action: CommentsShareAction) = feature.share(action)
     override fun onMoreAction(action: CommentsMoreAction) = feature.more(action)
 
-    override fun onSearchResultSelected(comment: Comment) {
-        feature.expandParents(comment)
+    override fun onSearchResultSelected(comment: PortableCommentItem) {
+        feature.expandParents(comment.id)
         platform.scrollToSearchResult(comment.id)
     }
 

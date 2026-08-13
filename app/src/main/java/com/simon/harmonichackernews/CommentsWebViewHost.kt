@@ -10,7 +10,7 @@ import androidx.core.view.insets.ProtectionLayout
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidDisplay
 
 /**
  * The small View island needed by Android WebView. All visible comments UI, including the
@@ -40,7 +40,7 @@ internal class CommentsWebViewHost(context: Context) {
             id = R.id.webview_container
         }
         val webViewContainerParams = matchParentFrameParams().apply {
-            bottomMargin = Utils.pxFromDpInt(context.resources, 68f)
+            bottomMargin = AndroidDisplay.dpToPxInt(context.resources, 68f)
         }
         content.addView(webViewContainer, webViewContainerParams)
 

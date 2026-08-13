@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.summary.local
 
 import android.content.Context
+import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 
 /**
  * Defensive no-op runtime delivery implementation for the FOSS distribution.
@@ -21,13 +24,16 @@ object LocalAiRuntimeManager {
     fun removeStatusListener(listener: StatusListener) {
     }
 
-    fun getStatus(context: Context, runtime: LocalModelManager.Runtime): Status {
-        return Status(runtime)
-    }
+    fun getStatus(context: Context, runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
+        LocalRuntimeInstallStatus(
+            state = LocalRuntimeInstallState.NOT_INSTALLED,
+            runtime = runtime,
+            error = UNAVAILABLE_MESSAGE,
+        )
 
     fun isRuntimeInstalled(
         context: Context,
-        runtime: LocalModelManager.Runtime
+        runtime: LocalModelRuntime
     ): Boolean {
         return false
     }
@@ -38,16 +44,16 @@ object LocalAiRuntimeManager {
 
     fun cancelRuntimeInstall(
         context: Context,
-        runtime: LocalModelManager.Runtime
+        runtime: LocalModelRuntime
     ) {
     }
 
-    fun getRuntimeLabel(runtime: LocalModelManager.Runtime): String = when (runtime) {
-        LocalModelManager.Runtime.GEMINI_NANO -> "Gemini Nano"
+    fun getRuntimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         else -> "local AI runtime"
     }
 
-    fun getEngineClassName(runtime: LocalModelManager.Runtime): String {
+    fun getEngineClassName(runtime: LocalModelRuntime): String {
         throw IllegalStateException("Local AI is not included in the FOSS distribution.")
     }
 
@@ -55,28 +61,4 @@ object LocalAiRuntimeManager {
         fun onRuntimeStatusChanged()
     }
 
-    enum class State {
-        NOT_INSTALLED,
-        PENDING,
-        DOWNLOADING,
-        INSTALLING,
-        INSTALLED,
-        FAILED,
-        CANCELED
-    }
-
-    class Status internal constructor(val runtime: LocalModelManager.Runtime) {
-        val state: State = State.NOT_INSTALLED
-        val bytesDownloaded: Long = 0L
-        val totalBytes: Long = 0L
-        val error: String = UNAVAILABLE_MESSAGE
-        val pendingModelId: String = ""
-        val sessionId: Int = 0
-
-        val isActive: Boolean
-            get() = false
-
-        val progressPercent: Int
-            get() = 0
-    }
 }

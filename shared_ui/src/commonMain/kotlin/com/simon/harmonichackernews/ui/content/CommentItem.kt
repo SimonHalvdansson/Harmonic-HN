@@ -60,7 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -166,7 +166,7 @@ fun CommentItem(
  */
 @Composable
 fun CommentItem(
-    comment: Comment,
+    comment: PortableCommentItem,
     style: CommentItemStyle,
     storyAuthor: String?,
     accountUser: String?,

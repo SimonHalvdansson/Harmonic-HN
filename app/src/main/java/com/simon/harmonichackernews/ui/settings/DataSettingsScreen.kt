@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -20,20 +21,17 @@ import com.simon.harmonichackernews.data.BookmarkImportPolicy
 import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
-import com.simon.harmonichackernews.network.StoryPreviewImageLoader
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
-import com.simon.harmonichackernews.platform.AndroidCredentialStore
-import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.BookmarkExportDecision
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
 import com.simon.harmonichackernews.settings.GeneralBooleanPreference
-import com.simon.harmonichackernews.settings.SettingsResetUseCase
 import com.simon.harmonichackernews.utils.HistoriesUtils
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidStoryCache
+import com.simon.harmonichackernews.utils.AndroidToast
 import java.util.Calendar
+import kotlinx.coroutines.launch
 
 @Composable
 fun DataSettingsScreen(
@@ -42,21 +40,14 @@ fun DataSettingsScreen(
     onRequestRestart: () -> Unit,
 ) {
     val context = LocalContext.current
-    val settingsRepository = remember(context) { AndroidUserSettings.get(context).repository }
+    val scope = rememberCoroutineScope()
+    val appComposition = LocalHarmonicUiDependencies.current
+    val settingsRepository = appComposition.settings
     val appSettings by settingsRepository.updates.collectAsState(
         initial = settingsRepository.snapshot(),
     )
-    val credentials = remember(context) { AndroidCredentialStore(context) }
-    val settingsReset = remember(context) {
-        SettingsResetUseCase(
-            defaultSettings = AndroidKeyValueStore.defaults(context),
-            globalSettings = AndroidKeyValueStore.global(context),
-            credentials = credentials,
-        )
-    }
-    val savedItems = remember(context) {
-        SavedItemsRepository(AndroidKeyValueStore.global(context))
-    }
+    val settingsReset = appComposition.settingsReset
+    val savedItems = appComposition.savedItems
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<DataSettingsDialog?>(null) }
     var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
@@ -109,10 +100,10 @@ fun DataSettingsScreen(
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount,
             history = HistoriesUtils.loadHistories(context, false).size,
-            postCache = Utils.getCachedPostCount(context),
-            tintCache = StoryPreviewImageLoader.getCachedPreviewImageTintColorCount(context),
+            postCache = AndroidStoryCache.itemCount(context),
+            tintCache = appComposition.storyResourceTints.count(),
         ),
-        loggedIn = credentials.load() != null,
+        loggedIn = appComposition.platform.accounts.load() != null,
     )
     SharedDataSettingsScreen(
         state = portableState,
@@ -148,21 +139,24 @@ fun DataSettingsScreen(
                     HistoriesUtils.clearHistories(context)
                     localRefresh++
                     DataSettingsPolicy.clearedItemsMessage(oldCount, "entry", "entries")
-                        ?.let { Utils.toast(it, context) }
+                        ?.let { AndroidToast.show(it, context) }
                 }
                 DataSettingsAction.ClearPostCache -> {
-                    val oldCount = Utils.clearPostCache(context)
-                    localRefresh++
-                    DataSettingsPolicy.clearedItemsMessage(
-                        oldCount,
-                        "cached post",
-                        "cached posts",
-                    )?.let { Utils.toast(it, context) }
+                    val oldCount = AndroidStoryCache.clear(context)
+                    scope.launch {
+                        appComposition.previewResources.clear()
+                        localRefresh++
+                        DataSettingsPolicy.clearedItemsMessage(
+                            oldCount,
+                            "cached post",
+                            "cached posts",
+                        )?.let { AndroidToast.show(it, context) }
+                    }
                 }
                 DataSettingsAction.ClearTintCache -> {
-                    PreviewImageTintUtils.clearTintColorCaches(context)
+                    appComposition.storyResourceTints.clear()
                     localRefresh++
-                    Utils.toast("Tint cache cleared", context)
+                    AndroidToast.show("Tint cache cleared", context)
                 }
                 DataSettingsAction.OpenLinksSettings -> dialog = DataSettingsDialog.Links
                 DataSettingsAction.ResetSettings -> dialog = DataSettingsDialog.Reset
@@ -194,7 +188,7 @@ fun DataSettingsScreen(
             negativeLabel = "Cancel",
             onPositive = {
                 settingsReset.execute()
-                Utils.toast("Settings reset", context)
+                AndroidToast.show("Settings reset", context)
                 onRequestRestart()
                 dialog = null
             },

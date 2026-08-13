@@ -19,7 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.network.RepliesChecker
 import com.simon.harmonichackernews.presentation.UserProfileBlockPort
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
@@ -40,7 +40,7 @@ fun UserSettingsDialog(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
     val contentFilters = appComposition.contentFilters
     val userTags = appComposition.userTags
     val monthNames = stringArrayResource(Res.array.months)

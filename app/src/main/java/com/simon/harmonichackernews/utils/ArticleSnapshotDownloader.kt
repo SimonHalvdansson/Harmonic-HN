@@ -17,7 +17,7 @@ class ArticleSnapshotDownloader(context: Context) {
     private val service = CachedDownloadService(
         client = KtorTransferClient(AndroidAppComposition.get(appContext).network.httpClient),
         store = AndroidDownloadStore(
-            root = Utils.getArticleCacheDir(appContext),
+            root = AndroidStoryCache.articleDirectory(appContext),
             fileNameForKey = { storyId -> "$storyId$HTML_FILE_SUFFIX" },
             targetSuffix = HTML_FILE_SUFFIX,
             onCommit = { storyId, metadata ->

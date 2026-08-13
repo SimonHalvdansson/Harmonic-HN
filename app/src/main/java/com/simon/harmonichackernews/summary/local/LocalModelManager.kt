@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import android.os.Process
-import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.Data
@@ -13,22 +12,22 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager.Companion.getInstance
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
-import com.simon.harmonichackernews.summary.LocalModelBrand
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelManagerState
 import com.simon.harmonichackernews.summary.LocalModelStateStore
-import com.simon.harmonichackernews.summary.LocalModelTransferState
+import com.simon.harmonichackernews.summary.LocalModelTransferStatus
 import com.simon.harmonichackernews.summary.LocalModelWorkSnapshot
 import com.simon.harmonichackernews.summary.LocalModelWorkState
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.summary.localModelProgressPercent
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.max
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** Catalog and lifecycle for Gemini Nano and downloadable local LLMs.  */
 object LocalModelManager {
@@ -50,24 +49,25 @@ object LocalModelManager {
     private const val LEGACY_QWEN_EXACT_FILE_NAME = "Qwen3.5-0.8B-hybrid-exact-c2048.litertlm"
     private const val STORAGE_BUFFER_BYTES = 256L * 1024L * 1024L
 
-    val models: List<ModelInfo> = LocalModelCatalog.models.map { it.toModelInfo() }
-    private val GEMINI_NANO: ModelInfo = models.first()
+    val models: List<LocalModelDefinition> = LocalModelCatalog.models
+    private val GEMINI_NANO: LocalModelDefinition = models.first()
 
-    private val listeners = CopyOnWriteArraySet<StatusListener>()
     private val currentWork = ConcurrentHashMap<String, WorkInfo>()
+    private val mutableState = MutableStateFlow(LocalModelManagerState())
+    val state: StateFlow<LocalModelManagerState> = mutableState.asStateFlow()
     private var appContext: Context? = null
 
     val isSupported: Boolean
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    fun isModelSupported(model: ModelInfo): Boolean {
+    fun isModelSupported(model: LocalModelDefinition): Boolean {
         if (!model.downloadable) {
             return true
         }
-        return isSupported && (model.runtime != Runtime.LITERT_LM || Process.is64Bit())
+        return isSupported && (model.runtime != LocalModelRuntime.LITERT_LM || Process.is64Bit())
     }
 
-    fun getModelUnsupportedReason(model: ModelInfo): String {
+    fun getModelUnsupportedReason(model: LocalModelDefinition): String {
         if (!model.downloadable || isModelSupported(model)) {
             return ""
         }
@@ -77,11 +77,12 @@ object LocalModelManager {
         return "Requires a 64-bit Android device"
     }
 
-    fun getSelectedModel(context: Context): ModelInfo {
+    fun getSelectedModel(context: Context): LocalModelDefinition {
         return getModel(modelState(context).selectedModelId)
     }
 
-    fun getModel(id: String?): ModelInfo = models.firstOrNull { it.id == id } ?: GEMINI_NANO
+    fun getModel(id: String?): LocalModelDefinition =
+        models.firstOrNull { it.id == id } ?: GEMINI_NANO
 
     fun selectModel(context: Context, modelId: String?) {
         val model = getModel(modelId)
@@ -90,18 +91,18 @@ object LocalModelManager {
                 supported = isModelSupported(model),
                 downloaded = isModelDownloaded(context, model),
             )
-        ) notifyListeners()
+        ) publishStatuses(context)
     }
 
     fun clearSelectedModel(context: Context) {
         modelState(context).clearSelection()
-        notifyListeners()
+        publishStatuses(context)
     }
 
     fun isSelectedModelDownloaded(context: Context): Boolean =
         isModelDownloaded(context, getSelectedModel(context))
 
-    fun isModelDownloaded(context: Context, model: ModelInfo): Boolean {
+    fun isModelDownloaded(context: Context, model: LocalModelDefinition): Boolean {
         if (!model.downloadable) {
             return false
         }
@@ -114,12 +115,12 @@ object LocalModelManager {
         return getModelFile(context, model.id, model.fileName).absolutePath
     }
 
-    fun getSelectedStatus(context: Context): Status {
+    fun getSelectedStatus(context: Context): LocalModelTransferStatus {
         initialize(context)
         return getStatus(context, getSelectedModel(context))
     }
 
-    fun getStatus(context: Context, model: ModelInfo): Status {
+    fun getStatus(context: Context, model: LocalModelDefinition): LocalModelTransferStatus {
         initialize(context)
         val finalFile = getModelFile(context, model.id, model.fileName)
         val info = currentWork[model.id]
@@ -130,12 +131,7 @@ object LocalModelManager {
             partialFileBytes = partialFile.takeIf(File::isFile)?.length() ?: 0L,
             work = info?.toSharedSnapshot(),
         )
-        return Status(
-            model = model,
-            state = resolved.state.toAndroidState(),
-            receivedBytes = resolved.receivedBytes,
-            error = resolved.error,
-        )
+        return resolved
     }
 
     fun downloadSelectedModel(context: Context): String? =
@@ -204,7 +200,7 @@ object LocalModelManager {
             .result.addListener({
                 deleteKnownModelFiles(context, model, false)
                 currentWork.remove(model.id)
-                notifyListeners()
+                publishStatuses(context)
             }, ContextCompat.getMainExecutor(context))
     }
 
@@ -227,17 +223,12 @@ object LocalModelManager {
             clearSelectedModel(context)
             return
         }
-        notifyListeners()
+        publishStatuses(context)
     }
 
-    fun addStatusListener(context: Context, listener: StatusListener) {
+    fun states(context: Context): StateFlow<LocalModelManagerState> {
         initialize(context)
-        listeners.add(listener)
-        listener.onStatusChanged(getSelectedStatus(context))
-    }
-
-    fun removeStatusListener(listener: StatusListener) {
-        listeners.remove(listener)
+        return state
     }
 
     val isDownloadActive: Boolean
@@ -276,6 +267,7 @@ object LocalModelManager {
                     .observeForever { infos -> onWorkInfosChanged(model.id, infos) }
             }
         }
+        publishStatuses(initializedContext)
     }
 
     private fun onWorkInfosChanged(modelId: String, infos: List<WorkInfo>?) {
@@ -287,7 +279,7 @@ object LocalModelManager {
         } else {
             currentWork[modelId] = selected
         }
-        notifyListeners()
+        appContext?.let(::publishStatuses)
     }
 
     private fun isDownloadForModelActive(modelId: String): Boolean =
@@ -308,31 +300,6 @@ object LocalModelManager {
         defaultModelId = MODEL_GEMINI_NANO,
     )
 
-    private fun LocalModelDefinition.toModelInfo(): ModelInfo = ModelInfo(
-        id = id,
-        displayName = displayName,
-        parameterSize = parameterSize,
-        quantization = quantization,
-        iconResId = when (brand) {
-            LocalModelBrand.GOOGLE -> R.drawable.model_logo_google
-            LocalModelBrand.PRISM -> R.drawable.model_logo_prism
-            LocalModelBrand.QWEN -> R.drawable.model_logo_qwen
-            LocalModelBrand.NVIDIA -> R.drawable.model_logo_nvidia
-            LocalModelBrand.MISTRAL -> R.drawable.model_logo_mistral
-            LocalModelBrand.LIQUID -> R.drawable.model_logo_liquid
-        },
-        fileName = fileName,
-        url = url,
-        sizeBytes = sizeBytes,
-        downloadable = downloadable,
-        runtime = when (runtime) {
-            LocalModelRuntime.GEMINI_NANO -> Runtime.GEMINI_NANO
-            LocalModelRuntime.LITERT_LM -> Runtime.LITERT_LM
-            LocalModelRuntime.LLAMA_CPP -> Runtime.LLAMA_CPP
-        },
-        contextTokens = contextTokens,
-    )
-
     private fun WorkInfo.toSharedSnapshot(): LocalModelWorkSnapshot = LocalModelWorkSnapshot(
         state = when (state) {
             WorkInfo.State.RUNNING -> LocalModelWorkState.RUNNING
@@ -346,20 +313,11 @@ object LocalModelManager {
         error = outputData.getString(LocalModelDownloadWorker.KEY_ERROR).orEmpty(),
     )
 
-    private fun LocalModelTransferState.toAndroidState(): State = when (this) {
-        LocalModelTransferState.NOT_DOWNLOADED -> State.NOT_DOWNLOADED
-        LocalModelTransferState.PARTIALLY_DOWNLOADED -> State.PARTIALLY_DOWNLOADED
-        LocalModelTransferState.WAITING -> State.WAITING
-        LocalModelTransferState.DOWNLOADING -> State.DOWNLOADING
-        LocalModelTransferState.DOWNLOADED -> State.DOWNLOADED
-        LocalModelTransferState.FAILED -> State.FAILED
-    }
-
     private fun getWorkName(modelId: String): String = "$WORK_NAME_PREFIX$modelId"
 
     private fun deleteKnownModelFiles(
         context: Context,
-        model: ModelInfo,
+        model: LocalModelDefinition,
         includeFinalFile: Boolean,
     ) {
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
@@ -387,7 +345,7 @@ object LocalModelManager {
         }
     }
 
-    private fun deleteObsoleteModelFiles(context: Context, model: ModelInfo) {
+    private fun deleteObsoleteModelFiles(context: Context, model: LocalModelDefinition) {
         val finalFile = getModelFile(context, model.id, model.fileName)
         val partialFile = getPartialModelFile(context, model.id, model.fileName)
         val modelDir = finalFile.parentFile ?: return
@@ -398,7 +356,7 @@ object LocalModelManager {
         }
     }
 
-    private fun deleteInferenceCacheFiles(context: Context, model: ModelInfo) {
+    private fun deleteInferenceCacheFiles(context: Context, model: LocalModelDefinition) {
         val currentPrefix = "${model.fileName}.xnnpack_cache_"
         val legacyPrefix = when (model.id) {
             MODEL_E2B -> "$LEGACY_E2B_FILE_NAME.xnnpack_cache_"
@@ -417,52 +375,11 @@ object LocalModelManager {
         }
     }
 
-    private fun notifyListeners() {
-        val context = appContext ?: return
-        val status = getStatus(context, getSelectedModel(context))
-        listeners.forEach { it.onStatusChanged(status) }
-    }
-
-    fun interface StatusListener {
-        fun onStatusChanged(status: Status)
-    }
-
-    enum class State {
-        NOT_DOWNLOADED,
-        PARTIALLY_DOWNLOADED,
-        WAITING,
-        DOWNLOADING,
-        DOWNLOADED,
-        FAILED
-    }
-
-    enum class Runtime {
-        GEMINI_NANO,
-        LITERT_LM,
-        LLAMA_CPP
-    }
-
-    class ModelInfo(
-        val id: String,
-        val displayName: String,
-        val parameterSize: String,
-        val quantization: String,
-        @DrawableRes val iconResId: Int,
-        val fileName: String,
-        val url: String,
-        val sizeBytes: Long,
-        val downloadable: Boolean,
-        val runtime: Runtime,
-        val contextTokens: Int,
-    )
-
-    class Status(
-        val model: ModelInfo,
-        val state: State,
-        val receivedBytes: Long,
-        val error: String,
-    ) {
-        val progressPercent: Int
-            get() = localModelProgressPercent(receivedBytes, model.sizeBytes)
+    private fun publishStatuses(context: Context) {
+        if (appContext == null) return
+        mutableState.value = LocalModelManagerState(
+            selectedModelId = getSelectedModel(context).id,
+            statuses = models.associate { model -> model.id to getStatus(context, model) },
+        )
     }
 }

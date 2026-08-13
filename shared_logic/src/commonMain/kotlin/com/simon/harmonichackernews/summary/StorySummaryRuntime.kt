@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.launch
 
 enum class StorySummaryMode {
@@ -35,6 +36,43 @@ sealed interface StorySummaryEvent {
 
 fun interface StorySummaryBackend {
     fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent>
+}
+
+data class LocalSummaryAvailability(
+    val available: Boolean,
+    val downloadableFallbackRequired: Boolean,
+    val statusMessage: String? = null,
+)
+
+/** Adds shared article-text extraction to a platform backend that only performs local inference. */
+class ExtractingStorySummaryBackend(
+    private val useCase: SummaryUseCase,
+    private val textBackend: StorySummaryBackend,
+) : StorySummaryBackend {
+    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
+        if (input.hasArticleText) {
+            emitAll(textBackend.summarize(input))
+            return@flow
+        }
+        val articleText = try {
+            useCase.extractArticleText(input.articleUrl)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            emit(
+                StorySummaryEvent.Failure(
+                    "Extraction failed: " +
+                        (error.message?.takeIf(String::isNotBlank) ?: "Unknown error"),
+                ),
+            )
+            return@flow
+        }
+        emitAll(
+            textBackend.summarize(
+                StorySummaryInput(articleUrl = input.articleUrl, articleText = articleText),
+            ),
+        )
+    }
 }
 
 sealed interface StorySummaryStatus {

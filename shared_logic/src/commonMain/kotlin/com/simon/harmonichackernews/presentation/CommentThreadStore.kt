@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.CommentThreadFilter
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.CommentPresentationSnapshot
 import com.simon.harmonichackernews.data.CommentSnapshot
+import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
@@ -15,33 +16,28 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class CommentThreadUiState(
-    val story: Story? = null,
-    val allComments: List<Comment> = emptyList(),
-    val displayedComments: List<Comment> = emptyList(),
-    val sorting: String = CommentSorter.DEFAULT,
-    val commentsByOp: Boolean = false,
-    val hasCommentsByOp: Boolean = false,
-    val searchQuery: String = "",
-    val searchResults: List<Comment> = emptyList(),
-    val visibleComments: List<VisibleComment> = emptyList(),
-    val revision: Long = 0,
-)
-
-data class VisibleComment(
-    val sourceIndex: Int,
-    val comment: Comment,
-    val hiddenReplyCount: Int,
-)
-
 data class PortableCommentItem(
     val comment: CommentSnapshot,
     val presentation: CommentPresentationSnapshot,
-)
+) {
+    val id: Int get() = comment.id
+    val by: String? get() = comment.author
+    val parent: Int get() = comment.parentId
+    val text: String? get() = comment.text
+    val time: Int get() = comment.createdAtEpochSeconds
+    val timeFormatted: String get() = ItemTimeFormatter.formatNow(time)
+    val kidsIds: List<Int> get() = comment.childIds
+    val expandedAnchorText: String? get() = comment.expandedAnchorText
+    val expanded: Boolean get() = presentation.expanded
+    val depth: Int get() = presentation.depth
+    val children: Int get() = presentation.childCount
+    val totalReplies: Int get() = presentation.totalReplies
+    val sortOrder: Int get() = presentation.sortOrder
+}
 
 data class PortableVisibleComment(
     val sourceIndex: Int,
-    val item: PortableCommentItem,
+    val comment: PortableCommentItem,
     val hiddenReplyCount: Int,
 )
 
@@ -67,10 +63,7 @@ class CommentThreadStore {
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
-
-    /** Temporary mutable-model view for Android and shared UI migration only. */
-    private val mutableLegacyState = MutableStateFlow(CommentThreadUiState())
-    val legacyState: StateFlow<CommentThreadUiState> = mutableLegacyState.asStateFlow()
+    private var currentStory: Story? = null
 
     /** Source-compatible name for callers already migrated to immutable snapshots. */
     val portableState: StateFlow<PortableCommentThreadState> get() = state
@@ -168,7 +161,7 @@ class CommentThreadStore {
             ?: allComments.firstOrNull { it.id == commentId }
 
     fun showCommentsByOp(): Boolean {
-        val story = legacyState.value.story
+        val story = currentStory
         if (!CommentThreadFilter.hasCommentsByOp(story, allComments)) return false
         rebuildDisplayedComments(commentsByOp = true)
         publish(commentsByOp = true)
@@ -210,9 +203,9 @@ class CommentThreadStore {
 
     private fun rebuildDisplayedComments(commentsByOp: Boolean = state.value.commentsByOp) {
         val shouldFilterByOp = commentsByOp &&
-            CommentThreadFilter.hasCommentsByOp(legacyState.value.story, allComments)
+            CommentThreadFilter.hasCommentsByOp(currentStory, allComments)
         val next = if (shouldFilterByOp) {
-            CommentThreadFilter.buildCommentsByOpThreadList(legacyState.value.story, allComments)
+            CommentThreadFilter.buildCommentsByOpThreadList(currentStory, allComments)
         } else {
             allComments
         }
@@ -239,7 +232,7 @@ class CommentThreadStore {
     }
 
     private fun publish(
-        story: Story? = legacyState.value.story,
+        story: Story? = currentStory,
         sorting: String = state.value.sorting,
         commentsByOp: Boolean = state.value.commentsByOp,
         searchQuery: String = state.value.searchQuery,
@@ -250,18 +243,7 @@ class CommentThreadStore {
         val results = searchResults(searchQuery)
         val visible = buildVisibleComments(displayedComments)
         val revision = state.value.revision + 1
-        val nextLegacyState = CommentThreadUiState(
-            story = story,
-            allComments = allComments.toList(),
-            displayedComments = displayedComments.toList(),
-            sorting = sorting,
-            commentsByOp = actualCommentsByOp,
-            hasCommentsByOp = hasCommentsByOp,
-            searchQuery = searchQuery,
-            searchResults = results,
-            visibleComments = visible,
-            revision = revision,
-        )
+        currentStory = story
         val allSnapshots = allComments.associate { comment ->
             comment.id to comment.toPortableItem()
         }
@@ -279,15 +261,13 @@ class CommentThreadStore {
             visibleComments = visible.map { item ->
                 PortableVisibleComment(
                     sourceIndex = item.sourceIndex,
-                    item = allSnapshots.getValue(item.comment.id),
+                    comment = allSnapshots.getValue(item.comment.id),
                     hiddenReplyCount = item.hiddenReplyCount,
                 )
             },
             revision = revision,
         )
-        // Publish the detached snapshot before making mutable compatibility objects observable.
         mutableState.value = nextState
-        mutableLegacyState.value = nextLegacyState
     }
 
     private fun Comment.toPortableItem(): PortableCommentItem = PortableCommentItem(
@@ -295,7 +275,7 @@ class CommentThreadStore {
         presentation = presentationSnapshot(),
     )
 
-    private fun buildVisibleComments(source: List<Comment>): List<VisibleComment> {
+    private fun buildVisibleComments(source: List<Comment>): List<MutableVisibleComment> {
         if (source.size <= 1) return emptyList()
         val byId = source.associateBy(Comment::id)
         return source.mapIndexedNotNull { index, comment ->
@@ -305,7 +285,7 @@ class CommentThreadStore {
                 if (source[candidate].depth <= comment.depth) break
                 lastChild = candidate
             }
-            VisibleComment(index, comment, lastChild - index)
+            MutableVisibleComment(index, comment, lastChild - index)
         }
     }
 
@@ -321,4 +301,10 @@ class CommentThreadStore {
     }
 
     private data class SearchableCommentText(val source: String, val text: String)
+
+    private data class MutableVisibleComment(
+        val sourceIndex: Int,
+        val comment: Comment,
+        val hiddenReplyCount: Int,
+    )
 }

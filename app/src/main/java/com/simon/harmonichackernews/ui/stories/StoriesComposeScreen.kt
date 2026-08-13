@@ -120,7 +120,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
@@ -164,7 +164,7 @@ import kotlin.math.roundToInt
 internal fun StoriesScreen(controller: StoriesComposeController) {
     val context = LocalContext.current
     val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
-    val tintStore = remember(context) { AndroidAppComposition.get(context).storyResourceTints }
+    val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
     SharedStoriesScreen(
         controller = controller,
         storyItemModel = { story, position, settings, previewResource ->

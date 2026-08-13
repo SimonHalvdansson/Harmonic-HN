@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
@@ -46,7 +46,7 @@ data class CommentsHeaderContext(
 )
 
 data class CommentActionContext(
-    val comment: Comment,
+    val comment: CommentSnapshot,
     val storyTitle: String?,
     val hasAccount: Boolean,
     val voteLoading: Boolean,
@@ -173,7 +173,7 @@ object CommentsUiOrchestrator {
     ): FeatureDecision<CommentsAction, CommentsPlatformEffect> {
         val comment = context.comment
         return when (action) {
-            CommentMenuAction.USER -> effectIfNotBlank(comment.by) {
+            CommentMenuAction.USER -> effectIfNotBlank(comment.author) {
                 CommentsPlatformEffect.OpenUser(it)
             }
             CommentMenuAction.SHARE ->
@@ -190,7 +190,7 @@ object CommentsUiOrchestrator {
             )
             CommentMenuAction.REPLY -> when {
                 !context.hasAccount -> effect(CommentsPlatformEffect.RequestLogin)
-                AgePolicy.isOlderThanTwoWeeks(comment.time, context.nowMillis) ->
+                AgePolicy.isOlderThanTwoWeeks(comment.createdAtEpochSeconds, context.nowMillis) ->
                     effect(CommentsPlatformEffect.ShowMessage("This comment is too old to reply to"))
                 else -> effect(
                     CommentsPlatformEffect.OpenEditor(
@@ -199,7 +199,7 @@ object CommentsUiOrchestrator {
                             itemId = comment.id,
                             parentText = comment.text,
                             postTitle = context.storyTitle,
-                            userName = comment.by,
+                            userName = comment.author,
                         ),
                     ),
                 )

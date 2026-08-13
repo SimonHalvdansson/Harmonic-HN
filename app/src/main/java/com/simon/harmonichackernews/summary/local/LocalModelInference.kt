@@ -2,11 +2,12 @@ package com.simon.harmonichackernews.summary.local
 
 import android.content.Context
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
+import com.simon.harmonichackernews.summary.LocalModelRuntime
 
 /** Streaming text summarization through an installed local-AI runtime feature. */
 object LocalModelInference {
   private val inferenceLock = Any()
-  private val engines = mutableMapOf<LocalModelManager.Runtime, LocalInferenceEngine>()
+  private val engines = mutableMapOf<LocalModelRuntime, LocalInferenceEngine>()
 
   fun interface ProgressCallback {
     fun onProgress(summary: String)
@@ -59,7 +60,7 @@ object LocalModelInference {
     )
   }
 
-  private fun getEngine(runtime: LocalModelManager.Runtime): LocalInferenceEngine {
+  private fun getEngine(runtime: LocalModelRuntime): LocalInferenceEngine {
     return engines.getOrPut(runtime) {
       val className = LocalAiRuntimeManager.getEngineClassName(runtime)
       try {

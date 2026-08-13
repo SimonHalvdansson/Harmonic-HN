@@ -14,13 +14,13 @@ import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toBundle
+import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.WidgetFeedRequest
 import com.simon.harmonichackernews.network.WidgetFeedResult
 import com.simon.harmonichackernews.network.WidgetFeedUseCase
 import com.simon.harmonichackernews.network.widgetStoryTypeForUrl
-import com.simon.harmonichackernews.settings.AndroidUserSettings
-import com.simon.harmonichackernews.utils.RelativeTimeFormatter
-import com.simon.harmonichackernews.utils.Utils.log
+import com.simon.harmonichackernews.presentation.WidgetStoryFormatter
+import com.simon.harmonichackernews.utils.HarmonicLog.debug as log
 import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -156,30 +156,18 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
         val views = RemoteViews(context.packageName, R.layout.widget_story_item)
 
         // Index
-        val storyPreferences = AndroidUserSettings.get(context).story
+        val storyPreferences = AndroidAppComposition.get(context).userSettings.story
         val showIndex = storyPreferences.showIndex
         views.setViewVisibility(R.id.widget_story_index, if (showIndex) View.VISIBLE else View.GONE)
-        views.setTextViewText(R.id.widget_story_index, "${position + 1}.")
-
-        // Title
-        views.setTextViewText(R.id.widget_story_title, story.title)
-
-        // Meta: score + domain + time
-        var meta = story.score.toString() + (if (story.score == 1) " pt" else " pts")
-        if (story.url != null && story.isLink) {
-            try {
-                val domain = story.getDisplayDomain(
-                    storyPreferences.includeTopLevelDomain
-                )
-                meta += " \u00B7 " + domain
-            } catch (ignored: Exception) {
-            }
-        }
-        meta += " \u00B7 " + RelativeTimeFormatter.format(
-            story.time.toLong(),
-            System.currentTimeMillis(),
+        val text = WidgetStoryFormatter.format(
+            story = story.toSnapshot(),
+            position = position,
+            includeTopLevelDomain = storyPreferences.includeTopLevelDomain,
+            nowMillis = System.currentTimeMillis(),
         )
-        views.setTextViewText(R.id.widget_story_meta, meta)
+        views.setTextViewText(R.id.widget_story_index, text.index)
+        views.setTextViewText(R.id.widget_story_title, text.title)
+        views.setTextViewText(R.id.widget_story_meta, text.metadata)
 
         // Fill-in intent for item click -> MainActivity's Compose comments destination.
         val fillInIntent = Intent()

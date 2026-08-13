@@ -21,17 +21,16 @@ import androidx.compose.ui.res.painterResource as androidPainterResource
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.LocalModelBrand
 import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelPresentationInput
 import com.simon.harmonichackernews.summary.LocalModelPresentationPolicy
 import com.simon.harmonichackernews.summary.LocalModelTransferState
 import com.simon.harmonichackernews.summary.LocalModelTransferStatus
-import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
-import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelManager
-import com.simon.harmonichackernews.settings.AndroidAiModelDefaults
-import com.simon.harmonichackernews.settings.AndroidAiSummarySettings
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 
@@ -42,8 +41,10 @@ fun AiSummarySettingsScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
-    val repository = remember(context) { AndroidAiSummarySettings.repository(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
+    val repository = appComposition.aiSummarySettings
     val persistedSettings by repository.updates.collectAsState(initial = repository.snapshot())
+    val localModelState by LocalModelManager.states(context).collectAsState()
     var localRefresh by remember { mutableIntStateOf(0) }
     var localAvailable by remember {
         mutableStateOf(LocalSummaryManager.canAttemptLocalSummarization())
@@ -53,7 +54,7 @@ fun AiSummarySettingsScreen(
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
 
     LaunchedEffect(Unit) {
-        AndroidAiModelDefaults.ensureInitialDefault(context)
+        appComposition.aiModelDefaults.ensureInitialDefault()
         if (!LocalSummaryManager.canAttemptLocalSummarization()) {
             repository.forceCloudMode()
         }
@@ -61,49 +62,34 @@ fun AiSummarySettingsScreen(
 
     if (activity != null) {
         DisposableEffect(activity) {
-            val modelListener = LocalModelManager.StatusListener {
-                localRefresh++
-            }
             val runtimeListener = LocalAiRuntimeManager.StatusListener {
                 localRefresh++
             }
-            LocalModelManager.addStatusListener(context, modelListener)
             LocalAiRuntimeManager.addStatusListener(context, runtimeListener)
 
-            var disposed = false
-            if (LocalSummaryManager.canAttemptLocalSummarization()) {
-                LocalSummaryManager.checkLocalSummaryAvailability(context) {
-                        available,
-                        fallbackRequired,
-                        _,
-                    ->
-                    if (!disposed) {
-                        localAvailable = available
-                        nanoAvailabilityResolved = true
-                        nanoAvailable = available && !fallbackRequired
-                        if (
-                            !nanoAvailable &&
-                            LocalModelManager.getSelectedModel(context).id ==
-                            LocalModelManager.MODEL_GEMINI_NANO
-                        ) {
-                            selectFirstReadyLocalModelOrClear(context)
-                        }
-                        if (!available) {
-                            repository.forceCloudMode()
-                        }
-                        localRefresh++
-                    }
-                }
-            } else {
-                nanoAvailabilityResolved = true
-            }
-
             onDispose {
-                disposed = true
-                LocalModelManager.removeStatusListener(modelListener)
                 LocalAiRuntimeManager.removeStatusListener(runtimeListener)
             }
         }
+    }
+
+    LaunchedEffect(context, activity) {
+        if (activity == null || !LocalSummaryManager.canAttemptLocalSummarization()) {
+            nanoAvailabilityResolved = true
+            return@LaunchedEffect
+        }
+        val availability = LocalSummaryManager.checkLocalSummaryAvailability(context)
+        localAvailable = availability.available
+        nanoAvailabilityResolved = true
+        nanoAvailable = availability.available && !availability.downloadableFallbackRequired
+        if (
+            !nanoAvailable &&
+            LocalModelManager.getSelectedModel(context).id == LocalModelManager.MODEL_GEMINI_NANO
+        ) {
+            selectFirstReadyLocalModelOrClear(context)
+        }
+        if (!availability.available) repository.forceCloudMode()
+        localRefresh++
     }
 
     val settings = remember(persistedSettings, localRefresh) { repository.snapshot() }
@@ -148,6 +134,7 @@ fun AiSummarySettingsScreen(
             LocalModelsPanel(
                 nanoAvailabilityResolved = nanoAvailabilityResolved,
                 nanoAvailable = nanoAvailable,
+                modelState = localModelState,
                 refresh = localRefresh,
                 onRefresh = { localRefresh++ },
             )
@@ -197,13 +184,12 @@ fun AiSummarySettingsScreen(
 private fun LocalModelsPanel(
     nanoAvailabilityResolved: Boolean,
     nanoAvailable: Boolean,
+    modelState: com.simon.harmonichackernews.summary.LocalModelManagerState,
     refresh: Int,
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
-    val selectedModelId = remember(context, refresh) {
-        LocalModelManager.getSelectedModel(context).id
-    }
+    val selectedModelId = modelState.selectedModelId
     val rows = LocalModelCatalog.models.map { definition ->
         val model = LocalModelManager.getModel(definition.id)
         val supported = LocalModelManager.isModelSupported(model)
@@ -218,11 +204,12 @@ private fun LocalModelsPanel(
                     selected = selectedModelId == model.id,
                     nanoAvailabilityResolved = nanoAvailabilityResolved,
                     nanoAvailable = nanoAvailable,
-                    transferStatus = LocalModelManager.getStatus(context, model).toShared(),
+                    transferStatus = modelState.statuses[model.id]
+                        ?: LocalModelManager.getStatus(context, model),
                     runtimeStatus = LocalAiRuntimeManager.getStatus(
                         context,
                         model.runtime,
-                    ).toShared(),
+                    ),
                     runtimeInstalled = runtimeInstalled,
                 ),
             ),
@@ -232,7 +219,16 @@ private fun LocalModelsPanel(
     SharedLocalModelsPanel(
         models = rows,
         modelIconPainter = { definition ->
-            androidPainterResource(LocalModelManager.getModel(definition.id).iconResId)
+            androidPainterResource(
+                when (definition.brand) {
+                    LocalModelBrand.GOOGLE -> R.drawable.model_logo_google
+                    LocalModelBrand.PRISM -> R.drawable.model_logo_prism
+                    LocalModelBrand.QWEN -> R.drawable.model_logo_qwen
+                    LocalModelBrand.NVIDIA -> R.drawable.model_logo_nvidia
+                    LocalModelBrand.MISTRAL -> R.drawable.model_logo_mistral
+                    LocalModelBrand.LIQUID -> R.drawable.model_logo_liquid
+                },
+            )
         },
         onModelSelected = { modelId ->
             LocalModelManager.selectModel(context, modelId)
@@ -265,37 +261,6 @@ private fun LocalModelsPanel(
         },
     )
 }
-
-private fun LocalModelManager.Status.toShared(): LocalModelTransferStatus =
-    LocalModelTransferStatus(
-        state = when (state) {
-            LocalModelManager.State.NOT_DOWNLOADED -> LocalModelTransferState.NOT_DOWNLOADED
-            LocalModelManager.State.PARTIALLY_DOWNLOADED ->
-                LocalModelTransferState.PARTIALLY_DOWNLOADED
-            LocalModelManager.State.WAITING -> LocalModelTransferState.WAITING
-            LocalModelManager.State.DOWNLOADING -> LocalModelTransferState.DOWNLOADING
-            LocalModelManager.State.DOWNLOADED -> LocalModelTransferState.DOWNLOADED
-            LocalModelManager.State.FAILED -> LocalModelTransferState.FAILED
-        },
-        receivedBytes = receivedBytes,
-        error = error,
-    )
-
-private fun LocalAiRuntimeManager.Status.toShared(): LocalRuntimeInstallStatus =
-    LocalRuntimeInstallStatus(
-        state = when (state) {
-            LocalAiRuntimeManager.State.NOT_INSTALLED -> LocalRuntimeInstallState.NOT_INSTALLED
-            LocalAiRuntimeManager.State.PENDING -> LocalRuntimeInstallState.PENDING
-            LocalAiRuntimeManager.State.DOWNLOADING -> LocalRuntimeInstallState.DOWNLOADING
-            LocalAiRuntimeManager.State.INSTALLING -> LocalRuntimeInstallState.INSTALLING
-            LocalAiRuntimeManager.State.INSTALLED -> LocalRuntimeInstallState.INSTALLED
-            LocalAiRuntimeManager.State.FAILED -> LocalRuntimeInstallState.FAILED
-            LocalAiRuntimeManager.State.CANCELED -> LocalRuntimeInstallState.CANCELED
-        },
-        pendingModelId = pendingModelId,
-        downloadedBytes = bytesDownloaded,
-        totalBytes = totalBytes,
-    )
 
 private fun selectFirstReadyLocalModelOrClear(context: Context) {
     val readyModel = LocalModelManager.models.firstOrNull { model ->

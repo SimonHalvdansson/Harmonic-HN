@@ -102,21 +102,18 @@ data class PreviewCacheOrderUpdate(
 
 /** Stable cache identifiers and LRU ordering shared by every platform persistence adapter. */
 object PreviewCachePolicy {
+    const val STORE_NAME =
+        "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES"
     const val MAX_DISK_ENTRIES = 1_000
-    const val TINT_VERSION = "3"
     const val YOUTUBE_OEMBED_SUFFIX = "youtube_oembed"
     const val PREVIEW_IMAGE_ORDER_KEY =
         "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_CACHE_ORDER"
-    const val PREVIEW_TINT_ORDER_KEY =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_CACHE_ORDER"
     const val LINK_SUMMARY_ORDER_KEY =
         "com.simon.harmonichackernews.KEY_LINK_SUMMARY_CACHE_ORDER"
     const val PREVIEW_IMAGE_URL_PREFIX =
         "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL"
     const val PREVIEW_IMAGE_LOADED_PREFIX =
         "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_URL_LOADED"
-    const val PREVIEW_TINT_PREFIX =
-        "com.simon.harmonichackernews.KEY_PREVIEW_IMAGE_TINT_COLOR"
     const val LINK_SUMMARY_PREFIX = "com.simon.harmonichackernews.KEY_LINK_SUMMARY"
 
     fun previewEntryId(storyId: Int, pageUrl: String?): String? = when {
@@ -146,10 +143,4 @@ object PreviewCachePolicy {
         return PreviewCacheOrderUpdate(order, evicted)
     }
 
-    fun isCurrentTintKey(key: String?): Boolean {
-        if (key.isNullOrEmpty() || !key.startsWith(PREVIEW_TINT_PREFIX)) return false
-        val parts = key.removePrefix(PREVIEW_TINT_PREFIX).split(':', limit = 4)
-        return parts.size == 4 && parts[2] == TINT_VERSION && parts[3].isNotEmpty() &&
-            parts[0].toIntOrNull() != null && parts[1].toIntOrNull() != null
-    }
 }

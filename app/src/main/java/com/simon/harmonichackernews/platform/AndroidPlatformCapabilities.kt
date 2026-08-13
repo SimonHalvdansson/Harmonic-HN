@@ -15,8 +15,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
-import com.simon.harmonichackernews.utils.AccountUtils
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.data.SavedItemCodec
@@ -26,9 +24,10 @@ import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.local.LocalModelManager
+import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
+import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.HistoriesUtils
 import com.simon.harmonichackernews.utils.ShareUtils
-import com.simon.harmonichackernews.utils.Utils
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -51,42 +50,37 @@ class AndroidCredentialStore(context: Context) :
 
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.getApiKey(appContext)
-        CredentialIds.HACKER_NEWS_USERNAME -> AccountUtils.getAccountUsername(appContext)
-        CredentialIds.HACKER_NEWS_PASSWORD -> AccountUtils.getAccountDetails(appContext)?.second
+        CredentialIds.HACKER_NEWS_USERNAME -> AndroidHackerNewsAccountStorage.load(appContext)?.username
+        CredentialIds.HACKER_NEWS_PASSWORD -> AndroidHackerNewsAccountStorage.load(appContext)?.password
         else -> null
     }
 
     override fun write(id: String, value: String): Boolean =
         when (id) {
             CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.setApiKey(appContext, value)
-            CredentialIds.HACKER_NEWS_USERNAME -> {
-                AccountUtils.setAccountUsername(appContext, value)
-                true
-            }
-            CredentialIds.HACKER_NEWS_PASSWORD -> {
-                val username = AccountUtils.getAccountUsername(appContext)
-                AccountUtils.setAccountDetails(appContext, username, value)
-                true
-            }
+            CredentialIds.HACKER_NEWS_USERNAME -> load()?.let { current ->
+                AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(value, current.password))
+            } ?: false
+            CredentialIds.HACKER_NEWS_PASSWORD -> load()?.let { current ->
+                AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(current.username, value))
+            } ?: false
             else -> false
         }.also { if (it) publishAccount() }
 
     override fun remove(id: String): Boolean =
         when (id) {
             CredentialIds.AI_SUMMARY_API_KEY -> AiSummaryApiKeyStore.clearApiKey(appContext)
-            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD -> {
-                AccountUtils.deleteAccountDetails(appContext)
-                true
-            }
+            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD ->
+                AndroidHackerNewsAccountStorage.clear(appContext)
             else -> false
         }.also { if (it) publishAccount() }
 
-    override fun load(): HackerNewsAccount? = AccountUtils.getHackerNewsAccount(appContext)
+    override fun load(): HackerNewsAccount? = AndroidHackerNewsAccountStorage.load(appContext)
 
     override fun save(account: HackerNewsAccount): Boolean =
-        AccountUtils.setHackerNewsAccount(appContext, account).also { publishAccount() }
+        AndroidHackerNewsAccountStorage.save(appContext, account).also { publishAccount() }
 
-    override fun clear(): Boolean = AccountUtils.clearHackerNewsAccount(appContext).also {
+    override fun clear(): Boolean = AndroidHackerNewsAccountStorage.clear(appContext).also {
         publishAccount()
     }
 
@@ -97,7 +91,7 @@ class AndroidCredentialStore(context: Context) :
         accountMutationMutex.withLock { withContext(Dispatchers.IO) { clear() } }
 
     private fun publishAccount() {
-        processAccountState.value = AccountUtils.getHackerNewsAccount(appContext)
+        processAccountState.value = AndroidHackerNewsAccountStorage.load(appContext)
     }
 
     private companion object {
@@ -246,9 +240,9 @@ class AndroidClipboardService(context: Context) : ClipboardService {
 class AndroidConnectivityService(context: Context) : ConnectivityService {
     private val appContext = context.applicationContext
 
-    override fun isOnline(): Boolean = Utils.isNetworkAvailable(appContext)
+    override fun isOnline(): Boolean = AndroidNetworkStatus.isOnline(appContext)
 
-    override fun isUnmetered(): Boolean = Utils.isOnWiFi(appContext)
+    override fun isUnmetered(): Boolean = AndroidNetworkStatus.isUnmetered(appContext)
 }
 
 class AndroidExternalLinkOpener(context: Context) : ExternalLinkOpener {
@@ -405,39 +399,27 @@ class AndroidLocalSummaryEngine(context: Context) : LocalSummaryEngine {
     }
 }
 
-object AndroidPlatformServices {
-    fun stories(context: Context): StoriesPlatformDependencies = StoriesPlatformDependencies(
-        accounts = AndroidCredentialStore(context),
-        history = AndroidHistoryStore(context),
-        connectivity = AndroidConnectivityService(context),
-        externalLinks = AndroidExternalLinkOpener(context),
-    )
-
-    fun comments(context: Context): CommentsPlatformDependencies = CommentsPlatformDependencies(
-        accounts = AndroidCredentialStore(context),
-        externalLinks = AndroidExternalLinkOpener(context),
-        sharing = AndroidShareService(context),
-        clipboard = AndroidClipboardService(context),
-    )
-
-    fun submissions(context: Context): SubmissionsPlatformDependencies =
-        SubmissionsPlatformDependencies(AndroidExternalLinkOpener(context))
-
-    /** Legacy all-services composition retained while non-feature Android call sites migrate. */
-    fun create(context: Context): PlatformServices = PlatformServices(
-        credentials = AndroidCredentialStore(context),
-        bookmarks = AndroidBookmarkStore(context),
-        history = AndroidHistoryStore(context),
-        cache = AndroidCacheStore(context),
-        files = AndroidFileStore(context),
-        externalLinks = AndroidExternalLinkOpener(context),
-        sharing = AndroidShareService(context),
-        clipboard = AndroidClipboardService(context),
-        connectivity = AndroidConnectivityService(context),
-        notifications = AndroidNotificationScheduler(context),
-        articles = AndroidArticleViewer(context),
-        localSummary = AndroidLocalSummaryEngine(context),
-    )
+object AndroidPlatformDependencies {
+    fun create(context: Context): AppPlatformDependencies {
+        val accounts = AndroidCredentialStore(context)
+        return AppPlatformDependencies(
+            credentials = accounts,
+            accounts = accounts,
+            capabilities = OptionalPlatformCapabilities(
+                bookmarks = PlatformCapability.Available(AndroidBookmarkStore(context)),
+                history = PlatformCapability.Available(AndroidHistoryStore(context)),
+                cache = PlatformCapability.Available(AndroidCacheStore(context)),
+                files = PlatformCapability.Available(AndroidFileStore(context)),
+                externalLinks = PlatformCapability.Available(AndroidExternalLinkOpener(context)),
+                sharing = PlatformCapability.Available(AndroidShareService(context)),
+                clipboard = PlatformCapability.Available(AndroidClipboardService(context)),
+                connectivity = PlatformCapability.Available(AndroidConnectivityService(context)),
+                notifications = PlatformCapability.Available(AndroidNotificationScheduler(context)),
+                articles = PlatformCapability.Available(AndroidArticleViewer(context)),
+                localSummary = PlatformCapability.Available(AndroidLocalSummaryEngine(context)),
+            ),
+        )
+    }
 }
 
 private fun safeName(value: String): String {

@@ -4,12 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
-import com.simon.harmonichackernews.AndroidAppComposition
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.login_dialog_success
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.AndroidToast
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -22,7 +22,7 @@ fun LoginDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val loginSuccess = stringResource(Res.string.login_dialog_success)
-    val appComposition = remember(context) { AndroidAppComposition.get(context) }
+    val appComposition = LocalHarmonicUiDependencies.current
     val accounts = appComposition.platform.accounts
     val hackerNewsUserService = appComposition.hackerNewsUser
     SharedLoginDialog(
@@ -33,7 +33,7 @@ fun LoginDialog(
         },
         continueLogin = hackerNewsUserService::continueLoginWithCaptcha,
         onLoginSucceeded = {
-            Utils.toast(loginSuccess, context)
+            AndroidToast.show(loginSuccess, context)
             onDismiss()
         },
         onLoginFailed = { coroutineScope.launch { accounts.clearAccount() } },

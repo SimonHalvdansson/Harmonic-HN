@@ -11,7 +11,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
-import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.settings.CommentNavigationPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
 
@@ -72,7 +71,8 @@ class MainActivity : BaseActivity() {
     }
 
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val volumeNavigationMode = AndroidUserSettings.get(this).comments.volumeNavigationMode
+        val volumeNavigationMode = AndroidAppComposition.get(this)
+            .userSettings.comments.volumeNavigationMode
         if (CommentNavigationPreferences.DISABLED != volumeNavigationMode) {
             val topLevelOnly =
                 CommentNavigationPreferences.TOP_LEVEL == volumeNavigationMode

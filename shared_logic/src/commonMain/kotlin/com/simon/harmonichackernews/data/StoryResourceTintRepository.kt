@@ -16,6 +16,10 @@ interface StoryResourceTintStore {
 
     fun write(storyId: Int, kind: StoryResourceTintKind, tint: StoryResourceTintState)
 
+    fun count(): Int = 0
+
+    fun clear() = Unit
+
     data object None : StoryResourceTintStore {
         override fun read(
             storyId: Int,
@@ -70,8 +74,31 @@ class StoryResourceTintRepository(
         store.putInt("$prefix.base", tint.baseColorArgb)
         store.putString("$prefix.palette", tint.paletteConfigKey)
         store.putInt("$prefix.tint", tint.tintColorArgb)
+        val key = entryKey(storyId, kind)
+        store.putStringSet(INDEX_KEY, store.getStringSet(INDEX_KEY) + key)
+    }
+
+    override fun count(): Int = store.getStringSet(INDEX_KEY).size
+
+    override fun clear() {
+        store.getStringSet(INDEX_KEY).forEach { key ->
+            val prefix = "$PREFIX.$key"
+            store.remove("$prefix.source")
+            store.remove("$prefix.base")
+            store.remove("$prefix.palette")
+            store.remove("$prefix.tint")
+        }
+        store.remove(INDEX_KEY)
     }
 
     private fun prefix(storyId: Int, kind: StoryResourceTintKind): String =
-        "story_resource_tint.${kind.name.lowercase()}.$storyId"
+        "$PREFIX.${entryKey(storyId, kind)}"
+
+    private fun entryKey(storyId: Int, kind: StoryResourceTintKind): String =
+        "${kind.name.lowercase()}.$storyId"
+
+    private companion object {
+        const val PREFIX = "story_resource_tint"
+        const val INDEX_KEY = "$PREFIX.index"
+    }
 }

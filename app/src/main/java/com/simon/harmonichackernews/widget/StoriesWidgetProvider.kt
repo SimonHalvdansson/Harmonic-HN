@@ -12,7 +12,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.Utils
+import com.simon.harmonichackernews.utils.HarmonicLog
 import java.util.Date
 
 class StoriesWidgetProvider : AppWidgetProvider() {
@@ -21,7 +21,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        Utils.log("WidgetProvider onUpdate count=${appWidgetIds.size}")
+        HarmonicLog.debug("WidgetProvider onUpdate count=${appWidgetIds.size}")
         for (appWidgetId in appWidgetIds) {
             refreshWidgetSilently(context, appWidgetManager, appWidgetId)
         }
@@ -31,7 +31,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         super.onReceive(context, intent)
 
         val action = intent.action
-        Utils.log("WidgetProvider onReceive action=$action")
+        HarmonicLog.debug("WidgetProvider onReceive action=$action")
 
         if (ACTION_REFRESH == action) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
@@ -41,7 +41,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             )
 
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                Utils.log("WidgetProvider refresh request widgetId=$appWidgetId")
+                HarmonicLog.debug("WidgetProvider refresh request widgetId=$appWidgetId")
                 // Refresh only the tapped widget
                 StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
                 showRefreshing(context, appWidgetManager, appWidgetId)
@@ -50,7 +50,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
                     R.id.widget_stories_list
                 )
             } else {
-                Utils.log("WidgetProvider refresh request missing widget id, fallback to all widgets")
+                HarmonicLog.debug("WidgetProvider refresh request missing widget id, fallback to all widgets")
                 // Fallback: refresh all widgets
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(
                     ComponentName(context, StoriesWidgetProvider::class.java)
@@ -68,7 +68,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        Utils.log("WidgetProvider onDeleted count=${appWidgetIds.size}")
+        HarmonicLog.debug("WidgetProvider onDeleted count=${appWidgetIds.size}")
         for (appWidgetId in appWidgetIds) {
             WidgetConfigActivity.clearPreferences(context, appWidgetId)
             StoriesRemoteViewsFactory.clearPreferences(context, appWidgetId)
@@ -84,7 +84,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            Utils.log("WidgetProvider updateWidget widgetId=$appWidgetId start")
+            HarmonicLog.debug("WidgetProvider updateWidget widgetId=$appWidgetId start")
             StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
             StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
@@ -98,7 +98,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
             // Trigger data refresh — factory will call updateRefreshDone() when finished
-            Utils.log("WidgetProvider updateWidget widgetId=$appWidgetId notify data changed")
+            HarmonicLog.debug("WidgetProvider updateWidget widgetId=$appWidgetId notify data changed")
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list)
         }
 
@@ -108,7 +108,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetId: Int
         ) {
             val refreshing = StoriesRemoteViewsFactory.isRefreshing(context, appWidgetId)
-            Utils.log(
+            HarmonicLog.debug(
                 "WidgetProvider refreshWidgetSilently widgetId=$appWidgetId refreshing=$refreshing"
             )
             StoriesRemoteViewsFactory.setSkipFetch(context, appWidgetId, false)
@@ -132,7 +132,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
-            Utils.log(
+            HarmonicLog.debug(
                 "WidgetProvider refreshWidgetSilently widgetId=$appWidgetId notify data changed"
             )
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_stories_list)
@@ -143,7 +143,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            Utils.log("WidgetProvider showRefreshing widgetId=$appWidgetId")
+            HarmonicLog.debug("WidgetProvider showRefreshing widgetId=$appWidgetId")
             StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, true)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
             bindWidgetCommonViews(context, views, appWidgetId)
@@ -155,7 +155,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         }
 
         fun updateRefreshDone(context: Context, appWidgetId: Int) {
-            Utils.log("WidgetProvider updateRefreshDone widgetId=$appWidgetId")
+            HarmonicLog.debug("WidgetProvider updateRefreshDone widgetId=$appWidgetId")
             StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)
@@ -170,7 +170,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         }
 
         fun updateRefreshError(context: Context, appWidgetId: Int) {
-            Utils.log("WidgetProvider updateRefreshError widgetId=$appWidgetId")
+            HarmonicLog.debug("WidgetProvider updateRefreshError widgetId=$appWidgetId")
             StoriesRemoteViewsFactory.setRefreshing(context, appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val views = RemoteViews(context.packageName, R.layout.widget_stories)

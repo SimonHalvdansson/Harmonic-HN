@@ -21,11 +21,10 @@ object CommentsScreenStateFactory {
         val settings = feature.settingsState.value ?: return null
         val state = feature.state
         val thread = feature.state.thread
-        val legacyThread = feature.thread.legacyState.value
         return CommentsScreenState(
             story = story,
             accountUser = feature.accountUser,
-            comments = feature.comments,
+            comments = thread.displayedComments,
             displaySettings = settings.displaySettings,
             commentsLoaded = state.loaded,
             commentsRefreshInProgress = state.refreshing,
@@ -54,8 +53,8 @@ object CommentsScreenStateFactory {
             commentVoteLoadingAction = state.commentVoteLoadingAction,
             downvotedCommentIds = state.downvotedCommentIds,
             searchQuery = thread.searchQuery,
-            searchResults = legacyThread.searchResults,
-            visibleComments = legacyThread.visibleComments,
+            searchResults = thread.searchResults,
+            visibleComments = thread.visibleComments,
         )
     }
 }

@@ -28,6 +28,7 @@ class DesktopHarmonicAppBootstrap(
     platform: AppPlatformDependencies,
     settingsStore: KeyValueStore,
     appDataStore: KeyValueStore,
+    previewCacheStore: KeyValueStore,
     settingsChanges: Flow<Unit>,
     currentTheme: () -> String? = { null },
 ) {
@@ -49,6 +50,7 @@ class DesktopHarmonicAppBootstrap(
         platform = platform,
         settingsStore = settingsStore,
         appDataStore = appDataStore,
+        previewCacheStore = previewCacheStore,
         settingsChanges = settingsChanges,
         currentTheme = currentTheme,
     )
@@ -64,15 +66,18 @@ class DesktopHarmonicAppBootstrap(
         /** Creates an operational but side-effect-free host with unsupported native facilities. */
         fun inMemory(userAgent: String): DesktopHarmonicAppBootstrap {
             val settings = InMemoryKeyValueStore()
+            val credentials = InMemoryCredentialStore()
             return DesktopHarmonicAppBootstrap(
                 userAgent = userAgent,
                 platform = AppPlatformDependencies(
+                    credentials = credentials,
                     accounts = CredentialBackedHackerNewsAccountRepository(
-                        InMemoryCredentialStore(),
+                        credentials,
                     ),
                 ),
                 settingsStore = settings,
                 appDataStore = InMemoryKeyValueStore(),
+                previewCacheStore = InMemoryKeyValueStore(),
                 settingsChanges = settings.changes,
             )
         }

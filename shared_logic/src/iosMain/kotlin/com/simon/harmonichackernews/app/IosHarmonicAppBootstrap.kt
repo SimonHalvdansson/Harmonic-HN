@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.app
 
 import com.simon.harmonichackernews.network.IosNetworkComponent
+import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
@@ -32,6 +33,7 @@ class IosHarmonicAppBootstrap(
 
     val preferences = IosKeyValueStore(settingsDefaults)
     val appData = IosKeyValueStore(appDataDefaults)
+    val previewCache = IosKeyValueStore(NSUserDefaults(suiteName = PreviewCachePolicy.STORE_NAME))
     val network = IosNetworkComponent(userAgent)
     val platform = createIosPlatformDependencies(appData, bindings)
     val app = HarmonicAppComposition(
@@ -39,6 +41,7 @@ class IosHarmonicAppBootstrap(
         platform = platform,
         settingsStore = preferences,
         appDataStore = appData,
+        previewCacheStore = previewCache,
         settingsChanges = preferences.changes,
         currentTheme = {
             preferences.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)

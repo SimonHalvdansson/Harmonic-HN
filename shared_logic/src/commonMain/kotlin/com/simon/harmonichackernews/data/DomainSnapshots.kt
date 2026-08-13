@@ -51,6 +51,7 @@ data class CommentSnapshot(
     val text: String? = null,
     val createdAtEpochSeconds: Int = 0,
     val childIds: List<Int> = emptyList(),
+    val expandedAnchorText: String? = null,
 )
 
 @Serializable
@@ -121,6 +122,7 @@ fun Comment.toSnapshot(): CommentSnapshot = CommentSnapshot(
     text = text,
     createdAtEpochSeconds = time,
     childIds = kidsIds?.toList().orEmpty(),
+    expandedAnchorText = expandedAnchorText,
 )
 
 fun Comment.presentationSnapshot(): CommentPresentationSnapshot = CommentPresentationSnapshot(
