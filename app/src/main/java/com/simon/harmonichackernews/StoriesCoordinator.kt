@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews
 
-import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.BackEventCompat
@@ -21,13 +20,10 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
-import com.simon.harmonichackernews.ui.stories.StoriesComposeController.Companion.create
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.session.StoriesScreenSession
 import com.simon.harmonichackernews.utils.PreviewImageTintUtils
-import com.simon.harmonichackernews.utils.StoryUpdate
-import com.simon.harmonichackernews.utils.StoryUpdate.StoryUpdateListener
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +50,6 @@ class StoriesCoordinator(
     private var destroyed = false
     var composeController: StoriesComposeController? = null
         private set
-    private var storyUpdateListener: StoryUpdateListener? = null
     private val featureSession = appComposition.createStoriesFeatureSession(
         StoriesFeatureHost(
             scope = coroutineScope,
@@ -69,16 +64,12 @@ class StoriesCoordinator(
         featureSession,
         ::storiesPlatformPresentation,
     )
-    private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
 
     init {
         initializeComposeController(savedInstanceState)
     }
-
-    private val context: Context?
-        get() = if (destroyed) null else activity
 
     private val resources: Resources
         get() = activity.resources
@@ -94,36 +85,12 @@ class StoriesCoordinator(
         }
 
         setupLinkSummaryBackCallback()
-        storyCacheController = createStoryCacheController()
-        coroutineScope.launch {
-            screenSession.state.collect { state ->
-                state?.let { composeController?.updateContent(it) }
-            }
-        }
         coroutineScope.launch { screenSession.effects.collect(::handleStoriesRuntimeEffect) }
         coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
         screenSession.start()
         initializeComposeUi()
 
-        storyUpdateListener = StoryUpdateListener { story: Story? ->
-            if (story == null) {
-                return@StoryUpdateListener
-            }
-            storiesFeature.mergeExternalStoryUpdate(story)
-        }
-        StoryUpdate.setStoryUpdatedListener(storyUpdateListener)
         restoreLinkSummaryAfterRecreation()
-    }
-
-    private fun createStoryCacheController(): StoryCacheController {
-        return StoryCacheController(object : StoryCacheController.Callbacks {
-            override val context: Context?
-                get() = this@StoriesCoordinator.context
-
-            override fun onCacheProgressChanged() {
-                this@StoriesCoordinator.syncComposeState()
-            }
-        })
     }
 
     private fun initializeComposeUi() {
@@ -148,10 +115,9 @@ class StoriesCoordinator(
 
             override fun isSplitLayout(): Boolean = isFoldableSplitLayout
         }
-        composeController = create(
+        composeController = screenSession.createController(
             (96f * resources.displayMetrics.density).roundToInt(),
-            storiesFeature.savedItemActions,
-            StoriesFeatureListener(storiesFeature, platformCallbacks),
+            platformCallbacks,
         )
         navigation.attachStoriesComposeController(composeController!!)
         syncComposeState()
@@ -185,8 +151,6 @@ class StoriesCoordinator(
                 if (changedStory == null) syncComposeState()
                 else composeController?.invalidateStory(changedStory.id)
             }
-            is StoriesRuntimeEffect.CacheStories ->
-                storyCacheController?.cacheStories(effect.request)
             StoriesRuntimeEffect.LoginRequired -> navigation.showLoginDialog()
             is StoriesRuntimeEffect.UserMessage ->
                 navigation.showMessage(effect.message)
@@ -204,31 +168,19 @@ class StoriesCoordinator(
     }
 
     private fun syncComposeState() {
-        val controller = composeController ?: return
+        composeController ?: return
         screenSession.refreshPresentation()
-        screenSession.state.value?.let(controller::updateContent)
     }
 
     private fun storiesPlatformPresentation(): StoriesPlatformPresentation {
-        val cache = storyCacheController
         val lastUpdated = storiesFeature.lastUpdatedMillisForHeader()?.let { millis ->
             PresentationCopy.lastUpdated(
-                appComposition.platform.capabilities.timeFormatting.requireService().time(millis),
+                appComposition.platform.timeFormatting.time(millis),
             )
         }
         return StoriesPlatformPresentation(
-            searchSortLabels = StorySearchController.sortLabels.toList(),
-            searchDateLabels = StorySearchController.dateRangeLabels.toList(),
-            searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
-            searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
             lastUpdatedText = lastUpdated,
-            cacheInProgress = cache?.isCachingStories == true,
-            cacheProgressVisible = cache?.isProgressVisible == true,
-            cacheProgress = cache?.progress ?: 0,
-            cacheProgressMax = cache?.progressMax ?: 1,
-            cacheProgressStatus = cache?.getProgressStatus() ?: PresentationCopy.CACHE_STORIES,
             contentInsetStartPx = splitStoriesContentPaddingStart,
-            previewResources = storiesFeature.previewResourceStates,
         )
     }
 
@@ -339,9 +291,6 @@ class StoriesCoordinator(
             linkSummaryBackCallback!!.remove()
             linkSummaryBackCallback = null
         }
-        if (storyUpdateListener != null) {
-            StoryUpdate.clearStoryUpdatedListener(storyUpdateListener)
-        }
         screenSession.dispose()
         coroutineScope.cancel()
         clearControllerReferences()
@@ -354,12 +303,7 @@ class StoriesCoordinator(
         if (controller != null) {
             navigation.detachStoriesComposeController(controller)
         }
-        if (storyCacheController != null) {
-            storyCacheController!!.dispose()
-            storyCacheController = null
-        }
         composeController = null
-        storyUpdateListener = null
     }
 
     companion object {

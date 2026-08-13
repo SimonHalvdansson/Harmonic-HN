@@ -63,7 +63,8 @@ class NetworkGraph(
     val linkSummaryRepository: LinkSummaryRepository =
         KtorLinkSummaryRepository(transportClient, linkPreviewRepository)
     val previewContentCoordinator: PreviewContentCoordinator = PreviewContentCoordinator(scope)
-    val cloudSummaryRepository: CloudSummaryRepository = KtorCloudSummaryRepository(httpClient)
+    val cloudSummaryRepository: CloudSummaryRepository =
+        KtorCloudSummaryRepository(httpClient, userAgent)
     val summaryUseCase: SummaryUseCase = SummaryUseCase(cloudSummaryRepository)
     val aiModelCatalogRepository: AiModelCatalogRepository =
         KtorAiModelCatalogRepository(httpClient)

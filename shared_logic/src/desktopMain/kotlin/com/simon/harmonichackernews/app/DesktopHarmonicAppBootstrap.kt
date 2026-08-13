@@ -6,6 +6,14 @@ import com.simon.harmonichackernews.network.NetworkGraphFactory
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CredentialBackedHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.CredentialStore
+import com.simon.harmonichackernews.platform.ClipboardService
+import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.platform.ExternalLinkOpener
+import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.LocalCalendarDate
+import com.simon.harmonichackernews.platform.PlatformTimeFormatter
+import com.simon.harmonichackernews.platform.ShareService
+import com.simon.harmonichackernews.platform.StoredHistoryStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import io.ktor.client.engine.cio.CIO
@@ -14,6 +22,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Desktop lifecycle owner for the real shared application and CIO networking graphs.
@@ -62,6 +73,7 @@ class DesktopHarmonicAppBootstrap(
         /** Creates an operational but side-effect-free host with unsupported native facilities. */
         fun inMemory(userAgent: String): DesktopHarmonicAppBootstrap {
             val settings = InMemoryKeyValueStore()
+            val appData = InMemoryKeyValueStore()
             val credentials = InMemoryCredentialStore()
             return DesktopHarmonicAppBootstrap(
                 userAgent = userAgent,
@@ -70,14 +82,52 @@ class DesktopHarmonicAppBootstrap(
                     accounts = CredentialBackedHackerNewsAccountRepository(
                         credentials,
                     ),
+                    history = StoredHistoryStore(appData),
+                    externalLinks = SideEffectFreeExternalLinkOpener,
+                    sharing = SideEffectFreeShareService,
+                    clipboard = SideEffectFreeClipboardService,
+                    connectivity = DesktopSmokeConnectivity,
+                    timeFormatting = DesktopTimeFormatter(),
                 ),
                 settingsStore = settings,
-                appDataStore = InMemoryKeyValueStore(),
+                appDataStore = appData,
                 previewCacheStore = InMemoryKeyValueStore(),
                 settingsChanges = settings.changes,
             )
         }
     }
+}
+
+private data object SideEffectFreeExternalLinkOpener : ExternalLinkOpener {
+    override fun open(request: ExternalLinkRequest) = Unit
+}
+
+private data object SideEffectFreeShareService : ShareService {
+    override fun share(text: String, title: String?) = Unit
+}
+
+private data object SideEffectFreeClipboardService : ClipboardService {
+    override fun copy(label: String, text: String) = Unit
+}
+
+private data object DesktopSmokeConnectivity : ConnectivityService {
+    override fun isOnline(): Boolean = true
+    override fun isUnmetered(): Boolean = true
+}
+
+private class DesktopTimeFormatter : PlatformTimeFormatter {
+    private val zone = ZoneId.systemDefault()
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    override fun time(epochMillis: Long): String =
+        Instant.ofEpochMilli(epochMillis).atZone(zone).format(timeFormatter)
+
+    override fun localDate(epochMillis: Long): LocalCalendarDate =
+        Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate().let { date ->
+            LocalCalendarDate(date.year, date.monthValue, date.dayOfMonth)
+        }
+
+    override fun uses24HourClock(): Boolean = true
 }
 
 private class InMemoryCredentialStore : CredentialStore {

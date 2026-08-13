@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.navigation
 
 import com.simon.harmonichackernews.platform.ExternalLinkOpener
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.PlatformCapability
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 /** A destination resolved without knowing which native navigation framework will execute it. */
@@ -43,7 +42,6 @@ object LinkNavigationPolicy {
 sealed interface LinkNavigationResult {
     data object Opened : LinkNavigationResult
     data object Invalid : LinkNavigationResult
-    data class Unavailable(val reason: String) : LinkNavigationResult
 }
 
 /**
@@ -52,7 +50,7 @@ sealed interface LinkNavigationResult {
  */
 class AppLinkNavigator(
     private val navigation: MainNavigationStore,
-    private val externalLinks: PlatformCapability<ExternalLinkOpener>,
+    private val externalLinks: ExternalLinkOpener,
 ) {
     fun open(
         url: String?,
@@ -69,12 +67,8 @@ class AppLinkNavigator(
         null -> LinkNavigationResult.Invalid
     }
 
-    fun openExternal(request: ExternalLinkRequest): LinkNavigationResult =
-        when (val capability = externalLinks) {
-            is PlatformCapability.Available -> {
-                capability.service.open(request)
-                LinkNavigationResult.Opened
-            }
-            is PlatformCapability.Unavailable -> LinkNavigationResult.Unavailable(capability.reason)
-        }
+    fun openExternal(request: ExternalLinkRequest): LinkNavigationResult {
+        externalLinks.open(request)
+        return LinkNavigationResult.Opened
+    }
 }

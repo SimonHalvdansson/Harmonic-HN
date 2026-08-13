@@ -41,7 +41,6 @@ sealed interface CommentsRuntimeEffect {
     data class Platform(val effect: CommentsPlatformEffect) : CommentsRuntimeEffect
     data class StateChanged(val refreshNavigation: Boolean = false) : CommentsRuntimeEffect
     data class ShowCommentActions(val comment: PortableCommentItem) : CommentsRuntimeEffect
-    data class BroadcastStoryUpdate(val story: Story) : CommentsRuntimeEffect
     data class ThreadReady(
         val restoreScroll: Boolean,
         val headerChanged: Boolean,
@@ -92,6 +91,7 @@ class CommentsFeatureRuntime(
     private val hydrateCachedStory: (Story) -> Boolean = { false },
     private val loadCachedThread: (Int) -> String? = { null },
     private val storeCachedThread: (Int, String) -> Unit = { _, _ -> },
+    private val publishStoryUpdate: (Story) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
     private val storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
     private val nowMillis: () -> Long,
@@ -630,7 +630,7 @@ class CommentsFeatureRuntime(
                     storeCachedThread(effect.storyId, response)
                 }
                 if (effect.broadcastStoryUpdate) {
-                    story?.let { mutableEffects.tryEmit(CommentsRuntimeEffect.BroadcastStoryUpdate(it)) }
+                    story?.let(publishStoryUpdate)
                 }
                 if (effect.contentApplied) {
                     reconcileSettings()

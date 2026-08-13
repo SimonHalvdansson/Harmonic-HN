@@ -6,7 +6,10 @@ import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationInput
 import com.simon.harmonichackernews.presentation.StoriesShellPresentationPolicy
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
-import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.StorySearchController
+import com.simon.harmonichackernews.cache.StoryCacheState
+import com.simon.harmonichackernews.cache.StoryCacheStatus
+import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_bookmark
 import com.simon.harmonichackernews.resources.ic_history
@@ -14,18 +17,8 @@ import com.simon.harmonichackernews.resources.ic_star
 import com.simon.harmonichackernews.resources.ic_thumb_up_filled
 
 data class StoriesPlatformPresentation(
-    val searchSortLabels: List<String>,
-    val searchDateLabels: List<String>,
-    val searchPointsLabels: List<String>,
-    val searchCommentsLabels: List<String>,
     val lastUpdatedText: String?,
-    val cacheInProgress: Boolean,
-    val cacheProgressVisible: Boolean,
-    val cacheProgress: Int,
-    val cacheProgressMax: Int,
-    val cacheProgressStatus: String,
     val contentInsetStartPx: Int,
-    val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
 )
 
 /** Maps common stories state plus a narrow platform snapshot into shared UI state. */
@@ -33,6 +26,7 @@ object StoriesScreenStateFactory {
     fun create(
         feature: StoriesFeatureRuntime,
         platform: StoriesPlatformPresentation,
+        storyCache: StoryCacheState,
     ): StoriesScreenState {
         val presenterState = feature.presenter.state.value
         val listState = feature.activeStore.state.value
@@ -54,7 +48,7 @@ object StoriesScreenStateFactory {
                 userItemsInitialLoadInProgress = feature.isUserItemsInitialLoadInProgress,
                 refreshIndicatorShowing = feature.refreshIndicatorShowing,
                 showingCached = listState.showingCached,
-                cacheInProgress = platform.cacheInProgress,
+                cacheInProgress = storyCache.isCaching,
                 visibleStoryCount = feature.activeStore.visibleStoryItemCount,
             ),
         )
@@ -73,7 +67,7 @@ object StoriesScreenStateFactory {
         return StoriesScreenState(
             mainStories = feature.mainStories,
             searchStories = feature.searchStories,
-            previewResources = platform.previewResources,
+            previewResources = feature.previewResourceStates,
             displaySettings = feature.settingsState.value.displaySettings,
             typeLabels = feature.availableStoryTypes.map { it.label },
             selectedTypeIndex = feature.selectedStoryTypeIndex(),
@@ -83,10 +77,10 @@ object StoriesScreenStateFactory {
             searchDateLabel = feature.searchOptions.dateRangeLabel,
             searchPointsLabel = feature.searchOptions.minimumPointsLabel,
             searchCommentsLabel = feature.searchOptions.minimumCommentsLabel,
-            searchSortLabels = platform.searchSortLabels,
-            searchDateLabels = platform.searchDateLabels,
-            searchPointsLabels = platform.searchPointsLabels,
-            searchCommentsLabels = platform.searchCommentsLabels,
+            searchSortLabels = StorySearchController.sortLabels.toList(),
+            searchDateLabels = StorySearchController.dateRangeLabels.toList(),
+            searchPointsLabels = StorySearchController.minimumPointsLabels.toList(),
+            searchCommentsLabels = StorySearchController.minimumCommentsLabels.toList(),
             searchOnlyClicked = searchState.options.onlyClicked,
             loading = shell.showLoading,
             refreshing = feature.refreshIndicatorShowing,
@@ -122,10 +116,16 @@ object StoriesScreenStateFactory {
             loggedIn = feature.loggedIn,
             canCache = shell.canCacheStories,
             canClearHistory = feature.canClearHistory,
-            cacheProgressVisible = platform.cacheProgressVisible,
-            cacheProgress = platform.cacheProgress,
-            cacheProgressMax = platform.cacheProgressMax,
-            cacheProgressStatus = platform.cacheProgressStatus,
+            cacheProgressVisible = storyCache.progressVisible,
+            cacheProgress = storyCache.completed,
+            cacheProgressMax = storyCache.progressMax,
+            cacheProgressStatus = when (storyCache.status) {
+                StoryCacheStatus.IDLE -> PresentationCopy.CACHE_STORIES
+                StoryCacheStatus.CACHING -> PresentationCopy.cachingStories(storyCache.total)
+                StoryCacheStatus.FINISHED -> PresentationCopy.CACHE_FINISHED
+                StoryCacheStatus.EMPTY -> PresentationCopy.CACHE_EMPTY
+                StoryCacheStatus.FAILED -> PresentationCopy.CACHE_FAILED
+            },
             contentInsetStartPx = platform.contentInsetStartPx,
         )
     }

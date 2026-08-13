@@ -239,8 +239,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             if (lastUpdated == 0L) {
                 return ""
             }
-            return context.harmonicAppComposition.platform.capabilities.timeFormatting
-                .requireService().time(lastUpdated)
+            return context.harmonicAppComposition.platform.timeFormatting.time(lastUpdated)
         }
     }
 }

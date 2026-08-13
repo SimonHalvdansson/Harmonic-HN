@@ -8,7 +8,6 @@ import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
 import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.data.SavedItemsRepository
-import com.simon.harmonichackernews.platform.StoredBookmarkStore
 
 /**
  * Swift-facing owner for one Harmonic application graph.
@@ -16,8 +15,7 @@ import com.simon.harmonichackernews.platform.StoredBookmarkStore
  * Run `:shared_ui:assembleHarmonicSharedXCFramework`, link the generated
  * `HarmonicShared.xcframework`, construct this object at application startup, retain it for the
  * process lifetime, and call [close] during host teardown. The Xcode host remains responsible for
- * navigation and for whichever optional native services it advertises through
- * [IosPlatformBindings]. Unsupported facilities remain typed unavailable capabilities.
+ * navigation and for the native services it supplies through [IosPlatformBindings].
  */
 class IosHarmonicAppBootstrap(
     userAgent: String,
@@ -40,7 +38,6 @@ class IosHarmonicAppBootstrap(
     val platform = createIosPlatformDependencies(
         appData,
         bindings,
-        bookmarkStore = StoredBookmarkStore(savedItems),
     )
     val app = HarmonicAppComposition(
         network = network.graph,

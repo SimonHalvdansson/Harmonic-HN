@@ -21,7 +21,7 @@ fun AppearanceSettingsScreen(
         labels = AppearanceRouteLabels(
             nighttimeRange = formatNighttimeRange(
                 app.appearance.schedule,
-                app.platform.capabilities.timeFormatting.requireService().uses24HourClock(),
+                app.platform.timeFormatting.uses24HourClock(),
             ),
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
         ),

@@ -47,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,6 +89,16 @@ import com.simon.harmonichackernews.presentation.validate
 private enum class EditorDialog {
     Information,
     Discard,
+}
+
+@Stable
+class EditorComposeController {
+    var submitting by mutableStateOf(false)
+        private set
+
+    fun updateSubmitting(value: Boolean) {
+        submitting = value
+    }
 }
 
 @Composable

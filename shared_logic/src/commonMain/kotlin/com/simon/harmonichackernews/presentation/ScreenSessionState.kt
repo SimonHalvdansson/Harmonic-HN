@@ -60,6 +60,7 @@ class CommentsSessionState(
     var storyFavoriteLoading: Boolean = false
     var scrollToCommentId: Int = -1
     var lastLoaded: Long = 0
+    var hostRestoration: CommentsHostRestoration = CommentsHostRestoration()
 }
 
 /** Canonical state for a submissions session, including its visible list position. */

@@ -41,6 +41,7 @@ interface CloudSummaryRepository {
 
 class KtorCloudSummaryRepository(
     private val client: KtorHttpClient,
+    private val articleUserAgent: String,
 ) : CloudSummaryRepository {
     override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> {
         val requestBuilder = HttpRequest.Builder().url(joinUrl(baseUrl, "models"))
@@ -65,7 +66,7 @@ class KtorCloudSummaryRepository(
     override suspend fun extractMainContent(url: String): String {
         val request = HttpRequest.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36")
+            .header("User-Agent", articleUserAgent)
             .get()
             .build()
         val response = client.newBuilder().readTimeoutMillis(10_000).build().execute(request)

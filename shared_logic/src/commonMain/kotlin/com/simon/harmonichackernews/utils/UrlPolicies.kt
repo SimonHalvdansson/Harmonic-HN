@@ -3,13 +3,6 @@ package com.simon.harmonichackernews.utils
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 import kotlin.time.Clock
 
-object ExternalUrlPolicy {
-    fun ensureHttpScheme(value: String): String = value.takeIf {
-        it.startsWith("http://", ignoreCase = true) ||
-            it.startsWith("https://", ignoreCase = true)
-    } ?: "http://$value"
-}
-
 data class HackerNewsItemLink(
     val url: String,
     val itemId: Int,

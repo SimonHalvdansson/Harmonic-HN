@@ -196,8 +196,7 @@ private fun CommentsHeader(
             tintStore = dependencies.storyResourceTints,
             userTags = dependencies.userTags,
             lastRefreshedMillis = controller.lastRefreshed,
-            formatTime = dependencies.platform.capabilities.timeFormatting
-                .requireService()::time,
+            formatTime = dependencies.platform.timeFormatting::time,
         )
     }
     val tintPresentation = headerPresentation.tint

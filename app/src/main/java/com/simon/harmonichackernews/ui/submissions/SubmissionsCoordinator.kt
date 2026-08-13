@@ -6,19 +6,15 @@ import com.simon.harmonichackernews.ScreenStateViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
-import com.simon.harmonichackernews.app.SubmissionsFeatureSessionEvent
 import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.UserSettings
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
-import com.simon.harmonichackernews.presentation.SubmissionFilter
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
-import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,89 +47,24 @@ class SubmissionsCoordinator(
         sessionState = sessionState,
         userSettings = userSettings,
     )
-    private val runtime = featureSession.runtime
     private val screenSession = SubmissionsScreenSession(coroutineScope, featureSession)
     val composeController: SubmissionsComposeController
 
     init {
-        composeController = SubmissionsComposeController(
+        composeController = screenSession.createController(
             userName = userName,
-            initialFilter = runtime.state.value.filter,
-            initialDisplaySettings = StoryDisplaySettings
+            displaySettings = StoryDisplaySettings
                 .from(userSettings.story)
                 .withShowIndex(false),
-            listener = object : SubmissionsComposeController.Listener {
-                override fun onFilterSelected(filter: SubmissionFilter) {
-                    runtime.selectFilter(filter)
-                }
-
-                override fun onRefresh() {
-                    runtime.refresh()
-                }
-
-                override fun onStoryLinkClick(story: Story) = runtime.openStoryLink(story)
-
-                override fun onStoryCommentsClick(story: Story) = runtime.openStoryComments(story)
-
-                override fun onCommentStoryClick(story: Story) = runtime.openCommentMaster(story)
-
-                override fun onCommentRepliesClick(story: Story) = runtime.openCommentReplies(story)
-
-                override fun onLoadMore() {
-                    runtime.loadMore()
-                }
-
-                override fun onScrollStateChanged(
-                    firstVisibleStoryPosition: Int,
-                    firstVisibleStoryTop: Int,
-                    appBarCollapsed: Boolean,
-                ) {
-                    runtime.recordScrollPosition(
-                        firstVisibleStoryPosition,
-                        firstVisibleStoryTop,
-                        appBarCollapsed,
-                    )
-                }
-            },
         )
-        composeController.updateDisplaySettings(
-            StoryDisplaySettings.from(userSettings.story).withShowIndex(false)
-        )
-        coroutineScope.launch {
-            screenSession.state.collect(::render)
-        }
         coroutineScope.launch {
             screenSession.effects.collect(::handleEffect)
-        }
-        screenSession.start()?.let { restoration ->
-            composeController.restoreScrollState(
-                firstVisiblePosition = restoration.firstVisibleStoryPosition,
-                firstVisibleTop = restoration.firstVisibleStoryTop,
-                appBarCollapsed = restoration.appBarCollapsed,
-            )
         }
     }
 
     fun close() {
         screenSession.dispose()
         coroutineScope.cancel()
-    }
-
-    private fun render(state: SubmissionsUiState) {
-        composeController.updateLoading(
-            state.loading,
-            state.showInitialLoading,
-            state.refreshing,
-        )
-        composeController.updateContent(
-            state.items,
-            state.filter,
-            state.hasUnfilteredItems,
-            state.canLoadMore,
-            state.loadedSuccessfully,
-            state.emptyText,
-            state.revision,
-        )
     }
 
     private fun handleEffect(effect: SubmissionsRuntimeEffect) {

@@ -33,6 +33,11 @@ import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
+import com.simon.harmonichackernews.presentation.CommentsBackContext
+import com.simon.harmonichackernews.presentation.CommentsBackPolicy
+import com.simon.harmonichackernews.presentation.CommentsBackTarget
+import com.simon.harmonichackernews.presentation.CommentsHostRestoration
+import com.simon.harmonichackernews.presentation.CommentsOverlayRestoration
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
@@ -42,7 +47,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.session.CommentsScreenSession
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
-import com.simon.harmonichackernews.utils.StoryUpdate
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
@@ -95,16 +99,12 @@ class CommentsCoordinator(
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
-    private var pendingCommentActionId = -1
-    private var pendingReferenceLinkSummaryUrl: String? = null
-    private var pendingReferenceLinkSummaryTitle: String? = null
-    private var pendingPreviewImageDialogUrl: String? = null
+    private var hostRestoration by sessionState::hostRestoration
     private var progressIndicator: LinearProgressIndicator? = null
     private var linkPreviewController: LinkPreviewController? = null
     private var webViewController: CommentsWebViewController? = null
     private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
-    private var adBlockDisabledForSession = false
     private var topInset = 0
     private val commentsLoaded: Boolean
         get() = commentsPresenter.state.value.loaded
@@ -124,9 +124,6 @@ class CommentsCoordinator(
     init {
         coroutineScope.launch { screenSession.effects.collect(::handleCommentsRuntimeEffect) }
         coroutineScope.launch { screenSession.settings.collect(::applyPlatformSettingsState) }
-        coroutineScope.launch {
-            screenSession.state.collect { state -> state?.let { composeController?.updateContent(it) } }
-        }
         webViewHost = CommentsWebViewHost(activity)
         initializeView(savedInstanceState)
     }
@@ -164,31 +161,13 @@ class CommentsCoordinator(
 
     private fun initializeView(savedInstanceState: Bundle?) {
         val view = this.webViewRoot
-        val restoredSorting = savedInstanceState?.getString(STATE_COMMENT_SORTING)
         if (savedInstanceState != null) {
-            pendingReferenceLinkSummaryUrl = savedInstanceState.getString(
-                STATE_REFERENCE_LINK_SUMMARY_URL
-            )
-            pendingReferenceLinkSummaryTitle = savedInstanceState.getString(
-                STATE_REFERENCE_LINK_SUMMARY_TITLE
-            )
-            pendingPreviewImageDialogUrl = savedInstanceState.getString(
-                STATE_PREVIEW_IMAGE_DIALOG_URL
-            )
+            hostRestoration = restoreHostState(savedInstanceState)
         }
+        val restoredSorting = hostRestoration.sorting
         val host = webViewHost
         checkNotNull(host) { "Comments WebView host was not created" }
         topInset = 0
-
-        if (savedInstanceState != null) {
-            pendingCommentActionId = savedInstanceState.getInt(
-                STATE_COMMENT_ACTION_COMMENT_ID,
-                -1
-            )
-            adBlockDisabledForSession = savedInstanceState.getBoolean(
-                STATE_ADBLOCK_DISABLED_FOR_SESSION, false
-            )
-        }
 
         screenSession.start(
             initialStory = destination.toStory(),
@@ -212,7 +191,7 @@ class CommentsCoordinator(
         val featureSettings = checkNotNull(commentsFeature.settingsState.value)
         val readingPreferences = featureSettings.reading
         integratedWebview = featureSettings.integratedWebView
-        val blockAds = readingPreferences.blockAds && !adBlockDisabledForSession
+        val blockAds = readingPreferences.blockAds && !hostRestoration.adBlockDisabled
 
         progressIndicator = host.progressIndicator
         linkPreviewController = LinkPreviewController(
@@ -232,6 +211,10 @@ class CommentsCoordinator(
             object : CommentsWebViewController.Callbacks {
                 override fun startActivity(intent: Intent) {
                     activity.startActivity(intent)
+                }
+
+                override fun openExternalLink(url: String) {
+                    externalLinks.open(ExternalLinkRequest(url, preferInApp = false))
                 }
 
                 override fun syncOnBackPressedCallbackEnabledState() {
@@ -277,128 +260,79 @@ class CommentsCoordinator(
 
         backPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackCancelled() {
-                if (composeController != null
-                    && composeController!!.isLinkPreviewOverlayShowing()
-                ) {
-                    composeController!!.cancelLinkPreviewPredictiveBack()
-                    return
-                }
-                if (composeController != null
-                    && composeController!!.isCommentActionOverlayShowing()
-                ) {
-                    composeController!!.cancelCommentActionPredictiveBack()
-                    return
-                }
-
-                if (willExpandBottomSheetOnBack()) {
-                    endCommentsPredictiveBackVisuals()
+                when (commentsBackTarget()) {
+                    CommentsBackTarget.LINK_PREVIEW ->
+                        composeController?.cancelLinkPreviewPredictiveBack()
+                    CommentsBackTarget.COMMENT_ACTION ->
+                        composeController?.cancelCommentActionPredictiveBack()
+                    CommentsBackTarget.CLOSE_WEBSITE -> endCommentsPredictiveBackVisuals()
+                    else -> Unit
                 }
             }
 
             override fun handleOnBackProgressed(backEvent: BackEventCompat) {
-                if (composeController != null
-                    && composeController!!.isLinkPreviewOverlayShowing()
-                ) {
-                    composeController!!.updateLinkPreviewPredictiveBack(
+                when (commentsBackTarget()) {
+                    CommentsBackTarget.LINK_PREVIEW -> composeController?.updateLinkPreviewPredictiveBack(
                         backEvent.progress,
                         backEvent.swipeEdge,
                         backEvent.touchY
                     )
-                    return
-                }
-                if (composeController != null
-                    && composeController!!.isCommentActionOverlayShowing()
-                ) {
-                    composeController!!.updateCommentActionPredictiveBack(
+                    CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
                         backEvent.progress,
                         backEvent.swipeEdge,
                         backEvent.touchY
                     )
-                    return
-                }
-
-                if (willExpandBottomSheetOnBack()) {
-                    updateCommentsPredictiveBackVisuals(backEvent.progress, false)
+                    CommentsBackTarget.CLOSE_WEBSITE ->
+                        updateCommentsPredictiveBackVisuals(backEvent.progress, false)
+                    else -> Unit
                 }
             }
 
             override fun handleOnBackStarted(backEvent: BackEventCompat) {
-                if (composeController != null
-                    && composeController!!.isLinkPreviewOverlayShowing()
-                ) {
-                    composeController!!.startLinkPreviewPredictiveBack(
+                when (commentsBackTarget()) {
+                    CommentsBackTarget.LINK_PREVIEW -> composeController?.startLinkPreviewPredictiveBack(
                         backEvent.progress,
                         backEvent.swipeEdge,
                         backEvent.touchY
                     )
-                    return
-                }
-                if (composeController != null
-                    && composeController!!.isCommentActionOverlayShowing()
-                ) {
-                    composeController!!.updateCommentActionPredictiveBack(
+                    CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
                         backEvent.progress,
                         backEvent.swipeEdge,
                         backEvent.touchY
                     )
-                    return
-                }
-
-                if (willExpandBottomSheetOnBack()) {
-                    updateCommentsPredictiveBackVisuals(backEvent.progress, true)
+                    CommentsBackTarget.CLOSE_WEBSITE ->
+                        updateCommentsPredictiveBackVisuals(backEvent.progress, true)
+                    else -> Unit
                 }
             }
 
             override fun handleOnBackPressed() {
-                if (composeController != null
-                    && composeController!!.isLinkPreviewOverlayShowing()
-                ) {
-                    if (composeController!!.isLinkPreviewPredictiveBackActive()) {
-                        composeController!!.commitLinkPreviewPredictiveBack()
-                    } else {
-                        composeController!!.requestDismissLinkPreview()
+                when (commentsBackTarget()) {
+                    CommentsBackTarget.LINK_PREVIEW -> {
+                        if (composeController?.isLinkPreviewPredictiveBackActive() == true) {
+                            composeController?.commitLinkPreviewPredictiveBack()
+                        } else {
+                            composeController?.requestDismissLinkPreview()
+                        }
                     }
-                    return
-                }
-                if (composeController != null
-                    && composeController!!.isCommentActionOverlayShowing()
-                ) {
-                    if (composeController!!.isCommentActionPredictiveBackActive()) {
-                        composeController!!.commitCommentActionPredictiveBack()
-                        return
+                    CommentsBackTarget.COMMENT_ACTION -> {
+                        if (composeController?.isCommentActionPredictiveBackActive() == true) {
+                            composeController?.commitCommentActionPredictiveBack()
+                        } else {
+                            composeController?.requestDismissCommentActions()
+                        }
                     }
-                    composeController!!.requestDismissCommentActions()
-                    return
+                    CommentsBackTarget.CUSTOM_WEB_CONTENT ->
+                        webViewController?.hideCustomView(true)
+                    CommentsBackTarget.READER_MODE -> webViewController?.disableReaderMode()
+                    CommentsBackTarget.CLOSE_WEBSITE -> {
+                        composeController?.requestExpandSheet()
+                        endCommentsPredictiveBackVisuals()
+                    }
+                    CommentsBackTarget.WEB_HISTORY ->
+                        webViewController?.goBackFromVisibleWebView()
+                    CommentsBackTarget.NONE -> navigation.closeStory()
                 }
-
-                if (webViewController!!.isShowingCustomView) {
-                    webViewController!!.hideCustomView(true)
-                    return
-                }
-
-                val webViewVisible = composeController != null
-                        && composeController!!.isWebsiteVisible()
-                if (webViewVisible && webViewController!!.isReaderModeEnabled()) {
-                    webViewController!!.disableReaderMode()
-                    return
-                } else if (willExpandBottomSheetOnBack()) {
-                    // If the webView can't go back but the back handler is enabled,
-                    // it means that the closeWebViewOnBack == true
-                    composeController!!.requestExpandSheet()
-                    endCommentsPredictiveBackVisuals()
-                    return
-                } else if (webViewVisible) {
-                    webViewController!!.goBackFromVisibleWebView()
-                    return
-                }
-
-                navigation.closeStory()
-            }
-
-            fun willExpandBottomSheetOnBack(): Boolean {
-                val webViewVisible = composeController != null
-                        && composeController!!.isWebsiteVisible()
-                return webViewVisible && webViewController!!.willExpandBottomSheetOnBack()
             }
         }
 
@@ -606,13 +540,10 @@ class CommentsCoordinator(
             }
 
         }
-        composeController = CommentsComposeController.create(
-            { commentsFeature.settingsState.value?.smoothScroll ?: true },
+        composeController = screenSession.createController(
             currentStory,
             showWebsite,
-            commentsFeature.accountUser,
-            commentsPresenter.savedItemState,
-            CommentsFeatureListener(commentsFeature, platformCallbacks),
+            platformCallbacks,
         )
         navigation.attachCommentsComposeController(composeController!!)
         restoreLinkSummaryAfterRecreation()
@@ -630,7 +561,6 @@ class CommentsCoordinator(
             commentsFeature.captureCollapsedComments()
         }
         screenSession.refreshPresentation()
-        screenSession.state.value?.let(controller::updateContent)
     }
 
     private fun commentsPlatformPresentation(): CommentsPlatformPresentation =
@@ -661,7 +591,7 @@ class CommentsCoordinator(
                 showWebsite,
                 integratedWebview,
                 reading,
-                reading.blockAds && !adBlockDisabledForSession,
+                reading.blockAds && !hostRestoration.adBlockDisabled,
             )
             if (integratedWebview && !wasIntegrated) controller.initialize()
         }
@@ -708,7 +638,7 @@ class CommentsCoordinator(
             )
             CommentsPlatformEffect.ShowSearch -> composeController?.showCommentSearch()
             CommentsPlatformEffect.DisableAdBlock -> {
-                adBlockDisabledForSession = true
+                hostRestoration = hostRestoration.copy(adBlockDisabled = true)
                 webViewController?.disableAdBlockAndReload()
             }
             CommentsPlatformEffect.ReloadWebsite -> {
@@ -727,21 +657,27 @@ class CommentsCoordinator(
         }
     }
 
-    private fun syncOnBackPressedCallbackEnabledState() {
+    private fun commentsBackTarget(): CommentsBackTarget {
         val commentsController = composeController
         val websiteController = webViewController
-        val webViewVisible = websiteController?.hasWebView() == true &&
+        val websiteVisible = websiteController?.hasWebView() == true &&
             commentsController?.isWebsiteVisible() == true
-        val enabled = when {
-            commentsController?.isLinkPreviewOverlayShowing() == true -> true
-            commentsController?.isCommentActionOverlayShowing() == true -> true
-            websiteController?.isShowingCustomView == true -> true
-            webViewVisible && websiteController.isReaderModeEnabled() -> true
-            commentsFeature.settingsState.value?.reading?.closeWebViewOnBack == true ->
-                webViewVisible
-            else -> webViewVisible && websiteController.canGoBack()
-        }
-        backPressedCallback?.isEnabled = enabled
+        return CommentsBackPolicy.target(
+            CommentsBackContext(
+                linkPreviewVisible = commentsController?.isLinkPreviewOverlayShowing() == true,
+                commentActionVisible = commentsController?.isCommentActionOverlayShowing() == true,
+                customWebContentVisible = websiteController?.isShowingCustomView == true,
+                readerModeEnabled = websiteController?.isReaderModeEnabled() == true,
+                websiteVisible = websiteVisible,
+                webHistoryAvailable = websiteController?.canGoBack() == true,
+                closeWebsiteOnBack =
+                    commentsFeature.settingsState.value?.reading?.closeWebViewOnBack == true,
+            ),
+        )
+    }
+
+    private fun syncOnBackPressedCallbackEnabledState() {
+        backPressedCallback?.isEnabled = commentsBackTarget() != CommentsBackTarget.NONE
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {
@@ -932,34 +868,68 @@ class CommentsCoordinator(
         started = false
     }
 
-    fun onSaveInstanceState(outState: Bundle) {
-        if (composeController != null && composeController!!.isLinkPreviewReferenceShowing()) {
-            outState.putString(
-                STATE_REFERENCE_LINK_SUMMARY_URL,
-                composeController!!.linkPreviewVisibleUrl
-            )
-            outState.putString(
-                STATE_REFERENCE_LINK_SUMMARY_TITLE,
-                composeController!!.getLinkPreviewFallbackTitle()
-            )
-        } else if (composeController != null && composeController!!.isLinkPreviewImageShowing()) {
-            outState.putString(
-                STATE_PREVIEW_IMAGE_DIALOG_URL,
-                composeController!!.linkPreviewVisibleUrl
-            )
+    private fun captureHostRestoration(preserveOverlay: Boolean): CommentsHostRestoration {
+        val controller = composeController
+        val overlay = if (!preserveOverlay || controller == null) {
+            null
+        } else when {
+            controller.isLinkPreviewReferenceShowing() ->
+                controller.linkPreviewVisibleUrl?.let {
+                    CommentsOverlayRestoration.Reference(
+                        it,
+                        controller.getLinkPreviewFallbackTitle(),
+                    )
+                }
+            controller.isLinkPreviewImageShowing() ->
+                controller.linkPreviewVisibleUrl?.let { CommentsOverlayRestoration.Image(it) }
+            else -> null
         }
+        return hostRestoration.copy(
+            sorting = commentsFeature.thread.state.value.sorting,
+            commentActionId = controller?.getVisibleCommentActionId()
+                ?.takeIf { it != -1 }
+                ?: hostRestoration.commentActionId,
+            overlay = overlay,
+        )
+    }
 
-        val visibleCommentActionId = if (composeController == null)
-            pendingCommentActionId
-        else
-            composeController!!.getVisibleCommentActionId()
-        if (visibleCommentActionId != -1) {
-            outState.putInt(STATE_COMMENT_ACTION_COMMENT_ID, visibleCommentActionId)
+    private fun restoreHostState(bundle: Bundle): CommentsHostRestoration {
+        val referenceUrl = bundle.getString(STATE_REFERENCE_LINK_SUMMARY_URL)
+        val imageUrl = bundle.getString(STATE_PREVIEW_IMAGE_DIALOG_URL)
+        val overlay = when {
+            !referenceUrl.isNullOrBlank() -> CommentsOverlayRestoration.Reference(
+                referenceUrl,
+                bundle.getString(STATE_REFERENCE_LINK_SUMMARY_TITLE),
+            )
+            !imageUrl.isNullOrBlank() -> CommentsOverlayRestoration.Image(imageUrl)
+            else -> null
         }
-        if (adBlockDisabledForSession) {
-            outState.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, true)
+        return CommentsHostRestoration(
+            sorting = bundle.getString(STATE_COMMENT_SORTING),
+            commentActionId = bundle.getInt(STATE_COMMENT_ACTION_COMMENT_ID, -1),
+            adBlockDisabled = bundle.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false),
+            overlay = overlay,
+        )
+    }
+
+    private fun writeHostState(bundle: Bundle, restoration: CommentsHostRestoration) {
+        bundle.putString(STATE_COMMENT_SORTING, restoration.sorting)
+        bundle.putInt(STATE_COMMENT_ACTION_COMMENT_ID, restoration.commentActionId)
+        bundle.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, restoration.adBlockDisabled)
+        when (val overlay = restoration.overlay) {
+            is CommentsOverlayRestoration.Reference -> {
+                bundle.putString(STATE_REFERENCE_LINK_SUMMARY_URL, overlay.url)
+                bundle.putString(STATE_REFERENCE_LINK_SUMMARY_TITLE, overlay.fallbackTitle)
+            }
+            is CommentsOverlayRestoration.Image ->
+                bundle.putString(STATE_PREVIEW_IMAGE_DIALOG_URL, overlay.url)
+            null -> Unit
         }
-        outState.putString(STATE_COMMENT_SORTING, commentsFeature.thread.state.value.sorting)
+    }
+
+    fun onSaveInstanceState(outState: Bundle) {
+        hostRestoration = captureHostRestoration(preserveOverlay = true)
+        writeHostState(outState, hostRestoration)
     }
 
     private fun restoreScrollProgress() {
@@ -990,24 +960,9 @@ class CommentsCoordinator(
         if (destroyed) return
         if (started) onStop()
         val controllerToDetach = composeController
-        val preserveReferenceSummary =
+        val changingConfigurations =
             getActivity() != null && requireActivity().isChangingConfigurations()
-                    && composeController != null && composeController!!.isLinkPreviewReferenceShowing()
-        val preservePreviewImage =
-            getActivity() != null && requireActivity().isChangingConfigurations()
-                    && composeController != null && composeController!!.isLinkPreviewImageShowing()
-        pendingReferenceLinkSummaryUrl = if (preserveReferenceSummary)
-            composeController!!.linkPreviewVisibleUrl
-        else
-            null
-        pendingReferenceLinkSummaryTitle = if (preserveReferenceSummary)
-            composeController!!.getLinkPreviewFallbackTitle()
-        else
-            null
-        pendingPreviewImageDialogUrl = if (preservePreviewImage)
-            composeController!!.linkPreviewVisibleUrl
-        else
-            null
+        hostRestoration = captureHostRestoration(preserveOverlay = changingConfigurations)
         if (composeController != null) {
             if (composeController!!.isLinkPreviewOverlayShowing()) {
                 composeController!!.completeLinkPreviewDismiss()
@@ -1045,9 +1000,9 @@ class CommentsCoordinator(
 
     private fun restoreLinkSummaryAfterRecreation() {
         val rootView = this.view
-        if (!TextUtils.isEmpty(pendingPreviewImageDialogUrl) && rootView != null) {
-            val imageUrl = pendingPreviewImageDialogUrl
-            pendingPreviewImageDialogUrl = null
+        val overlay = hostRestoration.overlay
+        if (overlay is CommentsOverlayRestoration.Image && rootView != null) {
+            hostRestoration = hostRestoration.copy(overlay = null)
             rootView.post(Runnable {
                 if (composeController != null) {
                     val backgroundColor = if (commentsHeaderStatusBarColor != Color.TRANSPARENT)
@@ -1058,7 +1013,7 @@ class CommentsCoordinator(
                             ThemeUtils.getBackgroundColorResource(requireContext())
                         )
                     composeController!!.showImagePreview(
-                        imageUrl!!,
+                        overlay.url,
                         if (TextUtils.isEmpty(story!!.title))
                             "Story preview image"
                         else
@@ -1071,16 +1026,13 @@ class CommentsCoordinator(
             return
         }
         val referenceRootView = this.view
-        if (TextUtils.isEmpty(pendingReferenceLinkSummaryUrl) || referenceRootView == null) {
+        if (overlay !is CommentsOverlayRestoration.Reference || referenceRootView == null) {
             return
         }
-        val url = pendingReferenceLinkSummaryUrl
-        val title = pendingReferenceLinkSummaryTitle
-        pendingReferenceLinkSummaryUrl = null
-        pendingReferenceLinkSummaryTitle = null
+        hostRestoration = hostRestoration.copy(overlay = null)
         referenceRootView.post(Runnable {
             if (composeController != null) {
-                composeController!!.showReferencePreview(url!!, title)
+                composeController!!.showReferencePreview(overlay.url, overlay.fallbackTitle)
             }
         })
     }
@@ -1115,8 +1067,6 @@ class CommentsCoordinator(
             is CommentsRuntimeEffect.StateChanged -> syncComposeState()
             is CommentsRuntimeEffect.ShowCommentActions ->
                 composeController?.showCommentActions(effect.comment)
-            is CommentsRuntimeEffect.BroadcastStoryUpdate ->
-                StoryUpdate.updateStory(effect.story)
             is CommentsRuntimeEffect.ThreadReady -> {
                 if (!isCommentsViewActive) return
                 commentsFeature.settingsState.value?.let(::applyPlatformSettingsState)
@@ -1170,10 +1120,11 @@ class CommentsCoordinator(
     }
 
     private fun restorePendingCommentAction() {
+        val pendingCommentActionId = hostRestoration.commentActionId
         if (pendingCommentActionId == -1) return
         val controller = composeController ?: return
         val comment = commentsFeature.comment(pendingCommentActionId) ?: return
-        pendingCommentActionId = -1
+        hostRestoration = hostRestoration.copy(commentActionId = -1)
         controller.restoreCommentActions(comment)
         syncOnBackPressedCallbackEnabledState()
     }

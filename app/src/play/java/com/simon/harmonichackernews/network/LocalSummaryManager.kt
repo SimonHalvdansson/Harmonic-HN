@@ -19,7 +19,6 @@ import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.platform.LocalSummaryEngine
-import com.simon.harmonichackernews.platform.PlatformCapability
 import com.simon.harmonichackernews.platform.SummaryRequest
 import com.simon.harmonichackernews.platform.SummaryResult
 import java.util.concurrent.ExecutionException
@@ -251,8 +250,7 @@ internal class AndroidLocalSummaryBackend(
         }
 }
 
-internal fun createAndroidLocalSummaryCapability(
+internal fun createAndroidLocalSummaryEngine(
     context: Context,
     models: LocalModelService,
-): PlatformCapability<LocalSummaryEngine> =
-    PlatformCapability.Available(AndroidLocalSummaryBackend(context, models))
+): LocalSummaryEngine = AndroidLocalSummaryBackend(context, models)

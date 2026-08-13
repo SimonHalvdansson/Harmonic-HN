@@ -59,17 +59,6 @@ object SavedItemCodec {
         }
     }
 
-    fun toBookmarks(items: List<TimestampedItem>): ArrayList<Bookmark> = ArrayList(
-        items.map { item ->
-            Bookmark().apply {
-                id = item.id
-                created = item.created
-            }
-        },
-    )
-
-    fun fromBookmarks(items: List<Bookmark>): List<TimestampedItem> =
-        items.map { TimestampedItem(it.id, it.created) }
 }
 
 data class SavedItemSnapshot(

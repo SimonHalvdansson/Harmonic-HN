@@ -1,13 +1,8 @@
 package com.simon.harmonichackernews.platform
 
-import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.data.HistoryLedger
-import com.simon.harmonichackernews.data.SavedItemCodec
-import com.simon.harmonichackernews.data.SavedItemSource
-import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.settings.KeyValueStore
-import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,12 +16,6 @@ interface ObservableHackerNewsAccountRepository : HackerNewsAccountRepository {
     suspend fun clearAccount(): Boolean
 }
 
-/** Suspend-friendly observable bookmark storage for new shared feature code. */
-interface ObservableBookmarkStore : BookmarkStore {
-    val bookmarkState: StateFlow<List<Bookmark>>
-    suspend fun setBookmarked(id: Int, bookmarked: Boolean, createdAtMillis: Long): Boolean
-}
-
 data class HistoryStoreSnapshot(
     val histories: List<History> = emptyList(),
     val changeVersion: Long = 0L,
@@ -38,67 +27,6 @@ interface ObservableHistoryStore : HistoryStore {
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
-}
-
-/**
- * Portable bookmark storage used by every platform that persists application data in a
- * [KeyValueStore]. Platforms choose the backing store; membership, ordering, timestamps, atomic
- * mutation and observation remain identical.
- */
-class StoredBookmarkStore private constructor(
-    private val repository: SavedItemsRepository,
-    private val nowMillis: () -> Long,
-) : ObservableBookmarkStore {
-    constructor(store: KeyValueStore) : this(
-        repository = SavedItemsRepository(store),
-        nowMillis = { Clock.System.now().toEpochMilliseconds() },
-    )
-    constructor(repository: SavedItemsRepository) : this(
-        repository = repository,
-        nowMillis = { Clock.System.now().toEpochMilliseconds() },
-    )
-
-    private val mutableBookmarkState = MutableStateFlow(loadPersisted())
-    private val mutationMutex = Mutex()
-    override val bookmarkState: StateFlow<List<Bookmark>> = mutableBookmarkState.asStateFlow()
-
-    override fun load(): List<Bookmark> = loadPersisted()
-
-    override fun add(id: Int) {
-        if (repository.setMembership(SavedItemSource.BOOKMARKS, id, true, nowMillis())) publish()
-    }
-
-    override fun remove(id: Int) {
-        if (repository.setMembership(SavedItemSource.BOOKMARKS, id, false, nowMillis())) publish()
-    }
-
-    override fun clear() {
-        repository.saveItems(SavedItemSource.BOOKMARKS, emptyList())
-        publish()
-    }
-
-    override suspend fun setBookmarked(
-        id: Int,
-        bookmarked: Boolean,
-        createdAtMillis: Long,
-    ): Boolean = mutationMutex.withLock {
-        repository.setMembershipAtomic(
-            source = SavedItemSource.BOOKMARKS,
-            id = id,
-            present = bookmarked,
-            createdAtMillis = createdAtMillis,
-        ).also { changed ->
-            if (changed) publish()
-        }
-    }
-
-    private fun loadPersisted(): List<Bookmark> = SavedItemCodec.toBookmarks(
-        repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
-    )
-
-    private fun publish() {
-        mutableBookmarkState.value = loadPersisted()
-    }
 }
 
 object StoredHistoryKeys {
@@ -192,47 +120,6 @@ class StoredHistoryStore(
 
     private fun publish() {
         mutableHistoryState.value = HistoryStoreSnapshot(ledger.load(), ledger.changeVersion)
-    }
-}
-
-/** Compatibility adapter for hosts that have not yet replaced their synchronous bookmark port. */
-class LegacyObservableBookmarkStoreAdapter(
-    private val legacy: BookmarkStore,
-) : ObservableBookmarkStore {
-    private val mutationMutex = Mutex()
-    private val mutableBookmarkState = MutableStateFlow(legacy.load())
-    override val bookmarkState: StateFlow<List<Bookmark>> = mutableBookmarkState.asStateFlow()
-
-    override fun load(): List<Bookmark> = legacy.load()
-
-    override fun add(id: Int) {
-        legacy.add(id)
-        publish()
-    }
-
-    override fun remove(id: Int) {
-        legacy.remove(id)
-        publish()
-    }
-
-    override fun clear() {
-        legacy.clear()
-        publish()
-    }
-
-    override suspend fun setBookmarked(
-        id: Int,
-        bookmarked: Boolean,
-        createdAtMillis: Long,
-    ): Boolean = mutationMutex.withLock {
-        val wasBookmarked = legacy.load().any { it.id == id }
-        if (bookmarked) legacy.add(id) else legacy.remove(id)
-        publish()
-        wasBookmarked != bookmarked
-    }
-
-    private fun publish() {
-        mutableBookmarkState.value = legacy.load()
     }
 }
 

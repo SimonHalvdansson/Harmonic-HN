@@ -65,7 +65,8 @@ import com.simon.harmonichackernews.presentation.ReaderModeTheme
 import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
 import com.simon.harmonichackernews.presentation.WebContentRuntime
 import com.simon.harmonichackernews.presentation.WebContentCopy
-import com.simon.harmonichackernews.presentation.WebContentController
+import com.simon.harmonichackernews.presentation.EmbeddedWebContentPage
+import com.simon.harmonichackernews.presentation.EmbeddedWebContentSession
 import com.simon.harmonichackernews.presentation.WebContentDriver
 import com.simon.harmonichackernews.presentation.WebContentDriverState
 import com.simon.harmonichackernews.presentation.WebContentTiming
@@ -108,6 +109,8 @@ internal class CommentsWebViewController(
     internal interface Callbacks {
         fun startActivity(intent: Intent)
 
+        fun openExternalLink(url: String)
+
         fun syncOnBackPressedCallbackEnabledState()
 
         fun onReaderModeChanged(enabled: Boolean)
@@ -145,26 +148,25 @@ internal class CommentsWebViewController(
     private lateinit var readingPreferences: ReadingPreferences
     private val readerMode = webContentRuntime.reader
     private val webContentDriver = AndroidWebContentDriver()
-    private val webContentController = WebContentController(webContentRuntime, webContentDriver)
+    private val webContentSession = EmbeddedWebContentSession(webContentRuntime, webContentDriver)
+    private val webContentController = webContentSession.controller
     private val readerModeFeatureEnabled: Boolean get() = readerMode.state.featureEnabled
     var isBlockingAds: Boolean = true
         private set
     private var startedLoading = false
     private var initializedWebView = false
-    private var showingErrorPage = false
-    private var showingCachedArticlePage = false
+    private val showingErrorPage: Boolean
+        get() = webContentSession.state.page == EmbeddedWebContentPage.ERROR
+    private val showingCachedArticlePage: Boolean
+        get() = webContentSession.state.page == EmbeddedWebContentPage.CACHED_CONTENT
     private var clearWebViewHistoryOnNextFinish = false
     private val webContentLoad = webContentRuntime.load
     private val adBlocklist = webContentRuntime.adBlocklist
-    private var lastFailedWebViewUrl: String? = null
-    private var lastRequestedWebViewUrl: String? = null
     private var pendingSummaryOnDone: Runnable? = null
-    private var pendingSummaryGeneration = 0
     private var customView: View? = null
     private var customViewCallback: CustomViewCallback? = null
     private var pdfAndroidJavascriptBridge: PdfAndroidJavascriptBridge? = null
     private var currentPdfFilePath: String? = null
-    private var retryingFailedWebViewUrl = false
     val isReaderModeAvailable: Boolean get() = readerMode.state.available
     private val readerModeEnabled: Boolean get() = readerMode.state.enabled
     private val readerModeAvailabilityCadence = ReaderModeAvailabilityCadence()
@@ -244,10 +246,6 @@ internal class CommentsWebViewController(
     val isShowingCustomView: Boolean
         get() = customView != null
 
-    fun willExpandBottomSheetOnBack(): Boolean {
-        return !isShowingCustomView && webView?.canGoBack() == false
-    }
-
     fun beginPredictiveBackScrollFreeze() {
         val currentWebView = webView ?: return
         if (predictiveBackScrollFrozen) {
@@ -302,7 +300,7 @@ internal class CommentsWebViewController(
         get() = showingErrorPage || showingCachedArticlePage
 
     fun hasLastFailedUrl(): Boolean {
-        return !TextUtils.isEmpty(lastFailedWebViewUrl)
+        return !TextUtils.isEmpty(webContentSession.state.lastFailedUrl)
     }
 
     fun isReaderModeEnabled(): Boolean {
@@ -334,7 +332,7 @@ internal class CommentsWebViewController(
             currentWebView.visibility = View.VISIBLE
             currentDownloadButton.visibility = View.GONE
         } else if (showingErrorPage) {
-            showingErrorPage = false
+            webContentSession.showContent()
             if (currentWebView.canGoBackOrForward(-2)) {
                 currentWebView.goBackOrForward(-2)
             } else {
@@ -346,8 +344,7 @@ internal class CommentsWebViewController(
     }
 
     fun retryLastFailedUrl() {
-        val failedUrl = lastFailedWebViewUrl?.takeUnless(String::isEmpty) ?: return
-        retryingFailedWebViewUrl = true
+        val failedUrl = webContentSession.beginRetry() ?: return
         webContentController.load(failedUrl, readingPreferences.archiveRedirectDomains)
     }
 
@@ -356,19 +353,10 @@ internal class CommentsWebViewController(
     }
 
     fun openCurrentOrStoryUrlInBrowser() {
-        val intent = Intent(Intent.ACTION_VIEW)
-        try {
-            val currentUrl = checkNotNull(webView?.url) { "WebView URL not available" }
-            intent.data = Uri.parse(currentUrl)
-            callbacks.startActivity(intent)
-        } catch (e: Exception) {
-            try {
-                intent.data = Uri.parse(checkNotNull(story?.url))
-                callbacks.startActivity(intent)
-            } catch (e2: Exception) {
-                coordinator.showMessage(WebContentCopy.OPEN_URL_FAILED)
-            }
-        }
+        val url = webView?.url?.takeIf(String::isNotBlank)
+            ?: story?.url?.takeIf(String::isNotBlank)
+        if (url == null) coordinator.showMessage(WebContentCopy.OPEN_URL_FAILED)
+        else callbacks.openExternalLink(url)
     }
 
     fun disableAdBlockAndReload() {
@@ -1049,21 +1037,14 @@ internal class CommentsWebViewController(
         ) {
             return
         }
-        if (!TextUtils.isEmpty(failingUrl)) {
-            lastFailedWebViewUrl = failingUrl
-        } else if (lastRequestedWebViewUrl != null) {
-            lastFailedWebViewUrl = lastRequestedWebViewUrl
-        } else if (!currentWebView.url.isNullOrEmpty() &&
-            !isErrorPageUrl(currentWebView.url)
-        ) {
-            lastFailedWebViewUrl = currentWebView.url
-        }
-        retryingFailedWebViewUrl = false
+        webContentSession.recordFailure(
+            failingUrl,
+            currentWebView.url?.takeUnless(::isErrorPageUrl),
+        )
         currentWebView.stopLoading()
         finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
         clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
-        showingErrorPage = true
-        showingCachedArticlePage = false
+        webContentSession.showError()
         loadUrl(getErrorPageUrl(errorPageType))
     }
 
@@ -1179,15 +1160,13 @@ internal class CommentsWebViewController(
                 ?.takeUnless(String::isEmpty)
                 ?: currentPdfFilePath
             if (targetPdfFilePath.isNullOrEmpty()) {
-                retryingFailedWebViewUrl = false
+                webContentSession.finishRetry()
                 return
             }
         }
 
         if (!isErrorPageUrl(targetUrl)) {
-            showingErrorPage = false
-            showingCachedArticlePage = false
-            lastRequestedWebViewUrl = targetUrl
+            webContentSession.recordRequestedUrl(targetUrl)
             if (PDF_LOADER_URL != targetUrl) {
                 currentPdfFilePath = null
             }
@@ -1228,8 +1207,7 @@ internal class CommentsWebViewController(
         updateReaderModeAvailabilityForLoadStart(targetUrl, webContentLoad.state.generation)
         targetWebView.loadUrl(targetUrl)
         if (isErrorPageUrl(targetUrl)) {
-            showingErrorPage = true
-            showingCachedArticlePage = false
+            webContentSession.showError()
         }
     }
 
@@ -1326,7 +1304,10 @@ internal class CommentsWebViewController(
                         )
                         if (!AndroidExternalLinkLauncher.openExternalBrowser(
                                 coordinator.requireActivity(),
-                                url.orEmpty(),
+                                com.simon.harmonichackernews.platform.ExternalLinkRequest(
+                                    url.orEmpty(),
+                                    preferInApp = false,
+                                ),
                             )
                         ) {
                             coordinator.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
@@ -1348,7 +1329,7 @@ internal class CommentsWebViewController(
         }
 
         pendingSummaryOnDone = onDone
-        val generation = ++pendingSummaryGeneration
+        val generation = webContentSession.beginPageTextRequest()
         webViewHandler.postDelayed(
             Runnable { finishPendingSummary(generation, "", null) },
             WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS
@@ -1366,7 +1347,7 @@ internal class CommentsWebViewController(
             return
         }
 
-        val generation = pendingSummaryGeneration
+        val generation = webContentSession.currentPageTextRequestGeneration()
         pendingSummaryOnDone = null
         targetWebView.evaluateJavascript(
             "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
@@ -1392,7 +1373,7 @@ internal class CommentsWebViewController(
         summary: String?,
         completedCallback: Runnable?
     ) {
-        if (generation != pendingSummaryGeneration) {
+        if (!webContentSession.isCurrentPageTextRequest(generation)) {
             return
         }
 
@@ -1431,10 +1412,7 @@ internal class CommentsWebViewController(
             baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else currentStory.url
         }
 
-        lastFailedWebViewUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else baseUrl
-        retryingFailedWebViewUrl = false
-        showingErrorPage = false
-        showingCachedArticlePage = true
+        webContentSession.showCachedContent(failingUrl, baseUrl)
         view.stopLoading()
         clearWebViewHistoryOnNextFinish = true
         coordinator.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
@@ -1449,7 +1427,7 @@ internal class CommentsWebViewController(
     private fun destroy(rendererProcessGone: Boolean) {
         cancelProgressAnimator()
         currentPdfFilePath = null
-        webContentController.reset()
+        webContentSession.reset()
         webContentDriver.publish(WebContentDriverState())
         pendingSummaryOnDone = null
         webViewHandler.removeCallbacksAndMessages(null)
@@ -1625,7 +1603,10 @@ internal class CommentsWebViewController(
             }
             beginWebViewLoad(currentView, url)
             if (!isErrorPageUrl(url)) {
-                lastRequestedWebViewUrl = url
+                webContentSession.recordRequestedUrl(
+                    url,
+                    preservePage = showingCachedArticlePage,
+                )
             }
             updateReaderModeAvailabilityForLoadStart(url, webContentLoad.state.generation)
         }
@@ -1648,8 +1629,8 @@ internal class CommentsWebViewController(
             }
             finishWebViewLoadUi(currentView, webContentLoad.state.generation, true)
 
-            if (retryingFailedWebViewUrl) {
-                retryingFailedWebViewUrl = false
+            if (webContentSession.state.retryingFailedUrl) {
+                webContentSession.finishRetry()
             }
 
             callbacks.syncOnBackPressedCallbackEnabledState()
@@ -1827,7 +1808,7 @@ internal class CommentsWebViewController(
             val failingUrl = if (error != null) error.getUrl() else null
             if (!TextUtils.isEmpty(failingUrl) && !TextUtils.equals(
                     failingUrl,
-                    lastRequestedWebViewUrl
+                    webContentSession.state.lastRequestedUrl
                 ) && !TextUtils.equals(failingUrl, view.getUrl())
             ) {
                 return

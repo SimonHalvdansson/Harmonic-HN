@@ -5,68 +5,37 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
-import android.webkit.URLUtil
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
 import androidx.core.content.ContextCompat
-import com.simon.harmonichackernews.harmonicAppComposition
-import com.simon.harmonichackernews.utils.ExternalUrlPolicy
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.defaultBrowserPackageName
 import com.simon.harmonichackernews.utils.isInvalidViewHandlerPackage
 
 /** Android browser/custom-tab facility behind the shared external-link contract. */
 object AndroidExternalLinkLauncher {
-    fun openCustomTab(context: Context, url: String?, shareable: Boolean = true): Boolean {
-        val originalUrl = url ?: return false
-        if (context.harmonicAppComposition.userSettings.reading.externalBrowser ||
-            !isCustomTabSupported(context)
-        ) {
-            return openExternalBrowser(context, originalUrl)
-        }
-
-        return try {
-            createCustomTabsIntent(context, shareable).launchUrl(context, Uri.parse(originalUrl))
-            true
-        } catch (_: Exception) {
+    fun openCustomTab(context: Context, request: ExternalLinkRequest): Boolean {
+        if (!isCustomTabSupported(context)) return openExternalBrowser(context, request)
+        val customTabsIntent = createCustomTabsIntent(context, request.shareable)
+        val opened = ExternalLinkPolicy.openCandidates(request.url).any { candidate ->
             try {
-                createCustomTabsIntent(context, shareable).launchUrl(
-                    context,
-                    Uri.parse(URLUtil.guessUrl(originalUrl)),
-                )
+                customTabsIntent.launchUrl(context, Uri.parse(candidate))
                 true
             } catch (_: Exception) {
-                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(originalUrl)
-                try {
-                    createCustomTabsIntent(context, shareable).launchUrl(
-                        context,
-                        Uri.parse(fallbackUrl),
-                    )
-                    true
-                } catch (_: Exception) {
-                    openExternalBrowser(context, fallbackUrl)
-                }
+                false
             }
         }
+        return opened || openExternalBrowser(context, request)
     }
 
-    fun openExternalBrowser(context: Context, url: String): Boolean =
-        try {
-            openExternalUrl(context, url)
-            true
-        } catch (_: Exception) {
+    fun openExternalBrowser(context: Context, request: ExternalLinkRequest): Boolean =
+        ExternalLinkPolicy.openCandidates(request.url).any { candidate ->
             try {
-                openExternalUrl(context, URLUtil.guessUrl(url))
+                openExternalUrl(context, candidate)
                 true
             } catch (_: Exception) {
-                val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(url)
-                try {
-                    openExternalUrl(context, fallbackUrl)
-                    true
-                } catch (_: Exception) {
-                    false
-                }
+                false
             }
         }
 

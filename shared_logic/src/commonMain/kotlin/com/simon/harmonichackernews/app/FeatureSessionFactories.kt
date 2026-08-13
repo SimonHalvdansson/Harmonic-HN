@@ -36,6 +36,8 @@ import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.cache.StoryCacheRuntime
+import com.simon.harmonichackernews.data.Story
 
 sealed interface StoriesFeatureSessionEvent {
     data class Runtime(val effect: StoriesRuntimeEffect) : StoriesFeatureSessionEvent
@@ -48,7 +50,9 @@ class StoriesFeatureSession internal constructor(
     val runtime: StoriesFeatureRuntime,
     private val scope: CoroutineScope,
     private val sessionState: StoriesSessionState,
+    val storyCache: StoryCacheRuntime,
     private val observeSavedItems: suspend (suspend (SavedItemSource) -> Unit) -> Unit,
+    private val observeStoryUpdates: suspend (suspend (Story) -> Unit) -> Unit,
 ) {
     private val mutableEvents = MutableSharedFlow<StoriesFeatureSessionEvent>(
         extraBufferCapacity = 64,
@@ -80,6 +84,18 @@ class StoriesFeatureSession internal constructor(
             observeSavedItems { source ->
                 runtime.notifySavedItemsChanged(source)
                 if (runtime.refreshBookmarksIfNeeded(hostStarted)) {
+                    mutableEvents.emit(StoriesFeatureSessionEvent.ContentChanged)
+                }
+            }
+        }
+        jobs += scope.launch {
+            storyCache.state.collect {
+                mutableEvents.emit(StoriesFeatureSessionEvent.ContentChanged)
+            }
+        }
+        jobs += scope.launch {
+            observeStoryUpdates { story ->
+                if (runtime.mergeExternalStoryUpdate(story)) {
                     mutableEvents.emit(StoriesFeatureSessionEvent.ContentChanged)
                 }
             }
@@ -118,6 +134,7 @@ class StoriesFeatureSession internal constructor(
         runtime.storyResources?.setResourceChangedListener(null)
         jobs.forEach(Job::cancel)
         jobs.clear()
+        storyCache.dispose()
         runtime.dispose()
     }
 }
@@ -265,6 +282,7 @@ data class CommentsFeatureHost(
 fun HarmonicAppComposition.createStoriesFeatureSession(
     host: StoriesFeatureHost,
 ): StoriesFeatureSession {
+    val storyCacheRuntime = createStoryCacheRuntime(host.scope)
     val actions = SavedItemActionUseCase(
         repository = savedItems,
         nowMillis = nowMillis,
@@ -303,6 +321,7 @@ fun HarmonicAppComposition.createStoriesFeatureSession(
         hydrateCachedStory = storyCache::hydrateStory,
         loadCachedStories = storyCache::recentStories,
         hasCachedStories = storyCache::hasRecentStories,
+        startStoryCache = { storyCacheRuntime.start(it) },
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
@@ -311,7 +330,9 @@ fun HarmonicAppComposition.createStoriesFeatureSession(
         runtime = runtime,
         scope = host.scope,
         sessionState = host.sessionState,
+        storyCache = storyCacheRuntime,
         observeSavedItems = { emit -> savedItems.changes.collect { emit(it.source) } },
+        observeStoryUpdates = { emit -> storyUpdates.updates.collect { emit(it) } },
     )
 }
 
@@ -349,6 +370,7 @@ fun HarmonicAppComposition.createCommentsFeatureSession(
         storeCachedThread = { storyId, payload ->
             storyCache.repository.storeStory(storyId, payload, nowMillis())
         },
+        publishStoryUpdate = storyUpdates::publish,
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
@@ -374,7 +396,7 @@ fun HarmonicAppComposition.createEditorFeatureSession(
     type: EditorType,
     itemId: Int,
     titleMaxLength: Int,
-    connectivity: ConnectivityService = platform.capabilities.connectivity.requireService(),
+    connectivity: ConnectivityService = platform.connectivity,
 ): EditorFeatureSession {
     val events = MutableSharedFlow<EditorFeatureSessionEvent>(extraBufferCapacity = 16)
     val workflow = EditorSubmissionWorkflow(

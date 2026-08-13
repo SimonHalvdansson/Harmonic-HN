@@ -34,7 +34,7 @@ fun DataSettingsScreen(
     val settingsRepository = appComposition.settings
     val runtime = remember(appComposition, scope) {
         appComposition.createDataSettingsRuntime(scope) {
-            appComposition.platform.capabilities.timeFormatting.requireService()
+            appComposition.platform.timeFormatting
                 .localDate(kotlin.time.Clock.System.now().toEpochMilliseconds())
         }
     }

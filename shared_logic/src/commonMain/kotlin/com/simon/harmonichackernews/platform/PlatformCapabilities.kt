@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.platform
 
-import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
@@ -20,13 +19,6 @@ object CredentialIds {
     const val HACKER_NEWS_PASSWORD = "hacker_news_password"
 }
 
-interface BookmarkStore {
-    fun load(): List<Bookmark>
-    fun add(id: Int)
-    fun remove(id: Int)
-    fun clear()
-}
-
 interface HistoryStore {
     fun initialize()
     fun load(): List<History>
@@ -38,27 +30,50 @@ interface HistoryStore {
     val changeVersion: Long
 }
 
-interface CacheStore {
-    suspend fun read(namespace: String, key: String): ByteArray?
-    suspend fun write(namespace: String, key: String, value: ByteArray)
-    suspend fun remove(namespace: String, key: String)
-    suspend fun clear(namespace: String)
-}
-
-interface FileStore {
-    suspend fun read(reference: String): ByteArray?
-    suspend fun write(reference: String, value: ByteArray)
-    suspend fun remove(reference: String): Boolean
-}
-
 data class ExternalLinkRequest(
     val url: String,
     val preferInApp: Boolean = true,
     val shareable: Boolean = true,
 )
 
+/** URL recovery and user-preference decisions shared by every platform link launcher. */
+object ExternalLinkPolicy {
+    fun applyExternalBrowserPreference(
+        request: ExternalLinkRequest,
+        externalBrowser: Boolean,
+    ): ExternalLinkRequest = if (externalBrowser && request.preferInApp) {
+        request.copy(preferInApp = false)
+    } else {
+        request
+    }
+
+    fun openCandidates(value: String): List<String> {
+        val original = value.trim()
+        if (original.isEmpty()) return emptyList()
+        val withScheme = if (
+            original.startsWith("http://", ignoreCase = true) ||
+            original.startsWith("https://", ignoreCase = true) ||
+            "://" in original
+        ) {
+            original
+        } else {
+            "http://$original"
+        }
+        return listOf(original, withScheme).distinct()
+    }
+}
+
 interface ExternalLinkOpener {
     fun open(request: ExternalLinkRequest)
+}
+
+class ConfiguredExternalLinkOpener(
+    private val delegate: ExternalLinkOpener,
+    private val externalBrowser: () -> Boolean,
+) : ExternalLinkOpener {
+    override fun open(request: ExternalLinkRequest) = delegate.open(
+        ExternalLinkPolicy.applyExternalBrowserPreference(request, externalBrowser()),
+    )
 }
 
 interface ShareService {
@@ -72,27 +87,6 @@ interface ClipboardService {
 interface ConnectivityService {
     fun isOnline(): Boolean
     fun isUnmetered(): Boolean
-}
-
-data class NotificationRequest(
-    val id: String,
-    val title: String,
-    val body: String,
-    val deepLink: String? = null,
-)
-
-interface NotificationScheduler {
-    suspend fun schedule(request: NotificationRequest)
-    suspend fun cancel(id: String)
-}
-
-data class ArticleRequest(
-    val url: String,
-    val readerMode: Boolean = false,
-)
-
-interface ArticleViewer {
-    fun open(request: ArticleRequest)
 }
 
 data class SummaryRequest(

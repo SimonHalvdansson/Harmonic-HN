@@ -69,7 +69,7 @@ import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
-import com.simon.harmonichackernews.ui.editor.ComposeEditorController
+import com.simon.harmonichackernews.ui.editor.EditorComposeController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorCoordinator
 import com.simon.harmonichackernews.ui.editor.ComposeEditorScreen
 import com.simon.harmonichackernews.ui.settings.DefaultActivityPredictiveBackAnimation
@@ -1075,7 +1075,7 @@ private fun MainNavigation(
                             )
 
                             val editorController = remember(request.serial) {
-                                ComposeEditorController(activity)
+                                EditorComposeController()
                             }
                             val coordinator = remember(request.serial) {
                                 ComposeEditorCoordinator(
@@ -1173,8 +1173,7 @@ private fun MainNavigation(
                     showCopyComment = request.clipboardText != null,
                     onCopyComment = {
                         request.clipboardText?.let { text ->
-                            uiDependencies.platform.capabilities.clipboard.getOrNull()
-                                ?.copy("Hacker News comment", text)
+                            uiDependencies.platform.clipboard.copy("Hacker News comment", text)
                             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                                 controller.showMessage("Comment copied to clipboard")
                             }

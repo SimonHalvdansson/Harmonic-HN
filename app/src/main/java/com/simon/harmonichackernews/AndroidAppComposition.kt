@@ -11,7 +11,6 @@ import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.StoryCacheRepository
-import com.simon.harmonichackernews.platform.StoredBookmarkStore
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.utils.AndroidDownloadStore
@@ -52,7 +51,6 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
         platform = createAndroidPlatformDependencies(
             context,
             localModels = localModels,
-            bookmarkStore = StoredBookmarkStore(savedItems),
             userMessages = userMessages,
         ),
         metadata = AppMetadata(

@@ -42,7 +42,6 @@ sealed interface StoriesRuntimeEffect {
         val action: StoryPreviewActionKind,
     ) : StoriesRuntimeEffect
     data class StoryChanged(val story: Story? = null) : StoriesRuntimeEffect
-    data class CacheStories(val request: StoryCacheRequest) : StoriesRuntimeEffect
     data object LoginRequired : StoriesRuntimeEffect
     data class UserMessage(val message: String) : StoriesRuntimeEffect
     data class SavedActionFailed(
@@ -91,6 +90,7 @@ class StoriesFeatureRuntime(
     private val hydrateCachedStory: (Story) -> Boolean,
     private val loadCachedStories: () -> List<Story> = { emptyList() },
     private val hasCachedStories: () -> Boolean = { false },
+    private val startStoryCache: (StoryCacheRequest) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
     storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
 ) {
@@ -345,12 +345,10 @@ class StoriesFeatureRuntime(
     fun requestStoryCache(storyCount: Int) {
         userSettings.setStoriesToCache(storyCount)
         val cache = userSettings.cache
-        emit(
-            StoriesRuntimeEffect.CacheStories(
-                StoryCacheRequest(
-                    storyCount = cache.storiesToCache,
-                    cacheArticleSnapshots = cache.cacheArticleSnapshots,
-                ),
+        startStoryCache(
+            StoryCacheRequest(
+                storyCount = cache.storiesToCache,
+                cacheArticleSnapshots = cache.cacheArticleSnapshots,
             ),
         )
     }

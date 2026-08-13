@@ -57,8 +57,8 @@ fun NighttimeRangeDialog(
     val current = remember(appearance) { appearance.schedule.toIntArray() }
     SharedNighttimeRangeDialog(
         initialHours = current,
-        is24Hour = LocalHarmonicUiDependencies.current.platform.capabilities
-            .timeFormatting.requireService().uses24HourClock(),
+        is24Hour = LocalHarmonicUiDependencies.current.platform.timeFormatting
+            .uses24HourClock(),
         onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
             appearance.saveSchedule(
                 com.simon.harmonichackernews.settings.NighttimeSchedule(

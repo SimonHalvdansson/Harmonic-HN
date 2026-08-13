@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
-import com.simon.harmonichackernews.platform.PlatformCapability
+import com.simon.harmonichackernews.platform.ConfiguredExternalLinkOpener
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.presentation.UserMessageStore
@@ -95,9 +95,9 @@ class HarmonicAppComposition(
 ) {
     val sessions = ScreenSessionRegistry()
     val navigation = MainNavigationStore()
+    val storyUpdates = StoryUpdateBus()
     val webContent = WebContentService()
     val launches = AppLaunchRouter(navigation)
-    val links = AppLinkNavigator(navigation, platform.capabilities.externalLinks)
     val launchState = AppLaunchStateStore(appDataStore)
     val appearance = AppearanceRuntime(
         settings = settingsStore,
@@ -111,6 +111,10 @@ class HarmonicAppComposition(
         changes = settingsChanges,
         theme = { appearance.selection().theme },
     )
+    val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
+        userSettings.reading.externalBrowser
+    }
+    val links = AppLinkNavigator(navigation, externalLinks)
     val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(settingsStore))
     val contentFilters = ContentFilterRepository(settingsStore)
     val userTags = UserTagsRepository(settingsStore)
@@ -153,7 +157,7 @@ class HarmonicAppComposition(
     )
     val login = LoginWorkflow(platform.accounts, hackerNewsUser)
     val replyNotifications: ReplyNotificationRuntime? =
-        platform.capabilities.replyNotifications.getOrNull()?.let { notificationPlatform ->
+        platform.replyNotifications?.let { notificationPlatform ->
             ReplyNotificationRuntime(
                 useCase = ReplyNotificationUseCase(network.replyScanner, appDataStore),
                 platform = notificationPlatform,
@@ -164,7 +168,7 @@ class HarmonicAppComposition(
         settingsReset = settingsReset,
         savedItems = savedItems,
         accounts = platform.accounts,
-        history = platform.capabilities.history.getOrNull(),
+        history = platform.history,
         storyCache = storyCache,
         previewResources = previewResources,
         storyResourceTints = storyResourceTints,
@@ -223,16 +227,15 @@ class HarmonicAppComposition(
     }
 
     val localSummaryCanAttempt: Boolean
-        get() = platform.capabilities.localSummary.getOrNull()?.canAttempt() == true
+        get() = platform.localSummary?.canAttempt() == true
 
     val localSummaryEngine
-        get() = platform.capabilities.localSummary.getOrNull()
+        get() = platform.localSummary
 
     fun createStorySummaryRuntime(scope: CoroutineScope): StorySummaryRuntime {
-        val localBackend = when (val capability = platform.capabilities.localSummary) {
-            is PlatformCapability.Available -> PlatformLocalStorySummaryBackend(capability.service)
-            is PlatformCapability.Unavailable -> UnavailableStorySummaryBackend(capability.reason)
-        }
+        val localBackend = platform.localSummary
+            ?.let(::PlatformLocalStorySummaryBackend)
+            ?: UnavailableStorySummaryBackend("The platform has no local summary engine")
         return StorySummaryRuntime(
             scope = scope,
             cloudBackend = CloudStorySummaryBackend(network.summaryUseCase) {
@@ -250,33 +253,30 @@ class HarmonicAppComposition(
             scope = scope,
             previews = previewResources,
             summaries = network.linkSummaryRepository,
-            connectivity = platform.capabilities.connectivity.requireService(),
+            connectivity = platform.connectivity,
         )
 
     fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
         LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels)
 
-    /** Compatibility view for callers that only need an optional capability. */
-    val platformCapabilities get() = platform.capabilities
-
-    /** Feature-sized platform views derived from the one application-scoped capability graph. */
+    /** Feature-sized platform views derived from the one application-scoped platform graph. */
     fun storiesPlatformDependencies(): StoriesPlatformDependencies = StoriesPlatformDependencies(
         accounts = platform.accounts,
-        history = platform.capabilities.history.requireService(),
-        connectivity = platform.capabilities.connectivity.requireService(),
-        externalLinks = platform.capabilities.externalLinks.requireService(),
+        history = platform.history,
+        connectivity = platform.connectivity,
+        externalLinks = externalLinks,
     )
 
     fun commentsPlatformDependencies(): CommentsPlatformDependencies =
         CommentsPlatformDependencies(
             accounts = platform.accounts,
-            externalLinks = platform.capabilities.externalLinks.requireService(),
-            sharing = platform.capabilities.sharing.requireService(),
-            clipboard = platform.capabilities.clipboard.requireService(),
+            externalLinks = externalLinks,
+            sharing = platform.sharing,
+            clipboard = platform.clipboard,
         )
 
     fun submissionsPlatformDependencies(): SubmissionsPlatformDependencies =
         SubmissionsPlatformDependencies(
-            externalLinks = platform.capabilities.externalLinks.requireService(),
+            externalLinks = externalLinks,
         )
 }

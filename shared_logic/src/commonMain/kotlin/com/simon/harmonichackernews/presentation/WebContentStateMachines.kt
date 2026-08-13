@@ -474,6 +474,86 @@ class WebContentRuntime internal constructor(
     val reader = ReaderModeStateMachine()
 }
 
+enum class EmbeddedWebContentPage { CONTENT, ERROR, CACHED_CONTENT }
+
+data class EmbeddedWebContentSessionState(
+    val page: EmbeddedWebContentPage = EmbeddedWebContentPage.CONTENT,
+    val lastRequestedUrl: String? = null,
+    val lastFailedUrl: String? = null,
+    val retryingFailedUrl: Boolean = false,
+)
+
+/**
+ * Portable session state around an embedded browser. Native hosts still render error and cached
+ * pages, but URL recovery, retry ownership, and stale page-text request rejection live here.
+ */
+class EmbeddedWebContentSession(
+    runtime: WebContentRuntime,
+    driver: WebContentDriver,
+) {
+    val controller = WebContentController(runtime, driver)
+
+    var state: EmbeddedWebContentSessionState = EmbeddedWebContentSessionState()
+        private set
+
+    private val pageTextRequests = KeyedRequestSession<Unit>()
+
+    fun recordRequestedUrl(url: String?, preservePage: Boolean = false) {
+        val requested = url?.takeIf(String::isNotBlank) ?: return
+        state = state.copy(
+            page = if (preservePage) state.page else EmbeddedWebContentPage.CONTENT,
+            lastRequestedUrl = requested,
+        )
+    }
+
+    fun recordFailure(failingUrl: String?, currentUrl: String?): String? {
+        val failed = failingUrl?.takeIf(String::isNotBlank)
+            ?: state.lastRequestedUrl
+            ?: currentUrl?.takeIf(String::isNotBlank)
+        state = state.copy(
+            lastFailedUrl = failed,
+            retryingFailedUrl = false,
+        )
+        return failed
+    }
+
+    fun showContent() {
+        state = state.copy(page = EmbeddedWebContentPage.CONTENT)
+    }
+
+    fun showError() {
+        state = state.copy(page = EmbeddedWebContentPage.ERROR)
+    }
+
+    fun showCachedContent(failedUrl: String?, currentUrl: String?) {
+        recordFailure(failedUrl, currentUrl)
+        state = state.copy(page = EmbeddedWebContentPage.CACHED_CONTENT)
+    }
+
+    fun beginRetry(): String? {
+        val failed = state.lastFailedUrl?.takeIf(String::isNotBlank) ?: return null
+        state = state.copy(retryingFailedUrl = true)
+        return failed
+    }
+
+    fun finishRetry() {
+        state = state.copy(retryingFailedUrl = false)
+    }
+
+    fun beginPageTextRequest(): Int = pageTextRequests.begin(Unit)
+
+    fun currentPageTextRequestGeneration(): Int = pageTextRequests.generation
+
+    fun isCurrentPageTextRequest(generation: Int): Boolean =
+        pageTextRequests.isCurrent(generation, Unit)
+
+    fun reset() {
+        controller.reset()
+        pageTextRequests.invalidate()
+        state = EmbeddedWebContentSessionState()
+    }
+}
+
 /**
  * Portable command controller layered over a native [WebContentDriver]. URL decisions, reader
  * protocol and state-machine transitions therefore stay identical across hosts.

@@ -5,13 +5,13 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.app.createEditorFeatureSession
-import com.simon.harmonichackernews.app.EditorFeatureSessionEvent
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
+import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import kotlinx.coroutines.launch
 
 /** Owns submission side effects while the editor itself is a MainActivity Compose destination.  */
@@ -27,34 +27,32 @@ class ComposeEditorCoordinator(
     val parentText: String? = destination.parentText
     val postTitle: String? = destination.postTitle
     val user: String? = destination.userName
-    private var controller: ComposeEditorController? = null
+    private var controller: EditorComposeController? = null
     private val appComposition = activity.harmonicAppComposition
-    private val session = appComposition.createEditorFeatureSession(
+    private val featureSession = appComposition.createEditorFeatureSession(
         scope = activity.lifecycleScope,
         type = type,
         itemId = id,
         titleMaxLength = titleMaxLength,
     )
+    private val screenSession = EditorScreenSession(activity.lifecycleScope, featureSession)
 
     init {
         activity.lifecycleScope.launch {
-            session.events.collect { event ->
-                when (event) {
-                    is EditorFeatureSessionEvent.Submitting ->
-                        controller?.setSubmitting(event.value)
-                    is EditorFeatureSessionEvent.Result -> handleResult(event.value)
-                }
-            }
+            screenSession.submitting.collect { controller?.updateSubmitting(it) }
+        }
+        activity.lifecycleScope.launch {
+            screenSession.results.collect(::handleResult)
         }
     }
 
-    fun attachController(controller: ComposeEditorController) {
+    fun attachController(controller: EditorComposeController) {
         this.controller = controller
-        controller.setSubmitting(session.isSubmitting)
+        controller.updateSubmitting(screenSession.submitting.value)
     }
 
     fun submit(submission: EditorSubmission) {
-        session.submit(submission)
+        screenSession.submit(submission)
     }
 
     private fun handleResult(result: EditorWorkflowResult) {
@@ -81,11 +79,11 @@ class ComposeEditorCoordinator(
                         challenge: com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge,
                         captchaResponse: String,
                     ) {
-                        session.respondToCaptcha(challenge, captchaResponse)
+                        screenSession.respondToCaptcha(challenge, captchaResponse)
                     }
 
                     override fun onCaptchaCancelled() {
-                        session.cancelCaptcha()
+                        screenSession.cancelCaptcha()
                     }
                 },
             )
