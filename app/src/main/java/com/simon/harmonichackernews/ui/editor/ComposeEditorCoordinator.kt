@@ -7,8 +7,8 @@ import com.simon.harmonichackernews.app.createEditorFeatureSession
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
-import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.EditorPresentationCopy
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import kotlinx.coroutines.launch
@@ -55,13 +55,7 @@ class ComposeEditorCoordinator(
     private fun handleResult(result: EditorWorkflowResult) {
         when (result) {
             EditorWorkflowResult.Success -> {
-                navigation.showMessage(
-                    if (type == EditorType.POST) {
-                        "Post submitted, it might take a minute to show up"
-                    } else {
-                        "Comment posted, it might take a minute to show up"
-                    },
-                )
+                navigation.showMessage(EditorPresentationCopy.successMessage(type))
                 onFinished()
             }
             is EditorWorkflowResult.Failure -> navigation.showFailureDetailDialog(

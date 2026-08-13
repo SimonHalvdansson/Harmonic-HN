@@ -13,6 +13,7 @@ ktor = "3.5.1"
 kmpalette = "4.0.0-beta02"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
+kotlinx-io = "0.9.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -64,6 +65,7 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
 coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }

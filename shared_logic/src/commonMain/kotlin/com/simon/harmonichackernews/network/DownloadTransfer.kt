@@ -24,7 +24,7 @@ interface DownloadSink {
     suspend fun abort()
 }
 
-/** Filesystem boundary for cached downloads. Paths and atomic replacement stay platform-owned. */
+/** Storage boundary for cached downloads; the default implementation is shared filesystem code. */
 interface DownloadStore {
     suspend fun prepare(): Boolean
     suspend fun find(key: String): StoredDownload?

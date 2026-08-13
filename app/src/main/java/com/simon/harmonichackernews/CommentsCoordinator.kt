@@ -27,7 +27,6 @@ import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.createCommentsFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
-import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
@@ -196,7 +195,7 @@ class CommentsCoordinator(
         progressIndicator = host.progressIndicator
         linkPreviewController = LinkPreviewController(
             story,
-            LinkPreviewUseCase(appComposition.network.linkPreviewRepository),
+            appComposition,
             readingPreferences,
             LinkPreviewController.Callbacks(::syncComposeState),
         )

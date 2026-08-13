@@ -36,8 +36,11 @@ import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
+import com.simon.harmonichackernews.network.StoryLinkPreviewSession
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.settings.ReadingPreferences
 
 sealed interface StoriesFeatureSessionEvent {
     data class Runtime(val effect: StoriesRuntimeEffect) : StoriesFeatureSessionEvent
@@ -407,3 +410,16 @@ fun HarmonicAppComposition.createEditorFeatureSession(
     )
     return EditorFeatureSession(scope, workflow, events)
 }
+
+fun HarmonicAppComposition.createStoryLinkPreviewSession(
+    scope: CoroutineScope,
+    story: Story?,
+    readingPreferences: ReadingPreferences,
+    onPreviewChanged: () -> Unit,
+): StoryLinkPreviewSession = StoryLinkPreviewSession(
+    scope = scope,
+    story = story,
+    useCase = LinkPreviewUseCase(network.linkPreviewRepository),
+    readingPreferences = readingPreferences,
+    onPreviewChanged = onPreviewChanged,
+)

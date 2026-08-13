@@ -11,19 +11,20 @@ import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.data.FileStoryCacheStore
+import com.simon.harmonichackernews.data.KeyValueStoryCacheMetadataStore
 import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.presentation.UserMessageStore
-import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
-import com.simon.harmonichackernews.utils.AndroidDownloadStore
+import com.simon.harmonichackernews.network.FileDownloadStore
 import com.simon.harmonichackernews.network.StableHash
+import com.simon.harmonichackernews.platform.FileAccessTimeStore
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
-import com.simon.harmonichackernews.utils.AndroidStoryCacheFileStore
-import com.simon.harmonichackernews.utils.AndroidStoryCacheMetadataStore
 import com.simon.harmonichackernews.data.StoryCacheKeys
-import java.io.File
-import java.util.Calendar
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.summary.local.createAndroidLocalModelService
+import java.util.Calendar
+import kotlin.time.Clock
+import kotlinx.io.files.Path
 
 /** Resolves the graph from its actual Android Application owner without a static locator. */
 internal val Context.harmonicAppComposition: HarmonicAppComposition
@@ -37,14 +38,13 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
     val savedItems = SavedItemsRepository(appDataStore)
     val userMessages = UserMessageStore()
     val localModels = createAndroidLocalModelService(context)
+    val accessTimes = FileAccessTimeStore(
+        AndroidKeyValueStore.named(context, StorageKeyPolicy.FILE_ACCESS_STORE),
+    )
+    val filesRoot = Path(context.filesDir.absolutePath)
     val storyCache = StoryCacheRepository(
-        files = AndroidStoryCacheFileStore(context),
-        metadata = AndroidStoryCacheMetadataStore(
-            context.getSharedPreferences(
-                AppLaunchPreferenceKeys.STORE_NAME,
-                Context.MODE_PRIVATE,
-            ),
-        ),
+        files = FileStoryCacheStore(filesRoot, accessTimes),
+        metadata = KeyValueStoryCacheMetadataStore(appDataStore),
     )
     return HarmonicAppComposition(
         network = network.graph,
@@ -86,10 +86,12 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             systemDark = { ThemeUtils.uiModeNight(context) },
             localModels = localModels,
             storyCacheRepository = storyCache,
-            articleSnapshotStore = AndroidDownloadStore(
-                root = File(context.filesDir, StoryCacheKeys.ARTICLE_NAMESPACE),
+            articleSnapshotStore = FileDownloadStore(
+                root = Path(filesRoot, StoryCacheKeys.ARTICLE_NAMESPACE),
                 fileNameForKey = { storyId -> StoryCacheKeys.articleFile(storyId.toInt()) },
                 targetSuffix = ".html",
+                accessTimes = accessTimes,
+                nowMillis = { Clock.System.now().toEpochMilliseconds() },
                 onCommit = { storyId, metadata ->
                     storyCache.recordArticleMetadata(
                         storyId = storyId.toInt(),
@@ -97,19 +99,21 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
                         contentType = metadata.contentType,
                     )
                 },
-                onRemove = { file ->
-                    file.name.removeSuffix(".html").toIntOrNull()?.let(
+                onRemove = { reference ->
+                    Path(reference).name.removeSuffix(".html").toIntOrNull()?.let(
                         storyCache::removeArticleMetadata,
                     )
                 },
             ),
-            pdfDownloadStore = AndroidDownloadStore(
-                root = File(
-                    context.externalCacheDir ?: context.cacheDir,
+            pdfDownloadStore = FileDownloadStore(
+                root = Path(
+                    (context.externalCacheDir ?: context.cacheDir).absolutePath,
                     StorageKeyPolicy.PDF_CACHE_DIRECTORY,
                 ),
                 fileNameForKey = { url -> StableHash.sha256Hex(url) + ".pdf" },
                 targetSuffix = ".pdf",
+                accessTimes = accessTimes,
+                nowMillis = { Clock.System.now().toEpochMilliseconds() },
             ),
             userMessages = userMessages,
         ),

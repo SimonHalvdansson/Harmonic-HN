@@ -23,6 +23,14 @@ object EditorPolicy {
     const val TITLE_MAX_LENGTH = 80
 }
 
+object EditorPresentationCopy {
+    fun successMessage(type: EditorType): String = if (type == EditorType.POST) {
+        "Post submitted, it might take a minute to show up"
+    } else {
+        "Comment posted, it might take a minute to show up"
+    }
+}
+
 fun EditorSubmission.validate(
     type: EditorType,
     titleMaxLength: Int = EditorPolicy.TITLE_MAX_LENGTH,
