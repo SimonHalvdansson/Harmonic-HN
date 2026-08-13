@@ -108,7 +108,7 @@ object CollectedReferenceLinks {
         val decoded = Ksoup.parse(value).text().trim().replace("&#x2F;", "/").replace("&#47;", "/")
         val normalized = when {
             decoded.startsWith("//") -> "https:$decoded"
-            decoded.startsWith("/") -> "https://news.ycombinator.com$decoded"
+            decoded.startsWith("/") -> HackerNewsLinks.BASE_URL + decoded
             "://" !in decoded && bareDomainPattern.matches(decoded) -> "https://$decoded"
             else -> decoded
         }

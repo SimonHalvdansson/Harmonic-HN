@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.platform.HackerNewsAccount
+import com.simon.harmonichackernews.utils.HackerNewsCaptchaWebProtocol
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 typealias HackerNewsCredentials = HackerNewsAccount
 
@@ -218,12 +220,12 @@ class KtorHackerNewsActionRepository(
             is PageResult.Success -> Unit
         }
 
-        val itemUrl = "$BASE_WEB_URL/$ITEM_PATH?$ITEM_PARAM_ID=$itemId"
+        val itemUrl = HackerNewsLinks.itemUrl(itemId)
         val initialPage = when (val page = loadPage(cookieClient, get(itemUrl), true)) {
             is PageResult.Result -> return page.value
             is PageResult.Success -> page.body
         }
-        val initialDocument = Ksoup.parse(initialPage, baseUri = "$BASE_WEB_URL/")
+        val initialDocument = Ksoup.parse(initialPage, baseUri = HackerNewsLinks.ROOT_URL)
         val itemTitle = findItemTitle(initialDocument, itemId)
         val favoriteLink = findFavoriteLink(initialDocument, itemId, favorite)
         if (favoriteLink.alreadyDesiredState) {
@@ -262,7 +264,7 @@ class KtorHackerNewsActionRepository(
         text: String,
         url: String,
     ): HackerNewsActionResult {
-        val fnid = Ksoup.parse(loginPage, baseUri = "$BASE_WEB_URL/")
+        val fnid = Ksoup.parse(loginPage, baseUri = HackerNewsLinks.ROOT_URL)
             .selectFirst("input[name=fnid]")
             ?.attr("value")
             ?.takeIf(String::isNotBlank)
@@ -295,7 +297,7 @@ class KtorHackerNewsActionRepository(
         when (val page = loadPage(cookieClient, request, true)) {
             is PageResult.Result -> page
             is PageResult.Success -> {
-                val document = Ksoup.parse(page.body, baseUri = "$BASE_WEB_URL/")
+                val document = Ksoup.parse(page.body, baseUri = HackerNewsLinks.ROOT_URL)
                 if (document.selectFirst("input[name=fnid]") == null) {
                     PageResult.Result(
                         HackerNewsActionResult.Failure("Bad login", "Submit form not found"),
@@ -366,7 +368,7 @@ class KtorHackerNewsActionRepository(
     ): HttpRequest {
         val form = FormRequestBody.Builder()
         challenge.formFields.forEach { form.add(it.name, it.value) }
-        form.add(CAPTCHA_RESPONSE_PARAM, captchaResponse)
+        form.add(HackerNewsCaptchaWebProtocol.RESPONSE_FIELD, captchaResponse)
         return HttpRequest.Builder()
             .url(challenge.actionUrl)
             .post(form.build())
@@ -377,7 +379,7 @@ class KtorHackerNewsActionRepository(
         val form = FormRequestBody.Builder()
         fields.forEach { (name, value) -> form.add(name, value) }
         return HttpRequest.Builder()
-            .url("$BASE_WEB_URL/$path")
+            .url(HackerNewsLinks.absolutePath(path))
             .post(form.build())
             .build()
     }
@@ -390,13 +392,11 @@ class KtorHackerNewsActionRepository(
     }
 
     private companion object {
-        const val BASE_WEB_URL = "https://news.ycombinator.com"
         const val LOGIN_PATH = "login"
         const val VOTE_PATH = "vote"
         const val COMMENT_PATH = "comment"
         const val SUBMIT_PATH = "submit"
         const val SUBMIT_POST_PATH = "r"
-        const val ITEM_PATH = "item"
         const val LOGIN_PARAM_ACCT = "acct"
         const val LOGIN_PARAM_PW = "pw"
         const val LOGIN_PARAM_GOTO = "goto"
@@ -410,18 +410,14 @@ class KtorHackerNewsActionRepository(
         const val SUBMIT_PARAM_FNID = "fnid"
         const val SUBMIT_PARAM_FNOP = "fnop"
         const val DEFAULT_FNOP = "submit-page"
-        const val ITEM_PARAM_ID = "id"
-        const val CAPTCHA_RESPONSE_PARAM = "g-recaptcha-response"
         const val BAD_LOGIN_TEXT = "Bad login."
         const val UNKNOWN_OR_EXPIRED_LINK_TEXT = "Unknown or expired link."
     }
 }
 
 object HackerNewsActionParser {
-    private const val BASE_WEB_URL = "https://news.ycombinator.com"
     private const val CAPTCHA_VALIDATION_TEXT =
         "Validation required. If this doesn't work, you can email"
-    private const val CAPTCHA_RESPONSE_PARAM = "g-recaptcha-response"
 
     fun isCaptchaRequired(body: String?): Boolean =
         body?.contains(CAPTCHA_VALIDATION_TEXT) == true && body.contains("g-recaptcha")
@@ -430,11 +426,14 @@ object HackerNewsActionParser {
         body: String,
         useCookies: Boolean,
     ): HackerNewsCaptchaChallenge? {
-        val document = Ksoup.parse(body, baseUri = "$BASE_WEB_URL/")
+        val document = Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL)
         val captcha = document.selectFirst(".g-recaptcha[data-sitekey]") ?: return null
         val form = captcha.closest("form") ?: document.selectFirst("form[action]") ?: return null
         val actionUrl = form.absUrl("action").ifBlank {
-            "$BASE_WEB_URL/".toNetworkUrlOrNull()?.resolve(form.attr("action"))?.toString().orEmpty()
+            HackerNewsLinks.ROOT_URL.toNetworkUrlOrNull()
+                ?.resolve(form.attr("action"))
+                ?.toString()
+                .orEmpty()
         }.takeIf(String::isNotBlank) ?: return null
         val siteKey = captcha.attr("data-sitekey").takeIf(String::isNotBlank) ?: return null
         val fields = form.select("input[name], textarea[name]").mapNotNull { input ->
@@ -442,7 +441,7 @@ object HackerNewsActionParser {
             val type = input.attr("type")
             if (
                 name.isBlank() ||
-                name == CAPTCHA_RESPONSE_PARAM ||
+                name == HackerNewsCaptchaWebProtocol.RESPONSE_FIELD ||
                 type.equals("submit", ignoreCase = true) ||
                 type.equals("button", ignoreCase = true)
             ) {
@@ -461,7 +460,7 @@ private data class FavoriteLinkResult(
 )
 
 private fun findFavoriteLink(body: String, itemId: Int, favorite: Boolean): FavoriteLinkResult =
-    findFavoriteLink(Ksoup.parse(body, baseUri = "https://news.ycombinator.com/"), itemId, favorite)
+    findFavoriteLink(Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL), itemId, favorite)
 
 private fun findFavoriteLink(
     document: Document,
@@ -472,7 +471,7 @@ private fun findFavoriteLink(
         val actionUrl = link.absUrl("href").toNetworkUrlOrNull() ?: return@forEach
         if (
             actionUrl.scheme != "https" ||
-            actionUrl.host != "news.ycombinator.com" ||
+            actionUrl.host != HackerNewsLinks.HOST ||
             actionUrl.encodedPath != "/fave" ||
             actionUrl.queryParameter("id") != itemId.toString() ||
             actionUrl.queryParameter("auth").isNullOrBlank()

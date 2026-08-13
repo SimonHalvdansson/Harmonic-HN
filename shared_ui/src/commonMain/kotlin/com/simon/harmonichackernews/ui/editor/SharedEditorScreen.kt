@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.EditorPolicy
 import com.simon.harmonichackernews.presentation.formatEditorCodeBlock
 import com.simon.harmonichackernews.presentation.formatEditorItalic
 import com.simon.harmonichackernews.presentation.validate
@@ -107,13 +108,13 @@ fun SharedEditorScreen(
     parentText: String?,
     postTitle: String?,
     user: String?,
-    titleMaxLength: Int,
     submitting: Boolean,
     backRequestVersion: Int = 0,
     onClose: () -> Unit,
     onSubmit: (EditorSubmission) -> Unit,
     onOpenLink: (String) -> Unit = {},
 ) {
+    val titleMaxLength = EditorPolicy.TITLE_MAX_LENGTH
     var title by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }

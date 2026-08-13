@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 data class FeatureDecision<Action, Effect>(
     val actions: List<Action> = emptyList(),
@@ -60,8 +61,6 @@ data class CommentActionContext(
  * deliberately small set of effects that each platform implements.
  */
 object CommentsUiOrchestrator {
-    private const val HN_ITEM_URL = "https://news.ycombinator.com/item?id="
-
     fun header(
         action: CommentsHeaderAction,
         context: CommentsHeaderContext,
@@ -101,7 +100,7 @@ object CommentsUiOrchestrator {
     }
 
     fun share(action: CommentsShareAction, story: Story): CommentsPlatformEffect.ShareText {
-        val hnUrl = "$HN_ITEM_URL${story.id}"
+        val hnUrl = HackerNewsLinks.itemUrl(story.id)
         val text = when (action) {
             CommentsShareAction.ARTICLE -> story.url.orEmpty()
             CommentsShareAction.ARTICLE_WITH_TITLE -> "${story.title} | ${story.url}"
@@ -142,7 +141,7 @@ object CommentsUiOrchestrator {
         )
         CommentsMoreAction.OPEN_BROWSER -> effect(
             CommentsPlatformEffect.OpenExternalLink(
-                url = "$HN_ITEM_URL${story.id}",
+                url = HackerNewsLinks.itemUrl(story.id),
                 preferInApp = false,
             ),
         )
@@ -177,7 +176,7 @@ object CommentsUiOrchestrator {
                 CommentsPlatformEffect.OpenUser(it)
             }
             CommentMenuAction.SHARE ->
-                effect(CommentsPlatformEffect.ShareText("$HN_ITEM_URL${comment.id}"))
+                effect(CommentsPlatformEffect.ShareText(HackerNewsLinks.itemUrl(comment.id)))
             CommentMenuAction.COPY -> effect(
                 CommentsPlatformEffect.CopyText(
                     label = "Hacker News comment",

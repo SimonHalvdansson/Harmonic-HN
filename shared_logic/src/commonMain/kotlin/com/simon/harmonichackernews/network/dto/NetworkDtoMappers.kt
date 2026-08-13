@@ -3,8 +3,7 @@ package com.simon.harmonichackernews.network.dto
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.StoryTextProcessor
-
-private const val HN_ITEM_URL = "https://news.ycombinator.com/item?id="
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 fun HackerNewsItemDto.toStory(): Story? = Story().takeIf { story -> applyTo(story) }
 
@@ -23,7 +22,7 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
         story.text = StoryTextProcessor.preprocessHtml(
             if (isComment) commentText.orEmpty() else storyText,
         )
-        story.url = itemUrl ?: "$HN_ITEM_URL$id"
+        story.url = itemUrl ?: HackerNewsLinks.itemUrl(id)
         story.score = points ?: 0
         story.descendants = commentCount ?: 0
         story.time = createdAt ?: 0
@@ -65,7 +64,7 @@ fun HackerNewsItemDto.applyTo(story: Story, preserveTime: Boolean = false): Bool
     }
 
     val linkUrl = url?.takeUnless(String::isBlank)
-    story.url = linkUrl ?: "$HN_ITEM_URL$id"
+    story.url = linkUrl ?: HackerNewsLinks.itemUrl(id)
     story.isLink = linkUrl != null
     text?.let { story.text = StoryTextProcessor.preprocessHtml(it) }
     StoryTextProcessor.applyTitleBadges(story)

@@ -43,11 +43,8 @@ import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.serialization.JsonStringCodec
-
-private const val HackerNewsBaseUrl = "https://news.ycombinator.com/"
-private const val CaptchaResponseScript =
-    "(function(){var el=document.getElementById('g-recaptcha-response');return el?el.value:'';})()"
+import com.simon.harmonichackernews.utils.HackerNewsCaptchaWebProtocol
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 /**
  * Compose CAPTCHA dialog. The embedded browser is the only intentionally retained View because
@@ -86,7 +83,7 @@ fun CaptchaDialog(
                 }
             }
             loadDataWithBaseURL(
-                HackerNewsBaseUrl,
+                HackerNewsLinks.ROOT_URL,
                 challenge.captchaHtml,
                 "text/html",
                 "UTF-8",
@@ -110,8 +107,8 @@ fun CaptchaDialog(
         onDismiss = onDismiss,
         onContinue = {
             error = null
-            webView.evaluateJavascript(CaptchaResponseScript) { value ->
-                val response = decodeJavascriptString(value)
+            webView.evaluateJavascript(HackerNewsCaptchaWebProtocol.RESPONSE_SCRIPT) { value ->
+                val response = HackerNewsCaptchaWebProtocol.decodeResponse(value)
                 if (response.isEmpty()) {
                     error = incompleteError
                 } else {
@@ -129,10 +126,6 @@ fun CaptchaDialog(
             )
         },
     )
-}
-
-private fun decodeJavascriptString(value: String?): String {
-    return JsonStringCodec.decodeJavascriptString(value).orEmpty()
 }
 
 @Preview(showBackground = true)

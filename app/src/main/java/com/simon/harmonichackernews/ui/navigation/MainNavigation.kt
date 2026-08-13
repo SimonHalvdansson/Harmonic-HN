@@ -1093,7 +1093,6 @@ private fun MainNavigation(
                                 parentText = coordinator.parentText,
                                 postTitle = coordinator.postTitle,
                                 user = coordinator.user,
-                                titleMaxLength = coordinator.titleMaxLength,
                                 submitting = editorController.submitting,
                                 onClose = controller::closeEditor,
                                 onSubmit = coordinator::submit,

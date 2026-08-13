@@ -41,14 +41,12 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
@@ -74,7 +72,10 @@ import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
-import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.AppFont
+import com.simon.harmonichackernews.ui.theme.ReaderModeFontData
+import com.simon.harmonichackernews.ui.theme.ReaderModeThemeFactory
+import com.simon.harmonichackernews.ui.theme.harmonicColors
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
@@ -622,121 +623,73 @@ internal class CommentsWebViewController(
         context.assets.open(assetPath).bufferedReader(Charsets.UTF_8).use { it.readText() }
 
     private fun getReaderModeTheme(context: Context): ReaderModeTheme {
-        var backgroundColor = Color.TRANSPARENT
-        try {
-            backgroundColor =
-                ContextCompat.getColor(context, ThemeUtils.getBackgroundColorResource(context))
-        } catch (ignored: Exception) {
-        }
-        if (backgroundColor == Color.TRANSPARENT) {
-            backgroundColor =
-                MaterialColors.getColor(context, android.R.attr.colorBackground, Color.WHITE)
-        }
-
-        val isLightMode = ThemeUtils.isLightMode(context)
-        val linkColor = MaterialColors.getColor(
-            context,
-            com.google.android.material.R.attr.colorSecondary,
-            Color.rgb(26, 115, 232)
-        )
-        val textColor = MaterialColors.getColor(
-            context,
-            R.attr.textColorDefault,
-            if (isLightMode) Color.rgb(32, 33, 36) else Color.rgb(232, 234, 237)
-        )
-        val headingColor = MaterialColors.getColor(context, R.attr.storyColorNormal, textColor)
-        val secondaryTextColor = MaterialColors.getColor(
-            context,
-            R.attr.secondaryTextColor,
-            if (isLightMode) Color.rgb(95, 99, 104) else Color.rgb(174, 180, 186)
-        )
-        val dividerColor = MaterialColors.getColor(
-            context,
-            R.attr.commentDividerColor,
-            if (isLightMode) Color.rgb(218, 220, 224) else Color.rgb(61, 66, 72)
-        )
-        val codeBackgroundColor = MaterialColors.getColor(
-            context,
-            com.google.android.material.R.attr.colorSurfaceContainerHigh,
-            backgroundColor
-        )
         val readerModeFont = readingPreferences.readerModeFont
-        val readerModeFontFaceCss = getReaderModeFontFaceCss(context, readerModeFont)
-        val readerModeFontSize = readingPreferences.readerModeFontSize
-
-        return ReaderModeTheme(
-            light = isLightMode,
-            backgroundColor = ReaderModeSourceAssembler.cssColor(backgroundColor),
-            textColor = ReaderModeSourceAssembler.cssColor(textColor),
-            headingColor = ReaderModeSourceAssembler.cssColor(headingColor),
-            secondaryTextColor = ReaderModeSourceAssembler.cssColor(secondaryTextColor),
-            linkColor = ReaderModeSourceAssembler.cssColor(linkColor),
-            dividerColor = ReaderModeSourceAssembler.cssColor(dividerColor),
-            codeBackgroundColor = ReaderModeSourceAssembler.cssColor(codeBackgroundColor),
-            fontFaceCss = readerModeFontFaceCss,
+        return ReaderModeThemeFactory.create(
+            colors = harmonicColors(context),
+            light = ThemeUtils.isLightMode(context),
             font = readerModeFont,
-            fontSizePx = readerModeFontSize,
+            fontSizePx = readingPreferences.readerModeFontSize,
+            fontData = getReaderModeFontData(context, readerModeFont),
         )
     }
 
-    private fun getReaderModeFontFaceCss(context: Context, font: String?): String {
+    private fun getReaderModeFontData(context: Context, font: String?): ReaderModeFontData? {
         val regularFontResource: Int
         val boldFontResource: Int
-        when (TextPreferences.sanitizeFont(font)) {
-            "productsans" -> {
+        when (AppFont.fromStored(font)) {
+            AppFont.PRODUCT_SANS -> {
                 regularFontResource = R.font.product_sans_regular
                 boldFontResource = R.font.product_sans_bold
             }
 
-            "googlesansflexrounded" -> {
+            AppFont.GOOGLE_SANS_FLEX_ROUNDED -> {
                 regularFontResource = R.font.google_sans_flex_rounded_regular
                 boldFontResource = R.font.google_sans_flex_rounded_bold
             }
 
-            "googlesans" -> {
+            AppFont.GOOGLE_SANS -> {
                 regularFontResource = R.font.google_sans_regular
                 boldFontResource = R.font.google_sans_bold
             }
 
-            "verdana" -> {
+            AppFont.VERDANA -> {
                 regularFontResource = R.font.verdana_regular
                 boldFontResource = R.font.verdana_bold
             }
 
-            "robotoslab" -> {
+            AppFont.ROBOTO_SLAB -> {
                 regularFontResource = R.font.roboto_slab_regular
                 boldFontResource = R.font.roboto_slab_bold
             }
 
-            "googlesanscode" -> {
+            AppFont.GOOGLE_SANS_CODE -> {
                 regularFontResource = R.font.google_sans_code_regular
                 boldFontResource = R.font.google_sans_code_regular
             }
 
-            "jetbrainsmono" -> {
+            AppFont.JETBRAINS_MONO -> {
                 regularFontResource = R.font.jetbrains_mono_regular
                 boldFontResource = R.font.jetbrains_mono_bold
             }
 
-            "georgia" -> {
+            AppFont.GEORGIA -> {
                 regularFontResource = R.font.georgia_regular
                 boldFontResource = R.font.georgia_bold
             }
 
-            "devicedefault" -> return ""
-            else -> return ""
+            AppFont.DEVICE_DEFAULT -> return null
         }
 
-        val regularFontData = getFontDataUrl(context, regularFontResource)
-        val boldFontData = getFontDataUrl(context, boldFontResource)
+        val regularFontData = getFontBase64(context, regularFontResource)
+        val boldFontData = getFontBase64(context, boldFontResource)
         if (TextUtils.isEmpty(regularFontData) || TextUtils.isEmpty(boldFontData)) {
-            return ""
+            return null
         }
 
-        return ReaderModeSourceAssembler.fontFaceCss(regularFontData, boldFontData)
+        return ReaderModeFontData(regularFontData, boldFontData)
     }
 
-    private fun getFontDataUrl(context: Context, fontResource: Int): String {
+    private fun getFontBase64(context: Context, fontResource: Int): String {
         try {
             context.getResources().openRawResource(fontResource).use { inputStream ->
                 val outputStream = ByteArrayOutputStream()
@@ -745,9 +698,7 @@ internal class CommentsWebViewController(
                 while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
                     outputStream.write(buffer, 0, bytesRead)
                 }
-                return ReaderModeSourceAssembler.fontDataUrl(
-                    Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP),
-                )
+                return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
             }
         } catch (e: IOException) {
             Log.e("MY_APP_TAG", "Failed to load reader mode font", e)

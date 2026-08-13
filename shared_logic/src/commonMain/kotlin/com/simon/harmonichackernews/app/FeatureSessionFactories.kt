@@ -395,14 +395,12 @@ fun HarmonicAppComposition.createEditorFeatureSession(
     scope: CoroutineScope,
     type: EditorType,
     itemId: Int,
-    titleMaxLength: Int,
     connectivity: ConnectivityService = platform.connectivity,
 ): EditorFeatureSession {
     val events = MutableSharedFlow<EditorFeatureSessionEvent>(extraBufferCapacity = 16)
     val workflow = EditorSubmissionWorkflow(
         type = type,
         itemId = itemId,
-        titleMaxLength = titleMaxLength,
         service = hackerNewsUser,
         connectivity = connectivity,
         onSubmittingChanged = { events.tryEmit(EditorFeatureSessionEvent.Submitting(it)) },

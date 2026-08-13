@@ -5,6 +5,7 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 import com.simon.harmonichackernews.serialization.JsonObject
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -311,7 +312,7 @@ object LinkSummaryParser {
 
     fun hackerNewsItemId(url: String): String? {
         val parsed = url.toNetworkUrlOrNull() ?: return null
-        if (!parsed.host.equals("news.ycombinator.com", ignoreCase = true) ||
+        if (!parsed.host.equals(HackerNewsLinks.HOST, ignoreCase = true) ||
             parsed.encodedPath != "/item"
         ) return null
         val candidate = parsed.fragment.takeIf(::isPositiveInteger) ?: parsed.queryParameter("id")

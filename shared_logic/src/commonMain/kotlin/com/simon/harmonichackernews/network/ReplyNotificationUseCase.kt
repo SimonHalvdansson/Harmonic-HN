@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.CancellationException
 
 object ReplyNotificationKeys {
@@ -84,7 +85,7 @@ object ReplyNotificationPresentation {
 
     fun deepLink(reply: HackerNewsReply): String {
         val parentId = reply.parentId.takeIf { it > 0 } ?: reply.id
-        return "https://news.ycombinator.com/item?id=$parentId#${reply.id}"
+        return HackerNewsLinks.itemUrl(parentId, reply.id)
     }
 
     const val SUMMARY_NOTIFICATION_ID = 98_373

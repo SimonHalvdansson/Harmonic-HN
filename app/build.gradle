@@ -1,68 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
-import groovy.transform.CompileStatic
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-
-@CacheableTask
-@CompileStatic
-abstract class GenerateAdblocklistTask extends DefaultTask {
-    @InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
-    abstract RegularFileProperty getSourceFile()
-
-    @OutputDirectory
-    abstract DirectoryProperty getOutputDirectory()
-
-    @TaskAction
-    void generate() {
-        long[] hashes = new long[131_920]
-        int count = 0
-        BufferedReader reader = Files.newBufferedReader(
-                sourceFile.get().asFile.toPath(), StandardCharsets.UTF_8)
-        try {
-            String host
-            while ((host = reader.readLine()) != null) {
-                if (count == hashes.length) {
-                    hashes = Arrays.copyOf(hashes, hashes.length * 2)
-                }
-                long hash = 0xcbf29ce484222325L
-                for (int i = 0; i < host.length(); i++) {
-                    hash ^= (long) host.charAt(i)
-                    hash *= 0x100000001b3L
-                }
-                hashes[count++] = hash
-            }
-        } finally {
-            reader.close()
-        }
-
-        Arrays.sort(hashes, 0, count)
-        for (int i = 1; i < count; i++) {
-            if (hashes[i - 1] == hashes[i]) {
-                throw new GradleException(
-                        "Ad host hash collision detected at sorted index ${i}")
-            }
-        }
-
-        File outputFile = outputDirectory.file("raw/adblockserverlist.bin").get().asFile
-        Files.createDirectories(outputFile.parentFile.toPath())
-        DataOutputStream output = new DataOutputStream(new BufferedOutputStream(
-                Files.newOutputStream(outputFile.toPath())))
-        try {
-            output.writeInt(0x48414431) // HAD1
-            output.writeInt(count)
-            for (int i = 0; i < count; i++) {
-                output.writeLong(hashes[i])
-            }
-        } finally {
-            output.close()
-        }
-    }
-}
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -183,20 +121,9 @@ android {
 
 }
 
-def generateAdblocklist = tasks.register("generateAdblocklist", GenerateAdblocklistTask) {
-    sourceFile.set(layout.projectDirectory.file("adblock/adblockserverlist.txt"))
-    outputDirectory.set(layout.buildDirectory.dir("generated/res/adblocklist"))
-}
-
 androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
         variantBuilder.enable = false
-    }
-
-    onVariants(selector().all()) { variant ->
-        variant.sources.res.addGeneratedSourceDirectory(generateAdblocklist) {
-            it.outputDirectory
-        }
     }
 }
 

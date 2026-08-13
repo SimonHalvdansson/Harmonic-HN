@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 import com.simon.harmonichackernews.serialization.JsonException as JSONException
 import com.simon.harmonichackernews.serialization.JsonObject as JSONObject
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 object JSONParser {
     const val ALGOLIA_ERROR_STRING: String = "{\"status\":404,\"error\":\"Not Found\"}"
@@ -77,7 +78,7 @@ object JSONParser {
         if (url != null) {
             story.commentMasterUrl = url
         } else {
-            story.commentMasterUrl = "https://news.ycombinator.com/item?id=$id"
+            story.commentMasterUrl = HackerNewsLinks.itemUrl(id)
         }
         story.commentMasterLoaded = true
         return true
@@ -120,7 +121,7 @@ object JSONParser {
             story.descendants = 0
         }
 
-        story.url = "https://news.ycombinator.com/item?id=" + story.id
+        story.url = HackerNewsLinks.itemUrl(story.id)
         story.isLink = false
         val text = optStringOrNull(jsonObject, "text")
         if (text != null) {
@@ -161,7 +162,7 @@ object JSONParser {
             if (hasValidUrl) {
                 story.url = rawUrl
             } else {
-                story.url = "https://news.ycombinator.com/item?id=" + story.id
+                story.url = HackerNewsLinks.itemUrl(story.id)
             }
 
             updateTitleBadgeProperties(story)
@@ -308,7 +309,7 @@ object JSONParser {
                 story.commentMasterTitle = item.optString("story_title", "")
                 story.commentMasterUrl = item.optString("story_url", "")
                 val urlId = if (story.commentMasterId > 0) story.commentMasterId else story.id
-                story.url = "https://news.ycombinator.com/item?id=$urlId"
+                story.url = HackerNewsLinks.itemUrl(urlId)
             } else {
                 story.isComment = false
                 story.title = item.optString("title", story.title)
@@ -317,7 +318,7 @@ object JSONParser {
                     !rawUrl.isEmpty() && !rawUrl.equals(JSON_NULL_LITERAL, ignoreCase = true)
                 story.isLink = hasValidUrl
                 story.url =
-                    if (hasValidUrl) rawUrl else "https://news.ycombinator.com/item?id=" + story.id
+                    if (hasValidUrl) rawUrl else HackerNewsLinks.itemUrl(story.id)
                 story.isJob = "job" == type
             }
 

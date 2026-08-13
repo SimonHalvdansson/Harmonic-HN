@@ -1,15 +1,11 @@
 package com.simon.harmonichackernews.app
 
 import com.simon.harmonichackernews.data.SavedItemsRepository
-import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
-import com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore
-import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.cache.ArticleSnapshotService
 import com.simon.harmonichackernews.cache.SharedStoryCacheService
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.cache.StoryCacheUseCase
-import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkGraph
 import com.simon.harmonichackernews.network.PdfDownloadService
@@ -41,8 +37,6 @@ import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.DataSettingsService
-import com.simon.harmonichackernews.settings.KeyValueStore
-import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.StoredSettingsMutator
 import com.simon.harmonichackernews.settings.StoredUserSettings
 import com.simon.harmonichackernews.settings.SettingsResetUseCase
@@ -57,11 +51,8 @@ import com.simon.harmonichackernews.summary.ExtractingStorySummaryBackend
 import com.simon.harmonichackernews.summary.PlatformLocalStorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.summary.UnavailableStorySummaryBackend
-import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.CoroutineScope
-import kotlin.time.Clock
 
 /**
  * Platform-neutral application composition shared by Android, iOS, and future hosts.
@@ -73,81 +64,67 @@ import kotlin.time.Clock
 class HarmonicAppComposition(
     val network: NetworkGraph,
     val platform: AppPlatformDependencies,
-    val metadata: AppMetadata = AppMetadata(),
-    settingsStore: KeyValueStore,
-    appDataStore: KeyValueStore,
-    savedItemsRepository: SavedItemsRepository? = null,
-    previewCacheStore: KeyValueStore,
-    widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),
-    widgetRuntimeStore: KeyValueStore = InMemoryKeyValueStore(),
-    settingsChanges: Flow<Unit>,
-    currentMinutesFromMidnight: () -> Int = { 0 },
-    systemDark: () -> Boolean = { false },
-    val localModels: LocalModelService? = null,
-    storyCacheRepository: StoryCacheRepository = StoryCacheRepository(
-        InMemoryStoryCacheFileStore(),
-        InMemoryStoryCacheMetadataStore(),
-    ),
-    articleSnapshotStore: DownloadStore? = null,
-    pdfDownloadStore: DownloadStore? = null,
-    val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
-    val userMessages: UserMessageStore = UserMessageStore(),
+    val host: HarmonicHostConfiguration,
 ) {
+    val metadata: AppMetadata = host.metadata
+    val localModels = host.localModels
+    val nowMillis = host.nowMillis
+    val userMessages = host.userMessages
     val sessions = ScreenSessionRegistry()
     val navigation = MainNavigationStore()
     val storyUpdates = StoryUpdateBus()
     val webContent = WebContentService()
     val launches = AppLaunchRouter(navigation)
-    val launchState = AppLaunchStateStore(appDataStore)
+    val launchState = AppLaunchStateStore(host.appDataStore)
     val appearance = AppearanceRuntime(
-        settings = settingsStore,
-        scheduleStore = NighttimeScheduleStore(appDataStore),
+        settings = host.settingsStore,
+        scheduleStore = NighttimeScheduleStore(host.appDataStore),
         launchState = launchState,
-        currentMinutesFromMidnight = currentMinutesFromMidnight,
-        systemDark = systemDark,
+        currentMinutesFromMidnight = host.currentMinutesFromMidnight,
+        systemDark = host.systemDark,
     )
     val userSettings: UserSettings = StoredUserSettings(
-        store = settingsStore,
-        changes = settingsChanges,
+        store = host.settingsStore,
+        changes = host.settingsChanges,
         theme = { appearance.selection().theme },
     )
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser
     }
     val links = AppLinkNavigator(navigation, externalLinks)
-    val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(settingsStore))
-    val contentFilters = ContentFilterRepository(settingsStore)
-    val userTags = UserTagsRepository(settingsStore)
-    val savedItems = savedItemsRepository ?: SavedItemsRepository(appDataStore)
-    val storyResourceTints = StoryResourceTintRepository(appDataStore)
+    val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore))
+    val contentFilters = ContentFilterRepository(host.settingsStore)
+    val userTags = UserTagsRepository(host.settingsStore)
+    val savedItems = host.savedItemsRepository ?: SavedItemsRepository(host.appDataStore)
+    val storyResourceTints = StoryResourceTintRepository(host.appDataStore)
     val aiSummarySettings = AiSummarySettingsRepository(
-        store = settingsStore,
+        store = host.settingsStore,
         credentials = platform.credentials,
-        changes = settingsChanges,
+        changes = host.settingsChanges,
     )
     val aiModelDefaults = AiModelDefaultsUseCase(
         settings = aiSummarySettings,
         catalog = network.aiModelCatalogRepository,
     )
     val settingsReset = SettingsResetUseCase(
-        defaultSettings = settingsStore,
-        globalSettings = appDataStore,
+        defaultSettings = host.settingsStore,
+        globalSettings = host.appDataStore,
         credentials = platform.credentials,
     )
     val previewResources = StoryPreviewRepository(
         coordinator = network.previewContentCoordinator,
         linkSummaries = network.linkSummaryRepository,
-        store = previewCacheStore,
+        store = host.previewCacheStore,
     )
     val storyCache = SharedStoryCacheService(
-        repository = storyCacheRepository,
-        articleSnapshots = ArticleSnapshotService(network.httpClient, articleSnapshotStore),
+        repository = host.storyCacheRepository,
+        articleSnapshots = ArticleSnapshotService(network.httpClient, host.articleSnapshotStore),
         nowMillis = nowMillis,
     )
-    val pdfDownloads = PdfDownloadService(network.httpClient, pdfDownloadStore, nowMillis)
+    val pdfDownloads = PdfDownloadService(network.httpClient, host.pdfDownloadStore, nowMillis)
     val widgets = WidgetConfigurationService(
-        configStore = widgetConfigurationStore,
-        runtimeStore = widgetRuntimeStore,
+        configStore = host.widgetConfigurationStore,
+        runtimeStore = host.widgetRuntimeStore,
         repository = network.hackerNewsRepository,
     )
     val widgetRefresh = WidgetRefreshRuntime(widgets, nowMillis)
@@ -159,7 +136,7 @@ class HarmonicAppComposition(
     val replyNotifications: ReplyNotificationRuntime? =
         platform.replyNotifications?.let { notificationPlatform ->
             ReplyNotificationRuntime(
-                useCase = ReplyNotificationUseCase(network.replyScanner, appDataStore),
+                useCase = ReplyNotificationUseCase(network.replyScanner, host.appDataStore),
                 platform = notificationPlatform,
             )
         }

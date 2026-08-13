@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.editor
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.harmonicAppComposition
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.app.createEditorFeatureSession
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
@@ -23,7 +22,6 @@ class ComposeEditorCoordinator(
 ) {
     private val id = destination.itemId
     val type = destination.type
-    val titleMaxLength = activity.resources.getInteger(R.integer.title_max_length)
     val parentText: String? = destination.parentText
     val postTitle: String? = destination.postTitle
     val user: String? = destination.userName
@@ -33,7 +31,6 @@ class ComposeEditorCoordinator(
         scope = activity.lifecycleScope,
         type = type,
         itemId = id,
-        titleMaxLength = titleMaxLength,
     )
     private val screenSession = EditorScreenSession(activity.lifecycleScope, featureSession)
 

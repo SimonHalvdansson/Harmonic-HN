@@ -43,8 +43,7 @@ class AppLaunchRouter(
         is AppLaunchRequest.ViewUrl -> routeItemLink(request.url)
         is AppLaunchRequest.SharedText -> routeItemLink(
             HackerNewsLinks.findItemLink(request.text)?.let { link ->
-                "https://news.ycombinator.com/item?id=${link.itemId}" +
-                    if (link.scrollToCommentId > 0) "#${link.scrollToCommentId}" else ""
+                HackerNewsLinks.itemUrl(link.itemId, link.scrollToCommentId)
             },
         )
         AppLaunchRequest.Unknown -> AppLaunchResult.Ignored

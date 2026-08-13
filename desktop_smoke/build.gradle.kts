@@ -20,6 +20,8 @@ kotlin {
             implementation(libs.compose.multiplatform.ui)
             implementation(libs.compose.multiplatform.foundation)
             implementation(libs.compose.multiplatform.material3)
+            implementation(libs.androidx.material3.adaptive)
+            implementation(libs.androidx.material3.adaptive.layout)
             implementation(compose.desktop.currentOs)
         }
     }

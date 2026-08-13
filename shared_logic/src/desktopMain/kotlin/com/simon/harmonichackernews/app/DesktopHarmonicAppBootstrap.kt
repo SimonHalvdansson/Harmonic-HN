@@ -21,10 +21,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.LocalTime
 
 /**
  * Desktop lifecycle owner for the real shared application and CIO networking graphs.
@@ -36,12 +36,7 @@ import java.time.format.DateTimeFormatter
 class DesktopHarmonicAppBootstrap(
     userAgent: String,
     platform: AppPlatformDependencies,
-    settingsStore: KeyValueStore,
-    appDataStore: KeyValueStore,
-    previewCacheStore: KeyValueStore,
-    settingsChanges: Flow<Unit>,
-    currentMinutesFromMidnight: () -> Int = { 0 },
-    systemDark: () -> Boolean = { false },
+    host: HarmonicHostConfiguration,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var closed = false
@@ -54,12 +49,7 @@ class DesktopHarmonicAppBootstrap(
     val app = HarmonicAppComposition(
         network = network,
         platform = platform,
-        settingsStore = settingsStore,
-        appDataStore = appDataStore,
-        previewCacheStore = previewCacheStore,
-        settingsChanges = settingsChanges,
-        currentMinutesFromMidnight = currentMinutesFromMidnight,
-        systemDark = systemDark,
+        host = host,
     )
 
     fun close() {
@@ -75,6 +65,21 @@ class DesktopHarmonicAppBootstrap(
             val settings = InMemoryKeyValueStore()
             val appData = InMemoryKeyValueStore()
             val credentials = InMemoryCredentialStore()
+            val host = HarmonicHostConfiguration.inMemory(
+                metadata = AppMetadata(
+                    name = "Harmonic Desktop Smoke",
+                    buildType = "smoke",
+                    debug = true,
+                    debugSettingsEnabled = true,
+                ),
+                settingsStore = settings,
+                appDataStore = appData,
+                settingsChanges = settings.changes,
+                currentMinutesFromMidnight = {
+                    LocalTime.now().let { it.hour * 60 + it.minute }
+                },
+                systemDark = { false },
+            )
             return DesktopHarmonicAppBootstrap(
                 userAgent = userAgent,
                 platform = AppPlatformDependencies(
@@ -89,10 +94,7 @@ class DesktopHarmonicAppBootstrap(
                     connectivity = DesktopSmokeConnectivity,
                     timeFormatting = DesktopTimeFormatter(),
                 ),
-                settingsStore = settings,
-                appDataStore = appData,
-                previewCacheStore = InMemoryKeyValueStore(),
-                settingsChanges = settings.changes,
+                host = host,
             )
         }
     }

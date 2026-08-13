@@ -4,6 +4,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
@@ -41,7 +42,7 @@ class KtorHackerNewsWebRepository(
         day: String?,
     ): HackerNewsListPage {
         require(path.isNotBlank()) { "A Hacker News path is required" }
-        val url = URLBuilder(BASE_WEB_URL).apply {
+        val url = URLBuilder(HackerNewsLinks.BASE_URL).apply {
             appendPathSegments(path)
             if (!day.isNullOrEmpty()) parameters.append("day", day)
         }.buildString()
@@ -57,7 +58,9 @@ class KtorHackerNewsWebRepository(
     )
 
     override suspend fun getListDirectory(): List<Story> =
-        HackerNewsWebParser.parseListDirectory(client.getTextOrThrow("$BASE_WEB_URL/lists"))
+        HackerNewsWebParser.parseListDirectory(
+            client.getTextOrThrow(HackerNewsLinks.absolutePath("lists")),
+        )
 
     override suspend fun getUserItems(path: String, username: String): HackerNewsUserItems {
         require(path.isNotBlank()) { "A Hacker News user-list path is required" }
@@ -91,20 +94,18 @@ class KtorHackerNewsWebRepository(
     }
 
     private fun userItemsUrl(path: String, username: String, comments: Boolean): String =
-        URLBuilder(BASE_WEB_URL).apply {
+        URLBuilder(HackerNewsLinks.BASE_URL).apply {
             appendPathSegments(path)
             parameters.append("id", username)
             if (comments) parameters.append("comments", "t")
         }.buildString()
 
     private companion object {
-        const val BASE_WEB_URL = "https://news.ycombinator.com"
         const val MAX_USER_ITEM_LIST_PAGES = 50
     }
 }
 
 object HackerNewsWebParser {
-    private const val BASE_WEB_URL = "https://news.ycombinator.com"
     private val listPaths = setOf(
         "front",
         "pool",
@@ -125,7 +126,7 @@ object HackerNewsWebParser {
     )
 
     fun parseStoryListPage(body: String, commentsPage: Boolean): HackerNewsListPage {
-        val document = Ksoup.parse(body, baseUri = "$BASE_WEB_URL/")
+        val document = Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL)
         val itemIds = linkedSetOf<Int>()
         val commentIds = linkedSetOf<Int>()
         for (item in document.select("tr.athing[id]")) {
@@ -151,7 +152,7 @@ object HackerNewsWebParser {
     }
 
     fun parseListDirectory(body: String): List<Story> {
-        val document = Ksoup.parse(body, baseUri = "$BASE_WEB_URL/")
+        val document = Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL)
         val seenPaths = mutableSetOf<String>()
         val nowSeconds = (Clock.System.now().toEpochMilliseconds() / 1_000L).toInt()
         return buildList {
@@ -180,7 +181,7 @@ object HackerNewsWebParser {
 
     private fun listPath(link: Element): String? {
         val url = link.absUrl("href").toNetworkUrlOrNull() ?: return null
-        if (url.host != "news.ycombinator.com") return null
+        if (url.host != HackerNewsLinks.HOST) return null
         return url.encodedPath.removePrefix("/").takeUnless { it.contains('/') || it.isEmpty() }
     }
 

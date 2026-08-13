@@ -19,7 +19,14 @@ data class EditorValidation(
     val titleTooLong: Boolean,
 )
 
-fun EditorSubmission.validate(type: EditorType, titleMaxLength: Int): EditorValidation {
+object EditorPolicy {
+    const val TITLE_MAX_LENGTH = 80
+}
+
+fun EditorSubmission.validate(
+    type: EditorType,
+    titleMaxLength: Int = EditorPolicy.TITLE_MAX_LENGTH,
+): EditorValidation {
     val titleTooLong = title.length > titleMaxLength
     val canSubmit = if (type == EditorType.POST) {
         title.isNotEmpty() && !titleTooLong && (url.isNotEmpty() || text.isNotEmpty())
@@ -49,7 +56,7 @@ sealed interface EditorWorkflowResult {
 class EditorSubmissionWorkflow(
     private val type: EditorType,
     private val itemId: Int,
-    private val titleMaxLength: Int,
+    private val titleMaxLength: Int = EditorPolicy.TITLE_MAX_LENGTH,
     private val service: HackerNewsUserService,
     private val connectivity: ConnectivityService,
     private val onSubmittingChanged: (Boolean) -> Unit = {},

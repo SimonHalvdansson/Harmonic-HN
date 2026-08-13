@@ -6,7 +6,6 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.presentation.AdBlocklistService
 import kotlin.math.roundToInt
 
 object HarmonicLog {
@@ -39,16 +38,4 @@ object AndroidNetworkStatus {
         return manager.getNetworkCapabilities(network)
             ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
-}
-
-/** Loads the Android-generated binary into the application-scoped common blocklist. */
-fun loadAndroidAdBlocklist(resources: Resources, target: AdBlocklistService) {
-    Thread({
-        try {
-            val encoded = resources.openRawResource(R.raw.adblockserverlist).use { it.readBytes() }
-            target.install(encoded)
-        } catch (error: Exception) {
-            Log.e("HARMONIC_TAG", "Failed to load ad host blocklist", error)
-        }
-    }, "Harmonic-adblock-loader").start()
 }

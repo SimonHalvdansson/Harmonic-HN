@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.utils
 
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
+import com.simon.harmonichackernews.serialization.JsonStringCodec
 import kotlin.time.Clock
 
 data class HackerNewsItemLink(
@@ -10,16 +11,30 @@ data class HackerNewsItemLink(
 )
 
 object HackerNewsLinks {
+    const val HOST = "news.ycombinator.com"
+    const val BASE_URL = "https://$HOST"
+    const val ROOT_URL = "$BASE_URL/"
+    const val LOGIN_URL = "$BASE_URL/login"
+    const val ITEM_URL_PREFIX = "$BASE_URL/item?id="
+
     private val itemUrlPattern = Regex(
         "https?://news\\.ycombinator\\.com/item\\?[^\\s<>\"']+",
         RegexOption.IGNORE_CASE,
     )
 
+    fun itemUrl(itemId: Int, scrollToCommentId: Int = -1): String =
+        "$ITEM_URL_PREFIX$itemId" +
+            if (scrollToCommentId > 0) "#$scrollToCommentId" else ""
+
+    fun isItemUrl(url: String?): Boolean = url.orEmpty().startsWith(ITEM_URL_PREFIX)
+
+    fun absolutePath(path: String): String = "$BASE_URL/${path.trimStart('/')}"
+
     fun parseItemLink(url: String?): HackerNewsItemLink? {
         val networkUrl = url?.toNetworkUrlOrNull() ?: return null
         if (
             networkUrl.scheme.lowercase() !in setOf("http", "https") ||
-            !networkUrl.host.equals("news.ycombinator.com", ignoreCase = true) ||
+            !networkUrl.host.equals(HOST, ignoreCase = true) ||
             networkUrl.encodedPath != "/item"
         ) {
             return null
@@ -43,6 +58,16 @@ object HackerNewsLinks {
         value?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
             ?.toIntOrNull()
             ?.takeIf { it > 0 }
+}
+
+/** Browser protocol shared by Android WebView, WKWebView and the desktop web adapter. */
+object HackerNewsCaptchaWebProtocol {
+    const val RESPONSE_FIELD = "g-recaptcha-response"
+    const val RESPONSE_SCRIPT =
+        "(function(){var el=document.getElementById('$RESPONSE_FIELD');return el?el.value:'';})()"
+
+    fun decodeResponse(javaScriptValue: String?): String =
+        JsonStringCodec.decodeJavascriptString(javaScriptValue).orEmpty()
 }
 
 object ArchiveRedirectPolicy {

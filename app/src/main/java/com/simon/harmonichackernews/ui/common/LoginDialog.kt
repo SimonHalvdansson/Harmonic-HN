@@ -5,8 +5,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.login_dialog_success
 import org.jetbrains.compose.resources.stringResource
-
-private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 @Composable
 fun LoginDialog(
@@ -22,7 +21,7 @@ fun LoginDialog(
             onDismiss()
         },
         onCreateAccount = {
-            appComposition.links.open(HackerNewsLoginUrl, preferInApp = false)
+            appComposition.links.open(HackerNewsLinks.LOGIN_URL, preferInApp = false)
         },
         captchaDialog = { challenge, dismiss, response ->
             CaptchaDialog(

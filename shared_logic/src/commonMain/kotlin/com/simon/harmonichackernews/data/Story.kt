@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.utils.DomainNamePolicy
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 class Story {
     var by: String? = null
@@ -170,10 +171,10 @@ class Story {
         val masterUrl = if (hasMasterUrl)
             commentMasterUrl
         else
-            "https://news.ycombinator.com/item?id=" + targetId
+            HackerNewsLinks.itemUrl(targetId)
         masterStory.url = masterUrl
         masterStory.isLink = hasMasterUrl &&
-            !masterUrl.orEmpty().startsWith("https://news.ycombinator.com/item?id=")
+            !HackerNewsLinks.isItemUrl(masterUrl)
         masterStory.by = commentMasterBy
         masterStory.score = commentMasterScore
         masterStory.time = commentMasterTime

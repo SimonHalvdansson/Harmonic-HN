@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
@@ -47,7 +48,7 @@ data class AlgoliaCommentsResponse(
         if (type == "comment") {
             story.title = "Comment by $author"
             story.isLink = false
-            story.url = "$HN_ITEM_URL$storyId"
+            story.url = HackerNewsLinks.itemUrl(storyId)
             story.isComment = true
             story.parentId = parentId
             story.commentMasterId = storyId
@@ -55,7 +56,7 @@ data class AlgoliaCommentsResponse(
         } else {
             story.title = title
             story.isLink = url.isNotEmpty() && url != JSON_NULL_LITERAL
-            story.url = if (story.isLink) url else "$HN_ITEM_URL${story.id}"
+            story.url = if (story.isLink) url else HackerNewsLinks.itemUrl(story.id)
             StoryTextProcessor.applyTitleBadges(story)
         }
 
@@ -71,7 +72,6 @@ data class AlgoliaCommentsResponse(
     }
 
     private companion object {
-        const val HN_ITEM_URL = "https://news.ycombinator.com/item?id="
         const val JSON_NULL_LITERAL = "null"
     }
 }

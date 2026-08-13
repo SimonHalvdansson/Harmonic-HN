@@ -8,6 +8,22 @@ import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
 import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.data.StoryCacheRepository
+import com.simon.harmonichackernews.network.DownloadStore
+import com.simon.harmonichackernews.presentation.UserMessageStore
+import com.simon.harmonichackernews.summary.LocalModelService
+
+/** Native runtime and storage decisions required before the iOS host creates its app graph. */
+class IosHostRuntimeBindings(
+    val metadata: AppMetadata,
+    val currentMinutesFromMidnight: () -> Int,
+    val systemDark: () -> Boolean,
+    val storyCacheRepository: StoryCacheRepository,
+    val articleSnapshotStore: DownloadStore? = null,
+    val pdfDownloadStore: DownloadStore? = null,
+    val localModels: LocalModelService? = null,
+    val userMessages: UserMessageStore = UserMessageStore(),
+)
 
 /**
  * Swift-facing owner for one Harmonic application graph.
@@ -20,16 +36,12 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 class IosHarmonicAppBootstrap(
     userAgent: String,
     bindings: IosPlatformBindings,
-    settingsDefaults: NSUserDefaults,
-    appDataDefaults: NSUserDefaults,
+    runtime: IosHostRuntimeBindings,
+    settingsDefaults: NSUserDefaults = NSUserDefaults.standardUserDefaults,
+    appDataDefaults: NSUserDefaults = NSUserDefaults(
+        suiteName = AppLaunchPreferenceKeys.STORE_NAME,
+    ),
 ) {
-    constructor(userAgent: String, bindings: IosPlatformBindings) : this(
-        userAgent,
-        bindings,
-        NSUserDefaults.standardUserDefaults,
-        NSUserDefaults(suiteName = AppLaunchPreferenceKeys.STORE_NAME),
-    )
-
     val preferences = IosKeyValueStore(settingsDefaults)
     val appData = IosKeyValueStore(appDataDefaults)
     val previewCache = IosKeyValueStore(NSUserDefaults(suiteName = PreviewCachePolicy.STORE_NAME))
@@ -42,11 +54,21 @@ class IosHarmonicAppBootstrap(
     val app = HarmonicAppComposition(
         network = network.graph,
         platform = platform,
-        settingsStore = preferences,
-        appDataStore = appData,
-        savedItemsRepository = savedItems,
-        previewCacheStore = previewCache,
-        settingsChanges = preferences.changes,
+        host = HarmonicHostConfiguration(
+            metadata = runtime.metadata,
+            settingsStore = preferences,
+            appDataStore = appData,
+            savedItemsRepository = savedItems,
+            previewCacheStore = previewCache,
+            settingsChanges = preferences.changes,
+            currentMinutesFromMidnight = runtime.currentMinutesFromMidnight,
+            systemDark = runtime.systemDark,
+            storyCacheRepository = runtime.storyCacheRepository,
+            articleSnapshotStore = runtime.articleSnapshotStore,
+            pdfDownloadStore = runtime.pdfDownloadStore,
+            localModels = runtime.localModels,
+            userMessages = runtime.userMessages,
+        ),
     )
 
     fun close() {

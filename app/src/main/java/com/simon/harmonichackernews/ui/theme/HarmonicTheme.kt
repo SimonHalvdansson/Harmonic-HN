@@ -5,8 +5,6 @@ package com.simon.harmonichackernews.ui.theme
 import android.content.Context
 import android.util.TypedValue
 import androidx.annotation.AttrRes
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -21,9 +19,12 @@ import com.simon.harmonichackernews.utils.ThemeUtils
 @Composable
 fun HarmonicTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val isDark = ThemeUtils.isDarkMode(context)
-    val colors = harmonicColors(context)
-    val baseScheme = if (isDark) darkColorScheme() else lightColorScheme()
+    val canonical = HarmonicThemeCatalog.resolve(
+        theme = ThemeUtils.getPreferredTheme(context),
+        systemDark = ThemeUtils.uiModeNight(context),
+    )
+    val colors = harmonicColors(context, canonical)
+    val baseScheme = canonical.colorScheme
     val colorScheme = baseScheme.copy(
         primary = context.colorAttribute(AppCompatR.attr.colorPrimary, baseScheme.primary),
         onPrimary = context.colorAttribute(MaterialR.attr.colorOnPrimary, baseScheme.onPrimary),
@@ -56,6 +57,7 @@ fun HarmonicTheme(content: @Composable () -> Unit) {
             baseScheme.surfaceContainerLow,
         ),
         surfaceContainerHigh = colors.surfaceContainerHigh,
+        surfaceContainerHighest = colors.surfaceContainerHighest,
         surfaceVariant = context.colorAttribute(
             MaterialR.attr.colorSurfaceVariant,
             baseScheme.surfaceVariant,
@@ -76,11 +78,19 @@ fun HarmonicTheme(content: @Composable () -> Unit) {
 }
 
 fun harmonicColors(context: Context): HarmonicColors {
-    val fallbackScheme = if (ThemeUtils.isDarkMode(context)) {
-        darkColorScheme()
-    } else {
-        lightColorScheme()
-    }
+    val canonical = HarmonicThemeCatalog.resolve(
+        theme = ThemeUtils.getPreferredTheme(context),
+        systemDark = ThemeUtils.uiModeNight(context),
+    )
+    return harmonicColors(context, canonical)
+}
+
+private fun harmonicColors(
+    context: Context,
+    canonical: HarmonicThemePalette,
+): HarmonicColors {
+    val fallback = canonical.colors
+    val fallbackScheme = canonical.colorScheme
     val background = context.colorAttribute(
         android.R.attr.colorBackground,
         fallbackScheme.background,
@@ -90,13 +100,15 @@ fun harmonicColors(context: Context): HarmonicColors {
         background = background,
         accent = context.colorAttribute(
             AppCompatR.attr.colorAccent,
-            fallbackScheme.primary,
+            fallback.accent,
         ),
         onSurface = context.colorAttribute(
             MaterialR.attr.colorOnSurface,
             fallbackScheme.onSurface,
         ),
-        textPrimary = Color(defaultTextView.currentTextColor),
+        textPrimary = Color(defaultTextView.currentTextColor).takeUnless {
+            it == Color.Unspecified
+        } ?: fallback.textPrimary,
         textSecondary = context.colorAttribute(
             R.attr.secondaryTextColor,
             fallbackScheme.onSurfaceVariant,

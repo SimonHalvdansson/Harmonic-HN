@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
@@ -10,7 +11,11 @@ import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
+import com.simon.harmonichackernews.resources.BundledHarmonicResources
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Explicit application-scoped dependencies for shared and platform Compose surfaces.
@@ -79,5 +84,21 @@ fun ProvideHarmonicUiDependencies(
     dependencies: HarmonicUiDependencies,
     content: @Composable () -> Unit,
 ) {
+    LaunchedEffect(dependencies.webContent) {
+        dependencies.installBundledResources()
+    }
     CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, content = content)
+}
+
+/** Installs large shared assets for Compose and native UI hosts that own this environment. */
+suspend fun HarmonicUiDependencies.installBundledResources() {
+    try {
+        withContext(Dispatchers.Default) {
+            webContent.adBlocklist.install(BundledHarmonicResources.adBlocklist())
+        }
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        // The feature remains operational with an empty list if a host mispackages the asset.
+    }
 }

@@ -3,8 +3,6 @@ package com.simon.harmonichackernews.utils
 import android.content.Intent
 
 object ShareUtils {
-    private const val SHARE_BASE_URL = "https://news.ycombinator.com/item?id="
-
     /**
      * Creates a share intent for sharing content.
      *
