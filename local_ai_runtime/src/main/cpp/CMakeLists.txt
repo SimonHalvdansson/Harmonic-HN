@@ -22,8 +22,14 @@ set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
 set(LLAMA_CPP_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/third_party/llama.cpp")
 add_subdirectory("${LLAMA_CPP_SOURCE_DIR}" llama.cpp-build EXCLUDE_FROM_ALL)
 
-add_library(local-llama SHARED local_llama.cpp)
-target_include_directories(local-llama PRIVATE
+add_library(harmonic-llama-core STATIC harmonic_llama_engine.cpp)
+target_include_directories(harmonic-llama-core PUBLIC
+        "${CMAKE_CURRENT_LIST_DIR}"
         "${LLAMA_CPP_SOURCE_DIR}/include"
         "${LLAMA_CPP_SOURCE_DIR}/ggml/include")
-target_link_libraries(local-llama PRIVATE llama android log)
+target_link_libraries(harmonic-llama-core PUBLIC llama)
+
+if(ANDROID)
+    add_library(local-llama SHARED local_llama.cpp)
+    target_link_libraries(local-llama PRIVATE harmonic-llama-core android log)
+endif()

@@ -1,11 +1,9 @@
 package com.simon.harmonichackernews.summary.local
 
-import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.LocalSummaryGenerationPolicy
 
 /** Streaming llama.cpp inference for the downloadable GGUF model catalog. */
 object GgufInference {
-  private const val MAX_OUTPUT_TOKENS = 256
-
   init {
     System.loadLibrary("local-llama")
     nativeInitialize()
@@ -28,17 +26,22 @@ object GgufInference {
     loadCallback.onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
 
     try {
-      val responsePrefix =
-        if (LocalModelCatalog.MODEL_QWEN_08B == modelId) "- " else ""
-      if (!nativeStart(systemInstruction, text, responsePrefix, MAX_OUTPUT_TOKENS)) {
+      val generation = LocalSummaryGenerationPolicy.configuration(modelId)
+      if (!nativeStart(
+          systemInstruction,
+          text,
+          generation.responsePrefix,
+          generation.maxOutputTokens,
+        )) {
         throw IllegalStateException(nativeError("Could not process the summary input"))
       }
-      val response = StringBuilder(responsePrefix)
+      val response = StringBuilder(generation.responsePrefix)
       while (true) {
         val piece = nativeNextToken() ?: break
         if (piece.isNotEmpty()) {
           response.append(piece)
-          val streamedSummary = visibleSummary(response.toString()) ?: continue
+          val streamedSummary =
+            LocalSummaryGenerationPolicy.visibleOutput(response.toString()) ?: continue
           if (streamedSummary.isNotEmpty()) {
             progressCallback.onProgress(streamedSummary)
           }
@@ -47,7 +50,9 @@ object GgufInference {
       nativeLastError().takeIf { it.isNotBlank() }?.let {
         throw IllegalStateException(it)
       }
-      val summary = visibleSummary(response.toString())?.trim().orEmpty()
+      val summary = LocalSummaryGenerationPolicy.visibleOutput(response.toString())
+        ?.trim()
+        .orEmpty()
       if (summary.isEmpty()) {
         throw IllegalStateException(nativeError("The local model returned an empty summary"))
       }
@@ -59,21 +64,6 @@ object GgufInference {
 
   private fun nativeError(fallback: String): String {
     return nativeLastError().ifBlank { fallback }
-  }
-
-  private fun visibleSummary(rawResponse: String): String? {
-    val trimmed = rawResponse.trimStart()
-    if ("<think>".startsWith(trimmed)) {
-      return null
-    }
-    if (trimmed.startsWith("<think>")) {
-      val end = trimmed.indexOf("</think>")
-      if (end < 0) {
-        return null
-      }
-      return trimmed.substring(end + "</think>".length).trimStart()
-    }
-    return trimmed
   }
 
   private external fun nativeInitialize()
