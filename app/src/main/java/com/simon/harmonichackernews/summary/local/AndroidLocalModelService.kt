@@ -12,24 +12,29 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.summary.FileLocalModelStorage
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelDeviceCapabilities
 import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
 import com.simon.harmonichackernews.summary.LocalModelService
-import com.simon.harmonichackernews.summary.LocalModelStorage
-import com.simon.harmonichackernews.summary.LocalModelStoragePreparation
-import com.simon.harmonichackernews.summary.LocalModelStorageSnapshot
 import com.simon.harmonichackernews.summary.LocalModelTransferScheduler
 import com.simon.harmonichackernews.summary.LocalModelWorkSnapshot
 import com.simon.harmonichackernews.summary.LocalModelWorkState
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.io.files.Path
 
 /** Android storage and WorkManager adapters for the shared local-model service. */
 internal fun createAndroidLocalModelService(context: Context): LocalModelService {
     val appContext = context.applicationContext
-    val files = AndroidLocalModelStorage(appContext)
+    val modelsRoot = androidLocalModelsRoot(appContext)
+    val files = FileLocalModelStorage(
+        root = Path(modelsRoot.absolutePath),
+        usableSpaceBytes = { modelsRoot.usableSpace },
+        inferenceCacheRoot = Path(appContext.cacheDir.absolutePath),
+    )
     val transfers = AndroidLocalModelTransferScheduler(appContext)
     return LocalModelService(
         preferences = AndroidKeyValueStore.defaults(appContext),
@@ -43,91 +48,14 @@ internal fun createAndroidLocalModelService(context: Context): LocalModelService
     )
 }
 
-internal fun modelFile(context: Context, modelId: String, fileName: String): File =
-    File(modelsRoot(context), modelId).resolve(fileName)
-
-internal fun partialModelFile(context: Context, modelId: String, fileName: String): File =
-    File(modelsRoot(context), modelId).resolve("$fileName.download")
+internal fun androidLocalModelsRoot(context: Context): File {
+    val base = context.getExternalFilesDir(null) ?: context.filesDir
+    return File(base, StorageKeyPolicy.LOCAL_MODELS_DIRECTORY)
+}
 
 internal fun androidTotalMemoryBytes(context: Context): Long {
     val manager = context.getSystemService(ActivityManager::class.java) ?: return 0L
     return ActivityManager.MemoryInfo().also(manager::getMemoryInfo).totalMem
-}
-
-private fun modelsRoot(context: Context): File {
-    val base = context.getExternalFilesDir(null) ?: context.filesDir
-    return File(base, MODELS_DIRECTORY)
-}
-
-private class AndroidLocalModelStorage(
-    private val context: Context,
-) : LocalModelStorage {
-    override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot {
-        val finalFile = modelFile(context, model.id, model.fileName)
-        val partialFile = partialModelFile(context, model.id, model.fileName)
-        return LocalModelStorageSnapshot(
-            finalFileBytes = finalFile.takeIf(File::isFile)?.length(),
-            partialFileBytes = partialFile.takeIf(File::isFile)?.length() ?: 0L,
-            usableSpaceBytes = modelsRoot(context).usableSpace,
-        )
-    }
-
-    override fun prepareDownload(model: LocalModelDefinition): LocalModelStoragePreparation {
-        deleteObsoleteModelFiles(model)
-        deleteInferenceCacheFiles(model)
-        val finalFile = modelFile(context, model.id, model.fileName)
-        if (finalFile.exists() && !finalFile.delete()) {
-            return LocalModelStoragePreparation.Failed(
-                "Could not replace the incomplete local model.",
-            )
-        }
-        val root = modelsRoot(context)
-        if (!root.exists() && !root.mkdirs()) {
-            return LocalModelStoragePreparation.Failed("Could not create local model storage.")
-        }
-        return LocalModelStoragePreparation.Ready(snapshot(model))
-    }
-
-    override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) {
-        val partial = partialModelFile(context, model.id, model.fileName)
-        if (partial.exists()) partial.delete()
-        if (includeFinalFile) {
-            val final = modelFile(context, model.id, model.fileName)
-            if (final.exists()) final.delete()
-            deleteInferenceCacheFiles(model)
-        }
-        partial.parentFile?.let { directory ->
-            if (includeFinalFile) directory.listFiles().orEmpty()
-                .filter(File::isFile)
-                .forEach(File::delete)
-            if (directory.list()?.isEmpty() == true) directory.delete()
-        }
-    }
-
-    override fun installedPath(model: LocalModelDefinition): String =
-        modelFile(context, model.id, model.fileName).absolutePath
-
-    private fun deleteObsoleteModelFiles(model: LocalModelDefinition) {
-        val final = modelFile(context, model.id, model.fileName)
-        val partial = partialModelFile(context, model.id, model.fileName)
-        final.parentFile?.listFiles()?.filter { it.isFile && it != final && it != partial }
-            ?.forEach(File::delete)
-    }
-
-    private fun deleteInferenceCacheFiles(model: LocalModelDefinition) {
-        val prefixes = buildList {
-            add("${model.fileName}.xnnpack_cache_")
-            when (model.id) {
-                com.simon.harmonichackernews.summary.LocalModelCatalog.MODEL_E2B ->
-                    add("gemma-4-E2B-it.litertlm.xnnpack_cache_")
-                com.simon.harmonichackernews.summary.LocalModelCatalog.MODEL_QWEN_08B ->
-                    add("Qwen3.5-0.8B-hybrid-exact-c2048.litertlm.xnnpack_cache_")
-            }
-        }
-        context.cacheDir.listFiles()?.filter { file ->
-            file.isFile && prefixes.any(file.name::startsWith)
-        }?.forEach(File::delete)
-    }
 }
 
 private class AndroidLocalModelTransferScheduler(
@@ -207,5 +135,4 @@ private class AndroidLocalModelTransferScheduler(
 
 internal interface AndroidLocalRuntimeDelivery : LocalModelRuntimeDelivery
 
-private const val MODELS_DIRECTORY = "local_ai_models"
 private const val WORK_NAME_PREFIX = "local_ai_model_download_"

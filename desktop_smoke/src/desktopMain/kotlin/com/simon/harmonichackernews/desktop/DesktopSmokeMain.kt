@@ -365,7 +365,7 @@ private fun DesktopCommentsBrowserContract(
 
     LaunchedEffect(session, url) {
         session.recordRequestedUrl(url)
-        session.controller.configureReader(
+        session.configureReader(
             featureEnabled = true,
             integrated = true,
             defaultEnabled = false,

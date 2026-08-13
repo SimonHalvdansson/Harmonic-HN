@@ -3,27 +3,30 @@ package com.simon.harmonichackernews.app
 import com.simon.harmonichackernews.network.IosNetworkComponent
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.IosPlatformBindings
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
 import platform.Foundation.NSUserDefaults
-import com.simon.harmonichackernews.data.SavedItemsRepository
-import com.simon.harmonichackernews.data.StoryCacheRepository
-import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.summary.LocalModelService
+import kotlinx.io.files.Path
 
 /** Native runtime and storage decisions required before the iOS host creates its app graph. */
 class IosHostRuntimeBindings(
     val metadata: AppMetadata,
     val currentMinutesFromMidnight: () -> Int,
     val systemDark: () -> Boolean,
-    val storyCacheRepository: StoryCacheRepository,
-    val articleSnapshotStore: DownloadStore? = null,
-    val pdfDownloadStore: DownloadStore? = null,
+    val filesDirectory: String,
+    val cacheDirectory: String,
     val localModels: LocalModelService? = null,
     val userMessages: UserMessageStore = UserMessageStore(),
-)
+) {
+    init {
+        require(filesDirectory.isNotBlank()) { "The iOS files directory is required" }
+        require(cacheDirectory.isNotBlank()) { "The iOS cache directory is required" }
+    }
+}
 
 /**
  * Swift-facing owner for one Harmonic application graph.
@@ -45,11 +48,21 @@ class IosHarmonicAppBootstrap(
     val preferences = IosKeyValueStore(settingsDefaults)
     val appData = IosKeyValueStore(appDataDefaults)
     val previewCache = IosKeyValueStore(NSUserDefaults(suiteName = PreviewCachePolicy.STORE_NAME))
+    val fileAccess = IosKeyValueStore(
+        NSUserDefaults(suiteName = StorageKeyPolicy.FILE_ACCESS_STORE),
+    )
     val network = IosNetworkComponent(userAgent)
-    val savedItems = SavedItemsRepository(appData)
     val platform = createIosPlatformDependencies(
         appData,
         bindings,
+    )
+    val persistentStorage = HarmonicPersistentStorageFactory.create(
+        roots = HarmonicStorageRoots(
+            files = Path(runtime.filesDirectory),
+            pdfCache = Path(runtime.cacheDirectory, StorageKeyPolicy.PDF_CACHE_DIRECTORY),
+        ),
+        appDataStore = appData,
+        fileAccessStore = fileAccess,
     )
     val app = HarmonicAppComposition(
         network = network.graph,
@@ -58,14 +71,13 @@ class IosHarmonicAppBootstrap(
             metadata = runtime.metadata,
             settingsStore = preferences,
             appDataStore = appData,
-            savedItemsRepository = savedItems,
             previewCacheStore = previewCache,
             settingsChanges = preferences.changes,
             currentMinutesFromMidnight = runtime.currentMinutesFromMidnight,
             systemDark = runtime.systemDark,
-            storyCacheRepository = runtime.storyCacheRepository,
-            articleSnapshotStore = runtime.articleSnapshotStore,
-            pdfDownloadStore = runtime.pdfDownloadStore,
+            storyCacheRepository = persistentStorage.storyCacheRepository,
+            articleSnapshotStore = persistentStorage.articleSnapshotStore,
+            pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels,
             userMessages = runtime.userMessages,
         ),

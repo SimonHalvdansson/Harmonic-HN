@@ -10,16 +10,19 @@ import com.simon.harmonichackernews.settings.KeyValueStore
  */
 class IosPlatformBindings(
     val credentials: CredentialStore,
+    accountStorage: HackerNewsAccountRepository,
     val externalLinks: ExternalLinkOpener,
     val sharing: ShareService,
     val clipboard: ClipboardService,
     val connectivity: ConnectivityService,
     val timeFormatting: PlatformTimeFormatter,
-    val accounts: ObservableHackerNewsAccountRepository =
-        CredentialBackedHackerNewsAccountRepository(credentials),
     val replyNotifications: com.simon.harmonichackernews.network.ReplyNotificationPlatform? = null,
     val localSummary: LocalSummaryEngine? = null,
-)
+) {
+    /** Observation and mutation serialization around the host's atomic Keychain-backed storage. */
+    val accounts: ObservableHackerNewsAccountRepository =
+        ObservableAccountRepositoryAdapter(accountStorage)
+}
 
 /** Adds the Foundation persistence adapters to the capabilities supplied by the native host. */
 fun createIosPlatformDependencies(

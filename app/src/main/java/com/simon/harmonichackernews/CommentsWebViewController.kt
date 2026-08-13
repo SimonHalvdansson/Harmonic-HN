@@ -53,12 +53,17 @@ import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.presentation.WebContentFailure
 import com.simon.harmonichackernews.presentation.WebContentAssets
+import com.simon.harmonichackernews.presentation.WebContentPageKind
+import com.simon.harmonichackernews.presentation.WebContentPagePolicy
+import com.simon.harmonichackernews.presentation.WebContentPlatformUrls
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.presentation.ReaderModePageDecision
 import com.simon.harmonichackernews.presentation.ReaderModeSourceAssembler
 import com.simon.harmonichackernews.presentation.ReaderModeStateChange
 import com.simon.harmonichackernews.presentation.ReaderModeTheme
+import com.simon.harmonichackernews.presentation.ReaderModeFontResource
+import com.simon.harmonichackernews.presentation.ReaderModeFontResourcePolicy
 import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
 import com.simon.harmonichackernews.presentation.WebContentRuntime
 import com.simon.harmonichackernews.presentation.WebContentCopy
@@ -72,7 +77,6 @@ import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
-import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.ui.theme.ReaderModeFontData
 import com.simon.harmonichackernews.ui.theme.ReaderModeThemeFactory
 import com.simon.harmonichackernews.ui.theme.harmonicColors
@@ -377,7 +381,9 @@ internal class CommentsWebViewController(
         if (coordinator.view == null) return
 
         val currentUrl = currentWebView.url
-        if (showingErrorPage || PDF_LOADER_URL == currentUrl || isErrorPageUrl(currentUrl)) {
+        if (showingErrorPage ||
+            !WebContentPagePolicy.isReaderEligible(currentUrl, WEB_CONTENT_URLS)
+        ) {
             coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
             return
         }
@@ -497,7 +503,8 @@ internal class CommentsWebViewController(
         }
 
         val currentUrl = view.getUrl()
-        return !showingErrorPage && (PDF_LOADER_URL != currentUrl) && !isErrorPageUrl(currentUrl)
+        return !showingErrorPage &&
+            WebContentPagePolicy.isReaderEligible(currentUrl, WEB_CONTENT_URLS)
     }
 
     private fun scheduleDelayedReaderModeUnavailable(generation: Int, delayMillis: Long) {
@@ -562,59 +569,34 @@ internal class CommentsWebViewController(
     }
 
     private fun getReaderModeFontData(context: Context, font: String?): ReaderModeFontData? {
-        val regularFontResource: Int
-        val boldFontResource: Int
-        when (AppFont.fromStored(font)) {
-            AppFont.PRODUCT_SANS -> {
-                regularFontResource = R.font.product_sans_regular
-                boldFontResource = R.font.product_sans_bold
-            }
-
-            AppFont.GOOGLE_SANS_FLEX_ROUNDED -> {
-                regularFontResource = R.font.google_sans_flex_rounded_regular
-                boldFontResource = R.font.google_sans_flex_rounded_bold
-            }
-
-            AppFont.GOOGLE_SANS -> {
-                regularFontResource = R.font.google_sans_regular
-                boldFontResource = R.font.google_sans_bold
-            }
-
-            AppFont.VERDANA -> {
-                regularFontResource = R.font.verdana_regular
-                boldFontResource = R.font.verdana_bold
-            }
-
-            AppFont.ROBOTO_SLAB -> {
-                regularFontResource = R.font.roboto_slab_regular
-                boldFontResource = R.font.roboto_slab_bold
-            }
-
-            AppFont.GOOGLE_SANS_CODE -> {
-                regularFontResource = R.font.google_sans_code_regular
-                boldFontResource = R.font.google_sans_code_regular
-            }
-
-            AppFont.JETBRAINS_MONO -> {
-                regularFontResource = R.font.jetbrains_mono_regular
-                boldFontResource = R.font.jetbrains_mono_bold
-            }
-
-            AppFont.GEORGIA -> {
-                regularFontResource = R.font.georgia_regular
-                boldFontResource = R.font.georgia_bold
-            }
-
-            AppFont.DEVICE_DEFAULT -> return null
-        }
-
-        val regularFontData = getFontBase64(context, regularFontResource)
-        val boldFontData = getFontBase64(context, boldFontResource)
+        val resources = ReaderModeFontResourcePolicy.resolve(font) ?: return null
+        val regularFontData = getFontBase64(context, androidFontResource(resources.regular))
+        val boldFontData = getFontBase64(context, androidFontResource(resources.bold))
         if (TextUtils.isEmpty(regularFontData) || TextUtils.isEmpty(boldFontData)) {
             return null
         }
 
         return ReaderModeFontData(regularFontData, boldFontData)
+    }
+
+    private fun androidFontResource(resource: ReaderModeFontResource): Int = when (resource) {
+        ReaderModeFontResource.PRODUCT_SANS_REGULAR -> R.font.product_sans_regular
+        ReaderModeFontResource.PRODUCT_SANS_BOLD -> R.font.product_sans_bold
+        ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_REGULAR ->
+            R.font.google_sans_flex_rounded_regular
+        ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_BOLD ->
+            R.font.google_sans_flex_rounded_bold
+        ReaderModeFontResource.GOOGLE_SANS_REGULAR -> R.font.google_sans_regular
+        ReaderModeFontResource.GOOGLE_SANS_BOLD -> R.font.google_sans_bold
+        ReaderModeFontResource.VERDANA_REGULAR -> R.font.verdana_regular
+        ReaderModeFontResource.VERDANA_BOLD -> R.font.verdana_bold
+        ReaderModeFontResource.ROBOTO_SLAB_REGULAR -> R.font.roboto_slab_regular
+        ReaderModeFontResource.ROBOTO_SLAB_BOLD -> R.font.roboto_slab_bold
+        ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR -> R.font.google_sans_code_regular
+        ReaderModeFontResource.JETBRAINS_MONO_REGULAR -> R.font.jetbrains_mono_regular
+        ReaderModeFontResource.JETBRAINS_MONO_BOLD -> R.font.jetbrains_mono_bold
+        ReaderModeFontResource.GEORGIA_REGULAR -> R.font.georgia_regular
+        ReaderModeFontResource.GEORGIA_BOLD -> R.font.georgia_bold
     }
 
     private fun getFontBase64(context: Context, fontResource: Int): String {
@@ -774,7 +756,7 @@ internal class CommentsWebViewController(
         }
 
         val loadStart = webContentSession.onLoadStarted(
-            pageEligible = !url.isNullOrEmpty() && PDF_LOADER_URL != url && !isErrorPageUrl(url),
+            pageEligible = WebContentPagePolicy.isReaderEligible(url, WEB_CONTENT_URLS),
             nowMillis = SystemClock.uptimeMillis(),
         )
         val generation = loadStart.generation
@@ -930,7 +912,7 @@ internal class CommentsWebViewController(
         finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
         clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
         webContentSession.showError(failure)
-        loadUrl(OFFLINE_PAGE_URL + "#" + failure.errorPageFragment)
+        loadUrl(WebContentPagePolicy.errorPageUrl(errorPageType, WEB_CONTENT_URLS))
     }
 
     fun hideCustomView(notifyCallback: Boolean) {
@@ -1018,7 +1000,8 @@ internal class CommentsWebViewController(
     }
 
     private fun isErrorPageUrl(url: String?): Boolean {
-        return url != null && url.startsWith(OFFLINE_PAGE_URL)
+        return WebContentPagePolicy.classify(url, WEB_CONTENT_URLS) ==
+            WebContentPageKind.ERROR_PAGE
     }
 
     private fun loadUrl(url: String?, pdfFilePath: String? = null) {
@@ -1037,23 +1020,25 @@ internal class CommentsWebViewController(
             targetUrl = archiveRedirectUrl
         }
 
-        if (PDF_LOADER_URL == targetUrl) {
-            targetPdfFilePath = targetPdfFilePath
-                ?.takeUnless(String::isEmpty)
-                ?: currentPdfFilePath
-            if (targetPdfFilePath.isNullOrEmpty()) {
-                webContentSession.finishRetry()
-                return
-            }
+        val route = WebContentPagePolicy.route(
+            url = targetUrl,
+            requestedPdfReference = targetPdfFilePath,
+            currentPdfReference = currentPdfFilePath,
+            platformUrls = WEB_CONTENT_URLS,
+        ) ?: run {
+            webContentSession.finishRetry()
+            return
         }
+        targetUrl = route.url
+        targetPdfFilePath = route.pdfReference
 
-        if (!isErrorPageUrl(targetUrl)) {
+        if (route.kind != WebContentPageKind.ERROR_PAGE) {
             webContentSession.recordRequestedUrl(targetUrl)
-            if (PDF_LOADER_URL != targetUrl) {
+            if (route.kind != WebContentPageKind.PDF_VIEWER) {
                 currentPdfFilePath = null
             }
         }
-        if (PDF_LOADER_URL == targetUrl) {
+        if (route.kind == WebContentPageKind.PDF_VIEWER) {
             val resolvedPdfFilePath = checkNotNull(targetPdfFilePath)
             currentPdfFilePath = resolvedPdfFilePath
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
@@ -1087,7 +1072,9 @@ internal class CommentsWebViewController(
         }
         beginWebViewLoad(targetWebView, targetUrl)
         targetWebView.loadUrl(targetUrl)
-        if (isErrorPageUrl(targetUrl)) {
+        if (WebContentPagePolicy.classify(targetUrl, WEB_CONTENT_URLS) ==
+            WebContentPageKind.ERROR_PAGE
+        ) {
             webContentSession.showError()
         }
     }
@@ -1276,10 +1263,11 @@ internal class CommentsWebViewController(
             ?.takeUnless(String::isEmpty)
             ?: return false
 
-        var baseUrl = storyCache.articleUrl(currentStory.id)
-        if (TextUtils.isEmpty(baseUrl)) {
-            baseUrl = if (!TextUtils.isEmpty(failingUrl)) failingUrl else currentStory.url
-        }
+        val baseUrl = WebContentPagePolicy.cachedArticleBaseUrl(
+            storedSourceUrl = storyCache.articleUrl(currentStory.id),
+            failingUrl = failingUrl,
+            storyUrl = currentStory.url,
+        ) ?: return false
 
         webContentSession.showCachedContent(failingUrl, baseUrl)
         view.stopLoading()
@@ -1512,7 +1500,8 @@ internal class CommentsWebViewController(
             linkPreviewController.onWebViewPageFinished(coordinator.context, view, url)
 
             val finishedGeneration = webContentLoad.state.generation
-            val pageEligible = !showingErrorPage && PDF_LOADER_URL != url && !isErrorPageUrl(url)
+            val pageEligible = !showingErrorPage &&
+                WebContentPagePolicy.isReaderEligible(url, WEB_CONTENT_URLS)
             val readerResult = webContentSession.onPageFinished(pageEligible)
             applyReaderModeChange(readerResult.change)
             when (val decision = readerResult.decision) {
@@ -1751,6 +1740,7 @@ internal class CommentsWebViewController(
         private const val PDF_MIME_TYPE = "application/pdf"
         private val PDF_LOADER_URL = "file:///android_asset/${WebContentAssets.PDF_VIEWER_INDEX}"
         private val OFFLINE_PAGE_URL = "file:///android_asset/${WebContentAssets.OFFLINE_PAGE}"
+        private val WEB_CONTENT_URLS = WebContentPlatformUrls(PDF_LOADER_URL, OFFLINE_PAGE_URL)
         private val READER_MODE_READABILITY_SCRIPT_ASSET = WebContentAssets.READABILITY_SCRIPT
         private val READER_MODE_SCRIPT_ASSET = WebContentAssets.READER_MODE_SCRIPT
     }

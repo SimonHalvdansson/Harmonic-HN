@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.utils.AgePolicy
@@ -104,8 +104,11 @@ class ScreenOrchestratorsTest {
     fun commentReplyPolicyHandlesLoginAgeAndEditorDestination() {
         val now = 2_000_000_000_000L
         val comment = comment(time = (now / 1_000L).toInt())
-        fun context(hasAccount: Boolean, time: Int = comment.time) = CommentActionContext(
-            comment = comment.apply { this.time = time },
+        fun context(
+            hasAccount: Boolean,
+            time: Int = comment.createdAtEpochSeconds,
+        ) = CommentActionContext(
+            comment = comment.copy(createdAtEpochSeconds = time),
             storyTitle = "Post title",
             hasAccount = hasAccount,
             voteLoading = false,
@@ -130,7 +133,6 @@ class ScreenOrchestratorsTest {
             ).effects.single(),
         )
 
-        comment.time = (now / 1_000L).toInt()
         val editor = assertIs<CommentsPlatformEffect.OpenEditor>(
             CommentsUiOrchestrator.comment(
                 CommentMenuAction.REPLY,
@@ -188,10 +190,10 @@ class ScreenOrchestratorsTest {
         isLink = true
     }
 
-    private fun comment(time: Int = 2_000_000_000) = Comment().apply {
-        id = 456
-        by = "commenter"
-        text = "<p>Hello &amp; <b>goodbye</b></p>"
-        this.time = time
-    }
+    private fun comment(time: Int = 2_000_000_000) = CommentSnapshot(
+        id = 456,
+        author = "commenter",
+        text = "<p>Hello &amp; <b>goodbye</b></p>",
+        createdAtEpochSeconds = time,
+    )
 }

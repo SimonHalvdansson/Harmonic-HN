@@ -1,7 +1,8 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.settings.WebViewPreferences
 import com.simon.harmonichackernews.serialization.JsonStringCodec
 import com.simon.harmonichackernews.utils.AdHostBlocklist
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
@@ -50,6 +51,63 @@ object WebContentAssets {
     const val OFFLINE_PAGE = "webview_error.html"
     const val READABILITY_SCRIPT = "vendor/mozilla/readability/0.6.0/Readability.min.js"
     const val READER_MODE_SCRIPT = "reader_mode.js"
+}
+
+data class WebContentPlatformUrls(
+    val pdfViewer: String,
+    val errorPage: String,
+)
+
+enum class WebContentPageKind { EMPTY, CONTENT, PDF_VIEWER, ERROR_PAGE }
+
+data class WebContentRoute(
+    val url: String,
+    val kind: WebContentPageKind,
+    val pdfReference: String? = null,
+)
+
+/** URL/page classification shared by WebView, WKWebView and desktop browser hosts. */
+object WebContentPagePolicy {
+    fun classify(url: String?, platformUrls: WebContentPlatformUrls): WebContentPageKind = when {
+        url.isNullOrBlank() -> WebContentPageKind.EMPTY
+        url == platformUrls.pdfViewer -> WebContentPageKind.PDF_VIEWER
+        url.startsWith(platformUrls.errorPage) -> WebContentPageKind.ERROR_PAGE
+        else -> WebContentPageKind.CONTENT
+    }
+
+    fun isReaderEligible(url: String?, platformUrls: WebContentPlatformUrls): Boolean =
+        classify(url, platformUrls) == WebContentPageKind.CONTENT
+
+    fun route(
+        url: String?,
+        requestedPdfReference: String?,
+        currentPdfReference: String?,
+        platformUrls: WebContentPlatformUrls,
+    ): WebContentRoute? {
+        val resolvedUrl = url?.takeIf(String::isNotBlank) ?: return null
+        val kind = classify(resolvedUrl, platformUrls)
+        val pdfReference = if (kind == WebContentPageKind.PDF_VIEWER) {
+            requestedPdfReference?.takeIf(String::isNotBlank)
+                ?: currentPdfReference?.takeIf(String::isNotBlank)
+                ?: return null
+        } else {
+            null
+        }
+        return WebContentRoute(resolvedUrl, kind, pdfReference)
+    }
+
+    fun errorPageUrl(
+        failure: WebContentFailure,
+        platformUrls: WebContentPlatformUrls,
+    ): String = platformUrls.errorPage + "#" + WebContentPolicy.errorPageFragment(failure)
+
+    fun cachedArticleBaseUrl(
+        storedSourceUrl: String?,
+        failingUrl: String?,
+        storyUrl: String?,
+    ): String? = storedSourceUrl?.takeIf(String::isNotBlank)
+        ?: failingUrl?.takeIf(String::isNotBlank)
+        ?: storyUrl?.takeIf(String::isNotBlank)
 }
 
 /** Timing policy shared by WebView, WKWebView and desktop browser adapters. */
@@ -106,6 +164,70 @@ object ReaderModeSourceAssembler {
             "font-weight:400;src:url($regularDataUrl) format('truetype');}" +
             "@font-face{font-family:'HarmonicReaderFont';font-style:normal;" +
             "font-weight:700;src:url($boldDataUrl) format('truetype');}"
+    }
+}
+
+enum class ReaderModeFontResource {
+    PRODUCT_SANS_REGULAR,
+    PRODUCT_SANS_BOLD,
+    GOOGLE_SANS_FLEX_ROUNDED_REGULAR,
+    GOOGLE_SANS_FLEX_ROUNDED_BOLD,
+    GOOGLE_SANS_REGULAR,
+    GOOGLE_SANS_BOLD,
+    VERDANA_REGULAR,
+    VERDANA_BOLD,
+    ROBOTO_SLAB_REGULAR,
+    ROBOTO_SLAB_BOLD,
+    GOOGLE_SANS_CODE_REGULAR,
+    JETBRAINS_MONO_REGULAR,
+    JETBRAINS_MONO_BOLD,
+    GEORGIA_REGULAR,
+    GEORGIA_BOLD,
+}
+
+data class ReaderModeFontResources(
+    val regular: ReaderModeFontResource,
+    val bold: ReaderModeFontResource,
+)
+
+/** Canonical reader-font pairing; native hosts only load bytes for the selected resources. */
+object ReaderModeFontResourcePolicy {
+    fun resolve(storedFont: String?): ReaderModeFontResources? = when (
+        AppFont.fromStored(storedFont)
+    ) {
+        AppFont.PRODUCT_SANS -> ReaderModeFontResources(
+            ReaderModeFontResource.PRODUCT_SANS_REGULAR,
+            ReaderModeFontResource.PRODUCT_SANS_BOLD,
+        )
+        AppFont.GOOGLE_SANS_FLEX_ROUNDED -> ReaderModeFontResources(
+            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_REGULAR,
+            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_BOLD,
+        )
+        AppFont.GOOGLE_SANS -> ReaderModeFontResources(
+            ReaderModeFontResource.GOOGLE_SANS_REGULAR,
+            ReaderModeFontResource.GOOGLE_SANS_BOLD,
+        )
+        AppFont.VERDANA -> ReaderModeFontResources(
+            ReaderModeFontResource.VERDANA_REGULAR,
+            ReaderModeFontResource.VERDANA_BOLD,
+        )
+        AppFont.ROBOTO_SLAB -> ReaderModeFontResources(
+            ReaderModeFontResource.ROBOTO_SLAB_REGULAR,
+            ReaderModeFontResource.ROBOTO_SLAB_BOLD,
+        )
+        AppFont.GOOGLE_SANS_CODE -> ReaderModeFontResources(
+            ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR,
+            ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR,
+        )
+        AppFont.JETBRAINS_MONO -> ReaderModeFontResources(
+            ReaderModeFontResource.JETBRAINS_MONO_REGULAR,
+            ReaderModeFontResource.JETBRAINS_MONO_BOLD,
+        )
+        AppFont.GEORGIA -> ReaderModeFontResources(
+            ReaderModeFontResource.GEORGIA_REGULAR,
+            ReaderModeFontResource.GEORGIA_BOLD,
+        )
+        AppFont.DEVICE_DEFAULT -> null
     }
 }
 

@@ -219,7 +219,6 @@ class StoriesPresenterTest {
         override fun contains(id: Int) = items.any { it.id == id }
         override val size: Int get() = items.size
         override val changeVersion: Long get() = items.hashCode().toLong()
-        override suspend fun initializeHistory() = initialize()
         override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean {
             val previousVersion = changeVersion
             record(id, createdAtMillis)

@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,8 +48,8 @@ class CommentsInteractionStoreTest {
     @Test
     fun commentActionOverlayHasOneOwnerAndCleansUpSuppressionAfterDismiss() {
         val store = store()
-        val first = comment(1)
-        val second = comment(2)
+        val first = portableComment(1)
+        val second = portableComment(2)
 
         assertTrue(store.showCommentActions(first, stopScroll = true))
         assertFalse(store.showCommentActions(second, stopScroll = true))
@@ -153,4 +155,8 @@ class CommentsInteractionStoreTest {
     )
 
     private fun comment(id: Int) = Comment().also { it.id = id }
+
+    private fun portableComment(id: Int) = comment(id).let { comment ->
+        PortableCommentItem(comment.toSnapshot(), comment.presentationSnapshot())
+    }
 }

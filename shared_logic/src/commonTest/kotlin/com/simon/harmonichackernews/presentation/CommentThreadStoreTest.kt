@@ -19,14 +19,14 @@ class CommentThreadStoreTest {
             collapseTopLevel = true,
         )
 
-        assertEquals(listOf(1), store.state.value.visibleComments.map { it.item.comment.id })
+        assertEquals(listOf(1), store.state.value.visibleComments.map { it.comment.id })
         assertEquals(2, store.state.value.visibleComments.single().hiddenReplyCount)
 
         assertTrue(store.toggleExpanded(1))
-        assertEquals(listOf(1, 2), store.state.value.visibleComments.map { it.item.comment.id })
+        assertEquals(listOf(1, 2), store.state.value.visibleComments.map { it.comment.id })
 
         assertTrue(store.expandParents(3))
-        assertEquals(listOf(1, 2, 3), store.state.value.visibleComments.map { it.item.comment.id })
+        assertEquals(listOf(1, 2, 3), store.state.value.visibleComments.map { it.comment.id })
     }
 
     @Test

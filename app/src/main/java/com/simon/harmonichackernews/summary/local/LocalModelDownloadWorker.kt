@@ -13,17 +13,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.simon.harmonichackernews.harmonicAppComposition
-import com.simon.harmonichackernews.network.DownloadSink
+import com.simon.harmonichackernews.network.FileResumableDownloadDestination
 import com.simon.harmonichackernews.network.KtorTransferClient
-import com.simon.harmonichackernews.network.ResumableDownloadDestination
 import com.simon.harmonichackernews.network.ResumableDownloadService
+import com.simon.harmonichackernews.summary.LocalModelFilePolicy
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
-import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 
 /** Downloads a local model to app-owned storage, with resumable progress.  */
 class LocalModelDownloadWorker(
@@ -52,16 +49,9 @@ class LocalModelDownloadWorker(
             return failure("Android couldn't restart the download in the background")
         }
 
-        val outputFile = modelFile(
-            applicationContext,
-            modelId,
-            fileName,
-        )
-        val partialFile = partialModelFile(
-            applicationContext,
-            modelId,
-            fileName,
-        )
+        val modelsRoot = Path(androidLocalModelsRoot(applicationContext).absolutePath)
+        val outputFile = LocalModelFilePolicy.completedPath(modelsRoot, modelId, fileName)
+        val partialFile = LocalModelFilePolicy.partialPath(modelsRoot, modelId, fileName)
         try {
             var lastUpdateAt = 0L
             ResumableDownloadService(
@@ -69,7 +59,7 @@ class LocalModelDownloadWorker(
             ).download(
                 url = modelUrl,
                 expectedBytes = expectedBytes,
-                destination = AndroidModelDownloadDestination(outputFile, partialFile),
+                destination = FileResumableDownloadDestination(outputFile, partialFile),
                 onProgress = { progress ->
                     val now = System.currentTimeMillis()
                     if (now - lastUpdateAt >= PROGRESS_INTERVAL_MILLIS) {
@@ -160,57 +150,4 @@ class LocalModelDownloadWorker(
             throwable.message?.takeIf(String::isNotEmpty) ?: "Unknown download error"
     }
 
-    private class AndroidModelDownloadDestination(
-        private val completed: File,
-        private val partial: File,
-    ) : ResumableDownloadDestination {
-        override suspend fun prepare(): Boolean = withContext(Dispatchers.IO) {
-            partial.parentFile?.let { it.isDirectory || it.mkdirs() } == true
-        }
-
-        override suspend fun completedBytes(): Long = withContext(Dispatchers.IO) {
-            completed.takeIf(File::isFile)?.length() ?: 0L
-        }
-
-        override suspend fun partialBytes(): Long = withContext(Dispatchers.IO) {
-            partial.takeIf(File::isFile)?.length() ?: 0L
-        }
-
-        override suspend fun removeCompleted(): Boolean = withContext(Dispatchers.IO) {
-            !completed.exists() || completed.delete()
-        }
-
-        override suspend fun removePartial(): Boolean = withContext(Dispatchers.IO) {
-            !partial.exists() || partial.delete()
-        }
-
-        override suspend fun openPartial(append: Boolean): DownloadSink =
-            withContext(Dispatchers.IO) { ModelDownloadSink(partial, append) }
-
-        override suspend fun promotePartial(): Boolean = withContext(Dispatchers.IO) {
-            (!completed.exists() || completed.delete()) && partial.renameTo(completed)
-        }
-    }
-
-    /** Closing on abort deliberately preserves the resumable partial file. */
-    private class ModelDownloadSink(file: File, append: Boolean) : DownloadSink {
-        private val output = FileOutputStream(file, append)
-        override val reference: String = file.absolutePath
-
-        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) =
-            withContext(Dispatchers.IO) {
-                output.write(buffer, offset, length)
-            }
-
-        override suspend fun close() = withContext(Dispatchers.IO) {
-            output.fd.sync()
-            output.close()
-        }
-
-        override suspend fun abort() = withContext(Dispatchers.IO) {
-            runCatching { output.fd.sync() }
-            runCatching { output.close() }
-            Unit
-        }
-    }
 }
