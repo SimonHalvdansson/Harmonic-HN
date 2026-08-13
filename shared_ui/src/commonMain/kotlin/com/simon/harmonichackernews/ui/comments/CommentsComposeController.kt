@@ -608,7 +608,7 @@ class CommentsComposeController private constructor(
             baseColorArgb: Int,
             paletteConfigKey: String,
             tintColorArgb: Int,
-        )
+        ): Int?
         fun onHeaderAction(action: CommentsHeaderAction)
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)

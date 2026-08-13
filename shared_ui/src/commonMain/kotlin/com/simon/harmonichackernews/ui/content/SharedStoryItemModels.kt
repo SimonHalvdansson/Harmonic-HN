@@ -18,6 +18,7 @@ data class StoryHeaderTintPresentation(
     val faviconUrl: String?,
     val paletteMode: String,
     val initialTintArgb: Int?,
+    val initialTintKind: StoryResourceTintKind?,
 )
 
 /** Shared tint/source resolution used by every comments-header host. */
@@ -34,7 +35,9 @@ fun storyHeaderTintPresentation(
         FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
     }.getOrNull()
     val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
-    val persistedPreviewTint = previewImageUrl?.let { sourceUrl ->
+    val previewFailed = previewResource?.imageLoadFailed ?: story.previewImageLoadFailed
+    val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
+    val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
         tintStore.read(
             story.id,
             StoryResourceTintKind.PREVIEW_IMAGE,
@@ -44,24 +47,46 @@ fun storyHeaderTintPresentation(
         )?.tintColorArgb
     }
     val resourceTint = previewResource?.previewTint
-    val initialTint = when {
+    val previewTint = when {
         resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
             resourceTint.baseColorArgb == tintBaseColor &&
             StoryPreviewTintState.isModeCurrent(resourceTint.paletteConfigKey, paletteMode) ->
             resourceTint.tintColorArgb
         persistedPreviewTint != null -> persistedPreviewTint
-        StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode) ->
+        story.previewImageUrl == previewImageUrl &&
+            StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode) ->
             story.previewImageTintColor
+        else -> null
+    }
+    val persistedFaviconTint = faviconUrl?.let { sourceUrl ->
+        tintStore.read(
+            story.id,
+            StoryResourceTintKind.FAVICON,
+            sourceUrl,
+            tintBaseColor,
+            StoryPreviewTintState.storedMode(paletteMode),
+        )?.tintColorArgb
+    }
+    val faviconTint = persistedFaviconTint ?: story.faviconTintColor.takeIf {
         story.faviconTintColorLoaded && story.faviconTintBaseColor == tintBaseColor &&
             StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteMode) &&
-            story.faviconTintSourceUrl == faviconUrl -> story.faviconTintColor
+            story.faviconTintSourceUrl == faviconUrl
+    }
+    val initialTintKind = when {
+        previewAvailable && previewTint != null -> StoryResourceTintKind.PREVIEW_IMAGE
+        !previewAvailable && faviconTint != null -> StoryResourceTintKind.FAVICON
         else -> null
     }
     return StoryHeaderTintPresentation(
         previewImageUrl = previewImageUrl,
         faviconUrl = faviconUrl,
         paletteMode = paletteMode,
-        initialTintArgb = initialTint,
+        initialTintArgb = when (initialTintKind) {
+            StoryResourceTintKind.PREVIEW_IMAGE -> previewTint
+            StoryResourceTintKind.FAVICON -> faviconTint
+            null -> null
+        },
+        initialTintKind = initialTintKind,
     )
 }
 
@@ -79,11 +104,8 @@ fun storyItemUiModel(
     }.getOrNull()
     val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     val previewUrl = previewResource?.imageUrl ?: story.previewImageUrl
-    val currentPreviewTint = StoryPreviewTintState.isPreviewCurrent(
-        story,
-        tintBaseColor,
-        paletteMode,
-    )
+    val currentPreviewTint = story.previewImageUrl == previewUrl &&
+        StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode)
     val currentFaviconTint = story.faviconTintColorLoaded &&
         story.faviconTintBaseColor == tintBaseColor &&
         StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteMode) &&

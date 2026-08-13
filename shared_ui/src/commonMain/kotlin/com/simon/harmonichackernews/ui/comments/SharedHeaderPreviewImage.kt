@@ -34,6 +34,7 @@ fun SharedHeaderPreviewImage(
     suppressed: Boolean,
     tintBaseColorArgb: Int,
     paletteTintConfigKey: String,
+    extractTint: Boolean,
     onTintExtracted: (Int) -> Unit,
     onImageResult: (success: Boolean) -> Unit,
     onClick: () -> Unit,
@@ -63,7 +64,7 @@ fun SharedHeaderPreviewImage(
             contentScale = ContentScale.Crop,
             tintBaseColorArgb = tintBaseColorArgb,
             paletteTintConfigKey = paletteTintConfigKey,
-            extractTint = visible,
+            extractTint = visible && extractTint,
             onTintExtracted = onTintExtracted,
             onSuccess = {
                 failed = false

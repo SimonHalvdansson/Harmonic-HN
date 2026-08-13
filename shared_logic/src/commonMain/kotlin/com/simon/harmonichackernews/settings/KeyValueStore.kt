@@ -15,6 +15,9 @@ interface KeyValueStore {
 
     fun contains(key: String): Boolean
 
+    /** Returns stored keys when the platform can enumerate them. */
+    fun keys(): Set<String> = emptySet()
+
     fun remove(key: String)
 
     fun getString(key: String, default: String? = null): String?

@@ -50,6 +50,7 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.CommentTextPolicy
 import com.simon.harmonichackernews.ui.content.storyHeaderTintPresentation
+import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -240,16 +241,18 @@ private fun CommentsHeader(
             suppressed = controller.headerPreviewSuppressed,
             tintBaseColorArgb = tintBaseColor,
             paletteTintConfigKey = paletteTintMode,
+            extractTint = tintPresentation.initialTintKind !=
+                StoryResourceTintKind.PREVIEW_IMAGE,
             onTintExtracted = { tintColor ->
-                onTintLoaded(tintColor)
-                previewUrl?.let { sourceUrl ->
+                val canonicalTint = previewUrl?.let { sourceUrl ->
                     controller.listener.onHeaderPreviewTintExtracted(
                         sourceUrl,
                         tintBaseColor,
                         paletteTintMode,
                         tintColor,
                     )
-                }
+                } ?: tintColor
+                onTintLoaded(canonicalTint)
             },
             onImageResult = { success ->
                 previewUrl?.let { controller.listener.onHeaderPreviewImageResult(it, success) }

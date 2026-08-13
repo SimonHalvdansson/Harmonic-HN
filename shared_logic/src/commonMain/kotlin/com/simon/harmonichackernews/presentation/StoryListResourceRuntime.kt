@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.data.canonicalize
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
@@ -132,14 +133,15 @@ class StoryListResourceRuntime(
         tintColorArgb: Int,
     ): Boolean {
         val pageUrl = story.url.orEmpty()
-        val tint = StoryResourceTintState(
+        val candidate = StoryResourceTintState(
             sourceUrl = sourceUrl,
             baseColorArgb = baseColorArgb,
             paletteConfigKey = StoryPreviewTintState.storedMode(paletteConfigKey),
             tintColorArgb = tintColorArgb,
         )
-        if (!resourceRuntime.recordTint(story.id, pageUrl, kind, tint)) return false
-        tintStore.write(story.id, kind, tint)
+        if (!resourceRuntime.recordTint(story.id, pageUrl, kind, candidate)) return false
+        val tint = tintStore.canonicalize(story.id, kind, candidate)
+        if (tint != candidate) resourceRuntime.recordTint(story.id, pageUrl, kind, tint)
 
         // Compatibility for cache codecs and screens that still read the migration-era model.
         when (kind) {
@@ -190,7 +192,8 @@ class StoryListResourceRuntime(
 
         return when (kind) {
             StoryResourceTintKind.PREVIEW_IMAGE -> story.previewImageTintColor.takeIf {
-                StoryPreviewTintState.isPreviewCurrent(story, baseColorArgb, storedPalette)
+                story.previewImageUrl == sourceUrl &&
+                    StoryPreviewTintState.isPreviewCurrent(story, baseColorArgb, storedPalette)
             }
             StoryResourceTintKind.FAVICON -> story.faviconTintColor.takeIf {
                 StoryPreviewTintState.isFaviconCurrent(
@@ -216,9 +219,11 @@ class StoryListResourceRuntime(
             baseColor,
             settings.paletteTintMode,
         )
-        if (settings.previewImageMode != StoryPreviewPreferences.OFF &&
-            previewState?.imageLoadFailed != true && previewTint != null
-        ) return previewTint
+        val previewUrl = previewState?.imageUrl ?: story.previewImageUrl
+        val previewFailed = previewState?.imageLoadFailed ?: story.previewImageLoadFailed
+        val previewAvailable = settings.previewImageMode != StoryPreviewPreferences.OFF &&
+            !previewUrl.isNullOrEmpty() && !previewFailed
+        if (previewAvailable) return previewTint ?: baseColor
         val faviconUrl = runCatching {
             FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider)
         }.getOrNull()

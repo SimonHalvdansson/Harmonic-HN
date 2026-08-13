@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.data.canonicalize
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
 import com.simon.harmonichackernews.network.StoryPreviewResourceRuntime
@@ -306,9 +307,9 @@ class CommentsFeatureRuntime(
         baseColorArgb: Int,
         paletteConfigKey: String,
         tintColorArgb: Int,
-    ) {
-        val currentStory = story ?: return
-        val tint = StoryResourceTintState(
+    ): Int? {
+        val currentStory = story ?: return null
+        val candidate = StoryResourceTintState(
             sourceUrl = sourceUrl,
             baseColorArgb = baseColorArgb,
             paletteConfigKey = StoryPreviewTintState.storedMode(paletteConfigKey),
@@ -318,17 +319,30 @@ class CommentsFeatureRuntime(
                 currentStory.id,
                 currentStory.url.orEmpty(),
                 StoryResourceTintKind.PREVIEW_IMAGE,
-                tint,
+                candidate,
             ) != true
-        ) return
-        storyResourceTints.write(currentStory.id, StoryResourceTintKind.PREVIEW_IMAGE, tint)
+        ) return null
+        val tint = storyResourceTints.canonicalize(
+            currentStory.id,
+            StoryResourceTintKind.PREVIEW_IMAGE,
+            candidate,
+        )
+        if (tint != candidate) {
+            previewResourceRuntime.recordTint(
+                currentStory.id,
+                currentStory.url.orEmpty(),
+                StoryResourceTintKind.PREVIEW_IMAGE,
+                tint,
+            )
+        }
         StoryPreviewTintState.applyPreview(
             currentStory,
             sourceUrl,
             baseColorArgb,
             paletteConfigKey,
-            tintColorArgb,
+            tint.tintColorArgb,
         )
+        return tint.tintColorArgb
     }
 
     fun resume() {

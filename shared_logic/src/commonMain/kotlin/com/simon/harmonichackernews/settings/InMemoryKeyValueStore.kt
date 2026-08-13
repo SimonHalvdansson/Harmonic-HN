@@ -20,6 +20,8 @@ class InMemoryKeyValueStore : KeyValueStore {
 
     override fun contains(key: String): Boolean = key in values
 
+    override fun keys(): Set<String> = values.keys.toSet()
+
     override fun remove(key: String) {
         values.remove(key)
         changed()

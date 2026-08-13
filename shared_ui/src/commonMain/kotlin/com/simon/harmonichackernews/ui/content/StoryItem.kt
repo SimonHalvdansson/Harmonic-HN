@@ -190,10 +190,12 @@ fun StoryItem(
         tintBaseColorArgb,
         style.paletteTintConfigKey,
     ) { mutableStateOf<Int?>(null) }
-    val tint = (model.previewImageTintArgb ?: extractedPreviewTint)
-        .takeIf { style.previewImageMode != "off" && hasPreview }
-        ?.let(::Color)
-        ?: (model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
+    val previewAvailable = style.previewImageMode != "off" && hasPreview
+    val tint = if (previewAvailable) {
+        (model.previewImageTintArgb ?: extractedPreviewTint)?.let(::Color)
+    } else {
+        (model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
+    }
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.cardStyle -> colors.surfaceContainerHigh
@@ -304,7 +306,8 @@ fun StoryItem(
                             extractedPreviewTint = tintColor
                             onPreviewTintExtracted?.invoke(tintColor)
                         },
-                        extractFaviconTint = style.tintCard && model.faviconTintArgb == null,
+                        extractFaviconTint = style.tintCard && !previewAvailable &&
+                            model.faviconTintArgb == null,
                         onFaviconTintExtracted = { tintColor ->
                             extractedFaviconTint = tintColor
                             onFaviconTintExtracted?.invoke(tintColor)

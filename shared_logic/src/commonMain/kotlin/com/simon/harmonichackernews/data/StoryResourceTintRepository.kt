@@ -37,6 +37,23 @@ interface StoryResourceTintStore {
     }
 }
 
+/**
+ * Keeps one canonical palette result for a resource/configuration tuple. The same image may be
+ * decoded at different sizes by list and detail surfaces, which can otherwise produce slightly
+ * different palettes and make the last surface to finish overwrite the first one.
+ */
+fun StoryResourceTintStore.canonicalize(
+    storyId: Int,
+    kind: StoryResourceTintKind,
+    candidate: StoryResourceTintState,
+): StoryResourceTintState = read(
+    storyId = storyId,
+    kind = kind,
+    sourceUrl = candidate.sourceUrl,
+    baseColorArgb = candidate.baseColorArgb,
+    paletteConfigKey = candidate.paletteConfigKey,
+) ?: candidate.also { write(storyId, kind, it) }
+
 /** Stores each field separately so URLs require no escaping and old cache formats stay untouched. */
 class StoryResourceTintRepository(
     private val store: KeyValueStore,
@@ -81,14 +98,22 @@ class StoryResourceTintRepository(
     override fun count(): Int = store.getStringSet(INDEX_KEY).size
 
     override fun clear() {
-        store.getStringSet(INDEX_KEY).forEach { key ->
-            val prefix = "$PREFIX.$key"
-            store.remove("$prefix.source")
-            store.remove("$prefix.base")
-            store.remove("$prefix.palette")
-            store.remove("$prefix.tint")
+        val storedKeys = store.keys().filterTo(mutableSetOf()) { key ->
+            key == INDEX_KEY || key.startsWith("$PREFIX.")
         }
-        store.remove(INDEX_KEY)
+        if (storedKeys.isNotEmpty()) {
+            storedKeys.forEach(store::remove)
+        } else {
+            // Backward-compatible fallback for minimal stores that cannot enumerate keys.
+            store.getStringSet(INDEX_KEY).forEach { key ->
+                val prefix = "$PREFIX.$key"
+                store.remove("$prefix.source")
+                store.remove("$prefix.base")
+                store.remove("$prefix.palette")
+                store.remove("$prefix.tint")
+            }
+            store.remove(INDEX_KEY)
+        }
     }
 
     private fun prefix(storyId: Int, kind: StoryResourceTintKind): String =

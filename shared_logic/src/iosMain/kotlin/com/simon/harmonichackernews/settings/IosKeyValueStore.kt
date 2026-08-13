@@ -23,6 +23,10 @@ class IosKeyValueStore(
 
     override fun contains(key: String): Boolean = defaults.objectForKey(key) != null
 
+    override fun keys(): Set<String> = defaults.dictionaryRepresentation().keys
+        .mapNotNull { it as? String }
+        .toSet()
+
     override fun remove(key: String) {
         defaults.removeObjectForKey(key)
         changed()
