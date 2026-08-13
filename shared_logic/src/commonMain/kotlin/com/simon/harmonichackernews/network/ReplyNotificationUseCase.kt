@@ -41,6 +41,19 @@ data class ReplyNotificationBatch(
     val summary: ReplyNotificationPayload? = null,
 )
 
+data class ReplyNotificationSchedule(
+    val intervalMillis: Long = 30L * 60L * 1_000L,
+    val flexMillis: Long = 5L * 60L * 1_000L,
+)
+
+/** Host hooks for the operating system's scheduler and notification surface. */
+interface ReplyNotificationPlatform {
+    fun prepareNotifications()
+    fun scheduleChecks(schedule: ReplyNotificationSchedule)
+    fun cancelChecks()
+    fun publish(batch: ReplyNotificationBatch)
+}
+
 /** Common notification copy, grouping, ordering and deep-link policy. */
 object ReplyNotificationPresentation {
     fun present(replies: List<HackerNewsReply>): ReplyNotificationBatch {
@@ -150,4 +163,48 @@ class ReplyNotificationUseCase(
         store.getString(ReplyNotificationKeys.LAST_SEEN_ITEM_ID, "0")
             ?.toIntOrNull()
             ?: 0
+}
+
+/**
+ * Portable reply-notification coordinator. Platform code only schedules wakeups and turns an
+ * already-presented batch into native notifications.
+ */
+class ReplyNotificationRuntime(
+    private val useCase: ReplyNotificationUseCase,
+    private val platform: ReplyNotificationPlatform,
+    private val schedule: ReplyNotificationSchedule = ReplyNotificationSchedule(),
+) {
+    val configuredUsername: String get() = useCase.configuredUsername
+    val isEnabled: Boolean get() = useCase.isEnabled
+
+    suspend fun enable(username: String?): ReplySubscriptionResult =
+        useCase.enable(username).also { result ->
+            if (result is ReplySubscriptionResult.Enabled) {
+                platform.prepareNotifications()
+                platform.scheduleChecks(schedule)
+            }
+        }
+
+    fun disable() {
+        useCase.disable()
+        platform.cancelChecks()
+    }
+
+    suspend fun checkNow(): ReplyCheckResult = useCase.check().also { result ->
+        if (result is ReplyCheckResult.Success) {
+            platform.publish(ReplyNotificationPresentation.present(result.replies))
+        }
+    }
+
+    suspend fun publishLatest(username: String?): LatestReplyLookupResult =
+        useCase.findLatest(username).also { result ->
+            if (result is LatestReplyLookupResult.Found) {
+                platform.prepareNotifications()
+                platform.publish(
+                    ReplyNotificationBatch(
+                        notifications = listOf(ReplyNotificationPresentation.individual(result.reply)),
+                    ),
+                )
+            }
+        }
 }

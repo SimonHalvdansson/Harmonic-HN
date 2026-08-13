@@ -6,11 +6,13 @@ import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.NetworkGraph
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.navigation.MainNavigationStore
+import com.simon.harmonichackernews.navigation.AppLinkNavigator
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
+import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
@@ -34,14 +36,17 @@ import kotlinx.coroutines.flow.Flow
 class HarmonicAppComposition(
     val network: NetworkGraph,
     val platform: AppPlatformDependencies,
+    val metadata: AppMetadata = AppMetadata(),
     settingsStore: KeyValueStore,
     appDataStore: KeyValueStore,
+    savedItemsRepository: SavedItemsRepository? = null,
     previewCacheStore: KeyValueStore,
     settingsChanges: Flow<Unit>,
     currentTheme: () -> String? = { null },
 ) {
     val sessions = ScreenSessionRegistry()
     val navigation = MainNavigationStore()
+    val links = AppLinkNavigator(navigation, platform.capabilities.externalLinks)
     val userSettings: UserSettings = StoredUserSettings(
         store = settingsStore,
         changes = settingsChanges,
@@ -50,7 +55,7 @@ class HarmonicAppComposition(
     val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(settingsStore))
     val contentFilters = ContentFilterRepository(settingsStore)
     val userTags = UserTagsRepository(settingsStore)
-    val savedItems = SavedItemsRepository(appDataStore)
+    val savedItems = savedItemsRepository ?: SavedItemsRepository(appDataStore)
     val storyResourceTints = StoryResourceTintRepository(appDataStore)
     val aiSummarySettings = AiSummarySettingsRepository(
         store = settingsStore,
@@ -76,6 +81,7 @@ class HarmonicAppComposition(
         session = network.hackerNewsSession,
         accounts = platform.accounts,
     )
+    val login = LoginWorkflow(platform.accounts, hackerNewsUser)
 
     /** Compatibility view for callers that only need an optional capability. */
     val platformCapabilities get() = platform.capabilities

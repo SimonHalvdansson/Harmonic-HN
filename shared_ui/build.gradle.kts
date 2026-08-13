@@ -49,6 +49,11 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(libs.ksoup)
+            implementation(libs.androidx.material3.adaptive)
+            implementation(libs.androidx.material3.adaptive.layout)
+            implementation(libs.androidx.material3.adaptive.navigation3)
+            implementation(libs.androidx.navigation3.runtime)
+            implementation(libs.androidx.navigation3.ui)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

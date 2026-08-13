@@ -5,8 +5,7 @@ import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.AndroidAppComposition
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.network.HackerNewsUserService
-import com.simon.harmonichackernews.platform.AndroidConnectivityService
+import com.simon.harmonichackernews.app.createEditorWorkflow
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
@@ -31,13 +30,10 @@ class ComposeEditorCoordinator(
     val user: String? = destination.userName
     private var controller: ComposeEditorController? = null
     private val appComposition = AndroidAppComposition.get(activity)
-    private val hackerNewsUserService = appComposition.hackerNewsUser
-    private val workflow = EditorSubmissionWorkflow(
+    private val workflow = appComposition.createEditorWorkflow(
         type = type,
         itemId = id,
         titleMaxLength = titleMaxLength,
-        service = hackerNewsUserService,
-        connectivity = AndroidConnectivityService(activity),
         onSubmittingChanged = { value -> controller?.setSubmitting(value) },
     )
 

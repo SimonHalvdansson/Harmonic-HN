@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,8 +25,6 @@ import com.simon.harmonichackernews.platform.AndroidTextDocuments
 import com.simon.harmonichackernews.settings.BookmarkExportDecision
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
-import com.simon.harmonichackernews.settings.GeneralBooleanPreference
-import com.simon.harmonichackernews.utils.HistoriesUtils
 import com.simon.harmonichackernews.utils.AndroidStoryCache
 import com.simon.harmonichackernews.utils.AndroidToast
 import java.util.Calendar
@@ -43,11 +40,9 @@ fun DataSettingsScreen(
     val scope = rememberCoroutineScope()
     val appComposition = LocalHarmonicUiDependencies.current
     val settingsRepository = appComposition.settings
-    val appSettings by settingsRepository.updates.collectAsState(
-        initial = settingsRepository.snapshot(),
-    )
     val settingsReset = appComposition.settingsReset
     val savedItems = appComposition.savedItems
+    val historyStore = appComposition.platform.capabilities.history.getOrNull()
     var localRefresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<DataSettingsDialog?>(null) }
     var overwriteBookmarksOnImport by rememberSaveable { mutableStateOf(true) }
@@ -95,26 +90,17 @@ fun DataSettingsScreen(
     }
 
     val bookmarkCount = savedItems.loadItems(SavedItemSource.BOOKMARKS).size
-    val portableState = DataSettingsPolicy.snapshot(
-        settings = appSettings,
+    SharedDataSettingsRoute(
+        repository = settingsRepository,
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount,
-            history = HistoriesUtils.loadHistories(context, false).size,
+            history = historyStore?.load()?.size ?: 0,
             postCache = AndroidStoryCache.itemCount(context),
             tintCache = appComposition.storyResourceTints.count(),
         ),
         loggedIn = appComposition.platform.accounts.load() != null,
-    )
-    SharedDataSettingsScreen(
-        state = portableState,
         showNavigation = showNavigation,
         onBack = onBack,
-        onBookmarksEnabledChanged = {
-            settingsRepository.setGeneralBoolean(GeneralBooleanPreference.BOOKMARKS_ENABLED, it)
-        },
-        onShowChangelogChanged = {
-            settingsRepository.setGeneralBoolean(GeneralBooleanPreference.SHOW_CHANGELOG, it)
-        },
         onAction = { action ->
             when (action) {
                 DataSettingsAction.AddBookmarksToFavorites -> {
@@ -135,8 +121,8 @@ fun DataSettingsScreen(
                 }
                 DataSettingsAction.ImportBookmarks -> dialog = DataSettingsDialog.Import
                 DataSettingsAction.ClearHistory -> {
-                    val oldCount = HistoriesUtils.loadHistories(context, false).size
-                    HistoriesUtils.clearHistories(context)
+                    val oldCount = historyStore?.load()?.size ?: 0
+                    historyStore?.clear()
                     localRefresh++
                     DataSettingsPolicy.clearedItemsMessage(oldCount, "entry", "entries")
                         ?.let { AndroidToast.show(it, context) }
@@ -162,7 +148,7 @@ fun DataSettingsScreen(
                 DataSettingsAction.ResetSettings -> dialog = DataSettingsDialog.Reset
             }
         },
-        contentVersion = appSettings.hashCode() + localRefresh,
+        contentVersion = localRefresh,
     )
 
     when (dialog) {

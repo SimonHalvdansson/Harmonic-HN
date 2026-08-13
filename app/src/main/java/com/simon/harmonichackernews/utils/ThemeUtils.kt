@@ -10,9 +10,9 @@ import androidx.preference.PreferenceManager
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
 
 object ThemeUtils {
     /**
@@ -33,13 +33,6 @@ object ThemeUtils {
      * [source 2](https://cs.android.com/android/platform/superproject/+/master:frameworks/base/core/res/remote_color_resources_res/values/colors.xml;l=67)
      */
     private val defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
-    private val dynamicThemes = setOf(
-        "material_daynight",
-        "darklight_daynight",
-        "amoledwhite_daynight",
-    )
-    private val darkThemes = setOf("amoled", "dark", "gray", "hacker", "material_dark")
-
     fun setupTheme(activity: ComponentActivity) {
         val theme = getPreferredTheme(activity)
         when (theme) {
@@ -96,11 +89,8 @@ object ThemeUtils {
     }
 
     fun isDarkMode(ctx: Context, theme: String?): Boolean {
-        return when (theme) {
-            in dynamicThemes -> uiModeNight(ctx)
-            in darkThemes -> true
-            else -> false
-        }
+        return if (ThemePreferences.isAutomatic(theme)) uiModeNight(ctx)
+        else ThemePreferences.isDark(theme)
     }
 
     fun isDarkMode(ctx: Context): Boolean = isDarkMode(ctx, getPreferredTheme(ctx))
@@ -151,24 +141,17 @@ object ThemeUtils {
         nighttimeTheme: String
     ): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        if (useSpecialNighttimeTheme && isNighttimeThemeTime(ctx)) {
-            return ThemePreferences.selectableNighttimeTheme(nighttimeTheme)
-        }
-        return prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)!!
-    }
-
-    private fun isNighttimeThemeTime(ctx: Context): Boolean {
         val currentCalendar = Calendar.getInstance()
-        val nighttimeHours = AndroidAppearanceState.nighttimeSchedule(ctx)
-
-        val startTime = TimeUnit.HOURS.toMinutes(nighttimeHours[0].toLong()) + nighttimeHours[1]
-        val endTime = TimeUnit.HOURS.toMinutes(nighttimeHours[2].toLong()) + nighttimeHours[3]
-        val currentTime = TimeUnit.HOURS.toMinutes(
-            currentCalendar.get(Calendar.HOUR_OF_DAY).toLong()
-        ) + currentCalendar.get(
-            Calendar.MINUTE
+        return ThemeSelectionPolicy.select(
+            configuredTheme = prefs.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+            nighttimeTheme = nighttimeTheme,
+            useSpecialNighttimeTheme = useSpecialNighttimeTheme,
+            schedule = AndroidAppearanceState.nighttimeScheduleValue(ctx),
+            currentMinutesFromMidnight =
+                currentCalendar.get(Calendar.HOUR_OF_DAY) * 60 +
+                    currentCalendar.get(Calendar.MINUTE),
+            systemDark = uiModeNight(ctx),
         )
-
-        return TimeWindowPolicy.containsMinutes(startTime, endTime, currentTime)
+            .theme
     }
 }

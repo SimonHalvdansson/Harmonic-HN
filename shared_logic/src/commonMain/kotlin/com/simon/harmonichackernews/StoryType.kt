@@ -127,3 +127,28 @@ object StoryTypeMenuPolicy {
             .takeIf { it != StoryType.UNKNOWN && it in availableTypes }
             ?: StoryType.TOP_STORIES
 }
+
+/** Shared settings catalogs; platforms localize labels later without recreating ordering policy. */
+object StoryTypeSettingsPolicy {
+    private val baseStartingPages = listOf(
+        StoryType.TOP_STORIES,
+        StoryType.LAST_24_HOURS,
+        StoryType.LAST_48_HOURS,
+        StoryType.LAST_WEEK,
+        StoryType.NEW_STORIES,
+        StoryType.BEST_STORIES,
+        StoryType.ASK_HN,
+        StoryType.SHOW_HN,
+        StoryType.HN_JOBS,
+    )
+
+    fun startingPageLabels(enabledFrontpages: Set<String>?): List<String> = buildList {
+        baseStartingPages.mapTo(this) { it.label }
+        StoryType.additionalFrontpages
+            .filter { it.label in enabledFrontpages.orEmpty() }
+            .mapTo(this) { it.label }
+    }
+
+    val additionalFrontpageLabels: List<String>
+        get() = StoryType.additionalFrontpages.map { it.label }
+}

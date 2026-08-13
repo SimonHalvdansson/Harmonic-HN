@@ -1,0 +1,39 @@
+package com.simon.harmonichackernews.ui.stories
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.AnnotatedString
+import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
+import com.simon.harmonichackernews.ui.content.storyItemUiModel
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+
+/** Portable stories Compose bridge; host inputs are limited to form-factor resource flags. */
+@Composable
+fun SharedStoriesRoute(
+    controller: StoriesComposeController,
+    tintStore: StoryResourceTintStore,
+    commentText: (String) -> AnnotatedString,
+    filterColors: HarmonicFilterButtonColors,
+    extraCompactSelectedText: Boolean,
+    compactSelectedText: Boolean,
+) {
+    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+    SharedStoriesScreen(
+        controller = controller,
+        storyItemModel = { story, position, settings, previewResource ->
+            storyItemUiModel(
+                story,
+                position,
+                settings,
+                previewResource,
+                tintBaseColor,
+                tintStore,
+            )
+        },
+        commentText = commentText,
+        filterColors = filterColors,
+        extraCompactSelectedText = extraCompactSelectedText,
+        compactSelectedText = compactSelectedText,
+    )
+}

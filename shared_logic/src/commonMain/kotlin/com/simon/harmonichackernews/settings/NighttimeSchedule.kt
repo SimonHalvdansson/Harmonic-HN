@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.utils.TimeWindowPolicy
+
 object NighttimeScheduleKeys {
     const val FROM_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
     const val FROM_MINUTE = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_MINUTE"
@@ -14,6 +16,67 @@ data class NighttimeSchedule(
     val toMinute: Int = 0,
 ) {
     fun toIntArray(): IntArray = intArrayOf(fromHour, fromMinute, toHour, toMinute)
+
+    val startMinutes: Int get() = fromHour * 60 + fromMinute
+    val endMinutes: Int get() = toHour * 60 + toMinute
+
+    fun containsMinutes(minutesFromMidnight: Int): Boolean = TimeWindowPolicy.containsMinutes(
+        startMinutes.toLong(),
+        endMinutes.toLong(),
+        minutesFromMidnight.coerceIn(0, 24 * 60 - 1).toLong(),
+    )
+}
+
+data class ThemeSelection(
+    val theme: String,
+    val dark: Boolean,
+)
+
+/** Shared automatic/nighttime theme selection; hosts only supply system mode and local time. */
+object ThemeSelectionPolicy {
+    fun select(
+        configuredTheme: String?,
+        nighttimeTheme: String?,
+        useSpecialNighttimeTheme: Boolean,
+        schedule: NighttimeSchedule,
+        currentMinutesFromMidnight: Int,
+        systemDark: Boolean,
+    ): ThemeSelection {
+        val base = configuredTheme ?: ThemePreferences.DEFAULT
+        val selected = if (
+            useSpecialNighttimeTheme && schedule.containsMinutes(currentMinutesFromMidnight)
+        ) {
+            ThemePreferences.selectableNighttimeTheme(nighttimeTheme)
+        } else {
+            base
+        }
+        return ThemeSelection(
+            theme = selected,
+            dark = if (ThemePreferences.isAutomatic(selected)) systemDark
+            else ThemePreferences.isDark(selected),
+        )
+    }
+
+    fun formatSchedule(
+        schedule: NighttimeSchedule,
+        use24HourClock: Boolean,
+        amLabel: String = "AM",
+        pmLabel: String = "PM",
+    ): String = listOf(
+        schedule.fromHour to schedule.fromMinute,
+        schedule.toHour to schedule.toMinute,
+    ).joinToString(" - ") { (hour, minute) ->
+        if (use24HourClock) {
+            hour.toString().padStart(2, '0') + ":" + minute.toString().padStart(2, '0')
+        } else {
+            val suffix = if (hour < 12) amLabel else pmLabel
+            val displayHour = when (val normalized = hour % 12) {
+                0 -> 12
+                else -> normalized
+            }
+            "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
+        }
+    }
 }
 
 /** Portable persistence and malformed-value fallback for the automatic nighttime theme. */

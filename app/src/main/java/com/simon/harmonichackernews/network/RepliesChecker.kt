@@ -27,30 +27,17 @@ object RepliesChecker {
     private const val GROUP_NOTIFICATION_ID = ReplyNotificationPresentation.SUMMARY_NOTIFICATION_ID
 
     private const val JOB_ID = 98372
-    private val CHECK_INTERVAL_MILLIS = 30L * 60L * 1000L
-    private val CHECK_FLEX_MILLIS = 5L * 60L * 1000L
-
     suspend fun enable(
         ctx: Context,
         username: String?,
     ): Boolean {
         val appContext = ctx.applicationContext
-        val normalizedUsername = ReplyText.normalizeUsername(username)
-        if (normalizedUsername.isEmpty()) {
-            return false
-        }
-        return enableInternal(appContext, normalizedUsername)
+        return enableInternal(appContext, username)
     }
 
     fun disable(ctx: Context) {
         val appContext = ctx.applicationContext
-        useCase(appContext).disable()
-
-        val scheduler: JobScheduler? =
-            appContext.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
-        if (scheduler != null) {
-            scheduler.cancel(RepliesChecker.JOB_ID)
-        }
+        runtime(appContext).disable()
     }
 
     suspend fun checkNow(ctx: Context): Boolean = checkNowInternal(ctx.applicationContext)
@@ -60,19 +47,15 @@ object RepliesChecker {
         username: String?,
     ): DebugNotificationResult {
         val appContext = ctx.applicationContext
-        val normalizedUsername = ReplyText.normalizeUsername(username)
-        if (normalizedUsername.isEmpty()) {
-            return DebugNotificationResult.USER_NOT_FOUND
-        }
-        return sendLatestDebugNotificationInternal(appContext, normalizedUsername)
+        return sendLatestDebugNotificationInternal(appContext, username)
     }
 
     fun notificationsAreActive(ctx: Context): Boolean {
-        return useCase(ctx).isEnabled
+        return runtime(ctx).isEnabled
     }
 
     fun getConfiguredUsername(ctx: Context): String {
-        return useCase(ctx).configuredUsername
+        return runtime(ctx).configuredUsername
     }
 
     fun createNotificationChannel(ctx: Context) {
@@ -90,14 +73,10 @@ object RepliesChecker {
 
     private suspend fun enableInternal(
         ctx: Context,
-        username: String
+        username: String?
     ): Boolean {
-        return when (val result = useCase(ctx).enable(username)) {
-            is ReplySubscriptionResult.Enabled -> {
-                RepliesChecker.createNotificationChannel(ctx)
-                RepliesChecker.scheduleJob(ctx)
-                true
-            }
+        return when (val result = runtime(ctx).enable(username)) {
+            is ReplySubscriptionResult.Enabled -> true
             ReplySubscriptionResult.UserNotFound -> false
             is ReplySubscriptionResult.Failed -> {
                 result.cause.printStackTrace()
@@ -107,12 +86,9 @@ object RepliesChecker {
     }
 
     private suspend fun checkNowInternal(ctx: Context): Boolean {
-        return when (val result = useCase(ctx).check()) {
+        return when (val result = runtime(ctx).checkNow()) {
             ReplyCheckResult.Disabled -> true
-            is ReplyCheckResult.Success -> {
-                RepliesChecker.showNotifications(ctx, result.replies)
-                true
-            }
+            is ReplyCheckResult.Success -> true
             ReplyCheckResult.UserNotFound -> false
             is ReplyCheckResult.Failed -> {
                 result.cause.printStackTrace()
@@ -123,14 +99,10 @@ object RepliesChecker {
 
     private suspend fun sendLatestDebugNotificationInternal(
         ctx: Context,
-        username: String
+        username: String?
     ): DebugNotificationResult {
-        return when (val result = useCase(ctx).findLatest(username)) {
-            is LatestReplyLookupResult.Found -> {
-                RepliesChecker.createNotificationChannel(ctx)
-                showNotification(ctx, result.reply)
-                DebugNotificationResult.SENT
-            }
+        return when (val result = runtime(ctx).publishLatest(username)) {
+            is LatestReplyLookupResult.Found -> DebugNotificationResult.SENT
             LatestReplyLookupResult.NoRecentReply -> DebugNotificationResult.NO_RECENT_REPLY
             LatestReplyLookupResult.UserNotFound -> DebugNotificationResult.USER_NOT_FOUND
             is LatestReplyLookupResult.Failed -> {
@@ -142,9 +114,8 @@ object RepliesChecker {
 
     private fun showNotifications(
         ctx: Context,
-        replies: List<HackerNewsReply>,
+        batch: ReplyNotificationBatch,
     ) {
-        val batch = ReplyNotificationPresentation.present(replies)
         if (batch.notifications.isEmpty()) return
         if (batch.summary == null) {
             RepliesChecker.showNotification(ctx, batch.notifications.single(), false)
@@ -200,12 +171,6 @@ object RepliesChecker {
             e.printStackTrace()
         }
     }
-
-    private fun showNotification(
-        ctx: Context,
-        reply: HackerNewsReply,
-        grouped: Boolean = false
-    ) = showNotification(ctx, ReplyNotificationPresentation.individual(reply), grouped)
 
     private fun showNotification(
         ctx: Context,
@@ -290,7 +255,7 @@ object RepliesChecker {
         )
     }
 
-    private fun scheduleJob(ctx: Context) {
+    private fun scheduleJob(ctx: Context, schedule: ReplyNotificationSchedule) {
         val scheduler: JobScheduler? =
             ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler?
         if (scheduler == null) {
@@ -304,7 +269,7 @@ object RepliesChecker {
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
             .setPersisted(true)
 
-        builder.setPeriodic(RepliesChecker.CHECK_INTERVAL_MILLIS, RepliesChecker.CHECK_FLEX_MILLIS)
+        builder.setPeriodic(schedule.intervalMillis, schedule.flexMillis)
 
         scheduler.schedule(builder.build())
     }
@@ -313,6 +278,28 @@ object RepliesChecker {
         AndroidAppComposition.get(ctx).network.replyScanner,
         AndroidKeyValueStore.global(ctx.applicationContext),
     )
+
+    private fun runtime(ctx: Context): ReplyNotificationRuntime {
+        val appContext = ctx.applicationContext
+        return ReplyNotificationRuntime(
+            useCase(appContext),
+            object : ReplyNotificationPlatform {
+                override fun prepareNotifications() = createNotificationChannel(appContext)
+
+                override fun scheduleChecks(schedule: ReplyNotificationSchedule) =
+                    scheduleJob(appContext, schedule)
+
+                override fun cancelChecks() {
+                    val scheduler = appContext.getSystemService(Context.JOB_SCHEDULER_SERVICE)
+                        as JobScheduler?
+                    scheduler?.cancel(JOB_ID)
+                }
+
+                override fun publish(batch: ReplyNotificationBatch) =
+                    showNotifications(appContext, batch)
+            },
+        )
+    }
 
     enum class DebugNotificationResult {
         SENT,

@@ -56,6 +56,9 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
 import com.simon.harmonichackernews.presentation.WebContentLoadStateMachine
+import com.simon.harmonichackernews.presentation.WebContentFailure
+import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.presentation.ReaderModePageDecision
 import com.simon.harmonichackernews.presentation.ReaderModeScriptStatus
 import com.simon.harmonichackernews.presentation.ReaderModeStateMachine
@@ -65,7 +68,6 @@ import com.simon.harmonichackernews.utils.FileDownloader.FileDownloaderCallback
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
-import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidAdBlocklist
@@ -93,12 +95,6 @@ internal class CommentsWebViewController(
     private val linkPreviewController: LinkPreviewController,
     private val callbacks: Callbacks
 ) {
-    private enum class ErrorPageType {
-        DNS,
-        OFFLINE,
-        SSL,
-        GENERIC
-    }
 
     internal interface Callbacks {
         fun startActivity(intent: Intent)
@@ -1014,22 +1010,20 @@ internal class CommentsWebViewController(
     }
 
     private fun shouldPreloadStoryUrl(context: Context): Boolean {
-        val enabledForConnection = WebViewPreferences.PRELOAD_ALWAYS == preloadWebview
-                || (WebViewPreferences.PRELOAD_WIFI_ONLY == preloadWebview && AndroidNetworkStatus.isUnmetered(
-            context
-        ))
-        return enabledForConnection
-                && AndroidSettingsResources.hasEnoughBatteryForWebViewPreload(
-            context,
-            preloadWebviewMinimumBattery
+        return WebContentPolicy.shouldPreload(
+            preloadWebview,
+            preloadWebviewMinimumBattery,
+            WebPreloadEnvironment(
+                unmeteredConnection = AndroidNetworkStatus.isUnmetered(context),
+                batteryPercent = AndroidSettingsResources.batteryPercent(context),
+            ),
         )
     }
 
     private fun archiveRedirectUrl(context: Context, url: String?): String? =
-        ArchiveRedirectPolicy.redirectUrl(
-            url,
-            readingPreferences.archiveRedirectDomains,
-        )
+        WebContentPolicy.resolveUrl(url, readingPreferences.archiveRedirectDomains)
+            ?.takeIf { it.archiveRedirected }
+            ?.loadUrl
 
     private fun isCurrentWebViewCallback(view: WebView?): Boolean {
         return view != null && view === webView && coordinator.context != null && coordinator.view != null && webViewBackdrop != null
@@ -1071,7 +1065,7 @@ internal class CommentsWebViewController(
         showCustomErrorPage(
             view,
             if (!TextUtils.isEmpty(url)) url else view.getUrl(),
-            ErrorPageType.GENERIC
+            WebContentFailure.GENERIC
         )
     }
 
@@ -1158,7 +1152,7 @@ internal class CommentsWebViewController(
     private fun showCustomErrorPage(
         view: WebView?,
         failingUrl: String?,
-        errorPageType: ErrorPageType
+        errorPageType: WebContentFailure
     ) {
         val currentWebView = view
         if (!isCurrentWebViewCallback(currentWebView) ||
@@ -1169,7 +1163,7 @@ internal class CommentsWebViewController(
             return
         }
         linkPreviewController.onWebViewOfflineFallback(coordinator.context)
-        if ((errorPageType == ErrorPageType.DNS || errorPageType == ErrorPageType.OFFLINE)
+        if (WebContentPolicy.shouldTryCachedArticle(errorPageType)
             && loadCachedArticleSnapshot(currentWebView, failingUrl)
         ) {
             return
@@ -1280,15 +1274,8 @@ internal class CommentsWebViewController(
         return url != null && url.startsWith(OFFLINE_PAGE_URL)
     }
 
-    private fun getErrorPageUrl(type: ErrorPageType): String {
-        when (type) {
-            ErrorPageType.DNS -> return OFFLINE_PAGE_URL + "#dns"
-            ErrorPageType.SSL -> return OFFLINE_PAGE_URL + "#ssl"
-            ErrorPageType.GENERIC -> return OFFLINE_PAGE_URL + "#generic"
-            ErrorPageType.OFFLINE -> return OFFLINE_PAGE_URL + "#offline"
-            else -> return OFFLINE_PAGE_URL + "#offline"
-        }
-    }
+    private fun getErrorPageUrl(type: WebContentFailure): String =
+        OFFLINE_PAGE_URL + "#" + WebContentPolicy.errorPageFragment(type)
 
     private fun loadUrl(url: String?, pdfFilePath: String? = null) {
         var targetUrl = url
@@ -1536,12 +1523,12 @@ internal class CommentsWebViewController(
         webViewHandler.post(onDone)
     }
 
-    private fun getCustomErrorPageType(errorCode: Int): ErrorPageType? {
+    private fun getCustomErrorPageType(errorCode: Int): WebContentFailure? {
         when (errorCode) {
-            WebViewClient.ERROR_HOST_LOOKUP -> return ErrorPageType.DNS
-            WebViewClient.ERROR_CONNECT, WebViewClient.ERROR_TIMEOUT -> return ErrorPageType.OFFLINE
-            WebViewClient.ERROR_FAILED_SSL_HANDSHAKE -> return ErrorPageType.SSL
-            WebViewClient.ERROR_AUTHENTICATION, WebViewClient.ERROR_BAD_URL, WebViewClient.ERROR_FILE, WebViewClient.ERROR_FILE_NOT_FOUND, WebViewClient.ERROR_IO, WebViewClient.ERROR_PROXY_AUTHENTICATION, WebViewClient.ERROR_REDIRECT_LOOP, WebViewClient.ERROR_UNKNOWN, WebViewClient.ERROR_TOO_MANY_REQUESTS, WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME, WebViewClient.ERROR_UNSUPPORTED_SCHEME -> return ErrorPageType.GENERIC
+            WebViewClient.ERROR_HOST_LOOKUP -> return WebContentFailure.DNS
+            WebViewClient.ERROR_CONNECT, WebViewClient.ERROR_TIMEOUT -> return WebContentFailure.OFFLINE
+            WebViewClient.ERROR_FAILED_SSL_HANDSHAKE -> return WebContentFailure.SSL
+            WebViewClient.ERROR_AUTHENTICATION, WebViewClient.ERROR_BAD_URL, WebViewClient.ERROR_FILE, WebViewClient.ERROR_FILE_NOT_FOUND, WebViewClient.ERROR_IO, WebViewClient.ERROR_PROXY_AUTHENTICATION, WebViewClient.ERROR_REDIRECT_LOOP, WebViewClient.ERROR_UNKNOWN, WebViewClient.ERROR_TOO_MANY_REQUESTS, WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME, WebViewClient.ERROR_UNSUPPORTED_SCHEME -> return WebContentFailure.GENERIC
             else -> return null
         }
     }
@@ -1874,7 +1861,7 @@ internal class CommentsWebViewController(
                 val failingUrl = if (request.getUrl() != null) request.getUrl().toString() else null
                 val statusCode = if (errorResponse != null) errorResponse.getStatusCode() else -1
                 Log.w("MY_APP_TAG", "WebView HTTP error " + statusCode + " for " + failingUrl)
-                showCustomErrorPage(view, failingUrl, ErrorPageType.GENERIC)
+                showCustomErrorPage(view, failingUrl, WebContentFailure.GENERIC)
             } else {
                 super.onReceivedHttpError(view, request, errorResponse)
             }
@@ -1890,7 +1877,7 @@ internal class CommentsWebViewController(
             ) {
                 return
             }
-            showCustomErrorPage(view, failingUrl, ErrorPageType.SSL)
+            showCustomErrorPage(view, failingUrl, WebContentFailure.SSL)
         }
     }
 

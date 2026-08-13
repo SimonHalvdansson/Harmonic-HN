@@ -9,47 +9,36 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource as androidPainterResource
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
-import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.FaviconProviderCatalog
 import com.simon.harmonichackernews.utils.CommentDepthIndicatorUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 
-private data class AndroidFaviconProviderOption(
-    val value: String,
-    val label: String,
-)
-
-private val FaviconProviderOptions = listOf(
-    AndroidFaviconProviderOption(FaviconPreferences.GOOGLE, "Google"),
-    AndroidFaviconProviderOption(FaviconPreferences.DUCK_DUCK_GO, "DuckDuckGo"),
-    AndroidFaviconProviderOption(FaviconPreferences.TWENTY, "Twenty icons"),
-)
-
 @Composable
 fun FaviconProviderDialog(
+    selected: String? = null,
     onProviderSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { StoriesSettingsPresenter(app.settings) }
-    val selected = presenter.snapshot.story.faviconProvider
+    val selectedValue = selected ?: presenter.snapshot.story.faviconProvider
 
     SharedFaviconProviderDialog(
-        selected = selected,
-        options = FaviconProviderOptions.map { provider ->
+        selected = selectedValue,
+        options = FaviconProviderCatalog.options.map { provider ->
             FaviconProviderUiOption(
                 value = provider.value,
                 label = provider.label,
-                urlTemplate = FaviconUrlBuilder.faviconUrlTemplate(provider.value),
+                urlTemplate = provider.urlTemplate,
                 icon = androidPainterResource(
                     AndroidSettingsResources.faviconProviderIcon(provider.value),
                 ),
             )
         },
         onProviderSelected = { provider ->
-            presenter.setFaviconProvider(provider)
+            if (selected == null) presenter.setFaviconProvider(provider)
             onProviderSelected(provider)
         },
         onDismiss = onDismiss,

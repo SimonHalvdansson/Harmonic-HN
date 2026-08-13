@@ -1,0 +1,143 @@
+package com.simon.harmonichackernews.ui.navigation
+
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.PathEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.SceneInfo
+import androidx.navigation3.scene.rememberSceneState
+import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.rememberNavigationEventState
+import com.simon.harmonichackernews.navigation.MainStoryRequest
+
+private data object SharedStoriesDestination : NavKey
+
+private data class SharedCommentsDestination(val request: MainStoryRequest) : NavKey
+
+/** Shared Navigation3 list/detail scene used by every Compose host. */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+fun SharedMainNavigationScene(
+    storyRequest: MainStoryRequest?,
+    directive: PaneScaffoldDirective,
+    paneProportion: Float,
+    onBack: () -> Unit,
+    stories: @Composable () -> Unit,
+    emptyDetail: @Composable () -> Unit,
+    comments: @Composable (MainStoryRequest) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isTwoPane = directive.maxHorizontalPartitions > 1
+    val expansion = rememberPaneExpansionState(
+        anchors = remember(paneProportion) {
+            listOf(PaneExpansionAnchor.Proportion(paneProportion))
+        },
+        initialAnchoredIndex = 0,
+    )
+    val strategy = rememberListDetailSceneStrategy<NavKey>(
+        directive = directive,
+        paneExpansionState = expansion.takeIf { isTwoPane },
+    )
+    val backStack = remember {
+        mutableStateListOf<NavKey>(SharedStoriesDestination).apply {
+            storyRequest?.let { add(SharedCommentsDestination(it)) }
+        }
+    }
+    LaunchedEffect(storyRequest?.serial) {
+        if (storyRequest == null) {
+            if (backStack.lastOrNull() is SharedCommentsDestination) backStack.removeLastOrNull()
+        } else if (backStack.lastOrNull() is SharedCommentsDestination) {
+            backStack[backStack.lastIndex] = SharedCommentsDestination(storyRequest)
+        } else {
+            backStack.add(SharedCommentsDestination(storyRequest))
+        }
+    }
+    val provider = entryProvider<NavKey> {
+        entry<SharedStoriesDestination>(
+            metadata = ListDetailSceneStrategy.listPane(
+                detailPlaceholder = { emptyDetail() },
+            ),
+        ) { stories() }
+        entry<SharedCommentsDestination>(
+            metadata = ListDetailSceneStrategy.detailPane(),
+        ) { comments(it.request) }
+    }
+    val entries = rememberDecoratedNavEntries(
+        backStack = backStack,
+        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+        entryProvider = provider,
+    )
+    val sceneState = rememberSceneState(
+        entries = entries,
+        sceneStrategies = listOf(strategy),
+        onBack = onBack,
+    )
+    val eventState = rememberNavigationEventState(SceneInfo(sceneState.currentScene))
+    NavDisplay(
+        sceneState = sceneState,
+        navigationEventState = eventState,
+        modifier = modifier.fillMaxSize(),
+        transitionSpec = { mainOpenTransition() },
+        popTransitionSpec = { mainPopTransition() },
+        predictivePopTransitionSpec = { mainPopTransition() },
+    )
+}
+
+private fun mainOpenTransition(): ContentTransform = ContentTransform(
+    targetContentEnter = commentsOpenEnter(),
+    initialContentExit = slideOutHorizontally(
+        tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
+    ) { -it / 5 },
+    targetContentZIndex = 1f,
+)
+
+private fun commentsOpenEnter(): EnterTransition = slideInHorizontally(
+    tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
+) { it } + fadeIn(tween(NavigationFadeDurationMillis, 45, LinearEasing))
+
+private fun mainPopTransition(): ContentTransform = ContentTransform(
+    targetContentEnter = slideInHorizontally(
+        tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
+    ) { -it / 5 },
+    initialContentExit = commentsPopExit(),
+    targetContentZIndex = -1f,
+)
+
+private fun commentsPopExit(): ExitTransition = slideOutHorizontally(
+    tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
+) { it } + fadeOut(tween(NavigationFadeDurationMillis, 35, LinearEasing))
+
+private fun navigationEasing(): Easing = PathEasing(
+    Path().apply {
+        moveTo(0f, 0f)
+        cubicTo(0.05f, 0f, 0.133333f, 0.06f, 0.166666f, 0.4f)
+        cubicTo(0.208333f, 0.82f, 0.25f, 1f, 1f, 1f)
+    },
+)
+
+private const val NavigationTransitionDurationMillis = 450
+private const val NavigationFadeDurationMillis = 83

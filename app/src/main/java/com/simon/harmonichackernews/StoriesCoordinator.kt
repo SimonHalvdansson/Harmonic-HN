@@ -9,18 +9,12 @@ import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
-import com.simon.harmonichackernews.network.HackerNewsApi
-import com.simon.harmonichackernews.network.HackerNewsRepository
-import com.simon.harmonichackernews.network.AlgoliaRepository
+import com.simon.harmonichackernews.app.StoriesFeatureHost
+import com.simon.harmonichackernews.app.createStoriesFeatureSession
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.StoryFeedRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
-import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
-import com.simon.harmonichackernews.presentation.StoriesPresenter
-import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
-import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
@@ -54,32 +48,13 @@ class StoriesCoordinator(
     private val userSettings: UserSettings = appComposition.userSettings,
     platformDependencies: StoriesPlatformDependencies =
         appComposition.storiesPlatformDependencies(),
-    private val hackerNewsApi: HackerNewsApi = appComposition.network.hackerNewsApi,
-    private val hackerNewsRepository: HackerNewsRepository =
-        appComposition.network.hackerNewsRepository,
-    private val algoliaRepository: AlgoliaRepository = appComposition.network.algoliaRepository,
-    storyFeedRepository: StoryFeedRepository = StoryFeedRepository(
-        hackerNewsRepository,
-        appComposition.network.hackerNewsWebRepository,
-    ),
     private val clock: Clock = Clock.System,
 ) {
     private val connectivity = platformDependencies.connectivity
     private val externalLinks = platformDependencies.externalLinks
     private val historyStore = platformDependencies.history
-    private val contentFilters = appComposition.contentFilters
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val hackerNewsUserService = appComposition.hackerNewsUser
     private val savedItems = appComposition.savedItems
-    private val commentMasterResolver = CommentMasterResolver(hackerNewsRepository)
-    private val savedItemActions = SavedItemActionUseCase(
-        repository = savedItems,
-        nowMillis = { clock.now().toEpochMilliseconds() },
-        voteRequest = { id, direction ->
-            hackerNewsUserService.vote(id.toString(), direction)
-        },
-        favoriteRequest = hackerNewsUserService::setFavorite,
-    )
     private val storiesViewModel = ViewModelProvider(activity)[StoriesViewModel::class.java]
     private val sessionState = storiesViewModel.state
     private var started = false
@@ -87,38 +62,20 @@ class StoriesCoordinator(
     var composeController: StoriesComposeController? = null
         private set
     private var storyUpdateListener: StoryUpdateListener? = null
-    private val storiesPresenter = StoriesPresenter(
+    private val featureSession = appComposition.createStoriesFeatureSession(
+        StoriesFeatureHost(
         scope = coroutineScope,
         sessionState = sessionState,
-        algoliaRepository = algoliaRepository,
-        hackerNewsRepository = hackerNewsRepository,
-        hackerNewsApi = hackerNewsApi,
-        userItemsLoader = hackerNewsUserService,
-        savedItemsRepository = savedItems,
-        storyFeedLoader = storyFeedRepository,
-        clickedStoryIds = { historyStore.load().map { it.id } },
-        isStoryClicked = historyStore::contains,
-        shouldHideClickedStories = { userSettings.story.hideClicked },
-    )
-    private val storiesFeature = StoriesFeatureRuntime(
-        scope = coroutineScope,
-        sessionState = sessionState,
-        presenter = storiesPresenter,
-        savedItems = savedItems,
-        savedItemActions = savedItemActions,
-        historyStore = historyStore,
-        accounts = platformDependencies.accounts,
-        connectivity = connectivity,
+        platform = platformDependencies,
         userSettings = userSettings,
-        loadContentFilters = contentFilters::load,
-        commentMasterResolver = commentMasterResolver,
         nowMillis = { clock.now().toEpochMilliseconds() },
         hydrateCachedStory = { story -> AndroidStoryCache.hydrate(context, story) },
         loadCachedStories = { AndroidStoryCache.recentStories(activity) },
         hasCachedStories = { AndroidStoryCache.hasRecentStories(activity) },
-        previewResourceService = appComposition.previewResources,
-        storyResourceTints = appComposition.storyResourceTints,
+        ),
     )
+    private val storiesPresenter = featureSession.presenter
+    private val storiesFeature = featureSession.runtime
     private var restoredStateForCurrentView = false
     private var storyCacheController: StoryCacheController? = null
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
@@ -225,7 +182,7 @@ class StoriesCoordinator(
         }
         composeController = create(
             (96f * resources.displayMetrics.density).roundToInt(),
-            savedItemActions,
+            storiesFeature.savedItemActions,
             StoriesFeatureListener(storiesFeature, platformCallbacks),
         )
         navigation.attachStoriesComposeController(composeController!!)

@@ -15,18 +15,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.data.Bookmark
-import com.simon.harmonichackernews.data.History
-import com.simon.harmonichackernews.data.SavedItemCodec
-import com.simon.harmonichackernews.data.SavedItemSource
-import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.local.LocalAiRuntimeManager
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
-import com.simon.harmonichackernews.utils.HistoriesUtils
 import com.simon.harmonichackernews.utils.ShareUtils
 import java.io.File
 import java.security.MessageDigest
@@ -100,133 +94,13 @@ class AndroidCredentialStore(context: Context) :
     }
 }
 
-class AndroidBookmarkStore(context: Context) : ObservableBookmarkStore {
-    private val appContext = context.applicationContext
-    private val savedItems = SavedItemsRepository(AndroidKeyValueStore.global(appContext))
-    override val bookmarkState: StateFlow<List<Bookmark>> = processBookmarkState.asStateFlow()
+class AndroidBookmarkStore(context: Context) : ObservableBookmarkStore by StoredBookmarkStore(
+    AndroidKeyValueStore.global(context.applicationContext),
+)
 
-    init {
-        publishBookmarks()
-    }
-
-    override fun load(): List<Bookmark> = loadPersisted()
-
-    private fun loadPersisted(): List<Bookmark> = SavedItemCodec.toBookmarks(
-        savedItems.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
-    )
-
-    override fun add(id: Int) {
-        savedItems.setMembership(
-            SavedItemSource.BOOKMARKS,
-            id,
-            present = true,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-        publishBookmarks()
-    }
-
-    override fun remove(id: Int) {
-        savedItems.setMembership(
-            SavedItemSource.BOOKMARKS,
-            id,
-            present = false,
-            createdAtMillis = System.currentTimeMillis(),
-        )
-        publishBookmarks()
-    }
-
-    override fun clear() {
-        savedItems.saveItems(SavedItemSource.BOOKMARKS, emptyList())
-        publishBookmarks()
-    }
-
-    override suspend fun setBookmarked(
-        id: Int,
-        bookmarked: Boolean,
-        createdAtMillis: Long,
-    ): Boolean = bookmarkMutationMutex.withLock {
-        savedItems.setMembershipAtomic(
-            SavedItemSource.BOOKMARKS,
-            id,
-            bookmarked,
-            createdAtMillis,
-        ).also { if (it) publishBookmarks() }
-    }
-
-    private fun publishBookmarks() {
-        processBookmarkState.value = loadPersisted()
-    }
-
-    private companion object {
-        val processBookmarkState = MutableStateFlow<List<Bookmark>>(emptyList())
-        val bookmarkMutationMutex = Mutex()
-    }
-}
-
-class AndroidHistoryStore(context: Context) : ObservableHistoryStore {
-    private val appContext = context.applicationContext
-    override val historyState: StateFlow<HistoryStoreSnapshot> = processHistoryState.asStateFlow()
-
-    init {
-        publishHistory()
-    }
-
-    override fun initialize() {
-        HistoriesUtils.init(appContext)
-        publishHistory()
-    }
-
-    override fun load(): List<History> = HistoriesUtils.loadHistories(appContext, true)
-
-    override fun record(id: Int, createdAtMillis: Long) {
-        HistoriesUtils.addHistory(appContext, id, createdAtMillis)
-        publishHistory()
-    }
-
-    override fun remove(id: Int) {
-        HistoriesUtils.removeHistoryById(appContext, id)
-        publishHistory()
-    }
-
-    override fun clear() {
-        HistoriesUtils.clearHistories(appContext)
-        publishHistory()
-    }
-
-    override fun contains(id: Int): Boolean = HistoriesUtils.isHistoryExist(id)
-
-    override val size: Int
-        get() = HistoriesUtils.size()
-
-    override val changeVersion: Long
-        get() = HistoriesUtils.getChangeVersion()
-
-    override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
-        historyMutationMutex.withLock {
-            val previousVersion = changeVersion
-            withContext(Dispatchers.IO) { record(id, createdAtMillis) }
-            changeVersion != previousVersion
-        }
-
-    override suspend fun removeHistory(id: Int): Boolean = historyMutationMutex.withLock {
-        val previousVersion = changeVersion
-        withContext(Dispatchers.IO) { remove(id) }
-        changeVersion != previousVersion
-    }
-
-    override suspend fun clearHistory() = historyMutationMutex.withLock {
-        withContext(Dispatchers.IO) { clear() }
-    }
-
-    private fun publishHistory() {
-        processHistoryState.value = HistoryStoreSnapshot(load(), changeVersion)
-    }
-
-    private companion object {
-        val processHistoryState = MutableStateFlow(HistoryStoreSnapshot())
-        val historyMutationMutex = Mutex()
-    }
-}
+class AndroidHistoryStore(context: Context) : ObservableHistoryStore by StoredHistoryStore(
+    AndroidKeyValueStore.global(context.applicationContext),
+)
 
 class AndroidClipboardService(context: Context) : ClipboardService {
     private val clipboard = context.applicationContext
@@ -400,13 +274,16 @@ class AndroidLocalSummaryEngine(context: Context) : LocalSummaryEngine {
 }
 
 object AndroidPlatformDependencies {
-    fun create(context: Context): AppPlatformDependencies {
+    fun create(
+        context: Context,
+        bookmarkStore: ObservableBookmarkStore = AndroidBookmarkStore(context),
+    ): AppPlatformDependencies {
         val accounts = AndroidCredentialStore(context)
         return AppPlatformDependencies(
             credentials = accounts,
             accounts = accounts,
             capabilities = OptionalPlatformCapabilities(
-                bookmarks = PlatformCapability.Available(AndroidBookmarkStore(context)),
+                bookmarks = PlatformCapability.Available(bookmarkStore),
                 history = PlatformCapability.Available(AndroidHistoryStore(context)),
                 cache = PlatformCapability.Available(AndroidCacheStore(context)),
                 files = PlatformCapability.Available(AndroidFileStore(context)),

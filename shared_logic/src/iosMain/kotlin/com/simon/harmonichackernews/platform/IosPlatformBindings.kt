@@ -73,15 +73,16 @@ class IosPlatformBindings(
 fun createIosPlatformDependencies(
     appDataStore: KeyValueStore,
     bindings: IosPlatformBindings,
+    bookmarkStore: ObservableBookmarkStore = IosBookmarkStore(appDataStore),
 ): AppPlatformDependencies = AppPlatformDependencies(
     credentials = bindings.credentials,
     accounts = bindings.accounts,
     capabilities = bindings.capabilities.copy(
         bookmarks = PlatformCapability.Available(
-            LegacyObservableBookmarkStoreAdapter(IosBookmarkStore(appDataStore)),
+            bookmarkStore,
         ),
         history = PlatformCapability.Available(
-            LegacyObservableHistoryStoreAdapter(IosHistoryStore(appDataStore)),
+            IosHistoryStore(appDataStore),
         ),
     ),
 )

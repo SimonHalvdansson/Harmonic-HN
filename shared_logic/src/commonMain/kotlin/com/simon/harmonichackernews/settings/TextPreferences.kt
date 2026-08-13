@@ -2,16 +2,16 @@ package com.simon.harmonichackernews.settings
 
 import kotlin.math.roundToInt
 
-enum class AppFont(val storedValue: String) {
-    GOOGLE_SANS_FLEX_ROUNDED("googlesansflexrounded"),
-    GOOGLE_SANS("googlesans"),
-    PRODUCT_SANS("productsans"),
-    DEVICE_DEFAULT("devicedefault"),
-    VERDANA("verdana"),
-    JETBRAINS_MONO("jetbrainsmono"),
-    GOOGLE_SANS_CODE("googlesanscode"),
-    GEORGIA("georgia"),
-    ROBOTO_SLAB("robotoslab");
+enum class AppFont(val storedValue: String, val label: String) {
+    GOOGLE_SANS_FLEX_ROUNDED("googlesansflexrounded", "Google Sans Flex Rounded"),
+    GOOGLE_SANS("googlesans", "Google Sans"),
+    PRODUCT_SANS("productsans", "Product Sans"),
+    DEVICE_DEFAULT("devicedefault", "Device default"),
+    VERDANA("verdana", "Verdana"),
+    JETBRAINS_MONO("jetbrainsmono", "JetBrains Mono"),
+    GOOGLE_SANS_CODE("googlesanscode", "Google Sans Code"),
+    GEORGIA("georgia", "Georgia"),
+    ROBOTO_SLAB("robotoslab", "Roboto Slab");
 
     companion object {
         fun fromStored(value: String?): AppFont =

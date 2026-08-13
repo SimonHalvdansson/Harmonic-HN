@@ -33,7 +33,7 @@ data class MainNavigationSnapshot(
 
 /** Observable navigation bridge shared by Compose, SwiftUI and desktop hosts. */
 class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRestoration()) {
-    private val machine = MainNavigationState(restored)
+    private var machine = MainNavigationState(restored)
     private val mutableState = MutableStateFlow(machine.snapshot())
 
     val state: StateFlow<MainNavigationSnapshot> = mutableState.asStateFlow()
@@ -108,6 +108,12 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun openCoulombGas() = mutate { openCoulombGas() }
     fun closeCoulombGas() = mutate { closeCoulombGas() }
     fun detailRemovedFromBackStack() = mutate { detailRemovedFromBackStack() }
+
+    /** Rehydrates the application-scoped store before a host starts rendering it. */
+    fun restore(restored: MainNavigationRestoration) {
+        machine = MainNavigationState(restored)
+        publish()
+    }
 
     private inline fun mutate(action: MainNavigationState.() -> Unit) {
         machine.action()

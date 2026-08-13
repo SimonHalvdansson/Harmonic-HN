@@ -1,5 +1,56 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
+
+data class WebPreloadEnvironment(
+    val unmeteredConnection: Boolean,
+    val batteryPercent: Int?,
+)
+
+data class WebContentUrlPlan(
+    val originalUrl: String,
+    val loadUrl: String,
+    val archiveRedirected: Boolean,
+)
+
+enum class WebContentFailure { DNS, SSL, GENERIC, OFFLINE }
+
+/** Cross-platform preload, redirect, cache-fallback, and error-page policy. */
+object WebContentPolicy {
+    fun shouldPreload(
+        mode: String?,
+        minimumBatteryPercent: Int,
+        environment: WebPreloadEnvironment,
+    ): Boolean {
+        val connectionAllowed = when (WebViewPreferences.sanitizePreloadMode(mode)) {
+            WebViewPreferences.PRELOAD_ALWAYS -> true
+            WebViewPreferences.PRELOAD_WIFI_ONLY -> environment.unmeteredConnection
+            else -> false
+        }
+        if (!connectionAllowed) return false
+        val minimum = WebViewPreferences.clampBatteryPercent(minimumBatteryPercent)
+        return minimum == 0 || environment.batteryPercent == null ||
+            environment.batteryPercent >= minimum
+    }
+
+    fun resolveUrl(url: String?, archiveDomains: Collection<String>): WebContentUrlPlan? {
+        val original = url?.takeIf(String::isNotBlank) ?: return null
+        val redirect = ArchiveRedirectPolicy.redirectUrl(original, archiveDomains)
+        return WebContentUrlPlan(original, redirect ?: original, redirect != null)
+    }
+
+    fun shouldTryCachedArticle(failure: WebContentFailure): Boolean =
+        failure == WebContentFailure.DNS || failure == WebContentFailure.OFFLINE
+
+    fun errorPageFragment(failure: WebContentFailure): String = when (failure) {
+        WebContentFailure.DNS -> "dns"
+        WebContentFailure.SSL -> "ssl"
+        WebContentFailure.GENERIC -> "generic"
+        WebContentFailure.OFFLINE -> "offline"
+    }
+}
+
 data class WebContentLoadState(
     val generation: Int = 0,
     val inProgress: Boolean = false,

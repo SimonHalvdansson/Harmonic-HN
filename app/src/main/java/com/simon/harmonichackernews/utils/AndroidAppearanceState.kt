@@ -24,5 +24,8 @@ object AndroidAppearanceState {
     }
 
     fun nighttimeSchedule(context: Context): IntArray =
-        NighttimeScheduleStore(AndroidKeyValueStore.global(context)).load().toIntArray()
+        nighttimeScheduleValue(context).toIntArray()
+
+    fun nighttimeScheduleValue(context: Context): NighttimeSchedule =
+        NighttimeScheduleStore(AndroidKeyValueStore.global(context)).load()
 }

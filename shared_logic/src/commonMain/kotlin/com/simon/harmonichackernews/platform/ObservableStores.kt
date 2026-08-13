@@ -2,6 +2,12 @@ package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.data.Bookmark
 import com.simon.harmonichackernews.data.History
+import com.simon.harmonichackernews.data.HistoryLedger
+import com.simon.harmonichackernews.data.SavedItemCodec
+import com.simon.harmonichackernews.data.SavedItemSource
+import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.settings.KeyValueStore
+import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +38,161 @@ interface ObservableHistoryStore : HistoryStore {
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
+}
+
+/**
+ * Portable bookmark storage used by every platform that persists application data in a
+ * [KeyValueStore]. Platforms choose the backing store; membership, ordering, timestamps, atomic
+ * mutation and observation remain identical.
+ */
+class StoredBookmarkStore private constructor(
+    private val repository: SavedItemsRepository,
+    private val nowMillis: () -> Long,
+) : ObservableBookmarkStore {
+    constructor(store: KeyValueStore) : this(
+        repository = SavedItemsRepository(store),
+        nowMillis = { Clock.System.now().toEpochMilliseconds() },
+    )
+    constructor(repository: SavedItemsRepository) : this(
+        repository = repository,
+        nowMillis = { Clock.System.now().toEpochMilliseconds() },
+    )
+
+    private val mutableBookmarkState = MutableStateFlow(loadPersisted())
+    private val mutationMutex = Mutex()
+    override val bookmarkState: StateFlow<List<Bookmark>> = mutableBookmarkState.asStateFlow()
+
+    override fun load(): List<Bookmark> = loadPersisted()
+
+    override fun add(id: Int) {
+        if (repository.setMembership(SavedItemSource.BOOKMARKS, id, true, nowMillis())) publish()
+    }
+
+    override fun remove(id: Int) {
+        if (repository.setMembership(SavedItemSource.BOOKMARKS, id, false, nowMillis())) publish()
+    }
+
+    override fun clear() {
+        repository.saveItems(SavedItemSource.BOOKMARKS, emptyList())
+        publish()
+    }
+
+    override suspend fun setBookmarked(
+        id: Int,
+        bookmarked: Boolean,
+        createdAtMillis: Long,
+    ): Boolean = mutationMutex.withLock {
+        repository.setMembershipAtomic(
+            source = SavedItemSource.BOOKMARKS,
+            id = id,
+            present = bookmarked,
+            createdAtMillis = createdAtMillis,
+        ).also { changed ->
+            if (changed) publish()
+        }
+    }
+
+    private fun loadPersisted(): List<Bookmark> = SavedItemCodec.toBookmarks(
+        repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
+    )
+
+    private fun publish() {
+        mutableBookmarkState.value = loadPersisted()
+    }
+}
+
+object StoredHistoryKeys {
+    const val HISTORIES = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_HISTORIES"
+}
+
+/**
+ * Portable history ledger and persistence. Android, iOS, and desktop only provide a
+ * [KeyValueStore], preventing platform implementations from drifting on ordering and versions.
+ */
+class StoredHistoryStore(
+    private val store: KeyValueStore,
+    private val storageKey: String = StoredHistoryKeys.HISTORIES,
+) : ObservableHistoryStore {
+    private val ledger = HistoryLedger()
+    private var initialized = false
+    private val mutationMutex = Mutex()
+    private val mutableHistoryState = MutableStateFlow(snapshotFromStorage())
+    override val historyState: StateFlow<HistoryStoreSnapshot> = mutableHistoryState.asStateFlow()
+
+    override fun initialize() {
+        ledger.initialize(store.getString(storageKey))
+        initialized = true
+        publish()
+    }
+
+    override fun load(): List<History> =
+        HistoryLedger.decodeHistories(store.getString(storageKey), sorted = true)
+
+    override fun record(id: Int, createdAtMillis: Long) {
+        ensureInitialized()
+        if (ledger.record(id, createdAtMillis)) persistAndPublish()
+    }
+
+    override fun remove(id: Int) {
+        ensureInitialized()
+        if (ledger.remove(id)) persistAndPublish()
+    }
+
+    override fun clear() {
+        ledger.clear()
+        initialized = true
+        persistAndPublish()
+    }
+
+    override fun contains(id: Int): Boolean {
+        ensureInitialized()
+        return ledger.contains(id)
+    }
+
+    override val size: Int
+        get() {
+            ensureInitialized()
+            return ledger.size
+        }
+
+    override val changeVersion: Long
+        get() {
+            ensureInitialized()
+            return ledger.changeVersion
+        }
+
+    override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
+        mutationMutex.withLock {
+            val previousVersion = changeVersion
+            record(id, createdAtMillis)
+            changeVersion != previousVersion
+        }
+
+    override suspend fun removeHistory(id: Int): Boolean = mutationMutex.withLock {
+        val previousVersion = changeVersion
+        remove(id)
+        changeVersion != previousVersion
+    }
+
+    override suspend fun clearHistory() = mutationMutex.withLock { clear() }
+
+    private fun ensureInitialized() {
+        if (!initialized) initialize()
+    }
+
+    private fun persistAndPublish() {
+        store.putString(storageKey, ledger.serialize())
+        publish()
+    }
+
+    private fun snapshotFromStorage() = HistoryStoreSnapshot(
+        histories = HistoryLedger.decodeHistories(store.getString(storageKey), sorted = true),
+        changeVersion = if (initialized) ledger.changeVersion else 0L,
+    )
+
+    private fun publish() {
+        mutableHistoryState.value = HistoryStoreSnapshot(ledger.load(), ledger.changeVersion)
+    }
 }
 
 /** Compatibility adapter for hosts that have not yet replaced their synchronous bookmark port. */

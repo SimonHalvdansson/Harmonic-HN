@@ -13,6 +13,9 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
  */
 class HarmonicUiDependencies(app: HarmonicAppComposition) {
     val network = app.network
+    val metadata = app.metadata
+    val navigation = app.navigation
+    val links = app.links
     val platform = app.platform
     val userSettings = app.userSettings
     val settings = app.settings
@@ -24,6 +27,7 @@ class HarmonicUiDependencies(app: HarmonicAppComposition) {
     val aiSummarySettings = app.aiSummarySettings
     val aiModelDefaults = app.aiModelDefaults
     val hackerNewsUser = app.hackerNewsUser
+    val login = app.login
     val settingsReset = app.settingsReset
     val launchState = app.launchState
 }

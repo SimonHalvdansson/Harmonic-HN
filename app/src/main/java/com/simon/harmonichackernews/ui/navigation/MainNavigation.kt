@@ -1,15 +1,12 @@
 package com.simon.harmonichackernews.ui.navigation
 
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
@@ -42,6 +39,7 @@ import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -84,7 +82,6 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.CommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
@@ -138,65 +135,41 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data object StoriesDestination : NavKey
-
-private data class CommentsDestination(
-    val request: MainStoryRequest,
-) : NavKey
-
 /**
  * Imperative bridge used by the existing story-loading controller while Navigation 3 owns the
  * actual list/detail history and adaptive layout.
  */
 @Stable
-class MainNavigationController internal constructor(savedState: Bundle? = null) {
-    internal var storyRequest by mutableStateOf<MainStoryRequest?>(null)
-        private set
-    internal var lastStoryRequest: MainStoryRequest? = null
-        private set
-    internal var settingsRequest by mutableStateOf<MainSettingsRequest?>(null)
-        private set
-    internal var lastSettingsRequest: MainSettingsRequest? = null
-        private set
-    internal var settingsThemeRevision by mutableIntStateOf(0)
-        private set
-    internal var welcomeDialogVisible by mutableStateOf(false)
-        private set
-    internal var changelogDialogVisible by mutableStateOf(false)
-        private set
-    internal var cacheStoriesDialogVisible by mutableStateOf(false)
-        private set
-    internal var loginDialogVisible by mutableStateOf(false)
-        private set
-    internal var captchaRequest by mutableStateOf<MainCaptchaRequest?>(null)
-        private set
-    internal var userRequest by mutableStateOf<MainUserRequest?>(null)
-        private set
-    internal var failureRequest by mutableStateOf<MainFailureRequest?>(null)
-        private set
-    internal var editorRequest by mutableStateOf<MainEditorRequest?>(null)
-        private set
-    internal var lastEditorRequest: MainEditorRequest? = null
-        private set
-    internal var submissionsRequest by mutableStateOf<MainSubmissionsRequest?>(null)
-        private set
-    internal var lastSubmissionsRequest: MainSubmissionsRequest? = null
-        private set
-    internal var storyOpenedFromSubmissions by mutableStateOf(false)
-        private set
-    internal var storyOpenedFromSettings by mutableStateOf(false)
-        private set
-    internal var coulombGasVisible by mutableStateOf(false)
-        private set
-    internal var closeRequest by mutableIntStateOf(0)
-        private set
+class MainNavigationController internal constructor(
+    internal val navigationState: MainNavigationStore,
+    savedState: Bundle? = null,
+) {
+    internal val storyRequest get() = navigationState.storyRequest
+    internal val lastStoryRequest get() = navigationState.lastStoryRequest
+    internal val settingsRequest get() = navigationState.settingsRequest
+    internal val lastSettingsRequest get() = navigationState.lastSettingsRequest
+    internal val settingsThemeRevision get() = navigationState.settingsThemeRevision
+    internal val welcomeDialogVisible get() = navigationState.welcomeDialogVisible
+    internal val changelogDialogVisible get() = navigationState.changelogDialogVisible
+    internal val cacheStoriesDialogVisible get() = navigationState.cacheStoriesDialogVisible
+    internal val loginDialogVisible get() = navigationState.loginDialogVisible
+    internal val captchaRequest get() = navigationState.captchaRequest
+    internal val userRequest get() = navigationState.userRequest
+    internal val failureRequest get() = navigationState.failureRequest
+    internal val editorRequest get() = navigationState.editorRequest
+    internal val lastEditorRequest get() = navigationState.lastEditorRequest
+    internal val submissionsRequest get() = navigationState.submissionsRequest
+    internal val lastSubmissionsRequest get() = navigationState.lastSubmissionsRequest
+    internal val storyOpenedFromSubmissions get() = navigationState.storyOpenedFromSubmissions
+    internal val storyOpenedFromSettings get() = navigationState.storyOpenedFromSettings
+    internal val coulombGasVisible get() = navigationState.coulombGasVisible
+    internal val closeRequest get() = navigationState.closeRequest
 
     private var captchaCallback: CaptchaResultCallback? = null
     private var userTagChangedCallback: Runnable? = null
@@ -211,8 +184,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
                     savedState?.getInt(STATE_STORY_SCROLL_TO_COMMENT_ID, -1) ?: -1,
             )
         }
-    private val navigationState = MainNavigationStore(
-        MainNavigationRestoration(
+    private val restoredNavigation = MainNavigationRestoration(
             storyDestination = if (restoredStoryRoute == null) {
                 savedState?.getBundle(STATE_STORY_ARGUMENTS)?.toStoryDestinationOrNull()
             } else {
@@ -247,8 +219,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
                 savedState?.getBoolean(STATE_STORY_OPENED_FROM_SETTINGS, false) == true,
             coulombGasVisible =
                 savedState?.getBoolean(STATE_COULOMB_GAS_VISIBLE, false) == true,
-        ),
-    )
+        )
     private var storiesCoordinator: StoriesCoordinator? = null
     private var commentsCoordinator: CommentsCoordinator? = null
     private var restoredCommentsState: Bundle? = savedState?.getBundle(STATE_COMMENTS_STATE)
@@ -262,7 +233,7 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
     private var adaptiveFoldable = false
 
     init {
-        syncNavigationState()
+        navigationState.restore(restoredNavigation)
     }
 
     fun openStory(destination: StoryDestination) {
@@ -275,22 +246,18 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
         navigationState.openStory(destination)
-        syncNavigationState()
     }
 
     fun closeStory() {
         navigationState.requestCloseStory()
-        syncNavigationState()
     }
 
     fun openSettings(sectionRoute: String?) {
         navigationState.openSettings(sectionRoute)
-        syncNavigationState()
     }
 
     internal fun closeSettings() {
         navigationState.closeSettings()
-        syncNavigationState()
     }
 
     internal fun updateSettingsSection(section: SettingsSection) {
@@ -302,7 +269,6 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     internal fun onSettingsThemeChanged() {
         navigationState.onSettingsThemeChanged()
-        syncNavigationState()
     }
 
     internal fun requestSettingsRestart() {
@@ -314,48 +280,39 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     fun showWelcomeDialog() {
         navigationState.showWelcomeDialog()
-        syncNavigationState()
     }
 
     internal fun dismissWelcomeDialog() {
         navigationState.dismissWelcomeDialog()
-        syncNavigationState()
     }
 
     fun showChangelogDialog() {
         navigationState.showChangelogDialog()
-        syncNavigationState()
     }
 
     internal fun dismissChangelogDialog() {
         navigationState.dismissChangelogDialog()
-        syncNavigationState()
     }
 
     fun showCacheStoriesDialog() {
         navigationState.showCacheStoriesDialog()
-        syncNavigationState()
     }
 
     internal fun dismissCacheStoriesDialog() {
         navigationState.dismissCacheStoriesDialog()
-        syncNavigationState()
     }
 
     internal fun confirmCacheStories(storyCount: Int) {
         navigationState.dismissCacheStoriesDialog()
-        syncNavigationState()
         storiesComposeController?.cacheStories(storyCount)
     }
 
     fun showLoginDialog() {
         navigationState.showLoginDialog()
-        syncNavigationState()
     }
 
     internal fun dismissLoginDialog() {
         navigationState.dismissLoginDialog()
-        syncNavigationState()
     }
 
     fun showCaptchaDialog(
@@ -365,14 +322,12 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         captchaCallback?.onCaptchaCancelled()
         navigationState.showCaptchaDialog(challenge)
         captchaCallback = callback
-        syncNavigationState()
     }
 
     internal fun dismissCaptchaDialog() {
         if (navigationState.dismissCaptchaDialog() == null) return
         val callback = captchaCallback
         captchaCallback = null
-        syncNavigationState()
         callback?.onCaptchaCancelled()
     }
 
@@ -380,20 +335,17 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         val request = navigationState.dismissCaptchaDialog() ?: return
         val callback = captchaCallback
         captchaCallback = null
-        syncNavigationState()
         callback?.onCaptchaResponse(request.challenge, response)
     }
 
     fun showUserDialog(userName: String, onTagChanged: Runnable?) {
         if (navigationState.showUserDialog(userName) == null) return
         userTagChangedCallback = onTagChanged
-        syncNavigationState()
     }
 
     internal fun dismissUserDialog() {
         navigationState.dismissUserDialog()
         userTagChangedCallback = null
-        syncNavigationState()
     }
 
     internal fun notifyUserTagChanged() {
@@ -406,47 +358,38 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         clipboardText: String?,
     ) {
         navigationState.showFailureDetailDialog(title, message, clipboardText)
-        syncNavigationState()
     }
 
     internal fun dismissFailureDetailDialog() {
         navigationState.dismissFailureDetailDialog()
-        syncNavigationState()
     }
 
     fun openEditor(destination: EditorDestination) {
         navigationState.openEditor(destination)
-        syncNavigationState()
     }
 
     internal fun closeEditor() {
         navigationState.closeEditor()
-        syncNavigationState()
     }
 
     fun openSubmissions(userName: String) {
         navigationState.openSubmissions(userName)
-        syncNavigationState()
     }
 
     internal fun closeSubmissions() {
         navigationState.closeSubmissions()
-        syncNavigationState()
     }
 
     internal fun prepareToOpenStoryFromSubmissions() {
         navigationState.prepareToOpenStoryFromSubmissions()
-        syncNavigationState()
     }
 
     fun openCoulombGas() {
         navigationState.openCoulombGas()
-        syncNavigationState()
     }
 
     internal fun closeCoulombGas() {
         navigationState.closeCoulombGas()
-        syncNavigationState()
     }
 
     fun getCommentsCoordinator(): CommentsCoordinator? = commentsCoordinator
@@ -511,7 +454,6 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 
     internal fun detailRemovedFromBackStack() {
         navigationState.detailRemovedFromBackStack()
-        syncNavigationState()
         // Keep the outgoing detail content alive until AnimatedVisibility has finished its
         // exit. Clearing the Compose controller here leaves the WebView's white surface as
         // the only outgoing layer for a frame, which flashes over Stories during back.
@@ -522,29 +464,6 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
         adaptiveTwoPane = twoPane
         adaptiveFoldable = foldable
         commentsCoordinator?.onAdaptiveLayoutChanged()
-    }
-
-    private fun syncNavigationState() {
-        storyRequest = navigationState.storyRequest
-        lastStoryRequest = navigationState.lastStoryRequest
-        settingsRequest = navigationState.settingsRequest
-        lastSettingsRequest = navigationState.lastSettingsRequest
-        settingsThemeRevision = navigationState.settingsThemeRevision
-        welcomeDialogVisible = navigationState.welcomeDialogVisible
-        changelogDialogVisible = navigationState.changelogDialogVisible
-        cacheStoriesDialogVisible = navigationState.cacheStoriesDialogVisible
-        loginDialogVisible = navigationState.loginDialogVisible
-        captchaRequest = navigationState.captchaRequest
-        userRequest = navigationState.userRequest
-        failureRequest = navigationState.failureRequest
-        editorRequest = navigationState.editorRequest
-        lastEditorRequest = navigationState.lastEditorRequest
-        submissionsRequest = navigationState.submissionsRequest
-        lastSubmissionsRequest = navigationState.lastSubmissionsRequest
-        storyOpenedFromSubmissions = navigationState.storyOpenedFromSubmissions
-        storyOpenedFromSettings = navigationState.storyOpenedFromSettings
-        coulombGasVisible = navigationState.coulombGasVisible
-        closeRequest = navigationState.closeRequest
     }
 
     fun saveState(outState: Bundle) {
@@ -641,11 +560,11 @@ class MainNavigationController internal constructor(savedState: Bundle? = null) 
 object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
-        val controller = MainNavigationController(savedState)
         val appComposition = AndroidAppComposition.get(activity)
+        val controller = MainNavigationController(appComposition.navigation, savedState)
         when (
             appComposition.launchState.consumeLaunchDialog(
-                currentVersion = BuildConfig.VERSION_CODE,
+                currentVersion = appComposition.metadata.versionCode,
                 showChangelog = appComposition.userSettings.general.showChangelog,
             )
         ) {
@@ -687,6 +606,8 @@ private fun MainNavigation(
     activity: MainActivity,
     controller: MainNavigationController,
 ) {
+    val navigationSnapshot by controller.navigationState.state.collectAsState()
+    val uiDependencies = LocalHarmonicUiDependencies.current
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val context = activity
     val supportsTwoPane = context.resources.configuration.smallestScreenWidthDp >= 600
@@ -721,21 +642,6 @@ private fun MainNavigation(
     } else {
         tabletStoriesWeight / (tabletStoriesWeight + LEGACY_COMMENTS_PANE_WEIGHT)
     }
-    val paneExpansionState = rememberPaneExpansionState(
-        anchors = remember(paneProportion) {
-            listOf(PaneExpansionAnchor.Proportion(paneProportion))
-        },
-        initialAnchoredIndex = 0,
-    )
-    val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
-        directive = directive,
-        paneExpansionState = paneExpansionState.takeIf { isTwoPane },
-    )
-    val backStack = remember(controller) {
-        mutableStateListOf<NavKey>(StoriesDestination).apply {
-            controller.storyRequest?.let { add(CommentsDestination(it)) }
-        }
-    }
     val backAnimationScope = rememberCoroutineScope()
     var activeBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
@@ -743,17 +649,16 @@ private fun MainNavigation(
     var completedPredictivePop by remember { mutableStateOf(false) }
 
     fun popMainBackStack() {
-        if (backStack.lastOrNull() is CommentsDestination) {
-            backStack.removeLastOrNull()
+        if (controller.storyRequest != null) {
             controller.detailRemovedFromBackStack()
         } else {
             activity.finish()
         }
     }
 
-    val storyRequest = controller.storyRequest
-    val storyOpenedFromSubmissions = controller.storyOpenedFromSubmissions
-    val storyOpenedFromSettings = controller.storyOpenedFromSettings
+    val storyRequest = navigationSnapshot.storyRequest
+    val storyOpenedFromSubmissions = navigationSnapshot.storyOpenedFromSubmissions
+    val storyOpenedFromSettings = navigationSnapshot.storyOpenedFromSettings
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -782,47 +687,15 @@ private fun MainNavigation(
         // Resetting it only when opening the next story avoids changing AnimatedVisibility's
         // exit transition for one hidden frame, which could briefly resurrect Comments.
         completedPredictivePop = false
-        if (backStack.lastOrNull() is CommentsDestination) {
-            backStack[backStack.lastIndex] = CommentsDestination(storyRequest)
-        } else {
-            backStack.add(CommentsDestination(storyRequest))
-        }
     }
-    LaunchedEffect(controller.closeRequest) {
-        if (controller.closeRequest > 0 && backStack.lastOrNull() is CommentsDestination) {
+    LaunchedEffect(navigationSnapshot.closeRequest) {
+        if (navigationSnapshot.closeRequest > 0 && storyRequest != null) {
             popMainBackStack()
         }
     }
 
-    val provider = entryProvider<NavKey> {
-        entry<StoriesDestination>(
-            metadata = ListDetailSceneStrategy.listPane(
-                detailPlaceholder = { EmptyCommentsScreen() },
-            ),
-        ) {
-            StoriesPane(
-                controller = controller,
-                statusBarColor = paneStatusBarColor,
-                statusBarHeight = statusBarHeight,
-                drawStatusBarProtection = true,
-            )
-        }
-
-        entry<CommentsDestination>(
-            metadata = ListDetailSceneStrategy.detailPane(),
-        ) { destination ->
-            CommentsPane(
-                request = destination.request,
-                controller = controller,
-                statusBarColor = statusBarColor,
-                statusBarHeight = statusBarHeight,
-                drawStatusBarProtection = isTwoPane,
-            )
-        }
-    }
-
     PredictiveBackHandler(
-        enabled = backStack.lastOrNull() is CommentsDestination,
+        enabled = storyRequest != null,
     ) { events ->
         val internalBackCoordinator = controller.getCommentsCoordinator()
             ?.takeIf(CommentsCoordinator::handlesBackInternally)
@@ -910,7 +783,7 @@ private fun MainNavigation(
         }
     }
 
-    val settingsRequest = controller.settingsRequest
+    val settingsRequest = navigationSnapshot.settingsRequest
     val settingsAnimationScope = rememberCoroutineScope()
     var activeSettingsBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
@@ -964,7 +837,7 @@ private fun MainNavigation(
         }
     }
 
-    val submissionsRequest = controller.submissionsRequest
+    val submissionsRequest = navigationSnapshot.submissionsRequest
     val submissionsAnimationScope = rememberCoroutineScope()
     var activeSubmissionsBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
@@ -1009,7 +882,7 @@ private fun MainNavigation(
         }
     }
 
-    val editorRequest = controller.editorRequest
+    val editorRequest = navigationSnapshot.editorRequest
     val editorAnimationScope = rememberCoroutineScope()
     var activeEditorBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
@@ -1052,7 +925,7 @@ private fun MainNavigation(
         }
     }
 
-    val coulombGasVisible = controller.coulombGasVisible
+    val coulombGasVisible = navigationSnapshot.coulombGasVisible
     PredictiveBackHandler(enabled = coulombGasVisible) { events ->
         try {
             events.collect { }
@@ -1087,22 +960,8 @@ private fun MainNavigation(
         }
     }
 
-    val decoratedEntries = rememberDecoratedNavEntries(
-        backStack = backStack,
-        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
-        entryProvider = provider,
-    )
-    val sceneState = rememberSceneState(
-        entries = decoratedEntries,
-        sceneStrategies = listOf(sceneStrategy),
-        onBack = ::popMainBackStack,
-    )
-    val navDisplayEventState = rememberNavigationEventState(
-        currentInfo = SceneInfo(sceneState.currentScene),
-    )
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    val storyFromSettingsDestinationReady = storyOpenedFromSettings &&
-        (backStack.lastOrNull() as? CommentsDestination)?.request?.serial == storyRequest?.serial
+    val storyFromSettingsDestinationReady = storyOpenedFromSettings && storyRequest != null
 
     Box(
         modifier = Modifier
@@ -1127,13 +986,29 @@ private fun MainNavigation(
                 .then(activeSettingsBackAnimation?.enterModifier ?: Modifier),
         ) {
             if (isTwoPane) {
-                NavDisplay(
-                    sceneState = sceneState,
-                    navigationEventState = navDisplayEventState,
-                    modifier = Modifier.fillMaxSize(),
-                    transitionSpec = { mainOpenTransition() },
-                    popTransitionSpec = { mainPopTransition() },
-                    predictivePopTransitionSpec = { _ -> mainPopTransition() },
+                SharedMainNavigationScene(
+                    storyRequest = storyRequest,
+                    directive = directive,
+                    paneProportion = paneProportion,
+                    onBack = ::popMainBackStack,
+                    stories = {
+                        StoriesPane(
+                            controller = controller,
+                            statusBarColor = paneStatusBarColor,
+                            statusBarHeight = statusBarHeight,
+                            drawStatusBarProtection = true,
+                        )
+                    },
+                    emptyDetail = { EmptyCommentsScreen() },
+                    comments = { request ->
+                        CommentsPane(
+                            request = request,
+                            controller = controller,
+                            statusBarColor = statusBarColor,
+                            statusBarHeight = statusBarHeight,
+                            drawStatusBarProtection = true,
+                        )
+                    },
                 )
             } else {
                 SinglePaneNavigation(
@@ -1359,7 +1234,7 @@ private fun MainNavigation(
                                 submitting = editorController.submitting,
                                 onClose = controller::closeEditor,
                                 onSubmit = coordinator::submit,
-                                onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(activity, url) },
+                                onOpenLink = { uiDependencies.links.open(it) },
                             )
                         }
                     }
@@ -1395,19 +1270,14 @@ private fun MainNavigation(
             SettingsChangelogDialog(
                 onDismiss = controller::dismissChangelogDialog,
                 onOpenGithub = {
-                    activity.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://github.com/SimonHalvdansson/Harmonic-HN"),
-                        ),
-                    )
+                    uiDependencies.links.open(uiDependencies.metadata.projectUrl)
                 },
             )
         }
 
         if (controller.cacheStoriesDialogVisible) {
             CacheStoriesDialog(
-                initialStoryCount = LocalHarmonicUiDependencies.current.userSettings
+                initialStoryCount = uiDependencies.userSettings
                     .cache.storiesToCache,
                 onDismiss = controller::dismissCacheStoriesDialog,
                 onConfirm = controller::confirmCacheStories,
@@ -1448,8 +1318,8 @@ private fun MainNavigation(
                     showCopyComment = request.clipboardText != null,
                     onCopyComment = {
                         request.clipboardText?.let { text ->
-                            com.simon.harmonichackernews.platform.AndroidClipboardService(activity)
-                                .copy("Hacker News comment", text)
+                            uiDependencies.platform.capabilities.clipboard.getOrNull()
+                                ?.copy("Hacker News comment", text)
                             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                                 android.widget.Toast.makeText(
                                     activity,
@@ -1667,18 +1537,6 @@ private fun navigationEasing(): Easing = PathEasing(
     },
 )
 
-private fun mainOpenTransition(): ContentTransform = ContentTransform(
-    targetContentEnter = commentsOpenEnter(),
-    initialContentExit = slideOutHorizontally(
-        animationSpec = tween(
-            durationMillis = NavigationTransitionDurationMillis,
-            easing = navigationEasing(),
-        ),
-        targetOffsetX = { -it / 5 },
-    ),
-    targetContentZIndex = 1f,
-)
-
 private fun commentsOpenEnter(): EnterTransition = slideInHorizontally(
     animationSpec = tween(
         durationMillis = NavigationTransitionDurationMillis,
@@ -1691,18 +1549,6 @@ private fun commentsOpenEnter(): EnterTransition = slideInHorizontally(
         delayMillis = 45,
         easing = LinearEasing,
     ),
-)
-
-private fun mainPopTransition(): ContentTransform = ContentTransform(
-    targetContentEnter = slideInHorizontally(
-        animationSpec = tween(
-            durationMillis = NavigationTransitionDurationMillis,
-            easing = navigationEasing(),
-        ),
-        initialOffsetX = { -it / 5 },
-    ),
-    initialContentExit = commentsPopExit(),
-    targetContentZIndex = -1f,
 )
 
 private fun commentsPopExit(): ExitTransition = slideOutHorizontally(

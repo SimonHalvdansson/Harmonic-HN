@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -48,13 +49,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SharedLoginDialog(
     onDismiss: () -> Unit,
-    attemptLogin: suspend (username: String, password: String) -> HackerNewsActionResult,
-    continueLogin: suspend (
-        challenge: HackerNewsCaptchaChallenge,
-        response: String,
-    ) -> HackerNewsActionResult,
+    workflow: LoginWorkflow,
     onLoginSucceeded: () -> Unit,
-    onLoginFailed: () -> Unit,
     onCreateAccount: () -> Unit,
     captchaDialog: @Composable (
         challenge: HackerNewsCaptchaChallenge,
@@ -75,7 +71,6 @@ fun SharedLoginDialog(
     val credentialsValid = username.isNotBlank() && password.isNotEmpty()
 
     fun failLogin(message: String = loginFailure) {
-        onLoginFailed()
         loading = false
         error = message
     }
@@ -99,7 +94,7 @@ fun SharedLoginDialog(
         error = null
         loading = true
         coroutineScope.launch {
-            handleLoginResult(attemptLogin(username.trim(), password))
+            handleLoginResult(workflow.login(username, password))
         }
     }
 
@@ -277,13 +272,17 @@ fun SharedLoginDialog(
             challenge,
             {
                 captchaChallenge = null
-                failLogin(captchaCancelled)
+                loading = true
+                coroutineScope.launch {
+                    workflow.cancelCaptcha()
+                    failLogin(captchaCancelled)
+                }
             },
             { response ->
                 captchaChallenge = null
                 loading = true
                 coroutineScope.launch {
-                    handleLoginResult(continueLogin(challenge, response))
+                    handleLoginResult(workflow.continueWithCaptcha(challenge, response))
                 }
             },
         )

@@ -41,13 +41,9 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.app.LicenseEntry
 
-data class LicenseEntryUi(
-    val name: String,
-    val creator: String,
-    val licenseType: String,
-    val url: String,
-)
+typealias LicenseEntryUi = LicenseEntry
 
 private val LicenseCardShape = RoundedCornerShape(24.dp)
 

@@ -42,7 +42,6 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import com.simon.harmonichackernews.utils.AndroidDisplay
-import com.simon.harmonichackernews.utils.AndroidLinkNavigation
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import org.jetbrains.compose.resources.stringResource
 
@@ -147,7 +146,7 @@ private fun ReferencePreviewCard(
                 modifier = modifier,
             )
         },
-        onOpen = { AndroidLinkNavigation.openMaybeHackerNews(context, currentUrl) },
+        onOpen = { appComposition.links.open(currentUrl) },
         onRetry = {
             if (AndroidNetworkStatus.isOnline(context) && !summary.retrying) attempt++
         },

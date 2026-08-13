@@ -145,6 +145,7 @@ import com.simon.harmonichackernews.ui.content.StoryItemResourcePresentation
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.StoryItemUiModelFactory
+import com.simon.harmonichackernews.ui.content.storyItemUiModel
 import com.simon.harmonichackernews.ui.content.withPreviewResource
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.rememberHarmonicFilterColors
@@ -162,14 +163,10 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun StoriesScreen(controller: StoriesComposeController) {
-    val context = LocalContext.current
-    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
     val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
-    SharedStoriesScreen(
+    SharedStoriesRoute(
         controller = controller,
-        storyItemModel = { story, position, settings, previewResource ->
-            story.toUiModel(position, settings, previewResource, tintBaseColor, tintStore)
-        },
+        tintStore = tintStore,
         commentText = { html ->
             runCatching { AnnotatedString.fromHtml(html) }.getOrElse { AnnotatedString(html) }
         },
@@ -179,63 +176,6 @@ internal fun StoriesScreen(controller: StoriesComposeController) {
         compactSelectedText = booleanResource(R.bool.compact_stories_dropdown_selected_text),
     )
 }
-
-private fun Story.toUiModel(
-    position: Int,
-    settings: StoryDisplaySettings,
-    previewResource: StoryPreviewResourceState?,
-    tintBaseColor: Int,
-    tintStore: StoryResourceTintStore,
-): StoryItemUiModel {
-    val favicon = runCatching {
-        FaviconUrlBuilder.faviconUrl(url.orEmpty(), settings.faviconProvider)
-    }.getOrNull()
-    val paletteTintMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-    val previewUrl = previewResource?.imageUrl ?: previewImageUrl
-    val currentPreviewTint = StoryPreviewTintState.isPreviewCurrent(
-        this,
-        tintBaseColor,
-        paletteTintMode,
-    )
-    val currentFaviconTint = faviconTintColorLoaded &&
-        faviconTintBaseColor == tintBaseColor &&
-        StoryPreviewTintState.isModeCurrent(faviconTintMode, paletteTintMode) &&
-        faviconTintSourceUrl == favicon
-    val persistedPreviewTint = previewUrl?.let { sourceUrl ->
-        tintStore.read(
-            id,
-            StoryResourceTintKind.PREVIEW_IMAGE,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteTintMode),
-        )?.tintColorArgb
-    }
-    val persistedFaviconTint = favicon?.let { sourceUrl ->
-        tintStore.read(
-            id,
-            StoryResourceTintKind.FAVICON,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteTintMode),
-        )?.tintColorArgb
-    }
-    return StoryItemUiModelFactory.create(
-        story = this,
-        position = position,
-        resources = StoryItemResourcePresentation(
-            faviconUrl = favicon,
-            summary = linkSummaryDescription,
-            previewImageUrl = previewUrl,
-            previewImageLoadFailed = previewImageLoadFailed,
-            faviconTintArgb = persistedFaviconTint
-                ?: faviconTintColor.takeIf { currentFaviconTint },
-            previewImageTintArgb = persistedPreviewTint
-                ?: previewImageTintColor.takeIf { currentPreviewTint },
-            tintFallbackArgb = tintBaseColor,
-        ).withPreviewResource(previewResource, paletteTintMode),
-    )
-}
-
 
 @Preview(name = "Phone", device = Devices.PIXEL_7, showBackground = true)
 @Preview(name = "Fold inner", widthDp = 673, heightDp = 841, showBackground = true)

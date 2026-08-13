@@ -24,9 +24,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.app.CommentsFeatureHost
+import com.simon.harmonichackernews.app.createCommentsFeatureSession
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
-import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.AndroidLocalSummaryBackend
 import com.simon.harmonichackernews.network.LocalSummaryManager
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
@@ -37,15 +38,11 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
-import com.simon.harmonichackernews.presentation.ArchiveUrlResolver
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
-import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
-import com.simon.harmonichackernews.presentation.CommentsPresenter
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsSettingsState
-import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
@@ -81,17 +78,7 @@ class CommentsCoordinator(
     private val clock: Clock = Clock.System,
 ) {
     private val externalLinks = platformDependencies.externalLinks
-    private val contentFilters = appComposition.contentFilters
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val hackerNewsUserService = appComposition.hackerNewsUser
-    private val savedItemActions = SavedItemActionUseCase(
-        repository = appComposition.savedItems,
-        nowMillis = { clock.now().toEpochMilliseconds() },
-        voteRequest = { id, direction ->
-            hackerNewsUserService.vote(id.toString(), direction)
-        },
-        favoriteRequest = hackerNewsUserService::setFavorite,
-    )
     private val screenStateViewModel = ViewModelProvider(activity)[ScreenStateViewModel::class.java]
     private val sessionState = screenStateViewModel.commentsStateFor(sessionKey, destination.storyId)
     private val restoringSession = sessionState.initialized
@@ -99,17 +86,6 @@ class CommentsCoordinator(
     private var restoringStoredProgress = scrollProgress.initialized
     private var started = false
     private var destroyed = false
-    private val commentsPresenter = CommentsPresenter(
-        coroutineScope,
-        sessionState,
-        CommentThreadRepository(
-            appComposition.network.algoliaRepository,
-            appComposition.network.hackerNewsRepository,
-        ),
-        appComposition.network.pollOptionsRepository,
-        savedItemActions,
-        hackerNewsUserService,
-    )
     private val aiSummarySettings = appComposition.aiSummarySettings
     private val storySummaryRuntime = StorySummaryRuntime(
         scope = coroutineScope,
@@ -121,28 +97,26 @@ class CommentsCoordinator(
             textBackend = AndroidLocalSummaryBackend(activity),
         ),
     )
-    private val commentsFeature = CommentsFeatureRuntime(
-        scope = coroutineScope,
-        sessionState = sessionState,
-        presenter = commentsPresenter,
-        nowMillis = { clock.now().toEpochMilliseconds() },
-        archiveUrlResolver = ArchiveUrlResolver(appComposition.network.linkPreviewRepository),
-        userSettings = userSettings,
-        loadContentFilters = contentFilters::load,
-        accounts = platformDependencies.accounts,
-        summarySettings = aiSummarySettings,
-        localSummaryAvailable = LocalSummaryManager::canAttemptLocalSummarization,
-        summaryRuntime = storySummaryRuntime,
-        hydrateCachedStory = { cachedStory ->
-            AndroidStoryCache.hydrate(activity, cachedStory)
-        },
-        loadCachedThread = { storyId -> AndroidStoryCache.loadPayload(activity, storyId) },
-        storeCachedThread = { storyId, response ->
-            AndroidStoryCache.store(activity, storyId, response)
-        },
-        previewResourceService = appComposition.previewResources,
-        storyResourceTints = appComposition.storyResourceTints,
+    private val featureSession = appComposition.createCommentsFeatureSession(
+        CommentsFeatureHost(
+            scope = coroutineScope,
+            sessionState = sessionState,
+            platform = platformDependencies,
+            userSettings = userSettings,
+            nowMillis = { clock.now().toEpochMilliseconds() },
+            summaryRuntime = storySummaryRuntime,
+            localSummaryAvailable = LocalSummaryManager::canAttemptLocalSummarization,
+            hydrateCachedStory = { cachedStory ->
+                AndroidStoryCache.hydrate(activity, cachedStory)
+            },
+            loadCachedThread = { storyId -> AndroidStoryCache.loadPayload(activity, storyId) },
+            storeCachedThread = { storyId, response ->
+                AndroidStoryCache.store(activity, storyId, response)
+            },
+        ),
     )
+    private val commentsPresenter = featureSession.presenter
+    private val commentsFeature = featureSession.runtime
     private var webViewHost: CommentsWebViewHost?
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0

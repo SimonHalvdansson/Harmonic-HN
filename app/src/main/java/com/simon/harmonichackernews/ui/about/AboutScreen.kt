@@ -14,8 +14,8 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 /** Android resources adapter for the shared About screen. */
 @Composable
@@ -30,6 +30,7 @@ fun AboutScreen(
     singlePane: Boolean = true,
 ) {
     val context = LocalContext.current
+    val metadata = LocalHarmonicUiDependencies.current.metadata
     val iconSizePx = with(LocalDensity.current) { 56.dp.roundToPx() }
     val appIcon = remember(context, iconSizePx) {
         BitmapPainter(
@@ -38,13 +39,8 @@ fun AboutScreen(
                 .asImageBitmap(),
         )
     }
-    val versionLabel = if (BuildConfig.DEBUG) {
-        "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.BUILD_TYPE})"
-    } else {
-        "Version ${BuildConfig.VERSION_NAME}"
-    }
     SharedAboutScreen(
-        versionLabel = versionLabel,
+        versionLabel = metadata.versionLabel,
         appIcon = appIcon,
         onBack = onBack,
         onOpenGithub = onOpenGithub,

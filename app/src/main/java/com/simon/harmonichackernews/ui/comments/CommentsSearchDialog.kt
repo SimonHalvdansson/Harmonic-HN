@@ -2,11 +2,10 @@ package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
-import com.simon.harmonichackernews.utils.AndroidLinkNavigation
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
 fun CommentsSearchDialog(
@@ -19,7 +18,7 @@ fun CommentsSearchDialog(
     onDismiss: () -> Unit,
     onCommentSelected: (PortableCommentItem) -> Unit,
 ) {
-    val context = LocalContext.current
+    val links = LocalHarmonicUiDependencies.current.links
     SharedCommentsSearchDialog(
         searchTerm = searchTerm,
         visibleComments = visibleComments,
@@ -30,6 +29,6 @@ fun CommentsSearchDialog(
         onSearchTermChanged = onSearchTermChanged,
         onDismiss = onDismiss,
         onCommentSelected = onCommentSelected,
-        onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
+        onOpenLink = { url -> links.open(url) },
     )
 }

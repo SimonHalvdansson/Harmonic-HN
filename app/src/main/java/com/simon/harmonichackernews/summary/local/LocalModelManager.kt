@@ -15,13 +15,22 @@ import androidx.work.WorkManager.Companion.getInstance
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelDefinition
+import com.simon.harmonichackernews.summary.LocalModelDeviceCapabilities
+import com.simon.harmonichackernews.summary.LocalModelDownloadResult
+import com.simon.harmonichackernews.summary.LocalModelLifecycle
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelStorage
+import com.simon.harmonichackernews.summary.LocalModelStoragePreparation
+import com.simon.harmonichackernews.summary.LocalModelStorageSnapshot
+import com.simon.harmonichackernews.summary.LocalModelTransferScheduler
+import com.simon.harmonichackernews.summary.LocalModelUnsupportedReason
 import com.simon.harmonichackernews.summary.LocalModelManagerState
 import com.simon.harmonichackernews.summary.LocalModelStateStore
 import com.simon.harmonichackernews.summary.LocalModelTransferStatus
 import com.simon.harmonichackernews.summary.LocalModelWorkSnapshot
 import com.simon.harmonichackernews.summary.LocalModelWorkState
 import com.simon.harmonichackernews.summary.formatDecimalBytes
+import com.simon.harmonichackernews.summary.unsupportedReason
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
@@ -47,7 +56,6 @@ object LocalModelManager {
     private const val MODELS_DIR = "local_ai_models"
     private const val LEGACY_E2B_FILE_NAME = "gemma-4-E2B-it.litertlm"
     private const val LEGACY_QWEN_EXACT_FILE_NAME = "Qwen3.5-0.8B-hybrid-exact-c2048.litertlm"
-    private const val STORAGE_BUFFER_BYTES = 256L * 1024L * 1024L
 
     val models: List<LocalModelDefinition> = LocalModelCatalog.models
     private val GEMINI_NANO: LocalModelDefinition = models.first()
@@ -61,41 +69,33 @@ object LocalModelManager {
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     fun isModelSupported(model: LocalModelDefinition): Boolean {
-        if (!model.downloadable) {
-            return true
-        }
-        return isSupported && (model.runtime != LocalModelRuntime.LITERT_LM || Process.is64Bit())
+        return deviceCapabilities().unsupportedReason(model) == null
     }
 
     fun getModelUnsupportedReason(model: LocalModelDefinition): String {
         if (!model.downloadable || isModelSupported(model)) {
             return ""
         }
-        if (!isSupported) {
-            return "Requires Android 12 or newer"
+        return when (deviceCapabilities().unsupportedReason(model)) {
+            LocalModelUnsupportedReason.PLATFORM_VERSION -> "Requires Android 12 or newer"
+            LocalModelUnsupportedReason.PROCESS_ARCHITECTURE -> "Requires a 64-bit Android device"
+            null -> ""
         }
-        return "Requires a 64-bit Android device"
     }
 
     fun getSelectedModel(context: Context): LocalModelDefinition {
-        return getModel(modelState(context).selectedModelId)
+        return lifecycle(context).selectedModel
     }
 
     fun getModel(id: String?): LocalModelDefinition =
         models.firstOrNull { it.id == id } ?: GEMINI_NANO
 
     fun selectModel(context: Context, modelId: String?) {
-        val model = getModel(modelId)
-        if (modelState(context).select(
-                modelId = model.id,
-                supported = isModelSupported(model),
-                downloaded = isModelDownloaded(context, model),
-            )
-        ) publishStatuses(context)
+        if (lifecycle(context).select(modelId)) publishStatuses(context)
     }
 
     fun clearSelectedModel(context: Context) {
-        modelState(context).clearSelection()
+        lifecycle(context).clearSelection()
         publishStatuses(context)
     }
 
@@ -103,16 +103,11 @@ object LocalModelManager {
         isModelDownloaded(context, getSelectedModel(context))
 
     fun isModelDownloaded(context: Context, model: LocalModelDefinition): Boolean {
-        if (!model.downloadable) {
-            return false
-        }
-        val file = getModelFile(context, model.id, model.fileName)
-        return file.isFile && file.length() == model.sizeBytes
+        return lifecycle(context).isDownloaded(model)
     }
 
     fun getSelectedModelPath(context: Context): String {
-        val model = getSelectedModel(context)
-        return getModelFile(context, model.id, model.fileName).absolutePath
+        return lifecycle(context).installedPath()
     }
 
     fun getSelectedStatus(context: Context): LocalModelTransferStatus {
@@ -122,16 +117,7 @@ object LocalModelManager {
 
     fun getStatus(context: Context, model: LocalModelDefinition): LocalModelTransferStatus {
         initialize(context)
-        val finalFile = getModelFile(context, model.id, model.fileName)
-        val info = currentWork[model.id]
-        val partialFile = getPartialModelFile(context, model.id, model.fileName)
-        val resolved = modelState(context).resolveStatus(
-            modelId = model.id,
-            finalFileBytes = finalFile.takeIf(File::isFile)?.length(),
-            partialFileBytes = partialFile.takeIf(File::isFile)?.length() ?: 0L,
-            work = info?.toSharedSnapshot(),
-        )
-        return resolved
+        return lifecycle(context).status(model)
     }
 
     fun downloadSelectedModel(context: Context): String? =
@@ -140,68 +126,24 @@ object LocalModelManager {
     fun downloadModel(context: Context, modelId: String?): String? {
         initialize(context)
         val model = getModel(modelId)
-        if (!model.downloadable) {
-            return model.displayName + " is built into supported devices."
+        return when (val result = lifecycle(context).requestDownload(model.id)) {
+            LocalModelDownloadResult.Started,
+            LocalModelDownloadResult.AlreadyDownloaded,
+            LocalModelDownloadResult.AlreadyActive,
+            -> null
+            LocalModelDownloadResult.BuiltIn ->
+                model.displayName + " is built into supported devices."
+            is LocalModelDownloadResult.Unsupported -> getModelUnsupportedReason(model) + "."
+            is LocalModelDownloadResult.NotEnoughSpace ->
+                "Not enough free space. ${model.displayName} needs " +
+                    formatBytes(result.requiredBytes) + " available."
+            is LocalModelDownloadResult.StorageFailure -> result.message
         }
-        if (!isModelSupported(model)) {
-            return getModelUnsupportedReason(model) + "."
-        }
-        val finalFile = getModelFile(context, model.id, model.fileName)
-        val partialFile = getPartialModelFile(context, model.id, model.fileName)
-        if (finalFile.isFile && finalFile.length() == model.sizeBytes) {
-            return null
-        }
-        if (isDownloadForModelActive(model.id)) {
-            return null
-        }
-        deleteObsoleteModelFiles(context, model)
-        deleteInferenceCacheFiles(context, model)
-        if (finalFile.exists()) {
-            finalFile.delete()
-        }
-
-        val remainingBytes = max(0L, model.sizeBytes - partialFile.length())
-        val root = getModelsRoot(context)
-        if (!root.exists() && !root.mkdirs()) {
-            return "Could not create local model storage."
-        }
-        if (root.usableSpace < remainingBytes + STORAGE_BUFFER_BYTES) {
-            val requiredSpace = formatBytes(remainingBytes + STORAGE_BUFFER_BYTES)
-            return "Not enough free space. ${model.displayName} needs $requiredSpace available."
-        }
-
-        val inputData = Data.Builder()
-            .putString(LocalModelDownloadWorker.KEY_MODEL_ID, model.id)
-            .putString(LocalModelDownloadWorker.KEY_MODEL_NAME, model.displayName)
-            .putString(LocalModelDownloadWorker.KEY_MODEL_URL, model.url)
-            .putString(LocalModelDownloadWorker.KEY_FILE_NAME, model.fileName)
-            .putLong(LocalModelDownloadWorker.KEY_EXPECTED_BYTES, model.sizeBytes)
-            .build()
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-        val request = OneTimeWorkRequest.Builder(LocalModelDownloadWorker::class.java)
-            .setInputData(inputData)
-            .setConstraints(constraints)
-            .addTag(model.id)
-            .build()
-        getInstance(context).enqueueUniqueWork(
-            getWorkName(model.id),
-            ExistingWorkPolicy.REPLACE,
-            request,
-        )
-        return null
     }
 
     fun cancelDownload(context: Context, modelId: String?) {
         initialize(context)
-        val model = getModel(modelId)
-        getInstance(context).cancelUniqueWork(getWorkName(model.id))
-            .result.addListener({
-                deleteKnownModelFiles(context, model, false)
-                currentWork.remove(model.id)
-                publishStatuses(context)
-            }, ContextCompat.getMainExecutor(context))
+        lifecycle(context).cancel(modelId) { publishStatuses(context) }
     }
 
     fun removeSelectedModel(context: Context) {
@@ -210,20 +152,7 @@ object LocalModelManager {
 
     fun removeModel(context: Context, modelId: String?) {
         initialize(context)
-        val model = getModel(modelId)
-        if (!model.downloadable) {
-            return
-        }
-        if (isDownloadForModelActive(model.id)) {
-            cancelDownload(context, model.id)
-            return
-        }
-        deleteKnownModelFiles(context, model, true)
-        if (model.id == getSelectedModel(context).id) {
-            clearSelectedModel(context)
-            return
-        }
-        publishStatuses(context)
+        lifecycle(context).remove(modelId) { publishStatuses(context) }
     }
 
     fun states(context: Context): StateFlow<LocalModelManagerState> {
@@ -299,6 +228,98 @@ object LocalModelManager {
         selectionKey = PREF_SELECTED_MODEL,
         defaultModelId = MODEL_GEMINI_NANO,
     )
+
+    private fun deviceCapabilities(): LocalModelDeviceCapabilities = LocalModelDeviceCapabilities(
+        supportsDownloadableModels = isSupported,
+        supportsLiteRtModels = Process.is64Bit(),
+    )
+
+    private fun lifecycle(context: Context): LocalModelLifecycle {
+        val appContext = context.applicationContext
+        return LocalModelLifecycle(
+            models = models,
+            stateStore = modelState(appContext),
+            storage = object : LocalModelStorage {
+                override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot {
+                    val finalFile = getModelFile(appContext, model.id, model.fileName)
+                    val partialFile = getPartialModelFile(appContext, model.id, model.fileName)
+                    return LocalModelStorageSnapshot(
+                        finalFileBytes = finalFile.takeIf(File::isFile)?.length(),
+                        partialFileBytes = partialFile.takeIf(File::isFile)?.length() ?: 0L,
+                        usableSpaceBytes = getModelsRoot(appContext).usableSpace,
+                    )
+                }
+
+                override fun prepareDownload(
+                    model: LocalModelDefinition,
+                ): LocalModelStoragePreparation {
+                    deleteObsoleteModelFiles(appContext, model)
+                    deleteInferenceCacheFiles(appContext, model)
+                    val finalFile = getModelFile(appContext, model.id, model.fileName)
+                    if (finalFile.exists() && !finalFile.delete()) {
+                        return LocalModelStoragePreparation.Failed(
+                            "Could not replace the incomplete local model.",
+                        )
+                    }
+                    val root = getModelsRoot(appContext)
+                    if (!root.exists() && !root.mkdirs()) {
+                        return LocalModelStoragePreparation.Failed(
+                            "Could not create local model storage.",
+                        )
+                    }
+                    return LocalModelStoragePreparation.Ready(snapshot(model))
+                }
+
+                override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) =
+                    deleteKnownModelFiles(appContext, model, includeFinalFile)
+
+                override fun installedPath(model: LocalModelDefinition): String =
+                    getModelFile(appContext, model.id, model.fileName).absolutePath
+            },
+            transfers = object : LocalModelTransferScheduler {
+                override fun work(modelId: String): LocalModelWorkSnapshot? =
+                    currentWork[modelId]?.toSharedSnapshot()
+
+                override fun isActive(modelId: String): Boolean =
+                    isDownloadForModelActive(modelId)
+
+                override fun enqueue(model: LocalModelDefinition) =
+                    enqueueModelDownload(appContext, model)
+
+                override fun cancel(modelId: String, onCancelled: () -> Unit) {
+                    getInstance(appContext).cancelUniqueWork(getWorkName(modelId))
+                        .result.addListener({
+                            currentWork.remove(modelId)
+                            onCancelled()
+                        }, ContextCompat.getMainExecutor(appContext))
+                }
+            },
+            capabilities = deviceCapabilities(),
+        )
+    }
+
+    private fun enqueueModelDownload(context: Context, model: LocalModelDefinition) {
+        val inputData = Data.Builder()
+            .putString(LocalModelDownloadWorker.KEY_MODEL_ID, model.id)
+            .putString(LocalModelDownloadWorker.KEY_MODEL_NAME, model.displayName)
+            .putString(LocalModelDownloadWorker.KEY_MODEL_URL, model.url)
+            .putString(LocalModelDownloadWorker.KEY_FILE_NAME, model.fileName)
+            .putLong(LocalModelDownloadWorker.KEY_EXPECTED_BYTES, model.sizeBytes)
+            .build()
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = OneTimeWorkRequest.Builder(LocalModelDownloadWorker::class.java)
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .addTag(model.id)
+            .build()
+        getInstance(context).enqueueUniqueWork(
+            getWorkName(model.id),
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+    }
 
     private fun WorkInfo.toSharedSnapshot(): LocalModelWorkSnapshot = LocalModelWorkSnapshot(
         state = when (state) {

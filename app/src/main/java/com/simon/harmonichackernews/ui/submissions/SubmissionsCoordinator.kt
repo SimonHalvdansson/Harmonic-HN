@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ScreenStateViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.app.createSubmissionsFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.data.Story
@@ -13,11 +14,9 @@ import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.presentation.SubmissionFilter
-import com.simon.harmonichackernews.presentation.SubmissionsFeatureRuntime
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
-import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,11 +44,10 @@ class SubmissionsCoordinator(
         ViewModelProvider(activity)[ScreenStateViewModel::class.java]
             .submissionsStateFor(sessionKey, userName, algoliaRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val runtime = SubmissionsFeatureRuntime(
+    private val runtime = appComposition.createSubmissionsFeatureRuntime(
         scope = coroutineScope,
         sessionState = sessionState,
-        commentMasterResolver = CommentMasterResolver(appComposition.network.hackerNewsRepository),
-        useIntegratedWebView = { userSettings.reading.integratedWebView },
+        userSettings = userSettings,
     )
     val composeController: SubmissionsComposeController
 

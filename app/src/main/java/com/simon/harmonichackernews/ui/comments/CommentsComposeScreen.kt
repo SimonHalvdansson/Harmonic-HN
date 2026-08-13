@@ -49,14 +49,10 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.CommentTextPolicy
-import com.simon.harmonichackernews.network.FaviconUrlBuilder
-import com.simon.harmonichackernews.network.StoryResourceTintKind
-import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
-import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.StoryPreviewTintState
-import com.simon.harmonichackernews.settings.UserTagsRepository
+import com.simon.harmonichackernews.ui.content.storyHeaderTintPresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.utils.AndroidLinkNavigation
+import com.simon.harmonichackernews.utils.AndroidPdfOpener
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import java.util.Date
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -136,47 +132,30 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
 
 @Composable
 internal fun CommentsScreen(controller: CommentsComposeController) {
-    val context = LocalContext.current
-    val dependencies = LocalHarmonicUiDependencies.current
-    val settings = controller.displaySettings
-    val commentPreferences = dependencies.userSettings.comments
-    val userTagsRepository = dependencies.userTags
-    val userTags = remember(controller.contentVersion) { userTagsRepository.tags() }
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
-    SharedCommentsScreen(
+    SharedCommentsRoute(
         controller = controller,
         listModifier = Modifier.nestedScroll(nestedScrollInterop),
-        animateComments = commentPreferences.animateChanges,
-        showScrollbar = commentPreferences.showScrollbar,
-        smoothScroll = commentPreferences.smoothScroll,
-        userTags = userTags,
-        onOpenLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
-        headerContent = {
-            settings?.let {
-                CommentsHeader(
-                    controller = controller,
-                    settings = it,
-                    contentVersion = controller.contentVersion,
-                )
-            }
+        headerContent = { settings ->
+            CommentsHeader(
+                controller = controller,
+                settings = settings,
+                contentVersion = controller.contentVersion,
+            )
         },
-        searchDialog = {
-            settings?.let {
-                CommentsSearchDialog(
-                    searchTerm = controller.searchQuery,
-                    visibleComments = controller.searchResults,
-                    settings = it,
-                    storyAuthor = controller.story.by,
-                    accountUser = controller.accountUser,
-                    onSearchTermChanged = controller::updateSearchQuery,
-                    onDismiss = controller::dismissCommentSearch,
-                    onCommentSelected = controller::selectSearchResult,
-                )
-            }
+        searchDialog = { settings ->
+            CommentsSearchDialog(
+                searchTerm = controller.searchQuery,
+                visibleComments = controller.searchResults,
+                settings = settings,
+                storyAuthor = controller.story.by,
+                accountUser = controller.accountUser,
+                onSearchTermChanged = controller::updateSearchQuery,
+                onDismiss = controller::dismissCommentSearch,
+                onCommentSelected = controller::selectSearchResult,
+            )
         },
-        actionOverlay = {
-            settings?.let { CommentActionOverlay(controller, it) }
-        },
+        actionOverlay = { settings -> CommentActionOverlay(controller, settings) },
     )
 }
 
@@ -194,26 +173,7 @@ private fun CommentsHeader(
         dependencies.userTags.tagFor(story.by)
     }
     val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
-    val paletteTintMode = remember(context, settings.paletteTintMode) {
-        PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-    }
-    val faviconTintSource = remember(story.url, settings.faviconProvider) {
-        runCatching { FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider) }
-            .getOrNull()
-    }
-    val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
-    val resourceTint = previewResource?.previewTint
-    val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
-    val persistedPreviewTint = previewImageUrl?.let { sourceUrl ->
-        tintStore.read(
-            story.id,
-            StoryResourceTintKind.PREVIEW_IMAGE,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteTintMode),
-        )?.tintColorArgb
-    }
-    val initialTint = remember(
+    val tintPresentation = remember(
         story.id,
         story.previewImageUrl,
         story.previewImageTintColorLoaded,
@@ -225,40 +185,30 @@ private fun CommentsHeader(
         story.faviconTintColor,
         story.faviconTintBaseColor,
         story.faviconTintMode,
+        previewResource,
+        settings.faviconProvider,
+        settings.paletteTintMode,
         tintBaseColor,
-        paletteTintMode,
-        faviconTintSource,
-        previewImageUrl,
-        resourceTint,
-        persistedPreviewTint,
+        contentVersion,
     ) {
-        when {
-            resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
-                resourceTint.baseColorArgb == tintBaseColor &&
-                StoryPreviewTintState.isModeCurrent(
-                    resourceTint.paletteConfigKey,
-                    paletteTintMode,
-                ) -> resourceTint.tintColorArgb
-            persistedPreviewTint != null -> persistedPreviewTint
-            StoryPreviewTintState.isPreviewCurrent(
-                story,
-                tintBaseColor,
-                paletteTintMode,
-            ) -> story.previewImageTintColor
-            story.faviconTintColorLoaded &&
-                story.faviconTintBaseColor == tintBaseColor &&
-                StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteTintMode) &&
-                story.faviconTintSourceUrl == faviconTintSource -> story.faviconTintColor
-            else -> null
-        }
+        storyHeaderTintPresentation(
+            story = story,
+            previewResource = previewResource,
+            faviconProvider = settings.faviconProvider,
+            paletteTintMode = settings.paletteTintMode,
+            tintBaseColor = tintBaseColor,
+            tintStore = dependencies.storyResourceTints,
+        )
     }
+    val paletteTintMode = tintPresentation.paletteMode
+    val previewImageUrl = tintPresentation.previewImageUrl
     val previewPlatform = remember(context) {
         CommentsPreviewPlatform(
             textStyle = legacyTextStyle,
-            openLink = { url -> AndroidLinkNavigation.openMaybeHackerNews(context, url) },
-            downloadPdf = { url -> AndroidLinkNavigation.openPdf(context, url) },
-            openCustomTab = { url -> AndroidExternalLinkLauncher.openCustomTab(context, url) },
-            plainText = { html -> Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString() },
+            openLink = { url -> dependencies.links.open(url) },
+            downloadPdf = { url -> AndroidPdfOpener.open(context, url) },
+            openCustomTab = { url -> dependencies.links.open(url) },
+            plainText = HtmlTextUtils::plainText,
             annotatedHtml = ::htmlToAnnotated,
         )
     }
@@ -274,7 +224,7 @@ private fun CommentsHeader(
         contentVersion = contentVersion,
         storyPosterTag = storyPosterTag,
         tintBaseColor = tintBaseColor,
-        initialTint = initialTint,
+        initialTint = tintPresentation.initialTintArgb,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),
         actionHorizontalPadding = dimensionResource(R.dimen.comments_header_action_padding),
         bookmarksEnabled = dependencies.userSettings.general.bookmarksEnabled,
@@ -282,7 +232,7 @@ private fun CommentsHeader(
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
     ) { visibleBackground, onTintLoaded ->
-        val previewUrl = previewResource?.imageUrl ?: story.previewImageUrl
+        val previewUrl = previewImageUrl
         SharedHeaderPreviewImage(
             imageUrl = previewUrl,
             initiallyFailed = previewResource?.imageLoadFailed ?: story.previewImageLoadFailed,
@@ -334,7 +284,7 @@ private fun htmlToAnnotated(
         listener,
     )
 }.getOrElse {
-    AnnotatedString(Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString())
+    AnnotatedString(HtmlTextUtils.plainText(html))
 }
 
 private val legacyTextStyle = TextStyle(

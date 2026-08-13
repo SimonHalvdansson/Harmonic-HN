@@ -3,22 +3,12 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.AndroidSettingsResources
-import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.AndroidAppearanceState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -29,82 +19,48 @@ fun AppearanceSettingsScreen(
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
-    var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
-    val app = LocalHarmonicUiDependencies.current
-    val repository = app.settings
-    val presenter = remember(app) { AppearanceSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
-    val theme = settings.appearance.theme
-    val nighttimeTheme = settings.appearance.nighttimeTheme
-    val state = presenter.state(
-        settings = settings,
-        themeLabel = composeThemeLabel(theme),
-        nighttimeRangeLabel = formatNighttimeRange(context),
-        nighttimeThemeLabel = composeThemeLabel(
-            nighttimeTheme,
-            ThemePreferences.DEFAULT_NIGHTTIME,
+    val repository = LocalHarmonicUiDependencies.current.settings
+    SharedAppearanceSettingsRoute(
+        repository = repository,
+        labels = AppearanceRouteLabels(
+            nighttimeRange = formatNighttimeRange(context),
+            showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
         ),
-        fontLabel = AndroidSettingsResources.fontLabel(context, settings.story.fontChoice),
-        showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
-    )
-    SharedAppearanceSettingsScreen(
-        state = state,
         showNavigation = showNavigation,
         onBack = onBack,
         onNavigate = onNavigate,
-        onBooleanChanged = { setting, value ->
-            presenter.setBoolean(setting, value).forEach { effect ->
-                if (effect == SettingsPlatformEffect.ThemeChanged) onThemeChanged()
+        onThemeChanged = onThemeChanged,
+        dialogContent = { dialog, _, dismiss ->
+            when (dialog) {
+                AppearanceSettingsDialog.Theme -> ThemeSelectionDialog(
+                    nighttime = false,
+                    onDismiss = dismiss,
+                    onThemeChanged = onThemeChanged,
+                )
+                AppearanceSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
+                    nighttime = true,
+                    onDismiss = dismiss,
+                    onThemeChanged = onThemeChanged,
+                )
+                AppearanceSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
+                    onDismiss = dismiss,
+                    onRangeSelected = onThemeChanged,
+                )
+                AppearanceSettingsDialog.Font -> FontSelectionDialog(
+                    readerMode = false,
+                    onDismiss = dismiss,
+                )
+                AppearanceSettingsDialog.Style -> WelcomeSettingsDialog(
+                    styleChooser = true,
+                    onDismiss = dismiss,
+                )
+                AppearanceSettingsDialog.PaletteTint -> PaletteTintDialog(onDismiss = dismiss)
             }
         },
-        onDialogRequested = { dialog = it },
-        contentVersion = settings.hashCode(),
     )
-
-    when (dialog) {
-        AppearanceSettingsDialog.Theme -> ThemeSelectionDialog(
-            nighttime = false,
-            onDismiss = { dialog = null },
-            onThemeChanged = onThemeChanged,
-        )
-        AppearanceSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
-            nighttime = true,
-            onDismiss = { dialog = null },
-            onThemeChanged = onThemeChanged,
-        )
-        AppearanceSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
-            onDismiss = { dialog = null },
-            onRangeSelected = onThemeChanged,
-        )
-        AppearanceSettingsDialog.Font -> FontSelectionDialog(
-            readerMode = false,
-            onDismiss = { dialog = null },
-        )
-        AppearanceSettingsDialog.Style -> WelcomeSettingsDialog(
-            styleChooser = true,
-            onDismiss = { dialog = null },
-        )
-        AppearanceSettingsDialog.PaletteTint -> PaletteTintDialog(onDismiss = { dialog = null })
-        null -> Unit
-    }
 }
 
-private fun formatNighttimeRange(context: Context): String {
-    val hours = AndroidAppearanceState.nighttimeSchedule(context)
-    if (DateFormat.is24HourFormat(context)) {
-        return String.format(
-            Locale.getDefault(),
-            "%02d:%02d - %02d:%02d",
-            hours[0],
-            hours[1],
-            hours[2],
-            hours[3],
-        )
-    }
-    val formatter = SimpleDateFormat("h:mm a", Locale.getDefault())
-    @Suppress("DEPRECATION")
-    val start = formatter.format(Date(0, 0, 0, hours[0], hours[1]))
-    @Suppress("DEPRECATION")
-    val end = formatter.format(Date(0, 0, 0, hours[2], hours[3]))
-    return "$start - $end"
-}
+private fun formatNighttimeRange(context: Context): String = ThemeSelectionPolicy.formatSchedule(
+    schedule = AndroidAppearanceState.nighttimeScheduleValue(context),
+    use24HourClock = DateFormat.is24HourFormat(context),
+)

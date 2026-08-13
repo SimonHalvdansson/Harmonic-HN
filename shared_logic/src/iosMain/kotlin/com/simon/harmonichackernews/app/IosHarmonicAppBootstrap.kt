@@ -8,6 +8,8 @@ import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
 import com.simon.harmonichackernews.settings.ThemePreferences
 import platform.Foundation.NSUserDefaults
+import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.platform.StoredBookmarkStore
 
 /**
  * Swift-facing owner for one Harmonic application graph.
@@ -35,12 +37,18 @@ class IosHarmonicAppBootstrap(
     val appData = IosKeyValueStore(appDataDefaults)
     val previewCache = IosKeyValueStore(NSUserDefaults(suiteName = PreviewCachePolicy.STORE_NAME))
     val network = IosNetworkComponent(userAgent)
-    val platform = createIosPlatformDependencies(appData, bindings)
+    val savedItems = SavedItemsRepository(appData)
+    val platform = createIosPlatformDependencies(
+        appData,
+        bindings,
+        bookmarkStore = StoredBookmarkStore(savedItems),
+    )
     val app = HarmonicAppComposition(
         network = network.graph,
         platform = platform,
         settingsStore = preferences,
         appDataStore = appData,
+        savedItemsRepository = savedItems,
         previewCacheStore = previewCache,
         settingsChanges = preferences.changes,
         currentTheme = {
