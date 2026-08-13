@@ -12,7 +12,6 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
@@ -713,21 +712,13 @@ class CommentsCoordinator(
             is CommentsPlatformEffect.OpenEditor -> navigation.openEditor(effect.destination)
             CommentsPlatformEffect.RequestLogin ->
                 navigation.showLoginDialog()
-            is CommentsPlatformEffect.ShowMessage -> Toast.makeText(
-                requireContext(),
-                effect.message,
-                Toast.LENGTH_SHORT,
-            ).show()
+            is CommentsPlatformEffect.ShowMessage -> navigation.showMessage(effect.message)
             is CommentsPlatformEffect.ShareText ->
                 platformDependencies.sharing.share(effect.text)
             is CommentsPlatformEffect.CopyText -> {
                 platformDependencies.clipboard.copy(effect.label, effect.text)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Text copied to clipboard",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    navigation.showMessage("Text copied to clipboard")
                 }
             }
             CommentsPlatformEffect.ReloadLinkPreviews ->
@@ -1014,11 +1005,7 @@ class CommentsCoordinator(
                 syncComposeState()
                 composeController?.scrollToComment(target.commentId, topInset, false)
             }
-            is CommentTargetResolution.NotFound -> Toast.makeText(
-                context,
-                "Comment not found",
-                Toast.LENGTH_SHORT,
-            ).show()
+            is CommentTargetResolution.NotFound -> navigation.showMessage("Comment not found")
         }
     }
 
@@ -1171,7 +1158,6 @@ class CommentsCoordinator(
     private fun showActionFailure(
         presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
     ) {
-        val context = context ?: return
         if (presentation.requestLogin) navigation.showLoginDialog()
         if (presentation.showDetails) {
             navigation.showFailureDetailDialog(
@@ -1180,11 +1166,15 @@ class CommentsCoordinator(
                 null,
             )
         }
-        Toast.makeText(
-            context,
-            presentation.message,
-            Toast.LENGTH_SHORT,
-        ).show()
+        navigation.showMessage(presentation.message)
+    }
+
+    internal fun showMessage(
+        message: String?,
+        duration: com.simon.harmonichackernews.presentation.UserMessageDuration =
+            com.simon.harmonichackernews.presentation.UserMessageDuration.SHORT,
+    ) {
+        navigation.showMessage(message, duration)
     }
 
     private fun completeCommentsLoad(updateHeaderAfterLoad: Boolean) {

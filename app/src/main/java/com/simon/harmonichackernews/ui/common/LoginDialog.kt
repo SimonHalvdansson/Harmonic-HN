@@ -1,11 +1,9 @@
 package com.simon.harmonichackernews.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.login_dialog_success
-import com.simon.harmonichackernews.utils.AndroidToast
 import org.jetbrains.compose.resources.stringResource
 
 private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
@@ -14,14 +12,13 @@ private const val HackerNewsLoginUrl = "https://news.ycombinator.com/login"
 fun LoginDialog(
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
     val loginSuccess = stringResource(Res.string.login_dialog_success)
     val appComposition = LocalHarmonicUiDependencies.current
     SharedLoginDialog(
         onDismiss = onDismiss,
         workflow = appComposition.login,
         onLoginSucceeded = {
-            AndroidToast.show(loginSuccess, context)
+            appComposition.userMessages.show(loginSuccess)
             onDismiss()
         },
         onCreateAccount = {

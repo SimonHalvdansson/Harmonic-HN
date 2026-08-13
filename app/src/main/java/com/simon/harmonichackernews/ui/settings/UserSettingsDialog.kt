@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -114,7 +113,7 @@ fun UserSettingsDialog(
         onEditTag = { tagDialogOpen = true },
         onToggleBlocked = {
             runtime.toggleBlocked()?.let { outcome ->
-                Toast.makeText(context, outcome.message, Toast.LENGTH_SHORT).show()
+                appComposition.userMessages.show(outcome.message)
                 if (outcome.dismissProfile) onDismiss()
             }
         },

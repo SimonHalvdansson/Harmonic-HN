@@ -39,7 +39,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
 import androidx.core.content.ContextCompat
@@ -51,7 +50,6 @@ import androidx.webkit.WebViewFeature
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.google.android.material.snackbar.Snackbar
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
@@ -74,7 +72,7 @@ import com.simon.harmonichackernews.utils.AndroidAdBlocklist
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.AndroidStoryCache
-import com.simon.harmonichackernews.utils.AndroidToast
+import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
@@ -375,7 +373,7 @@ internal class CommentsWebViewController(
                 intent.data = Uri.parse(checkNotNull(story?.url))
                 callbacks.startActivity(intent)
             } catch (e2: Exception) {
-                AndroidToast.show("Couldn't open URL", coordinator.context)
+                coordinator.showMessage("Couldn't open URL")
             }
         }
     }
@@ -385,13 +383,7 @@ internal class CommentsWebViewController(
         val currentWebView = webView ?: return
         currentWebView.reload()
 
-        val snackbar = Snackbar.make(
-            currentWebView,
-            "Disabled AdBlock, refreshing WebView",
-            Snackbar.LENGTH_SHORT
-        )
-        ViewCompat.setElevation(snackbar.view, AndroidDisplay.dpToPx(coordinator.resources, 24f))
-        snackbar.show()
+        coordinator.showMessage("Disabled AdBlock, refreshing WebView")
     }
 
     fun toggleReaderMode() {
@@ -407,8 +399,7 @@ internal class CommentsWebViewController(
 
         val currentUrl = currentWebView.url
         if (showingErrorPage || PDF_LOADER_URL == currentUrl || isErrorPageUrl(currentUrl)) {
-            Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT)
-                .show()
+            coordinator.showMessage("Reader mode unavailable for this page")
             return
         }
 
@@ -422,8 +413,7 @@ internal class CommentsWebViewController(
             )
         }) {
             ReaderModeToggleDecision.Unavailable -> {
-                Toast.makeText(context, "Reader mode unavailable for this page", Toast.LENGTH_SHORT)
-                    .show()
+                coordinator.showMessage("Reader mode unavailable for this page")
                 return
             }
             ReaderModeToggleDecision.LoadThenEnable -> {
@@ -431,11 +421,7 @@ internal class CommentsWebViewController(
                     startedLoading = true
                     loadUrl(story?.url)
                 }
-                Toast.makeText(
-                    context,
-                    "Reader mode will open after the page loads",
-                    Toast.LENGTH_SHORT
-                ).show()
+                coordinator.showMessage("Reader mode will open after the page loads")
                 return
             }
             is ReaderModeToggleDecision.Apply -> applyReaderMode(decision.enabled)
@@ -457,7 +443,7 @@ internal class CommentsWebViewController(
         if (TextUtils.isEmpty(script)) {
             setReaderModeUnavailableNow()
             if (showFeedback) {
-                Toast.makeText(context, "Reader mode unavailable", Toast.LENGTH_SHORT).show()
+                coordinator.showMessage("Reader mode unavailable")
             }
             return
         }
@@ -491,29 +477,20 @@ internal class CommentsWebViewController(
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     setReaderModeEnabled(false)
                     if (showFeedback) {
-                        Toast.makeText(
-                            callbackContext,
-                            "Couldn't find readable article",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        coordinator.showMessage("Couldn't find readable article")
                     }
                 }
                 ReaderModeScriptStatus.UNAVAILABLE -> {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     setReaderModeEnabled(false)
                     if (showFeedback) {
-                        Toast.makeText(
-                            callbackContext,
-                            "Reader mode unavailable for this page",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        coordinator.showMessage("Reader mode unavailable for this page")
                     }
                 }
                 ReaderModeScriptStatus.FAILED -> {
                     setReaderModeUnavailableRespectingInitialGrace(generation)
                     if (showFeedback) {
-                        Toast.makeText(callbackContext, "Couldn't open reader mode", Toast.LENGTH_SHORT)
-                            .show()
+                        coordinator.showMessage("Couldn't open reader mode")
                     }
                 }
             }
@@ -1409,7 +1386,7 @@ internal class CommentsWebViewController(
             return
         }
         val fileDownloader = FileDownloader(ctx)
-        Toast.makeText(ctx, "Loading PDF...", Toast.LENGTH_LONG).show()
+        coordinator.showMessage("Loading PDF...", UserMessageDuration.LONG)
         fileDownloader.downloadFile(url, PDF_MIME_TYPE, object : FileDownloaderCallback {
             override fun onFailure(error: IOException?) {
                 showDownloadButton(url, contentDisposition, mimetype)
@@ -1440,15 +1417,19 @@ internal class CommentsWebViewController(
                         val dm = view.getContext()
                             .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                         dm.enqueue(request)
-                        Toast.makeText(coordinator.context, "Downloading...", Toast.LENGTH_LONG)
-                            .show()
+                        coordinator.showMessage("Downloading...", UserMessageDuration.LONG)
                     } catch (e: Exception) {
-                        Toast.makeText(
-                            coordinator.context,
+                        coordinator.showMessage(
                             "Failed to download, opening in browser",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        AndroidExternalLinkLauncher.openExternalBrowser(coordinator.requireActivity(), url.orEmpty())
+                            UserMessageDuration.LONG,
+                        )
+                        if (!AndroidExternalLinkLauncher.openExternalBrowser(
+                                coordinator.requireActivity(),
+                                url.orEmpty(),
+                            )
+                        ) {
+                            coordinator.showMessage("Couldn't open download link")
+                        }
                     }
                 }
         })
@@ -1555,7 +1536,7 @@ internal class CommentsWebViewController(
         showingCachedArticlePage = true
         view.stopLoading()
         clearWebViewHistoryOnNextFinish = true
-        Toast.makeText(context, "Showing cached webview content", Toast.LENGTH_SHORT).show()
+        coordinator.showMessage("Showing cached webview content")
         view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
         return true
     }
@@ -1812,7 +1793,7 @@ internal class CommentsWebViewController(
             }
             val context = coordinator.context
             if (context != null && wasCurrentWebView) {
-                AndroidToast.show("WebView crashed, reinitializing", context)
+                coordinator.showMessage("WebView crashed, reinitializing")
                 restartWebView()
             }
 

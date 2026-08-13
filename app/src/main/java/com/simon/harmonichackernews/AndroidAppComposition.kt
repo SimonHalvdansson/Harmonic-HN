@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.settings.AndroidUserSettings
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.platform.StoredBookmarkStore
+import com.simon.harmonichackernews.presentation.UserMessageStore
 
 /** Process-owned Android entry point into the platform-neutral application graph. */
 object AndroidAppComposition {
@@ -28,11 +29,13 @@ object AndroidAppComposition {
         val settings = AndroidUserSettings.get(context)
         val appDataStore = AndroidKeyValueStore.global(context)
         val savedItems = SavedItemsRepository(appDataStore)
+        val userMessages = UserMessageStore()
         return HarmonicAppComposition(
             network = NetworkComponent.graph,
             platform = AndroidPlatformDependencies.create(
                 context,
                 bookmarkStore = StoredBookmarkStore(savedItems),
+                userMessages = userMessages,
             ),
             metadata = AppMetadata(
                 versionName = BuildConfig.VERSION_NAME,
@@ -48,6 +51,7 @@ object AndroidAppComposition {
             previewCacheStore = AndroidKeyValueStore.named(context, PreviewCachePolicy.STORE_NAME),
             settingsChanges = settings.changes,
             currentTheme = { ThemeUtils.getPreferredTheme(context) },
+            userMessages = userMessages,
         )
     }
 }

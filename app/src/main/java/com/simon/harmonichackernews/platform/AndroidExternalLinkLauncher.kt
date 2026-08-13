@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.webkit.URLUtil
-import android.widget.Toast
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
@@ -19,23 +18,24 @@ import com.simon.harmonichackernews.utils.isInvalidViewHandlerPackage
 
 /** Android browser/custom-tab facility behind the shared external-link contract. */
 object AndroidExternalLinkLauncher {
-    fun openCustomTab(context: Context, url: String?, shareable: Boolean = true) {
-        val originalUrl = url ?: return
+    fun openCustomTab(context: Context, url: String?, shareable: Boolean = true): Boolean {
+        val originalUrl = url ?: return false
         if (AndroidAppComposition.get(context).userSettings.reading.externalBrowser ||
             !isCustomTabSupported(context)
         ) {
-            openExternalBrowser(context, originalUrl)
-            return
+            return openExternalBrowser(context, originalUrl)
         }
 
-        try {
+        return try {
             createCustomTabsIntent(context, shareable).launchUrl(context, Uri.parse(originalUrl))
+            true
         } catch (_: Exception) {
             try {
                 createCustomTabsIntent(context, shareable).launchUrl(
                     context,
                     Uri.parse(URLUtil.guessUrl(originalUrl)),
                 )
+                true
             } catch (_: Exception) {
                 val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(originalUrl)
                 try {
@@ -43,6 +43,7 @@ object AndroidExternalLinkLauncher {
                         context,
                         Uri.parse(fallbackUrl),
                     )
+                    true
                 } catch (_: Exception) {
                     openExternalBrowser(context, fallbackUrl)
                 }
@@ -50,26 +51,24 @@ object AndroidExternalLinkLauncher {
         }
     }
 
-    fun openExternalBrowser(context: Context, url: String) {
+    fun openExternalBrowser(context: Context, url: String): Boolean =
         try {
             openExternalUrl(context, url)
+            true
         } catch (_: Exception) {
             try {
                 openExternalUrl(context, URLUtil.guessUrl(url))
+                true
             } catch (_: Exception) {
                 val fallbackUrl = ExternalUrlPolicy.ensureHttpScheme(url)
                 try {
                     openExternalUrl(context, fallbackUrl)
+                    true
                 } catch (_: Exception) {
-                    Toast.makeText(
-                        context,
-                        "Couldn't open link to: $fallbackUrl",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    false
                 }
             }
         }
-    }
 
     private fun createCustomTabsIntent(
         context: Context,

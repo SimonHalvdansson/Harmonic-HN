@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.network.HackerNewsActionFailureReason
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 
-/** Portable user-facing outcome; the host only renders details/login/toast facilities. */
+/** Portable user-facing outcome; the host only renders details, login, and message facilities. */
 data class ActionFailurePresentation(
     val result: HackerNewsActionResult,
     val message: String,

@@ -4,7 +4,6 @@ package com.simon.harmonichackernews.ui.settings
 
 
 import android.content.Context
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,6 +30,7 @@ import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
+import com.simon.harmonichackernews.presentation.UserMessageDuration
 
 @Composable
 fun AiSummarySettingsScreen(
@@ -91,11 +91,10 @@ fun AiSummarySettingsScreen(
         contentVersion = localRefresh,
         onBack = onBack,
         onLocalModeUnavailable = {
-            Toast.makeText(
-                context,
+            appComposition.userMessages.show(
                 "Local summarization is unavailable on this device",
-                Toast.LENGTH_LONG,
-            ).show()
+                UserMessageDuration.LONG,
+            )
         },
         localModelsContent = {
             LocalModelsPanel(
@@ -152,6 +151,7 @@ private fun LocalModelsPanel(
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
+    val userMessages = LocalHarmonicUiDependencies.current.userMessages
     val selectedModelId = modelState.selectedModelId
     val rows = LocalModelCatalog.models.map { definition ->
         val model = LocalModelManager.getModel(definition.id)
@@ -216,7 +216,7 @@ private fun LocalModelsPanel(
                         model.id,
                     )
                     if (!error.isNullOrBlank()) {
-                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                        userMessages.show(error, UserMessageDuration.LONG)
                     }
                 }
             }

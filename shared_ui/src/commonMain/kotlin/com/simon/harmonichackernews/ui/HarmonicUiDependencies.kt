@@ -30,6 +30,7 @@ class HarmonicUiDependencies(app: HarmonicAppComposition) {
     val login = app.login
     val settingsReset = app.settingsReset
     val launchState = app.launchState
+    val userMessages = app.userMessages
 }
 
 val LocalHarmonicUiDependencies = staticCompositionLocalOf<HarmonicUiDependencies> {

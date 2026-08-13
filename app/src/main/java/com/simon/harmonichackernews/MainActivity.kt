@@ -24,7 +24,7 @@ class MainActivity : BaseActivity() {
         ThemeUtils.setupTheme(this)
 
         navigationController = install(this, savedInstanceState)
-        launchIntentRouter = MainLaunchIntentRouter(this, navigationController)
+        launchIntentRouter = MainLaunchIntentRouter(navigationController)
         // A singleTask can be recreated with saved navigation state while also receiving a new
         // deep link or feature intent. Always apply that launch intent after restoring state so
         // the newly requested destination wins.

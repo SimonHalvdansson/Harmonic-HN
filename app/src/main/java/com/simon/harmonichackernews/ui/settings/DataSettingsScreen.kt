@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -26,7 +25,7 @@ import com.simon.harmonichackernews.settings.BookmarkExportDecision
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
 import com.simon.harmonichackernews.utils.AndroidStoryCache
-import com.simon.harmonichackernews.utils.AndroidToast
+import com.simon.harmonichackernews.presentation.UserMessageDuration
 import java.util.Calendar
 import kotlinx.coroutines.launch
 
@@ -59,7 +58,7 @@ fun DataSettingsScreen(
                     SavedItemCodec.encode(savedItems.loadItems(SavedItemSource.BOOKMARKS)),
                 )
             }.onFailure {
-                Toast.makeText(context, "Write error", Toast.LENGTH_SHORT).show()
+                appComposition.userMessages.show("Write error")
             }
         }
     }
@@ -76,15 +75,17 @@ fun DataSettingsScreen(
                     savedItems = savedItems,
                 )
             }.onSuccess { importedCount ->
-                localRefresh++
-                val action = if (overwriteBookmarksOnImport) "Loaded " else "Added "
-                Toast.makeText(
-                    context,
-                    action + formatBookmarkCount(importedCount),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                if (importedCount == null) {
+                    appComposition.userMessages.show("File contained no bookmarks")
+                } else {
+                    localRefresh++
+                    val action = if (overwriteBookmarksOnImport) "Loaded " else "Added "
+                    appComposition.userMessages.show(
+                        action + formatBookmarkCount(importedCount),
+                    )
+                }
             }.onFailure {
-                Toast.makeText(context, "Read error", Toast.LENGTH_SHORT).show()
+                appComposition.userMessages.show("Read error")
             }
         }
     }
@@ -111,11 +112,8 @@ fun DataSettingsScreen(
                 }
                 DataSettingsAction.ExportBookmarks -> {
                     when (DataSettingsPolicy.exportDecision(bookmarkCount)) {
-                        BookmarkExportDecision.Empty -> Toast.makeText(
-                            context,
-                            "No bookmarks to export",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        BookmarkExportDecision.Empty ->
+                            appComposition.userMessages.show("No bookmarks to export")
                         BookmarkExportDecision.Ready -> exportLauncher.launch(bookmarksFilename())
                     }
                 }
@@ -125,7 +123,7 @@ fun DataSettingsScreen(
                     historyStore?.clear()
                     localRefresh++
                     DataSettingsPolicy.clearedItemsMessage(oldCount, "entry", "entries")
-                        ?.let { AndroidToast.show(it, context) }
+                        ?.let { appComposition.userMessages.show(it) }
                 }
                 DataSettingsAction.ClearPostCache -> {
                     val oldCount = AndroidStoryCache.clear(context)
@@ -136,13 +134,13 @@ fun DataSettingsScreen(
                             oldCount,
                             "cached post",
                             "cached posts",
-                        )?.let { AndroidToast.show(it, context) }
+                        )?.let { appComposition.userMessages.show(it) }
                     }
                 }
                 DataSettingsAction.ClearTintCache -> {
                     appComposition.storyResourceTints.clear()
                     localRefresh++
-                    AndroidToast.show("Tint cache cleared", context)
+                    appComposition.userMessages.show("Tint cache cleared")
                 }
                 DataSettingsAction.OpenLinksSettings -> dialog = DataSettingsDialog.Links
                 DataSettingsAction.ResetSettings -> dialog = DataSettingsDialog.Reset
@@ -174,7 +172,7 @@ fun DataSettingsScreen(
             negativeLabel = "Cancel",
             onPositive = {
                 settingsReset.execute()
-                AndroidToast.show("Settings reset", context)
+                appComposition.userMessages.show("Settings reset")
                 onRequestRestart()
                 dialog = null
             },
@@ -188,16 +186,15 @@ fun DataSettingsScreen(
                 "Go to \"Open by default\" → \"Add link\" in the linked app settings page.",
             neutralLabel = "Go to settings",
             onNeutral = {
+                appComposition.userMessages.show(
+                    "The option should be under \"Open by default\"",
+                    UserMessageDuration.LONG,
+                )
                 context.startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
                     },
                 )
-                Toast.makeText(
-                    context,
-                    "The option should be under \"Open by default\"",
-                    Toast.LENGTH_LONG,
-                ).show()
                 dialog = null
             },
             onDismiss = { dialog = null },
@@ -221,17 +218,14 @@ private fun importBookmarks(
     uri: Uri,
     overwrite: Boolean,
     savedItems: SavedItemsRepository,
-): Int {
+): Int? {
     val content = AndroidTextDocuments.read(context, uri)
     val result = BookmarkImportPolicy.apply(
         content = content,
         current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
         overwrite = overwrite,
     )
-    if (result == null) {
-        Toast.makeText(context, "File contained no bookmarks", Toast.LENGTH_SHORT).show()
-        return 0
-    }
+    if (result == null) return null
     savedItems.saveItems(SavedItemSource.BOOKMARKS, result.items)
     return result.importedCount
 }

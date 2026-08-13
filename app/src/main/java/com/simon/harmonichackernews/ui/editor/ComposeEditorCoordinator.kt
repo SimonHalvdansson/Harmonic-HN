@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.editor
 
-import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.AndroidAppComposition
@@ -51,15 +50,13 @@ class ComposeEditorCoordinator(
     private fun handleResult(result: EditorWorkflowResult) {
         when (result) {
             EditorWorkflowResult.Success -> {
-                Toast.makeText(
-                    activity,
+                navigation.showMessage(
                     if (type == EditorType.POST) {
                         "Post submitted, it might take a minute to show up"
                     } else {
                         "Comment posted, it might take a minute to show up"
                     },
-                    Toast.LENGTH_SHORT,
-                ).show()
+                )
                 onFinished()
             }
             is EditorWorkflowResult.Failure -> navigation.showFailureDetailDialog(
@@ -84,11 +81,7 @@ class ComposeEditorCoordinator(
                     }
                 },
             )
-            is EditorWorkflowResult.CaptchaCancelled -> Toast.makeText(
-                activity,
-                result.message,
-                Toast.LENGTH_SHORT,
-            ).show()
+            is EditorWorkflowResult.CaptchaCancelled -> navigation.showMessage(result.message)
             EditorWorkflowResult.Ignored -> Unit
         }
     }

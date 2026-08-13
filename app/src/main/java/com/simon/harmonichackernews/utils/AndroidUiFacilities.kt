@@ -5,7 +5,6 @@ import android.content.res.Resources
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import android.widget.Toast
 import com.simon.harmonichackernews.R
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,12 +13,6 @@ import kotlin.math.roundToInt
 object HarmonicLog {
     fun debug(value: Any?) {
         Log.d("HARMONIC_TAG", value.toString())
-    }
-}
-
-object AndroidToast {
-    fun show(message: String?, context: Context?) {
-        if (context != null) Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 }
 

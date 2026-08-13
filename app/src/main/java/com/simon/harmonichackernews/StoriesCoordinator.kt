@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
 import android.text.format.DateFormat
-import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
@@ -221,7 +220,7 @@ class StoriesCoordinator(
                 storyCacheController?.cacheStories(effect.request)
             StoriesRuntimeEffect.LoginRequired -> navigation.showLoginDialog()
             is StoriesRuntimeEffect.UserMessage ->
-                Toast.makeText(activity, effect.message, Toast.LENGTH_SHORT).show()
+                navigation.showMessage(effect.message)
             is StoriesRuntimeEffect.SavedActionFailed -> {
                 if (effect.presentation.showDetails) {
                     navigation.showFailureDetailDialog(
@@ -230,11 +229,7 @@ class StoriesCoordinator(
                         null,
                     )
                 }
-                Toast.makeText(
-                    activity,
-                    effect.presentation.message,
-                    Toast.LENGTH_SHORT,
-                ).show()
+                navigation.showMessage(effect.presentation.message)
             }
         }
     }

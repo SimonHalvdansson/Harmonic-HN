@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.platform.SubmissionsPlatformDependencies
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.presentation.LoginWorkflow
+import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
@@ -43,6 +44,7 @@ class HarmonicAppComposition(
     previewCacheStore: KeyValueStore,
     settingsChanges: Flow<Unit>,
     currentTheme: () -> String? = { null },
+    val userMessages: UserMessageStore = UserMessageStore(),
 ) {
     val sessions = ScreenSessionRegistry()
     val navigation = MainNavigationStore()

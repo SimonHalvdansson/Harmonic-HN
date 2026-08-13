@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.summary.local.LocalModelManager
 import com.simon.harmonichackernews.utils.AiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.ShareUtils
+import com.simon.harmonichackernews.presentation.UserMessageStore
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -119,15 +120,19 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
     override fun isUnmetered(): Boolean = AndroidNetworkStatus.isUnmetered(appContext)
 }
 
-class AndroidExternalLinkOpener(context: Context) : ExternalLinkOpener {
+class AndroidExternalLinkOpener(
+    context: Context,
+    private val userMessages: UserMessageStore,
+) : ExternalLinkOpener {
     private val context = context
 
     override fun open(request: ExternalLinkRequest) {
-        if (request.preferInApp) {
+        val opened = if (request.preferInApp) {
             AndroidExternalLinkLauncher.openCustomTab(context, request.url, request.shareable)
         } else {
             AndroidExternalLinkLauncher.openExternalBrowser(context, request.url)
         }
+        if (!opened) userMessages.show("Couldn't open link to: ${request.url}")
     }
 }
 
@@ -195,11 +200,16 @@ class AndroidFileStore(context: Context) : FileStore {
     private fun resolve(reference: String): File = File(root, safeName(reference))
 }
 
-class AndroidArticleViewer(context: Context) : ArticleViewer {
+class AndroidArticleViewer(
+    context: Context,
+    private val userMessages: UserMessageStore,
+) : ArticleViewer {
     private val context = context
 
     override fun open(request: ArticleRequest) {
-        AndroidExternalLinkLauncher.openCustomTab(context, request.url)
+        if (!AndroidExternalLinkLauncher.openCustomTab(context, request.url)) {
+            userMessages.show("Couldn't open link to: ${request.url}")
+        }
     }
 }
 
@@ -277,6 +287,7 @@ object AndroidPlatformDependencies {
     fun create(
         context: Context,
         bookmarkStore: ObservableBookmarkStore = AndroidBookmarkStore(context),
+        userMessages: UserMessageStore = UserMessageStore(),
     ): AppPlatformDependencies {
         val accounts = AndroidCredentialStore(context)
         return AppPlatformDependencies(
@@ -287,12 +298,14 @@ object AndroidPlatformDependencies {
                 history = PlatformCapability.Available(AndroidHistoryStore(context)),
                 cache = PlatformCapability.Available(AndroidCacheStore(context)),
                 files = PlatformCapability.Available(AndroidFileStore(context)),
-                externalLinks = PlatformCapability.Available(AndroidExternalLinkOpener(context)),
+                externalLinks = PlatformCapability.Available(
+                    AndroidExternalLinkOpener(context, userMessages),
+                ),
                 sharing = PlatformCapability.Available(AndroidShareService(context)),
                 clipboard = PlatformCapability.Available(AndroidClipboardService(context)),
                 connectivity = PlatformCapability.Available(AndroidConnectivityService(context)),
                 notifications = PlatformCapability.Available(AndroidNotificationScheduler(context)),
-                articles = PlatformCapability.Available(AndroidArticleViewer(context)),
+                articles = PlatformCapability.Available(AndroidArticleViewer(context, userMessages)),
                 localSummary = PlatformCapability.Available(AndroidLocalSummaryEngine(context)),
             ),
         )

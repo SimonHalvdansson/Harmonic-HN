@@ -2,9 +2,7 @@ package com.simon.harmonichackernews.ui.navigation
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import com.simon.harmonichackernews.CommentsContract
-import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.ui.debug.CoulombGasContract
@@ -16,7 +14,6 @@ import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 /** Converts Android entry intents into portable navigation destinations. */
 internal class MainLaunchIntentRouter(
-    private val activity: MainActivity,
     private val navigation: MainNavigationController,
 ) {
     fun route(intent: Intent?): Boolean {
@@ -102,6 +99,6 @@ internal class MainLaunchIntentRouter(
     }
 
     private fun showMessage(message: String) {
-        Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+        navigation.showMessage(message)
     }
 }

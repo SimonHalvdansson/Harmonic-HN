@@ -53,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -94,6 +95,7 @@ import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.ui.common.CaptchaResultCallback
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
+import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.editor.ComposeEditorController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorCoordinator
@@ -134,6 +136,8 @@ import com.simon.harmonichackernews.navigation.MainUserRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AppLaunchDialog
+import com.simon.harmonichackernews.presentation.UserMessageDuration
+import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.utils.ThemeUtils
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -148,6 +152,7 @@ import kotlinx.coroutines.withContext
 @Stable
 class MainNavigationController internal constructor(
     internal val navigationState: MainNavigationStore,
+    private val userMessages: UserMessageStore,
     savedState: Bundle? = null,
 ) {
     internal val storyRequest get() = navigationState.storyRequest
@@ -360,6 +365,13 @@ class MainNavigationController internal constructor(
         navigationState.showFailureDetailDialog(title, message, clipboardText)
     }
 
+    fun showMessage(
+        message: String?,
+        duration: UserMessageDuration = UserMessageDuration.SHORT,
+    ) {
+        userMessages.show(message, duration)
+    }
+
     internal fun dismissFailureDetailDialog() {
         navigationState.dismissFailureDetailDialog()
     }
@@ -561,7 +573,11 @@ object MainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): MainNavigationController {
         val appComposition = AndroidAppComposition.get(activity)
-        val controller = MainNavigationController(appComposition.navigation, savedState)
+        val controller = MainNavigationController(
+            appComposition.navigation,
+            appComposition.userMessages,
+            savedState,
+        )
         when (
             appComposition.launchState.consumeLaunchDialog(
                 currentVersion = appComposition.metadata.versionCode,
@@ -1321,11 +1337,7 @@ private fun MainNavigation(
                             uiDependencies.platform.capabilities.clipboard.getOrNull()
                                 ?.copy("Hacker News comment", text)
                             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                                android.widget.Toast.makeText(
-                                    activity,
-                                    "Comment copied to clipboard",
-                                    android.widget.Toast.LENGTH_SHORT,
-                                ).show()
+                                controller.showMessage("Comment copied to clipboard")
                             }
                         }
                         controller.dismissFailureDetailDialog()
@@ -1334,6 +1346,13 @@ private fun MainNavigation(
                 )
             }
         }
+
+        UserMessageSnackbarHost(
+            messages = uiDependencies.userMessages,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(100f),
+        )
     }
 
 }
