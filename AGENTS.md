@@ -7,7 +7,7 @@ have automated Kotlin tests, and Android release builds are checked by GitHub Ac
 General tips:
 - `app/` is the Android application shell. Portable application logic belongs in `shared_logic/`,
   shared Compose UI belongs in `shared_ui/`, portable assets belong in `shared_resources/`, and
-  `desktop_smoke/` is the current desktop host/smoke application.
+  `desktop_app/` is the production desktop application host.
 - The in-app changelog lives in `app/src/main/java/com/simon/harmonichackernews/utils/Changelog.java`.
 - Do not update the changelog unless the user explicitly asks for it.
 - Building the app may require Android SDK components which may not be available in minimal environments.
@@ -50,7 +50,7 @@ General tips:
 - After changing shared logic, run `./gradlew :shared_logic:compileCommonMainKotlinMetadata` and
   `./gradlew :shared_logic:desktopTest`. Compile affected platform adapters with
   `:shared_logic:compileKotlinIosSimulatorArm64`, `:shared_ui:compileKotlinIosSimulatorArm64`, or
-  `:desktop_smoke:compileKotlinDesktop` as applicable, in addition to Android verification below.
+  `:desktop_app:compileKotlinDesktop` as applicable, in addition to Android verification below.
 
 ## Icon Guidelines
 

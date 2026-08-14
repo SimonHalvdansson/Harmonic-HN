@@ -15,7 +15,7 @@ import kotlin.time.Clock
  * Complete platform contract for one production application graph.
  *
  * Hosts must make time, appearance, metadata and cache-lifetime decisions explicitly. Optional
- * native features stay nullable, while the named [inMemory] factory keeps preview and smoke hosts
+ * native features stay nullable, while the named [inMemory] factory keeps preview and test hosts
  * concise without making non-persistent defaults look production-ready.
  */
 class HarmonicHostConfiguration(
@@ -36,7 +36,7 @@ class HarmonicHostConfiguration(
     val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     companion object {
-        /** Explicitly non-persistent configuration for previews and host-contract smoke checks. */
+        /** Explicitly non-persistent configuration for previews and host-contract checks. */
         fun inMemory(
             metadata: AppMetadata,
             currentMinutesFromMidnight: () -> Int,

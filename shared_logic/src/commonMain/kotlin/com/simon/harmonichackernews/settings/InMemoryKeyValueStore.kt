@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 /**
- * Volatile key-value adapter for previews, smoke hosts, and tests that must not write host state.
+ * Volatile key-value adapter for previews and tests that must not write host state.
  */
 class InMemoryKeyValueStore : KeyValueStore {
     private val values = mutableMapOf<String, Any>()

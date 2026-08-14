@@ -98,6 +98,7 @@ fun SharedSettingsNavigationShell(
     ) -> Unit,
     modifier: Modifier = Modifier,
     predictiveBackOverlay: SettingsPredictiveBackOverlay? = null,
+    animateDetailChanges: Boolean = true,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val paneProportion = if (isFoldable) 0.5f else 0.4f
@@ -151,8 +152,13 @@ fun SharedSettingsNavigationShell(
         entry<SharedSettingsDetailDestination>(
             metadata = ListDetailSceneStrategy.detailPane(),
         ) { destination ->
-            if (showDetailNavigation) {
-                renderDetail(destination.section, true, ::navigateBack, ::navigateTo)
+            if (showDetailNavigation || !animateDetailChanges) {
+                renderDetail(
+                    destination.section,
+                    showDetailNavigation,
+                    ::navigateBack,
+                    ::navigateTo,
+                )
             } else {
                 detailPaneTransition.AnimatedContent(
                     transitionSpec = { detailOpenTransition() },
