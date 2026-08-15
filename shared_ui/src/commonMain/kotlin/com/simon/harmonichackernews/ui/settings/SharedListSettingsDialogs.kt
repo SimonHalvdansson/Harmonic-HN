@@ -401,6 +401,7 @@ fun SharedUserTagDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(top = HarmonicDimens.compose_settings_dialog_content_padding)
                     .padding(horizontal = HarmonicDimens.compose_settings_dialog_content_padding)
                     .padding(bottom = HarmonicDimens.compose_settings_dialog_content_padding),
             ) {

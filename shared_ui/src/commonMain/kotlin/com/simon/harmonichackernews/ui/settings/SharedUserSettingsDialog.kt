@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -72,12 +73,15 @@ fun SharedUserSettingsDialog(
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
+        edgeToEdgeContent = true,
         text = {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 680.dp)
-                    .padding(8.dp),
+                    .heightIn(max = 680.dp),
+                contentPadding = PaddingValues(
+                    HarmonicDimens.compose_settings_dialog_content_padding,
+                ),
             ) {
                 item {
                     Text(

@@ -199,7 +199,9 @@ fun SettingsAlertDialog(
                                     } else {
                                         HarmonicDimens.compose_settings_dialog_content_padding
                                     },
-                                    top = if (title == null) {
+                                    top = if (edgeToEdgeContent) {
+                                        0.dp
+                                    } else if (title == null) {
                                         HarmonicDimens.compose_settings_dialog_content_padding
                                     } else {
                                         0.dp
