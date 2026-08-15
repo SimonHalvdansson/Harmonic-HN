@@ -3,10 +3,14 @@ package com.simon.harmonichackernews.ui.comments
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -334,14 +338,21 @@ private fun SharedCommentsSheetControls(
             SheetButtonSlot(Res.drawable.ic_public, "Open in browser") {
                 onAction(CommentsSheetAction.BROWSER)
             }
-            if (readerModeAvailable) {
-                SheetButtonSlot(
-                    Res.drawable.ic_chrome_reader_mode,
-                    if (readerModeEnabled) "Reader mode on" else "Reader mode",
+            val readerModeSlotWeight by animateFloatAsState(
+                targetValue = if (readerModeAvailable) 1f else 0.001f,
+                animationSpec = tween(if (readerModeAvailable) 180 else 140),
+                label = "reader mode action slot width",
+            )
+            Box(
+                modifier = Modifier.weight(readerModeSlotWeight),
+                contentAlignment = Alignment.Center,
+            ) {
+                ReaderModeSheetButton(
+                    visible = readerModeAvailable,
+                    enabled = readerModeEnabled,
                     tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.drawable,
-                ) {
-                    onAction(CommentsSheetAction.READER)
-                }
+                    onClick = { onAction(CommentsSheetAction.READER) },
+                )
             }
             if (showInvert) {
                 SheetButtonSlot(Res.drawable.ic_invert_colors, "Invert colors") {
@@ -360,16 +371,47 @@ private fun RowScope.SheetButtonSlot(
     onClick: () -> Unit,
 ) {
     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-        CommentsTooltip(description) {
-            IconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = description,
-                    modifier = Modifier.size(24.dp),
-                    tint = tint,
-                )
-            }
+        SheetButtonContent(icon, description, tint, onClick)
+    }
+}
+
+@Composable
+private fun SheetButtonContent(
+    icon: DrawableResource,
+    description: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    CommentsTooltip(description) {
+        IconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = description,
+                modifier = Modifier.size(24.dp),
+                tint = tint,
+            )
         }
+    }
+}
+
+@Composable
+private fun ReaderModeSheetButton(
+    visible: Boolean,
+    enabled: Boolean,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.8f),
+        exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
+    ) {
+        SheetButtonContent(
+            Res.drawable.ic_chrome_reader_mode,
+            if (enabled) "Reader mode on" else "Reader mode",
+            tint,
+            onClick,
+        )
     }
 }
 

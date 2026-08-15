@@ -243,22 +243,24 @@ class ReaderModeAvailabilityCadence {
     private var recheckGeneration = -1
     private var recheckUsed = false
 
-    fun onLoadStarted(generation: Int, eligible: Boolean, nowMillis: Long): Boolean {
+    fun onLoadStarted(generation: Int, eligible: Boolean, nowMillis: Long) {
         recheckGeneration = -1
         recheckUsed = false
         unavailableDelayGeneration = -1
         if (!eligible) {
             initialGraceGeneration = -1
-            return false
+            return
         }
-        val retainInitialAvailability = !initialGraceUsed || isGraceActive(nowMillis)
-        if (!retainInitialAvailability) return false
+        val initialGraceStillActive = !initialGraceUsed || isGraceActive(nowMillis)
+        if (!initialGraceStillActive) {
+            initialGraceGeneration = -1
+            return
+        }
         if (!initialGraceUsed) {
             initialGraceUsed = true
             initialGraceStartedAtMillis = nowMillis
         }
         initialGraceGeneration = generation
-        return true
     }
 
     fun onAvailable() {
@@ -434,9 +436,11 @@ class ReaderModeStateMachine {
         )
     }
 
-    fun onEligiblePageLoadStarted(initiallyAvailable: Boolean) {
+    fun onEligiblePageLoadStarted() {
         state = state.copy(
-            available = state.featureEnabled && state.integrated && initiallyAvailable,
+            // Availability is re-evaluated after the page has loaded. Do not carry the
+            // previous page's reader button through the first frames of a new load.
+            available = false,
             enabled = false,
             disabledForCurrentPage = false,
         )
@@ -694,14 +698,14 @@ class EmbeddedWebContentSession(
     fun onLoadStarted(pageEligible: Boolean, nowMillis: Long): EmbeddedWebLoadStart {
         val generation = runtime.load.begin()
         val readerEligible = readerState.featureEnabled && readerState.integrated && pageEligible
-        val initiallyAvailable = readerAvailability.onLoadStarted(
+        readerAvailability.onLoadStarted(
             generation = generation,
             eligible = readerEligible,
             nowMillis = nowMillis,
         )
         val change = readerChange {
             if (readerEligible) {
-                runtime.reader.onEligiblePageLoadStarted(initiallyAvailable)
+                runtime.reader.onEligiblePageLoadStarted()
             } else {
                 runtime.reader.onIneligiblePageLoadStarted()
             }
