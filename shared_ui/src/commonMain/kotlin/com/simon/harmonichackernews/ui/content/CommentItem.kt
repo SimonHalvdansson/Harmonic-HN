@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -133,6 +134,7 @@ fun CommentItem(
             userTag = null,
             hiddenPreview = null,
             hiddenReplyCount = null,
+            showHiddenReplyCount = false,
             emphasized = style.emphasizeMeta,
             fontFamily = typography.family,
             animateChanges = style.animateChanges,
@@ -244,8 +246,10 @@ fun CommentItem(
                 userTag = userTag,
                 hiddenPreview = hiddenPreview.takeIf { textCollapsed },
                 hiddenReplyCount = hiddenReplyCount.takeIf {
-                    it > 0 && !forceExpanded && !comment.expanded
+                    it > 0
                 },
+                showHiddenReplyCount = hiddenReplyCount > 0 &&
+                    !forceExpanded && !comment.expanded,
                 emphasized = style.emphasizeMeta,
                 fontFamily = typography.family,
                 animateChanges = style.animateChanges,
@@ -489,6 +493,7 @@ private fun CommentMeta(
     userTag: String?,
     hiddenPreview: String?,
     hiddenReplyCount: Int?,
+    showHiddenReplyCount: Boolean,
     emphasized: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     animateChanges: Boolean,
@@ -524,6 +529,11 @@ private fun CommentMeta(
         if (emphasized) 1f else 0f,
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "comment meta border",
+    )
+    val hiddenReplyCountAlpha by animateFloatAsState(
+        if (showHiddenReplyCount) 1f else 0f,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "hidden reply count",
     )
     val metaShape = RoundedCornerShape(metaRadius)
     Row(
@@ -573,11 +583,18 @@ private fun CommentMeta(
         hiddenReplyCount?.let {
             Text(
                 "+$it",
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent)
-                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                modifier = Modifier
+                    .graphicsLayer(alpha = hiddenReplyCountAlpha)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(colors.accent)
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                    .then(
+                        if (showHiddenReplyCount) Modifier else Modifier.clearAndSetSemantics { },
+                    ),
                 color = Color.White,
                 fontFamily = fontFamily,
                 fontSize = 12.sp,
+                style = compactCommentTextStyle,
             )
         }
     }
