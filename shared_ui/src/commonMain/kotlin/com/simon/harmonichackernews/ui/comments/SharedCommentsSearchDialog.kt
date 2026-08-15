@@ -72,6 +72,7 @@ fun SharedCommentsSearchContent(
             showDivider = false,
             preferredFont = settings.font,
             animateChanges = false,
+            transparentNonCardBackground = true,
         )
     }
 

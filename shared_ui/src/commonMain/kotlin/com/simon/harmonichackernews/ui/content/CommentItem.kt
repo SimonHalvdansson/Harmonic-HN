@@ -54,6 +54,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextMotion
@@ -61,6 +62,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Node
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
@@ -90,6 +94,7 @@ data class CommentItemStyle(
     val showDivider: Boolean,
     val preferredFont: String,
     val animateChanges: Boolean = true,
+    val transparentNonCardBackground: Boolean = false,
 )
 
 val SettingsCommentPreviewModel = CommentItemUiModel(
@@ -365,7 +370,11 @@ private fun SharedCommentSurface(
         label = "comment corner radius",
     )
     val shape = RoundedCornerShape(shapeRadius)
-    val baseBackground = if (style.cardStyle) colors.surfaceContainerHigh else colors.background
+    val baseBackground = when {
+        style.cardStyle -> colors.surfaceContainerHigh
+        style.transparentNonCardBackground -> Color.Transparent
+        else -> colors.background
+    }
     val overlayAlpha = if (highlighted) {
         if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
     } else 0f
@@ -646,37 +655,74 @@ fun htmlAnnotatedString(
     linkListener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
     val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
-    val plainText = document.body().wholeText().trim()
-    buildAnnotatedString {
-        append(plainText)
-        var cursor = 0
-        document.select("a[href]").forEach { anchor ->
-            val label = anchor.text().trim()
-            val url = anchor.attr("href").trim()
-            if (label.isNotEmpty() && url.isNotEmpty()) {
-                val start = plainText.indexOf(label, cursor)
-                if (start >= 0) {
-                    val end = start + label.length
-                    addLink(
-                        LinkAnnotation.Url(
-                            url = url,
-                            styles = TextLinkStyles(
-                                style = SpanStyle(
-                                    color = linkColor,
-                                    textDecoration = TextDecoration.Underline,
-                                ),
+    val rendered = buildAnnotatedString {
+        document.body().childNodes().forEach { node ->
+            appendHtmlNode(node, linkColor, linkListener)
+        }
+    }
+    rendered.trimmed()
+}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+
+private fun AnnotatedString.Builder.appendHtmlNode(
+    node: Node,
+    linkColor: Color,
+    linkListener: LinkInteractionListener,
+) {
+    when (node) {
+        is TextNode -> append(node.getWholeText())
+        is Element -> {
+            val tag = node.normalName()
+            if (tag == "script" || tag == "style") return
+            if (tag == "br") {
+                append('\n')
+                return
+            }
+
+            val start = length
+            val style = htmlSpanStyle(tag)
+            if (style == null) {
+                node.childNodes().forEach { child -> appendHtmlNode(child, linkColor, linkListener) }
+            } else {
+                pushStyle(style)
+                node.childNodes().forEach { child -> appendHtmlNode(child, linkColor, linkListener) }
+                pop()
+            }
+            val end = length
+            val url = node.attr("href").trim()
+            if (tag == "a" && url.isNotEmpty() && start < end) {
+                addLink(
+                    LinkAnnotation.Url(
+                        url = url,
+                        styles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = linkColor,
+                                textDecoration = TextDecoration.Underline,
                             ),
-                            linkInteractionListener = linkListener,
                         ),
-                        start,
-                        end,
-                    )
-                    cursor = end
-                }
+                        linkInteractionListener = linkListener,
+                    ),
+                    start,
+                    end,
+                )
             }
         }
     }
-}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+}
+
+private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
+    "b", "strong" -> SpanStyle(fontWeight = FontWeight.Bold)
+    "i", "em" -> SpanStyle(fontStyle = FontStyle.Italic)
+    "u" -> SpanStyle(textDecoration = TextDecoration.Underline)
+    "s", "strike", "del" -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+    else -> null
+}
+
+private fun AnnotatedString.trimmed(): AnnotatedString {
+    val start = text.indexOfFirst { !it.isWhitespace() }
+    if (start < 0) return AnnotatedString("")
+    val end = text.indexOfLast { !it.isWhitespace() } + 1
+    return subSequence(start, end)
+}
 
 private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
     .replace(Regex("<p\\s*>", RegexOption.IGNORE_CASE), "<br><br>")

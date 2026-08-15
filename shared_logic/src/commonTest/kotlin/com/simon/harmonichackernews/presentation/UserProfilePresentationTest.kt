@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class UserProfilePresentationTest {
     @Test
-    fun formatsProfileWithoutJvmDateOrHtmlApis() {
+    fun keepsProfileHtmlForSharedRendering() {
         val result = UserProfilePresenter.present(
             HackerNewsUserDto(
                 id = "pg",
@@ -21,7 +21,7 @@ class UserProfilePresentationTest {
 
         assertEquals("pg", result.id)
         assertEquals("12,345 karma since January 27, 2007", result.meta)
-        assertEquals("Hello HN", result.about)
+        assertEquals("<p>Hello <b>HN</b></p>", result.about)
         assertTrue(result.hasSubmissions)
     }
 

@@ -124,6 +124,7 @@ fun UserSettingsDialog(
             session.toggleNotifications(permissionGranted)
         },
         onReport = session::report,
+        onOpenLink = { appComposition.links.open(it) },
     )
 
     if (tagDialogOpen) {

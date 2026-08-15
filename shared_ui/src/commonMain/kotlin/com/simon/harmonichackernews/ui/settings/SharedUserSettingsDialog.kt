@@ -23,14 +23,18 @@ import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -64,6 +68,7 @@ fun SharedUserSettingsDialog(
     onToggleBlocked: (String) -> Unit,
     onToggleNotifications: (String) -> Unit,
     onReport: (String) -> Unit,
+    onOpenLink: (String) -> Unit = {},
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -101,6 +106,7 @@ fun SharedUserSettingsDialog(
                                 onToggleBlocked = onToggleBlocked,
                                 onToggleNotifications = onToggleNotifications,
                                 onReport = onReport,
+                                onOpenLink = onOpenLink,
                             )
                         }
                     }
@@ -184,7 +190,21 @@ private fun UserLoadedContent(
     onToggleBlocked: (String) -> Unit,
     onToggleNotifications: (String) -> Unit,
     onReport: (String) -> Unit,
+    onOpenLink: (String) -> Unit,
 ) {
+    val linkColor = HarmonicTheme.colors.link
+    val linkListener = remember(onOpenLink) {
+        LinkInteractionListener { annotation ->
+            if (annotation is LinkAnnotation.Url) onOpenLink(annotation.url)
+        }
+    }
+    val formattedAbout = remember(
+        user.about,
+        linkColor,
+        linkListener,
+    ) {
+        htmlAnnotatedString(user.about, linkColor, linkListener)
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = user.meta,
@@ -194,9 +214,9 @@ private fun UserLoadedContent(
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
         )
-        if (user.about.isNotBlank()) {
+        if (formattedAbout.isNotBlank()) {
             Text(
-                text = user.about,
+                text = formattedAbout,
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,

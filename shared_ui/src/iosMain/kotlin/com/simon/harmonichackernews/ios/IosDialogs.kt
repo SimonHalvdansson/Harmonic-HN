@@ -194,6 +194,7 @@ internal fun IosUserProfileDialog(
             scene.userMessages.show("Reply notifications are currently Android-only")
         },
         onReport = session::report,
+        onOpenLink = { scene.links.open(it) },
     )
 
     if (tagDialogOpen) {

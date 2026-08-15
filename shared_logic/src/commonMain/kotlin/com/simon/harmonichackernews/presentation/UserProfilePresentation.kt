@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.utils.GroupedNumberFormatter
-import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 data class UserProfilePresentation(
     val id: String,
@@ -20,7 +19,8 @@ object UserProfilePresenter {
             id = user.id,
             meta = "${GroupedNumberFormatter.format(user.karma)} karma since " +
                 "${monthNames[date.month - 1]} ${date.day}, ${date.year}",
-            about = HtmlTextUtils.plainText(user.about).trim(),
+            // Keep the API's HTML so shared UI hosts can render links and formatting.
+            about = user.about.orEmpty().trim(),
             hasSubmissions = user.submitted.isNotEmpty(),
         )
     }
