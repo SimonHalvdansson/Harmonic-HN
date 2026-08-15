@@ -312,23 +312,30 @@ fun SharedStringListEditorDialog(
                     }
                 }
 
-                if (items.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(72.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = emptyMessage,
-                            color = HarmonicTheme.colors.storyDisabled,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 15.sp,
-                        )
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 224.dp)) {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 224.dp)) {
+                    if (items.isEmpty()) {
+                        item(key = "empty-list-message") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = emptyMessage,
+                                    color = HarmonicTheme.colors.storyDisabled,
+                                    fontFamily = ProductSansFontFamily,
+                                    fontSize = 15.sp,
+                                )
+                            }
+                        }
+                    } else {
                         items(items, key = { it.lowercase() }) { item ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 44.dp)
+                                    .animateItem(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(

@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.content
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -14,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -521,16 +519,13 @@ private fun StoryMeta(
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "story meta size",
     )
-    val metaText = remember(model, style.showPoints, style.compactPoints, style.includeTopLevelDomain) {
-        buildString {
-            if (style.showPoints) {
-                append(if (style.compactPoints) "+${model.points}" else "${model.points} points")
-                append(" • ")
-            }
-            append(if (style.includeTopLevelDomain) model.domain else model.domainWithoutTopLevel)
-            append(" • ${model.age}")
+    val domainSuffix = model.domain
+        .takeIf {
+            model.domainWithoutTopLevel.isNotEmpty() &&
+                it.startsWith(model.domainWithoutTopLevel)
         }
-    }
+        ?.removePrefix(model.domainWithoutTopLevel)
+        .orEmpty()
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(style.showFavicon) {
             if (model.faviconUrl != null) {
@@ -610,9 +605,53 @@ private fun StoryMeta(
                 }
             }
         }
-        AnimatedContent(metaText, transitionSpec = { fadeIn().togetherWith(fadeOut()) }) { text ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (style.showPoints) {
+                Text(
+                    text = if (style.compactPoints) "+${model.points}" else "${model.points} points",
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = typography.family,
+                    fontSize = metaSize.sp,
+                    style = legacyTextStyle,
+                )
+                Text(
+                    text = " • ",
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = typography.family,
+                    fontSize = metaSize.sp,
+                    style = legacyTextStyle,
+                )
+            }
             Text(
-                text = text,
+                text = model.domainWithoutTopLevel,
+                color = HarmonicTheme.colors.storyDisabled,
+                fontFamily = typography.family,
+                fontSize = metaSize.sp,
+                style = legacyTextStyle,
+            )
+            AnimatedVisibility(
+                visible = style.includeTopLevelDomain && domainSuffix.isNotEmpty(),
+                enter = fadeIn(if (animateChanges) contentTween() else snap()) +
+                    expandHorizontally(
+                        expandFrom = Alignment.Start,
+                        animationSpec = if (animateChanges) contentTween() else snap(),
+                    ),
+                exit = fadeOut(if (animateChanges) contentTween() else snap()) +
+                    shrinkHorizontally(
+                        shrinkTowards = Alignment.Start,
+                        animationSpec = if (animateChanges) contentTween() else snap(),
+                    ),
+            ) {
+                Text(
+                    text = domainSuffix,
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = typography.family,
+                    fontSize = metaSize.sp,
+                    style = legacyTextStyle,
+                )
+            }
+            Text(
+                text = " • ${model.age}",
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = typography.family,
                 fontSize = metaSize.sp,

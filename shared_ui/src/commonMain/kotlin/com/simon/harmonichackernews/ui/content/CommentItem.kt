@@ -101,7 +101,8 @@ val SettingsCommentPreviewModel = CommentItemUiModel(
     author = "pg",
     age = "1h",
     body = "This reminds me of the old systems where the boring path was often the most durable one. " +
-        "The less hidden state there is, the easier it is to reason about. [0]",
+        "The less hidden state there is, the easier it is to reason about." +
+        "<p>[0] <a href=\"https://example.com/reference\">https://example.com/reference</a></p>",
     referenceMarker = "[0]",
     referenceUrl = "https://example.com/reference",
 )
@@ -117,6 +118,13 @@ fun CommentItem(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
     )
+    val previewReferences = remember(model.body, style.collectLinks) {
+        if (style.collectLinks) CollectedReferenceLinks.parse(model.body) else null
+    }
+    val previewBody = previewReferences
+        ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
+        ?.bodyHtml
+        ?: model.body
     val bodySize by animateFloatAsState(
         targetValue = typography.commentTextSize,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -144,12 +152,14 @@ fun CommentItem(
             fontFamily = typography.family,
             animateChanges = style.animateChanges,
         )
-        Text(
-            text = model.body,
-            color = HarmonicTheme.colors.storyNormal,
+        CommentBodyText(
+            html = previewBody,
+            searchTerm = "",
+            markedColor = HarmonicTheme.colors.storyNormal,
             fontFamily = typography.family,
-            fontSize = bodySize.sp,
-            style = animatedCommentTextStyle,
+            fontSize = bodySize,
+            onLinkClick = {},
+            onLinkLongClick = { _, _, _ -> },
         )
         AnimatedVisibility(
             visible = style.collectLinks,
@@ -530,7 +540,7 @@ private fun CommentMeta(
         label = "comment meta vertical padding",
     )
     val metaBackground by animateColorAsState(
-        if (emphasized) colors.surfaceContainerHighest else Color.Transparent,
+        colors.surfaceContainerHighest.copy(alpha = if (emphasized) 1f else 0f),
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "comment meta background",
     )

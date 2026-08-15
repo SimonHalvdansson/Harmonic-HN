@@ -1,11 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_check
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
+import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -133,7 +133,6 @@ fun SharedThreadDepthIndicatorsDialog(
         CommentDepthPreferences.MONOCHROME,
         CommentDepthPreferences.NONE,
     )
-    val showIndicators = CommentDepthPreferences.shouldShowIndicators(mode)
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -142,12 +141,14 @@ fun SharedThreadDepthIndicatorsDialog(
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp),
                 contentPadding = PaddingValues(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
                     ) {
-                        indicatorColors.forEachIndexed { index, color ->
+                        repeat(CommentDepthPaletteCatalog.colorCount) { index ->
+                            val color = indicatorColors.getOrNull(index) ?: Color.Transparent
                             val indicatorColor by animateColorAsState(
                                 targetValue = color,
                                 label = "thread depth color",
@@ -159,21 +160,13 @@ fun SharedThreadDepthIndicatorsDialog(
                                     .padding(start = (12 * index).dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                AnimatedVisibility(
-                                    visible = showIndicators,
-                                    enter = expandHorizontally(),
-                                    exit = shrinkHorizontally(),
-                                ) {
-                                    Row {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .width(3.dp)
-                                                .background(indicatorColor),
-                                        )
-                                        Spacer(Modifier.width(10.dp))
-                                    }
-                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .width(3.dp)
+                                        .background(indicatorColor),
+                                )
+                                Spacer(Modifier.width(10.dp))
                                 Text(
                                     text = "Comment ${index + 1}",
                                     color = HarmonicTheme.colors.storyNormal,
@@ -189,7 +182,15 @@ fun SharedThreadDepthIndicatorsDialog(
                     val selected = CommentDepthPreferences.sanitizeMode(mode) == option
                     OutlinedButton(
                         onClick = { onModeSelected(option) },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (selected) {
+                                HarmonicTheme.colors.settingsHeaderSelected
+                            } else {
+                                Color.Transparent
+                            },
+                            contentColor = HarmonicTheme.colors.textPrimary,
+                        ),
                     ) {
                         if (selected) {
                             Icon(
