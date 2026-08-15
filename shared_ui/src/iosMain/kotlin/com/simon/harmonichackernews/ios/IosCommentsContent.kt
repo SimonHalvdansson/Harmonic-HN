@@ -255,6 +255,8 @@ internal fun IosCommentsContent(
         host.controller.statusBarHeaderColor ?: background,
         host.controller.statusBarHeaderCoverage,
     )
+    val showStatusBarProtection = !(host.controller.integratedWebView &&
+        host.controller.statusBarHeaderCoverage >= 1f)
     Box(
         Modifier
             .fillMaxSize()
@@ -266,7 +268,9 @@ internal fun IosCommentsContent(
         } else {
             comments()
         }
-        IosStatusBarProtection(protectionColor)
+        if (showStatusBarProtection) {
+            IosStatusBarProtection(protectionColor)
+        }
     }
 }
 

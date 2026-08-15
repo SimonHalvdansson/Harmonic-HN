@@ -1267,12 +1267,15 @@ private fun CommentsPane(
                 if (!commentsController.webViewFullscreen) {
                     CommentsScaffold(commentsController)
                 }
-            }
-            if (drawStatusBarProtection) {
-                StatusBarProtection(
-                    color = statusBarColor,
-                    statusBarHeight = statusBarHeight,
-                )
+                val showStatusBarProtection = drawStatusBarProtection &&
+                    !(commentsController.integratedWebView &&
+                        commentsController.statusBarHeaderCoverage >= 1f)
+                if (showStatusBarProtection) {
+                    StatusBarProtection(
+                        color = statusBarColor,
+                        statusBarHeight = statusBarHeight,
+                    )
+                }
             }
         }
     }
