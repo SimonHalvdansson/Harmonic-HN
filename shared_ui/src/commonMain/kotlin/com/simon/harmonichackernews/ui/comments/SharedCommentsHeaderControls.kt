@@ -630,6 +630,7 @@ fun OpFilterBanner(controller: CommentsComposeController) {
                 color = HarmonicTheme.colors.storyNormal,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
             )
             CommentsTooltip("Show all comments") {
                 IconButton(
