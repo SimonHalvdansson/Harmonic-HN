@@ -1,26 +1,3 @@
 <resources>
-    <string-array name="font_entries">
-        <item>Google Sans Flex Rounded</item>
-        <item>Google Sans</item>
-        <item>Product Sans</item>
-        <item>Device default</item>
-        <item>Verdana</item>
-        <item>JetBrains Mono</item>
-        <item>Google Sans Code</item>
-        <item>Georgia</item>
-        <item>Roboto Slab</item>
-    </string-array>
-
-    <string-array name="font_values">
-        <item>googlesansflexrounded</item>
-        <item>googlesans</item>
-        <item>productsans</item>
-        <item>devicedefault</item>
-        <item>verdana</item>
-        <item>jetbrainsmono</item>
-        <item>googlesanscode</item>
-        <item>georgia</item>
-        <item>robotoslab</item>
-    </string-array>
 
 </resources>
