@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.desktop
+package com.simon.harmonichackernews.ios
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
@@ -76,17 +76,13 @@ import com.simon.harmonichackernews.ui.settings.faviconProviderPainter
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
-import java.io.File
-import javax.swing.JFileChooser
-import javax.swing.filechooser.FileNameExtensionFilter
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
+import platform.UIKit.UIDevice
 
-private const val DesktopOpenWithoutCacheStoryId = 49089500
+private const val IosOpenWithoutCacheStoryId = 49089500
 
 @Composable
-internal fun DesktopSettingsDetail(
+internal fun IosSettingsDetail(
     section: SettingsSection,
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
@@ -95,12 +91,12 @@ internal fun DesktopSettingsDetail(
     onNavigate: (SettingsSection, Boolean) -> Unit,
 ) {
     when (section) {
-        SettingsSection.Appearance -> DesktopAppearanceSettings(app, scene, singlePane, onBack) {
+        SettingsSection.Appearance -> IosAppearanceSettings(app, scene, singlePane, onBack) {
             onNavigate(it, singlePane)
         }
-        SettingsSection.Stories -> DesktopStoriesSettings(app, scene, singlePane, onBack)
-        SettingsSection.Comments -> DesktopCommentsSettings(app, singlePane, onBack)
-        SettingsSection.WebLinks -> DesktopWebLinksSettings(
+        SettingsSection.Stories -> IosStoriesSettings(app, scene, singlePane, onBack)
+        SettingsSection.Comments -> IosCommentsSettings(app, singlePane, onBack)
+        SettingsSection.WebLinks -> IosWebLinksSettings(
             app = app,
             scene = scene,
             showNavigation = singlePane,
@@ -113,12 +109,12 @@ internal fun DesktopSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
             profileDialog = { userName, dismiss, onTagChanged ->
-                DesktopUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
+                IosUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
             },
         )
-        SettingsSection.AiSummary -> DesktopAiSettings(app, scene, singlePane, onBack)
-        SettingsSection.Data -> DesktopDataSettings(app, scene, singlePane, onBack)
-        SettingsSection.Debug -> DesktopDebugSettings(app, scene, singlePane, onBack)
+        SettingsSection.AiSummary -> IosAiSettings(app, scene, singlePane, onBack)
+        SettingsSection.Data -> IosDataSettings(app, scene, singlePane, onBack)
+        SettingsSection.Debug -> IosDebugSettings(app, scene, singlePane, onBack)
         SettingsSection.About -> SharedAboutScreen(
             versionLabel = app.metadata.versionLabel,
             appIcon = painterResource(Res.drawable.quanta),
@@ -129,8 +125,8 @@ internal fun DesktopSettingsDetail(
             onOpenPrivacy = { scene.links.open(app.metadata.privacyUrl) },
             showNavigation = singlePane,
             aboutBody = "Harmonic for Hacker News is an open-source Hacker News client. " +
-                "This desktop host uses the same Kotlin Multiplatform application logic and " +
-                "Compose screens as the Android app, with desktop-native storage, links, and " +
+                "This iOS host uses the same Kotlin Multiplatform application logic and " +
+                "Compose screens as the Android app, with iOS-native storage, links, and " +
                 "keyboard/window behavior.",
         )
         SettingsSection.Licenses -> SharedLicensesScreen(
@@ -142,7 +138,7 @@ internal fun DesktopSettingsDetail(
 }
 
 @Composable
-private fun DesktopWebLinksSettings(
+private fun IosWebLinksSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -154,22 +150,11 @@ private fun DesktopWebLinksSettings(
     val reading = settings.reading
 
     SharedWebLinksSettingsScreen(
-        state = presenter.state(reading.readerFont.label, settings).copy(
-            integratedWebView = false,
-            externalBrowser = true,
-        ),
+        state = presenter.state(reading.readerFont.label, settings),
         showNavigation = showNavigation,
         onBack = onBack,
         onBooleanChanged = { setting, value ->
-            when (setting) {
-                WebLinksBooleanSetting.IntegratedWebView -> scene.userMessages.show(
-                    "Desktop opens articles in your system browser",
-                )
-                WebLinksBooleanSetting.ExternalBrowser -> scene.userMessages.show(
-                    "The system browser is required on desktop",
-                )
-                else -> presenter.setBoolean(setting, value)
-            }
+            presenter.setBoolean(setting, value)
         },
         onReaderFontSizeChanged = presenter::setReaderFontSize,
         onDialogRequested = { requested ->
@@ -196,7 +181,7 @@ private fun DesktopWebLinksSettings(
 }
 
 @Composable
-private fun DesktopAppearanceSettings(
+private fun IosAppearanceSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -303,7 +288,7 @@ private fun DesktopAppearanceSettings(
 }
 
 @Composable
-private fun DesktopStoriesSettings(
+private fun IosStoriesSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -333,7 +318,7 @@ private fun DesktopStoriesSettings(
 }
 
 @Composable
-private fun DesktopCommentsSettings(
+private fun IosCommentsSettings(
     app: HarmonicAppComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
@@ -363,7 +348,7 @@ private fun DesktopCommentsSettings(
 }
 
 @Composable
-private fun DesktopAiSettings(
+private fun IosAiSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -381,12 +366,12 @@ private fun DesktopAiSettings(
         onBack = onBack,
         onLocalModeUnavailable = {
             scene.userMessages.show(
-                "Local summarization is not bundled in the desktop app",
+                "Local summarization is not bundled in the iOS app",
                 UserMessageDuration.LONG,
             )
         },
         localModelsContent = {
-            Text("Local model downloads are currently Android-only. Cloud summaries work on desktop.")
+            Text("Local model downloads are currently Android-only. Cloud summaries work on iOS.")
         },
         dialogContent = { dialog, dismiss ->
             when (dialog) {
@@ -429,7 +414,7 @@ private fun DesktopAiSettings(
 }
 
 @Composable
-private fun DesktopDataSettings(
+private fun IosDataSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -447,21 +432,17 @@ private fun DesktopDataSettings(
         runtime.effects.collect { effect ->
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
-                    val file = chooseTextFile(save = true, suggestedName = effect.filename)
-                    if (file == null) return@collect
-                    runCatching { withContext(Dispatchers.IO) { file.writeText(effect.content) } }
-                        .onSuccess { scene.userMessages.show("Bookmarks exported") }
-                        .onFailure { scene.userMessages.show("Write error") }
+                    app.platform.sharing.share(effect.content, effect.filename)
+                    scene.userMessages.show("Choose Save to Files to export bookmarks")
                 }
                 DataSettingsRuntimeEffect.OpenImportDocument -> {
-                    val file = chooseTextFile(save = false)
-                    if (file == null) return@collect
-                    runCatching { withContext(Dispatchers.IO) { file.readText() } }
-                        .onSuccess(runtime::importBookmarks)
-                        .onFailure { scene.userMessages.show("Read error") }
+                    scene.userMessages.show(
+                        "Bookmark import needs a Files picker and is not available in this build",
+                        UserMessageDuration.LONG,
+                    )
                 }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings ->
-                    scene.userMessages.show("Desktop link handling is controlled by your browser and OS")
+                    scene.userMessages.show("iOS link handling is controlled by your browser and OS")
                 DataSettingsRuntimeEffect.RestartApp ->
                     scene.userMessages.show("Settings reset; reopen the window to refresh every screen")
                 is DataSettingsRuntimeEffect.Message -> scene.userMessages.show(effect.text)
@@ -513,7 +494,7 @@ private fun DesktopDataSettings(
             onDismiss = { runtime.showDialog(null) },
         )
         DataSettingsDialogState.LINKS -> MessageActionDialog(
-            message = "Desktop link handling is configured in your operating system and browser.",
+            message = "iOS link handling is configured in your operating system and browser.",
             onDismiss = { runtime.showDialog(null) },
         )
         null -> Unit
@@ -524,7 +505,7 @@ private fun DesktopDataSettings(
 }
 
 @Composable
-private fun DesktopDebugSettings(
+private fun IosDebugSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
@@ -536,15 +517,16 @@ private fun DesktopDebugSettings(
             appVersion = app.metadata.versionName,
             appBuild = app.metadata.buildNumber,
             buildVersion = app.metadata.buildType,
-            platformVersion = "${System.getProperty("os.name")} ${System.getProperty("os.version")}",
+            platformVersion = UIDevice.currentDevice.systemName + " " +
+                UIDevice.currentDevice.systemVersion,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onOpenHnId = { scene.navigation.openStory(StoryDestination(it)) },
         onOpenWithoutCache = {
-            app.storyCache.remove(DesktopOpenWithoutCacheStoryId)
-            app.network.removeCachedStoryResponses(DesktopOpenWithoutCacheStoryId)
-            scene.navigation.openStory(StoryDestination(DesktopOpenWithoutCacheStoryId))
+            app.storyCache.remove(IosOpenWithoutCacheStoryId)
+            app.network.removeCachedStoryResponses(IosOpenWithoutCacheStoryId)
+            scene.navigation.openStory(StoryDestination(IosOpenWithoutCacheStoryId))
         },
         onOpenLink = { scene.links.open(it) },
         onEasterEggRequested = scene.navigation::openCoulombGas,
@@ -554,10 +536,10 @@ private fun DesktopDebugSettings(
                     onDismiss = dismiss,
                     onOpenGithub = { scene.links.open(app.metadata.projectUrl) },
                 )
-                DebugSettingsDialog.WELCOME -> DesktopWelcomeDialog(app, dismiss)
+                DebugSettingsDialog.WELCOME -> IosWelcomeDialog(app, dismiss)
                 DebugSettingsDialog.NOTIFICATIONS -> MessageActionDialog(
                     title = "Notifications",
-                    message = "Reply notifications and Android notification fixtures do not apply to desktop.",
+                    message = "Reply notifications and Android notification fixtures do not apply to iOS.",
                     onDismiss = dismiss,
                 )
             }
@@ -566,7 +548,7 @@ private fun DesktopDebugSettings(
 }
 
 @Composable
-internal fun DesktopWelcomeDialog(app: HarmonicAppComposition, onDismiss: () -> Unit) {
+internal fun IosWelcomeDialog(app: HarmonicAppComposition, onDismiss: () -> Unit) {
     val colors = HarmonicTheme.colors
     SharedWelcomeSettingsDialog(
         styleChooser = false,
@@ -592,14 +574,4 @@ internal fun DesktopWelcomeDialog(app: HarmonicAppComposition, onDismiss: () -> 
             )
         },
     )
-}
-
-private fun chooseTextFile(save: Boolean, suggestedName: String? = null): File? {
-    val chooser = JFileChooser().apply {
-        dialogTitle = if (save) "Export Harmonic bookmarks" else "Import Harmonic bookmarks"
-        fileFilter = FileNameExtensionFilter("Text files", "txt")
-        suggestedName?.let { selectedFile = File(it) }
-    }
-    val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
-    return chooser.selectedFile.takeIf { result == JFileChooser.APPROVE_OPTION }
 }

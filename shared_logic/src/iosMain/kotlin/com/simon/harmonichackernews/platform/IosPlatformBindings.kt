@@ -2,6 +2,11 @@ package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.settings.KeyValueStore
 
+/** Lets shared appearance state update the containing UIKit traits and status-bar foreground. */
+interface IosAppearanceController {
+    fun setDarkAppearance(dark: Boolean)
+}
+
 /**
  * Native services installed by the iOS host.
  *
@@ -16,6 +21,7 @@ class IosPlatformBindings(
     val clipboard: ClipboardService,
     val connectivity: ConnectivityService,
     val timeFormatting: PlatformTimeFormatter,
+    val appearance: IosAppearanceController,
     val replyNotifications: com.simon.harmonichackernews.network.ReplyNotificationPlatform? = null,
     val localSummary: LocalSummaryEngine? = null,
 ) {

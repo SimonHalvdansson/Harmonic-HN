@@ -41,7 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +76,7 @@ fun SharedCommentsHeader(
     lastRefreshedText: String?,
     textStyle: TextStyle,
     previewPlatform: CommentsPreviewPlatform,
+    includeStatusBarSpacer: Boolean = true,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -117,8 +121,12 @@ fun SharedCommentsHeader(
         controller.updateStatusBarHeaderColor(visibleHeaderBackground)
         controller.listener.onHeaderColorChanged(visibleHeaderBackground.toArgb())
     }
-    val topSpacer = with(density) {
-        (WindowInsets.statusBars.getTop(this) * controller.sheetSlideOffset).roundToInt().toDp()
+    val topSpacer = if (includeStatusBarSpacer) {
+        with(density) {
+            (WindowInsets.statusBars.getTop(this) * controller.sheetSlideOffset).roundToInt().toDp()
+        }
+    } else {
+        0.dp
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
@@ -179,7 +187,13 @@ fun SharedCommentsHeader(
                                     enabled = story.isLink,
                                     onClick = controller.listener::onHeaderClick,
                                     onLongClick = null,
-                                ),
+                                )
+                                .semantics(mergeDescendants = true) {
+                                    if (story.isLink) {
+                                        contentDescription = "Open article"
+                                        role = Role.Button
+                                    }
+                                },
                         ) {
                             SharedCommentsHeaderShimmer()
                         }
@@ -192,7 +206,14 @@ fun SharedCommentsHeader(
                                         enabled = story.isLink,
                                         onClick = controller.listener::onHeaderClick,
                                         onLongClick = null,
-                                    ),
+                                    )
+                                    .semantics(mergeDescendants = true) {
+                                        if (story.isLink) {
+                                            contentDescription = "Open article: " +
+                                                (story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty())
+                                            role = Role.Button
+                                        }
+                                    },
                             ) {
                                 headerPreviewImage(visibleHeaderBackground) { loadedTint = it }
                                 Text(

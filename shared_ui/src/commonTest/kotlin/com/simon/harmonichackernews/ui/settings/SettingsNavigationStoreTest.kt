@@ -31,4 +31,16 @@ class SettingsNavigationStoreTest {
 
         assertEquals(listOf(SettingsSection.Appearance), navigation.state.value.detailStack)
     }
+
+    @Test
+    fun navigatingUpFromAnyPhoneDetailReturnsToTheSettingsList() {
+        SettingsSection.entries.forEach { section ->
+            val navigation = SettingsNavigationStore(twoPane = false)
+
+            navigation.navigateTo(section)
+            assertTrue(navigation.navigateBack(), "Up should consume the $section detail")
+            assertTrue(navigation.state.value.detailStack.isEmpty())
+            assertFalse(navigation.state.value.canNavigateBackWithinSettings)
+        }
+    }
 }

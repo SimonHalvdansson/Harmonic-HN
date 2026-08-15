@@ -41,6 +41,7 @@ fun SharedDataSettingsRoute(
     counts: DataSettingsCounts,
     loggedIn: Boolean,
     showNavigation: Boolean,
+    showAppLinkSettings: Boolean = true,
     onBack: () -> Unit,
     onAction: (DataSettingsAction) -> Unit,
     contentVersion: Int = 0,
@@ -53,6 +54,7 @@ fun SharedDataSettingsRoute(
             loggedIn = loggedIn,
         ),
         showNavigation = showNavigation,
+        showAppLinkSettings = showAppLinkSettings,
         onBack = onBack,
         onBookmarksEnabledChanged = {
             repository.setGeneralBoolean(

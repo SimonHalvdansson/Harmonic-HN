@@ -207,6 +207,7 @@ class SubmissionsComposeController(
 fun SharedSubmissionsScreen(
     controller: SubmissionsComposeController,
     previewResources: StoryListResourceRuntime,
+    includeStatusBarInset: Boolean = true,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -264,6 +265,7 @@ fun SharedSubmissionsScreen(
             listState = listState,
             listener = controller.listener,
             previewResources = previewResources,
+            includeStatusBarInset = includeStatusBarInset,
             storyItemModel = storyItemModel,
             onOpenLink = onOpenLink,
         )
@@ -293,6 +295,7 @@ private fun SubmissionsList(
     listState: LazyListState,
     listener: SubmissionsComposeController.Listener,
     previewResources: StoryListResourceRuntime,
+    includeStatusBarInset: Boolean,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -311,6 +314,7 @@ private fun SubmissionsList(
                 showFilter = showFilter,
                 compact = displaySettings.compactHeader,
                 sideMargin = sideMargin,
+                includeStatusBarInset = includeStatusBarInset,
                 onFilterSelected = listener::onFilterSelected,
             )
         }
@@ -427,6 +431,7 @@ private fun SubmissionsHeader(
     showFilter: Boolean,
     compact: Boolean,
     sideMargin: androidx.compose.ui.unit.Dp,
+    includeStatusBarInset: Boolean,
     onFilterSelected: (SubmissionFilter) -> Unit,
 ) {
     Column(
@@ -435,7 +440,13 @@ private fun SubmissionsHeader(
             .background(HarmonicTheme.colors.background)
             .padding(horizontal = sideMargin)
             .padding(horizontal = 16.dp)
-            .windowInsetsPadding(WindowInsets.statusBars),
+            .then(
+                if (includeStatusBarInset) {
+                    Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         Text(
             text = "$userName's submissions",

@@ -131,7 +131,13 @@ fun SharedSettingsNavigationShell(
         if (!navigation.navigateBack()) onBackFromSettings()
     }
 
-    LaunchedEffect(selectedSection) { onSectionChanged(selectedSection) }
+    // An empty one-pane stack represents the settings list. `selectedSection` intentionally has
+    // an Appearance fallback for list highlighting and the two-pane placeholder, but that fallback
+    // is not a real navigation destination and must not be persisted. Persisting it immediately
+    // pushes Appearance again and makes Up from every detail land there instead of on the list.
+    LaunchedEffect(navigationState.detailStack) {
+        navigationState.detailStack.lastOrNull()?.let(onSectionChanged)
+    }
     LaunchedEffect(isTwoPane) { navigation.updateLayout(isTwoPane) }
 
     val provider = entryProvider<NavKey> {

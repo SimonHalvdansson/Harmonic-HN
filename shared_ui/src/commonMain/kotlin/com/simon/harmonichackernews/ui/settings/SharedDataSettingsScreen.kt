@@ -20,6 +20,7 @@ enum class DataSettingsAction {
 fun SharedDataSettingsScreen(
     state: DataSettingsSnapshot,
     showNavigation: Boolean,
+    showAppLinkSettings: Boolean = true,
     onBack: () -> Unit,
     onBookmarksEnabledChanged: (Boolean) -> Unit,
     onShowChangelogChanged: (Boolean) -> Unit,
@@ -93,12 +94,14 @@ fun SharedDataSettingsScreen(
         }
         item {
             SettingsCategory("Other") {
-                SettingRow(
-                    title = "Open Hacker News links in Harmonic",
-                    icon = Res.drawable.ic_web_asset,
-                    onClick = { onAction(DataSettingsAction.OpenLinksSettings) },
-                )
-                SettingsDivider()
+                if (showAppLinkSettings) {
+                    SettingRow(
+                        title = "Open Hacker News links in Harmonic",
+                        icon = Res.drawable.ic_web_asset,
+                        onClick = { onAction(DataSettingsAction.OpenLinksSettings) },
+                    )
+                    SettingsDivider()
+                }
                 SettingRow(
                     title = "Reset all settings",
                     icon = Res.drawable.ic_refresh,

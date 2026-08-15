@@ -20,6 +20,7 @@ fun SharedSubmissionsRoute(
     controller: SubmissionsComposeController,
     previewService: StoryPreviewResourceService,
     tintStore: StoryResourceTintStore,
+    includeStatusBarInset: Boolean = true,
     onOpenLink: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -38,6 +39,7 @@ fun SharedSubmissionsRoute(
     SharedSubmissionsScreen(
         controller = controller,
         previewResources = previewResources,
+        includeStatusBarInset = includeStatusBarInset,
         storyItemModel = { story, settings ->
             rememberSubmissionStoryItemUiModel(
                 story = story,
