@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -53,9 +54,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.dp
@@ -70,6 +74,7 @@ import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.resources.web_preview
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -526,7 +531,136 @@ private fun StoryMeta(
         }
         ?.removePrefix(model.domainWithoutTopLevel)
         .orEmpty()
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    val pointsVisibilityProgress = remember(model.points) {
+        Animatable(if (style.showPoints) 1f else 0f)
+    }
+    val plusProgress = remember(model.points) {
+        Animatable(if (style.compactPoints) 1f else 0f)
+    }
+    val pointsWordProgress = remember(model.points) {
+        Animatable(if (style.compactPoints) 0f else 1f)
+    }
+    var renderPoints by remember(model.points) {
+        mutableStateOf(style.showPoints)
+    }
+    LaunchedEffect(style.showPoints, animateChanges) {
+        if (!animateChanges) {
+            pointsVisibilityProgress.snapTo(if (style.showPoints) 1f else 0f)
+            renderPoints = style.showPoints
+        } else if (style.showPoints) {
+            renderPoints = true
+            pointsVisibilityProgress.animateTo(1f, contentTween())
+        } else {
+            pointsVisibilityProgress.animateTo(0f, contentTween())
+            renderPoints = false
+        }
+    }
+    LaunchedEffect(style.compactPoints, animateChanges) {
+        if (!animateChanges) {
+            plusProgress.snapTo(if (style.compactPoints) 1f else 0f)
+            pointsWordProgress.snapTo(if (style.compactPoints) 0f else 1f)
+        } else if (style.compactPoints) {
+            launch { plusProgress.animateTo(1f, contentTween()) }
+            launch { pointsWordProgress.animateTo(0f, contentTween()) }
+        } else {
+            launch { plusProgress.animateTo(0f, contentTween()) }
+            launch { pointsWordProgress.animateTo(1f, contentTween()) }
+        }
+    }
+    val targetIncludesTopLevelDomain = style.includeTopLevelDomain && domainSuffix.isNotEmpty()
+    val topLevelDomainProgress = remember(domainSuffix) {
+        Animatable(if (targetIncludesTopLevelDomain) 1f else 0f)
+    }
+    var renderTopLevelDomain by remember(domainSuffix) {
+        mutableStateOf(targetIncludesTopLevelDomain)
+    }
+    LaunchedEffect(targetIncludesTopLevelDomain, animateChanges) {
+        if (!animateChanges) {
+            topLevelDomainProgress.snapTo(if (targetIncludesTopLevelDomain) 1f else 0f)
+            renderTopLevelDomain = targetIncludesTopLevelDomain
+        } else if (targetIncludesTopLevelDomain) {
+            // Keep the full string in one Text while the TLD fades in so wrapping is based on
+            // the final content instead of a row of independently measured text fragments.
+            renderTopLevelDomain = true
+            topLevelDomainProgress.animateTo(1f, contentTween())
+        } else {
+            topLevelDomainProgress.animateTo(0f, contentTween())
+            renderTopLevelDomain = false
+        }
+    }
+    val metaText = buildAnnotatedString {
+        if (renderPoints) {
+            val pointsVisibility = pointsVisibilityProgress.value
+            val plusVisibility = pointsVisibility * plusProgress.value
+            append("+")
+            addStyle(
+                SpanStyle(
+                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = plusVisibility),
+                    textGeometricTransform = TextGeometricTransform(
+                        scaleX = plusVisibility.coerceAtLeast(0.001f),
+                    ),
+                ),
+                start = length - 1,
+                end = length,
+            )
+            val pointsNumberStart = length
+            append(model.points.toString())
+            addStyle(
+                SpanStyle(
+                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsVisibility),
+                    textGeometricTransform = TextGeometricTransform(
+                        scaleX = pointsVisibility.coerceAtLeast(0.001f),
+                    ),
+                ),
+                start = pointsNumberStart,
+                end = length,
+            )
+            val pointsWordVisibility = pointsVisibility * pointsWordProgress.value
+            val pointsWordStart = length
+            append(" points")
+            addStyle(
+                SpanStyle(
+                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsWordVisibility),
+                    textGeometricTransform = TextGeometricTransform(
+                        scaleX = pointsWordVisibility.coerceAtLeast(0.001f),
+                    ),
+                ),
+                start = pointsWordStart,
+                end = length,
+            )
+            val separatorStart = length
+            append(" • ")
+            addStyle(
+                SpanStyle(
+                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsVisibility),
+                    textGeometricTransform = TextGeometricTransform(
+                        scaleX = pointsVisibility.coerceAtLeast(0.001f),
+                    ),
+                ),
+                start = separatorStart,
+                end = length,
+            )
+        }
+        append(model.domainWithoutTopLevel)
+        if (renderTopLevelDomain) {
+            val suffixStart = length
+            append(domainSuffix)
+            addStyle(
+                SpanStyle(
+                    color = HarmonicTheme.colors.storyDisabled.copy(
+                        alpha = topLevelDomainProgress.value,
+                    ),
+                    textGeometricTransform = TextGeometricTransform(
+                        scaleX = topLevelDomainProgress.value.coerceAtLeast(0.001f),
+                    ),
+                ),
+                start = suffixStart,
+                end = length,
+            )
+        }
+        append(" • ${model.age}")
+    }
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(style.showFavicon) {
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
@@ -605,59 +739,14 @@ private fun StoryMeta(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (style.showPoints) {
-                Text(
-                    text = if (style.compactPoints) "+${model.points}" else "${model.points} points",
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = typography.family,
-                    fontSize = metaSize.sp,
-                    style = legacyTextStyle,
-                )
-                Text(
-                    text = " • ",
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = typography.family,
-                    fontSize = metaSize.sp,
-                    style = legacyTextStyle,
-                )
-            }
-            Text(
-                text = model.domainWithoutTopLevel,
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = typography.family,
-                fontSize = metaSize.sp,
-                style = legacyTextStyle,
-            )
-            AnimatedVisibility(
-                visible = style.includeTopLevelDomain && domainSuffix.isNotEmpty(),
-                enter = fadeIn(if (animateChanges) contentTween() else snap()) +
-                    expandHorizontally(
-                        expandFrom = Alignment.Start,
-                        animationSpec = if (animateChanges) contentTween() else snap(),
-                    ),
-                exit = fadeOut(if (animateChanges) contentTween() else snap()) +
-                    shrinkHorizontally(
-                        shrinkTowards = Alignment.Start,
-                        animationSpec = if (animateChanges) contentTween() else snap(),
-                    ),
-            ) {
-                Text(
-                    text = domainSuffix,
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = typography.family,
-                    fontSize = metaSize.sp,
-                    style = legacyTextStyle,
-                )
-            }
-            Text(
-                text = " • ${model.age}",
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = typography.family,
-                fontSize = metaSize.sp,
-                style = legacyTextStyle,
-            )
-        }
+        Text(
+            text = metaText,
+            modifier = Modifier.weight(1f),
+            color = HarmonicTheme.colors.storyDisabled,
+            fontFamily = typography.family,
+            fontSize = metaSize.sp,
+            style = legacyTextStyle,
+        )
     }
 }
 
