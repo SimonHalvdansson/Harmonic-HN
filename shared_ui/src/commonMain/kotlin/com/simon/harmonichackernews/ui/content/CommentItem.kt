@@ -12,6 +12,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -472,7 +474,12 @@ private fun SharedCommentSurface(
                     colors.commentDivider.copy(alpha = borderAlpha),
                     shape,
                 )
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ),
         ) {
             Box(
                 Modifier
@@ -635,7 +642,12 @@ private fun ReferenceRow(
             .defaultMinSize(minHeight = 38.dp)
             .clip(RoundedCornerShape(6.dp))
             .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
             .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

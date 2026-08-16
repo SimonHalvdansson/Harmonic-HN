@@ -22,6 +22,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +66,7 @@ import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -345,6 +347,8 @@ private fun HeaderReferenceRow(
             .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
             .onGloballyPositioned { bounds = it.boundsInWindow() }
             .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
                 onClick = { platform.openLink(link.url) },
                 onLongClick = { onLongClick(link, bounds) },
             )
