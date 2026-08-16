@@ -81,6 +81,7 @@ fun SharedCommentsHeader(
     textStyle: TextStyle,
     previewPlatform: CommentsPreviewPlatform,
     includeStatusBarSpacer: Boolean = true,
+    headerPreviewImageDisplayed: Boolean = false,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -224,7 +225,18 @@ fun SharedCommentsHeader(
                                     text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
+                                        .padding(
+                                            start = 16.dp,
+                                            top = if (
+                                                settings.showUpButton &&
+                                                !headerPreviewImageDisplayed
+                                            ) {
+                                                16.dp
+                                            } else {
+                                                0.dp
+                                            },
+                                            end = 16.dp,
+                                        )
                                         .semantics { heading() },
                                     color = colors.storyNormal,
                                     fontFamily = headerTypography.family,

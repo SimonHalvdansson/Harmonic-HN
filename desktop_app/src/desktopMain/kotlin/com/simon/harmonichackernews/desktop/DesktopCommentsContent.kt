@@ -354,6 +354,8 @@ private fun DesktopCommentsHeader(
         lastRefreshedText = presentation.lastRefreshedText,
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
+        headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
+            presentation.tint.previewImageAvailable,
         headerPreviewImage = { _, onTintLoaded ->
             val imageUrl = presentation.tint.previewImageUrl
             SharedHeaderPreviewImage(

@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.settings.StoryPreviewTintState
 
 data class StoryHeaderTintPresentation(
     val previewImageUrl: String?,
+    val previewImageAvailable: Boolean,
     val faviconUrl: String?,
     val paletteMode: String,
     val initialTintArgb: Int?,
@@ -80,6 +81,7 @@ fun storyHeaderTintPresentation(
     }
     return StoryHeaderTintPresentation(
         previewImageUrl = previewImageUrl,
+        previewImageAvailable = previewAvailable,
         faviconUrl = faviconUrl,
         paletteMode = paletteMode,
         initialTintArgb = when (initialTintKind) {
@@ -152,6 +154,7 @@ fun storyHeaderTintPresentation(
     }
     return StoryHeaderTintPresentation(
         previewImageUrl = previewImageUrl,
+        previewImageAvailable = previewAvailable,
         faviconUrl = faviconUrl,
         paletteMode = paletteMode,
         initialTintArgb = when (initialTintKind) {

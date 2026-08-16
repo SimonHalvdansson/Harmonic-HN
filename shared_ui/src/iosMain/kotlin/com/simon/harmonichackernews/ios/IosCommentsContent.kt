@@ -397,6 +397,8 @@ private fun IosCommentsHeader(
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
         includeStatusBarSpacer = true,
+        headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
+            presentation.tint.previewImageAvailable,
         headerPreviewImage = { _, onTintLoaded ->
             val imageUrl = presentation.tint.previewImageUrl
             SharedHeaderPreviewImage(

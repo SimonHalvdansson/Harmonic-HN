@@ -225,6 +225,8 @@ private fun CommentsHeader(
         lastRefreshedText = headerPresentation.lastRefreshedText,
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
+        headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
+            tintPresentation.previewImageAvailable,
     ) { visibleBackground, onTintLoaded ->
         val previewUrl = previewImageUrl
         SharedHeaderPreviewImage(

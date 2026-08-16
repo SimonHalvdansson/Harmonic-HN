@@ -33,12 +33,17 @@ fun SharedCommentsUpButton(
         onClick = onClick,
         modifier = modifier,
         shape = shape,
-        color = colors.surfaceContainerHigh.copy(alpha = 0.7f),
+        color = colors.surfaceContainerHigh.copy(alpha = 0.85f),
         contentColor = colors.onSurface,
         shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.padding(
+                start = 16.dp,
+                top = 14.dp,
+                end = 18.dp,
+                bottom = 14.dp,
+            ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
