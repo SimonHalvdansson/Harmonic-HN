@@ -285,7 +285,7 @@ fun StoryItem(
                         StoryCommentRail(
                             model = model,
                             style = style,
-                            fontFamily = typography.family,
+                            typography = typography,
                             onClick = onCommentClick,
                             animateChanges = animate,
                         )
@@ -820,12 +820,12 @@ private fun rememberPaletteCompatibleImageRequest(url: String): ImageRequest {
 private fun StoryCommentRail(
     model: StoryItemUiModel,
     style: StoryItemStyle,
-    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    typography: ContentTypography,
     onClick: (() -> Unit)?,
     animateChanges: Boolean,
 ) {
     val countSize by animateFloatAsState(
-        targetValue = 14f,
+        targetValue = typography.storyCommentCountSize,
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "story comment count size",
     )
@@ -851,7 +851,7 @@ private fun StoryCommentRail(
                 text = model.commentCount.toString(),
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
-                fontFamily = fontFamily,
+                fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
                 fontSize = countSize.sp,
                 textAlign = TextAlign.Center,
