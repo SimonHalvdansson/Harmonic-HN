@@ -56,6 +56,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
+import com.simon.harmonichackernews.ui.content.FontMetrics
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.Font
@@ -77,7 +78,7 @@ fun SharedFontSelectionDialog(
         edgeToEdgeContent = true,
         text = {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 580.dp).selectableGroup(),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp).selectableGroup(),
                 contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
             ) {
                 items(options, key = { it.second }) { (label, value) ->
@@ -99,7 +100,10 @@ fun SharedFontSelectionDialog(
                     ) {
                         SettingsRadioButton(selected = value == selected)
                         Spacer(Modifier.width(4.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy((-2).dp),
+                        ) {
                             Text(
                                 text = label,
                                 color = HarmonicTheme.colors.storyNormal,
@@ -108,10 +112,10 @@ fun SharedFontSelectionDialog(
                                 fontSize = 16.sp,
                             )
                             Text(
-                                text = "Example text",
+                                text = "205 points · science.org · 8h",
                                 color = HarmonicTheme.colors.storyDisabled,
                                 fontFamily = fontFamily,
-                                fontSize = 14.sp,
+                                fontSize = FontMetrics.forFont(value.storedValue).storyMeta.sp,
                             )
                         }
                     }

@@ -74,7 +74,7 @@ fun rememberContentTypography(
     }
 }
 
-private data class FontMetrics(
+internal data class FontMetrics(
     val storyTitle: Float,
     val storyMeta: Float,
     val storyCommentCount: Float,
