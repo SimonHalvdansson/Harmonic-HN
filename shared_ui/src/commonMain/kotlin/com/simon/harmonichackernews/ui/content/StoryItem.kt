@@ -50,10 +50,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -355,7 +357,16 @@ private fun StoryMainContent(
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "story summary size",
     )
-    val indexSize = with(LocalDensity.current) { 16.dp.toSp() }
+    val indexAlpha by animateFloatAsState(
+        targetValue = if (style.showIndex) 1f else 0f,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story index alpha",
+    )
+    val indexWidth by animateDpAsState(
+        targetValue = if (style.showIndex) 38.dp else 0.dp,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story index width",
+    )
     Row(
         modifier = modifier
             .combinedClickable(
@@ -363,22 +374,28 @@ private fun StoryMainContent(
                 onClick = { onLinkClick?.invoke() },
                 onLongClick = { onLinkLongClick?.invoke() },
             )
-            .padding(start = 6.dp, top = 10.dp, end = 4.dp, bottom = 10.dp),
+            .padding(start = 5.dp, top = 10.dp, end = 4.dp, bottom = 10.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        AnimatedVisibility(style.showIndex, enter = fadeIn(), exit = fadeOut()) {
-            Text(
-                text = model.index,
-                modifier = Modifier.width(38.dp),
-                color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
-                else HarmonicTheme.colors.storyNormal,
-                fontFamily = typography.family,
-                fontSize = indexSize,
-                textAlign = TextAlign.Center,
-                style = legacyTextStyle,
-            )
-        }
-        Column(modifier = Modifier.weight(1f).padding(start = 4.dp, end = 4.dp)) {
+        Text(
+            text = model.index,
+            modifier = Modifier
+                .width(indexWidth)
+                .alignBy(FirstBaseline)
+                .graphicsLayer { alpha = indexAlpha },
+            color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
+            else HarmonicTheme.colors.storyNormal,
+            fontFamily = typography.family,
+            fontSize = (titleSize - 1f).sp,
+            textAlign = TextAlign.Center,
+            style = legacyTextStyle,
+        )
+        StoryTextColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 2.dp, end = 4.dp)
+                .alignBy(FirstBaseline),
+        ) {
             Text(
                 text = model.title,
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
@@ -435,6 +452,39 @@ private fun StoryMainContent(
                 extractTint = extractPreviewTint,
                 onTintExtracted = onPreviewTintExtracted,
             )
+        }
+    }
+}
+
+/** A Column that exposes its first child's baseline to a baseline-aligned parent. */
+@Composable
+private fun StoryTextColumn(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(
+        modifier = modifier,
+        content = content,
+    ) { measurables, constraints ->
+        val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(childConstraints) }
+        val width = (placeables.maxOfOrNull { it.width } ?: 0)
+            .coerceIn(constraints.minWidth, constraints.maxWidth)
+        val height = placeables.sumOf { it.height }
+            .coerceIn(constraints.minHeight, constraints.maxHeight)
+        val firstBaseline = placeables.firstOrNull()?.get(FirstBaseline)
+        val alignmentLines = if (firstBaseline != null && firstBaseline != AlignmentLine.Unspecified) {
+            mapOf<AlignmentLine, Int>(FirstBaseline to firstBaseline)
+        } else {
+            emptyMap<AlignmentLine, Int>()
+        }
+
+        layout(width, height, alignmentLines) {
+            var y = 0
+            placeables.forEach { placeable ->
+                placeable.placeRelative(0, y)
+                y += placeable.height
+            }
         }
     }
 }
