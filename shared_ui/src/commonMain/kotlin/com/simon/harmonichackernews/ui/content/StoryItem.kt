@@ -367,6 +367,11 @@ private fun StoryMainContent(
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "story index width",
     )
+    val titleStartPadding by animateDpAsState(
+        targetValue = if (style.showIndex) 2.dp else 4.dp,
+        animationSpec = if (animateChanges) contentTween() else snap(),
+        label = "story title start padding",
+    )
     Row(
         modifier = modifier
             .combinedClickable(
@@ -393,7 +398,7 @@ private fun StoryMainContent(
         StoryTextColumn(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 2.dp, end = 4.dp)
+                .padding(start = titleStartPadding, end = 4.dp)
                 .alignBy(FirstBaseline),
         ) {
             Text(
