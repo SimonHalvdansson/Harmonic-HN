@@ -91,6 +91,8 @@ class StoredSettingsMutator(
                 CommentBooleanPreference.HEADER_TINT -> UserPreferenceKeys.COMMENTS_HEADER_TINT
                 CommentBooleanPreference.HEADER_PREVIEW_IMAGE ->
                     UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE
+                CommentBooleanPreference.SHOW_UP_BUTTON ->
+                    UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON
                 CommentBooleanPreference.COLLAPSE_PARENT -> UserPreferenceKeys.COLLAPSE_PARENT
                 CommentBooleanPreference.COLLAPSE_TOP_LEVEL -> UserPreferenceKeys.COLLAPSE_TOP_LEVEL
                 CommentBooleanPreference.SWAP_LONG_PRESS_TAP -> UserPreferenceKeys.COMMENTS_SWAP_LONG

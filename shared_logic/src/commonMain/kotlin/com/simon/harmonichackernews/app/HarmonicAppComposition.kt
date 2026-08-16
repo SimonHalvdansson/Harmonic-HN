@@ -78,6 +78,7 @@ class HarmonicAppComposition(
         store = host.settingsStore,
         changes = host.settingsChanges,
         theme = { appearance.selection().theme },
+        showCommentsUpButtonByDefault = host.showCommentsUpButtonByDefault,
     )
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser

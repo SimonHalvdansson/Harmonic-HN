@@ -10,6 +10,7 @@ data class CommentDisplaySettings(
     val showThumbnail: Boolean,
     val showHeaderPreviewImage: Boolean,
     val tintHeader: Boolean,
+    val showUpButton: Boolean,
     val paletteTintMode: String,
     val preferredTextSize: Float,
     val commentDepthIndicatorMode: String,
@@ -41,6 +42,7 @@ data class CommentDisplaySettings(
             showThumbnail = preferences.thumbnails,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,
+            showUpButton = preferences.showUpButton,
             paletteTintMode = PaletteTintPreferences.normalizeConfigKey(
                 preferences.paletteTintConfigKey,
             ),

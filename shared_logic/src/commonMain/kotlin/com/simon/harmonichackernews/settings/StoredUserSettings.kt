@@ -42,6 +42,7 @@ object UserPreferenceKeys {
     const val COLLAPSE_PARENT = "pref_collapse_parent"
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
+    const val COMMENTS_SHOW_UP_BUTTON = "pref_comments_show_up_button"
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
     const val MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth"
     const val SCROLL_NAVIGATION = "pref_scroll_navigation"
@@ -96,6 +97,7 @@ class StoredUserSettings(
     private val store: KeyValueStore,
     override val changes: Flow<Unit>,
     private val theme: () -> String? = { null },
+    private val showCommentsUpButtonByDefault: Boolean = false,
 ) : UserSettings {
     override val story: StoryPreferences
         get() {
@@ -156,6 +158,10 @@ class StoredUserSettings(
                     headerPreviewImageEnabled,
                 headerTintEnabled = headerTintEnabled,
                 tintHeader = tintCard && headerTintEnabled,
+                showUpButton = boolean(
+                    UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON,
+                    showCommentsUpButtonByDefault,
+                ),
                 paletteTintConfigKey = paletteTintConfigKey(),
                 textSize = commentTextSize(),
                 depthIndicatorMode = commentDepthMode(),

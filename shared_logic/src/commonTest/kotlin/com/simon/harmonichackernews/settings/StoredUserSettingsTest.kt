@@ -29,6 +29,7 @@ class StoredUserSettingsTest {
         assertTrue(settings.comments.showHeaderPreviewImage)
         assertTrue(settings.comments.headerPreviewImageEnabled)
         assertTrue(settings.comments.headerTintEnabled)
+        assertFalse(settings.comments.showUpButton)
         assertTrue(settings.comments.animateChanges)
         assertTrue(settings.comments.smoothScroll)
         assertTrue(settings.reading.integratedWebView)
@@ -41,6 +42,25 @@ class StoredUserSettingsTest {
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
         assertFalse(settings.debug.showAiSummaryDebugInfo)
+    }
+
+    @Test
+    fun commentUpButtonDefaultIsHostSpecificAndStoredChoiceWins() {
+        val hostDefault = StoredUserSettings(
+            store = TestKeyValueStore(),
+            changes = emptyFlow(),
+            showCommentsUpButtonByDefault = true,
+        )
+        val storedChoice = StoredUserSettings(
+            store = TestKeyValueStore(
+                mapOf(UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON to false),
+            ),
+            changes = emptyFlow(),
+            showCommentsUpButtonByDefault = true,
+        )
+
+        assertTrue(hostDefault.comments.showUpButton)
+        assertFalse(storedChoice.comments.showUpButton)
     }
 
     @Test

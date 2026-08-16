@@ -69,6 +69,7 @@ data class CommentPreferences(
     /** The user's stored choice, before story-card tint availability is applied. */
     val headerTintEnabled: Boolean,
     val tintHeader: Boolean,
+    val showUpButton: Boolean,
     val paletteTintConfigKey: String,
     val textSize: Float,
     val depthIndicatorMode: String,

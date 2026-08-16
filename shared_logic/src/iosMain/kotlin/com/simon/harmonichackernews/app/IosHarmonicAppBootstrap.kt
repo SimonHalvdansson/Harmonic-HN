@@ -73,6 +73,7 @@ class IosHarmonicAppBootstrap(
             settingsChanges = preferences.changes,
             currentMinutesFromMidnight = runtime.currentMinutesFromMidnight,
             systemDark = runtime.systemDark,
+            showCommentsUpButtonByDefault = true,
             storyCacheRepository = persistentStorage.storyCacheRepository,
             articleSnapshotStore = persistentStorage.articleSnapshotStore,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,

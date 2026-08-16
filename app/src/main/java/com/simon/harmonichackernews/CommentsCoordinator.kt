@@ -365,13 +365,7 @@ class CommentsCoordinator(
                 val rightPadding =
                     max(max(cutoutInsets.right, systemInsets.right), contentPaddingRight)
                 setCommentsContentSideInsets(leftPadding, rightPadding)
-
-                webViewController!!.setContainerPadding(
-                    leftPadding,
-                    systemInsets.top,
-                    rightPadding,
-                    0,
-                )
+                updateWebViewContainerPadding()
 
                 return windowInsets
             }
@@ -612,6 +606,7 @@ class CommentsCoordinator(
             )
             if (integratedWebview && !wasIntegrated) controller.initialize()
         }
+        updateWebViewContainerPadding()
         if (state.themeRefreshVersion != appliedCommentsThemeVersion) {
             appliedCommentsThemeVersion = state.themeRefreshVersion
             context?.let { currentContext ->
@@ -766,6 +761,25 @@ class CommentsCoordinator(
 
     fun onAdaptiveLayoutChanged() {
         updateCommentsStatusBarAppearance()
+        updateWebViewContainerPadding()
+    }
+
+    private fun updateWebViewContainerPadding() {
+        val upButtonInset = if (
+            integratedWebview &&
+            !navigation.isAdaptiveTwoPane() &&
+            commentsStore.state.value.settings?.displaySettings?.showUpButton == true
+        ) {
+            AndroidDisplay.dpToPxInt(resources, 64f)
+        } else {
+            0
+        }
+        webViewController?.setContainerPadding(
+            commentsContentInsetLeft,
+            topInset + upButtonInset,
+            commentsContentInsetRight,
+            0,
+        )
     }
 
     private fun shouldShowCommentsStatusBarProtection(): Boolean {

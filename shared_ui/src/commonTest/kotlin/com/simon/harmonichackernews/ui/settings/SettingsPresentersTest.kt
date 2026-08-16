@@ -38,6 +38,7 @@ class SettingsPresentersTest {
     fun commentsAndWebLinksBuildStateFromSharedSettings() {
         val fixture = fixture()
         fixture.comments.setBoolean(CommentsBooleanSetting.Scrollbar, false)
+        fixture.comments.setBoolean(CommentsBooleanSetting.ShowUpButton, true)
         fixture.comments.setSorting(CommentSortingPreference.NEWEST_FIRST.storedValue)
         fixture.comments.setProvider(CommentsProvider.OFFICIAL.storedValue)
         fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewGithub, false)
@@ -46,6 +47,7 @@ class SettingsPresentersTest {
         val webLinks = fixture.webLinks.state(fontLabel = "System")
 
         assertFalse(comments.showScrollbar)
+        assertTrue(comments.showUpButton)
         assertEquals(CommentSortingPreference.NEWEST_FIRST, comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, comments.provider)
         assertFalse(webLinks.previewGithub)

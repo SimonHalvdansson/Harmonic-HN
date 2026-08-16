@@ -28,6 +28,7 @@ data class CommentsSettingsUiState(
     val showScrollbar: Boolean,
     val animateChanges: Boolean,
     val storyTintEnabled: Boolean,
+    val showUpButton: Boolean,
     val headerTint: Boolean,
     val storyPreviewEnabled: Boolean,
     val headerPreviewImage: Boolean,
@@ -49,6 +50,7 @@ enum class CommentsBooleanSetting {
     TopLevelIndicators,
     Scrollbar,
     AnimateChanges,
+    ShowUpButton,
     HeaderTint,
     HeaderPreviewImage,
     CollapseParent,
@@ -156,6 +158,14 @@ fun SharedCommentsSettingsScreen(
         }
         item {
             SettingsCategory("Header display") {
+                BooleanRow(
+                    "Show up button",
+                    Res.drawable.ic_arrow_back,
+                    state.showUpButton,
+                    CommentsBooleanSetting.ShowUpButton,
+                    onBooleanChanged,
+                )
+                SettingsDivider()
                 BooleanRow(
                     "Background tint",
                     Res.drawable.ic_palette,

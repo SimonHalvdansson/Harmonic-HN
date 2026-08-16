@@ -32,6 +32,7 @@ class StoredSettingsMutatorTest {
         val mutator = StoredSettingsMutator(store)
 
         mutator.setCommentBoolean(CommentBooleanPreference.HEADER_TINT, false)
+        mutator.setCommentBoolean(CommentBooleanPreference.SHOW_UP_BUTTON, true)
         mutator.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, true)
         mutator.setTheme("gray")
         mutator.setNighttimeTheme("material_daynight")
@@ -43,6 +44,7 @@ class StoredSettingsMutatorTest {
 
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
         assertFalse(settings.comments.headerTintEnabled)
+        assertTrue(settings.comments.showUpButton)
         assertTrue(settings.general.specialNighttimeTheme)
         assertEquals("gray", settings.appearance.theme)
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)

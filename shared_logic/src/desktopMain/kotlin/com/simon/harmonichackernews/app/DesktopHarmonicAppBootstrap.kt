@@ -124,6 +124,7 @@ class DesktopHarmonicAppBootstrap(
                     LocalTime.now().let { it.hour * 60 + it.minute }
                 },
                 systemDark = DesktopSystemAppearance::isDark,
+                showCommentsUpButtonByDefault = true,
                 storyCacheRepository = persistentStorage.storyCacheRepository,
                 articleSnapshotStore = persistentStorage.articleSnapshotStore,
                 pdfDownloadStore = persistentStorage.pdfDownloadStore,
@@ -159,6 +160,7 @@ class DesktopHarmonicAppBootstrap(
                 settingsStore = settings,
                 appDataStore = appData,
                 settingsChanges = settings.changes,
+                showCommentsUpButtonByDefault = true,
                 currentMinutesFromMidnight = {
                     LocalTime.now().let { it.hour * 60 + it.minute }
                 },

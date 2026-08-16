@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -65,6 +67,7 @@ import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
+import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
@@ -953,6 +956,7 @@ private fun MainNavigation(
                         CommentsPane(
                             request = request,
                             controller = controller,
+                            showUpButton = false,
                             statusBarColor = statusBarColor,
                             statusBarHeight = statusBarHeight,
                             drawStatusBarProtection = true,
@@ -979,6 +983,7 @@ private fun MainNavigation(
                         CommentsPane(
                             request = request,
                             controller = controller,
+                            showUpButton = true,
                             statusBarColor = statusBarColor,
                             statusBarHeight = statusBarHeight,
                             drawStatusBarProtection = true,
@@ -1221,6 +1226,7 @@ private fun StoriesPane(
 private fun CommentsPane(
     request: MainStoryRequest,
     controller: MainNavigationController,
+    showUpButton: Boolean,
     statusBarColor: Color = Color.Transparent,
     statusBarHeight: Dp = 0.dp,
     drawStatusBarProtection: Boolean = false,
@@ -1264,6 +1270,8 @@ private fun CommentsPane(
                 factory = { activeCoordinator.webViewRoot },
             )
             controller.commentsComposeController?.let { commentsController ->
+                val showFloatingUpButton = showUpButton &&
+                    commentsController.displaySettings?.showUpButton == true
                 if (!commentsController.webViewFullscreen) {
                     CommentsScaffold(commentsController)
                 }
@@ -1274,6 +1282,16 @@ private fun CommentsPane(
                     StatusBarProtection(
                         color = statusBarColor,
                         statusBarHeight = statusBarHeight,
+                    )
+                }
+                if (showFloatingUpButton) {
+                    SharedCommentsUpButton(
+                        onClick = controller::closeStory,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(start = 16.dp, top = 4.dp)
+                            .zIndex(101f),
                     )
                 }
             }

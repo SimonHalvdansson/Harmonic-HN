@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,12 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -53,6 +57,7 @@ import com.simon.harmonichackernews.ui.comments.SharedCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.SharedCommentsHeader
 import com.simon.harmonichackernews.ui.comments.SharedCommentsRoute
 import com.simon.harmonichackernews.ui.comments.SharedCommentsSearchDialog
+import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
 import com.simon.harmonichackernews.ui.comments.SharedHeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.SharedLinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.SharedReferenceCardContent
@@ -73,6 +78,7 @@ internal fun IosCommentsContent(
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
     isTablet: Boolean,
+    showUpButton: Boolean,
     onControllerChanged: (CommentsComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -255,6 +261,8 @@ internal fun IosCommentsContent(
         host.controller.statusBarHeaderColor ?: background,
         host.controller.statusBarHeaderCoverage,
     )
+    val showFloatingUpButton = showUpButton &&
+        host.controller.displaySettings?.showUpButton == true
     val showStatusBarProtection = !(host.controller.integratedWebView &&
         host.controller.isScrolledToTop)
     Box(
@@ -264,12 +272,27 @@ internal fun IosCommentsContent(
     ) {
         val webView = host.webView
         if (host.controller.integratedWebView && webView != null) {
-            IosCommentsScaffold(host.controller, webView, comments)
+            IosCommentsScaffold(
+                controller = host.controller,
+                webView = webView,
+                reserveUpButtonInset = showFloatingUpButton,
+                comments = comments,
+            )
         } else {
             comments()
         }
         if (showStatusBarProtection) {
             IosStatusBarProtection(protectionColor)
+        }
+        if (showFloatingUpButton) {
+            SharedCommentsUpButton(
+                onClick = scene.navigation::detailRemovedFromBackStack,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 4.dp)
+                    .zIndex(101f),
+            )
         }
     }
 }

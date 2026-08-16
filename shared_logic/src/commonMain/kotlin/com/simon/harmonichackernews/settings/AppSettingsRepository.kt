@@ -36,6 +36,7 @@ enum class CommentBooleanPreference {
     ANIMATE_CHANGES,
     HEADER_TINT,
     HEADER_PREVIEW_IMAGE,
+    SHOW_UP_BUTTON,
     COLLAPSE_PARENT,
     COLLAPSE_TOP_LEVEL,
     SWAP_LONG_PRESS_TAP,
@@ -80,8 +81,14 @@ class AppSettingsRepository(
         store: KeyValueStore,
         changes: Flow<Unit>,
         theme: () -> String? = { null },
+        showCommentsUpButtonByDefault: Boolean = false,
     ) : this(
-        reader = StoredUserSettings(store, changes, theme),
+        reader = StoredUserSettings(
+            store,
+            changes,
+            theme,
+            showCommentsUpButtonByDefault,
+        ),
         mutator = StoredSettingsMutator(store),
     )
 

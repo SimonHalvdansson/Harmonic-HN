@@ -142,6 +142,7 @@ class CommentsSettingsPresenter(
             showScrollbar = comments.showScrollbar,
             animateChanges = comments.animateChanges,
             storyTintEnabled = settings.story.tintCardUsingPreview,
+            showUpButton = comments.showUpButton,
             headerTint = comments.headerTintEnabled,
             storyPreviewEnabled = settings.story.previewImageMode != StoryPreviewPreferences.OFF,
             headerPreviewImage = comments.headerPreviewImageEnabled,
@@ -366,6 +367,7 @@ private val CommentsBooleanSetting.preference: CommentBooleanPreference
         CommentsBooleanSetting.TopLevelIndicators -> CommentBooleanPreference.TOP_LEVEL_DEPTH_INDICATOR
         CommentsBooleanSetting.Scrollbar -> CommentBooleanPreference.SHOW_SCROLLBAR
         CommentsBooleanSetting.AnimateChanges -> CommentBooleanPreference.ANIMATE_CHANGES
+        CommentsBooleanSetting.ShowUpButton -> CommentBooleanPreference.SHOW_UP_BUTTON
         CommentsBooleanSetting.HeaderTint -> CommentBooleanPreference.HEADER_TINT
         CommentsBooleanSetting.HeaderPreviewImage -> CommentBooleanPreference.HEADER_PREVIEW_IMAGE
         CommentsBooleanSetting.CollapseParent -> CommentBooleanPreference.COLLAPSE_PARENT

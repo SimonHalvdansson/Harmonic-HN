@@ -375,6 +375,7 @@ private fun IosAppContent(
                             scene = scene,
                             request = request,
                             isTablet = isTabletDevice,
+                            showUpButton = false,
                             onControllerChanged = onCommentsControllerChanged,
                         )
                     },
@@ -402,6 +403,7 @@ private fun IosAppContent(
                             scene = scene,
                             request = request,
                             isTablet = isTabletDevice,
+                            showUpButton = true,
                             onControllerChanged = onCommentsControllerChanged,
                         )
                     },

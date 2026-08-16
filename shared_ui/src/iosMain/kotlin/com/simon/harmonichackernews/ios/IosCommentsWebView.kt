@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
@@ -119,10 +121,16 @@ internal class IosCommentsWebView(initialUrl: String) {
 internal fun IosCommentsScaffold(
     controller: CommentsComposeController,
     webView: IosCommentsWebView,
+    reserveUpButtonInset: Boolean,
     comments: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val webViewTopInset = if (reserveUpButtonInset) {
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+    } else {
+        0.dp
+    }
     val peekHeight = navigationBottom + if (controller.displaySettings?.isTablet == true) {
         81.dp
     } else {
@@ -194,7 +202,9 @@ internal fun IosCommentsScaffold(
                     webView.ensureLoaded()
                     webView.view
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = webViewTopInset),
                 properties = UIKitInteropProperties(
                     isInteractive = true,
                     isNativeAccessibilityEnabled = true,
