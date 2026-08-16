@@ -276,12 +276,13 @@ fun HeaderActions(
             }
         }
         Box(
-            Modifier.size(width = 48.dp, height = 58.dp),
+            Modifier.size(CommentsHeaderActionButtonSize),
             contentAlignment = Alignment.Center,
         ) {
             CommentsTooltip("Share") {
                 IconButton(
                     onClick = { shareExpanded = true },
+                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_share),
@@ -302,7 +303,7 @@ fun HeaderActions(
             CommentsTooltip("Refresh") {
                 IconButton(
                     onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
-                    modifier = Modifier.size(width = 48.dp, height = 58.dp),
+                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_refresh),
@@ -314,12 +315,13 @@ fun HeaderActions(
             }
         }
         Box(
-            Modifier.size(width = 48.dp, height = 58.dp),
+            Modifier.size(CommentsHeaderActionButtonSize),
             contentAlignment = Alignment.Center,
         ) {
             CommentsTooltip("More options") {
                 IconButton(
                     onClick = { moreExpanded = true },
+                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_more_vert),
@@ -353,6 +355,8 @@ fun HeaderActions(
     }
 }
 
+private val CommentsHeaderActionButtonSize = 54.dp
+
 private data class HeaderAction(
     val icon: DrawableResource,
     val label: String,
@@ -375,7 +379,7 @@ private fun HeaderActionButton(
         IconButton(
             onClick = onClick,
             enabled = !action.loading,
-            modifier = Modifier.size(width = 48.dp, height = 58.dp),
+            modifier = Modifier.size(CommentsHeaderActionButtonSize),
         ) {
             AnimatedContent(
                 targetState = HeaderActionVisual(action.icon, action.label, action.loading),
