@@ -227,40 +227,41 @@ fun SharedStringListEditorDialog(
     suggestedItems: List<String> = emptyList(),
     suggestionsLabel: String = "Suggestions",
     parseInput: (String) -> List<String>,
-    emptyInputError: String,
+    emptyInputError: String = "",
     disableSuggestions: Boolean = false,
     onItemsChanged: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var items by remember(initialItems) { mutableStateOf(initialItems) }
     var input by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
     val suggestions = suggestedItems.filter { suggestion ->
         items.none { it.equals(suggestion, ignoreCase = true) }
     }
+
+    val additions = remember(input, parseInput, items) {
+        parseInput(input).filter { candidate ->
+            items.none { it.equals(candidate, ignoreCase = true) }
+        }
+    }
+    val canAdd = additions.isNotEmpty()
 
     fun updateItems(updated: List<String>) {
         items = updated
         onItemsChanged(updated)
     }
 
-    fun addValues(rawValue: String) {
-        error = null
+    fun addValues(rawValue: String = input) {
         val parsed = parseInput(rawValue)
-        if (parsed.isEmpty()) {
-            error = emptyInputError
-            return
-        }
-        val additions = parsed.filter { candidate ->
+        val toAdd = parsed.filter { candidate ->
             items.none { it.equals(candidate, ignoreCase = true) }
         }
-        if (additions.isEmpty()) {
-            error = "Already added"
-            return
+        if (toAdd.isNotEmpty()) {
+            updateItems(items + toAdd)
+            if (rawValue == input) {
+                input = ""
+            }
         }
-        updateItems(items + additions)
-        input = ""
     }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -281,18 +282,13 @@ fun SharedStringListEditorDialog(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                 ) {
                     OutlinedTextField(
                         value = input,
-                        onValueChange = {
-                            input = it
-                            error = null
-                        },
+                        onValueChange = { input = it },
                         modifier = Modifier.weight(1f).focusRequester(focusRequester),
                         label = { Text(inputLabel) },
-                        isError = error != null,
-                        supportingText = error?.let { message -> { Text(message) } },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = if (disableSuggestions) {
@@ -306,12 +302,19 @@ fun SharedStringListEditorDialog(
                     )
                     OutlinedIconButton(
                         onClick = { addValues(input) },
-                        modifier = Modifier.padding(start = 10.dp).size(48.dp),
+                        enabled = canAdd,
+                        modifier = Modifier
+                            .padding(start = 10.dp, top = 12.dp)
+                            .size(48.dp),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_add),
                             contentDescription = "Add",
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = if (canAdd) {
+                                HarmonicTheme.colors.drawable
+                            } else {
+                                HarmonicTheme.colors.drawable.copy(alpha = 0.38f)
+                            },
                         )
                     }
                 }

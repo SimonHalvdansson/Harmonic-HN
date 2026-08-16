@@ -91,7 +91,7 @@ object ArchiveRedirectPolicy {
         var normalized = value.trim().lowercase()
         if (normalized.startsWith("//")) {
             normalized = "https:$normalized"
-        } else if (!normalized.contains("://") && normalized.contains('/')) {
+        } else if (!normalized.contains("://")) {
             normalized = "https://$normalized"
         }
         val parsedHost = normalized.toNetworkUrlOrNull()?.host
