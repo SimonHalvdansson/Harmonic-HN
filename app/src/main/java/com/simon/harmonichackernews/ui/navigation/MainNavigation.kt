@@ -1269,7 +1269,7 @@ private fun CommentsPane(
                 }
                 val showStatusBarProtection = drawStatusBarProtection &&
                     !(commentsController.integratedWebView &&
-                        commentsController.statusBarHeaderCoverage >= 1f)
+                        commentsController.isScrolledToTop)
                 if (showStatusBarProtection) {
                     StatusBarProtection(
                         color = statusBarColor,

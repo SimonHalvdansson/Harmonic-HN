@@ -102,6 +102,8 @@ class CommentsComposeController private constructor(
         private set
     var webViewFullscreen by mutableStateOf(false)
         private set
+    var isScrolledToTop by mutableStateOf(true)
+        private set
     var firstVisibleCommentId: Int = 0
         private set
     var firstVisibleCommentOffset: Int = 0
@@ -591,6 +593,7 @@ class CommentsComposeController private constructor(
         val commentIndex = state.firstVisibleItemIndex - 1
         firstVisibleCommentId = visibleComments.getOrNull(commentIndex)?.id ?: 0
         firstVisibleCommentOffset = state.firstVisibleItemScrollOffset
+        isScrolledToTop = state.firstVisibleItemIndex == 0 && state.firstVisibleItemScrollOffset == 0
         listener.onScrollPositionChanged(firstVisibleCommentId, firstVisibleCommentOffset)
     }
 

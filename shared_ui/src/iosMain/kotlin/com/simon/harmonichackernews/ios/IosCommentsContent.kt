@@ -256,7 +256,7 @@ internal fun IosCommentsContent(
         host.controller.statusBarHeaderCoverage,
     )
     val showStatusBarProtection = !(host.controller.integratedWebView &&
-        host.controller.statusBarHeaderCoverage >= 1f)
+        host.controller.isScrolledToTop)
     Box(
         Modifier
             .fillMaxSize()
