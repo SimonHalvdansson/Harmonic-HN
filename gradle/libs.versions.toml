@@ -11,6 +11,7 @@ coil = "3.5.0"
 ksoup = "0.2.6"
 ktor = "3.5.1"
 kmpalette = "4.0.0-beta02"
+haze = "2.0.0-alpha03"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-io = "0.9.0"
@@ -72,6 +73,8 @@ coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.14.0"

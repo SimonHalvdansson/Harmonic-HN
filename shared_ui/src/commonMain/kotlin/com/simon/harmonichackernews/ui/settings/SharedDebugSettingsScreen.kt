@@ -135,6 +135,7 @@ fun SharedDebugSettingsScreen(
     onShowAiSummaryDebugInfoChanged: (Boolean) -> Unit,
     onOpenHnId: (Int) -> Unit,
     onOpenWithoutCache: () -> Unit,
+    onCachePost: () -> Unit,
     onOpenLink: (String) -> Unit,
     onDialogRequested: (DebugSettingsDialog) -> Unit,
     onEasterEggRequested: () -> Unit,
@@ -177,6 +178,12 @@ fun SharedDebugSettingsScreen(
         item {
             SettingsCategory("Sample content") {
                 DebugLinkRows(DebugSampleContentLinks, onOpenLink)
+                SettingsDivider()
+                SettingRow(
+                    title = "Cached post",
+                    icon = Res.drawable.ic_cached,
+                    onClick = onCachePost,
+                )
             }
         }
 

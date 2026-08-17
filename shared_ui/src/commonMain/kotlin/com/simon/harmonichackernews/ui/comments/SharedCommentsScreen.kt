@@ -149,6 +149,7 @@ fun SharedCommentsScreen(
         return
     }
 
+    val commentsHazeState = currentCommentsHazeState()
     val listState = rememberLazyListState()
     val visibleComments = controller.visibleComments
     val density = LocalDensity.current
@@ -361,7 +362,11 @@ fun SharedCommentsScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .commentsHazeSource(commentsHazeState),
+    ) {
         if (controller.integratedWebView) {
             list()
         } else {

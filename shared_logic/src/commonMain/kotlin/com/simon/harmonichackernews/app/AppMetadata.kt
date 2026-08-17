@@ -33,6 +33,7 @@ object CommonLicenseCatalog {
         LicenseEntry("kotlinx.coroutines", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
         LicenseEntry("Ktor", "JetBrains", "Apache License 2.0", "https://ktor.io/"),
         LicenseEntry("Compose Multiplatform", "JetBrains", "Apache License 2.0", "https://www.jetbrains.com/compose-multiplatform/"),
+        LicenseEntry("Haze", "Chris Banes", "Apache License 2.0", "https://github.com/chrisbanes/haze"),
         LicenseEntry("Coil", "Coil contributors", "Apache License 2.0", "https://coil-kt.github.io/coil/"),
         LicenseEntry("Ksoup", "FleekSoft", "MIT License", "https://github.com/fleeksoft/ksoup"),
         LicenseEntry("KMPalette", "Jordan Dixon", "Apache License 2.0", "https://github.com/jordond/KMPPalette"),

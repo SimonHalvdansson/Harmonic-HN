@@ -53,6 +53,7 @@ import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.SharedCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.SharedCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.SharedCommentsHeader
+import com.simon.harmonichackernews.ui.comments.SharedCommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.SharedCommentsRoute
 import com.simon.harmonichackernews.ui.comments.SharedCommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
@@ -210,54 +211,56 @@ internal fun DesktopCommentsContent(
 
     val showFloatingUpButton = showNavigation &&
         host.controller.displaySettings?.showUpButton == true
-    Column(Modifier.fillMaxSize()) {
-        if (showNavigation && !showFloatingUpButton) {
-            SharedHarmonicTopAppBar(
-                title = "Comments",
-                onBack = onClose,
-                toolbarHeight = 56.dp,
-                navigationHeight = 48.dp,
-            )
-        }
-        Box(Modifier.weight(1f)) {
-            SharedCommentsRoute(
-                controller = host.controller,
-                headerContent = { settings ->
-                    DesktopCommentsHeader(app, scene, host.controller, settings)
-                },
-                searchDialog = { settings ->
-                    SharedCommentsSearchDialog(
-                        searchTerm = host.controller.searchQuery,
-                        visibleComments = host.controller.searchResults,
-                        settings = settings,
-                        storyAuthor = host.controller.story.by,
-                        accountUser = host.controller.accountUser,
-                        maxDialogHeight = 720.dp,
-                        onSearchTermChanged = host.controller.listener::onSearchQueryChanged,
-                        onDismiss = host.controller::dismissCommentSearch,
-                        onCommentSelected = host.controller::selectSearchResult,
-                        onOpenLink = { scene.links.open(it) },
-                    )
-                },
-                actionOverlay = { settings ->
-                    SharedCommentActionOverlay(
-                        controller = host.controller,
-                        settings = settings,
-                        hasAccount = app.platform.accounts.load() != null,
-                        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
-                        textStyle = TextStyle.Default,
-                        onOpenLink = { scene.links.open(it) },
-                    )
-                },
-            )
-            if (showFloatingUpButton) {
-                SharedCommentsUpButton(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 16.dp, top = 8.dp)
-                        .zIndex(101f),
+    SharedCommentsHazeHost {
+        Column(Modifier.fillMaxSize()) {
+            if (showNavigation && !showFloatingUpButton) {
+                SharedHarmonicTopAppBar(
+                    title = "Comments",
+                    onBack = onClose,
+                    toolbarHeight = 56.dp,
+                    navigationHeight = 48.dp,
                 )
+            }
+            Box(Modifier.weight(1f)) {
+                SharedCommentsRoute(
+                    controller = host.controller,
+                    headerContent = { settings ->
+                        DesktopCommentsHeader(app, scene, host.controller, settings)
+                    },
+                    searchDialog = { settings ->
+                        SharedCommentsSearchDialog(
+                            searchTerm = host.controller.searchQuery,
+                            visibleComments = host.controller.searchResults,
+                            settings = settings,
+                            storyAuthor = host.controller.story.by,
+                            accountUser = host.controller.accountUser,
+                            maxDialogHeight = 720.dp,
+                            onSearchTermChanged = host.controller.listener::onSearchQueryChanged,
+                            onDismiss = host.controller::dismissCommentSearch,
+                            onCommentSelected = host.controller::selectSearchResult,
+                            onOpenLink = { scene.links.open(it) },
+                        )
+                    },
+                    actionOverlay = { settings ->
+                        SharedCommentActionOverlay(
+                            controller = host.controller,
+                            settings = settings,
+                            hasAccount = app.platform.accounts.load() != null,
+                            bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
+                            textStyle = TextStyle.Default,
+                            onOpenLink = { scene.links.open(it) },
+                        )
+                    },
+                )
+                if (showFloatingUpButton) {
+                    SharedCommentsUpButton(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 16.dp, top = 8.dp)
+                            .zIndex(101f),
+                    )
+                }
             }
         }
     }

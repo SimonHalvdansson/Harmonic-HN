@@ -67,6 +67,7 @@ import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
+import com.simon.harmonichackernews.ui.comments.SharedCommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
@@ -1264,35 +1265,37 @@ private fun CommentsPane(
         }
     }
     coordinator?.let { activeCoordinator ->
-        Box(Modifier.fillMaxSize()) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { activeCoordinator.webViewRoot },
-            )
-            controller.commentsComposeController?.let { commentsController ->
-                val showFloatingUpButton = showUpButton &&
-                    commentsController.displaySettings?.showUpButton == true
-                if (!commentsController.webViewFullscreen) {
-                    CommentsScaffold(commentsController)
-                }
-                val showStatusBarProtection = drawStatusBarProtection &&
-                    !(commentsController.integratedWebView &&
-                        commentsController.isScrolledToTop)
-                if (showStatusBarProtection) {
-                    StatusBarProtection(
-                        color = statusBarColor,
-                        statusBarHeight = statusBarHeight,
-                    )
-                }
-                if (showFloatingUpButton) {
-                    SharedCommentsUpButton(
-                        onClick = controller::closeStory,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .statusBarsPadding()
-                            .padding(start = 16.dp, top = 4.dp)
-                            .zIndex(101f),
-                    )
+        SharedCommentsHazeHost {
+            Box(Modifier.fillMaxSize()) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { activeCoordinator.webViewRoot },
+                )
+                controller.commentsComposeController?.let { commentsController ->
+                    val showFloatingUpButton = showUpButton &&
+                        commentsController.displaySettings?.showUpButton == true
+                    if (!commentsController.webViewFullscreen) {
+                        CommentsScaffold(commentsController)
+                    }
+                    val showStatusBarProtection = drawStatusBarProtection &&
+                        !(commentsController.integratedWebView &&
+                            commentsController.isScrolledToTop)
+                    if (showStatusBarProtection) {
+                        StatusBarProtection(
+                            color = statusBarColor,
+                            statusBarHeight = statusBarHeight,
+                        )
+                    }
+                    if (showFloatingUpButton) {
+                        SharedCommentsUpButton(
+                            onClick = controller::closeStory,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .statusBarsPadding()
+                                .padding(start = 16.dp, top = 4.dp)
+                                .zIndex(101f),
+                        )
+                    }
                 }
             }
         }

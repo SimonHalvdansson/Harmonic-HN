@@ -48,6 +48,8 @@ kotlin {
             implementation(libs.compose.multiplatform.resources)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.haze)
+            implementation(libs.haze.blur)
             implementation(libs.ksoup)
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)

@@ -55,6 +55,7 @@ import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.SharedCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.SharedCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.SharedCommentsHeader
+import com.simon.harmonichackernews.ui.comments.SharedCommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.SharedCommentsRoute
 import com.simon.harmonichackernews.ui.comments.SharedCommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
@@ -265,34 +266,36 @@ internal fun IosCommentsContent(
         host.controller.displaySettings?.showUpButton == true
     val showStatusBarProtection = !(host.controller.integratedWebView &&
         host.controller.isScrolledToTop)
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(background),
-    ) {
-        val webView = host.webView
-        if (host.controller.integratedWebView && webView != null) {
-            IosCommentsScaffold(
-                controller = host.controller,
-                webView = webView,
-                reserveUpButtonInset = showFloatingUpButton,
-                comments = comments,
-            )
-        } else {
-            comments()
-        }
-        if (showStatusBarProtection) {
-            IosStatusBarProtection(protectionColor)
-        }
-        if (showFloatingUpButton) {
-            SharedCommentsUpButton(
-                onClick = scene.navigation::detailRemovedFromBackStack,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, top = 4.dp)
-                    .zIndex(101f),
-            )
+    SharedCommentsHazeHost {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(background),
+        ) {
+            val webView = host.webView
+            if (host.controller.integratedWebView && webView != null) {
+                IosCommentsScaffold(
+                    controller = host.controller,
+                    webView = webView,
+                    reserveUpButtonInset = showFloatingUpButton,
+                    comments = comments,
+                )
+            } else {
+                comments()
+            }
+            if (showStatusBarProtection) {
+                IosStatusBarProtection(protectionColor)
+            }
+            if (showFloatingUpButton) {
+                SharedCommentsUpButton(
+                    onClick = scene.navigation::detailRemovedFromBackStack,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, top = 4.dp)
+                        .zIndex(101f),
+                )
+            }
         }
     }
 }

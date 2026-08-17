@@ -34,6 +34,7 @@ class HarmonicUiDependencies(
     val launches = scene.launches
     val links = scene.links
     val webContent = app.webContent
+    val nowMillis = app.nowMillis
     val pdfDownloads = app.pdfDownloads
     val widgets = app.widgets
     val platform = app.platform

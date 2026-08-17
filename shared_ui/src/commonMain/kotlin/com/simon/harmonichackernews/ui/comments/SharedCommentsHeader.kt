@@ -135,6 +135,17 @@ fun SharedCommentsHeader(
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
+    val backButtonTitleClearance = if (settings.showUpButton && !controller.integratedWebView) {
+        16.dp
+    } else {
+        0.dp
+    }
+    val titleTopPadding = (if (settings.showUpButton && !headerPreviewImageDisplayed) {
+        16.dp
+    } else {
+        0.dp
+    }) + backButtonTitleClearance
+    val shimmerTopPadding = titleTopPadding + if (settings.showUpButton) 8.dp else 0.dp
 
     Column(
         modifier = Modifier
@@ -200,7 +211,9 @@ fun SharedCommentsHeader(
                                     }
                                 },
                         ) {
-                            SharedCommentsHeaderShimmer()
+                            Column(Modifier.padding(top = shimmerTopPadding)) {
+                                SharedCommentsHeaderShimmer()
+                            }
                         }
                     } else {
                         Column(Modifier.fillMaxWidth()) {
@@ -227,14 +240,7 @@ fun SharedCommentsHeader(
                                         .fillMaxWidth()
                                         .padding(
                                             start = 16.dp,
-                                            top = if (
-                                                settings.showUpButton &&
-                                                !headerPreviewImageDisplayed
-                                            ) {
-                                                16.dp
-                                            } else {
-                                                0.dp
-                                            },
+                                            top = titleTopPadding,
                                             end = 16.dp,
                                         )
                                         .semantics { heading() },

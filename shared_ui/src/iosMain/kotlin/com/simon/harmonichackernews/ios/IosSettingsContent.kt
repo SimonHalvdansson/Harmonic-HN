@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
+import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
+import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
@@ -527,6 +529,11 @@ private fun IosDebugSettings(
             app.storyCache.remove(IosOpenWithoutCacheStoryId)
             app.network.removeCachedStoryResponses(IosOpenWithoutCacheStoryId)
             scene.navigation.openStory(StoryDestination(IosOpenWithoutCacheStoryId))
+        },
+        onCachePost = {
+            if (DebugCachedPostFixture.seed(app.storyCache.repository, app.nowMillis())) {
+                scene.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+            }
         },
         onOpenLink = { scene.links.open(it) },
         onEasterEggRequested = scene.navigation::openCoulombGas,
