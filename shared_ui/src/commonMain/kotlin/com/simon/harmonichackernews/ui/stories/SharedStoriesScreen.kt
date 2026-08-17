@@ -343,6 +343,8 @@ private fun StoriesList(
     val visibleStories = remember(stories, visibleCount, controller.contentVersion) {
         stories.take(visibleCount.coerceAtLeast(0).coerceAtMost(stories.size))
     }
+    val centerFailure = !searchMode && visibleStories.isEmpty() &&
+        (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -540,11 +542,25 @@ private fun StoriesList(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                showFailureStatus = !centerFailure,
                 modifier = Modifier
                     .zIndex(1f)
                     .graphicsLayer(translationY = -headerCollapsePx.toFloat())
                     .onGloballyPositioned { headerHeightPx = it.size.height },
             )
+            if (centerFailure) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(2f),
+                ) {
+                    HeaderStatus(
+                        controller = controller,
+                        searchMode = searchMode,
+                        centerFailure = true,
+                    )
+                }
+            }
         }
     }
 }
@@ -556,6 +572,7 @@ private fun StoriesHeader(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    showFailureStatus: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -731,7 +748,11 @@ private fun StoriesHeader(
         }
 
         Box(Modifier.padding(start = sideStart, end = sideEnd)) {
-            HeaderStatus(controller, searchMode)
+            HeaderStatus(
+                controller = controller,
+                searchMode = searchMode,
+                showFailure = showFailureStatus,
+            )
         }
     }
 }
@@ -968,7 +989,12 @@ private fun SavedFilterButton(
 }
 
 @Composable
-private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boolean) {
+private fun HeaderStatus(
+    controller: StoriesComposeController,
+    searchMode: Boolean,
+    centerFailure: Boolean = false,
+    showFailure: Boolean = true,
+) {
     val colors = HarmonicTheme.colors
     SharedStoryListStatus(
         state = StoryListStatusState(
@@ -987,6 +1013,8 @@ private fun HeaderStatus(controller: StoriesComposeController, searchMode: Boole
         disabledColor = colors.storyDisabled,
         fontFamily = ProductSansFontFamily,
         loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
+        centerFailure = centerFailure,
+        showFailure = showFailure,
         onRetry = controller.listener::onRefresh,
         onShowCached = controller.listener::onShowCached,
     )

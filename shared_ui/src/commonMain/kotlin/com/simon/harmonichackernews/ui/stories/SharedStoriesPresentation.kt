@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,6 +66,8 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_close
 import com.simon.harmonichackernews.resources.ic_cloud_off
 import com.simon.harmonichackernews.resources.ic_history
+import com.simon.harmonichackernews.resources.ic_library_books
+import com.simon.harmonichackernews.resources.ic_refresh
 import com.simon.harmonichackernews.resources.ic_search
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.presentation.StorySearchOption
@@ -337,6 +341,8 @@ fun SharedStoryListStatus(
     loadingIndicator: @Composable () -> Unit = {
         HarmonicLoadingIndicator(modifier = Modifier.size(48.dp))
     },
+    centerFailure: Boolean = false,
+    showFailure: Boolean = true,
     onRetry: () -> Unit,
     onShowCached: () -> Unit,
 ) {
@@ -346,24 +352,67 @@ fun SharedStoryListStatus(
         }
     }
     AnimatedVisibility(
-        state.loadingFailed || state.serverError,
+        showFailure && (state.loadingFailed || state.serverError),
         enter = fadeIn(tween(180)),
         exit = fadeOut(tween(140)),
+        modifier = if (centerFailure) Modifier.fillMaxSize() else Modifier,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .then(if (centerFailure) Modifier.fillMaxSize() else Modifier)
+                .padding(top = if (centerFailure) 0.dp else 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (centerFailure) Arrangement.Center else Arrangement.Top,
         ) {
-            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(40.dp))
+            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(48.dp))
             Text(
                 if (state.serverError) "Server error" else state.failureMessage,
+                fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
                 modifier = Modifier.padding(top = 8.dp),
             )
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRetry) { Text("Retry") }
+            Column(
+                Modifier.padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.height(56.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_refresh),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Retry",
+                        fontFamily = fontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                    )
+                }
                 if (state.showCachedAction && !searchMode) {
-                    OutlinedButton(onClick = onShowCached) { Text("Show cached") }
+                    OutlinedButton(
+                        onClick = onShowCached,
+                        modifier = Modifier.height(56.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_library_books),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Show cached stories",
+                            fontFamily = fontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                        )
+                    }
                 }
             }
         }

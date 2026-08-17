@@ -698,11 +698,21 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     modifier = Modifier.padding(top = 6.dp),
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
                 )
                 OutlinedButton(
                     onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
-                    modifier = Modifier.padding(top = 8.dp),
-                ) { Text("Try again") }
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .height(56.dp),
+                ) {
+                    Text(
+                        "Try again",
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                    )
+                }
             }
             HeaderStatusState.Empty -> Column(
                 Modifier
