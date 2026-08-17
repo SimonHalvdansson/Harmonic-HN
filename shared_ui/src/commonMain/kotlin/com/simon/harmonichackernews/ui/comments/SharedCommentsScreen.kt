@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -35,7 +36,9 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -151,9 +154,11 @@ fun SharedCommentsScreen(
 
     val commentsHazeState = currentCommentsHazeState()
     val listState = rememberLazyListState()
+    val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
     val density = LocalDensity.current
     val topInsetPx = WindowInsets.statusBars.getTop(density)
+    val statusBarInset = with(density) { topInsetPx.toDp() }
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
@@ -367,12 +372,33 @@ fun SharedCommentsScreen(
             .fillMaxSize()
             .commentsHazeSource(commentsHazeState),
     ) {
+        LaunchedEffect(controller.commentsRefreshInProgress) {
+            if (!controller.commentsRefreshInProgress) {
+                controller.finishPullToRefresh()
+            }
+        }
+
         if (controller.integratedWebView) {
             list()
         } else {
             PullToRefreshBox(
-                isRefreshing = controller.commentsRefreshInProgress,
-                onRefresh = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
+                isRefreshing = controller.pullToRefreshInProgress &&
+                    controller.commentsRefreshInProgress,
+                state = pullToRefreshState,
+                indicator = {
+                    PullToRefreshDefaults.Indicator(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = statusBarInset),
+                        isRefreshing = controller.pullToRefreshInProgress &&
+                            controller.commentsRefreshInProgress,
+                        state = pullToRefreshState,
+                    )
+                },
+                onRefresh = {
+                    controller.beginPullToRefresh()
+                    controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 list()

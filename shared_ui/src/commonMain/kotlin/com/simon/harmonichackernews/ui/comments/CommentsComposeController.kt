@@ -62,6 +62,10 @@ class CommentsComposeController private constructor(
     )
         private set
 
+    /** True only while the current refresh was initiated by the pull-to-refresh gesture. */
+    var pullToRefreshInProgress by mutableStateOf(false)
+        private set
+
     val story: StoryListItemSnapshot get() = screenState.story
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
@@ -214,6 +218,14 @@ class CommentsComposeController private constructor(
     fun refreshContent() {
         screenState = screenState.copy(comments = screenState.comments.toList())
         contentVersion++
+    }
+
+    fun beginPullToRefresh() {
+        pullToRefreshInProgress = true
+    }
+
+    fun finishPullToRefresh() {
+        pullToRefreshInProgress = false
     }
 
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
