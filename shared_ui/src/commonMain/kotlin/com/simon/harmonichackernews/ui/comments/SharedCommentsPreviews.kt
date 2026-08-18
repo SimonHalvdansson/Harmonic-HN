@@ -576,7 +576,11 @@ private fun GitHubPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.repoInfo ?: return
     Column {
-        PreviewHeader("${info.owner} / ${info.name}")
+        PreviewHeader(
+            text = "${info.owner} / ${info.name}",
+            icon = Res.drawable.ic_link_preview_github,
+            logoUrl = info.avatarUrl,
+        )
         PreviewBody(info.about.orEmpty())
         PreviewInfoColumns(
             left = {

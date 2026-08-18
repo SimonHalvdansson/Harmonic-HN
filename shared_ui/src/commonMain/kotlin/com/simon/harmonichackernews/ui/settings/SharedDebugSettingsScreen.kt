@@ -107,6 +107,11 @@ val DebugPreviewLinks = listOf(
         "https://news.ycombinator.com/item?id=18798209",
     ),
     DebugLink(
+        "Hugging Face · Kimi-K3",
+        Res.drawable.ic_link_preview_hugging_face_mono,
+        "https://news.ycombinator.com/item?id=49065752",
+    ),
+    DebugLink(
         "Stack Exchange",
         Res.drawable.ic_link_preview_stack_exchange,
         "https://news.ycombinator.com/item?id=21113344",

@@ -67,6 +67,7 @@ data class PollOptionSnapshot(
 data class RepoInfoSnapshot(
     val name: String?,
     val owner: String?,
+    val avatarUrl: String? = null,
     val about: String?,
     val website: String?,
     val license: String?,
@@ -322,7 +323,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     },
     repoInfo = repoInfo?.let {
         RepoInfoSnapshot(
-            it.name, it.owner, it.about, it.website, it.license, it.language,
+            it.name, it.owner, it.avatarUrl, it.about, it.website, it.license, it.language,
             it.stars, it.watching, it.forks,
         )
     },

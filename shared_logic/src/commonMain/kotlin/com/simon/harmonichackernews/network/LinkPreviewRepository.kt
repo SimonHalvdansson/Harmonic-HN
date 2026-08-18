@@ -265,7 +265,9 @@ object LinkPreviewParsers {
     fun parseGitHub(response: String): RepoInfo {
         val json = JsonObject(response)
         return RepoInfo().apply {
-            owner = json.optJSONObject("owner")?.nullableString("login")
+            val ownerJson = json.optJSONObject("owner")
+            owner = ownerJson?.nullableString("login")
+            avatarUrl = ownerJson?.nullableString("avatar_url")
             name = json.optString("name")
             about = json.nullableString("description")
             website = json.nullableString("homepage")
@@ -439,5 +441,5 @@ object LinkPreviewParsers {
     }
 
     private fun JsonObject.nullableString(key: String): String? =
-        optString(key, null)?.takeUnless(String::isEmpty)
+        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }

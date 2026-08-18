@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.data.LinkPreviewFormatUtils.shortenUrl
 class RepoInfo {
     var name: String? = null
     var owner: String? = null
+    var avatarUrl: String? = null
     var about: String? = null
     var website: String? = null
     var license: String? = null
