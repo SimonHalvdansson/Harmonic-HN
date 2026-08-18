@@ -90,6 +90,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -399,6 +400,7 @@ fun LinkPreviewContent(
             story.repoInfo != null -> "github"
             story.gitLabInfo != null -> "gitlab"
             story.huggingFaceInfo != null -> "huggingface"
+            story.openRouterInfo != null -> "openrouter"
             story.stackExchangeInfo != null -> "stackexchange"
             story.arxivInfo != null -> "arxiv"
             story.wikiInfo != null -> "wikipedia"
@@ -432,6 +434,7 @@ fun LinkPreviewContent(
                 "github" -> GitHubPreview(story)
                 "gitlab" -> GitLabPreview(story)
                 "huggingface" -> HuggingFacePreview(story)
+                "openrouter" -> OpenRouterPreview(story)
                 "stackexchange" -> StackExchangePreview(story)
                 "arxiv" -> ArxivPreview(story, settings)
                 "wikipedia" -> WikipediaPreview(story)
@@ -454,6 +457,7 @@ private fun PreviewHeader(
     text: String,
     icon: DrawableResource? = null,
     logoUrl: String? = null,
+    logoTint: Color? = null,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
@@ -465,12 +469,12 @@ private fun PreviewHeader(
                     placeholder = fallback,
                     fallback = fallback,
                     error = fallback,
+                    colorFilter = logoTint?.let(ColorFilter::tint),
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.CenterStart,
                     modifier = Modifier
                         .size(24.dp)
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color(0xFF17191F)),
+                        .clip(RoundedCornerShape(5.dp)),
                 )
             } else {
                 Icon(
@@ -645,6 +649,32 @@ private fun HuggingFacePreview(story: StoryListItemSnapshot) {
                 }
                 PreviewInfoRow(Res.drawable.ic_attribution, info.formatLicense())
                 PreviewInfoRow(Res.drawable.ic_schedule, info.formatUpdated())
+            },
+        )
+    }
+}
+
+@Composable
+private fun OpenRouterPreview(story: StoryListItemSnapshot) {
+    val info = story.openRouterInfo ?: return
+    Column {
+        PreviewHeader(
+            text = "${info.provider} / ${info.name}",
+            icon = Res.drawable.ic_link_preview_openrouter,
+            logoUrl = info.providerIconUrl,
+            logoTint = HarmonicTheme.colors.drawable,
+        )
+        PreviewBody(info.description.orEmpty(), maxLines = 12)
+        PreviewInfoColumns(
+            left = {
+                PreviewInfoRow(Res.drawable.ic_file_download, info.formatPromptPrice())
+                PreviewInfoRow(Res.drawable.ic_arrow_upward, info.formatCompletionPrice())
+                PreviewInfoRow(Res.drawable.ic_stacks, info.formatContext())
+            },
+            right = {
+                PreviewInfoRow(Res.drawable.ic_perm_media, info.formatModalities())
+                PreviewInfoRow(Res.drawable.ic_open_in_new, info.formatMaxOutput())
+                PreviewInfoRow(Res.drawable.ic_calendar_today, info.formatKnowledgeCutoff())
             },
         )
     }

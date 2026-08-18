@@ -112,6 +112,11 @@ val DebugPreviewLinks = listOf(
         "https://news.ycombinator.com/item?id=49065752",
     ),
     DebugLink(
+        "OpenRouter · GPT-5.6 Sol",
+        Res.drawable.ic_link_preview_openrouter,
+        "https://news.ycombinator.com/item?id=49337602",
+    ),
+    DebugLink(
         "Stack Exchange",
         Res.drawable.ic_link_preview_stack_exchange,
         "https://news.ycombinator.com/item?id=21113344",

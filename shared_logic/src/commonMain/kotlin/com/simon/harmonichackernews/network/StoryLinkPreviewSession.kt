@@ -36,6 +36,7 @@ class StoryLinkPreviewSession(
                 github = readingPreferences.previewGithub,
                 gitLab = readingPreferences.previewGitlab,
                 huggingFace = readingPreferences.previewHuggingFace,
+                openRouter = readingPreferences.previewOpenRouter,
                 stackExchange = readingPreferences.previewStackExchange,
                 wikipedia = readingPreferences.previewWikipedia,
             ),
@@ -90,6 +91,10 @@ class StoryLinkPreviewSession(
             is LinkPreviewData.GitLab -> { current.gitLabInfo = preview.value; changed = true }
             is LinkPreviewData.HuggingFace -> {
                 current.huggingFaceInfo = preview.value
+                changed = true
+            }
+            is LinkPreviewData.OpenRouter -> {
+                current.openRouterInfo = preview.value
                 changed = true
             }
             is LinkPreviewData.StackExchange -> { current.stackExchangeInfo = preview.value; changed = true }

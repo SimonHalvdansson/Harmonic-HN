@@ -120,6 +120,7 @@ data class ReadingPreferences(
     val previewGithub: Boolean,
     val previewGitlab: Boolean,
     val previewHuggingFace: Boolean,
+    val previewOpenRouter: Boolean,
     val previewStackExchange: Boolean,
     val previewWikipedia: Boolean,
     val previewX: Boolean,

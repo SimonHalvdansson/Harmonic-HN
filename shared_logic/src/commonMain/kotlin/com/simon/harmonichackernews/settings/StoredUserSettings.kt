@@ -78,6 +78,7 @@ object UserPreferenceKeys {
     const val LINK_PREVIEW_GITHUB = "pref_link_preview_github"
     const val LINK_PREVIEW_GITLAB = "pref_link_preview_gitlab"
     const val LINK_PREVIEW_HUGGING_FACE = "pref_link_preview_hugging_face"
+    const val LINK_PREVIEW_OPEN_ROUTER = "pref_link_preview_open_router"
     const val LINK_PREVIEW_STACK_EXCHANGE = "pref_link_preview_stack_exchange"
     const val LINK_PREVIEW_WIKIPEDIA = "pref_link_preview_wikipedia"
     const val LINK_PREVIEW_X = "pref_link_preview_x"
@@ -232,6 +233,7 @@ class StoredUserSettings(
                 previewGithub = boolean(UserPreferenceKeys.LINK_PREVIEW_GITHUB, true),
                 previewGitlab = boolean(UserPreferenceKeys.LINK_PREVIEW_GITLAB, true),
                 previewHuggingFace = boolean(UserPreferenceKeys.LINK_PREVIEW_HUGGING_FACE, true),
+                previewOpenRouter = boolean(UserPreferenceKeys.LINK_PREVIEW_OPEN_ROUTER, true),
                 previewStackExchange = boolean(
                     UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE,
                     true,

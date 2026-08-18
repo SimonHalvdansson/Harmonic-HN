@@ -70,6 +70,7 @@ class Story {
 
     var gitLabInfo: GitLabInfo? = null
     var huggingFaceInfo: HuggingFaceModelInfo? = null
+    var openRouterInfo: OpenRouterModelInfo? = null
     var repoInfo: RepoInfo? = null
     var stackExchangeInfo: StackExchangeInfo? = null
     var arxivInfo: ArxivInfo? = null
@@ -201,6 +202,7 @@ class Story {
 
     fun hasLoadedLinkPreview(): Boolean {
         return arxivInfo != null || gitLabInfo != null || huggingFaceInfo != null ||
+            openRouterInfo != null ||
             repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null
     }
 

@@ -205,6 +205,7 @@ class WebLinksSettingsPresenter(
             previewGithub = reading.previewGithub,
             previewGitlab = reading.previewGitlab,
             previewHuggingFace = reading.previewHuggingFace,
+            previewOpenRouter = reading.previewOpenRouter,
             previewStackExchange = reading.previewStackExchange,
             previewWikipedia = reading.previewWikipedia,
             previewX = reading.previewX,
@@ -392,6 +393,7 @@ private val WebLinksBooleanSetting.preference: ReadingBooleanPreference
         WebLinksBooleanSetting.PreviewGithub -> ReadingBooleanPreference.PREVIEW_GITHUB
         WebLinksBooleanSetting.PreviewGitlab -> ReadingBooleanPreference.PREVIEW_GITLAB
         WebLinksBooleanSetting.PreviewHuggingFace -> ReadingBooleanPreference.PREVIEW_HUGGING_FACE
+        WebLinksBooleanSetting.PreviewOpenRouter -> ReadingBooleanPreference.PREVIEW_OPEN_ROUTER
         WebLinksBooleanSetting.PreviewStackExchange -> ReadingBooleanPreference.PREVIEW_STACK_EXCHANGE
         WebLinksBooleanSetting.PreviewWikipedia -> ReadingBooleanPreference.PREVIEW_WIKIPEDIA
         WebLinksBooleanSetting.PreviewX -> ReadingBooleanPreference.PREVIEW_X

@@ -47,6 +47,7 @@ data class StoryPresentationSnapshot(
     val repoInfo: RepoInfoSnapshot? = null,
     val gitLabInfo: GitLabInfoSnapshot? = null,
     val huggingFaceInfo: HuggingFaceModelInfoSnapshot? = null,
+    val openRouterInfo: OpenRouterModelInfoSnapshot? = null,
     val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
     val arxivInfo: ArxivInfoSnapshot? = null,
     val wikiInfo: WikipediaInfoSnapshot? = null,
@@ -136,6 +137,44 @@ data class HuggingFaceModelInfoSnapshot(
     fun formatLicense(): String? = model().formatLicense()
     fun formatUpdated(): String? = model().formatUpdated()
     val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+}
+
+@Serializable
+data class OpenRouterModelInfoSnapshot(
+    val provider: String?,
+    val name: String?,
+    val website: String?,
+    val providerIconUrl: String?,
+    val description: String?,
+    val promptPricePerToken: String?,
+    val completionPricePerToken: String?,
+    val contextLength: Long,
+    val maxCompletionTokens: Long,
+    val inputModalities: List<String>,
+    val outputModalities: List<String>,
+    val knowledgeCutoff: String?,
+) {
+    private fun model() = OpenRouterModelInfo().also {
+        it.provider = provider
+        it.name = name
+        it.website = website
+        it.providerIconUrl = providerIconUrl
+        it.description = description
+        it.promptPricePerToken = promptPricePerToken
+        it.completionPricePerToken = completionPricePerToken
+        it.contextLength = contextLength
+        it.maxCompletionTokens = maxCompletionTokens
+        it.inputModalities = inputModalities
+        it.outputModalities = outputModalities
+        it.knowledgeCutoff = knowledgeCutoff
+    }
+
+    fun formatPromptPrice(): String? = model().formatPromptPrice()
+    fun formatCompletionPrice(): String? = model().formatCompletionPrice()
+    fun formatContext(): String? = model().formatContext()
+    fun formatMaxOutput(): String? = model().formatMaxOutput()
+    fun formatModalities(): String? = model().formatModalities()
+    fun formatKnowledgeCutoff(): String? = model().formatKnowledgeCutoff()
 }
 
 @Serializable
@@ -338,6 +377,14 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
             it.author, it.name, it.website, it.logoUrl, it.pipelineTag, it.libraryName,
             it.quantization, it.licenseName, it.lastModified, it.likes, it.downloads,
             it.parameterCount,
+        )
+    },
+    openRouterInfo = openRouterInfo?.let {
+        OpenRouterModelInfoSnapshot(
+            it.provider, it.name, it.website, it.providerIconUrl, it.description,
+            it.promptPricePerToken, it.completionPricePerToken, it.contextLength,
+            it.maxCompletionTokens, it.inputModalities, it.outputModalities,
+            it.knowledgeCutoff,
         )
     },
     stackExchangeInfo = stackExchangeInfo?.let {

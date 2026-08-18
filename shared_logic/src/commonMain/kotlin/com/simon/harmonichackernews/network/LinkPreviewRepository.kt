@@ -5,6 +5,7 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
+import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.StackExchangeInfo
 import com.simon.harmonichackernews.data.WikipediaInfo
@@ -20,6 +21,7 @@ interface LinkPreviewRepository {
     suspend fun getGitHubInfo(url: String): RepoInfo
     suspend fun getGitLabInfo(url: String): GitLabInfo
     suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo
+    suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo
     suspend fun getStackExchangeInfo(url: String): StackExchangeInfo
     suspend fun getWikipediaInfo(url: String): WikipediaInfo
     suspend fun getArchiveUrl(url: String): String
@@ -59,6 +61,14 @@ class KtorLinkPreviewRepository(
         val endpoint = "https://huggingface.co/api/models/" +
             model.owner.encodeURLPathPart() + "/" + model.name.encodeURLPathPart()
         return LinkPreviewParsers.parseHuggingFace(client.getTextOrThrow(endpoint))
+    }
+
+    override suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo {
+        val model = LinkPreviewUrls.openRouterModel(url)
+            ?: throw LinkPreviewException("Invalid OpenRouter model URL")
+        val endpoint = "https://openrouter.ai/api/v1/model/" +
+            model.author.encodeURLPathPart() + "/" + model.slug.encodeURLPathPart()
+        return LinkPreviewParsers.parseOpenRouter(client.getTextOrThrow(endpoint))
     }
 
     override suspend fun getStackExchangeInfo(url: String): StackExchangeInfo {
@@ -115,6 +125,10 @@ object LinkPreviewUrls {
         "blog", "chat", "collections", "datasets", "docs", "enterprise", "join", "learn",
         "login", "models", "organizations", "papers", "pricing", "settings", "spaces", "tasks",
     )
+    private val openRouterReservedPaths = setOf(
+        "about", "activity", "api", "apps", "chat", "collections", "credits", "docs", "enterprise",
+        "keys", "models", "privacy", "providers", "rankings", "settings", "terms",
+    )
 
     private val stackExchangeSites = mapOf(
         "stackoverflow.com" to "stackoverflow",
@@ -167,6 +181,18 @@ object LinkPreviewUrls {
         return HuggingFaceModel(segments[0], segments[1])
     }
 
+    fun isOpenRouterUrl(url: String?): Boolean = openRouterModel(url) != null
+
+    fun openRouterModel(url: String?): OpenRouterModel? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.host.lowercase().removePrefix("www.") != "openrouter.ai") return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        if (segments.size != 2 || segments.first().lowercase() in openRouterReservedPaths) {
+            return null
+        }
+        return OpenRouterModel(segments[0], segments[1])
+    }
+
     fun isStackExchangeUrl(url: String?): Boolean = stackExchangeRequest(url) != null
 
     fun stackExchangeRequest(url: String?): StackExchangeRequest? {
@@ -206,6 +232,8 @@ object LinkPreviewUrls {
 data class GitHubRepository(val owner: String, val name: String)
 
 data class HuggingFaceModel(val owner: String, val name: String)
+
+data class OpenRouterModel(val author: String, val slug: String)
 
 data class StackExchangeRequest(
     val siteParam: String,
@@ -331,6 +359,44 @@ object LinkPreviewParsers {
         }
     }
 
+    fun parseOpenRouter(response: String): OpenRouterModelInfo {
+        val json = JsonObject(response).optJSONObject("data")
+            ?: throw LinkPreviewException("OpenRouter model data not found")
+        val id = json.optString("id")
+        val idParts = id.split('/')
+        if (idParts.size != 2 || idParts.any(String::isBlank)) {
+            throw LinkPreviewException("OpenRouter model data not found")
+        }
+        val apiName = json.nullableString("name")
+        val provider = apiName
+            ?.substringBefore(':')
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?: idParts[0].replaceFirstChar(Char::uppercase)
+        val architecture = json.optJSONObject("architecture")
+        val pricing = json.optJSONObject("pricing")
+        val topProvider = json.optJSONObject("top_provider")
+        return OpenRouterModelInfo().apply {
+            this.provider = provider
+            name = apiName
+                ?.substringAfter(':', missingDelimiterValue = apiName)
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?: idParts[1]
+            website = "https://openrouter.ai/$id"
+            providerIconUrl = "https://openrouter.ai/images/icons/" +
+                provider.encodeURLPathPart() + ".svg"
+            description = json.nullableString("description")
+            promptPricePerToken = pricing?.nullableString("prompt")
+            completionPricePerToken = pricing?.nullableString("completion")
+            contextLength = json.optLong("context_length")
+            maxCompletionTokens = topProvider?.optLong("max_completion_tokens") ?: 0
+            inputModalities = architecture.stringList("input_modalities")
+            outputModalities = architecture.stringList("output_modalities")
+            knowledgeCutoff = json.nullableString("knowledge_cutoff")
+        }
+    }
+
     private fun selectHuggingFaceLogoPath(json: JsonObject): String? {
         val candidates = json.optJSONArray("siblings")?.let { siblings ->
             (0..<siblings.length()).mapNotNull { index ->
@@ -442,4 +508,11 @@ object LinkPreviewParsers {
 
     private fun JsonObject.nullableString(key: String): String? =
         (opt(key) as? String)?.takeUnless(String::isEmpty)
+
+    private fun JsonObject?.stringList(key: String): List<String> =
+        this?.optJSONArray(key)?.let { values ->
+            (0..<values.length()).mapNotNull { index ->
+                values.optString(index).takeUnless(String::isBlank)
+            }
+        }.orEmpty()
 }

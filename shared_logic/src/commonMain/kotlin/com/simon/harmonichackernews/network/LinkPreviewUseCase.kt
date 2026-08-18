@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
+import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.StackExchangeInfo
 import com.simon.harmonichackernews.data.WikipediaInfo
@@ -12,6 +13,7 @@ data class LinkPreviewPreferences(
     val github: Boolean,
     val gitLab: Boolean,
     val huggingFace: Boolean,
+    val openRouter: Boolean,
     val stackExchange: Boolean,
     val wikipedia: Boolean,
 )
@@ -21,6 +23,7 @@ enum class LinkPreviewProvider {
     GITHUB,
     GITLAB,
     HUGGING_FACE,
+    OPEN_ROUTER,
     STACK_EXCHANGE,
     WIKIPEDIA,
 }
@@ -30,6 +33,7 @@ sealed interface LinkPreviewData {
     data class GitHub(val value: RepoInfo) : LinkPreviewData
     data class GitLab(val value: GitLabInfo) : LinkPreviewData
     data class HuggingFace(val value: HuggingFaceModelInfo) : LinkPreviewData
+    data class OpenRouter(val value: OpenRouterModelInfo) : LinkPreviewData
     data class StackExchange(val value: StackExchangeInfo) : LinkPreviewData
     data class Wikipedia(val value: WikipediaInfo) : LinkPreviewData
 }
@@ -43,6 +47,8 @@ class LinkPreviewUseCase(private val repository: LinkPreviewRepository) {
             preferences.gitLab && LinkPreviewUrls.isGitLabUrl(url) -> LinkPreviewProvider.GITLAB
             preferences.huggingFace && LinkPreviewUrls.isHuggingFaceUrl(url) ->
                 LinkPreviewProvider.HUGGING_FACE
+            preferences.openRouter && LinkPreviewUrls.isOpenRouterUrl(url) ->
+                LinkPreviewProvider.OPEN_ROUTER
             preferences.stackExchange && LinkPreviewUrls.isStackExchangeUrl(url) ->
                 LinkPreviewProvider.STACK_EXCHANGE
             preferences.wikipedia && LinkPreviewUrls.isWikipediaUrl(url) ->
@@ -56,6 +62,8 @@ class LinkPreviewUseCase(private val repository: LinkPreviewRepository) {
         LinkPreviewProvider.GITLAB -> LinkPreviewData.GitLab(repository.getGitLabInfo(url))
         LinkPreviewProvider.HUGGING_FACE ->
             LinkPreviewData.HuggingFace(repository.getHuggingFaceInfo(url))
+        LinkPreviewProvider.OPEN_ROUTER ->
+            LinkPreviewData.OpenRouter(repository.getOpenRouterInfo(url))
         LinkPreviewProvider.STACK_EXCHANGE ->
             LinkPreviewData.StackExchange(repository.getStackExchangeInfo(url))
         LinkPreviewProvider.WIKIPEDIA -> LinkPreviewData.Wikipedia(repository.getWikipediaInfo(url))

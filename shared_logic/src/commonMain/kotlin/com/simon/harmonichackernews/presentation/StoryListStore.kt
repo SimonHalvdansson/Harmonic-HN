@@ -75,6 +75,7 @@ data class StoryListItemSnapshot(
     val repoInfo get() = presentation.repoInfo
     val gitLabInfo get() = presentation.gitLabInfo
     val huggingFaceInfo get() = presentation.huggingFaceInfo
+    val openRouterInfo get() = presentation.openRouterInfo
     val stackExchangeInfo get() = presentation.stackExchangeInfo
     val arxivInfo get() = presentation.arxivInfo
     val wikiInfo get() = presentation.wikiInfo
@@ -88,7 +89,7 @@ data class StoryListItemSnapshot(
         }
 
     fun hasLoadedLinkPreview(): Boolean = repoInfo != null || gitLabInfo != null ||
-        huggingFaceInfo != null || stackExchangeInfo != null || arxivInfo != null ||
+        huggingFaceInfo != null || openRouterInfo != null || stackExchangeInfo != null || arxivInfo != null ||
         wikiInfo != null || nitterInfo != null
 
     fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()

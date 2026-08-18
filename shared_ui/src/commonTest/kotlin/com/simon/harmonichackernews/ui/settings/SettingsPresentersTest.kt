@@ -43,6 +43,7 @@ class SettingsPresentersTest {
         fixture.comments.setProvider(CommentsProvider.OFFICIAL.storedValue)
         fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewGithub, false)
         fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewHuggingFace, false)
+        fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewOpenRouter, false)
 
         val comments = fixture.comments.state()
         val webLinks = fixture.webLinks.state(fontLabel = "System")
@@ -53,6 +54,7 @@ class SettingsPresentersTest {
         assertEquals(CommentsProvider.OFFICIAL, comments.provider)
         assertFalse(webLinks.previewGithub)
         assertFalse(webLinks.previewHuggingFace)
+        assertFalse(webLinks.previewOpenRouter)
         assertEquals("System", webLinks.readerModeFontLabel)
     }
 

@@ -77,11 +77,17 @@ class DomainSnapshotsTest {
             logoUrl = "https://huggingface.co/example/logo.png"
             likes = 10_810
         }
+        val openRouter = OpenRouterModelInfo().apply {
+            provider = "OpenAI"
+            name = "GPT-5.6 Sol"
+            contextLength = 1_050_000
+        }
         val story = Story().apply {
             id = 42
             pollOptionArrayList = arrayListOf(option)
             repoInfo = repo
             huggingFaceInfo = huggingFace
+            openRouterInfo = openRouter
         }
 
         val snapshot = story.presentationSnapshot()
@@ -90,9 +96,11 @@ class DomainSnapshotsTest {
         repo.avatarUrl = "https://example.com/changed.png"
         huggingFace.name = "changed"
         huggingFace.logoUrl = "https://example.com/changed.png"
+        openRouter.name = "changed"
         story.pollOptionArrayList = null
         story.repoInfo = null
         story.huggingFaceInfo = null
+        story.openRouterInfo = null
 
         assertEquals("Kotlin", snapshot.pollOptions.single().text)
         assertEquals("harmonic", snapshot.repoInfo?.name)
@@ -106,6 +114,8 @@ class DomainSnapshotsTest {
             snapshot.huggingFaceInfo?.logoUrl,
         )
         assertEquals("10.8K likes", snapshot.huggingFaceInfo?.formatLikes())
+        assertEquals("GPT-5.6 Sol", snapshot.openRouterInfo?.name)
+        assertEquals("1.05M context", snapshot.openRouterInfo?.formatContext())
         assertNull(story.repoInfo)
     }
 }

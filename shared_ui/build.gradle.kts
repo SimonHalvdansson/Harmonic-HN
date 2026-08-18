@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.compose.multiplatform.resources)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.coil.svg)
             implementation(libs.haze)
             implementation(libs.haze.blur)
             implementation(libs.ksoup)

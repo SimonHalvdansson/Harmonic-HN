@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.resources.ic_link_preview_arxiv
 import com.simon.harmonichackernews.resources.ic_link_preview_github
 import com.simon.harmonichackernews.resources.ic_link_preview_gitlab
 import com.simon.harmonichackernews.resources.ic_link_preview_hugging_face_mono
+import com.simon.harmonichackernews.resources.ic_link_preview_openrouter
 import com.simon.harmonichackernews.resources.ic_link_preview_stack_exchange
 import com.simon.harmonichackernews.resources.ic_link_preview_wikipedia
 import com.simon.harmonichackernews.resources.ic_link_preview_x
@@ -41,6 +42,7 @@ data class WebLinksSettingsUiState(
     val previewGithub: Boolean,
     val previewGitlab: Boolean,
     val previewHuggingFace: Boolean,
+    val previewOpenRouter: Boolean,
     val previewStackExchange: Boolean,
     val previewWikipedia: Boolean,
     val previewX: Boolean,
@@ -59,6 +61,7 @@ enum class WebLinksBooleanSetting {
     PreviewGithub,
     PreviewGitlab,
     PreviewHuggingFace,
+    PreviewOpenRouter,
     PreviewStackExchange,
     PreviewWikipedia,
     PreviewX,
@@ -228,6 +231,14 @@ fun SharedWebLinksSettingsScreen(
                     icon = Res.drawable.ic_link_preview_hugging_face_mono,
                     checked = state.previewHuggingFace,
                     setting = WebLinksBooleanSetting.PreviewHuggingFace,
+                    onBooleanChanged = onBooleanChanged,
+                )
+                SettingsDivider()
+                LinkPreviewSwitch(
+                    title = "OpenRouter",
+                    icon = Res.drawable.ic_link_preview_openrouter,
+                    checked = state.previewOpenRouter,
+                    setting = WebLinksBooleanSetting.PreviewOpenRouter,
                     onBooleanChanged = onBooleanChanged,
                 )
                 SettingsDivider()

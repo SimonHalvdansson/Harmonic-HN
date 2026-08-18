@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
+import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -62,11 +63,32 @@ class LinkPreviewRuntimeTest {
         assertIs<LinkPreviewData.HuggingFace>(runtime.state.value.preview)
     }
 
-    private fun preferences(github: Boolean, huggingFace: Boolean = false) = LinkPreviewPreferences(
+    @Test
+    fun selectsOpenRouterModelProvider() = runTest {
+        val repository = RecordingRepository()
+        val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))
+
+        assertTrue(runtime.load(
+            "https://openrouter.ai/openai/gpt-5.6-sol",
+            preferences(github = false, openRouter = true),
+            alreadyLoaded = false,
+        ))
+        advanceUntilIdle()
+
+        assertEquals("https://openrouter.ai/openai/gpt-5.6-sol", repository.loadedUrl)
+        assertIs<LinkPreviewData.OpenRouter>(runtime.state.value.preview)
+    }
+
+    private fun preferences(
+        github: Boolean,
+        huggingFace: Boolean = false,
+        openRouter: Boolean = false,
+    ) = LinkPreviewPreferences(
         arxiv = false,
         github = github,
         gitLab = false,
         huggingFace = huggingFace,
+        openRouter = openRouter,
         stackExchange = false,
         wikipedia = false,
     )
@@ -84,6 +106,10 @@ class LinkPreviewRuntimeTest {
         override suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo {
             loadedUrl = url
             return HuggingFaceModelInfo()
+        }
+        override suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo {
+            loadedUrl = url
+            return OpenRouterModelInfo()
         }
         override suspend fun getStackExchangeInfo(url: String) = error("Unexpected provider")
         override suspend fun getWikipediaInfo(url: String) = error("Unexpected provider")

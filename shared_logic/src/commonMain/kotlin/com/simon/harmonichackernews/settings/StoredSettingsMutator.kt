@@ -160,6 +160,8 @@ class StoredSettingsMutator(
                 ReadingBooleanPreference.PREVIEW_GITLAB -> UserPreferenceKeys.LINK_PREVIEW_GITLAB
                 ReadingBooleanPreference.PREVIEW_HUGGING_FACE ->
                     UserPreferenceKeys.LINK_PREVIEW_HUGGING_FACE
+                ReadingBooleanPreference.PREVIEW_OPEN_ROUTER ->
+                    UserPreferenceKeys.LINK_PREVIEW_OPEN_ROUTER
                 ReadingBooleanPreference.PREVIEW_STACK_EXCHANGE ->
                     UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE
                 ReadingBooleanPreference.PREVIEW_WIKIPEDIA -> UserPreferenceKeys.LINK_PREVIEW_WIKIPEDIA
