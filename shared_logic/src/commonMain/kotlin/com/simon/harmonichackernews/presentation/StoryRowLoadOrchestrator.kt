@@ -51,8 +51,7 @@ class StoryRowLoadOrchestrator(
     val generation: Int get() = session.generation
 
     fun beginGeneration(): Int {
-        jobsByStoryId.values.forEach(Job::cancel)
-        jobsByStoryId.clear()
+        cancelAllLoads()
         return session.beginGeneration()
     }
 
@@ -68,8 +67,7 @@ class StoryRowLoadOrchestrator(
     }
 
     fun clear() {
-        jobsByStoryId.values.forEach(Job::cancel)
-        jobsByStoryId.clear()
+        cancelAllLoads()
         session.clearStoryLoads()
     }
 
@@ -124,6 +122,12 @@ class StoryRowLoadOrchestrator(
         }
         jobsByStoryId[story.id] = job
         job.start()
+    }
+
+    private fun cancelAllLoads() {
+        val jobs = jobsByStoryId.values.toList()
+        jobsByStoryId.clear()
+        jobs.forEach(Job::cancel)
     }
 
     private companion object {
