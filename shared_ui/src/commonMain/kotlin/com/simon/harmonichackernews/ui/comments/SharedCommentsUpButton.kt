@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.blurEffect
-import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 import org.jetbrains.compose.resources.painterResource
 
 /** A fixed, host-positioned escape hatch from comments back to the stories destination. */
@@ -52,14 +53,15 @@ fun SharedCommentsUpButton(
                     if (hazeState == null) {
                         Modifier
                     } else {
-                        Modifier.hazeEffect(state = hazeState) {
-                            blurEffect {
-                                blurRadius = 8.dp
-                                colorEffects = listOf(HazeColorEffect.tint(surfaceColor))
-                                noiseFactor = 0f
-                                fallbackTint = HazeColorEffect.tint(surfaceColor)
-                            }
-                        }
+                        Modifier.hazeBlur(
+                            input = HazeInput.Sources(hazeState),
+                            style = HazeBlurStyle {
+                                blurRadius(8.dp)
+                                colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
+                                noiseFactor(0f)
+                                fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
+                            },
+                        )
                     },
                 )
                 .background(surfaceColor),
