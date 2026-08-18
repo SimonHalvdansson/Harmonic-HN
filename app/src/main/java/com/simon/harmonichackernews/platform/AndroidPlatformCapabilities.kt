@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.platform
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.text.format.DateFormat
 import com.simon.harmonichackernews.network.createAndroidLocalSummaryEngine
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
@@ -98,21 +99,25 @@ class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {
 class AndroidExternalLinkOpener(
     context: Context,
 ) : ExternalLinkOpener {
-    private val context = context
+    private val appContext = context.applicationContext
 
     override fun open(request: ExternalLinkRequest): Boolean = if (request.preferInApp) {
-            AndroidExternalLinkLauncher.openCustomTab(context, request)
-        } else {
-            AndroidExternalLinkLauncher.openExternalBrowser(context, request)
-        }
+        AndroidExternalLinkLauncher.openCustomTab(appContext, request)
+    } else {
+        AndroidExternalLinkLauncher.openExternalBrowser(appContext, request)
+    }
 }
 
 class AndroidShareService(context: Context) : ShareService {
-    private val context = context
+    private val appContext = context.applicationContext
 
     override fun share(text: String, title: String?) {
         val content = title?.let { "$it | $text" } ?: text
-        context.startActivity(ShareUtils.getShareIntent(content))
+        appContext.startActivity(
+            ShareUtils.getShareIntent(content).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
     }
 }
 

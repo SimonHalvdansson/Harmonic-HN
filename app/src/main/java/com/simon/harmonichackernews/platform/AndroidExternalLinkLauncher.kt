@@ -58,10 +58,13 @@ object AndroidExternalLinkLauncher {
             )
             .setDefaultColorSchemeParams(colorScheme)
             .build()
+            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
     }
 
     private fun openExternalUrl(context: Context, url: String) {
-        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         packageForExternalUrl(context, browserIntent)?.let(browserIntent::setPackage)
         context.startActivity(browserIntent)
     }
