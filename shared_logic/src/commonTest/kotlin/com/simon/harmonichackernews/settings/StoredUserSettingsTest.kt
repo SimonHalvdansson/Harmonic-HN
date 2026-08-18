@@ -36,6 +36,7 @@ class StoredUserSettingsTest {
         assertTrue(settings.reading.readerModeEnabled)
         assertEquals(18, settings.reading.readerModeFontSize)
         assertTrue(settings.reading.previewGithub)
+        assertTrue(settings.reading.previewHuggingFace)
         assertEquals(20, settings.cache.storiesToCache)
         assertTrue(settings.general.bookmarksEnabled)
         assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)

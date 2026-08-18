@@ -35,6 +35,7 @@ class StoryLinkPreviewSession(
                 arxiv = readingPreferences.previewArxiv,
                 github = readingPreferences.previewGithub,
                 gitLab = readingPreferences.previewGitlab,
+                huggingFace = readingPreferences.previewHuggingFace,
                 stackExchange = readingPreferences.previewStackExchange,
                 wikipedia = readingPreferences.previewWikipedia,
             ),
@@ -87,6 +88,10 @@ class StoryLinkPreviewSession(
             is LinkPreviewData.Arxiv -> { current.arxivInfo = preview.value; changed = true }
             is LinkPreviewData.GitHub -> { current.repoInfo = preview.value; changed = true }
             is LinkPreviewData.GitLab -> { current.gitLabInfo = preview.value; changed = true }
+            is LinkPreviewData.HuggingFace -> {
+                current.huggingFaceInfo = preview.value
+                changed = true
+            }
             is LinkPreviewData.StackExchange -> { current.stackExchangeInfo = preview.value; changed = true }
             is LinkPreviewData.Wikipedia -> { current.wikiInfo = preview.value; changed = true }
             null -> Unit

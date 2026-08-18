@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.RepoInfo
+import com.simon.harmonichackernews.data.HuggingFaceModelInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -45,10 +46,27 @@ class LinkPreviewRuntimeTest {
         ))
     }
 
-    private fun preferences(github: Boolean) = LinkPreviewPreferences(
+    @Test
+    fun selectsHuggingFaceModelProvider() = runTest {
+        val repository = RecordingRepository()
+        val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))
+
+        assertTrue(runtime.load(
+            "https://huggingface.co/moonshotai/Kimi-K3",
+            preferences(github = false, huggingFace = true),
+            alreadyLoaded = false,
+        ))
+        advanceUntilIdle()
+
+        assertEquals("https://huggingface.co/moonshotai/Kimi-K3", repository.loadedUrl)
+        assertIs<LinkPreviewData.HuggingFace>(runtime.state.value.preview)
+    }
+
+    private fun preferences(github: Boolean, huggingFace: Boolean = false) = LinkPreviewPreferences(
         arxiv = false,
         github = github,
         gitLab = false,
+        huggingFace = huggingFace,
         stackExchange = false,
         wikipedia = false,
     )
@@ -63,6 +81,10 @@ class LinkPreviewRuntimeTest {
 
         override suspend fun getArxivInfo(url: String) = error("Unexpected provider")
         override suspend fun getGitLabInfo(url: String) = error("Unexpected provider")
+        override suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo {
+            loadedUrl = url
+            return HuggingFaceModelInfo()
+        }
         override suspend fun getStackExchangeInfo(url: String) = error("Unexpected provider")
         override suspend fun getWikipediaInfo(url: String) = error("Unexpected provider")
         override suspend fun getArchiveUrl(url: String) = error("Unexpected provider")

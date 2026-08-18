@@ -71,20 +71,35 @@ class DomainSnapshotsTest {
             owner = "simon"
             stars = 99
         }
+        val huggingFace = HuggingFaceModelInfo().apply {
+            name = "Kimi-K3"
+            logoUrl = "https://huggingface.co/example/logo.png"
+            likes = 10_810
+        }
         val story = Story().apply {
             id = 42
             pollOptionArrayList = arrayListOf(option)
             repoInfo = repo
+            huggingFaceInfo = huggingFace
         }
 
         val snapshot = story.presentationSnapshot()
         option.text = "Changed"
         repo.name = "changed"
+        huggingFace.name = "changed"
+        huggingFace.logoUrl = "https://example.com/changed.png"
         story.pollOptionArrayList = null
         story.repoInfo = null
+        story.huggingFaceInfo = null
 
         assertEquals("Kotlin", snapshot.pollOptions.single().text)
         assertEquals("harmonic", snapshot.repoInfo?.name)
+        assertEquals("Kimi-K3", snapshot.huggingFaceInfo?.name)
+        assertEquals(
+            "https://huggingface.co/example/logo.png",
+            snapshot.huggingFaceInfo?.logoUrl,
+        )
+        assertEquals("10.8K likes", snapshot.huggingFaceInfo?.formatLikes())
         assertNull(story.repoInfo)
     }
 }

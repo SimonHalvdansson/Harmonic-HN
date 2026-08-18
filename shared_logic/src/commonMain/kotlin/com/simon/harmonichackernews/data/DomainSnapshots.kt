@@ -46,6 +46,7 @@ data class StoryPresentationSnapshot(
     val pollOptions: List<PollOptionSnapshot> = emptyList(),
     val repoInfo: RepoInfoSnapshot? = null,
     val gitLabInfo: GitLabInfoSnapshot? = null,
+    val huggingFaceInfo: HuggingFaceModelInfoSnapshot? = null,
     val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
     val arxivInfo: ArxivInfoSnapshot? = null,
     val wikiInfo: WikipediaInfoSnapshot? = null,
@@ -94,6 +95,45 @@ data class GitLabInfoSnapshot(
     fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
     fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
     fun formatVisibility(): String? = visibility?.replaceFirstChar { it.uppercase() }
+    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+}
+
+@Serializable
+data class HuggingFaceModelInfoSnapshot(
+    val author: String?,
+    val name: String?,
+    val website: String?,
+    val logoUrl: String?,
+    val pipelineTag: String?,
+    val libraryName: String?,
+    val quantization: String?,
+    val licenseName: String?,
+    val lastModified: String?,
+    val likes: Long,
+    val downloads: Long,
+    val parameterCount: Long,
+) {
+    private fun model() = HuggingFaceModelInfo().also {
+        it.author = author
+        it.name = name
+        it.website = website
+        it.logoUrl = logoUrl
+        it.pipelineTag = pipelineTag
+        it.libraryName = libraryName
+        it.quantization = quantization
+        it.licenseName = licenseName
+        it.lastModified = lastModified
+        it.likes = likes
+        it.downloads = downloads
+        it.parameterCount = parameterCount
+    }
+
+    fun formatCapability(): String = model().formatCapability()
+    fun formatLikes(): String = model().formatLikes()
+    fun formatDownloads(): String = model().formatDownloads()
+    fun formatParameters(): String? = model().formatParameters()
+    fun formatLicense(): String? = model().formatLicense()
+    fun formatUpdated(): String? = model().formatUpdated()
     val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
 }
 
@@ -290,6 +330,13 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
         GitLabInfoSnapshot(
             it.name, it.namespace, it.description, it.website, it.language, it.visibility,
             it.stars, it.forks,
+        )
+    },
+    huggingFaceInfo = huggingFaceInfo?.let {
+        HuggingFaceModelInfoSnapshot(
+            it.author, it.name, it.website, it.logoUrl, it.pipelineTag, it.libraryName,
+            it.quantization, it.licenseName, it.lastModified, it.likes, it.downloads,
+            it.parameterCount,
         )
     },
     stackExchangeInfo = stackExchangeInfo?.let {

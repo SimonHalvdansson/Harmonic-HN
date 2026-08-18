@@ -69,6 +69,7 @@ class Story {
     var text: String? = null
 
     var gitLabInfo: GitLabInfo? = null
+    var huggingFaceInfo: HuggingFaceModelInfo? = null
     var repoInfo: RepoInfo? = null
     var stackExchangeInfo: StackExchangeInfo? = null
     var arxivInfo: ArxivInfo? = null
@@ -199,7 +200,8 @@ class Story {
     fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
 
     fun hasLoadedLinkPreview(): Boolean {
-        return arxivInfo != null || gitLabInfo != null || repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null
+        return arxivInfo != null || gitLabInfo != null || huggingFaceInfo != null ||
+            repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null
     }
 
     companion object {

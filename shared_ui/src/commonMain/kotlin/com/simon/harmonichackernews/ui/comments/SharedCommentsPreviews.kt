@@ -398,6 +398,7 @@ fun LinkPreviewContent(
         when {
             story.repoInfo != null -> "github"
             story.gitLabInfo != null -> "gitlab"
+            story.huggingFaceInfo != null -> "huggingface"
             story.stackExchangeInfo != null -> "stackexchange"
             story.arxivInfo != null -> "arxiv"
             story.wikiInfo != null -> "wikipedia"
@@ -430,6 +431,7 @@ fun LinkPreviewContent(
             when (it) {
                 "github" -> GitHubPreview(story)
                 "gitlab" -> GitLabPreview(story)
+                "huggingface" -> HuggingFacePreview(story)
                 "stackexchange" -> StackExchangePreview(story)
                 "arxiv" -> ArxivPreview(story, settings)
                 "wikipedia" -> WikipediaPreview(story)
@@ -448,16 +450,48 @@ fun LinkPreviewContent(
 }
 
 @Composable
-private fun PreviewHeader(text: String) {
-    Text(
-        text.uppercase(),
-        color = HarmonicTheme.colors.storyNormal,
-        fontFamily = ProductSansFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        style = LocalCommentsPreviewPlatform.current.textStyle,
-    )
+private fun PreviewHeader(
+    text: String,
+    icon: DrawableResource? = null,
+    logoUrl: String? = null,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            val fallback = painterResource(icon)
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = null,
+                    placeholder = fallback,
+                    fallback = fallback,
+                    error = fallback,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.CenterStart,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color(0xFF17191F)),
+                )
+            } else {
+                Icon(
+                    painter = fallback,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.Unspecified,
+                )
+            }
+            Spacer(Modifier.width(7.dp))
+        }
+        Text(
+            text.uppercase(),
+            color = HarmonicTheme.colors.storyNormal,
+            fontFamily = ProductSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            lineHeight = 16.sp,
+            style = LocalCommentsPreviewPlatform.current.textStyle,
+        )
+    }
 }
 
 @Composable
@@ -579,6 +613,34 @@ private fun GitLabPreview(story: StoryListItemSnapshot) {
                 }
                 PreviewInfoRow(Res.drawable.ic_visibility, info.formatVisibility())
                 PreviewInfoRow(Res.drawable.ic_library_books, info.language)
+            },
+        )
+    }
+}
+
+@Composable
+private fun HuggingFacePreview(story: StoryListItemSnapshot) {
+    val platform = LocalCommentsPreviewPlatform.current
+    val info = story.huggingFaceInfo ?: return
+    Column {
+        PreviewHeader(
+            text = "${info.author} / ${info.name}",
+            icon = Res.drawable.ic_link_preview_hugging_face,
+            logoUrl = info.logoUrl,
+        )
+        PreviewBody(info.formatCapability())
+        PreviewInfoColumns(
+            left = {
+                PreviewInfoRow(Res.drawable.ic_favorite, info.formatLikes())
+                PreviewInfoRow(Res.drawable.ic_file_download, info.formatDownloads())
+                PreviewInfoRow(Res.drawable.ic_deployed_code, info.formatParameters())
+            },
+            right = {
+                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
+                    platform.openLink(info.website)
+                }
+                PreviewInfoRow(Res.drawable.ic_attribution, info.formatLicense())
+                PreviewInfoRow(Res.drawable.ic_schedule, info.formatUpdated())
             },
         )
     }

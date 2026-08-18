@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.resources.ic_invert_colors
 import com.simon.harmonichackernews.resources.ic_link_preview_arxiv
 import com.simon.harmonichackernews.resources.ic_link_preview_github
 import com.simon.harmonichackernews.resources.ic_link_preview_gitlab
+import com.simon.harmonichackernews.resources.ic_link_preview_hugging_face_mono
 import com.simon.harmonichackernews.resources.ic_link_preview_stack_exchange
 import com.simon.harmonichackernews.resources.ic_link_preview_wikipedia
 import com.simon.harmonichackernews.resources.ic_link_preview_x
@@ -39,6 +40,7 @@ data class WebLinksSettingsUiState(
     val previewArxiv: Boolean,
     val previewGithub: Boolean,
     val previewGitlab: Boolean,
+    val previewHuggingFace: Boolean,
     val previewStackExchange: Boolean,
     val previewWikipedia: Boolean,
     val previewX: Boolean,
@@ -56,6 +58,7 @@ enum class WebLinksBooleanSetting {
     PreviewArxiv,
     PreviewGithub,
     PreviewGitlab,
+    PreviewHuggingFace,
     PreviewStackExchange,
     PreviewWikipedia,
     PreviewX,
@@ -219,6 +222,14 @@ fun SharedWebLinksSettingsScreen(
                 LinkPreviewSwitch("GitHub", Res.drawable.ic_link_preview_github, state.previewGithub, WebLinksBooleanSetting.PreviewGithub, onBooleanChanged)
                 SettingsDivider()
                 LinkPreviewSwitch("GitLab", Res.drawable.ic_link_preview_gitlab, state.previewGitlab, WebLinksBooleanSetting.PreviewGitlab, onBooleanChanged)
+                SettingsDivider()
+                LinkPreviewSwitch(
+                    title = "Hugging Face",
+                    icon = Res.drawable.ic_link_preview_hugging_face_mono,
+                    checked = state.previewHuggingFace,
+                    setting = WebLinksBooleanSetting.PreviewHuggingFace,
+                    onBooleanChanged = onBooleanChanged,
+                )
                 SettingsDivider()
                 LinkPreviewSwitch("Stack Exchange", Res.drawable.ic_link_preview_stack_exchange, state.previewStackExchange, WebLinksBooleanSetting.PreviewStackExchange, onBooleanChanged)
                 SettingsDivider()

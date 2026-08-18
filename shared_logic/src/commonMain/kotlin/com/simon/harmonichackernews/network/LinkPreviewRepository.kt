@@ -4,6 +4,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
+import com.simon.harmonichackernews.data.HuggingFaceModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.StackExchangeInfo
 import com.simon.harmonichackernews.data.WikipediaInfo
@@ -18,6 +19,7 @@ interface LinkPreviewRepository {
     suspend fun getArxivInfo(url: String): ArxivInfo
     suspend fun getGitHubInfo(url: String): RepoInfo
     suspend fun getGitLabInfo(url: String): GitLabInfo
+    suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo
     suspend fun getStackExchangeInfo(url: String): StackExchangeInfo
     suspend fun getWikipediaInfo(url: String): WikipediaInfo
     suspend fun getArchiveUrl(url: String): String
@@ -49,6 +51,14 @@ class KtorLinkPreviewRepository(
             ?: throw LinkPreviewException("Invalid GitLab URL")
         val endpoint = "https://gitlab.com/api/v4/projects/${projectPath.encodeURLPathPart()}"
         return LinkPreviewParsers.parseGitLab(client.getTextOrThrow(endpoint))
+    }
+
+    override suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo {
+        val model = LinkPreviewUrls.huggingFaceModel(url)
+            ?: throw LinkPreviewException("Invalid Hugging Face model URL")
+        val endpoint = "https://huggingface.co/api/models/" +
+            model.owner.encodeURLPathPart() + "/" + model.name.encodeURLPathPart()
+        return LinkPreviewParsers.parseHuggingFace(client.getTextOrThrow(endpoint))
     }
 
     override suspend fun getStackExchangeInfo(url: String): StackExchangeInfo {
@@ -101,6 +111,10 @@ object LinkPreviewUrls {
     )
     private val githubUrlRegex = Regex("^https?://github\\.com/[^/]+/[^/]+(/.*)?$")
     private val wikipediaUrlRegex = Regex("^https?://en\\.wikipedia\\.org/wiki/.+")
+    private val huggingFaceReservedPaths = setOf(
+        "blog", "chat", "collections", "datasets", "docs", "enterprise", "join", "learn",
+        "login", "models", "organizations", "papers", "pricing", "settings", "spaces", "tasks",
+    )
 
     private val stackExchangeSites = mapOf(
         "stackoverflow.com" to "stackoverflow",
@@ -143,6 +157,16 @@ object LinkPreviewUrls {
             ?.joinToString("/")
     }
 
+    fun isHuggingFaceUrl(url: String?): Boolean = huggingFaceModel(url) != null
+
+    fun huggingFaceModel(url: String?): HuggingFaceModel? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.host.lowercase().removePrefix("www.") != "huggingface.co") return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        if (segments.size < 2 || segments.first().lowercase() in huggingFaceReservedPaths) return null
+        return HuggingFaceModel(segments[0], segments[1])
+    }
+
     fun isStackExchangeUrl(url: String?): Boolean = stackExchangeRequest(url) != null
 
     fun stackExchangeRequest(url: String?): StackExchangeRequest? {
@@ -180,6 +204,8 @@ object LinkPreviewUrls {
 }
 
 data class GitHubRepository(val owner: String, val name: String)
+
+data class HuggingFaceModel(val owner: String, val name: String)
 
 data class StackExchangeRequest(
     val siteParam: String,
@@ -264,6 +290,71 @@ object LinkPreviewParsers {
             visibility = json.nullableString("visibility")
             stars = json.optInt("star_count")
             forks = json.optInt("forks_count")
+        }
+    }
+
+    fun parseHuggingFace(response: String): HuggingFaceModelInfo {
+        val json = JsonObject(response)
+        val id = json.optString("id")
+        val idParts = id.split('/')
+        if (idParts.size != 2 || idParts.any(String::isBlank)) {
+            throw LinkPreviewException("Hugging Face model data not found")
+        }
+        val tags = json.optJSONArray("tags")?.let { values ->
+            (0..<values.length()).mapNotNull { index ->
+                values.optString(index).takeUnless(String::isBlank)
+            }
+        }.orEmpty()
+        val cardData = json.optJSONObject("cardData")
+        val logoPath = selectHuggingFaceLogoPath(json)
+        return HuggingFaceModelInfo().apply {
+            author = json.optString("author", idParts[0])
+            name = idParts[1]
+            website = "https://huggingface.co/$id"
+            logoUrl = logoPath?.let { path ->
+                "https://huggingface.co/" +
+                    idParts.joinToString("/") { it.encodeURLPathPart() } +
+                    "/resolve/main/" +
+                    path.split('/').joinToString("/") { it.encodeURLPathPart() }
+            }
+            pipelineTag = json.optString("pipeline_tag", null)
+            libraryName = json.optString("library_name", null)
+            quantization = tags.firstOrNull { it.matches(Regex("\\d+-bit")) }
+            licenseName = cardData?.optString("license_name", null)
+                ?: cardData?.optString("license", null)
+            lastModified = json.optString("lastModified", null)
+            likes = json.optLong("likes")
+            downloads = json.optLong("downloads")
+            parameterCount = json.optJSONObject("safetensors")?.optLong("total") ?: 0
+        }
+    }
+
+    private fun selectHuggingFaceLogoPath(json: JsonObject): String? {
+        val candidates = json.optJSONArray("siblings")?.let { siblings ->
+            (0..<siblings.length()).mapNotNull { index ->
+                siblings.optJSONObject(index)
+                    ?.optString("rfilename")
+                    ?.takeUnless(String::isBlank)
+                    ?.takeIf(::isSupportedPreviewImage)
+            }
+        }.orEmpty()
+        return candidates.minWithOrNull(
+            compareBy<String>({ huggingFaceImagePriority(it) }, String::length),
+        )
+    }
+
+    private fun isSupportedPreviewImage(path: String): Boolean =
+        path.substringAfterLast('.', missingDelimiterValue = "").lowercase() in
+            setOf("png", "webp", "jpg", "jpeg")
+
+    private fun huggingFaceImagePriority(path: String): Int {
+        val normalized = path.lowercase()
+        val filename = normalized.substringAfterLast('/')
+        return when {
+            "logo" in filename -> 0
+            "icon" in filename || "avatar" in filename -> 1
+            normalized.startsWith("assets/") || normalized.startsWith("images/") -> 2
+            else -> 3
         }
     }
 
