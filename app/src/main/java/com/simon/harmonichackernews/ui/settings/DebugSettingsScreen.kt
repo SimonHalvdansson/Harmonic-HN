@@ -2,15 +2,21 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 private const val OpenWithoutCacheStoryId = 49089500
 
 @Composable
-fun DebugSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
+fun DebugSettingsScreen(
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onOpenLinkPreviews: () -> Unit,
+) {
     val app = LocalHarmonicUiDependencies.current
     SharedDebugSettingsRoute(
         repository = app.settings,
@@ -34,6 +40,7 @@ fun DebugSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
             }
         },
         onOpenLink = { app.links.open(it) },
+        onOpenLinkPreviews = onOpenLinkPreviews,
         onEasterEggRequested = app.navigation::openCoulombGas,
         dialogContent = { dialog, dismiss ->
             when (dialog) {
@@ -53,5 +60,19 @@ fun DebugSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
                 )
             }
         },
+    )
+}
+
+@Composable
+fun LinkPreviewsDebugScreen(onBack: () -> Unit) {
+    val app = LocalHarmonicUiDependencies.current
+    val useCase = remember(app.network.linkPreviewRepository) {
+        LinkPreviewUseCase(app.network.linkPreviewRepository)
+    }
+    SharedLinkPreviewsDebugScreen(
+        comments = app.userSettings.comments,
+        loadPreview = useCase::load,
+        onOpenLink = app.links::open,
+        onBack = onBack,
     )
 }

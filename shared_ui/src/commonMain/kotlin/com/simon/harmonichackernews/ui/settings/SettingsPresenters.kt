@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettings
@@ -201,19 +202,15 @@ class WebLinksSettingsPresenter(
             externalBrowser = reading.externalBrowser,
             redirectNitter = reading.redirectNitter,
             archiveDomainCount = reading.archiveRedirectDomains.size,
-            previewArxiv = reading.previewArxiv,
-            previewGithub = reading.previewGithub,
-            previewGitlab = reading.previewGitlab,
-            previewHuggingFace = reading.previewHuggingFace,
-            previewOpenRouter = reading.previewOpenRouter,
-            previewStackExchange = reading.previewStackExchange,
-            previewWikipedia = reading.previewWikipedia,
-            previewX = reading.previewX,
+            enabledLinkPreviews = reading.enabledLinkPreviews,
         )
     }
 
     fun setBoolean(setting: WebLinksBooleanSetting, value: Boolean) =
         repository.setReadingBoolean(setting.preference, value)
+
+    fun setLinkPreview(type: LinkPreviewType, enabled: Boolean) =
+        repository.setLinkPreviewEnabled(type, enabled)
 
     fun setReaderFontSize(value: Int) = repository.setReaderModeFontSize(value)
     fun setReaderFont(value: AppFont) = repository.setReaderModeFont(value)
@@ -389,14 +386,6 @@ private val WebLinksBooleanSetting.preference: ReadingBooleanPreference
         WebLinksBooleanSetting.ReaderModeDefault -> ReadingBooleanPreference.READER_MODE_DEFAULT
         WebLinksBooleanSetting.ExternalBrowser -> ReadingBooleanPreference.EXTERNAL_BROWSER
         WebLinksBooleanSetting.RedirectNitter -> ReadingBooleanPreference.REDIRECT_NITTER
-        WebLinksBooleanSetting.PreviewArxiv -> ReadingBooleanPreference.PREVIEW_ARXIV
-        WebLinksBooleanSetting.PreviewGithub -> ReadingBooleanPreference.PREVIEW_GITHUB
-        WebLinksBooleanSetting.PreviewGitlab -> ReadingBooleanPreference.PREVIEW_GITLAB
-        WebLinksBooleanSetting.PreviewHuggingFace -> ReadingBooleanPreference.PREVIEW_HUGGING_FACE
-        WebLinksBooleanSetting.PreviewOpenRouter -> ReadingBooleanPreference.PREVIEW_OPEN_ROUTER
-        WebLinksBooleanSetting.PreviewStackExchange -> ReadingBooleanPreference.PREVIEW_STACK_EXCHANGE
-        WebLinksBooleanSetting.PreviewWikipedia -> ReadingBooleanPreference.PREVIEW_WIKIPEDIA
-        WebLinksBooleanSetting.PreviewX -> ReadingBooleanPreference.PREVIEW_X
     }
 
 private val AppearanceBooleanSetting.preference: AppearanceBooleanPreference

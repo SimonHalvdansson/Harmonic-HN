@@ -1,11 +1,29 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
+    @Test
+    fun linkPreviewUpdatesUseIndependentKeysAndEnableNitterRedirectForX() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setLinkPreviewEnabled(LinkPreviewType.GITHUB_ISSUE, false)
+        mutator.setLinkPreviewEnabled(LinkPreviewType.TWITTER_X, true)
+
+        assertFalse(
+            store.getBoolean(LinkPreviewType.GITHUB_ISSUE.preferenceKey, true),
+        )
+        assertTrue(
+            store.getBoolean(LinkPreviewType.TWITTER_X.preferenceKey, false),
+        )
+        assertTrue(store.getBoolean(UserPreferenceKeys.REDIRECT_NITTER, false))
+    }
+
     @Test
     fun typedStoryAndReadingUpdatesPreserveExistingKeysAndSanitizeValues() {
         val store = TestKeyValueStore()

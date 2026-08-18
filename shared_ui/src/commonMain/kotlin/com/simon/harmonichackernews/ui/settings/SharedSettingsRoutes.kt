@@ -149,6 +149,7 @@ fun SharedDebugSettingsRoute(
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
     onOpenLink: (String) -> Unit,
+    onOpenLinkPreviews: () -> Unit,
     onEasterEggRequested: () -> Unit,
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
 ) {
@@ -171,6 +172,7 @@ fun SharedDebugSettingsRoute(
         onOpenWithoutCache = onOpenWithoutCache,
         onCachePost = onCachePost,
         onOpenLink = onOpenLink,
+        onLinkPreviewsRequested = onOpenLinkPreviews,
         onDialogRequested = { dialog = it },
         onEasterEggRequested = onEasterEggRequested,
     )
@@ -403,6 +405,11 @@ fun SharedWebLinksSettingsRoute(
             parseInput = ArchiveRedirectPolicy::parseDomains,
             emptyInputError = "Enter a domain",
             onItemsChanged = presenter::setArchiveDomains,
+            onDismiss = { dialog = null },
+        )
+        WebLinksSettingsDialog.LinkPreviews -> SharedLinkPreviewsSettingsDialog(
+            enabledTypes = reading.enabledLinkPreviews,
+            onEnabledChanged = presenter::setLinkPreview,
             onDismiss = { dialog = null },
         )
         null -> Unit

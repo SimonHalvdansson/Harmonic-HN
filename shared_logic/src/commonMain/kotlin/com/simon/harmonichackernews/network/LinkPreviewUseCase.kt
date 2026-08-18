@@ -3,69 +3,87 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
+import com.simon.harmonichackernews.data.LinkPreviewInfo
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.StackExchangeInfo
+import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.WikipediaInfo
 
 data class LinkPreviewPreferences(
-    val arxiv: Boolean,
-    val github: Boolean,
-    val gitLab: Boolean,
-    val huggingFace: Boolean,
-    val openRouter: Boolean,
-    val stackExchange: Boolean,
-    val wikipedia: Boolean,
-)
-
-enum class LinkPreviewProvider {
-    ARXIV,
-    GITHUB,
-    GITLAB,
-    HUGGING_FACE,
-    OPEN_ROUTER,
-    STACK_EXCHANGE,
-    WIKIPEDIA,
+    val enabledTypes: Set<LinkPreviewType>,
+) {
+    fun isEnabled(type: LinkPreviewType): Boolean = type in enabledTypes
 }
 
 sealed interface LinkPreviewData {
-    data class Arxiv(val value: ArxivInfo) : LinkPreviewData
-    data class GitHub(val value: RepoInfo) : LinkPreviewData
-    data class GitLab(val value: GitLabInfo) : LinkPreviewData
-    data class HuggingFace(val value: HuggingFaceModelInfo) : LinkPreviewData
-    data class OpenRouter(val value: OpenRouterModelInfo) : LinkPreviewData
-    data class StackExchange(val value: StackExchangeInfo) : LinkPreviewData
-    data class Wikipedia(val value: WikipediaInfo) : LinkPreviewData
+    val type: LinkPreviewType
+
+    data class Arxiv(val value: ArxivInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.ARXIV
+    }
+
+    data class GitHub(val value: RepoInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.GITHUB_REPOSITORY
+    }
+
+    data class GitLab(val value: GitLabInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.GITLAB_PROJECT
+    }
+
+    data class HuggingFace(val value: HuggingFaceModelInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.HUGGING_FACE_MODEL
+    }
+
+    data class OpenRouter(val value: OpenRouterModelInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.OPENROUTER_MODEL
+    }
+
+    data class StackExchange(val value: StackExchangeInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.STACK_EXCHANGE
+    }
+
+    data class Wikipedia(val value: WikipediaInfo) : LinkPreviewData {
+        override val type = LinkPreviewType.WIKIPEDIA
+    }
+
+    data class Rich(val value: LinkPreviewInfo) : LinkPreviewData {
+        override val type get() = value.type
+    }
+}
+
+fun LinkPreviewData.applyTo(story: Story) {
+    when (this) {
+        is LinkPreviewData.Arxiv -> story.arxivInfo = value
+        is LinkPreviewData.GitHub -> story.repoInfo = value
+        is LinkPreviewData.GitLab -> story.gitLabInfo = value
+        is LinkPreviewData.HuggingFace -> story.huggingFaceInfo = value
+        is LinkPreviewData.OpenRouter -> story.openRouterInfo = value
+        is LinkPreviewData.StackExchange -> story.stackExchangeInfo = value
+        is LinkPreviewData.Wikipedia -> story.wikiInfo = value
+        is LinkPreviewData.Rich -> story.linkPreviewInfo = value
+    }
 }
 
 /** Selects and loads provider-specific previews without platform UI or lifecycle dependencies. */
 class LinkPreviewUseCase(private val repository: LinkPreviewRepository) {
-    fun selectProvider(url: String?, preferences: LinkPreviewPreferences): LinkPreviewProvider? =
-        when {
-            preferences.arxiv && LinkPreviewUrls.isArxivUrl(url) -> LinkPreviewProvider.ARXIV
-            preferences.github && LinkPreviewUrls.isGitHubUrl(url) -> LinkPreviewProvider.GITHUB
-            preferences.gitLab && LinkPreviewUrls.isGitLabUrl(url) -> LinkPreviewProvider.GITLAB
-            preferences.huggingFace && LinkPreviewUrls.isHuggingFaceUrl(url) ->
-                LinkPreviewProvider.HUGGING_FACE
-            preferences.openRouter && LinkPreviewUrls.isOpenRouterUrl(url) ->
-                LinkPreviewProvider.OPEN_ROUTER
-            preferences.stackExchange && LinkPreviewUrls.isStackExchangeUrl(url) ->
-                LinkPreviewProvider.STACK_EXCHANGE
-            preferences.wikipedia && LinkPreviewUrls.isWikipediaUrl(url) ->
-                LinkPreviewProvider.WIKIPEDIA
-            else -> null
-        }
+    fun selectProvider(url: String?, preferences: LinkPreviewPreferences): LinkPreviewType? =
+        RichLinkPreviewUrls.type(url)?.takeIf(preferences::isEnabled)
 
-    suspend fun load(provider: LinkPreviewProvider, url: String): LinkPreviewData = when (provider) {
-        LinkPreviewProvider.ARXIV -> LinkPreviewData.Arxiv(repository.getArxivInfo(url))
-        LinkPreviewProvider.GITHUB -> LinkPreviewData.GitHub(repository.getGitHubInfo(url))
-        LinkPreviewProvider.GITLAB -> LinkPreviewData.GitLab(repository.getGitLabInfo(url))
-        LinkPreviewProvider.HUGGING_FACE ->
+    suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData = when (type) {
+        LinkPreviewType.ARXIV -> LinkPreviewData.Arxiv(repository.getArxivInfo(url))
+        LinkPreviewType.GITHUB_REPOSITORY -> LinkPreviewData.GitHub(repository.getGitHubInfo(url))
+        LinkPreviewType.GITLAB_PROJECT -> LinkPreviewData.GitLab(repository.getGitLabInfo(url))
+        LinkPreviewType.HUGGING_FACE_MODEL ->
             LinkPreviewData.HuggingFace(repository.getHuggingFaceInfo(url))
-        LinkPreviewProvider.OPEN_ROUTER ->
+        LinkPreviewType.OPENROUTER_MODEL ->
             LinkPreviewData.OpenRouter(repository.getOpenRouterInfo(url))
-        LinkPreviewProvider.STACK_EXCHANGE ->
+        LinkPreviewType.STACK_EXCHANGE ->
             LinkPreviewData.StackExchange(repository.getStackExchangeInfo(url))
-        LinkPreviewProvider.WIKIPEDIA -> LinkPreviewData.Wikipedia(repository.getWikipediaInfo(url))
+        LinkPreviewType.WIKIPEDIA -> LinkPreviewData.Wikipedia(repository.getWikipediaInfo(url))
+        LinkPreviewType.TWITTER_X ->
+            throw LinkPreviewException("Twitter / X previews use the Nitter web runtime")
+        else -> LinkPreviewData.Rich(repository.getRichInfo(type, url))
     }
 }

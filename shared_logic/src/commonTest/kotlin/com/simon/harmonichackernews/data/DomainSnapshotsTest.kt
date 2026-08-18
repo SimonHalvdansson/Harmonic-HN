@@ -118,4 +118,21 @@ class DomainSnapshotsTest {
         assertEquals("1.05M context", snapshot.openRouterInfo?.formatContext())
         assertNull(story.repoInfo)
     }
+
+    @Test
+    fun loadedPreviewTypeIsSharedByMutableStoriesAndSnapshots() {
+        val story = Story().apply {
+            linkPreviewInfo = LinkPreviewInfo(
+                type = LinkPreviewType.GITHUB_RELEASE,
+                title = "octo / project",
+                url = "https://github.com/octo/project/releases/tag/v1",
+            )
+        }
+
+        assertEquals(LinkPreviewType.GITHUB_RELEASE, story.loadedLinkPreviewType())
+        assertEquals(
+            LinkPreviewType.GITHUB_RELEASE,
+            story.presentationSnapshot().loadedLinkPreviewType(),
+        )
+    }
 }

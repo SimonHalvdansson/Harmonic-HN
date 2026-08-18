@@ -352,6 +352,8 @@ fun SettingsListScreen(
                 ) {
                     visibleEntries.forEachIndexed { index, entry ->
                         val isSelected = selectedSection == entry.section ||
+                            entry.section == SettingsSection.Debug &&
+                            selectedSection == SettingsSection.DebugLinkPreviews ||
                             entry.section == SettingsSection.About &&
                             selectedSection == SettingsSection.Licenses
                         SettingsNavigationRow(

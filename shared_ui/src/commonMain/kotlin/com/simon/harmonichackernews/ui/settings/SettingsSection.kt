@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.resources.settings_section_appearance
 import com.simon.harmonichackernews.resources.settings_section_comments
 import com.simon.harmonichackernews.resources.settings_section_data
 import com.simon.harmonichackernews.resources.settings_section_debug
+import com.simon.harmonichackernews.resources.settings_section_debug_link_previews
 import com.simon.harmonichackernews.resources.settings_section_filters_tags
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.resources.settings_section_stories
@@ -25,6 +26,7 @@ enum class SettingsSection(
     AiSummary("ai_summary", Res.string.settings_section_ai_summary),
     Data("data", Res.string.settings_section_data),
     Debug("debug", Res.string.settings_section_debug),
+    DebugLinkPreviews("debug_link_previews", Res.string.settings_section_debug_link_previews),
     About("about", Res.string.settings_section_about),
     Licenses("licenses", Res.string.settings_section_licenses),
     ;

@@ -10,6 +10,7 @@
     <string name="settings_section_ai_summary">AI summarization</string>
     <string name="settings_section_data">Data</string>
     <string name="settings_section_debug">Debug</string>
+    <string name="settings_section_debug_link_previews">Link previews</string>
     <string name="settings_section_about">About</string>
     <string name="settings_section_licenses">Third-party licenses</string>
     <string name="cache_stories_title">Cache stories</string>

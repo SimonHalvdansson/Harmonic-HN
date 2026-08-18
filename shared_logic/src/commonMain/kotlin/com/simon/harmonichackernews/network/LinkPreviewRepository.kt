@@ -5,6 +5,8 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
+import com.simon.harmonichackernews.data.LinkPreviewInfo
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.StackExchangeInfo
@@ -24,6 +26,8 @@ interface LinkPreviewRepository {
     suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo
     suspend fun getStackExchangeInfo(url: String): StackExchangeInfo
     suspend fun getWikipediaInfo(url: String): WikipediaInfo
+    suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
+        throw LinkPreviewException("${type.title} is not implemented by this repository")
     suspend fun getArchiveUrl(url: String): String
 }
 
@@ -102,6 +106,9 @@ class KtorLinkPreviewRepository(
         return LinkPreviewParsers.parseWikipedia(client.getTextOrThrow(endpoint))
             ?: throw LinkPreviewException("Wikipedia did not return a visible summary")
     }
+
+    override suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
+        client.loadRichLinkPreview(type, url)
 
     override suspend fun getArchiveUrl(url: String): String {
         val endpoint = URLBuilder("https://archive.org/wayback/available").apply {

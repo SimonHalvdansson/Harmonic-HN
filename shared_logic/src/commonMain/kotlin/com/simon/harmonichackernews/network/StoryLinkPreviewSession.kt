@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
@@ -31,15 +32,7 @@ class StoryLinkPreviewSession(
         val current = story ?: return false
         return network.load(
             url = current.url,
-            preferences = LinkPreviewPreferences(
-                arxiv = readingPreferences.previewArxiv,
-                github = readingPreferences.previewGithub,
-                gitLab = readingPreferences.previewGitlab,
-                huggingFace = readingPreferences.previewHuggingFace,
-                openRouter = readingPreferences.previewOpenRouter,
-                stackExchange = readingPreferences.previewStackExchange,
-                wikipedia = readingPreferences.previewWikipedia,
-            ),
+            preferences = LinkPreviewPreferences(readingPreferences.enabledLinkPreviews),
             alreadyLoaded = current.hasLoadedLinkPreview(),
         )
     }
@@ -84,23 +77,10 @@ class StoryLinkPreviewSession(
     private fun applyNetworkState(state: LinkPreviewRuntimeState) {
         val current = story ?: return
         networkState = state
-        var changed = false
-        when (val preview = state.preview) {
-            is LinkPreviewData.Arxiv -> { current.arxivInfo = preview.value; changed = true }
-            is LinkPreviewData.GitHub -> { current.repoInfo = preview.value; changed = true }
-            is LinkPreviewData.GitLab -> { current.gitLabInfo = preview.value; changed = true }
-            is LinkPreviewData.HuggingFace -> {
-                current.huggingFaceInfo = preview.value
-                changed = true
-            }
-            is LinkPreviewData.OpenRouter -> {
-                current.openRouterInfo = preview.value
-                changed = true
-            }
-            is LinkPreviewData.StackExchange -> { current.stackExchangeInfo = preview.value; changed = true }
-            is LinkPreviewData.Wikipedia -> { current.wikiInfo = preview.value; changed = true }
-            null -> Unit
-        }
+        val changed = state.preview?.let {
+            it.applyTo(current)
+            true
+        } ?: false
         syncLoading(changed)
     }
 
@@ -122,7 +102,7 @@ class StoryLinkPreviewSession(
     }
 
     private fun nitterPreferences() = NitterLinkPreviewPreferences(
-        previewEnabled = readingPreferences.previewX,
+        previewEnabled = LinkPreviewType.TWITTER_X in readingPreferences.enabledLinkPreviews,
         redirectEnabled = readingPreferences.redirectNitter,
     )
 }

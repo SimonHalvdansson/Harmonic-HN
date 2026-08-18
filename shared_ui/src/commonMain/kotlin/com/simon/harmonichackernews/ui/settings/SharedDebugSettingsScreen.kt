@@ -90,49 +90,6 @@ val DebugSampleContentLinks = listOf(
     ),
 )
 
-val DebugPreviewLinks = listOf(
-    DebugLink(
-        "arXiv",
-        Res.drawable.ic_link_preview_arxiv,
-        "https://news.ycombinator.com/item?id=42788451",
-    ),
-    DebugLink(
-        "GitHub",
-        Res.drawable.ic_link_preview_github,
-        "https://news.ycombinator.com/item?id=49070029",
-    ),
-    DebugLink(
-        "GitLab",
-        Res.drawable.ic_link_preview_gitlab,
-        "https://news.ycombinator.com/item?id=18798209",
-    ),
-    DebugLink(
-        "Hugging Face · Kimi-K3",
-        Res.drawable.ic_link_preview_hugging_face_mono,
-        "https://news.ycombinator.com/item?id=49065752",
-    ),
-    DebugLink(
-        "OpenRouter · GPT-5.6 Sol",
-        Res.drawable.ic_link_preview_openrouter,
-        "https://news.ycombinator.com/item?id=49337602",
-    ),
-    DebugLink(
-        "Stack Exchange",
-        Res.drawable.ic_link_preview_stack_exchange,
-        "https://news.ycombinator.com/item?id=21113344",
-    ),
-    DebugLink(
-        "Wikipedia",
-        Res.drawable.ic_link_preview_wikipedia,
-        "https://news.ycombinator.com/item?id=21699011",
-    ),
-    DebugLink(
-        "Twitter/X",
-        Res.drawable.ic_link_preview_x,
-        "https://news.ycombinator.com/item?id=48012735",
-    ),
-)
-
 @Composable
 fun SharedDebugSettingsScreen(
     showNavigation: Boolean,
@@ -147,6 +104,7 @@ fun SharedDebugSettingsScreen(
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
     onOpenLink: (String) -> Unit,
+    onLinkPreviewsRequested: () -> Unit,
     onDialogRequested: (DebugSettingsDialog) -> Unit,
     onEasterEggRequested: () -> Unit,
 ) {
@@ -194,12 +152,12 @@ fun SharedDebugSettingsScreen(
                     icon = Res.drawable.ic_cached,
                     onClick = onCachePost,
                 )
-            }
-        }
-
-        item {
-            SettingsCategory("Link previews") {
-                DebugLinkRows(DebugPreviewLinks, onOpenLink)
+                SettingsDivider()
+                SettingRow(
+                    title = "Link previews",
+                    icon = Res.drawable.ic_link,
+                    onClick = onLinkPreviewsRequested,
+                )
             }
         }
 

@@ -44,16 +44,17 @@ data class StoryPresentationSnapshot(
     val summary: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
     val pollOptions: List<PollOptionSnapshot> = emptyList(),
-    val repoInfo: RepoInfoSnapshot? = null,
-    val gitLabInfo: GitLabInfoSnapshot? = null,
-    val huggingFaceInfo: HuggingFaceModelInfoSnapshot? = null,
-    val openRouterInfo: OpenRouterModelInfoSnapshot? = null,
-    val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
-    val arxivInfo: ArxivInfoSnapshot? = null,
-    val wikiInfo: WikipediaInfoSnapshot? = null,
-    val nitterInfo: NitterInfoSnapshot? = null,
+    override val repoInfo: RepoInfoSnapshot? = null,
+    override val gitLabInfo: GitLabInfoSnapshot? = null,
+    override val huggingFaceInfo: HuggingFaceModelInfoSnapshot? = null,
+    override val openRouterInfo: OpenRouterModelInfoSnapshot? = null,
+    override val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
+    override val arxivInfo: ArxivInfoSnapshot? = null,
+    override val wikiInfo: WikipediaInfoSnapshot? = null,
+    override val nitterInfo: NitterInfoSnapshot? = null,
+    override val linkPreviewInfo: LinkPreviewInfo? = null,
     val linkPreviewLoading: Boolean = false,
-)
+) : LinkPreviewState
 
 @Serializable
 data class PollOptionSnapshot(
@@ -407,6 +408,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
             it.beforeDate, it.beforeImgSrc,
         )
     },
+    linkPreviewInfo = linkPreviewInfo,
     linkPreviewLoading = linkPreviewLoading,
 )
 

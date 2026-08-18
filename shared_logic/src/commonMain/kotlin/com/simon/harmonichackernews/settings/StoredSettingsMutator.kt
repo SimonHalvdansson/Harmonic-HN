@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 
 /** Writes typed settings without exposing a platform preference API to UI code. */
@@ -155,20 +156,16 @@ class StoredSettingsMutator(
                 ReadingBooleanPreference.READER_MODE_DEFAULT -> UserPreferenceKeys.READER_MODE_DEFAULT
                 ReadingBooleanPreference.EXTERNAL_BROWSER -> UserPreferenceKeys.EXTERNAL_BROWSER
                 ReadingBooleanPreference.REDIRECT_NITTER -> UserPreferenceKeys.REDIRECT_NITTER
-                ReadingBooleanPreference.PREVIEW_ARXIV -> UserPreferenceKeys.LINK_PREVIEW_ARXIV
-                ReadingBooleanPreference.PREVIEW_GITHUB -> UserPreferenceKeys.LINK_PREVIEW_GITHUB
-                ReadingBooleanPreference.PREVIEW_GITLAB -> UserPreferenceKeys.LINK_PREVIEW_GITLAB
-                ReadingBooleanPreference.PREVIEW_HUGGING_FACE ->
-                    UserPreferenceKeys.LINK_PREVIEW_HUGGING_FACE
-                ReadingBooleanPreference.PREVIEW_OPEN_ROUTER ->
-                    UserPreferenceKeys.LINK_PREVIEW_OPEN_ROUTER
-                ReadingBooleanPreference.PREVIEW_STACK_EXCHANGE ->
-                    UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE
-                ReadingBooleanPreference.PREVIEW_WIKIPEDIA -> UserPreferenceKeys.LINK_PREVIEW_WIKIPEDIA
-                ReadingBooleanPreference.PREVIEW_X -> UserPreferenceKeys.LINK_PREVIEW_X
             },
             value,
         )
+    }
+
+    fun setLinkPreviewEnabled(type: LinkPreviewType, enabled: Boolean) {
+        store.putBoolean(type.preferenceKey, enabled)
+        if (type == LinkPreviewType.TWITTER_X && enabled) {
+            store.putBoolean(UserPreferenceKeys.REDIRECT_NITTER, true)
+        }
     }
 
     fun setReaderModeFontSize(value: Int) {

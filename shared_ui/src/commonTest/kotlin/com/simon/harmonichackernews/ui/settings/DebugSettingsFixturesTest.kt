@@ -1,13 +1,31 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DebugSettingsFixturesTest {
     @Test
-    fun includesOpenRouterSolPreview() {
-        val fixture = DebugPreviewLinks.single { it.title == "OpenRouter · GPT-5.6 Sol" }
+    fun includesExactlyOneSampleForEveryPreviewType() {
+        assertEquals(LinkPreviewType.entries.size, DebugLinkPreviewSamples.size)
+        assertEquals(
+            LinkPreviewType.entries.toSet(),
+            DebugLinkPreviewSamples.map { it.type }.toSet(),
+        )
+        assertEquals(
+            DebugLinkPreviewSamples.size,
+            DebugLinkPreviewSamples.map { it.hnId }.toSet().size,
+        )
+        assertTrue(DebugLinkPreviewSamples.all { it.targetUrl.startsWith("https://") })
+    }
 
-        assertEquals("https://news.ycombinator.com/item?id=49337602", fixture.url)
+    @Test
+    fun includesOpenRouterSolPreview() {
+        val fixture = DebugLinkPreviewSamples.single {
+            it.type == LinkPreviewType.OPENROUTER_MODEL
+        }
+
+        assertEquals("https://news.ycombinator.com/item?id=49337602", fixture.hnUrl)
     }
 }

@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.data.loadedLinkPreviewType
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +81,7 @@ data class StoryListItemSnapshot(
     val arxivInfo get() = presentation.arxivInfo
     val wikiInfo get() = presentation.wikiInfo
     val nitterInfo get() = presentation.nitterInfo
+    val linkPreviewInfo get() = presentation.linkPreviewInfo
     val linkPreviewLoading: Boolean get() = presentation.linkPreviewLoading
     val timeFormatted: String get() = ItemTimeFormatter.formatNow(time)
 
@@ -88,9 +90,9 @@ data class StoryListItemSnapshot(
             DomainNamePolicy.formatForDisplay(it, includeTopLevelDomain)
         }
 
-    fun hasLoadedLinkPreview(): Boolean = repoInfo != null || gitLabInfo != null ||
-        huggingFaceInfo != null || openRouterInfo != null || stackExchangeInfo != null || arxivInfo != null ||
-        wikiInfo != null || nitterInfo != null
+    fun loadedLinkPreviewType() = presentation.loadedLinkPreviewType()
+
+    fun hasLoadedLinkPreview(): Boolean = loadedLinkPreviewType() != null
 
     fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
 }

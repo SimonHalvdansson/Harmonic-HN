@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,15 +36,33 @@ class StoredUserSettingsTest {
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
         assertEquals(18, settings.reading.readerModeFontSize)
-        assertTrue(settings.reading.previewGithub)
-        assertTrue(settings.reading.previewHuggingFace)
-        assertTrue(settings.reading.previewOpenRouter)
+        assertTrue(LinkPreviewType.GITHUB_REPOSITORY in settings.reading.enabledLinkPreviews)
+        assertTrue(LinkPreviewType.HUGGING_FACE_MODEL in settings.reading.enabledLinkPreviews)
+        assertTrue(LinkPreviewType.OPENROUTER_MODEL in settings.reading.enabledLinkPreviews)
+        assertEquals(
+            LinkPreviewType.entries.filterTo(linkedSetOf()) { it.defaultEnabled },
+            settings.reading.enabledLinkPreviews,
+        )
         assertEquals(20, settings.cache.storiesToCache)
         assertTrue(settings.general.bookmarksEnabled)
         assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
         assertFalse(settings.debug.showAiSummaryDebugInfo)
+    }
+
+    @Test
+    fun everyLinkPreviewTypeHasAnIndependentStoredSwitch() {
+        assertEquals(
+            LinkPreviewType.entries.size,
+            LinkPreviewType.entries.map { it.preferenceKey }.toSet().size,
+        )
+        val disabled = LinkPreviewType.entries.associate { type ->
+            type.preferenceKey to false
+        }
+        val settings = StoredUserSettings(TestKeyValueStore(disabled), emptyFlow())
+
+        assertTrue(settings.reading.enabledLinkPreviews.isEmpty())
     }
 
     @Test

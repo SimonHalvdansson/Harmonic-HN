@@ -157,6 +157,9 @@ import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
+import com.simon.harmonichackernews.data.LinkPreviewDetail
+import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.ui.settings.linkPreviewIcon
 
 data class CommentsPreviewPlatform(
     val textStyle: TextStyle,
@@ -395,22 +398,9 @@ fun LinkPreviewContent(
     contentVersion: Int,
     settings: CommentDisplaySettings,
 ) {
-    val previewType = remember(story, contentVersion) {
-        when {
-            story.repoInfo != null -> "github"
-            story.gitLabInfo != null -> "gitlab"
-            story.huggingFaceInfo != null -> "huggingface"
-            story.openRouterInfo != null -> "openrouter"
-            story.stackExchangeInfo != null -> "stackexchange"
-            story.arxivInfo != null -> "arxiv"
-            story.wikiInfo != null -> "wikipedia"
-            story.nitterInfo != null -> "nitter"
-            story.linkPreviewLoading -> "loading"
-            else -> "none"
-        }
-    }
+    val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
     AnimatedVisibility(
-        visible = previewType != "none",
+        visible = previewType != null || story.linkPreviewLoading,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
@@ -431,15 +421,15 @@ fun LinkPreviewContent(
             label = "comments link preview",
         ) {
             when (it) {
-                "github" -> GitHubPreview(story)
-                "gitlab" -> GitLabPreview(story)
-                "huggingface" -> HuggingFacePreview(story)
-                "openrouter" -> OpenRouterPreview(story)
-                "stackexchange" -> StackExchangePreview(story)
-                "arxiv" -> ArxivPreview(story, settings)
-                "wikipedia" -> WikipediaPreview(story)
-                "nitter" -> NitterPreview(story)
-                else -> Box(
+                LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
+                LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
+                LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
+                LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
+                LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
+                LinkPreviewType.ARXIV -> ArxivPreview(story, settings)
+                LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
+                LinkPreviewType.TWITTER_X -> NitterPreview(story)
+                null -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp, bottom = 8.dp),
@@ -447,6 +437,7 @@ fun LinkPreviewContent(
                 ) {
                     HarmonicLoadingIndicator(Modifier.size(44.dp))
                 }
+                else -> RichLinkPreview(story)
             }
         }
     }
@@ -458,10 +449,15 @@ private fun PreviewHeader(
     icon: DrawableResource? = null,
     logoUrl: String? = null,
     logoTint: Color? = null,
+    tintIcon: Boolean = true,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
-            val fallback = painterResource(icon)
+            val fallback = if (tintIcon) {
+                tintedPainterResource(icon, HarmonicTheme.colors.drawable)
+            } else {
+                painterResource(icon)
+            }
             if (logoUrl != null) {
                 AsyncImage(
                     model = logoUrl,
@@ -608,7 +604,10 @@ private fun GitLabPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.gitLabInfo ?: return
     Column {
-        PreviewHeader("${info.namespace} / ${info.name}")
+        PreviewHeader(
+            text = "${info.namespace} / ${info.name}",
+            icon = Res.drawable.ic_link_preview_gitlab,
+        )
         PreviewBody(info.description.orEmpty())
         PreviewInfoColumns(
             left = {
@@ -628,13 +627,13 @@ private fun GitLabPreview(story: StoryListItemSnapshot) {
 
 @Composable
 private fun HuggingFacePreview(story: StoryListItemSnapshot) {
-    val platform = LocalCommentsPreviewPlatform.current
     val info = story.huggingFaceInfo ?: return
     Column {
         PreviewHeader(
             text = "${info.author} / ${info.name}",
             icon = Res.drawable.ic_link_preview_hugging_face,
             logoUrl = info.logoUrl,
+            tintIcon = false,
         )
         PreviewBody(info.formatCapability())
         PreviewInfoColumns(
@@ -644,9 +643,6 @@ private fun HuggingFacePreview(story: StoryListItemSnapshot) {
                 PreviewInfoRow(Res.drawable.ic_deployed_code, info.formatParameters())
             },
             right = {
-                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
-                    platform.openLink(info.website)
-                }
                 PreviewInfoRow(Res.drawable.ic_attribution, info.formatLicense())
                 PreviewInfoRow(Res.drawable.ic_schedule, info.formatUpdated())
             },
@@ -771,6 +767,61 @@ private fun WikipediaPreview(story: StoryListItemSnapshot) {
             lineHeight = 18f,
         )
     }
+}
+
+@Composable
+private fun RichLinkPreview(story: StoryListItemSnapshot) {
+    val info = story.linkPreviewInfo ?: return
+    val indexedDetails = info.details.withIndex()
+    Column {
+        PreviewHeader(
+            text = info.title,
+            icon = info.type.linkPreviewIcon(),
+            logoUrl = info.imageUrl,
+        )
+        PreviewBody(
+            text = info.subtitle.orEmpty(),
+            bold = true,
+            topPadding = 5.dp,
+            bottomPadding = 0.dp,
+        )
+        PreviewBody(
+            text = info.description.orEmpty(),
+            maxLines = 12,
+            topPadding = 4.dp,
+        )
+        PreviewInfoColumns(
+            left = {
+                indexedDetails.filter { it.index % 2 == 0 }.forEach { (_, detail) ->
+                    RichPreviewDetail(detail)
+                }
+            },
+            right = {
+                indexedDetails.filter { it.index % 2 == 1 }.forEach { (_, detail) ->
+                    RichPreviewDetail(detail)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun RichPreviewDetail(detail: LinkPreviewDetail) {
+    PreviewInfoRow(
+        icon = when (detail.label.lowercase()) {
+            "author", "authors" -> Res.drawable.ic_person
+            "published", "updated", "started" -> Res.drawable.ic_calendar_today
+            "likes", "favourites", "upvotes" -> Res.drawable.ic_favorite
+            "comments", "replies" -> Res.drawable.ic_comment
+            "downloads", "recent downloads", "installs (30d)" -> Res.drawable.ic_file_download
+            "license" -> Res.drawable.ic_attribution
+            "version", "revision" -> Res.drawable.ic_tag
+            "state", "status", "impact", "access" -> Res.drawable.ic_info
+            "files", "items", "dependencies" -> Res.drawable.ic_library_books
+            else -> Res.drawable.ic_subject
+        },
+        text = detail.displayText ?: "${detail.label}: ${detail.value}",
+    )
 }
 
 @Composable

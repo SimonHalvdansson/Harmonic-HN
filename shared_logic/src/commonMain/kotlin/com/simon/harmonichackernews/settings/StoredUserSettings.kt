@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import kotlinx.coroutines.flow.Flow
 
@@ -74,15 +75,6 @@ object UserPreferenceKeys {
     const val EXTERNAL_BROWSER = "pref_external_browser"
     const val REDIRECT_NITTER = "pref_redirect_nitter"
     const val ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains"
-    const val LINK_PREVIEW_ARXIV = "pref_link_preview_arxiv"
-    const val LINK_PREVIEW_GITHUB = "pref_link_preview_github"
-    const val LINK_PREVIEW_GITLAB = "pref_link_preview_gitlab"
-    const val LINK_PREVIEW_HUGGING_FACE = "pref_link_preview_hugging_face"
-    const val LINK_PREVIEW_OPEN_ROUTER = "pref_link_preview_open_router"
-    const val LINK_PREVIEW_STACK_EXCHANGE = "pref_link_preview_stack_exchange"
-    const val LINK_PREVIEW_WIKIPEDIA = "pref_link_preview_wikipedia"
-    const val LINK_PREVIEW_X = "pref_link_preview_x"
-
     const val BOOKMARKS_ENABLED = "pref_bookmarks_enabled"
     const val TRANSPARENT_STATUS_BAR = "pref_transparent_status_bar"
     const val SPECIAL_NIGHTTIME = "pref_special_nighttime"
@@ -229,17 +221,9 @@ class StoredUserSettings(
                 archiveRedirectDomains = ArchiveRedirectPolicy.parseDomains(
                     string(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, ""),
                 ),
-                previewArxiv = boolean(UserPreferenceKeys.LINK_PREVIEW_ARXIV, true),
-                previewGithub = boolean(UserPreferenceKeys.LINK_PREVIEW_GITHUB, true),
-                previewGitlab = boolean(UserPreferenceKeys.LINK_PREVIEW_GITLAB, true),
-                previewHuggingFace = boolean(UserPreferenceKeys.LINK_PREVIEW_HUGGING_FACE, true),
-                previewOpenRouter = boolean(UserPreferenceKeys.LINK_PREVIEW_OPEN_ROUTER, true),
-                previewStackExchange = boolean(
-                    UserPreferenceKeys.LINK_PREVIEW_STACK_EXCHANGE,
-                    true,
-                ),
-                previewWikipedia = boolean(UserPreferenceKeys.LINK_PREVIEW_WIKIPEDIA, true),
-                previewX = boolean(UserPreferenceKeys.LINK_PREVIEW_X, false),
+                enabledLinkPreviews = LinkPreviewType.entries.filterTo(linkedSetOf()) { type ->
+                    boolean(type.preferenceKey, type.defaultEnabled)
+                },
             )
         }
 

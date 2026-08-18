@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
@@ -53,14 +54,6 @@ enum class ReadingBooleanPreference {
     READER_MODE_DEFAULT,
     EXTERNAL_BROWSER,
     REDIRECT_NITTER,
-    PREVIEW_ARXIV,
-    PREVIEW_GITHUB,
-    PREVIEW_GITLAB,
-    PREVIEW_HUGGING_FACE,
-    PREVIEW_OPEN_ROUTER,
-    PREVIEW_STACK_EXCHANGE,
-    PREVIEW_WIKIPEDIA,
-    PREVIEW_X,
 }
 
 enum class AppearanceBooleanPreference { SPECIAL_NIGHTTIME, TRANSPARENT_STATUS_BAR, COMPACT_HEADER }
@@ -140,6 +133,9 @@ class AppSettingsRepository(
 
     fun setReadingBoolean(preference: ReadingBooleanPreference, value: Boolean) =
         mutator.setReadingBoolean(preference, value)
+
+    fun setLinkPreviewEnabled(type: LinkPreviewType, enabled: Boolean) =
+        mutator.setLinkPreviewEnabled(type, enabled)
 
     fun setReaderModeFontSize(value: Int) = mutator.setReaderModeFontSize(value)
     fun setReaderModeFont(value: String) = mutator.setReaderModeFont(value)

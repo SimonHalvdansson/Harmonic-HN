@@ -176,7 +176,11 @@ fun SettingsShell(
                 SettingsSection.Debug -> DebugSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onOpenLinkPreviews = {
+                        onNavigate(SettingsSection.DebugLinkPreviews, true)
+                    },
                 )
+                SettingsSection.DebugLinkPreviews -> LinkPreviewsDebugScreen(onBack)
                 SettingsSection.About -> AboutScreen(
                     onBack = onBack,
                     onOpenGithub = { dependencies.links.open(dependencies.metadata.projectUrl) },

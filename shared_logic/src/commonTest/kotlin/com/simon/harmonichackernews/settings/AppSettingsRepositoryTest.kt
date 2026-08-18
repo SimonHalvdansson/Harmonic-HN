@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,14 +33,14 @@ class AppSettingsRepositoryTest {
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
 
         repository.setStoryBoolean(StoryBooleanPreference.COMPACT_VIEW, true)
-        repository.setReadingBoolean(ReadingBooleanPreference.PREVIEW_X, true)
+        repository.setLinkPreviewEnabled(LinkPreviewType.TWITTER_X, true)
         repository.setAppearanceBoolean(AppearanceBooleanPreference.COMPACT_HEADER, true)
         repository.setStoryBoolean(StoryBooleanPreference.HIDE_JOBS, true)
         repository.setDebugBoolean(DebugBooleanPreference.SHOW_AI_SUMMARY_INFO, true)
 
         val snapshot = repository.snapshot()
         assertTrue(snapshot.story.compactView)
-        assertTrue(snapshot.reading.previewX)
+        assertTrue(LinkPreviewType.TWITTER_X in snapshot.reading.enabledLinkPreviews)
         assertTrue(snapshot.story.compactHeader)
         assertTrue(snapshot.story.hideJobs)
         assertTrue(snapshot.debug.showAiSummaryDebugInfo)

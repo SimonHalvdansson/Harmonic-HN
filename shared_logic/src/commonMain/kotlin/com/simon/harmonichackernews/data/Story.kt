@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.data
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 
-class Story {
+class Story : LinkPreviewState {
     var by: String? = null
     var descendants: Int = 0
     var id: Int = 0
@@ -68,14 +68,15 @@ class Story {
     var clicked: Boolean = false
     var text: String? = null
 
-    var gitLabInfo: GitLabInfo? = null
-    var huggingFaceInfo: HuggingFaceModelInfo? = null
-    var openRouterInfo: OpenRouterModelInfo? = null
-    var repoInfo: RepoInfo? = null
-    var stackExchangeInfo: StackExchangeInfo? = null
-    var arxivInfo: ArxivInfo? = null
-    var wikiInfo: WikipediaInfo? = null
-    var nitterInfo: NitterInfo? = null
+    override var gitLabInfo: GitLabInfo? = null
+    override var huggingFaceInfo: HuggingFaceModelInfo? = null
+    override var openRouterInfo: OpenRouterModelInfo? = null
+    override var repoInfo: RepoInfo? = null
+    override var stackExchangeInfo: StackExchangeInfo? = null
+    override var arxivInfo: ArxivInfo? = null
+    override var wikiInfo: WikipediaInfo? = null
+    override var nitterInfo: NitterInfo? = null
+    override var linkPreviewInfo: LinkPreviewInfo? = null
 
     var linkPreviewLoading: Boolean = false
 
@@ -200,11 +201,7 @@ class Story {
 
     fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
 
-    fun hasLoadedLinkPreview(): Boolean {
-        return arxivInfo != null || gitLabInfo != null || huggingFaceInfo != null ||
-            openRouterInfo != null ||
-            repoInfo != null || stackExchangeInfo != null || wikiInfo != null || nitterInfo != null
-    }
+    fun hasLoadedLinkPreview(): Boolean = loadedLinkPreviewType() != null
 
     companion object {
         private fun hasText(value: String?): Boolean {

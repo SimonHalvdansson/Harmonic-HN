@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentsProvider
@@ -41,9 +42,10 @@ class SettingsPresentersTest {
         fixture.comments.setBoolean(CommentsBooleanSetting.ShowUpButton, true)
         fixture.comments.setSorting(CommentSortingPreference.NEWEST_FIRST.storedValue)
         fixture.comments.setProvider(CommentsProvider.OFFICIAL.storedValue)
-        fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewGithub, false)
-        fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewHuggingFace, false)
-        fixture.webLinks.setBoolean(WebLinksBooleanSetting.PreviewOpenRouter, false)
+        fixture.webLinks.setLinkPreview(LinkPreviewType.GITHUB_REPOSITORY, false)
+        fixture.webLinks.setLinkPreview(LinkPreviewType.HUGGING_FACE_MODEL, false)
+        fixture.webLinks.setLinkPreview(LinkPreviewType.OPENROUTER_MODEL, false)
+        fixture.webLinks.setLinkPreview(LinkPreviewType.USGS_EARTHQUAKE, false)
 
         val comments = fixture.comments.state()
         val webLinks = fixture.webLinks.state(fontLabel = "System")
@@ -52,9 +54,10 @@ class SettingsPresentersTest {
         assertTrue(comments.showUpButton)
         assertEquals(CommentSortingPreference.NEWEST_FIRST, comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, comments.provider)
-        assertFalse(webLinks.previewGithub)
-        assertFalse(webLinks.previewHuggingFace)
-        assertFalse(webLinks.previewOpenRouter)
+        assertFalse(LinkPreviewType.GITHUB_REPOSITORY in webLinks.enabledLinkPreviews)
+        assertFalse(LinkPreviewType.HUGGING_FACE_MODEL in webLinks.enabledLinkPreviews)
+        assertFalse(LinkPreviewType.OPENROUTER_MODEL in webLinks.enabledLinkPreviews)
+        assertFalse(LinkPreviewType.USGS_EARTHQUAKE in webLinks.enabledLinkPreviews)
         assertEquals("System", webLinks.readerModeFontLabel)
     }
 

@@ -1,0 +1,964 @@
+package com.simon.harmonichackernews.network
+
+import com.fleeksoft.ksoup.Ksoup
+import com.simon.harmonichackernews.data.LinkPreviewDetail
+import com.simon.harmonichackernews.data.LinkPreviewInfo
+import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.serialization.JsonArray
+import com.simon.harmonichackernews.serialization.JsonObject
+import io.ktor.client.HttpClient
+import io.ktor.http.URLBuilder
+import io.ktor.http.encodeURLPathPart
+
+internal data class GitHubPreviewTarget(
+    val type: LinkPreviewType,
+    val owner: String,
+    val repository: String,
+    val identifier: String? = null,
+    val ref: String? = null,
+    val filePath: String? = null,
+)
+
+internal data class HuggingFacePreviewTarget(
+    val type: LinkPreviewType,
+    val owner: String? = null,
+    val name: String,
+)
+
+internal data class PackagePreviewTarget(
+    val type: LinkPreviewType,
+    val name: String,
+    val variant: String? = null,
+)
+
+/** URL classification shared by provider selection, settings fixtures and parser tests. */
+object RichLinkPreviewUrls {
+    fun type(url: String?): LinkPreviewType? {
+        if (url.isNullOrBlank()) return null
+        githubTarget(url)?.let { return it.type }
+        huggingFaceTarget(url)?.let { return it.type }
+        packageTarget(url)?.let { return it.type }
+        return when {
+            LinkPreviewUrls.isGitLabUrl(url) -> LinkPreviewType.GITLAB_PROJECT
+            LinkPreviewUrls.isOpenRouterUrl(url) -> LinkPreviewType.OPENROUTER_MODEL
+            LinkPreviewUrls.isStackExchangeUrl(url) -> LinkPreviewType.STACK_EXCHANGE
+            LinkPreviewUrls.isArxivUrl(url) -> LinkPreviewType.ARXIV
+            LinkPreviewUrls.isWikipediaUrl(url) -> LinkPreviewType.WIKIPEDIA
+            statusPageIncident(url) != null -> LinkPreviewType.STATUS_PAGE
+            crossrefDoi(url) != null -> LinkPreviewType.CROSSREF_ARTICLE
+            usgsEventId(url) != null -> LinkPreviewType.USGS_EARTHQUAKE
+            isSubstackArticle(url) -> LinkPreviewType.SUBSTACK_ARTICLE
+            mastodonStatus(url) != null -> LinkPreviewType.MASTODON_POST
+            isBlueskyPost(url) -> LinkPreviewType.BLUESKY_POST
+            isRedditPost(url) -> LinkPreviewType.REDDIT_POST
+            else -> null
+        }
+    }
+
+    internal fun githubTarget(url: String?): GitHubPreviewTarget? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.host.lowercase().removePrefix("www.") != "github.com") return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        if (segments.size < 2) return null
+        val owner = segments[0]
+        val repository = segments[1].removeSuffix(".git")
+        if (repository.isBlank()) return null
+        return when {
+            segments.size >= 4 && segments[2] == "issues" -> GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_ISSUE,
+                owner,
+                repository,
+                identifier = segments[3],
+            )
+            segments.size >= 4 && segments[2] == "pull" -> GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_PULL_REQUEST,
+                owner,
+                repository,
+                identifier = segments[3],
+            )
+            segments.size >= 5 && segments[2] == "blob" -> GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_FILE,
+                owner,
+                repository,
+                ref = segments[3],
+                filePath = segments.drop(4).joinToString("/"),
+            )
+            segments.size >= 5 && segments[2] == "releases" && segments[3] == "tag" ->
+                GitHubPreviewTarget(
+                    LinkPreviewType.GITHUB_RELEASE,
+                    owner,
+                    repository,
+                    identifier = segments.drop(4).joinToString("/"),
+                )
+            segments.size >= 4 && segments[2] == "discussions" -> GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_DISCUSSION,
+                owner,
+                repository,
+                identifier = segments[3],
+            )
+            else -> GitHubPreviewTarget(LinkPreviewType.GITHUB_REPOSITORY, owner, repository)
+        }
+    }
+
+    internal fun huggingFaceTarget(url: String?): HuggingFacePreviewTarget? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.host.lowercase().removePrefix("www.") != "huggingface.co") return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return when {
+            segments.size >= 3 && segments[0] == "datasets" -> HuggingFacePreviewTarget(
+                LinkPreviewType.HUGGING_FACE_DATASET,
+                segments[1],
+                segments[2],
+            )
+            segments.size >= 3 && segments[0] == "spaces" -> HuggingFacePreviewTarget(
+                LinkPreviewType.HUGGING_FACE_SPACE,
+                segments[1],
+                segments[2],
+            )
+            segments.size >= 2 && segments[0] == "papers" -> HuggingFacePreviewTarget(
+                LinkPreviewType.HUGGING_FACE_PAPER,
+                name = segments[1],
+            )
+            segments.size >= 3 && segments[0] == "collections" -> HuggingFacePreviewTarget(
+                LinkPreviewType.HUGGING_FACE_COLLECTION,
+                segments[1],
+                segments[2],
+            )
+            LinkPreviewUrls.huggingFaceModel(url) != null -> HuggingFacePreviewTarget(
+                LinkPreviewType.HUGGING_FACE_MODEL,
+                segments[0],
+                segments[1],
+            )
+            else -> null
+        }
+    }
+
+    internal fun packageTarget(url: String?): PackagePreviewTarget? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        val host = parsed.host.lowercase().removePrefix("www.")
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return when {
+            host == "npmjs.com" && segments.firstOrNull() == "package" && segments.size >= 2 ->
+                PackagePreviewTarget(
+                    LinkPreviewType.NPM_PACKAGE,
+                    segments.drop(1).take(2).joinToString("/"),
+                )
+            host == "pypi.org" && segments.firstOrNull() == "project" && segments.size >= 2 ->
+                PackagePreviewTarget(LinkPreviewType.PYPI_PACKAGE, segments[1])
+            host == "crates.io" && segments.firstOrNull() == "crates" && segments.size >= 2 ->
+                PackagePreviewTarget(LinkPreviewType.CRATES_PACKAGE, segments[1])
+            host == "pkg.go.dev" && segments.isNotEmpty() && segments.first() != "vuln" ->
+                PackagePreviewTarget(LinkPreviewType.GO_PACKAGE, segments.joinToString("/"))
+            host == "formulae.brew.sh" && segments.size >= 2 &&
+                segments[0] in setOf("formula", "cask") -> PackagePreviewTarget(
+                    LinkPreviewType.HOMEBREW_PACKAGE,
+                    segments[1],
+                    variant = segments[0],
+                )
+            else -> null
+        }
+    }
+
+    internal fun statusPageIncident(url: String?): Pair<String, String>? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        val host = parsed.host.lowercase()
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        if (!host.endsWith(".statuspage.io") || segments.size < 2 || segments[0] != "incidents") {
+            return null
+        }
+        return host to segments[1]
+    }
+
+    internal fun crossrefDoi(url: String?): String? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        val host = parsed.host.lowercase().removePrefix("www.")
+        if (host !in setOf("doi.org", "dx.doi.org")) return null
+        return parsed.pathSegments.filter(String::isNotEmpty).joinToString("/").takeIf(String::isNotEmpty)
+    }
+
+    internal fun usgsEventId(url: String?): String? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.host.lowercase() != "earthquake.usgs.gov") return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        val index = segments.indexOf("eventpage")
+        return segments.getOrNull(index + 1)?.takeIf(String::isNotEmpty)
+    }
+
+    internal fun isSubstackArticle(url: String?): Boolean {
+        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return parsed.host.lowercase().endsWith(".substack.com") &&
+            segments.size >= 2 && segments[0] == "p"
+    }
+
+    internal fun mastodonStatus(url: String?): Pair<String, String>? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        if (segments.size < 2 || !segments[0].startsWith("@") || segments[1].any { !it.isDigit() }) {
+            return null
+        }
+        return parsed.host to segments[1]
+    }
+
+    internal fun isBlueskyPost(url: String?): Boolean {
+        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return parsed.host.lowercase() == "bsky.app" && segments.size >= 4 &&
+            segments[0] == "profile" && segments[2] == "post"
+    }
+
+    internal fun isRedditPost(url: String?): Boolean {
+        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        val host = parsed.host.lowercase().removePrefix("www.").removePrefix("old.")
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return host == "reddit.com" && "comments" in segments
+    }
+}
+
+internal suspend fun HttpClient.loadRichLinkPreview(
+    type: LinkPreviewType,
+    url: String,
+): LinkPreviewInfo = when (type) {
+    LinkPreviewType.GITHUB_ISSUE,
+    LinkPreviewType.GITHUB_PULL_REQUEST,
+    LinkPreviewType.GITHUB_FILE,
+    LinkPreviewType.GITHUB_RELEASE,
+    LinkPreviewType.GITHUB_DISCUSSION,
+    -> loadGitHubPreview(type, url)
+    LinkPreviewType.HUGGING_FACE_DATASET,
+    LinkPreviewType.HUGGING_FACE_SPACE,
+    LinkPreviewType.HUGGING_FACE_PAPER,
+    LinkPreviewType.HUGGING_FACE_COLLECTION,
+    -> loadHuggingFacePreview(type, url)
+    LinkPreviewType.STATUS_PAGE -> loadStatusPagePreview(url)
+    LinkPreviewType.CROSSREF_ARTICLE -> loadCrossrefPreview(url)
+    LinkPreviewType.USGS_EARTHQUAKE -> loadUsgsPreview(url)
+    LinkPreviewType.SUBSTACK_ARTICLE -> loadSubstackPreview(url)
+    LinkPreviewType.MASTODON_POST -> loadMastodonPreview(url)
+    LinkPreviewType.BLUESKY_POST -> loadBlueskyPreview(url)
+    LinkPreviewType.REDDIT_POST -> loadOEmbedPreview(type, "https://www.reddit.com/oembed", url)
+    LinkPreviewType.NPM_PACKAGE,
+    LinkPreviewType.PYPI_PACKAGE,
+    LinkPreviewType.CRATES_PACKAGE,
+    LinkPreviewType.GO_PACKAGE,
+    LinkPreviewType.HOMEBREW_PACKAGE,
+    -> loadPackagePreview(type, url)
+    else -> throw LinkPreviewException("${type.title} uses a dedicated preview loader")
+}
+
+private suspend fun HttpClient.loadGitHubPreview(
+    type: LinkPreviewType,
+    url: String,
+): LinkPreviewInfo {
+    val target = RichLinkPreviewUrls.githubTarget(url)?.takeIf { it.type == type }
+        ?: throw LinkPreviewException("Invalid ${type.title} URL")
+    val root = "https://api.github.com/repos/${apiPath(target.owner, target.repository)}"
+    val endpoint = when (type) {
+        LinkPreviewType.GITHUB_ISSUE -> "$root/issues/${target.identifier?.encodeURLPathPart()}"
+        LinkPreviewType.GITHUB_PULL_REQUEST -> "$root/pulls/${target.identifier?.encodeURLPathPart()}"
+        LinkPreviewType.GITHUB_FILE -> URLBuilder(
+            "$root/contents/${target.filePath.orEmpty().split('/').joinToString("/") { it.encodeURLPathPart() }}",
+        ).apply { parameters.append("ref", target.ref.orEmpty()) }.buildString()
+        LinkPreviewType.GITHUB_RELEASE -> "$root/releases/tags/${target.identifier?.encodeURLPathPart()}"
+        LinkPreviewType.GITHUB_DISCUSSION -> "$root/discussions/${target.identifier?.encodeURLPathPart()}"
+        else -> error("Unexpected GitHub preview type")
+    }
+    return RichLinkPreviewParsers.parseGitHub(type, getTextOrThrow(endpoint), target, url)
+}
+
+private suspend fun HttpClient.loadHuggingFacePreview(
+    type: LinkPreviewType,
+    url: String,
+): LinkPreviewInfo {
+    val target = RichLinkPreviewUrls.huggingFaceTarget(url)?.takeIf { it.type == type }
+        ?: throw LinkPreviewException("Invalid ${type.title} URL")
+    val endpoint = when (type) {
+        LinkPreviewType.HUGGING_FACE_DATASET ->
+            "https://huggingface.co/api/datasets/${apiPath(target.owner.orEmpty(), target.name)}"
+        LinkPreviewType.HUGGING_FACE_SPACE ->
+            "https://huggingface.co/api/spaces/${apiPath(target.owner.orEmpty(), target.name)}"
+        LinkPreviewType.HUGGING_FACE_PAPER ->
+            "https://huggingface.co/api/papers/${target.name.encodeURLPathPart()}"
+        LinkPreviewType.HUGGING_FACE_COLLECTION ->
+            "https://huggingface.co/api/collections/${apiPath(target.owner.orEmpty(), target.name)}"
+        else -> error("Unexpected Hugging Face preview type")
+    }
+    return RichLinkPreviewParsers.parseHuggingFace(type, getTextOrThrow(endpoint), target, url)
+}
+
+private suspend fun HttpClient.loadStatusPagePreview(url: String): LinkPreviewInfo {
+    val (host, incident) = RichLinkPreviewUrls.statusPageIncident(url)
+        ?: throw LinkPreviewException("Invalid Statuspage incident URL")
+    return RichLinkPreviewParsers.parseStatusPage(
+        getTextOrThrow("https://$host/api/v2/incidents/${incident.encodeURLPathPart()}.json"),
+        url,
+    )
+}
+
+private suspend fun HttpClient.loadCrossrefPreview(url: String): LinkPreviewInfo {
+    val doi = RichLinkPreviewUrls.crossrefDoi(url)
+        ?: throw LinkPreviewException("Invalid Crossref DOI URL")
+    return RichLinkPreviewParsers.parseCrossref(
+        getTextOrThrow("https://api.crossref.org/works/${doi.encodeURLPathPart()}"),
+        doi,
+        url,
+    )
+}
+
+private suspend fun HttpClient.loadUsgsPreview(url: String): LinkPreviewInfo {
+    val eventId = RichLinkPreviewUrls.usgsEventId(url)
+        ?: throw LinkPreviewException("Invalid USGS earthquake URL")
+    val endpoint = URLBuilder("https://earthquake.usgs.gov/fdsnws/event/1/query").apply {
+        parameters.append("format", "geojson")
+        parameters.append("eventid", eventId)
+    }.buildString()
+    return RichLinkPreviewParsers.parseUsgs(getTextOrThrow(endpoint), eventId, url)
+}
+
+private suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo {
+    val (host, statusId) = RichLinkPreviewUrls.mastodonStatus(url)
+        ?: throw LinkPreviewException("Invalid Mastodon post URL")
+    return RichLinkPreviewParsers.parseMastodon(
+        getTextOrThrow("https://$host/api/v1/statuses/${statusId.encodeURLPathPart()}"),
+        url,
+    )
+}
+
+private suspend fun HttpClient.loadSubstackPreview(url: String): LinkPreviewInfo {
+    val parsed = url.toNetworkUrlOrNull()
+        ?: throw LinkPreviewException("Invalid Substack article URL")
+    return RichLinkPreviewParsers.parseSubstackFeed(
+        getTextOrThrow("https://${parsed.host}/feed"),
+        url,
+    )
+}
+
+private suspend fun HttpClient.loadBlueskyPreview(url: String): LinkPreviewInfo {
+    val parsed = url.toNetworkUrlOrNull()
+        ?: throw LinkPreviewException("Invalid Bluesky post URL")
+    val segments = parsed.pathSegments.filter(String::isNotEmpty)
+    val handle = segments.getOrNull(1)
+        ?: throw LinkPreviewException("Invalid Bluesky post URL")
+    val rkey = segments.getOrNull(3)
+        ?: throw LinkPreviewException("Invalid Bluesky post URL")
+    val did = if (handle.startsWith("did:")) {
+        handle
+    } else {
+        val resolveEndpoint = URLBuilder(
+            "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle",
+        ).apply { parameters.append("handle", handle) }.buildString()
+        JsonObject(getTextOrThrow(resolveEndpoint)).optString("did")
+            .takeIf(String::isNotBlank)
+            ?: throw LinkPreviewException("Bluesky handle not found")
+    }
+    val threadEndpoint = URLBuilder(
+        "https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread",
+    ).apply {
+        parameters.append("uri", "at://$did/app.bsky.feed.post/$rkey")
+        parameters.append("depth", "0")
+    }.buildString()
+    return RichLinkPreviewParsers.parseBluesky(getTextOrThrow(threadEndpoint), url)
+}
+
+private suspend fun HttpClient.loadOEmbedPreview(
+    type: LinkPreviewType,
+    baseUrl: String,
+    url: String,
+): LinkPreviewInfo {
+    val endpoint = URLBuilder(baseUrl).apply { parameters.append("url", url) }.buildString()
+    return RichLinkPreviewParsers.parseOEmbed(type, getTextOrThrow(endpoint), url)
+}
+
+private suspend fun HttpClient.loadPackagePreview(
+    type: LinkPreviewType,
+    url: String,
+): LinkPreviewInfo {
+    val target = RichLinkPreviewUrls.packageTarget(url)?.takeIf { it.type == type }
+        ?: throw LinkPreviewException("Invalid ${type.title} URL")
+    val response = when (type) {
+        LinkPreviewType.NPM_PACKAGE ->
+            getTextOrThrow("https://registry.npmjs.org/${target.name.encodeURLPathPart()}/latest")
+        LinkPreviewType.PYPI_PACKAGE ->
+            getTextOrThrow("https://pypi.org/pypi/${target.name.encodeURLPathPart()}/json")
+        LinkPreviewType.CRATES_PACKAGE ->
+            getTextOrThrow("https://crates.io/api/v1/crates/${target.name.encodeURLPathPart()}")
+        LinkPreviewType.GO_PACKAGE -> getTextOrThrow(
+            "https://pkg.go.dev/v1beta/package/${target.name.split('/').joinToString("/") { it.encodeURLPathPart() }}",
+        )
+        LinkPreviewType.HOMEBREW_PACKAGE -> getTextOrThrow(
+            "https://formulae.brew.sh/api/${target.variant}/${target.name.encodeURLPathPart()}.json",
+        )
+        else -> error("Unexpected package preview type")
+    }
+    return RichLinkPreviewParsers.parsePackage(type, response, target, url)
+}
+
+private fun apiPath(vararg parts: String): String =
+    parts.joinToString("/") { it.encodeURLPathPart() }
+
+internal object RichLinkPreviewParsers {
+    private val numericXmlEntity = Regex("&#(x[0-9A-Fa-f]+|[0-9]+);")
+
+    fun parseGitHub(
+        type: LinkPreviewType,
+        response: String,
+        target: GitHubPreviewTarget,
+        url: String,
+    ): LinkPreviewInfo {
+        val json = JsonObject(response)
+        val user = json.optJSONObject("user") ?: json.optJSONObject("author")
+        val author = user?.nullableString("login")
+        val avatar = user?.nullableString("avatar_url")
+        val repoLabel = "${target.owner} / ${target.repository}"
+        return when (type) {
+            LinkPreviewType.GITHUB_ISSUE -> LinkPreviewInfo(
+                type,
+                json.optString("title").requiredPreviewTitle(type),
+                "$repoLabel · #${target.identifier}",
+                json.nullableString("body"),
+                avatar,
+                url,
+                details(
+                    "State" to json.nullableString("state")?.titleCase(),
+                    "Author" to author,
+                    "Comments" to json.optLong("comments").toString(),
+                    "Updated" to json.nullableString("updated_at")?.dateOnly(),
+                    displayText = mapOf(
+                        "Comments" to formatCount(json.optLong("comments"), "comment", "comments"),
+                    ),
+                ),
+            )
+            LinkPreviewType.GITHUB_PULL_REQUEST -> LinkPreviewInfo(
+                type,
+                json.optString("title").requiredPreviewTitle(type),
+                "$repoLabel · #${target.identifier}",
+                json.nullableString("body"),
+                avatar,
+                url,
+                details(
+                    "State" to when {
+                        json.optBoolean("merged") -> "Merged"
+                        json.optBoolean("draft") -> "Draft"
+                        else -> json.nullableString("state")?.titleCase()
+                    },
+                    "Author" to author,
+                    "Changes" to "+${json.optLong("additions")} / −${json.optLong("deletions")}",
+                    "Files" to json.optLong("changed_files").toString(),
+                    "Commits" to json.optLong("commits").toString(),
+                    "Updated" to json.nullableString("updated_at")?.dateOnly(),
+                ),
+            )
+            LinkPreviewType.GITHUB_FILE -> LinkPreviewInfo(
+                type,
+                json.optString("name").requiredPreviewTitle(type),
+                "$repoLabel · ${target.ref}",
+                json.nullableString("path"),
+                null,
+                url,
+                details(
+                    "Type" to json.nullableString("type")?.titleCase(),
+                    "Size" to formatBytes(json.optLong("size")),
+                    "Revision" to json.nullableString("sha")?.take(10),
+                    "Download" to json.nullableString("download_url")?.let { "Available" },
+                ),
+            )
+            LinkPreviewType.GITHUB_RELEASE -> {
+                val tag = json.optString("tag_name").requiredPreviewTitle(type)
+                val name = json.nullableString("name") ?: tag
+                LinkPreviewInfo(
+                    type,
+                    repoLabel,
+                    listOf(name, tag).distinct().joinToString(" · "),
+                    json.nullableString("body"),
+                    avatar,
+                    url,
+                    details(
+                        "Author" to author,
+                        "Published" to json.nullableString("published_at")?.dateOnly(),
+                        "Kind" to when {
+                            json.optBoolean("prerelease") -> "Pre-release"
+                            json.optBoolean("draft") -> "Draft"
+                            else -> "Release"
+                        },
+                        "Assets" to json.optJSONArray("assets")?.length()?.toString(),
+                    ),
+                )
+            }
+            LinkPreviewType.GITHUB_DISCUSSION -> LinkPreviewInfo(
+                type,
+                json.optString("title").requiredPreviewTitle(type),
+                "$repoLabel · #${target.identifier}",
+                json.nullableString("body"),
+                avatar,
+                url,
+                details(
+                    "Category" to json.optJSONObject("category")?.nullableString("name"),
+                    "Author" to author,
+                    "Comments" to json.optLong("comments").toString(),
+                    "Answered" to json.nullableString("answer_html_url")?.let { "Yes" },
+                    "Updated" to json.nullableString("updated_at")?.dateOnly(),
+                    displayText = mapOf(
+                        "Comments" to formatCount(json.optLong("comments"), "comment", "comments"),
+                    ),
+                ),
+            )
+            else -> throw LinkPreviewException("Unsupported GitHub preview response")
+        }
+    }
+
+    fun parseHuggingFace(
+        type: LinkPreviewType,
+        response: String,
+        target: HuggingFacePreviewTarget,
+        url: String,
+    ): LinkPreviewInfo {
+        val json = JsonObject(response)
+        val id = json.nullableString("id") ?: listOfNotNull(target.owner, target.name).joinToString("/")
+        return when (type) {
+            LinkPreviewType.HUGGING_FACE_DATASET -> LinkPreviewInfo(
+                type,
+                id.substringAfterLast('/'),
+                id.substringBeforeLast('/', missingDelimiterValue = target.owner.orEmpty()),
+                json.nullableString("description"),
+                null,
+                url,
+                details(
+                    "Downloads" to json.optLong("downloads").toString(),
+                    "Likes" to json.optLong("likes").toString(),
+                    "Updated" to json.nullableString("lastModified")?.dateOnly(),
+                    "Format" to tagValue(json, "format:"),
+                    "Size" to tagValue(json, "size_categories:"),
+                    "Access" to if (json.optBoolean("gated")) "Gated" else "Public",
+                ),
+            )
+            LinkPreviewType.HUGGING_FACE_SPACE -> {
+                val card = json.optJSONObject("cardData")
+                val runtime = json.optJSONObject("runtime")
+                LinkPreviewInfo(
+                    type,
+                    card?.nullableString("title") ?: id.substringAfterLast('/'),
+                    id,
+                    card?.nullableString("short_description"),
+                    null,
+                    url,
+                    details(
+                        "SDK" to (json.nullableString("sdk") ?: card?.nullableString("sdk")),
+                        "Status" to runtime?.nullableString("stage")?.titleCase(),
+                        "Hardware" to runtime?.optJSONObject("hardware")?.nullableString("current"),
+                        "Likes" to json.optLong("likes").toString(),
+                        "License" to card?.nullableString("license"),
+                        "Updated" to json.nullableString("lastModified")?.dateOnly(),
+                    ),
+                )
+            }
+            LinkPreviewType.HUGGING_FACE_PAPER -> {
+                val authors = json.optJSONArray("authors").objectStrings("name")
+                LinkPreviewInfo(
+                    type,
+                    json.optString("title").requiredPreviewTitle(type),
+                    "Paper ${json.optString("id", target.name)}",
+                    json.nullableString("summary"),
+                    null,
+                    url,
+                    details(
+                        "Authors" to authors.take(3).joinToString(", ").takeIf(String::isNotEmpty),
+                        "Upvotes" to json.optLong("upvotes").toString(),
+                        "GitHub stars" to json.optLong("githubStars").takeIf { it > 0 }?.toString(),
+                        "Published" to json.nullableString("publishedAt")?.dateOnly(),
+                    ),
+                )
+            }
+            LinkPreviewType.HUGGING_FACE_COLLECTION -> {
+                val owner = json.optJSONObject("owner")
+                LinkPreviewInfo(
+                    type,
+                    json.optString("title").requiredPreviewTitle(type),
+                    owner?.nullableString("fullname") ?: target.owner,
+                    json.nullableString("description"),
+                    owner?.nullableString("avatarUrl"),
+                    url,
+                    details(
+                        "Items" to json.optJSONArray("items")?.length()?.toString(),
+                        "Followers" to owner?.optLong("followerCount")?.toString(),
+                        "Updated" to json.nullableString("lastUpdated")?.dateOnly(),
+                    ),
+                )
+            }
+            else -> throw LinkPreviewException("Unsupported Hugging Face preview response")
+        }
+    }
+
+    fun parseStatusPage(response: String, url: String): LinkPreviewInfo {
+        val root = JsonObject(response)
+        val incident = root.optJSONObject("incident") ?: root
+        val page = root.optJSONObject("page")
+        val latest = incident.optJSONArray("incident_updates")?.optJSONObject(0)
+        return LinkPreviewInfo(
+            LinkPreviewType.STATUS_PAGE,
+            incident.optString("name").requiredPreviewTitle(LinkPreviewType.STATUS_PAGE),
+            page?.nullableString("name"),
+            latest?.nullableString("body"),
+            null,
+            url,
+            details(
+                "Status" to incident.nullableString("status")?.humanize(),
+                "Impact" to incident.nullableString("impact")?.humanize(),
+                "Started" to incident.nullableString("started_at")?.dateOnly(),
+                "Updated" to incident.nullableString("updated_at")?.dateOnly(),
+            ),
+        )
+    }
+
+    fun parseCrossref(response: String, doi: String, url: String): LinkPreviewInfo {
+        val message = JsonObject(response).getJSONObject("message")
+        val title = message.optJSONArray("title")?.optString(0).orEmpty()
+        val authors = message.optJSONArray("author")?.let { values ->
+            (0..<values.length()).mapNotNull { index ->
+                values.optJSONObject(index)?.let { author ->
+                    listOf(author.nullableString("given"), author.nullableString("family"))
+                        .filterNotNull().joinToString(" ").takeIf(String::isNotBlank)
+                }
+            }
+        }.orEmpty()
+        val published = message.optJSONObject("published")
+            ?.optJSONArray("date-parts")
+            ?.optJSONArray(0)
+            ?.let(::dateParts)
+        return LinkPreviewInfo(
+            LinkPreviewType.CROSSREF_ARTICLE,
+            title.requiredPreviewTitle(LinkPreviewType.CROSSREF_ARTICLE),
+            message.optJSONArray("container-title")?.optString(0),
+            null,
+            null,
+            url,
+            details(
+                "Authors" to authors.take(3).joinToString(", ").takeIf(String::isNotEmpty),
+                "Published" to published,
+                "Type" to message.nullableString("type")?.humanize(),
+                "Publisher" to message.nullableString("publisher"),
+                "Citations" to message.optLong("is-referenced-by-count").toString(),
+                "DOI" to doi,
+            ),
+        )
+    }
+
+    fun parseUsgs(response: String, eventId: String, url: String): LinkPreviewInfo {
+        val root = JsonObject(response)
+        val properties = root.getJSONObject("properties")
+        return LinkPreviewInfo(
+            LinkPreviewType.USGS_EARTHQUAKE,
+            properties.nullableString("title") ?: properties.optString("place").requiredPreviewTitle(
+                LinkPreviewType.USGS_EARTHQUAKE,
+            ),
+            "USGS event $eventId",
+            properties.nullableString("place"),
+            null,
+            url,
+            details(
+                "Magnitude" to properties.numberString("mag"),
+                "Depth" to root.optJSONObject("geometry")?.optJSONArray("coordinates")
+                    ?.numberString(2)?.let { "$it km" },
+                "Type" to properties.nullableString("type")?.titleCase(),
+                "Significance" to properties.optLong("sig").toString(),
+                "Tsunami" to if (properties.optInt("tsunami") == 1) "Warning" else "No warning",
+                "Status" to properties.nullableString("status")?.titleCase(),
+            ),
+        )
+    }
+
+    fun parseSubstackFeed(response: String, url: String): LinkPreviewInfo {
+        val document = Ksoup.parseXml(response)
+        val normalizedUrl = url.substringBefore('?').removeSuffix("/")
+        val channel = document.getElementsByTag("channel").firstOrNull()
+        val item = document.getElementsByTag("item").firstOrNull { candidate ->
+            val link = candidate.getElementsByTag("link").firstOrNull()?.text()
+            link?.substringBefore('?')?.removeSuffix("/") == normalizedUrl
+        } ?: throw LinkPreviewException("This Substack post is not present in the publication feed")
+        return LinkPreviewInfo(
+            LinkPreviewType.SUBSTACK_ARTICLE,
+            item.getElementsByTag("title").firstOrNull()?.text().rssText().orEmpty()
+                .requiredPreviewTitle(LinkPreviewType.SUBSTACK_ARTICLE),
+            item.getElementsByTag("dc:creator").firstOrNull()?.text().rssText()
+                ?: channel?.getElementsByTag("title")?.firstOrNull()?.text().rssText(),
+            item.getElementsByTag("description").firstOrNull()?.text().rssText(),
+            item.getElementsByTag("enclosure").firstOrNull()?.attr("url")
+                ?: channel?.getElementsByTag("image")?.firstOrNull()
+                    ?.getElementsByTag("url")?.firstOrNull()?.text(),
+            url,
+            details(
+                "Published" to item.getElementsByTag("pubDate").firstOrNull()?.text(),
+                "Publication" to channel?.getElementsByTag("title")?.firstOrNull()?.text().rssText(),
+            ),
+        )
+    }
+
+    fun parseMastodon(response: String, url: String): LinkPreviewInfo {
+        val json = JsonObject(response)
+        val account = json.getJSONObject("account")
+        val displayName = account.nullableString("display_name") ?: account.optString("username")
+        val media = json.optJSONArray("media_attachments")?.optJSONObject(0)
+        return LinkPreviewInfo(
+            LinkPreviewType.MASTODON_POST,
+            displayName.requiredPreviewTitle(LinkPreviewType.MASTODON_POST),
+            "@${account.optString("acct")}",
+            null,
+            media?.nullableString("preview_url") ?: account.nullableString("avatar"),
+            url,
+            details(
+                "Replies" to json.optLong("replies_count").toString(),
+                "Boosts" to json.optLong("reblogs_count").toString(),
+                "Favourites" to json.optLong("favourites_count").toString(),
+                "Published" to json.nullableString("created_at")?.dateOnly(),
+            ),
+        )
+    }
+
+    fun parseBluesky(response: String, url: String): LinkPreviewInfo {
+        val post = JsonObject(response).getJSONObject("thread").getJSONObject("post")
+        val author = post.getJSONObject("author")
+        val record = post.getJSONObject("record")
+        val embed = post.optJSONObject("embed")
+        val image = embed?.optJSONArray("images")?.optJSONObject(0)?.nullableString("thumb")
+            ?: embed?.optJSONObject("media")?.optJSONArray("images")
+                ?.optJSONObject(0)?.nullableString("thumb")
+        return LinkPreviewInfo(
+            LinkPreviewType.BLUESKY_POST,
+            author.nullableString("displayName") ?: author.optString("handle"),
+            "@${author.optString("handle")}",
+            record.nullableString("text"),
+            image ?: author.nullableString("avatar"),
+            url,
+            details(
+                "Replies" to post.optLong("replyCount").toString(),
+                "Reposts" to post.optLong("repostCount").toString(),
+                "Likes" to post.optLong("likeCount").toString(),
+                "Quotes" to post.optLong("quoteCount").toString(),
+                "Published" to record.nullableString("createdAt")?.dateOnly(),
+            ),
+        )
+    }
+
+    fun parseOEmbed(type: LinkPreviewType, response: String, url: String): LinkPreviewInfo {
+        val json = JsonObject(response)
+        val author = json.nullableString("author_name")
+        return LinkPreviewInfo(
+            type,
+            when (type) {
+                LinkPreviewType.REDDIT_POST -> json.nullableString("title") ?: "Reddit post"
+                else -> author ?: type.title
+            },
+            when (type) {
+                LinkPreviewType.BLUESKY_POST -> "Bluesky"
+                LinkPreviewType.REDDIT_POST -> author?.let { "$it · Reddit" } ?: "Reddit"
+                else -> json.nullableString("provider_name")
+            },
+            null,
+            null,
+            url,
+            details(
+                "Provider" to json.nullableString("provider_name"),
+                "Author" to author,
+            ),
+        )
+    }
+
+    fun parsePackage(
+        type: LinkPreviewType,
+        response: String,
+        target: PackagePreviewTarget,
+        url: String,
+    ): LinkPreviewInfo = when (type) {
+        LinkPreviewType.NPM_PACKAGE -> {
+            val json = JsonObject(response)
+            val author = json.optJSONObject("author")?.nullableString("name")
+                ?: json.nullableString("author")
+            LinkPreviewInfo(
+                type,
+                json.optString("name", target.name),
+                "npm · ${json.optString("version")}",
+                json.nullableString("description"),
+                null,
+                url,
+                details(
+                    "Version" to json.nullableString("version"),
+                    "License" to json.nullableString("license"),
+                    "Author" to author,
+                    "Dependencies" to json.optJSONObject("dependencies")?.length()?.toString(),
+                    "Node" to json.optJSONObject("engines")?.nullableString("node"),
+                ),
+            )
+        }
+        LinkPreviewType.PYPI_PACKAGE -> {
+            val info = JsonObject(response).getJSONObject("info")
+            LinkPreviewInfo(
+                type,
+                info.optString("name", target.name),
+                "PyPI · ${info.optString("version")}",
+                info.nullableString("summary"),
+                null,
+                url,
+                details(
+                    "Version" to info.nullableString("version"),
+                    "License" to (
+                        info.nullableString("license_expression")
+                            ?: info.nullableString("license")?.take(48)
+                    ),
+                    "Author" to info.nullableString("author"),
+                    "Python" to info.nullableString("requires_python"),
+                    "Project URL" to info.nullableString("project_url"),
+                ),
+            )
+        }
+        LinkPreviewType.CRATES_PACKAGE -> {
+            val crate = JsonObject(response).getJSONObject("crate")
+            LinkPreviewInfo(
+                type,
+                crate.optString("name", target.name),
+                "crates.io · ${crate.optString("newest_version")}",
+                crate.nullableString("description"),
+                null,
+                url,
+                details(
+                    "Version" to crate.nullableString("newest_version"),
+                    "Downloads" to crate.optLong("downloads").toString(),
+                    "Recent downloads" to crate.optLong("recent_downloads").toString(),
+                    "Updated" to crate.nullableString("updated_at")?.dateOnly(),
+                    "Repository" to crate.nullableString("repository")?.shortHost(),
+                ),
+            )
+        }
+        LinkPreviewType.GO_PACKAGE -> {
+            val json = JsonObject(response)
+            LinkPreviewInfo(
+                type,
+                json.optString("name").requiredPreviewTitle(type),
+                json.optString("path", target.name),
+                json.nullableString("synopsis"),
+                null,
+                url,
+                details(
+                    "Version" to json.nullableString("version"),
+                    "Module" to json.nullableString("modulePath"),
+                    "Latest" to if (json.optBoolean("isLatest")) "Yes" else "No",
+                    "Standard library" to if (json.optBoolean("isStandardLibrary")) "Yes" else "No",
+                    "Redistributable" to if (json.optBoolean("isRedistributable")) "Yes" else "No",
+                ),
+            )
+        }
+        LinkPreviewType.HOMEBREW_PACKAGE -> {
+            val json = JsonObject(response)
+            val versions = json.optJSONObject("versions")
+            val analytics = json.optJSONObject("analytics")
+                ?.optJSONObject("install")?.optJSONObject("30d")
+            val name = json.optString("name", target.name)
+            LinkPreviewInfo(
+                type,
+                name,
+                if (target.variant == "cask") "Homebrew cask" else "Homebrew formula",
+                json.nullableString("desc"),
+                null,
+                url,
+                details(
+                    "Version" to (versions?.nullableString("stable") ?: json.nullableString("version")),
+                    "License" to json.nullableString("license"),
+                    "Installs (30d)" to analytics?.optLong(name)?.toString(),
+                    "Dependencies" to json.optJSONArray("dependencies")?.length()?.toString(),
+                    "Homepage" to json.nullableString("homepage")?.shortHost(),
+                ),
+            )
+        }
+        else -> throw LinkPreviewException("Unsupported package response")
+    }
+
+    private fun tagValue(json: JsonObject, prefix: String): String? = json.optJSONArray("tags")
+        ?.let { tags ->
+            (0..<tags.length()).map(tags::optString).firstOrNull { it.startsWith(prefix) }
+        }
+        ?.removePrefix(prefix)
+
+    private fun dateParts(parts: JsonArray): String? {
+        val year = parts.optInt(0).takeIf { it > 0 } ?: return null
+        val month = parts.optInt(1).takeIf { it > 0 }
+        val day = parts.optInt(2).takeIf { it > 0 }
+        return listOfNotNull(year.toString(), month?.toString()?.padStart(2, '0'), day?.toString()?.padStart(2, '0'))
+            .joinToString("-")
+    }
+
+    private fun details(
+        vararg values: Pair<String, String?>,
+        displayText: Map<String, String> = emptyMap(),
+    ): List<LinkPreviewDetail> = values
+        .mapNotNull { (label, value) ->
+            value?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
+                LinkPreviewDetail(label, it, displayText[label])
+            }
+        }
+
+    private fun formatCount(count: Long, singular: String, plural: String): String =
+        "$count ${if (count == 1L) singular else plural}"
+
+    private fun formatBytes(bytes: Long): String? = when {
+        bytes <= 0 -> null
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        else -> "${bytes / (1024 * 1024)} MB"
+    }
+
+    private fun String.requiredPreviewTitle(type: LinkPreviewType): String =
+        takeIf(String::isNotBlank) ?: throw LinkPreviewException("${type.title} data not found")
+
+    private fun String.dateOnly(): String = take(10)
+    private fun String.titleCase(): String = humanize().replaceFirstChar(Char::uppercase)
+    private fun String.humanize(): String = replace('_', ' ')
+    private fun String.shortHost(): String? = toNetworkUrlOrNull()?.host?.removePrefix("www.")
+
+    private fun String?.rssText(): String? = this
+        ?.let { value ->
+            numericXmlEntity.replace(value) { match ->
+                val encoded = match.groupValues[1]
+                val codePoint = if (encoded.startsWith('x')) {
+                    encoded.drop(1).toIntOrNull(16)
+                } else {
+                    encoded.toIntOrNull()
+                }
+                codePoint?.unicodeString() ?: match.value
+            }
+        }
+        ?.replace("&quot;", "\"")
+        ?.replace("&apos;", "'")
+        ?.replace("&lt;", "<")
+        ?.replace("&gt;", ">")
+        ?.replace("&amp;", "&")
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+
+    private fun Int.unicodeString(): String? = when (this) {
+        in 0..0xFFFF -> toChar().toString()
+        in 0x10000..0x10FFFF -> {
+            val shifted = this - 0x10000
+            charArrayOf(
+                (0xD800 + shifted / 0x400).toChar(),
+                (0xDC00 + shifted % 0x400).toChar(),
+            ).concatToString()
+        }
+        else -> null
+    }
+
+    private fun JsonObject.nullableString(key: String): String? =
+        (opt(key) as? String)?.takeUnless(String::isBlank)
+
+    private fun JsonObject.numberString(key: String): String? = numberString(opt(key))
+    private fun JsonArray.numberString(index: Int): String? = numberString(get(index))
+
+    private fun numberString(value: Any?): String? = when (value) {
+        is Long -> value.toString()
+        is Int -> value.toString()
+        is Double -> if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+        is Float -> if (value % 1f == 0f) value.toLong().toString() else value.toString()
+        else -> null
+    }
+
+    private fun JsonArray?.objectStrings(key: String): List<String> = this?.let { values ->
+        (0..<values.length()).mapNotNull { values.optJSONObject(it)?.nullableString(key) }
+    }.orEmpty()
+}

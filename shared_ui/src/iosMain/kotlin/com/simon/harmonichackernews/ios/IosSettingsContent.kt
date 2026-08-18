@@ -24,6 +24,7 @@ import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.quanta
@@ -64,6 +65,8 @@ import com.simon.harmonichackernews.ui.settings.SharedFiltersTagsSettingsRoute
 import com.simon.harmonichackernews.ui.settings.SharedFontSelectionRoute
 import com.simon.harmonichackernews.ui.settings.SharedNighttimeRangeDialog
 import com.simon.harmonichackernews.ui.settings.SharedPaletteTintDialog
+import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsSettingsDialog
+import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsDebugScreen
 import com.simon.harmonichackernews.ui.settings.SharedStoriesSettingsRoute
 import com.simon.harmonichackernews.ui.settings.SharedThemeSelectionDialog
 import com.simon.harmonichackernews.ui.settings.SharedThreadDepthIndicatorsDialog
@@ -116,7 +119,17 @@ internal fun IosSettingsDetail(
         )
         SettingsSection.AiSummary -> IosAiSettings(app, scene, singlePane, onBack)
         SettingsSection.Data -> IosDataSettings(app, scene, singlePane, onBack)
-        SettingsSection.Debug -> IosDebugSettings(app, scene, singlePane, onBack)
+        SettingsSection.Debug -> IosDebugSettings(
+            app,
+            scene,
+            singlePane,
+            onBack,
+        ) { onNavigate(SettingsSection.DebugLinkPreviews, true) }
+        SettingsSection.DebugLinkPreviews -> IosLinkPreviewsDebugScreen(
+            app,
+            scene,
+            onBack,
+        )
         SettingsSection.About -> SharedAboutScreen(
             versionLabel = app.metadata.versionLabel,
             appIcon = painterResource(Res.drawable.quanta),
@@ -160,7 +173,12 @@ private fun IosWebLinksSettings(
         },
         onReaderFontSizeChanged = presenter::setReaderFontSize,
         onDialogRequested = { requested ->
-            if (requested == WebLinksSettingsDialog.ArchiveDomains) dialog = requested
+            if (
+                requested == WebLinksSettingsDialog.ArchiveDomains ||
+                requested == WebLinksSettingsDialog.LinkPreviews
+            ) {
+                dialog = requested
+            }
         },
         contentVersion = settings.hashCode(),
     )
@@ -177,6 +195,13 @@ private fun IosWebLinksSettings(
             parseInput = ArchiveRedirectPolicy::parseDomains,
             emptyInputError = "Enter a domain",
             onItemsChanged = presenter::setArchiveDomains,
+            onDismiss = { dialog = null },
+        )
+    }
+    if (dialog == WebLinksSettingsDialog.LinkPreviews) {
+        SharedLinkPreviewsSettingsDialog(
+            enabledTypes = reading.enabledLinkPreviews,
+            onEnabledChanged = presenter::setLinkPreview,
             onDismiss = { dialog = null },
         )
     }
@@ -512,6 +537,7 @@ private fun IosDebugSettings(
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onOpenLinkPreviews: () -> Unit,
 ) {
     SharedDebugSettingsRoute(
         repository = app.settings,
@@ -536,6 +562,7 @@ private fun IosDebugSettings(
             }
         },
         onOpenLink = { scene.links.open(it) },
+        onOpenLinkPreviews = onOpenLinkPreviews,
         onEasterEggRequested = scene.navigation::openCoulombGas,
         dialogContent = { dialog, dismiss ->
             when (dialog) {
@@ -551,6 +578,23 @@ private fun IosDebugSettings(
                 )
             }
         },
+    )
+}
+
+@Composable
+private fun IosLinkPreviewsDebugScreen(
+    app: HarmonicAppComposition,
+    scene: HarmonicSceneComposition,
+    onBack: () -> Unit,
+) {
+    val useCase = remember(app.network.linkPreviewRepository) {
+        LinkPreviewUseCase(app.network.linkPreviewRepository)
+    }
+    SharedLinkPreviewsDebugScreen(
+        comments = app.userSettings.comments,
+        loadPreview = useCase::load,
+        onOpenLink = scene.links::open,
+        onBack = onBack,
     )
 }
 

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.resources.ic_block
@@ -8,14 +9,7 @@ import com.simon.harmonichackernews.resources.ic_cached
 import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_invert_colors
-import com.simon.harmonichackernews.resources.ic_link_preview_arxiv
-import com.simon.harmonichackernews.resources.ic_link_preview_github
-import com.simon.harmonichackernews.resources.ic_link_preview_gitlab
-import com.simon.harmonichackernews.resources.ic_link_preview_hugging_face_mono
-import com.simon.harmonichackernews.resources.ic_link_preview_openrouter
-import com.simon.harmonichackernews.resources.ic_link_preview_stack_exchange
-import com.simon.harmonichackernews.resources.ic_link_preview_wikipedia
-import com.simon.harmonichackernews.resources.ic_link_preview_x
+import com.simon.harmonichackernews.resources.ic_link
 import com.simon.harmonichackernews.resources.ic_open_in_browser
 import com.simon.harmonichackernews.resources.ic_shuffle
 import com.simon.harmonichackernews.resources.ic_web_asset
@@ -38,14 +32,7 @@ data class WebLinksSettingsUiState(
     val externalBrowser: Boolean,
     val redirectNitter: Boolean,
     val archiveDomainCount: Int,
-    val previewArxiv: Boolean,
-    val previewGithub: Boolean,
-    val previewGitlab: Boolean,
-    val previewHuggingFace: Boolean,
-    val previewOpenRouter: Boolean,
-    val previewStackExchange: Boolean,
-    val previewWikipedia: Boolean,
-    val previewX: Boolean,
+    val enabledLinkPreviews: Set<LinkPreviewType>,
 )
 
 enum class WebLinksBooleanSetting {
@@ -57,17 +44,9 @@ enum class WebLinksBooleanSetting {
     ReaderModeDefault,
     ExternalBrowser,
     RedirectNitter,
-    PreviewArxiv,
-    PreviewGithub,
-    PreviewGitlab,
-    PreviewHuggingFace,
-    PreviewOpenRouter,
-    PreviewStackExchange,
-    PreviewWikipedia,
-    PreviewX,
 }
 
-enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains }
+enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews }
 
 @Composable
 fun SharedWebLinksSettingsScreen(
@@ -216,45 +195,12 @@ fun SharedWebLinksSettingsScreen(
                     icon = Res.drawable.ic_shuffle,
                     onClick = { onDialogRequested(WebLinksSettingsDialog.ArchiveDomains) },
                 )
-            }
-        }
-        item {
-            SettingsCategory("Link previews") {
-                LinkPreviewSwitch("ArXiV", Res.drawable.ic_link_preview_arxiv, state.previewArxiv, WebLinksBooleanSetting.PreviewArxiv, onBooleanChanged)
                 SettingsDivider()
-                LinkPreviewSwitch("GitHub", Res.drawable.ic_link_preview_github, state.previewGithub, WebLinksBooleanSetting.PreviewGithub, onBooleanChanged)
-                SettingsDivider()
-                LinkPreviewSwitch("GitLab", Res.drawable.ic_link_preview_gitlab, state.previewGitlab, WebLinksBooleanSetting.PreviewGitlab, onBooleanChanged)
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "Hugging Face",
-                    icon = Res.drawable.ic_link_preview_hugging_face_mono,
-                    checked = state.previewHuggingFace,
-                    setting = WebLinksBooleanSetting.PreviewHuggingFace,
-                    onBooleanChanged = onBooleanChanged,
-                )
-                SettingsDivider()
-                LinkPreviewSwitch(
-                    title = "OpenRouter",
-                    icon = Res.drawable.ic_link_preview_openrouter,
-                    checked = state.previewOpenRouter,
-                    setting = WebLinksBooleanSetting.PreviewOpenRouter,
-                    onBooleanChanged = onBooleanChanged,
-                )
-                SettingsDivider()
-                LinkPreviewSwitch("Stack Exchange", Res.drawable.ic_link_preview_stack_exchange, state.previewStackExchange, WebLinksBooleanSetting.PreviewStackExchange, onBooleanChanged)
-                SettingsDivider()
-                LinkPreviewSwitch("Wikipedia", Res.drawable.ic_link_preview_wikipedia, state.previewWikipedia, WebLinksBooleanSetting.PreviewWikipedia, onBooleanChanged)
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Twitter/X (unstable)",
-                    summary = "Enables Nitter redirect automatically",
-                    icon = Res.drawable.ic_link_preview_x,
-                    checked = state.previewX,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.PreviewX, it)
-                        if (it) onBooleanChanged(WebLinksBooleanSetting.RedirectNitter, true)
-                    },
+                SettingRow(
+                    title = "Link previews",
+                    summary = "${state.enabledLinkPreviews.size} of ${LinkPreviewType.entries.size} enabled",
+                    icon = Res.drawable.ic_link,
+                    onClick = { onDialogRequested(WebLinksSettingsDialog.LinkPreviews) },
                 )
             }
         }
@@ -278,12 +224,3 @@ private fun BooleanSettingRow(
         onCheckedChange = { onBooleanChanged(setting, it) },
     )
 }
-
-@Composable
-private fun LinkPreviewSwitch(
-    title: String,
-    icon: DrawableResource,
-    checked: Boolean,
-    setting: WebLinksBooleanSetting,
-    onBooleanChanged: (WebLinksBooleanSetting, Boolean) -> Unit,
-) = BooleanSettingRow(title, icon, checked, setting, onBooleanChanged)

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -116,14 +117,7 @@ data class ReadingPreferences(
     val externalBrowser: Boolean,
     val redirectNitter: Boolean,
     val archiveRedirectDomains: List<String>,
-    val previewArxiv: Boolean,
-    val previewGithub: Boolean,
-    val previewGitlab: Boolean,
-    val previewHuggingFace: Boolean,
-    val previewOpenRouter: Boolean,
-    val previewStackExchange: Boolean,
-    val previewWikipedia: Boolean,
-    val previewX: Boolean,
+    val enabledLinkPreviews: Set<LinkPreviewType>,
 ) {
     val preloadMode: WebViewPreloadMode
         get() = WebViewPreloadMode.fromStored(preloadWebViewMode)
