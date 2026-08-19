@@ -14,7 +14,7 @@ internal object AndroidHackerNewsAccountStorage {
 
     fun load(context: Context): HackerNewsAccount? = synchronized(this) {
         val encrypted = encryptedPreferences(context) ?: return null
-        val username = globalPreferences(context).getString(USERNAME_KEY, null)
+        val username = globalPreferences(context).getString(USERNAME_KEY, null)?.trim()
         val password = encrypted.getString(PASSWORD_KEY, null)
         if (username.isNullOrBlank() || password.isNullOrEmpty()) return null
         HackerNewsAccount(username, password)
@@ -26,7 +26,7 @@ internal object AndroidHackerNewsAccountStorage {
         val global = globalPreferences(context)
         val previousPassword = encrypted.getString(PASSWORD_KEY, null)
         if (!encrypted.edit().putString(PASSWORD_KEY, account.password).commit()) return false
-        if (global.edit().putString(USERNAME_KEY, account.username).commit()) return true
+        if (global.edit().putString(USERNAME_KEY, account.username.trim()).commit()) return true
 
         // Never leave a username/password half-write visible to the shared repository.
         encrypted.edit().putString(PASSWORD_KEY, previousPassword).commit()

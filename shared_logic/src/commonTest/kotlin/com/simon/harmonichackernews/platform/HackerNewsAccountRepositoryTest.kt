@@ -21,6 +21,30 @@ class HackerNewsAccountRepositoryTest {
     }
 
     @Test
+    fun trimsUsernameWithoutChangingPassword() {
+        val credentials = MemoryCredentialStore()
+        val repository = CredentialBackedHackerNewsAccountRepository(credentials)
+
+        assertTrue(repository.save(HackerNewsAccount("  alice  ", " secret ")))
+        assertEquals("alice", credentials.read(CredentialIds.HACKER_NEWS_USERNAME))
+        assertEquals(" secret ", credentials.read(CredentialIds.HACKER_NEWS_PASSWORD))
+        assertEquals(HackerNewsAccount("alice", " secret "), repository.load())
+    }
+
+    @Test
+    fun trimsUsernameAlreadyStoredByLegacyImplementation() {
+        val credentials = MemoryCredentialStore(
+            initialValues = mapOf(
+                CredentialIds.HACKER_NEWS_USERNAME to "alice ",
+                CredentialIds.HACKER_NEWS_PASSWORD to "secret",
+            ),
+        )
+        val repository = CredentialBackedHackerNewsAccountRepository(credentials)
+
+        assertEquals(HackerNewsAccount("alice", "secret"), repository.load())
+    }
+
+    @Test
     fun failedPartialSaveClearsBothCredentialFields() {
         val credentials = MemoryCredentialStore(failingWriteId = CredentialIds.HACKER_NEWS_PASSWORD)
         val repository = CredentialBackedHackerNewsAccountRepository(credentials)
@@ -52,8 +76,9 @@ class HackerNewsAccountRepositoryTest {
 
     private class MemoryCredentialStore(
         private val failingWriteId: String? = null,
+        initialValues: Map<String, String> = emptyMap(),
     ) : CredentialStore {
-        private val values = mutableMapOf<String, String>()
+        private val values = initialValues.toMutableMap()
 
         override fun read(id: String): String? = values[id]
 
