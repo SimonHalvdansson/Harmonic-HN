@@ -215,8 +215,16 @@ class KtorAiModelCatalogRepository(
 object AiModelCatalogSelection {
     fun cheapestModel(models: List<AiModel>, createdAfter: Long): AiModel? =
         models.asSequence()
-            .filter { it.created >= createdAfter && it.hasPrices() }
-            .minWithOrNull(compareBy<AiModel>(AiModel::totalTokenPrice).thenByDescending(AiModel::created))
+            .filter {
+                it.created >= createdAfter && it.hasPrices() &&
+                    !it.openRouterId.endsWith("-batch", ignoreCase = true) &&
+                    !it.openRouterId.endsWith("-pro", ignoreCase = true)
+            }
+            .minWithOrNull(
+                compareBy<AiModel>(AiModel::totalTokenPrice)
+                    .thenByDescending(AiModel::created)
+                    .thenBy { it.name.length },
+            )
 }
 
 class AiModelCatalogException(message: String, cause: Throwable? = null) :

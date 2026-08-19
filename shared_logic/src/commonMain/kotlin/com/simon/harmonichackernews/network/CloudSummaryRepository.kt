@@ -202,39 +202,20 @@ class KtorCloudSummaryRepository(
         onProgress: suspend (String) -> Unit,
     ): Boolean {
         if (data == "[DONE]") return true
-        val event = parseObject(data, "Invalid streaming response")
+        val event = parseCloudSummaryObject(data, "Invalid streaming response")
         if (event.string("type") == "error" || "error" in event) {
             throw CloudSummaryException(apiErrorMessage(data, "Streaming request failed"))
         }
-        val chunk = if (anthropic) {
-            event.objectValue("delta")?.string("text").orEmpty()
-        } else {
-            event.arrayValue("choices")
-                ?.firstOrNull()
-                ?.asObject()
-                ?.objectValue("delta")
-                ?.string("content")
-                .orEmpty()
-        }
+        val chunk = parseCloudSummaryStreamChunk(event, anthropic)
         appendChunk(summary, chunk, onProgress)
         return false
     }
 
-    private fun parseNonStreamingResponse(responseBody: String, anthropic: Boolean): String {
-        val response = parseObject(responseBody, "Invalid API response")
-        if (anthropic) {
-            return response.arrayValue("content")
-                .orEmpty()
-                .mapNotNull { it.asObject()?.string("text")?.takeIf(String::isNotEmpty) }
-                .joinToString("\n")
-        }
-        return response.arrayValue("choices")
-            ?.firstOrNull()
-            ?.asObject()
-            ?.objectValue("message")
-            ?.string("content")
-            .orEmpty()
-    }
+    private fun parseNonStreamingResponse(responseBody: String, anthropic: Boolean): String =
+        parseCloudSummaryResponseText(
+            parseCloudSummaryObject(responseBody, "Invalid API response"),
+            anthropic,
+        )
 
     private suspend fun appendChunk(
         summary: StringBuilder,
@@ -290,15 +271,45 @@ class KtorCloudSummaryRepository(
         }.getOrDefault(fallback)
     }
 
-    private fun parseObject(value: String, errorMessage: String): JsonObject = runCatching {
-        jsonParser.parseToJsonElement(value).jsonObject
-    }.getOrElse { throw CloudSummaryException(errorMessage, it) }
-
     private companion object {
         const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000
-        val jsonParser = Json { ignoreUnknownKeys = true }
     }
 }
+
+/** Extracts a provider response chunk, treating an explicit JSON null as no content. */
+internal fun parseCloudSummaryStreamChunk(event: JsonObject, anthropic: Boolean): String =
+    if (anthropic) {
+        event.objectValue("delta")?.string("text").orEmpty()
+    } else {
+        event.arrayValue("choices")
+            ?.firstOrNull()
+            ?.asObject()
+            ?.objectValue("delta")
+            ?.string("content")
+            .orEmpty()
+    }
+
+/** Extracts a complete provider response, treating an explicit JSON null as no content. */
+internal fun parseCloudSummaryResponseText(response: JsonObject, anthropic: Boolean): String =
+    if (anthropic) {
+        response.arrayValue("content")
+            .orEmpty()
+            .mapNotNull { it.asObject()?.string("text")?.takeIf(String::isNotEmpty) }
+            .joinToString("\n")
+    } else {
+        response.arrayValue("choices")
+            ?.firstOrNull()
+            ?.asObject()
+            ?.objectValue("message")
+            ?.string("content")
+            .orEmpty()
+    }
+
+private fun parseCloudSummaryObject(value: String, errorMessage: String): JsonObject = runCatching {
+    jsonParser.parseToJsonElement(value).jsonObject
+}.getOrElse { throw CloudSummaryException(errorMessage, it) }
+
+private val jsonParser = Json { ignoreUnknownKeys = true }
 
 object CloudSummaryDefaults {
     const val SYSTEM_PROMPT =
