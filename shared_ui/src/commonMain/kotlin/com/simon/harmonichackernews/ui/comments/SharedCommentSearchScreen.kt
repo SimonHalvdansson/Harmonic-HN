@@ -55,7 +55,10 @@ fun SharedCommentSearchScreen(
     Column(Modifier.fillMaxWidth()) {
         Text(
             text = "(${visibleComments.size} $matchLabel)",
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 16.dp, bottom = 2.dp),
             color = mutedColor,
             fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
