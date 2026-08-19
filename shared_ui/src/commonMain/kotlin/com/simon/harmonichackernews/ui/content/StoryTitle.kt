@@ -7,6 +7,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
@@ -66,7 +67,23 @@ fun StoryTitleText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
 ) {
-    val inlineContent = badge?.let { titleBadge ->
+    if (badge == null) {
+        androidx.compose.material3.Text(
+            text = text,
+            modifier = modifier,
+            color = color,
+            fontFamily = fontFamily,
+            fontWeight = fontWeight,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            style = style,
+            maxLines = maxLines,
+            overflow = overflow,
+        )
+        return
+    }
+
+    val inlineContent = remember(badge, color) {
         mapOf(
             StoryTitleBadgeInlineId to InlineTextContent(
                 placeholder = Placeholder(
@@ -76,18 +93,18 @@ fun StoryTitleText(
                 ),
                 children = {
                     Icon(
-                        painter = painterResource(titleBadge.icon),
-                        contentDescription = titleBadge.contentDescription,
+                        painter = painterResource(badge.icon),
+                        contentDescription = badge.contentDescription,
                         modifier = Modifier.fillMaxSize(),
                         tint = color,
                     )
                 },
             ),
         )
-    }.orEmpty()
-    val annotatedText = buildAnnotatedString {
-        append(text)
-        if (badge != null) {
+    }
+    val annotatedText = remember(text, badge) {
+        buildAnnotatedString {
+            append(text)
             append(' ')
             appendInlineContent(StoryTitleBadgeInlineId)
         }
