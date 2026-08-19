@@ -773,7 +773,7 @@ private fun WikipediaPreview(story: StoryListItemSnapshot) {
 @Composable
 private fun RichLinkPreview(story: StoryListItemSnapshot) {
     val info = story.linkPreviewInfo ?: return
-    val indexedDetails = info.details.withIndex()
+    val details = remember(info.details) { splitRichPreviewDetails(info.details) }
     Column {
         PreviewHeader(
             text = info.title,
@@ -793,12 +793,12 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
         )
         PreviewInfoColumns(
             left = {
-                indexedDetails.filter { it.index % 2 == 0 }.forEach { (_, detail) ->
+                details.left.forEach { detail ->
                     RichPreviewDetail(detail)
                 }
             },
             right = {
-                indexedDetails.filter { it.index % 2 == 1 }.forEach { (_, detail) ->
+                details.right.forEach { detail ->
                     RichPreviewDetail(detail)
                 }
             },
