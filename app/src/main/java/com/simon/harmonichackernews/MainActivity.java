@@ -1,11 +1,13 @@
 package com.simon.harmonichackernews;
 
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -23,29 +25,33 @@ import com.simon.harmonichackernews.data.Story;
 import com.simon.harmonichackernews.databinding.ActivityMainBinding;
 import com.simon.harmonichackernews.databinding.ActivityMainFoldableBinding;
 import com.simon.harmonichackernews.utils.Changelog;
-import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 public class MainActivity extends BaseActivity implements StoriesFragment.StoryClickListener {
 
+    /**
+     * The window width from which foldables show the stories and comments panes side by side,
+     * matching the threshold the activity embedding split rules previously used.
+     */
+    private static final int FOLDABLE_TWO_PANE_MIN_WIDTH_DP = 700;
+    private static final String STATE_COMPACT_PANE_SHOWS_COMMENTS = "compact_pane_shows_comments";
+
     public static ArrayList<CommentsScrollProgress> commentsScrollProgresses = new ArrayList<>();
-    private static final Set<SearchBackStateListener> searchBackStateListeners =
-            Collections.newSetFromMap(new WeakHashMap<>());
     private static WeakReference<MainActivity> currentMainActivity = new WeakReference<>(null);
 
     int lastPosition = 0;
     public OnBackPressedCallback backPressedCallback;
-    private boolean searchBackEnabled = false;
     private View mainFragmentsContainer;
     private View mainFragmentStoriesContainer;
+    private View mainFragmentCommentsContainer;
+    /** Whether the comments pane is the one showing when only one pane fits (folded foldable). */
+    private boolean compactPaneShowsComments = false;
+    private OnBackPressedCallback compactCommentsBackCallback;
 
     public int bottom = 0;
 
@@ -56,19 +62,38 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
 
         ThemeUtils.setupTheme(this);
 
-        if (shouldUseFoldableActivityEmbedding()) {
+        if (Utils.isFoldableDevice(this)) {
             ActivityMainFoldableBinding binding = ActivityMainFoldableBinding.inflate(getLayoutInflater());
             setContentView(binding.getRoot());
             mainFragmentsContainer = binding.mainFragmentsContainer;
             mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            mainFragmentCommentsContainer = binding.mainFragmentCommentsContainer;
         } else {
             ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
             setContentView(binding.getRoot());
             mainFragmentsContainer = binding.mainFragmentsContainer;
             mainFragmentStoriesContainer = binding.mainFragmentStoriesContainer;
+            mainFragmentCommentsContainer = binding.mainFragmentCommentsContainer;
         }
 
-        updateFragmentLayout();
+        if (savedInstanceState != null) {
+            compactPaneShowsComments =
+                    savedInstanceState.getBoolean(STATE_COMPACT_PANE_SHOWS_COMMENTS, false);
+        }
+
+        // Closes the comments pane when only one pane fits. Registered before the fragments and
+        // the search callback below so that back handling inside them takes precedence.
+        compactCommentsBackCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                compactPaneShowsComments = false;
+                updatePaneLayout();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, compactCommentsBackCallback);
+
+        updatePaneLayout();
+        setupSplitDividerHandle();
         removeUnavailableCommentsPaneFragment();
 
         boolean shouldShowWelcomeDialog = Utils.shouldShowWelcomeDialog(this);
@@ -106,59 +131,21 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(STATE_COMPACT_PANE_SHOWS_COMMENTS, compactPaneShowsComments);
+    }
+
+    @Override
     protected void onDestroy() {
         if (getCurrentMainActivity() == this) {
             currentMainActivity.clear();
-            searchBackEnabled = false;
-            notifySearchBackStateListeners(false);
         }
         super.onDestroy();
     }
 
     public void setSearchBackEnabled(boolean enabled) {
-        searchBackEnabled = enabled;
         backPressedCallback.setEnabled(enabled);
-        notifySearchBackStateListeners(enabled);
-    }
-
-    public static boolean isSearchBackActive() {
-        MainActivity activity = getCurrentMainActivity();
-        return activity != null && activity.searchBackEnabled;
-    }
-
-    public static void addSearchBackStateListener(SearchBackStateListener listener) {
-        searchBackStateListeners.add(listener);
-        listener.onSearchBackStateChanged(isSearchBackActive());
-    }
-
-    public static void removeSearchBackStateListener(SearchBackStateListener listener) {
-        searchBackStateListeners.remove(listener);
-    }
-
-    public static void startActiveSearchBackProgress(float progress) {
-        MainActivity activity = getCurrentMainActivity();
-        if (activity != null) {
-            activity.startSearchBackProgress(progress);
-        }
-    }
-
-    public static void updateActiveSearchBackProgress(float progress) {
-        MainActivity activity = getCurrentMainActivity();
-        if (activity != null) {
-            activity.updateSearchBackProgress(progress);
-        }
-    }
-
-    public static void cancelActiveSearchBackProgress() {
-        MainActivity activity = getCurrentMainActivity();
-        if (activity != null) {
-            activity.cancelSearchBackProgress();
-        }
-    }
-
-    public static boolean finishActiveSearchBackProgress() {
-        MainActivity activity = getCurrentMainActivity();
-        return activity != null && activity.finishSearchBackProgress();
     }
 
     public static void applyWelcomePresetToActiveUi() {
@@ -214,20 +201,11 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         return (StoriesFragment) getSupportFragmentManager().findFragmentById(R.id.main_fragment_stories_container);
     }
 
-    private static void notifySearchBackStateListeners(boolean enabled) {
-        for (SearchBackStateListener listener : searchBackStateListeners) {
-            listener.onSearchBackStateChanged(enabled);
-        }
-    }
-
-    public interface SearchBackStateListener {
-        void onSearchBackStateChanged(boolean enabled);
-    }
-
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        updateFragmentLayout();
+        // Folding or unfolding the device lands here; the window width decides the pane layout
+        updatePaneLayout();
     }
 
     @Override
@@ -242,10 +220,6 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         bundle.putInt(CommentsFragment.EXTRA_FORWARD, pos - lastPosition);
         bundle.putBoolean(CommentsFragment.EXTRA_SHOW_WEBSITE, showWebsite);
 
-        if (shouldUseFoldableActivityEmbedding()) {
-            bundle.putBoolean(CommentsActivity.PREVENT_BACK, true);
-        }
-
         lastPosition = pos;
 
         if (shouldOpenCommentsInMainPane()) {
@@ -254,6 +228,9 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
             transaction.replace(R.id.main_fragment_comments_container, fragment);
             transaction.commit();
+
+            compactPaneShowsComments = true;
+            updatePaneLayout();
         } else {
             Intent intent = new Intent(MainActivity.this, CommentsActivity.class);
             intent.putExtras(bundle);
@@ -266,18 +243,20 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private boolean switchOpenStoryViewIfMatching(Story story, boolean showWebsite) {
-        if (story == null) {
+        if (story == null || !shouldOpenCommentsInMainPane()) {
             return false;
         }
-        if (shouldOpenCommentsInMainPane()) {
-            CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
-                    .findFragmentById(R.id.main_fragment_comments_container);
-            return fragment != null
-                    && fragment.switchStoryViewIfMatching(story.id, showWebsite);
+
+        CommentsFragment fragment = (CommentsFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.main_fragment_comments_container);
+        if (fragment == null || !fragment.switchStoryViewIfMatching(story.id, showWebsite)) {
+            return false;
         }
-        return shouldUseFoldableActivityEmbedding()
-                && CommentsActivity.switchEmbeddedStoryViewIfMatching(
-                        story.id, showWebsite);
+
+        // When only one pane fits, the story may already be open while the stories list is showing
+        compactPaneShowsComments = true;
+        updatePaneLayout();
+        return true;
     }
 
     @Override
@@ -300,22 +279,136 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
         return super.onKeyDown(keyCode, event);
     }
 
-    private void updateFragmentLayout() {
-        if (shouldOpenCommentsInMainPane() && mainFragmentsContainer instanceof LinearLayout) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    getResources().getInteger(R.integer.stories_pane_weight));
-            mainFragmentStoriesContainer.setLayoutParams(params);
+    /**
+     * Lays the panes out for the current window: side by side when two panes fit, otherwise the
+     * stories list or the comments pane alone, whichever the user is at. Called again whenever
+     * the window size changes, which is how folding and unfolding the device is handled.
+     */
+    private void updatePaneLayout() {
+        if (!shouldOpenCommentsInMainPane()) {
+            return;
+        }
 
-            mainFragmentsContainer.setPadding(0, 0, 0, 0);
+        View divider = findViewById(R.id.main_split_divider);
+        boolean twoPane = isTwoPaneWidth();
+
+        if (twoPane) {
+            mainFragmentStoriesContainer.setVisibility(View.VISIBLE);
+            if (mainFragmentCommentsContainer != null) {
+                mainFragmentCommentsContainer.setVisibility(View.VISIBLE);
+            }
+            if (divider != null) {
+                divider.setVisibility(View.VISIBLE);
+            }
+        } else {
+            mainFragmentStoriesContainer.setVisibility(
+                    compactPaneShowsComments ? View.GONE : View.VISIBLE);
+            if (mainFragmentCommentsContainer != null) {
+                mainFragmentCommentsContainer.setVisibility(
+                        compactPaneShowsComments ? View.VISIBLE : View.GONE);
+            }
+            if (divider != null) {
+                divider.setVisibility(View.GONE);
+            }
+        }
+
+        // With one pane gone, the weight of the remaining pane makes it fill the window
+        applyPaneWeights(SettingsUtils.getSplitPaneRatio(this));
+        mainFragmentsContainer.setPadding(0, 0, 0, 0);
+
+        if (compactCommentsBackCallback != null) {
+            compactCommentsBackCallback.setEnabled(!twoPane && compactPaneShowsComments);
         }
     }
 
+    /** Whether the current window fits the stories and comments panes side by side. */
+    private boolean isTwoPaneWidth() {
+        if (!Utils.isFoldableDevice(this)) {
+            // Tablets which use the two pane layout always show both panes
+            return true;
+        }
+        return getResources().getConfiguration().screenWidthDp >= FOLDABLE_TWO_PANE_MIN_WIDTH_DP;
+    }
+
+    /**
+     * Sizes the two panes so that the stories list takes {@code storiesRatio} percent of the
+     * width, minus the divider between them, and the comments pane the rest.
+     */
+    private void applyPaneWeights(int storiesRatio) {
+        mainFragmentStoriesContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                storiesRatio));
+
+        if (mainFragmentCommentsContainer != null) {
+            mainFragmentCommentsContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    100 - storiesRatio));
+        }
+    }
+
+    /**
+     * Lets the divider between the two panes be dragged, resizing the panes as it moves. The
+     * ratio it is dropped at is remembered.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupSplitDividerHandle() {
+        View divider = findViewById(R.id.main_split_divider);
+        if (divider == null) {
+            return;
+        }
+
+        if (!shouldOpenCommentsInMainPane()) {
+            divider.setVisibility(View.GONE);
+            return;
+        }
+
+        divider.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    applyPaneWeights(dragRatioFromTouch(event));
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    SettingsUtils.setSplitPaneRatio(this, dragRatioFromTouch(event));
+                    applyPaneWeights(SettingsUtils.getSplitPaneRatio(this));
+                    view.performClick();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    applyPaneWeights(SettingsUtils.getSplitPaneRatio(this));
+                    return true;
+                default:
+                    return false;
+            }
+        });
+    }
+
+    private int dragRatioFromTouch(MotionEvent event) {
+        int[] containerLocation = new int[2];
+        mainFragmentsContainer.getLocationOnScreen(containerLocation);
+
+        int width = mainFragmentsContainer.getWidth();
+        if (width == 0) {
+            return SettingsUtils.getSplitPaneRatio(this);
+        }
+
+        float fraction = (event.getRawX() - containerLocation[0]) / width;
+        if (mainFragmentsContainer.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            fraction = 1f - fraction;
+        }
+
+        return SettingsUtils.clampSplitPaneRatio(Math.round(fraction * 100));
+    }
+
+    /**
+     * Whether comments open as a fragment beside (or in place of) the stories list instead of in
+     * a separate activity. True whenever a two pane capable layout was inflated: tablets and
+     * foldables.
+     */
     private boolean shouldOpenCommentsInMainPane() {
-        return !shouldUseFoldableActivityEmbedding()
-                && Utils.isTablet(getResources())
-                && findViewById(R.id.main_fragment_comments_container) != null;
+        return mainFragmentsContainer instanceof LinearLayout;
     }
 
     private void removeUnavailableCommentsPaneFragment() {
@@ -342,20 +435,10 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
     }
 
     private void showWelcomeDialog() {
-        if (shouldUseExpandedDialogHost()) {
-            DialogHostActivity.showWelcome(this);
-            return;
-        }
-
         WelcomeDialogFragment.show(getSupportFragmentManager());
     }
 
     private void showUpdateDialog() {
-        if (shouldUseExpandedDialogHost()) {
-            DialogHostActivity.showChangelog(this);
-            return;
-        }
-
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Changelog")
                 .setMessage(Changelog.getFormatted(this))
@@ -371,13 +454,5 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setNegativeButton("Done", null).create();
 
         dialog.show();
-    }
-
-    private boolean shouldUseExpandedDialogHost() {
-        return shouldUseFoldableActivityEmbedding();
-    }
-
-    private boolean shouldUseFoldableActivityEmbedding() {
-        return FoldableSplitInitializer.isFoldableSplitEnabled(this);
     }
 }
