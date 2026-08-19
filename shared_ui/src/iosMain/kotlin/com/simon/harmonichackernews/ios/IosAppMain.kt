@@ -121,15 +121,11 @@ private fun IosApp(
     var storiesController by remember { mutableStateOf<StoriesComposeController?>(null) }
     var commentsController by remember { mutableStateOf<CommentsComposeController?>(null) }
     var editorBackRequestVersion by remember { mutableIntStateOf(0) }
-    var appearanceRevision by remember { mutableIntStateOf(0) }
     var completedBackTarget by remember { mutableStateOf(IosBackVisualTarget.None) }
 
-    LaunchedEffect(bootstrap.app.userSettings) {
-        bootstrap.app.userSettings.changes.collect { appearanceRevision++ }
-    }
-    val selection = remember(appearanceRevision) {
-        bootstrap.app.appearance.selection()
-    }
+    val selection by bootstrap.app.appearance.selections.collectAsState(
+        initial = bootstrap.app.appearance.selection(),
+    )
     val palette = remember(selection) {
         HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
     }

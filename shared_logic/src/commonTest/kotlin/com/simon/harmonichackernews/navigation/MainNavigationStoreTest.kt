@@ -15,19 +15,13 @@ class MainNavigationStoreTest {
         assertEquals("appearance", store.state.value.settingsRequest?.initialSectionRoute)
 
         store.openStory(StoryRoute(42, showWebsite = true))
-        assertNull(store.state.value.settingsRequest)
+        assertEquals("appearance", store.state.value.settingsRequest?.initialSectionRoute)
         assertEquals(42, store.state.value.storyRequest?.storyId)
-        assertTrue(store.state.value.storyOpenedFromSettings)
-    }
-
-    @Test
-    fun consumingRestartUpdatesObservableState() {
-        val store = MainNavigationStore()
-        store.openSettings(null)
-        store.requestSettingsRestart()
-
-        assertTrue(store.consumeSettingsRestartRequest())
-        assertEquals(false, store.state.value.settingsNeedsRestart)
+        assertEquals(
+            listOf(MainDestination.STORIES, MainDestination.SETTINGS, MainDestination.STORY),
+            store.state.value.destinationStack.map(MainNavigationEntry::destination),
+        )
+        assertEquals(MainDestination.STORY, store.state.value.currentDestination)
     }
 
     @Test

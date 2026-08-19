@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 
 /** Platform work requested by a portable settings action. */
-enum class SettingsPlatformEffect { RefreshStoryWidgets, RequestRestart, ThemeChanged }
+enum class SettingsPlatformEffect { RefreshStoryWidgets, ThemeChanged }
 
 class StoriesSettingsPresenter(
     private val repository: AppSettingsRepository,
@@ -91,9 +91,6 @@ class StoriesSettingsPresenter(
             if (setting == StoriesBooleanSetting.IncludeTopLevelDomain ||
                 setting == StoriesBooleanSetting.ShowIndex
             ) add(SettingsPlatformEffect.RefreshStoryWidgets)
-            if (setting == StoriesBooleanSetting.HideClicked) {
-                add(SettingsPlatformEffect.RequestRestart)
-            }
         }
     }
 
@@ -107,12 +104,12 @@ class StoriesSettingsPresenter(
 
     fun setStartingPage(value: String): Set<SettingsPlatformEffect> {
         repository.setPreferredStoryType(value)
-        return setOf(SettingsPlatformEffect.RequestRestart)
+        return emptySet()
     }
 
     fun setAdditionalFrontpages(value: Set<String>): Set<SettingsPlatformEffect> {
         repository.setAdditionalFrontpages(value)
-        return setOf(SettingsPlatformEffect.RequestRestart)
+        return emptySet()
     }
 
     fun setFaviconProvider(value: String) = repository.setFaviconProvider(value)

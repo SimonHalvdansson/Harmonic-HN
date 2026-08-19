@@ -122,13 +122,9 @@ fun main() {
                         )
                     }
                 }
-                var appearanceRevision by remember { mutableIntStateOf(0) }
-                LaunchedEffect(bootstrap.app.userSettings) {
-                    bootstrap.app.userSettings.changes.collect { appearanceRevision++ }
-                }
-                val selection = remember(appearanceRevision) {
-                    bootstrap.app.appearance.selection()
-                }
+                val selection by bootstrap.app.appearance.selections.collectAsState(
+                    initial = bootstrap.app.appearance.selection(),
+                )
                 val palette = remember(selection) {
                     HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
                 }

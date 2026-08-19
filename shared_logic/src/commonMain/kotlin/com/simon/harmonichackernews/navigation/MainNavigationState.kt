@@ -47,13 +47,61 @@ data class MainFailureRequest(
 )
 
 @Serializable
+enum class MainDestination {
+    STORIES,
+    STORY,
+    SETTINGS,
+    SUBMISSIONS,
+    EDITOR,
+    IMMERSIVE,
+}
+
+sealed interface MainNavigationEntry {
+    val destination: MainDestination
+
+    data object Stories : MainNavigationEntry {
+        override val destination = MainDestination.STORIES
+    }
+
+    data class Story(val request: MainStoryRequest) : MainNavigationEntry {
+        override val destination = MainDestination.STORY
+    }
+
+    data class Settings(val request: MainSettingsRequest) : MainNavigationEntry {
+        override val destination = MainDestination.SETTINGS
+    }
+
+    data class Submissions(val request: MainSubmissionsRequest) : MainNavigationEntry {
+        override val destination = MainDestination.SUBMISSIONS
+    }
+
+    data class Editor(val request: MainEditorRequest) : MainNavigationEntry {
+        override val destination = MainDestination.EDITOR
+    }
+
+    data object Immersive : MainNavigationEntry {
+        override val destination = MainDestination.IMMERSIVE
+    }
+}
+
+@Serializable
+data class MainNavigationEntryRestoration(
+    val destination: MainDestination,
+    val serial: Int = 0,
+    val storyRoute: StoryRoute? = null,
+    val settingsSectionRoute: String? = null,
+    val submissionsUserName: String? = null,
+    val editorDestination: EditorDestination? = null,
+)
+
+@Serializable
 data class MainNavigationRestoration(
+    val destinationStack: List<MainNavigationEntryRestoration> = emptyList(),
     val storyDestination: StoryDestination? = null,
     val storyRequestSerial: Int = 0,
     val settingsOpen: Boolean = false,
     val settingsRequestSerial: Int = 0,
     val settingsSectionRoute: String? = null,
-    val settingsNeedsRestart: Boolean = false,
     val welcomeDialogVisible: Boolean = false,
     val changelogDialogVisible: Boolean = false,
     val cacheStoriesDialogVisible: Boolean = false,
@@ -91,15 +139,19 @@ object MainNavigationRestorationCodec {
 
 /** Pure navigation state and transition policy shared by every platform shell. */
 class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRestoration()) {
-    var storyRequest: MainStoryRequest? = null
-        private set
+    private val backStack = mutableListOf<MainNavigationEntry>(MainNavigationEntry.Stories)
+
+    val destinationStack: List<MainNavigationEntry>
+        get() = backStack.toList()
+    val currentDestination: MainDestination
+        get() = backStack.last().destination
+    val storyRequest: MainStoryRequest?
+        get() = backStack.filterIsInstance<MainNavigationEntry.Story>().lastOrNull()?.request
     var lastStoryRequest: MainStoryRequest? = null
         private set
-    var settingsRequest: MainSettingsRequest? = null
-        private set
+    val settingsRequest: MainSettingsRequest?
+        get() = backStack.filterIsInstance<MainNavigationEntry.Settings>().lastOrNull()?.request
     var lastSettingsRequest: MainSettingsRequest? = null
-        private set
-    var settingsThemeRevision: Int = 0
         private set
     var welcomeDialogVisible: Boolean = restored.welcomeDialogVisible
         private set
@@ -115,20 +167,16 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         private set
     var failureRequest: MainFailureRequest? = null
         private set
-    var editorRequest: MainEditorRequest? = null
-        private set
+    val editorRequest: MainEditorRequest?
+        get() = backStack.filterIsInstance<MainNavigationEntry.Editor>().lastOrNull()?.request
     var lastEditorRequest: MainEditorRequest? = null
         private set
-    var submissionsRequest: MainSubmissionsRequest? = null
-        private set
+    val submissionsRequest: MainSubmissionsRequest?
+        get() = backStack.filterIsInstance<MainNavigationEntry.Submissions>().lastOrNull()?.request
     var lastSubmissionsRequest: MainSubmissionsRequest? = null
         private set
-    var storyOpenedFromSubmissions: Boolean = false
-        private set
-    var storyOpenedFromSettings: Boolean = false
-        private set
-    var coulombGasVisible: Boolean = restored.coulombGasVisible
-        private set
+    val coulombGasVisible: Boolean
+        get() = currentDestination == MainDestination.IMMERSIVE
     var closeRequest: Int = 0
         private set
 
@@ -142,62 +190,36 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     private var failureRequestSerial = 0
     var currentSettingsSectionRoute: String? = null
         private set
-    private var settingsThemeChangedRequestSerial = -1
-    var settingsNeedsRestart: Boolean = false
-        private set
 
     init {
-        (restored.storyDestination ?: restored.storyRoute?.toDestination())?.let { destination ->
-            storyRequestSerial = restored.storyRequestSerial.coerceAtLeast(1)
-            MainStoryRequest(storyRequestSerial, destination).also { request ->
-                storyRequest = request
-                lastStoryRequest = request
-            }
+        currentSettingsSectionRoute = restored.settingsSectionRoute
+        val restoredEntries = restored.destinationStack.mapNotNull(::restoreEntry)
+        if (restoredEntries.isNotEmpty()) {
+            backStack.clear()
+            backStack += MainNavigationEntry.Stories
+            backStack += restoredEntries.filterNot { it.destination == MainDestination.STORIES }
+        } else {
+            restoreLegacyStack(restored)
         }
-        if (restored.settingsOpen) {
-            settingsRequestSerial = restored.settingsRequestSerial.coerceAtLeast(1)
-            currentSettingsSectionRoute = restored.settingsSectionRoute
-            MainSettingsRequest(settingsRequestSerial, currentSettingsSectionRoute).also { request ->
-                settingsRequest = request
-                lastSettingsRequest = request
-            }
-            settingsNeedsRestart = restored.settingsNeedsRestart
-        }
-        restored.editorDestination?.let { destination ->
-            editorRequestSerial = restored.editorRequestSerial.coerceAtLeast(1)
-            MainEditorRequest(editorRequestSerial, destination).also { request ->
-                editorRequest = request
-                lastEditorRequest = request
-            }
-        }
-        restored.submissionsUserName?.let { userName ->
-            submissionsRequestSerial = restored.submissionsRequestSerial.coerceAtLeast(1)
-            MainSubmissionsRequest(submissionsRequestSerial, userName).also { request ->
-                submissionsRequest = request
-                lastSubmissionsRequest = request
-            }
-        }
+        lastStoryRequest = storyRequest
+        lastSettingsRequest = settingsRequest
+        lastEditorRequest = editorRequest
+        lastSubmissionsRequest = submissionsRequest
         restored.userDialogUserName?.takeIf(String::isNotBlank)?.let { userName ->
             userRequestSerial = restored.userDialogSerial.coerceAtLeast(1)
             userRequest = MainUserRequest(userRequestSerial, userName)
         }
-        storyOpenedFromSubmissions = restored.storyOpenedFromSubmissions &&
-            storyRequest != null && submissionsRequest != null
-        storyOpenedFromSettings = restored.storyOpenedFromSettings &&
-            storyRequest != null && settingsRequest != null
     }
 
     fun openStory(destination: StoryDestination) {
-        if (settingsRequest != null) {
-            storyOpenedFromSettings = true
-            settingsRequest = null
-        }
-        if (!storyOpenedFromSubmissions) submissionsRequest = null
-        editorRequest = null
-        coulombGasVisible = false
         MainStoryRequest(++storyRequestSerial, destination).also { request ->
             lastStoryRequest = request
-            storyRequest = request
+            val entry = MainNavigationEntry.Story(request)
+            if (currentDestination == MainDestination.STORY) {
+                backStack[backStack.lastIndex] = entry
+            } else {
+                backStack += entry
+            }
         }
     }
 
@@ -208,20 +230,20 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     fun openSettings(sectionRoute: String?) {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        editorRequest = null
-        coulombGasVisible = false
         currentSettingsSectionRoute = sectionRoute
         MainSettingsRequest(++settingsRequestSerial, sectionRoute).also { request ->
-            settingsRequest = request
             lastSettingsRequest = request
+            val entry = MainNavigationEntry.Settings(request)
+            if (currentDestination == MainDestination.SETTINGS) {
+                backStack[backStack.lastIndex] = entry
+            } else {
+                backStack += entry
+            }
         }
     }
 
     fun closeSettings() {
-        settingsRequest = null
+        pop(MainDestination.SETTINGS)
     }
 
     fun updateSettingsSection(route: String) {
@@ -229,25 +251,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     fun initialSettingsSectionRoute(request: MainSettingsRequest): String? =
-        if (settingsThemeChangedRequestSerial == request.serial) {
-            currentSettingsSectionRoute
-        } else {
-            request.initialSectionRoute
-        }
-
-    fun onSettingsThemeChanged() {
-        settingsThemeChangedRequestSerial = settingsRequest?.serial ?: -1
-        settingsNeedsRestart = true
-        settingsThemeRevision++
-    }
-
-    fun requestSettingsRestart() {
-        settingsNeedsRestart = true
-    }
-
-    fun consumeSettingsRestartRequest(): Boolean = settingsNeedsRestart.also {
-        settingsNeedsRestart = false
-    }
+        request.initialSectionRoute
 
     fun showWelcomeDialog() { welcomeDialogVisible = true }
     fun dismissWelcomeDialog() { welcomeDialogVisible = false }
@@ -288,52 +292,157 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     fun openEditor(destination: EditorDestination) {
-        settingsRequest = null
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        coulombGasVisible = false
         MainEditorRequest(++editorRequestSerial, destination).also { request ->
-            editorRequest = request
             lastEditorRequest = request
+            val entry = MainNavigationEntry.Editor(request)
+            if (currentDestination == MainDestination.EDITOR) {
+                backStack[backStack.lastIndex] = entry
+            } else {
+                backStack += entry
+            }
         }
     }
 
-    fun closeEditor() { editorRequest = null }
+    fun closeEditor() { pop(MainDestination.EDITOR) }
 
     fun openSubmissions(userName: String) {
-        editorRequest = null
-        coulombGasVisible = false
         MainSubmissionsRequest(++submissionsRequestSerial, userName).also { request ->
-            submissionsRequest = request
             lastSubmissionsRequest = request
+            val entry = MainNavigationEntry.Submissions(request)
+            if (currentDestination == MainDestination.SUBMISSIONS) {
+                backStack[backStack.lastIndex] = entry
+            } else {
+                backStack += entry
+            }
         }
     }
 
     fun closeSubmissions() {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-    }
-
-    fun prepareToOpenStoryFromSubmissions() {
-        if (submissionsRequest != null) storyOpenedFromSubmissions = true
+        pop(MainDestination.SUBMISSIONS)
     }
 
     fun openCoulombGas() {
-        submissionsRequest = null
-        storyOpenedFromSubmissions = false
-        editorRequest = null
-        coulombGasVisible = true
+        if (currentDestination != MainDestination.IMMERSIVE) {
+            backStack += MainNavigationEntry.Immersive
+        }
     }
 
-    fun closeCoulombGas() { coulombGasVisible = false }
+    fun closeCoulombGas() { pop(MainDestination.IMMERSIVE) }
 
     fun detailRemovedFromBackStack() {
-        val restoreSettings = storyOpenedFromSettings
-        val restoreSettingsSection = currentSettingsSectionRoute
-        storyRequest = null
-        storyOpenedFromSubmissions = false
-        storyOpenedFromSettings = false
-        if (restoreSettings) openSettings(restoreSettingsSection)
+        pop(MainDestination.STORY)
+    }
+
+    fun destinationRestoration(): List<MainNavigationEntryRestoration> = backStack.map { entry ->
+        when (entry) {
+            MainNavigationEntry.Stories -> MainNavigationEntryRestoration(MainDestination.STORIES)
+            is MainNavigationEntry.Story -> MainNavigationEntryRestoration(
+                destination = MainDestination.STORY,
+                serial = entry.request.serial,
+                storyRoute = entry.request.route,
+            )
+            is MainNavigationEntry.Settings -> MainNavigationEntryRestoration(
+                destination = MainDestination.SETTINGS,
+                serial = entry.request.serial,
+                settingsSectionRoute = currentSettingsSectionRoute,
+            )
+            is MainNavigationEntry.Submissions -> MainNavigationEntryRestoration(
+                destination = MainDestination.SUBMISSIONS,
+                serial = entry.request.serial,
+                submissionsUserName = entry.request.userName,
+            )
+            is MainNavigationEntry.Editor -> MainNavigationEntryRestoration(
+                destination = MainDestination.EDITOR,
+                serial = entry.request.serial,
+                editorDestination = entry.request.destination,
+            )
+            MainNavigationEntry.Immersive ->
+                MainNavigationEntryRestoration(MainDestination.IMMERSIVE)
+        }
+    }
+
+    private fun pop(destination: MainDestination) {
+        if (currentDestination == destination && backStack.size > 1) backStack.removeLast()
+    }
+
+    private fun restoreEntry(
+        restored: MainNavigationEntryRestoration,
+    ): MainNavigationEntry? = when (restored.destination) {
+        MainDestination.STORIES -> MainNavigationEntry.Stories
+        MainDestination.STORY -> restored.storyRoute?.let { route ->
+            val serial = restored.serial.coerceAtLeast(1)
+            storyRequestSerial = maxOf(storyRequestSerial, serial)
+            MainNavigationEntry.Story(MainStoryRequest(serial, route.toDestination()))
+        }
+        MainDestination.SETTINGS -> {
+            val serial = restored.serial.coerceAtLeast(1)
+            settingsRequestSerial = maxOf(settingsRequestSerial, serial)
+            currentSettingsSectionRoute = restored.settingsSectionRoute
+            MainNavigationEntry.Settings(
+                MainSettingsRequest(serial, restored.settingsSectionRoute),
+            )
+        }
+        MainDestination.SUBMISSIONS -> restored.submissionsUserName
+            ?.takeIf(String::isNotBlank)
+            ?.let { userName ->
+                val serial = restored.serial.coerceAtLeast(1)
+                submissionsRequestSerial = maxOf(submissionsRequestSerial, serial)
+                MainNavigationEntry.Submissions(MainSubmissionsRequest(serial, userName))
+            }
+        MainDestination.EDITOR -> restored.editorDestination
+            ?.takeIf { it.isValid }
+            ?.let { destination ->
+                val serial = restored.serial.coerceAtLeast(1)
+                editorRequestSerial = maxOf(editorRequestSerial, serial)
+                MainNavigationEntry.Editor(MainEditorRequest(serial, destination))
+            }
+        MainDestination.IMMERSIVE -> MainNavigationEntry.Immersive
+    }
+
+    private fun restoreLegacyStack(restored: MainNavigationRestoration) {
+        val story = (restored.storyDestination ?: restored.storyRoute?.toDestination())
+            ?.let { destination ->
+                storyRequestSerial = restored.storyRequestSerial.coerceAtLeast(1)
+                MainNavigationEntry.Story(MainStoryRequest(storyRequestSerial, destination))
+            }
+        val settings = if (restored.settingsOpen) {
+            settingsRequestSerial = restored.settingsRequestSerial.coerceAtLeast(1)
+            MainNavigationEntry.Settings(
+                MainSettingsRequest(settingsRequestSerial, restored.settingsSectionRoute),
+            )
+        } else {
+            null
+        }
+        val submissions = restored.submissionsUserName
+            ?.takeIf(String::isNotBlank)
+            ?.let { userName ->
+                submissionsRequestSerial = restored.submissionsRequestSerial.coerceAtLeast(1)
+                MainNavigationEntry.Submissions(
+                    MainSubmissionsRequest(submissionsRequestSerial, userName),
+                )
+            }
+
+        when {
+            story != null && restored.storyOpenedFromSettings && settings != null -> {
+                backStack += settings
+                backStack += story
+            }
+            story != null && restored.storyOpenedFromSubmissions && submissions != null -> {
+                backStack += submissions
+                backStack += story
+            }
+            else -> {
+                story?.let(backStack::add)
+                settings?.let(backStack::add)
+                submissions?.let(backStack::add)
+            }
+        }
+        restored.editorDestination?.takeIf { it.isValid }?.let { destination ->
+            editorRequestSerial = restored.editorRequestSerial.coerceAtLeast(1)
+            backStack += MainNavigationEntry.Editor(
+                MainEditorRequest(editorRequestSerial, destination),
+            )
+        }
+        if (restored.coulombGasVisible) backStack += MainNavigationEntry.Immersive
     }
 }

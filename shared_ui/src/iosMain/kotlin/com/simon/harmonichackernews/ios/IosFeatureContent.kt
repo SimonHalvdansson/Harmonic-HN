@@ -68,8 +68,6 @@ internal fun IosSubmissionsContent(
         screenSession.effects.collect { effect ->
             when (effect) {
                 is SubmissionsRuntimeEffect.OpenStory -> {
-                    scene.navigation.prepareToOpenStoryFromSubmissions()
-                    scene.navigation.closeSettings()
                     scene.navigation.openStory(effect.destination)
                 }
                 is SubmissionsRuntimeEffect.OpenExternalLink ->

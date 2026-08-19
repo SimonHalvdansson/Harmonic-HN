@@ -103,6 +103,7 @@ import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainCaptchaRequest
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
 import com.simon.harmonichackernews.navigation.MainNavigationRestorationCodec
@@ -133,12 +134,12 @@ class MainNavigationController internal constructor(
     savedState: Bundle? = null,
 ) {
     internal val navigationState: MainNavigationStore = scene.navigation
+    internal val currentDestination get() = navigationState.currentDestination
     private val userMessages = scene.userMessages
     internal val storyRequest get() = navigationState.storyRequest
     internal val lastStoryRequest get() = navigationState.lastStoryRequest
     internal val settingsRequest get() = navigationState.settingsRequest
     internal val lastSettingsRequest get() = navigationState.lastSettingsRequest
-    internal val settingsThemeRevision get() = navigationState.settingsThemeRevision
     internal val welcomeDialogVisible get() = navigationState.welcomeDialogVisible
     internal val changelogDialogVisible get() = navigationState.changelogDialogVisible
     internal val cacheStoriesDialogVisible get() = navigationState.cacheStoriesDialogVisible
@@ -150,8 +151,6 @@ class MainNavigationController internal constructor(
     internal val lastEditorRequest get() = navigationState.lastEditorRequest
     internal val submissionsRequest get() = navigationState.submissionsRequest
     internal val lastSubmissionsRequest get() = navigationState.lastSubmissionsRequest
-    internal val storyOpenedFromSubmissions get() = navigationState.storyOpenedFromSubmissions
-    internal val storyOpenedFromSettings get() = navigationState.storyOpenedFromSettings
     internal val coulombGasVisible get() = navigationState.coulombGasVisible
     internal val closeRequest get() = navigationState.closeRequest
 
@@ -163,9 +162,9 @@ class MainNavigationController internal constructor(
         ?.let { storyId ->
             StoryRoute(
                 storyId = storyId,
-                showWebsite = savedState?.getBoolean(STATE_STORY_SHOW_WEBSITE, false) == true,
+                showWebsite = savedState.getBoolean(STATE_STORY_SHOW_WEBSITE, false),
                 scrollToCommentId =
-                    savedState?.getInt(STATE_STORY_SCROLL_TO_COMMENT_ID, -1) ?: -1,
+                    savedState.getInt(STATE_STORY_SCROLL_TO_COMMENT_ID, -1),
             )
         }
     private val restoredNavigation = MainNavigationRestorationCodec.decode(
@@ -181,8 +180,6 @@ class MainNavigationController internal constructor(
             settingsOpen = savedState?.getBoolean(STATE_SETTINGS_OPEN, false) == true,
             settingsRequestSerial = savedState?.getInt(STATE_SETTINGS_REQUEST_SERIAL, 0) ?: 0,
             settingsSectionRoute = savedState?.getString(STATE_SETTINGS_SECTION),
-            settingsNeedsRestart =
-                savedState?.getBoolean(STATE_SETTINGS_NEEDS_RESTART, false) == true,
             welcomeDialogVisible =
                 savedState?.getBoolean(STATE_WELCOME_DIALOG_VISIBLE, false) == true,
             changelogDialogVisible =
@@ -252,17 +249,6 @@ class MainNavigationController internal constructor(
 
     internal fun getInitialSettingsSectionRoute(request: MainSettingsRequest): String? =
         navigationState.initialSettingsSectionRoute(request)
-
-    internal fun onSettingsThemeChanged() {
-        navigationState.onSettingsThemeChanged()
-    }
-
-    internal fun requestSettingsRestart() {
-        navigationState.requestSettingsRestart()
-    }
-
-    internal fun consumeSettingsRestartRequest(): Boolean =
-        navigationState.consumeSettingsRestartRequest()
 
     fun showWelcomeDialog() {
         navigationState.showWelcomeDialog()
@@ -371,10 +357,6 @@ class MainNavigationController internal constructor(
 
     internal fun closeSubmissions() {
         navigationState.closeSubmissions()
-    }
-
-    internal fun prepareToOpenStoryFromSubmissions() {
-        navigationState.prepareToOpenStoryFromSubmissions()
     }
 
     fun openCoulombGas() {
@@ -489,7 +471,6 @@ class MainNavigationController internal constructor(
         const val STATE_SETTINGS_OPEN = "main_navigation_settings_open"
         const val STATE_SETTINGS_REQUEST_SERIAL = "main_navigation_settings_request_serial"
         const val STATE_SETTINGS_SECTION = "main_navigation_settings_section"
-        const val STATE_SETTINGS_NEEDS_RESTART = "main_navigation_settings_needs_restart"
         const val STATE_WELCOME_DIALOG_VISIBLE = "main_navigation_welcome_dialog_visible"
         const val STATE_CHANGELOG_DIALOG_VISIBLE = "main_navigation_changelog_dialog_visible"
         const val STATE_CACHE_STORIES_DIALOG_VISIBLE =
@@ -538,10 +519,15 @@ object MainNavigationHost {
             id = R.id.main_navigation_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
+                val themeSelection by appComposition.appearance.selections.collectAsState(
+                    initial = appComposition.appearance.selection(),
+                )
                 ProvideHarmonicUiDependencies(
                     HarmonicUiDependencies(appComposition, scene),
                 ) {
-                    HarmonicTheme {
+                    HarmonicTheme(
+                        selection = themeSelection,
+                    ) {
                         MainNavigation(
                             activity = activity,
                             controller = controller,
@@ -562,6 +548,7 @@ private fun MainNavigation(
     controller: MainNavigationController,
 ) {
     val navigationSnapshot by controller.navigationState.state.collectAsState()
+    val appearance = controller.scene.app.appearance
     val uiDependencies = LocalHarmonicUiDependencies.current
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val context = activity
@@ -604,7 +591,7 @@ private fun MainNavigation(
     var completedPredictivePop by remember { mutableStateOf(false) }
 
     fun popMainBackStack() {
-        if (controller.storyRequest != null) {
+        if (controller.currentDestination == MainDestination.STORY) {
             controller.detailRemovedFromBackStack()
         } else {
             activity.finish()
@@ -612,8 +599,11 @@ private fun MainNavigation(
     }
 
     val storyRequest = navigationSnapshot.storyRequest
-    val storyOpenedFromSubmissions = navigationSnapshot.storyOpenedFromSubmissions
-    val storyOpenedFromSettings = navigationSnapshot.storyOpenedFromSettings
+    val storyParentDestination = navigationSnapshot.destinationStack
+        .indexOfLast { it.destination == MainDestination.STORY }
+        .let { storyIndex ->
+            navigationSnapshot.destinationStack.getOrNull(storyIndex - 1)?.destination
+        }
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -644,13 +634,16 @@ private fun MainNavigation(
         completedPredictivePop = false
     }
     LaunchedEffect(navigationSnapshot.closeRequest) {
-        if (navigationSnapshot.closeRequest > 0 && storyRequest != null) {
+        if (
+            navigationSnapshot.closeRequest > 0 &&
+            navigationSnapshot.currentDestination == MainDestination.STORY
+        ) {
             popMainBackStack()
         }
     }
 
     PredictiveBackHandler(
-        enabled = storyRequest != null,
+        enabled = navigationSnapshot.currentDestination == MainDestination.STORY,
     ) { events ->
         val internalBackCoordinator = controller.getCommentsCoordinator()
             ?.takeIf(CommentsCoordinator::handlesBackInternally)
@@ -750,16 +743,13 @@ private fun MainNavigation(
     }
 
     fun closeSettings() {
-        val needsRestart = controller.consumeSettingsRestartRequest()
         controller.closeSettings()
-        if (needsRestart) {
-            activity.restartAfterSettingsChange()
-        } else {
-            controller.applySettingsChanges()
-        }
+        controller.applySettingsChanges()
     }
 
-    PredictiveBackHandler(enabled = settingsRequest != null && !storyOpenedFromSettings) { events ->
+    PredictiveBackHandler(
+        enabled = navigationSnapshot.currentDestination == MainDestination.SETTINGS,
+    ) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -804,7 +794,7 @@ private fun MainNavigation(
     }
 
     PredictiveBackHandler(
-        enabled = submissionsRequest != null && !storyOpenedFromSubmissions,
+        enabled = navigationSnapshot.currentDestination == MainDestination.SUBMISSIONS,
     ) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
@@ -848,7 +838,9 @@ private fun MainNavigation(
         if (editorRequest != null) completedEditorPredictiveBack = false
     }
 
-    PredictiveBackHandler(enabled = editorRequest != null) { events ->
+    PredictiveBackHandler(
+        enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR,
+    ) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -881,7 +873,9 @@ private fun MainNavigation(
     }
 
     val coulombGasVisible = navigationSnapshot.coulombGasVisible
-    PredictiveBackHandler(enabled = coulombGasVisible) { events ->
+    PredictiveBackHandler(
+        enabled = navigationSnapshot.currentDestination == MainDestination.IMMERSIVE,
+    ) { events ->
         try {
             events.collect { }
             controller.closeCoulombGas()
@@ -893,11 +887,7 @@ private fun MainNavigation(
     val storiesController = controller.storiesComposeController
     PredictiveBackHandler(
         enabled = storiesController?.searching == true &&
-            storyRequest == null &&
-            settingsRequest == null &&
-            submissionsRequest == null &&
-            editorRequest == null &&
-            !coulombGasVisible,
+            navigationSnapshot.currentDestination == MainDestination.STORIES,
     ) { events ->
         val searchController = storiesController ?: return@PredictiveBackHandler
         var started = false
@@ -924,8 +914,22 @@ private fun MainNavigation(
         completedEditorPredictiveBack = completedEditorPredictiveBack,
         modifier = Modifier.background(HarmonicTheme.colors.background),
         basePredictiveModifier = activeSettingsBackAnimation?.enterModifier ?: Modifier,
-        settingsPredictiveModifier = activeSettingsBackAnimation?.exitModifier ?: Modifier,
-        submissionsPredictiveModifier = activeSubmissionsBackAnimation?.exitModifier ?: Modifier,
+        settingsPredictiveModifier = (activeSettingsBackAnimation?.exitModifier ?: Modifier)
+            .then(
+                if (storyParentDestination == MainDestination.SETTINGS) {
+                    activeBackAnimation?.enterModifier ?: Modifier
+                } else {
+                    Modifier
+                },
+            ),
+        submissionsPredictiveModifier =
+            (activeSubmissionsBackAnimation?.exitModifier ?: Modifier).then(
+                if (storyParentDestination == MainDestination.SUBMISSIONS) {
+                    activeBackAnimation?.enterModifier ?: Modifier
+                } else {
+                    Modifier
+                },
+            ),
         editorPredictiveModifier = activeEditorBackAnimation?.exitModifier ?: Modifier,
         storyPreview = controller.storiesComposeController
             ?.takeIf { it.storyPreviewOverlay != null }
@@ -938,7 +942,10 @@ private fun MainNavigation(
                 { CommentLinkPreviewOverlay(commentsController) }
             },
         base = {
-            if (isTwoPane) {
+            if (
+                isTwoPane &&
+                (storyRequest == null || storyParentDestination == MainDestination.STORIES)
+            ) {
                 SharedMainNavigationScene(
                     storyRequest = storyRequest,
                     directive = directive,
@@ -970,8 +977,15 @@ private fun MainNavigation(
                     lastStoryRequest = controller.lastStoryRequest,
                     completedPredictivePop = completedPredictivePop,
                     predictiveBackActive = activeBackAnimation != null,
-                    showStoriesPane = !storyOpenedFromSubmissions,
-                    storiesPredictiveModifier = activeBackAnimation?.enterModifier ?: Modifier,
+                    showStoriesPane = storyRequest == null ||
+                        storyParentDestination == MainDestination.STORIES,
+                    storiesPredictiveModifier = if (
+                        storyParentDestination == MainDestination.STORIES
+                    ) {
+                        activeBackAnimation?.enterModifier ?: Modifier
+                    } else {
+                        Modifier
+                    },
                     commentsPredictiveModifier = activeBackAnimation?.exitModifier ?: Modifier,
                     stories = {
                         StoriesPane(controller)
@@ -996,43 +1010,41 @@ private fun MainNavigation(
         settings = {
             if (
                 settingsRequest != null ||
-                storyOpenedFromSettings ||
                 !completedSettingsPredictiveBack
             ) {
                 controller.lastSettingsRequest?.let { request ->
-                    key(request.serial, controller.settingsThemeRevision) {
-                        HarmonicTheme {
-                            ProvideSettingsPlatformStyle(
-                                style = SettingsPlatformStyle(
-                                    topBarHeight = dimensionResource(
-                                        R.dimen.compose_settings_toolbar_height,
-                                    ),
-                                    topBarNavigationHeight = dimensionResource(
-                                        R.dimen.detail_toolbar_navigation_height,
-                                    ),
-                                    topBarNavigationInset = dimensionResource(
-                                        R.dimen.detail_toolbar_navigation_inset,
-                                    ),
-                                    textStyle = TextStyle(
-                                        platformStyle = PlatformTextStyle(
-                                            includeFontPadding = true,
-                                        ),
+                    key(request.serial) {
+                        ProvideSettingsPlatformStyle(
+                            style = SettingsPlatformStyle(
+                                topBarHeight = dimensionResource(
+                                    R.dimen.compose_settings_toolbar_height,
+                                ),
+                                topBarNavigationHeight = dimensionResource(
+                                    R.dimen.detail_toolbar_navigation_height,
+                                ),
+                                topBarNavigationInset = dimensionResource(
+                                    R.dimen.detail_toolbar_navigation_inset,
+                                ),
+                                textStyle = TextStyle(
+                                    platformStyle = PlatformTextStyle(
+                                        includeFontPadding = true,
                                     ),
                                 ),
-                            ) {
-                                SettingsShell(
-                                    initialSection = controller
-                                        .getInitialSettingsSectionRoute(request)
-                                        ?.let(SettingsSection::fromRoute),
-                                    onBackFromSettings = ::closeSettings,
-                                    onSectionChanged = controller::updateSettingsSection,
-                                    onThemeChanged = {
-                                        ThemeUtils.setupTheme(activity)
-                                        controller.onSettingsThemeChanged()
-                                    },
-                                    onRequestRestart = controller::requestSettingsRestart,
-                                )
-                            }
+                            ),
+                        ) {
+                            SettingsShell(
+                                initialSection = controller
+                                    .getInitialSettingsSectionRoute(request)
+                                    ?.let(SettingsSection::fromRoute),
+                                onBackFromSettings = ::closeSettings,
+                                backHandlerEnabled = navigationSnapshot.currentDestination ==
+                                    MainDestination.SETTINGS,
+                                onSectionChanged = controller::updateSettingsSection,
+                                onThemeChanged = {
+                                    ThemeUtils.setupTheme(activity)
+                                    appearance.refreshSelection()
+                                },
+                            )
                         }
                     }
                 }
@@ -1049,8 +1061,6 @@ private fun MainNavigation(
                                 userName = request.userName,
                                 scene = controller.scene,
                                 navigator = SubmissionsCoordinator.Navigator { destination ->
-                                    controller.prepareToOpenStoryFromSubmissions()
-                                    controller.closeSettings()
                                     controller.openStory(destination)
                                 },
                             )

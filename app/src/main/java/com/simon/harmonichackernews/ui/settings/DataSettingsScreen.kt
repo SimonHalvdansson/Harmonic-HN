@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.platform.PresentationCopy
 fun DataSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
-    onRequestRestart: () -> Unit,
+    onSettingsReset: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -91,7 +91,7 @@ fun DataSettingsScreen(
                         },
                     )
                 }
-                DataSettingsRuntimeEffect.RestartApp -> onRequestRestart()
+                DataSettingsRuntimeEffect.SettingsReset -> onSettingsReset()
                 is DataSettingsRuntimeEffect.Message ->
                     appComposition.userMessages.show(effect.text)
             }

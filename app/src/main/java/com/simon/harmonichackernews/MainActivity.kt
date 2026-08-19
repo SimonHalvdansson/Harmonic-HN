@@ -90,16 +90,6 @@ class MainActivity : BaseActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    internal fun restartAfterSettingsChange() {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        if (launchIntent == null) {
-            recreate()
-            return
-        }
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        startActivity(launchIntent)
-    }
-
     internal fun setImmersiveContentEnabled(enabled: Boolean) {
         val insetsController = WindowCompat.getInsetsController(
             window,
@@ -118,6 +108,8 @@ class MainActivity : BaseActivity() {
 
     public override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        ThemeUtils.setupTheme(this)
+        harmonicAppComposition.appearance.refreshSelection()
         navigationController.onConfigurationChanged(newConfig)
     }
 }

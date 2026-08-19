@@ -17,7 +17,6 @@ import com.simon.harmonichackernews.widget.setSkipFetchForAllWidgets
 fun StoriesSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
-    onRequestRestart: () -> Unit,
 ) {
     val context = LocalContext.current
     val repository = LocalHarmonicUiDependencies.current.settings
@@ -36,7 +35,6 @@ fun StoriesSettingsScreen(
         onPlatformEffect = { effect ->
             when (effect) {
                 SettingsPlatformEffect.RefreshStoryWidgets -> refreshStoryWidgets(context)
-                SettingsPlatformEffect.RequestRestart -> onRequestRestart()
                 SettingsPlatformEffect.ThemeChanged -> Unit
             }
         },

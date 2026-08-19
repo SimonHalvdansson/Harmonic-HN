@@ -1,6 +1,11 @@
 package com.simon.harmonichackernews.settings
 
 import com.simon.harmonichackernews.utils.TimeWindowPolicy
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 object NighttimeScheduleKeys {
     const val FROM_HOUR = "com.simon.harmonichackernews.KEY_NIGHTTIME_FROM_HOUR"
@@ -106,10 +111,24 @@ class AppearanceRuntime(
     private val settings: KeyValueStore,
     private val scheduleStore: NighttimeScheduleStore,
     private val launchState: AppLaunchStateStore,
+    settingsChanges: Flow<Unit>,
     private val currentMinutesFromMidnight: () -> Int,
     private val systemDark: () -> Boolean,
 ) {
+    private val manualRefreshes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     val schedule: NighttimeSchedule get() = scheduleStore.load()
+
+    /** Current-value-first theme selections derived directly from persistent appearance changes. */
+    val selections: Flow<ThemeSelection> = channelFlow {
+        send(selection())
+        launch {
+            settingsChanges.collect { send(selection()) }
+        }
+        launch {
+            manualRefreshes.collect { send(selection()) }
+        }
+    }.distinctUntilChanged()
 
     fun selection(): ThemeSelection = ThemeSelectionPolicy.select(
         configuredTheme = settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
@@ -126,7 +145,15 @@ class AppearanceRuntime(
         systemDark = systemDark(),
     )
 
-    fun saveSchedule(schedule: NighttimeSchedule) = scheduleStore.save(schedule)
+    fun saveSchedule(schedule: NighttimeSchedule) {
+        scheduleStore.save(schedule)
+        refreshSelection()
+    }
+
+    /** Re-evaluates time- or platform-derived appearance inputs without changing preferences. */
+    fun refreshSelection() {
+        manualRefreshes.tryEmit(Unit)
+    }
 
     fun markWelcomeShown() = launchState.markWelcomeDialogShown()
 }

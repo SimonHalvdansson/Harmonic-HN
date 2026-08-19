@@ -100,10 +100,10 @@ internal fun DesktopSettingsDetail(
     onNavigate: (SettingsSection, Boolean) -> Unit,
 ) {
     when (section) {
-        SettingsSection.Appearance -> DesktopAppearanceSettings(app, scene, singlePane, onBack) {
+        SettingsSection.Appearance -> DesktopAppearanceSettings(app, singlePane, onBack) {
             onNavigate(it, singlePane)
         }
-        SettingsSection.Stories -> DesktopStoriesSettings(app, scene, singlePane, onBack)
+        SettingsSection.Stories -> DesktopStoriesSettings(app, singlePane, onBack)
         SettingsSection.Comments -> DesktopCommentsSettings(app, singlePane, onBack)
         SettingsSection.WebLinks -> DesktopWebLinksSettings(
             app = app,
@@ -225,14 +225,13 @@ private fun DesktopWebLinksSettings(
 @Composable
 private fun DesktopAppearanceSettings(
     app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onNavigate: (SettingsSection) -> Unit,
 ) {
     val snapshot = app.settings.snapshot()
     val schedule = app.appearance.schedule
-    fun themeChanged() = scene.navigation.onSettingsThemeChanged()
+    fun themeChanged() = app.appearance.refreshSelection()
 
     SharedAppearanceSettingsRoute(
         repository = app.settings,
@@ -332,7 +331,6 @@ private fun DesktopAppearanceSettings(
 @Composable
 private fun DesktopStoriesSettings(
     app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
 ) {
@@ -348,9 +346,7 @@ private fun DesktopStoriesSettings(
         onPlatformEffect = { effect ->
             when (effect) {
                 SettingsPlatformEffect.RefreshStoryWidgets -> Unit
-                SettingsPlatformEffect.RequestRestart ->
-                    scene.userMessages.show("The updated feed setting applies when this window reloads")
-                SettingsPlatformEffect.ThemeChanged -> scene.navigation.onSettingsThemeChanged()
+                SettingsPlatformEffect.ThemeChanged -> app.appearance.refreshSelection()
             }
         },
         faviconDialog = { selected, _, onSelected, dismiss ->
@@ -489,8 +485,7 @@ private fun DesktopDataSettings(
                 }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings ->
                     scene.userMessages.show("Desktop link handling is controlled by your browser and OS")
-                DataSettingsRuntimeEffect.RestartApp ->
-                    scene.userMessages.show("Settings reset; reopen the window to refresh every screen")
+                DataSettingsRuntimeEffect.SettingsReset -> app.appearance.refreshSelection()
                 is DataSettingsRuntimeEffect.Message -> scene.userMessages.show(effect.text)
             }
         }

@@ -44,19 +44,28 @@ class MainNavigationStateTest {
     }
 
     @Test
-    fun closingAStoryOpenedFromSettingsRestoresTheSettingsSection() {
+    fun storyPushKeepsItsSettingsParentAndOnePopRestoresIt() {
         val state = MainNavigationState()
         state.openSettings("appearance")
+        val settingsRequest = state.settingsRequest
         state.openStory(StoryDestination(storyId = 42))
 
-        assertNull(state.settingsRequest)
-        assertTrue(state.storyOpenedFromSettings)
+        assertEquals(settingsRequest, state.settingsRequest)
+        assertEquals(MainDestination.STORY, state.currentDestination)
+        assertEquals(
+            listOf(MainDestination.STORIES, MainDestination.SETTINGS, MainDestination.STORY),
+            state.destinationStack.map(MainNavigationEntry::destination),
+        )
 
         state.detailRemovedFromBackStack()
 
         assertNull(state.storyRequest)
-        assertEquals("appearance", state.settingsRequest?.initialSectionRoute)
-        assertFalse(state.storyOpenedFromSettings)
+        assertEquals(settingsRequest, state.settingsRequest)
+        assertEquals(MainDestination.SETTINGS, state.currentDestination)
+        assertEquals(
+            listOf(MainDestination.STORIES, MainDestination.SETTINGS),
+            state.destinationStack.map(MainNavigationEntry::destination),
+        )
     }
 
     @Test
@@ -92,18 +101,33 @@ class MainNavigationStateTest {
     }
 
     @Test
-    fun settingsRestartRequestIsConsumedExactlyOnce() {
+    fun typedBackStackSupportsNestedDestinationsWithoutOriginFlags() {
         val state = MainNavigationState()
-        state.openSettings(null)
-        state.onSettingsThemeChanged()
+        state.openStory(StoryDestination(storyId = 1))
+        state.openSubmissions("simon")
+        state.openStory(StoryDestination(storyId = 2))
 
-        assertTrue(state.consumeSettingsRestartRequest())
-        assertFalse(state.consumeSettingsRestartRequest())
-        assertEquals(1, state.settingsThemeRevision)
+        assertEquals(
+            listOf(
+                MainDestination.STORIES,
+                MainDestination.STORY,
+                MainDestination.SUBMISSIONS,
+                MainDestination.STORY,
+            ),
+            state.destinationStack.map { it.destination },
+        )
+
+        state.detailRemovedFromBackStack()
+        assertEquals(MainDestination.SUBMISSIONS, state.currentDestination)
+        assertEquals(1, state.storyRequest?.storyId)
+
+        state.closeSubmissions()
+        assertEquals(MainDestination.STORY, state.currentDestination)
+        assertEquals(1, state.storyRequest?.storyId)
     }
 
     @Test
-    fun openingEditorDismissesCompetingMainSurfaces() {
+    fun openingEditorPushesAboveTheCurrentDestination() {
         val state = MainNavigationState()
         state.openSettings("stories")
         state.openSubmissions("simon")
@@ -111,10 +135,15 @@ class MainNavigationStateTest {
 
         state.openEditor(EditorDestination(EditorType.POST))
 
-        assertNull(state.settingsRequest)
-        assertNull(state.submissionsRequest)
+        assertEquals("stories", state.settingsRequest?.initialSectionRoute)
+        assertEquals("simon", state.submissionsRequest?.userName)
         assertFalse(state.coulombGasVisible)
+        assertEquals(MainDestination.EDITOR, state.currentDestination)
         assertEquals(EditorType.POST, state.editorRequest?.destination?.type)
+
+        state.closeEditor()
+        assertEquals(MainDestination.IMMERSIVE, state.currentDestination)
+        assertTrue(state.coulombGasVisible)
     }
 
     @Test

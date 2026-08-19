@@ -24,12 +24,12 @@ class SettingsPresentersTest {
         )
         assertTrue(presenter.snapshot.story.showIndex)
         assertEquals(
-            setOf(SettingsPlatformEffect.RequestRestart),
+            emptySet(),
             presenter.setBoolean(StoriesBooleanSetting.HideClicked, true),
         )
         assertTrue(presenter.snapshot.story.hideClicked)
         assertEquals(
-            setOf(SettingsPlatformEffect.RequestRestart),
+            emptySet(),
             presenter.setStartingPage("best"),
         )
         assertEquals("best", presenter.snapshot.story.preferredStoryType)

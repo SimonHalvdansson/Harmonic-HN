@@ -2,6 +2,11 @@ package com.simon.harmonichackernews.settings
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 
 class NighttimeScheduleStoreTest {
     @Test
@@ -29,5 +34,28 @@ class NighttimeScheduleStoreTest {
         schedules.save(NighttimeSchedule(22, 30, 7, 15))
 
         assertContentEquals(intArrayOf(22, 30, 7, 15), schedules.load().toIntArray())
+    }
+
+    @Test
+    fun appearanceSelectionsFollowPersistentThemeChanges() = runTest {
+        val settings = TestKeyValueStore()
+        val changes = flow {
+            settings.putString(ThemePreferences.KEY, "amoled")
+            emit(Unit)
+        }
+        val runtime = AppearanceRuntime(
+            settings = settings,
+            scheduleStore = NighttimeScheduleStore(TestKeyValueStore()),
+            launchState = AppLaunchStateStore(TestKeyValueStore()),
+            settingsChanges = changes,
+            currentMinutesFromMidnight = { 12 * 60 },
+            systemDark = { false },
+        )
+
+        val selections = runtime.selections.take(2).toList()
+
+        assertEquals(ThemePreferences.DEFAULT, selections.first().theme)
+        assertEquals("amoled", selections.last().theme)
+        assertEquals(true, selections.last().dark)
     }
 }

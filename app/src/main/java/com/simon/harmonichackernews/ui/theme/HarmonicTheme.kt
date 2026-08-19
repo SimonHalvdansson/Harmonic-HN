@@ -14,14 +14,22 @@ import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.ThemeSelection
 import com.simon.harmonichackernews.utils.ThemeUtils
 
 @Composable
-fun HarmonicTheme(content: @Composable () -> Unit) {
+fun HarmonicTheme(
+    selection: ThemeSelection? = null,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current
-    val canonical = HarmonicThemeCatalog.resolve(
+    val activeSelection = selection ?: ThemeSelection(
         theme = ThemeUtils.getPreferredTheme(context),
-        systemDark = ThemeUtils.uiModeNight(context),
+        dark = ThemeUtils.isDarkMode(context),
+    )
+    val canonical = HarmonicThemeCatalog.resolve(
+        theme = activeSelection.theme,
+        systemDark = activeSelection.dark,
     )
     val colors = harmonicColors(context, canonical)
     val baseScheme = canonical.colorScheme

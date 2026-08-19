@@ -142,6 +142,7 @@ class StoriesFeatureRuntime(
     private var bookmarksChanged = false
     private var historyChangeVersion = -1L
     private var enabledAdditionalFrontpages: Set<String> = emptySet()
+    private var preferredStoryTypeLabel: String = userSettings.story.preferredStoryType
     private val mutableSettingsState = MutableStateFlow(
         StoriesSettingsState(StoryDisplaySettings.from(userSettings.story)),
     )
@@ -303,13 +304,28 @@ class StoriesFeatureRuntime(
         val currentState = mutableSettingsState.value
         val nextDisplaySettings = StoryDisplaySettings.from(storyPreferences)
         val update = nextDisplaySettings.changesFrom(currentState.displaySettings)
+        val hideClickedChanged = hideClicked != storyPreferences.hideClicked
+        val preferredStoryTypeChanged =
+            preferredStoryTypeLabel != storyPreferences.preferredStoryType
+        preferredStoryTypeLabel = storyPreferences.preferredStoryType
         storyResources?.updateSettings(nextDisplaySettings)
         val filtersChanged = configure(userSettings, loadContentFilters())
 
-        updateAvailableStoryTypes(
+        var feedRefreshStarted = updateAvailableStoryTypes(
             enabledAdditionalFrontpages = storyPreferences.additionalFrontpages,
             hasAccount = loggedIn,
         )
+
+        if (sessionState.initialized && preferredStoryTypeChanged) {
+            val preferredType = StoryTypeMenuPolicy.preferred(
+                storyPreferences.preferredStoryType,
+                availableStoryTypes,
+            )
+            if (preferredType != currentType) {
+                selectTypeAndRefresh(preferredType)
+                feedRefreshStarted = true
+            }
+        }
 
         if (update.itemsChanged) {
             mutableSettingsState.value = currentState.copy(
@@ -322,7 +338,13 @@ class StoriesFeatureRuntime(
             changed()
         }
 
-        if (filtersChanged) refresh(showSwipeRefreshIndicator = false)
+        if (sessionState.initialized && !feedRefreshStarted && hideClickedChanged) {
+            refresh(showSwipeRefreshIndicator = false)
+            feedRefreshStarted = true
+        }
+        if (sessionState.initialized && !feedRefreshStarted && filtersChanged) {
+            refresh(showSwipeRefreshIndicator = false)
+        }
         if (update.previewImageModeChanged) prefetchVisibleStoryResources()
         evaluateUpdate(storyPreferences.alwaysShowTapToRefresh)
         return update

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.navigation
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 
 /**
@@ -30,26 +31,24 @@ fun SharedHarmonicAppRoot(
     storyPreview: (@Composable () -> Unit)? = null,
     linkPreview: (@Composable () -> Unit)? = null,
 ) {
-    val storyFromSettingsReady = navigation.storyOpenedFromSettings &&
-        navigation.storyRequest != null
+    val destinations = navigation.destinationStack.map { it.destination }
+    val current = navigation.currentDestination
+    val settingsVisible = MainDestination.SETTINGS in destinations
+    val submissionsVisible = MainDestination.SUBMISSIONS in destinations
     SharedMainDestinationLayers(
         state = MainDestinationLayerState(
-            settingsVisible = navigation.settingsRequest != null ||
-                navigation.storyOpenedFromSettings,
-            settingsCoversBase = navigation.settingsRequest != null &&
-                !navigation.storyOpenedFromSettings,
-            settingsBehindStory = storyFromSettingsReady,
-            settingsSemanticsHidden = navigation.submissionsRequest != null ||
-                navigation.editorRequest != null || navigation.coulombGasVisible,
-            submissionsVisible = navigation.submissionsRequest != null,
-            submissionsCoversBase = navigation.submissionsRequest != null &&
-                !navigation.storyOpenedFromSubmissions,
-            submissionsBehindStory = navigation.storyOpenedFromSubmissions,
-            submissionsSemanticsHidden = navigation.editorRequest != null ||
-                navigation.coulombGasVisible,
-            editorVisible = navigation.editorRequest != null,
-            editorSemanticsHidden = navigation.coulombGasVisible,
-            immersiveVisible = navigation.coulombGasVisible,
+            settingsVisible = settingsVisible,
+            settingsCoversBase = current == MainDestination.SETTINGS,
+            settingsBehindStory = current == MainDestination.STORY && settingsVisible,
+            settingsSemanticsHidden = settingsVisible && current != MainDestination.SETTINGS,
+            submissionsVisible = submissionsVisible,
+            submissionsCoversBase = current == MainDestination.SUBMISSIONS,
+            submissionsBehindStory = current == MainDestination.STORY && submissionsVisible,
+            submissionsSemanticsHidden = submissionsVisible &&
+                current != MainDestination.SUBMISSIONS,
+            editorVisible = current == MainDestination.EDITOR,
+            editorSemanticsHidden = current == MainDestination.IMMERSIVE,
+            immersiveVisible = current == MainDestination.IMMERSIVE,
         ),
         transitionOffsetPx = transitionOffsetPx,
         completedSettingsPredictiveBack = completedSettingsPredictiveBack,

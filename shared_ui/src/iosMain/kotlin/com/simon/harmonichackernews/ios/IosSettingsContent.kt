@@ -96,10 +96,10 @@ internal fun IosSettingsDetail(
     onNavigate: (SettingsSection, Boolean) -> Unit,
 ) {
     when (section) {
-        SettingsSection.Appearance -> IosAppearanceSettings(app, scene, singlePane, onBack) {
+        SettingsSection.Appearance -> IosAppearanceSettings(app, singlePane, onBack) {
             onNavigate(it, singlePane)
         }
-        SettingsSection.Stories -> IosStoriesSettings(app, scene, singlePane, onBack)
+        SettingsSection.Stories -> IosStoriesSettings(app, singlePane, onBack)
         SettingsSection.Comments -> IosCommentsSettings(app, singlePane, onBack)
         SettingsSection.WebLinks -> IosWebLinksSettings(
             app = app,
@@ -210,14 +210,13 @@ private fun IosWebLinksSettings(
 @Composable
 private fun IosAppearanceSettings(
     app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onNavigate: (SettingsSection) -> Unit,
 ) {
     val snapshot = app.settings.snapshot()
     val schedule = app.appearance.schedule
-    fun themeChanged() = scene.navigation.onSettingsThemeChanged()
+    fun themeChanged() = app.appearance.refreshSelection()
 
     SharedAppearanceSettingsRoute(
         repository = app.settings,
@@ -317,7 +316,6 @@ private fun IosAppearanceSettings(
 @Composable
 private fun IosStoriesSettings(
     app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
 ) {
@@ -333,9 +331,7 @@ private fun IosStoriesSettings(
         onPlatformEffect = { effect ->
             when (effect) {
                 SettingsPlatformEffect.RefreshStoryWidgets -> Unit
-                SettingsPlatformEffect.RequestRestart ->
-                    scene.userMessages.show("The updated feed setting applies when this window reloads")
-                SettingsPlatformEffect.ThemeChanged -> scene.navigation.onSettingsThemeChanged()
+                SettingsPlatformEffect.ThemeChanged -> app.appearance.refreshSelection()
             }
         },
         faviconDialog = { selected, _, onSelected, dismiss ->
@@ -470,8 +466,7 @@ private fun IosDataSettings(
                 }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings ->
                     scene.userMessages.show("iOS link handling is controlled by your browser and OS")
-                DataSettingsRuntimeEffect.RestartApp ->
-                    scene.userMessages.show("Settings reset; reopen the window to refresh every screen")
+                DataSettingsRuntimeEffect.SettingsReset -> app.appearance.refreshSelection()
                 is DataSettingsRuntimeEffect.Message -> scene.userMessages.show(effect.text)
             }
         }

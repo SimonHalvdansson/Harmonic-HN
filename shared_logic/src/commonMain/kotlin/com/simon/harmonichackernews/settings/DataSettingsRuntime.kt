@@ -24,7 +24,7 @@ sealed interface DataSettingsRuntimeEffect {
     data class CreateExportDocument(val filename: String, val content: String) : DataSettingsRuntimeEffect
     data object OpenImportDocument : DataSettingsRuntimeEffect
     data object OpenAppLinkSettings : DataSettingsRuntimeEffect
-    data object RestartApp : DataSettingsRuntimeEffect
+    data object SettingsReset : DataSettingsRuntimeEffect
     data class Message(val text: String) : DataSettingsRuntimeEffect
 }
 
@@ -96,7 +96,7 @@ class DataSettingsRuntime(
         service.resetSettings()
         emitMessage(PresentationCopy.SETTINGS_RESET)
         publish(dialog = null)
-        mutableEffects.tryEmit(DataSettingsRuntimeEffect.RestartApp)
+        mutableEffects.tryEmit(DataSettingsRuntimeEffect.SettingsReset)
     }
 
     fun openAppLinkSettings() {

@@ -6,11 +6,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class MainNavigationSnapshot(
+    val destinationStack: List<MainNavigationEntry>,
+    val currentDestination: MainDestination,
     val storyRequest: MainStoryRequest?,
     val lastStoryRequest: MainStoryRequest?,
     val settingsRequest: MainSettingsRequest?,
     val lastSettingsRequest: MainSettingsRequest?,
-    val settingsThemeRevision: Int,
     val welcomeDialogVisible: Boolean,
     val changelogDialogVisible: Boolean,
     val cacheStoriesDialogVisible: Boolean,
@@ -22,13 +23,10 @@ data class MainNavigationSnapshot(
     val lastEditorRequest: MainEditorRequest?,
     val submissionsRequest: MainSubmissionsRequest?,
     val lastSubmissionsRequest: MainSubmissionsRequest?,
-    val storyOpenedFromSubmissions: Boolean,
-    val storyOpenedFromSettings: Boolean,
     val coulombGasVisible: Boolean,
     val closeRequest: Int,
     val settingsRequestSerial: Int,
     val currentSettingsSectionRoute: String?,
-    val settingsNeedsRestart: Boolean,
 )
 
 /** Observable navigation bridge shared by Compose, SwiftUI and desktop hosts. */
@@ -38,11 +36,12 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
 
     val state: StateFlow<MainNavigationSnapshot> = mutableState.asStateFlow()
 
+    val destinationStack get() = state.value.destinationStack
+    val currentDestination get() = state.value.currentDestination
     val storyRequest get() = state.value.storyRequest
     val lastStoryRequest get() = state.value.lastStoryRequest
     val settingsRequest get() = state.value.settingsRequest
     val lastSettingsRequest get() = state.value.lastSettingsRequest
-    val settingsThemeRevision get() = state.value.settingsThemeRevision
     val welcomeDialogVisible get() = state.value.welcomeDialogVisible
     val changelogDialogVisible get() = state.value.changelogDialogVisible
     val cacheStoriesDialogVisible get() = state.value.cacheStoriesDialogVisible
@@ -54,13 +53,10 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     val lastEditorRequest get() = state.value.lastEditorRequest
     val submissionsRequest get() = state.value.submissionsRequest
     val lastSubmissionsRequest get() = state.value.lastSubmissionsRequest
-    val storyOpenedFromSubmissions get() = state.value.storyOpenedFromSubmissions
-    val storyOpenedFromSettings get() = state.value.storyOpenedFromSettings
     val coulombGasVisible get() = state.value.coulombGasVisible
     val closeRequest get() = state.value.closeRequest
     val settingsRequestSerial get() = state.value.settingsRequestSerial
     val currentSettingsSectionRoute get() = state.value.currentSettingsSectionRoute
-    val settingsNeedsRestart get() = state.value.settingsNeedsRestart
 
     fun openStory(destination: StoryDestination) = mutate { openStory(destination) }
     fun openStory(route: StoryRoute) = mutate { openStory(route) }
@@ -70,11 +66,6 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun updateSettingsSection(route: String) = mutate { updateSettingsSection(route) }
     fun initialSettingsSectionRoute(request: MainSettingsRequest): String? =
         machine.initialSettingsSectionRoute(request)
-    fun onSettingsThemeChanged() = mutate { onSettingsThemeChanged() }
-    fun requestSettingsRestart() = mutate { requestSettingsRestart() }
-    fun consumeSettingsRestartRequest(): Boolean = machine.consumeSettingsRestartRequest().also {
-        publish()
-    }
     fun showWelcomeDialog() = mutate { showWelcomeDialog() }
     fun dismissWelcomeDialog() = mutate { dismissWelcomeDialog() }
     fun showChangelogDialog() = mutate { showChangelogDialog() }
@@ -104,7 +95,6 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun closeEditor() = mutate { closeEditor() }
     fun openSubmissions(userName: String) = mutate { openSubmissions(userName) }
     fun closeSubmissions() = mutate { closeSubmissions() }
-    fun prepareToOpenStoryFromSubmissions() = mutate { prepareToOpenStoryFromSubmissions() }
     fun openCoulombGas() = mutate { openCoulombGas() }
     fun closeCoulombGas() = mutate { closeCoulombGas() }
     fun detailRemovedFromBackStack() = mutate { detailRemovedFromBackStack() }
@@ -112,12 +102,12 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     /** Route-only lifecycle snapshot; transient story presentation data is deliberately omitted. */
     fun restoration(): MainNavigationRestoration = state.value.let { snapshot ->
         MainNavigationRestoration(
+            destinationStack = machine.destinationRestoration(),
             storyRoute = snapshot.storyRequest?.route,
             storyRequestSerial = snapshot.storyRequest?.serial ?: 0,
-            settingsOpen = snapshot.settingsRequest != null || snapshot.storyOpenedFromSettings,
+            settingsOpen = snapshot.settingsRequest != null,
             settingsRequestSerial = snapshot.settingsRequestSerial,
             settingsSectionRoute = snapshot.currentSettingsSectionRoute,
-            settingsNeedsRestart = snapshot.settingsNeedsRestart,
             welcomeDialogVisible = snapshot.welcomeDialogVisible,
             changelogDialogVisible = snapshot.changelogDialogVisible,
             cacheStoriesDialogVisible = snapshot.cacheStoriesDialogVisible,
@@ -128,8 +118,6 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
             editorRequestSerial = snapshot.editorRequest?.serial ?: 0,
             submissionsUserName = snapshot.submissionsRequest?.userName,
             submissionsRequestSerial = snapshot.submissionsRequest?.serial ?: 0,
-            storyOpenedFromSubmissions = snapshot.storyOpenedFromSubmissions,
-            storyOpenedFromSettings = snapshot.storyOpenedFromSettings,
             coulombGasVisible = snapshot.coulombGasVisible,
         )
     }
@@ -151,11 +139,12 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
 }
 
 private fun MainNavigationState.snapshot() = MainNavigationSnapshot(
+    destinationStack = destinationStack,
+    currentDestination = currentDestination,
     storyRequest = storyRequest,
     lastStoryRequest = lastStoryRequest,
     settingsRequest = settingsRequest,
     lastSettingsRequest = lastSettingsRequest,
-    settingsThemeRevision = settingsThemeRevision,
     welcomeDialogVisible = welcomeDialogVisible,
     changelogDialogVisible = changelogDialogVisible,
     cacheStoriesDialogVisible = cacheStoriesDialogVisible,
@@ -167,11 +156,8 @@ private fun MainNavigationState.snapshot() = MainNavigationSnapshot(
     lastEditorRequest = lastEditorRequest,
     submissionsRequest = submissionsRequest,
     lastSubmissionsRequest = lastSubmissionsRequest,
-    storyOpenedFromSubmissions = storyOpenedFromSubmissions,
-    storyOpenedFromSettings = storyOpenedFromSettings,
     coulombGasVisible = coulombGasVisible,
     closeRequest = closeRequest,
     settingsRequestSerial = settingsRequestSerial,
     currentSettingsSectionRoute = currentSettingsSectionRoute,
-    settingsNeedsRestart = settingsNeedsRestart,
 )

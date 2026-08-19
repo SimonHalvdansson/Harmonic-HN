@@ -35,9 +35,9 @@ import kotlinx.coroutines.withContext
 fun SettingsShell(
     initialSection: SettingsSection?,
     onBackFromSettings: () -> Unit,
+    backHandlerEnabled: Boolean,
     onSectionChanged: (SettingsSection) -> Unit,
     onThemeChanged: () -> Unit,
-    onRequestRestart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -72,7 +72,9 @@ fun SettingsShell(
         if (!navigation.navigateBack()) onBackFromSettings()
     }
 
-    PredictiveBackHandler(enabled = navigationState.canNavigateBackWithinSettings) { events ->
+    PredictiveBackHandler(
+        enabled = backHandlerEnabled && navigationState.canNavigateBackWithinSettings,
+    ) { events ->
         if (isTwoPane) {
             try {
                 events.collect {}
@@ -149,7 +151,6 @@ fun SettingsShell(
                 SettingsSection.Stories -> StoriesSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
-                    onRequestRestart = onRequestRestart,
                 )
                 SettingsSection.Comments -> CommentsSettingsScreen(
                     showNavigation = singlePane,
@@ -171,7 +172,7 @@ fun SettingsShell(
                 SettingsSection.Data -> DataSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
-                    onRequestRestart = onRequestRestart,
+                    onSettingsReset = onThemeChanged,
                 )
                 SettingsSection.Debug -> DebugSettingsScreen(
                     showNavigation = singlePane,
