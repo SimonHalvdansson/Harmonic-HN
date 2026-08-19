@@ -35,7 +35,7 @@ fun SharedSubmissionsRoute(
     SideEffect { previewResources.updateSettings(controller.displaySettings) }
     val states by previewResources.statesFlow.collectAsState()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
-    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     SharedSubmissionsScreen(
         controller = controller,
         previewResources = previewResources,

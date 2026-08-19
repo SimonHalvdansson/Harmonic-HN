@@ -460,7 +460,7 @@ private fun StoriesList(
                             settings.toItemStyle(story, model)
                         }
                         val storyTintBase = model.tintFallbackArgb
-                            ?: HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+                            ?: HarmonicTheme.colors.storyCardBackground.toArgb()
                         val itemModifier = Modifier
                             .animateItem()
                             .graphicsLayer(

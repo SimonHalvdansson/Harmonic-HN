@@ -325,7 +325,7 @@ private fun PalettePreviewCard(
     configKey: String,
     modifier: Modifier = Modifier,
 ) {
-    val baseColor = HarmonicTheme.colors.surfaceContainerHigh
+    val baseColor = HarmonicTheme.colors.storyCardBackground
     val paletteState = rememberResourcePaletteState { maximumColorCount(16) }
     LaunchedEffect(sample.title) { paletteState.generate(sample.drawable) }
     val palette = paletteState.palette

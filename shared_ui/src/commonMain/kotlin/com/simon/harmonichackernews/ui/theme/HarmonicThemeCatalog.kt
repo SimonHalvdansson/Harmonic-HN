@@ -45,6 +45,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFF99595E),
         settingsToggleText = Color(0xFFFFD9DC),
         settingsSegment = Color(0xFF2B2E3A),
+        storyCardBackground = Color(0xFF2B2E3A),
         onPrimary = Color(0xFFF6F6EF),
     )
     private val gray = create(
@@ -62,6 +63,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFF34353A),
         settingsToggleText = Color(0xFFD4D5DA),
         settingsSegment = Color(0xFF202124),
+        storyCardBackground = Color(0xFF34353A),
         onPrimary = Color(0xFFF6F6EF),
     )
     private val amoled = create(
@@ -173,6 +175,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFB0C6FF),
         settingsToggleText = Color(0xFF294778),
         settingsSegment = Color(0xFFE1E3E5),
+        storyCardBackground = Color(0xFFE1E3E5),
         onSecondary = Color.White,
     )
     private val materialDark = create(
@@ -211,6 +214,7 @@ object HarmonicThemeCatalog {
         settingsToggle: Color,
         settingsToggleText: Color,
         settingsSegment: Color,
+        storyCardBackground: Color = surface,
         onPrimary: Color? = null,
         onSecondary: Color? = null,
         secondaryContainer: Color? = null,
@@ -254,6 +258,7 @@ object HarmonicThemeCatalog {
                 textSecondary = secondaryText,
                 link = secondary,
                 surfaceContainerHigh = surface,
+                storyCardBackground = storyCardBackground,
                 surfaceContainerHighest = surfaceHighest,
                 secondaryContainer = resolvedSecondaryContainer,
                 onSecondaryContainer = resolvedOnSecondaryContainer,

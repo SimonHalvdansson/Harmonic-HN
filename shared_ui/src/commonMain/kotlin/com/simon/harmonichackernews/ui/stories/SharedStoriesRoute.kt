@@ -18,7 +18,7 @@ fun SharedStoriesRoute(
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
 ) {
-    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     SharedStoriesScreen(
         controller = controller,
         storyItemModel = { story, position, settings, previewResource ->

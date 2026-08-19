@@ -17,6 +17,7 @@ data class HarmonicColors(
     val textSecondary: Color,
     val link: Color,
     val surfaceContainerHigh: Color,
+    val storyCardBackground: Color,
     val surfaceContainerHighest: Color,
     val secondaryContainer: Color,
     val onSecondaryContainer: Color,

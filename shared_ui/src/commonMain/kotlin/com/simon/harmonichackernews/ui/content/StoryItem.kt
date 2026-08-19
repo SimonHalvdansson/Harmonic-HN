@@ -182,7 +182,7 @@ fun StoryItem(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerHigh
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
         model.previewImageUrl,

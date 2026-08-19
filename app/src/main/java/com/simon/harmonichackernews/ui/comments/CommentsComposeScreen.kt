@@ -167,7 +167,7 @@ private fun CommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val tintBaseColor = HarmonicTheme.colors.surfaceContainerHigh.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     val headerPresentation = remember(
         story.id,
         story.previewImageUrl,

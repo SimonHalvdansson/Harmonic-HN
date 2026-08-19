@@ -8,7 +8,11 @@ import com.google.android.material.color.MaterialColors
 object PreviewImageTintUtils {
     fun getTintBaseColor(context: Context): Int = MaterialColors.getColor(
         context,
-        com.google.android.material.R.attr.colorSurfaceContainerHigh,
-        Color.TRANSPARENT,
+        com.simon.harmonichackernews.R.attr.storyCardBackgroundColor,
+        MaterialColors.getColor(
+            context,
+            com.google.android.material.R.attr.colorSurfaceContainerHigh,
+            Color.TRANSPARENT,
+        ),
     )
 }

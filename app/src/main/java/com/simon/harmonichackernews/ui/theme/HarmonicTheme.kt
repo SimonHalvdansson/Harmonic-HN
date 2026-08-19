@@ -126,6 +126,10 @@ private fun harmonicColors(
             MaterialR.attr.colorSurfaceContainerHigh,
             fallbackScheme.surfaceContainerHigh,
         ),
+        storyCardBackground = context.colorAttribute(
+            R.attr.storyCardBackgroundColor,
+            fallback.storyCardBackground,
+        ),
         surfaceContainerHighest = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHighest,
             fallbackScheme.surfaceContainerHighest,
