@@ -56,6 +56,24 @@ class StoryItemUiModelFactoryTest {
     }
 
     @Test
+    fun replacesPdfAndVideoTitleSuffixesWithBadges() {
+        val pdfStory = Story("A paper [pdf]", 1, true, false).apply {
+            pdfTitle = "A paper"
+        }
+        val videoStory = Story("A talk [video]", 2, true, false).apply {
+            videoTitle = "A talk"
+        }
+
+        val pdfModel = StoryItemUiModelFactory.create(pdfStory)
+        val videoModel = StoryItemUiModelFactory.create(videoStory)
+
+        assertEquals("A paper", pdfModel.title)
+        assertEquals(StoryTitleBadge.PDF, pdfModel.titleBadge)
+        assertEquals("A talk", videoModel.title)
+        assertEquals(StoryTitleBadge.VIDEO, videoModel.titleBadge)
+    }
+
+    @Test
     fun keyedPreviewResourceOverridesLegacyRowResourceFieldsImmutably() {
         val legacy = StoryItemResourcePresentation(
             summary = "Old summary",

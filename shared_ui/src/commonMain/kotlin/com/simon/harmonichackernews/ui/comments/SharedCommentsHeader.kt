@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.StoryTitleText
+import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.DrawableResource
@@ -87,6 +89,11 @@ fun SharedCommentsHeader(
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
     val story = remember(controller.story, contentVersion) { controller.story }
+    val storyTitle = storyTitlePresentation(
+        title = story.title,
+        pdfTitle = story.pdfTitle,
+        videoTitle = story.videoTitle,
+    )
     val pollOptions = remember(story.pollOptionArrayList, contentVersion) {
         story.pollOptionArrayList?.map { option ->
             PollOptionUi(
@@ -228,14 +235,15 @@ fun SharedCommentsHeader(
                                     .semantics(mergeDescendants = true) {
                                         if (story.isLink) {
                                             contentDescription = "Open article: " +
-                                                (story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty())
+                                                storyTitle.text
                                             role = Role.Button
                                         }
                                     },
                             ) {
                                 headerPreviewImage(visibleHeaderBackground) { loadedTint = it }
-                                Text(
-                                    text = story.pdfTitle ?: story.videoTitle ?: story.title.orEmpty(),
+                                StoryTitleText(
+                                    text = storyTitle.text,
+                                    badge = storyTitle.badge,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(

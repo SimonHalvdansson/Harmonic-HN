@@ -55,9 +55,19 @@ object StoryItemUiModelFactory {
     ): StoryItemUiModel {
         val fullDomain = item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
         val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
+        val titlePresentation = storyTitlePresentation(
+            title = item.title,
+            pdfTitle = item.pdfTitle,
+            videoTitle = item.videoTitle,
+        )
         return StoryItemUiModel(
             index = position?.let { "${it + 1}." }.orEmpty(),
-            title = item.title ?: if (item.loadingFailed) failedTitle else loadingTitle,
+            title = if (item.title == null) {
+                if (item.loadingFailed) failedTitle else loadingTitle
+            } else {
+                titlePresentation.text
+            },
+            titleBadge = titlePresentation.badge,
             summary = resources.summary
                 ?: item.presentation.linkSummaryDescription
                 ?: item.presentation.summary.orEmpty(),
@@ -84,9 +94,19 @@ object StoryItemUiModelFactory {
     ): StoryItemUiModel {
         val fullDomain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
         val shortDomain = runCatching { story.getDisplayDomain(false) }.getOrNull() ?: fullDomain
+        val titlePresentation = storyTitlePresentation(
+            title = story.title,
+            pdfTitle = story.pdfTitle,
+            videoTitle = story.videoTitle,
+        )
         return StoryItemUiModel(
             index = position?.let { "${it + 1}." }.orEmpty(),
-            title = story.title ?: if (story.loadingFailed) failedTitle else loadingTitle,
+            title = if (story.title == null) {
+                if (story.loadingFailed) failedTitle else loadingTitle
+            } else {
+                titlePresentation.text
+            },
+            titleBadge = titlePresentation.badge,
             summary = resources.summary
                 ?: story.linkSummaryDescription
                 ?: story.summary.orEmpty(),

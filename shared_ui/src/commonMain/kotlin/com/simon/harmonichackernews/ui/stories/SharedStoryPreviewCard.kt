@@ -65,6 +65,8 @@ import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.SharedNetworkImage
+import com.simon.harmonichackernews.ui.content.StoryTitleText
+import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -131,10 +133,16 @@ fun SharedStoryPreviewCard(
                 .orEmpty()
         }
     }
-    val title = summaryState.result?.title?.takeIf(String::isNotBlank)
-        ?: story.presentation.pdfTitle?.takeIf(String::isNotBlank)
-        ?: story.presentation.videoTitle?.takeIf(String::isNotBlank)
-        ?: story.title.orEmpty()
+    val storyTitle = storyTitlePresentation(
+        title = story.title,
+        pdfTitle = story.presentation.pdfTitle,
+        videoTitle = story.presentation.videoTitle,
+    )
+    val title = if (storyTitle.badge != null) {
+        storyTitle.text
+    } else {
+        summaryState.result?.title?.takeIf(String::isNotBlank) ?: storyTitle.text
+    }
     val domain = if (story.isLink) {
         story.url?.let { DomainNamePolicy.fromUrl(it) ?: it }
     } else {
@@ -211,8 +219,9 @@ fun SharedStoryPreviewCard(
                         transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
                         label = "story preview title content",
                     ) { currentTitle ->
-                        Text(
+                        StoryTitleText(
                             text = currentTitle,
+                            badge = storyTitle.badge,
                             color = HarmonicTheme.colors.storyNormal,
                             fontFamily = typography.family,
                             fontWeight = FontWeight.Bold,

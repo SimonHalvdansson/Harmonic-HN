@@ -87,6 +87,7 @@ private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 data class StoryItemUiModel(
     val index: String,
     val title: String,
+    val titleBadge: StoryTitleBadge? = null,
     val summary: String,
     val points: Int,
     val domain: String,
@@ -401,8 +402,9 @@ private fun StoryMainContent(
                 .padding(start = titleStartPadding, end = 4.dp)
                 .alignBy(FirstBaseline),
         ) {
-            Text(
+            StoryTitleText(
                 text = model.title,
+                badge = model.titleBadge,
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
