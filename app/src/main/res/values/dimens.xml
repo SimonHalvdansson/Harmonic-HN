@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--<dimen name="design_snackbar_padding_vertical">8dp</dimen>-->
     <dimen name="single_view_side_margin">0dp</dimen>
     <dimen name="extra_pane_padding">0dp</dimen>
     <dimen name="settings_extra_pane_padding">0dp</dimen>

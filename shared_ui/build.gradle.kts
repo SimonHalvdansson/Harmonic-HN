@@ -31,8 +31,8 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "HarmonicShared"
             isStatic = true
-            export(project(":shared_logic"))
-            export(project(":shared_resources"))
+            export(project.dependencies.project(":shared_logic"))
+            export(project.dependencies.project(":shared_resources"))
             transitiveExport = true
             harmonicXcFramework.add(this)
         }
