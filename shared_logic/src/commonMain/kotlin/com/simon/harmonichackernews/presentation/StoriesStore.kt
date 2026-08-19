@@ -213,7 +213,7 @@ class StoriesStore internal constructor(
             is StoriesIntent.SelectSearchOption ->
                 runtime.selectSearchOption(intent.kind, intent.index)
             StoriesIntent.ToggleOnlyClicked -> runtime.toggleOnlyClicked()
-            StoriesIntent.Refresh -> runtime.refresh(false)
+            StoriesIntent.Refresh -> runtime.refresh(true)
             StoriesIntent.ShowCached -> runtime.showCachedStories()
             StoriesIntent.LoadMore -> runtime.loadMore()
             is StoriesIntent.SelectSavedFilter -> runtime.selectSavedFilter(intent.filter)
