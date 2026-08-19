@@ -210,7 +210,8 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)
-                    .size(17.dp),
+                    .size(17.dp)
+                    .clip(RoundedCornerShape(3.dp)),
             )
         }
         Text(
