@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.data.LinkPreviewInfo
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.serialization.JsonArray
 import com.simon.harmonichackernews.serialization.JsonObject
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodeURLPathPart
@@ -397,6 +398,7 @@ private fun apiPath(vararg parts: String): String =
     parts.joinToString("/") { it.encodeURLPathPart() }
 
 internal object RichLinkPreviewParsers {
+    private const val MASTODON_DESCRIPTION_MAX_CHARS = 600
     private val numericXmlEntity = Regex("&#(x[0-9A-Fa-f]+|[0-9]+);")
 
     fun parseGitHub(
@@ -697,11 +699,23 @@ internal object RichLinkPreviewParsers {
         val account = json.getJSONObject("account")
         val displayName = account.nullableString("display_name") ?: account.optString("username")
         val media = json.optJSONArray("media_attachments")?.optJSONObject(0)
+        val content = json.nullableString("content")
+            ?.let(HtmlTextUtils::plainText)
+            ?.let { HtmlTextUtils.normalizeAndTruncatePlainText(it, MASTODON_DESCRIPTION_MAX_CHARS) }
+            ?.takeIf(String::isNotBlank)
+        val contentWarning = json.nullableString("spoiler_text")
+            ?.let(HtmlTextUtils::plainText)
+            ?.let { HtmlTextUtils.normalizeAndTruncatePlainText(it, MASTODON_DESCRIPTION_MAX_CHARS) }
+            ?.takeIf(String::isNotBlank)
+        val description = listOfNotNull(
+            contentWarning?.let { "Content warning: $it" },
+            content,
+        ).joinToString("\n\n").takeIf(String::isNotBlank)
         return LinkPreviewInfo(
             LinkPreviewType.MASTODON_POST,
             displayName.requiredPreviewTitle(LinkPreviewType.MASTODON_POST),
             "@${account.optString("acct")}",
-            null,
+            description,
             media?.nullableString("preview_url") ?: account.nullableString("avatar"),
             url,
             details(

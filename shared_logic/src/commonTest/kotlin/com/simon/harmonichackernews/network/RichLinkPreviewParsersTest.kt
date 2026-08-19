@@ -123,7 +123,7 @@ class RichLinkPreviewParsersTest {
     }
 
     @Test
-    fun parsesStructuredServiceAndSocialResponsesWithoutHtmlBodies() {
+    fun parsesStructuredServiceAndSocialResponses() {
         val results = listOf(
             RichLinkPreviewParsers.parseStatusPage(
                 """{"page":{"name":"Example Status"},"incident":{"name":"API unavailable","status":"resolved","impact":"major","incident_updates":[{"body":"Recovered"}]}}""",
@@ -144,7 +144,7 @@ class RichLinkPreviewParsersTest {
                 "https://writer.substack.com/p/rss-article",
             ),
             RichLinkPreviewParsers.parseMastodon(
-                """{"content":"<p>This must not be parsed</p>","account":{"display_name":"Ada","username":"ada","acct":"ada@example.social","avatar":"https://example.social/avatar.png"},"replies_count":1,"reblogs_count":2,"favourites_count":3}""",
+                """{"content":"<p>This is <strong>the actual post</strong>.</p><p>Second paragraph &amp; link.</p>","spoiler_text":"A brief warning","account":{"display_name":"Ada","username":"ada","acct":"ada@example.social","avatar":"https://example.social/avatar.png"},"replies_count":1,"reblogs_count":2,"favourites_count":3}""",
                 "https://example.social/@ada/1",
             ),
             RichLinkPreviewParsers.parseBluesky(
@@ -174,7 +174,10 @@ class RichLinkPreviewParsersTest {
             "Writer’s feed summary",
             results.singleType(LinkPreviewType.SUBSTACK_ARTICLE).description,
         )
-        assertNull(results.singleType(LinkPreviewType.MASTODON_POST).description)
+        assertEquals(
+            "Content warning: A brief warning\n\nThis is the actual post. Second paragraph & link.",
+            results.singleType(LinkPreviewType.MASTODON_POST).description,
+        )
         assertTrue(
             results.singleType(LinkPreviewType.MASTODON_POST).details.none { it.label == "Language" },
         )
