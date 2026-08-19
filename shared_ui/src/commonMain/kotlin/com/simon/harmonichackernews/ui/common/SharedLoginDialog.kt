@@ -176,6 +176,7 @@ fun SharedLoginDialog(
                     color = HarmonicTheme.colors.textPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 13.sp,
+                    lineHeight = 16.sp,
                 )
                 AnimatedVisibility(visible = !showInformation) {
                     OutlinedButton(onClick = { showInformation = true }) {
@@ -195,6 +196,7 @@ fun SharedLoginDialog(
                             color = HarmonicTheme.colors.textPrimary,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 13.sp,
+                            lineHeight = 16.sp,
                         )
                         Text(
                             text = stringResource(Res.string.login_dialog_troubleshooting),
@@ -202,6 +204,7 @@ fun SharedLoginDialog(
                             color = HarmonicTheme.colors.textPrimary,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 13.sp,
+                            lineHeight = 16.sp,
                         )
                     }
                 }
@@ -214,6 +217,7 @@ fun SharedLoginDialog(
                     color = HarmonicTheme.colors.textPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 13.sp,
+                    lineHeight = 16.sp,
                 )
                 OutlinedButton(onClick = onCreateAccount) {
                     Icon(
