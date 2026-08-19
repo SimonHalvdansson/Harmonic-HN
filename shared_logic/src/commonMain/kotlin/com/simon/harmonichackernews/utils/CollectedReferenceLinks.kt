@@ -9,11 +9,13 @@ object CollectedReferenceLinks {
     private val referenceMarker = Regex(
         "^\\s*(?:\\[(\\d{1,3})]|(\\d{1,3})\\s*:)[\\s:.-]*(.*)$",
     )
+    private val standaloneTags = setOf("a", "p", "div", "span", "li")
     private val urlPattern = Regex("https?://[^\\s,;|]+", RegexOption.IGNORE_CASE)
     private val bareDomainPattern = Regex(
         "[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(?::\\d+)?(?:/\\S*)?",
         RegexOption.IGNORE_CASE,
     )
+    private val whitespacePattern = Regex("\\s+")
 
     fun parse(inputHtml: String?): Result {
         if (inputHtml.isNullOrEmpty()) return Result.empty(inputHtml)
@@ -21,13 +23,18 @@ object CollectedReferenceLinks {
         document.outputSettings().prettyPrint(false)
         val nodes = document.body().childNodes().toList()
         if (nodes.isEmpty()) return Result.empty(inputHtml)
+        val nodeHtml = nodes.map { it.outerHtml() }
 
         val collected = linkedMapOf<Int, List<ReferenceLink>>()
         var stillInTrailingReferences = true
         for (index in nodes.indices.reversed()) {
             val node = nodes[index]
-            if (node.outerHtml().isBlank()) continue
-            val links = parseNode(node, requireReferenceMarker = stillInTrailingReferences)
+            if (nodeHtml[index].isBlank()) continue
+            val links = parseNode(
+                node,
+                requireReferenceMarker = stillInTrailingReferences,
+                outerHtml = nodeHtml[index],
+            )
             if (links.isNotEmpty()) {
                 collected[index] = links
             } else {
@@ -37,7 +44,8 @@ object CollectedReferenceLinks {
 
         nodes.forEachIndexed { index, node ->
             if (index !in collected) {
-                parseStandaloneNode(node).takeIf(List<ReferenceLink>::isNotEmpty)?.let {
+                parseStandaloneNode(node, nodeHtml[index])
+                    .takeIf(List<ReferenceLink>::isNotEmpty)?.let {
                     collected[index] = it
                 }
             }
@@ -45,15 +53,15 @@ object CollectedReferenceLinks {
         if (collected.isEmpty()) return Result.empty(inputHtml)
 
         val body = buildString {
-            nodes.forEachIndexed { index, node -> if (index !in collected) append(node.outerHtml()) }
+            nodeHtml.forEachIndexed { index, html -> if (index !in collected) append(html) }
         }.trim()
         val links = collected.entries.sortedBy { it.key }.flatMap { it.value }
         val contentBlocks = buildList {
             val html = StringBuilder()
-            nodes.forEachIndexed { index, node ->
+            nodeHtml.forEachIndexed { index, node ->
                 val nodeLinks = collected[index]
                 if (nodeLinks == null) {
-                    html.append(node.outerHtml())
+                    html.append(node)
                 } else {
                     flushTextBlock(html, this)
                     nodeLinks.forEach { add(ContentBlock.link(it)) }
@@ -64,9 +72,13 @@ object CollectedReferenceLinks {
         return Result(body, links, contentBlocks)
     }
 
-    private fun parseNode(node: Node, requireReferenceMarker: Boolean): List<ReferenceLink> {
+    private fun parseNode(
+        node: Node,
+        requireReferenceMarker: Boolean,
+        outerHtml: String,
+    ): List<ReferenceLink> {
         val element = node as? Element
-        val text = normalize(element?.text() ?: Ksoup.parse(node.outerHtml()).text())
+        val text = normalize(element?.text() ?: Ksoup.parse(outerHtml).text())
         if (text.isEmpty()) return emptyList()
         val marker = referenceMarker.matchEntire(text)
         if (requireReferenceMarker && marker == null) return emptyList()
@@ -84,13 +96,13 @@ object CollectedReferenceLinks {
         return findUrls(source).map { url -> ReferenceLink(number, markerLabel, url, url) }
     }
 
-    private fun parseStandaloneNode(node: Node): List<ReferenceLink> {
+    private fun parseStandaloneNode(node: Node, outerHtml: String): List<ReferenceLink> {
         val element = node as? Element ?: return emptyList()
         val tag = element.tagName().lowercase()
-        if (tag !in setOf("a", "p", "div", "span", "li")) return emptyList()
+        if (tag !in standaloneTags) return emptyList()
         val text = normalize(element.text())
         if (text.isEmpty()) return emptyList()
-        val links = parseNode(node, requireReferenceMarker = false)
+        val links = parseNode(node, requireReferenceMarker = false, outerHtml = outerHtml)
         if (links.isEmpty()) return emptyList()
         val remaining = links.fold(text) { value, link ->
             value.replace(link.label.orEmpty(), "").replace(link.url.orEmpty(), "")
@@ -121,7 +133,7 @@ object CollectedReferenceLinks {
     private fun trimPunctuation(value: String): String = value.trim().trimEnd('.', ',', ';', ':', '!', '?')
 
     private fun normalize(value: String): String =
-        value.replace('\u00a0', ' ').trim().replace(Regex("\\s+"), " ")
+        value.replace('\u00a0', ' ').trim().replace(whitespacePattern, " ")
 
     private fun flushTextBlock(html: StringBuilder, target: MutableList<ContentBlock>) {
         val value = html.toString().trim()

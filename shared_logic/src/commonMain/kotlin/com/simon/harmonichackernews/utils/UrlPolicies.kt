@@ -31,9 +31,10 @@ object HackerNewsLinks {
     fun absolutePath(path: String): String = "$BASE_URL/${path.trimStart('/')}"
 
     fun parseItemLink(url: String?): HackerNewsItemLink? {
-        val networkUrl = url?.toNetworkUrlOrNull() ?: return null
-        if (
-            networkUrl.scheme.lowercase() !in setOf("http", "https") ||
+        val rawUrl = url ?: return null
+        if (!rawUrl.hasHttpSchemePrefix()) return null
+        val networkUrl = rawUrl.toNetworkUrlOrNull() ?: return null
+        if (!networkUrl.scheme.isHttpScheme() ||
             !networkUrl.host.equals(HOST, ignoreCase = true) ||
             networkUrl.encodedPath != "/item"
         ) {
@@ -106,7 +107,7 @@ object ArchiveRedirectPolicy {
 
     fun redirectUrl(url: String?, configuredDomains: Collection<String>): String? {
         val parsed = url?.toNetworkUrlOrNull() ?: return null
-        if (parsed.scheme.lowercase() !in setOf("http", "https")) return null
+        if (!parsed.scheme.isHttpScheme()) return null
         val host = normalizeDomain(parsed.host)
         if (host.isEmpty() || host in archiveHosts) return null
         val matches = configuredDomains.any { configured ->
@@ -135,6 +136,12 @@ object ArchiveRedirectPolicy {
 
     private const val HEX = "0123456789ABCDEF"
 }
+
+private fun String.isHttpScheme(): Boolean =
+    equals("http", ignoreCase = true) || equals("https", ignoreCase = true)
+
+private fun String.hasHttpSchemePrefix(): Boolean =
+    startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
 
 object AgePolicy {
     const val TWO_HOURS_MILLIS: Long = 2L * 60L * 60L * 1_000L

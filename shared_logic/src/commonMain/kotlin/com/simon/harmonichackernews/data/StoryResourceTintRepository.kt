@@ -58,6 +58,8 @@ fun StoryResourceTintStore.canonicalize(
 class StoryResourceTintRepository(
     private val store: KeyValueStore,
 ) : StoryResourceTintStore {
+    private val readCache = LinkedHashMap<ReadKey, CachedRead>()
+
     override fun read(
         storyId: Int,
         kind: StoryResourceTintKind,
@@ -65,20 +67,26 @@ class StoryResourceTintRepository(
         baseColorArgb: Int,
         paletteConfigKey: String,
     ): StoryResourceTintState? {
+        val key = ReadKey(storyId, kind, sourceUrl, baseColorArgb, paletteConfigKey)
+        readCache[key]?.let { return it.value }
+
         val prefix = prefix(storyId, kind)
-        if (store.getString("$prefix.source") != sourceUrl ||
+        val tint = if (store.getString("$prefix.source") != sourceUrl ||
             store.getInt("$prefix.base", Int.MIN_VALUE) != baseColorArgb ||
             store.getString("$prefix.palette") != paletteConfigKey ||
             !store.contains("$prefix.tint")
         ) {
-            return null
+            null
+        } else {
+            StoryResourceTintState(
+                sourceUrl = sourceUrl,
+                baseColorArgb = baseColorArgb,
+                paletteConfigKey = paletteConfigKey,
+                tintColorArgb = store.getInt("$prefix.tint", 0),
+            )
         }
-        return StoryResourceTintState(
-            sourceUrl = sourceUrl,
-            baseColorArgb = baseColorArgb,
-            paletteConfigKey = paletteConfigKey,
-            tintColorArgb = store.getInt("$prefix.tint", 0),
-        )
+        cacheRead(key, tint)
+        return tint
     }
 
     override fun write(
@@ -93,6 +101,11 @@ class StoryResourceTintRepository(
         store.putInt("$prefix.tint", tint.tintColorArgb)
         val key = entryKey(storyId, kind)
         store.putStringSet(INDEX_KEY, store.getStringSet(INDEX_KEY) + key)
+        invalidateReadCache(storyId, kind)
+        cacheRead(
+            ReadKey(storyId, kind, tint.sourceUrl, tint.baseColorArgb, tint.paletteConfigKey),
+            tint,
+        )
     }
 
     override fun count(): Int = store.getStringSet(INDEX_KEY).size
@@ -114,6 +127,27 @@ class StoryResourceTintRepository(
             }
             store.remove(INDEX_KEY)
         }
+        readCache.clear()
+    }
+
+    private fun cacheRead(key: ReadKey, value: StoryResourceTintState?) {
+        if (!readCache.containsKey(key) && readCache.size >= MAX_READ_CACHE_ENTRIES) {
+            readCache.entries.iterator().let { entries ->
+                if (entries.hasNext()) {
+                    entries.next()
+                    entries.remove()
+                }
+            }
+        }
+        readCache[key] = CachedRead(value)
+    }
+
+    private fun invalidateReadCache(storyId: Int, kind: StoryResourceTintKind) {
+        val entries = readCache.entries.iterator()
+        while (entries.hasNext()) {
+            val key = entries.next().key
+            if (key.storyId == storyId && key.kind == kind) entries.remove()
+        }
     }
 
     private fun prefix(storyId: Int, kind: StoryResourceTintKind): String =
@@ -125,5 +159,16 @@ class StoryResourceTintRepository(
     private companion object {
         const val PREFIX = "story_resource_tint"
         const val INDEX_KEY = "$PREFIX.index"
+        const val MAX_READ_CACHE_ENTRIES = 512
+
+        data class ReadKey(
+            val storyId: Int,
+            val kind: StoryResourceTintKind,
+            val sourceUrl: String,
+            val baseColorArgb: Int,
+            val paletteConfigKey: String,
+        )
+
+        data class CachedRead(val value: StoryResourceTintState?)
     }
 }

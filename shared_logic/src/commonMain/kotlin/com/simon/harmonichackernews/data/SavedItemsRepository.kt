@@ -40,6 +40,8 @@ class SavedItemsRepository(
 ) {
     private val mutationMutex = Mutex()
     private val mutableChanges = MutableSharedFlow<SavedItemsChange>(extraBufferCapacity = 32)
+    private val itemCache = mutableMapOf<ItemCacheKey, List<TimestampedItem>>()
+    private val commentIdsCache = mutableMapOf<SavedItemSource, Set<Int>>()
 
     /** Mutations made through this repository instance, after they have been persisted. */
     val changes: SharedFlow<SavedItemsChange> = mutableChanges.asSharedFlow()
@@ -47,10 +49,13 @@ class SavedItemsRepository(
     fun loadItems(
         source: SavedItemSource,
         sortedByCreated: Boolean = false,
-    ): List<TimestampedItem> = SavedItemCodec.decode(
-        store.getString(itemKey(source)),
-        sortedByCreated,
-    )
+    ): List<TimestampedItem> {
+        val key = ItemCacheKey(source, sortedByCreated)
+        return itemCache[key] ?: SavedItemCodec.decode(
+            store.getString(itemKey(source)),
+            sortedByCreated,
+        ).also { itemCache[key] = it }
+    }
 
     fun loadItemsByDescendingId(source: SavedItemSource): List<TimestampedItem> =
         loadItems(source).sortedByDescending(TimestampedItem::id)
@@ -86,10 +91,11 @@ class SavedItemsRepository(
         setMembership(source, id, present, createdAtMillis)
     }
 
-    fun loadCommentIds(source: SavedItemSource): Set<Int> =
+    fun loadCommentIds(source: SavedItemSource): Set<Int> = commentIdsCache.getOrPut(source) {
         commentKey(source)?.let(store::getStringSet)
             ?.mapNotNullTo(mutableSetOf(), String::toIntOrNull)
             .orEmpty()
+    }
 
     fun saveCommentIds(source: SavedItemSource, ids: Set<Int>) {
         writeCommentIds(source, ids)
@@ -148,13 +154,19 @@ class SavedItemsRepository(
 
     private fun writeItems(source: SavedItemSource, items: List<TimestampedItem>) {
         store.putString(itemKey(source), SavedItemCodec.encode(items))
+        val cachedItems = items.toList()
+        itemCache[ItemCacheKey(source, sortedByCreated = false)] = cachedItems
+        itemCache[ItemCacheKey(source, sortedByCreated = true)] =
+            cachedItems.sortedByDescending(TimestampedItem::created)
     }
 
     private fun writeCommentIds(source: SavedItemSource, ids: Set<Int>) {
         val key = requireNotNull(commentKey(source)) {
             "Bookmarks do not have a separate comment-id store"
         }
-        store.putStringSet(key, ids.mapTo(mutableSetOf(), Int::toString))
+        val cachedIds = ids.toSet()
+        store.putStringSet(key, cachedIds.mapTo(mutableSetOf(), Int::toString))
+        commentIdsCache[source] = cachedIds
     }
 
     private fun itemKey(source: SavedItemSource): String = when (source) {
@@ -168,4 +180,9 @@ class SavedItemsRepository(
         SavedItemSource.FAVORITES -> SavedItemKeys.FAVORITE_COMMENTS
         SavedItemSource.UPVOTED -> SavedItemKeys.UPVOTED_COMMENTS
     }
+
+    private data class ItemCacheKey(
+        val source: SavedItemSource,
+        val sortedByCreated: Boolean,
+    )
 }

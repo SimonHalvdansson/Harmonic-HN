@@ -49,4 +49,42 @@ class StoryResourceTintRepositoryTest {
             ),
         )
     }
+
+    @Test
+    fun writingReplacementInvalidatesPreviouslyCachedTuple() {
+        val repository = StoryResourceTintRepository(InMemoryKeyValueStore())
+        val original = StoryResourceTintState(
+            sourceUrl = "https://example.com/original.png",
+            baseColorArgb = 0xff102030.toInt(),
+            paletteConfigKey = "default",
+            tintColorArgb = 0xff405060.toInt(),
+        )
+        val replacement = original.copy(
+            sourceUrl = "https://example.com/replacement.png",
+            tintColorArgb = 0xff708090.toInt(),
+        )
+
+        repository.write(42, StoryResourceTintKind.PREVIEW_IMAGE, original)
+        repository.write(42, StoryResourceTintKind.PREVIEW_IMAGE, replacement)
+
+        assertNull(
+            repository.read(
+                42,
+                StoryResourceTintKind.PREVIEW_IMAGE,
+                original.sourceUrl,
+                original.baseColorArgb,
+                original.paletteConfigKey,
+            ),
+        )
+        assertEquals(
+            replacement,
+            repository.read(
+                42,
+                StoryResourceTintKind.PREVIEW_IMAGE,
+                replacement.sourceUrl,
+                replacement.baseColorArgb,
+                replacement.paletteConfigKey,
+            ),
+        )
+    }
 }

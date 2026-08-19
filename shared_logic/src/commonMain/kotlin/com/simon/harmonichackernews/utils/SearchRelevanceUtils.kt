@@ -10,18 +10,28 @@ object SearchRelevanceUtils {
             return
         }
 
-        val relevanceScores = stories.associateWith { score(it, normalizedQuery) }
+        val scoredStories = stories.mapIndexedTo(mutableListOf()) { index, story ->
+            ScoredStory(
+                story = story,
+                relevanceScore = score(story, normalizedQuery),
+                originalIndex = index,
+            )
+        }
 
-        stories.sortWith(Comparator { left, right ->
-            val leftScore = relevanceScores.getValue(left)
-            val rightScore = relevanceScores.getValue(right)
+        scoredStories.sortWith(Comparator { left, right ->
             when {
-                leftScore != rightScore -> rightScore.compareTo(leftScore)
-                left.score != right.score -> right.score.compareTo(left.score)
-                left.descendants != right.descendants -> right.descendants.compareTo(left.descendants)
-                else -> right.time.compareTo(left.time)
+                left.relevanceScore != right.relevanceScore ->
+                    right.relevanceScore.compareTo(left.relevanceScore)
+                left.story.score != right.story.score ->
+                    right.story.score.compareTo(left.story.score)
+                left.story.descendants != right.story.descendants ->
+                    right.story.descendants.compareTo(left.story.descendants)
+                left.story.time != right.story.time ->
+                    right.story.time.compareTo(left.story.time)
+                else -> left.originalIndex.compareTo(right.originalIndex)
             }
         })
+        scoredStories.forEachIndexed { index, scored -> stories[index] = scored.story }
     }
 
     private fun score(story: Story, normalizedQuery: String): Int {
@@ -59,4 +69,10 @@ object SearchRelevanceUtils {
     private fun isBoundary(title: String, index: Int): Boolean {
         return index !in title.indices || !title[index].isLetterOrDigit()
     }
+
+    private data class ScoredStory(
+        val story: Story,
+        val relevanceScore: Int,
+        val originalIndex: Int,
+    )
 }
