@@ -392,7 +392,7 @@ private fun StoriesList(
             SharedLazyContentList(
                 items = visibleStories,
                 state = listState,
-                key = { story -> "${if (searchMode) "search" else "main"}-${story.id}" },
+                key = { story -> story.id },
                 contentType = { story -> if (story.isComment) "comment" else "story" },
                 modifier = Modifier
                     .fillMaxSize()

@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.baseline.profile)
 }
 
 android {
@@ -76,6 +77,19 @@ android {
             matchingFallbacks.add("release")
         }
 
+        benchmark {
+            initWith(release)
+
+            applicationIdSuffix = ".compose.benchmark"
+            resValue "string", "app_name", "Harmonic Benchmark"
+
+            signingConfig = signingConfigs.debug
+            debuggable = false
+            minifyEnabled = false
+            shrinkResources = false
+            matchingFallbacks.add("release")
+        }
+
         fossRelease {
             initWith(release)
             matchingFallbacks.add("release")
@@ -104,6 +118,9 @@ android {
         }
         debugLLMFast {
             kotlin.srcDirs += "src/play/java"
+        }
+        benchmark {
+            kotlin.srcDirs += "src/foss/java"
         }
         fossRelease {
             kotlin.srcDirs += "src/foss/java"
@@ -165,6 +182,7 @@ dependencies {
     playReleaseImplementation(libs.mlkit.genai.summarization)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
+    implementation(libs.androidx.profileinstaller)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
@@ -177,6 +195,27 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
+    automaticGenerationDuringBuild = false
+    variants {
+        benchmark {
+            from(project(":benchmark"))
+        }
+    }
+}
+
+tasks.register("installBenchmarkBaselineProfile", Copy) {
+    dependsOn(":benchmark:collectNonMinifiedBenchmarkBaselineProfile")
+    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
+        include("*-baseline-prof-*.txt")
+        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
+        rename { "baseline-prof.txt" }
+    }
+    into(layout.projectDirectory.dir("src/main"))
 }
 
 afterEvaluate {

@@ -40,6 +40,16 @@ android {
             matchingFallbacks.add("release")
         }
 
+        benchmark {
+            initWith(release)
+            matchingFallbacks.add("release")
+        }
+        nonMinifiedBenchmark {
+            initWith(benchmark)
+            matchingFallbacks.add("benchmark")
+            matchingFallbacks.add("release")
+        }
+
         fossRelease {
             initWith(release)
             matchingFallbacks.add("release")

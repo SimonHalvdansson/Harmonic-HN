@@ -1,0 +1,36 @@
+plugins {
+    alias(libs.plugins.android.test)
+    alias(libs.plugins.baseline.profile)
+}
+
+android {
+    namespace = "com.simon.harmonichackernews.benchmark"
+    compileSdk = 37
+    targetProjectPath = ":app"
+
+    defaultConfig {
+        minSdk = 26
+        targetSdk = 37
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
+    }
+
+    buildTypes {
+        benchmark {
+            debuggable = true
+            matchingFallbacks.add("release")
+        }
+    }
+}
+
+baselineProfile {
+    useConnectedDevices = true
+    skipBenchmarksOnEmulator = false
+}
+
+dependencies {
+    implementation(libs.androidx.benchmark.macro.junit4)
+    implementation(libs.androidx.test.ext.junit)
+    implementation(libs.androidx.test.runner)
+    implementation(libs.androidx.test.uiautomator)
+}

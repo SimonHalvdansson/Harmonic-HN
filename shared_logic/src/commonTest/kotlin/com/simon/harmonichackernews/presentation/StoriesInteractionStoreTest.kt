@@ -123,6 +123,16 @@ class StoriesInteractionStoreTest {
         assertEquals(96, store.getStoryPagingDistance(3, 999))
     }
 
+    @Test
+    fun storyItemExtentsIgnoreInvalidAndDuplicateMeasurements() {
+        val store = store()
+
+        assertFalse(store.updateStoryItemHeight(1, 0))
+        assertTrue(store.updateStoryItemHeight(1, 80))
+        assertFalse(store.updateStoryItemHeight(1, 80))
+        assertTrue(store.updateStoryItemHeight(1, 96))
+    }
+
     private fun store(defaultHeight: Int = 100) = StoriesInteractionStore(defaultHeight)
 
     private fun story(id: Int) = StoryListItemSnapshot(
