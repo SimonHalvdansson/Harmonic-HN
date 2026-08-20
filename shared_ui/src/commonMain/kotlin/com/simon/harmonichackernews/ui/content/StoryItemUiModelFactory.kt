@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
+import kotlin.time.Clock
 
 data class StoryItemResourcePresentation(
     val summary: String? = null,
@@ -52,8 +53,11 @@ object StoryItemUiModelFactory {
         resources: StoryItemResourcePresentation = StoryItemResourcePresentation(),
         loadingTitle: String = "Loading…",
         failedTitle: String = "Tap to retry",
+        resolvedDomain: String? = null,
+        nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
     ): StoryItemUiModel {
-        val fullDomain = item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
+        val fullDomain = resolvedDomain
+            ?: item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
         val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
         val titlePresentation = storyTitlePresentation(
             title = item.title,
@@ -74,7 +78,7 @@ object StoryItemUiModelFactory {
             points = item.score,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,
-            age = ItemTimeFormatter.formatNow(item.createdAtEpochSeconds),
+            age = ItemTimeFormatter.format(item.createdAtEpochSeconds, nowMillis),
             commentCount = item.descendantCount,
             faviconUrl = resources.faviconUrl,
             previewImageUrl = resources.previewImageUrl,
@@ -91,9 +95,12 @@ object StoryItemUiModelFactory {
         resources: StoryItemResourcePresentation = StoryItemResourcePresentation(),
         loadingTitle: String = "Loading…",
         failedTitle: String = "Tap to retry",
+        resolvedDomain: String? = null,
+        nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
     ): StoryItemUiModel {
-        val fullDomain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
-        val shortDomain = runCatching { story.getDisplayDomain(false) }.getOrNull() ?: fullDomain
+        val fullDomain = resolvedDomain
+            ?: runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
+        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
         val titlePresentation = storyTitlePresentation(
             title = story.title,
             pdfTitle = story.pdfTitle,
@@ -113,7 +120,7 @@ object StoryItemUiModelFactory {
             points = story.score,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,
-            age = story.timeFormatted,
+            age = story.formatTime(nowMillis),
             commentCount = story.descendants,
             faviconUrl = resources.faviconUrl,
             previewImageUrl = resources.previewImageUrl,

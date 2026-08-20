@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
@@ -12,6 +11,7 @@ import androidx.compose.ui.Modifier
 @Composable
 fun <T> SharedLazyContentList(
     items: List<T>,
+    itemCount: Int = items.size,
     state: LazyListState,
     key: (T) -> Any,
     contentType: (T) -> Any?,
@@ -29,11 +29,11 @@ fun <T> SharedLazyContentList(
         contentPadding = contentPadding,
     ) {
         if (header != null) item(key = headerKey, contentType = "header") { header() }
-        itemsIndexed(
-            items = items,
-            key = { _, item -> key(item) },
-            contentType = { _, item -> contentType(item) },
-        ) { index, item -> itemContent(index, item) }
+        items(
+            count = itemCount.coerceIn(0, items.size),
+            key = { index -> key(items[index]) },
+            contentType = { index -> contentType(items[index]) },
+        ) { index -> itemContent(index, items[index]) }
         if (footer != null) item(key = footerKey, contentType = "footer") { footer() }
     }
 }

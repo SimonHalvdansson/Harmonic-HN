@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import kotlin.test.Test
@@ -53,6 +54,25 @@ class StoryItemUiModelFactoryTest {
             "Retry item",
             StoryItemUiModelFactory.create(story, failedTitle = "Retry item").title,
         )
+    }
+
+    @Test
+    fun usesPreResolvedDomainAndSharedModelTimestamp() {
+        val story = Story("Cached presentation", 7, true, false).apply {
+            url = "https://network.example/should-not-be-used"
+            time = 3_600
+        }
+        val nowMillis = 7_200_000L
+
+        val model = StoryItemUiModelFactory.create(
+            story = story,
+            resolvedDomain = "cached.example.com",
+            nowMillis = nowMillis,
+        )
+
+        assertEquals("cached.example.com", model.domain)
+        assertEquals("cached.example", model.domainWithoutTopLevel)
+        assertEquals(ItemTimeFormatter.format(story.time, nowMillis), model.age)
     }
 
     @Test

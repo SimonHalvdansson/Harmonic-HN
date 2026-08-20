@@ -13,6 +13,8 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
+import com.simon.harmonichackernews.utils.DomainNamePolicy
+import kotlin.time.Clock
 
 data class StoryHeaderTintPresentation(
     val previewImageUrl: String?,
@@ -174,10 +176,10 @@ fun storyItemUiModel(
     previewResource: StoryPreviewResourceState?,
     tintBaseColor: Int,
     tintStore: StoryResourceTintStore,
+    nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
 ): StoryItemUiModel {
-    val favicon = runCatching {
-        FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider)
-    }.getOrNull()
+    val domain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
+    val favicon = resolvedFaviconUrl(domain, story.url, settings.faviconProvider)
     val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     val previewUrl = previewResource?.imageUrl ?: story.previewImageUrl
     val currentPreviewTint = story.previewImageUrl == previewUrl &&
@@ -218,6 +220,8 @@ fun storyItemUiModel(
                 ?: story.previewImageTintColor.takeIf { currentPreviewTint },
             tintFallbackArgb = tintBaseColor,
         ).withPreviewResource(previewResource, paletteMode),
+        resolvedDomain = domain,
+        nowMillis = nowMillis,
     )
 }
 
@@ -229,10 +233,10 @@ fun storyItemUiModel(
     previewResource: StoryPreviewResourceState?,
     tintBaseColor: Int,
     tintStore: StoryResourceTintStore,
+    nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
 ): StoryItemUiModel {
-    val favicon = runCatching {
-        FaviconUrlBuilder.faviconUrl(item.url.orEmpty(), settings.faviconProvider)
-    }.getOrNull()
+    val domain = item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
+    val favicon = resolvedFaviconUrl(domain, item.url, settings.faviconProvider)
     val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     val presentation = item.presentation
     val previewUrl = previewResource?.imageUrl ?: presentation.previewImage.url
@@ -278,8 +282,23 @@ fun storyItemUiModel(
                 ?: previewTint?.colorArgb?.takeIf { currentPreviewTint },
             tintFallbackArgb = tintBaseColor,
         ).withPreviewResource(previewResource, paletteMode),
+        resolvedDomain = domain,
+        nowMillis = nowMillis,
     )
 }
+
+private fun resolvedFaviconUrl(
+    domain: String,
+    pageUrl: String?,
+    provider: String?,
+): String? = runCatching {
+    if (domain.isNotEmpty()) {
+        FaviconUrlBuilder.faviconUrlForHost(domain, provider)
+    } else {
+        // Preserve the network parser's legacy handling for relative, missing, or unusual URLs.
+        FaviconUrlBuilder.faviconUrl(pageUrl.orEmpty(), provider)
+    }
+}.getOrNull()
 
 @Composable
 fun rememberSubmissionStoryItemUiModel(
@@ -304,10 +323,14 @@ fun rememberSubmissionStoryItemUiModel(
     val summary = currentPreviewState?.summary?.description
         ?: story.linkSummaryDescription
         ?: story.summary.orEmpty()
-    val faviconUrl = remember(story.url, settings.faviconProvider) {
-        runCatching {
-            FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider)
-        }.getOrNull()
+    val domainAndFavicon = remember(story.url, settings.faviconProvider) {
+        val domain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
+        domain to resolvedFaviconUrl(domain, story.url, settings.faviconProvider)
+    }
+    val domain = domainAndFavicon.first
+    val faviconUrl = domainAndFavicon.second
+    val nowMillis = remember(story.id, story.time) {
+        Clock.System.now().toEpochMilliseconds()
     }
     return StoryItemUiModelFactory.create(
         story = story,
@@ -335,5 +358,7 @@ fun rememberSubmissionStoryItemUiModel(
         ).withPreviewResource(currentPreviewState, settings.paletteTintMode),
         loadingTitle = "",
         failedTitle = "",
+        resolvedDomain = domain,
+        nowMillis = nowMillis,
     )
 }

@@ -133,6 +133,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
+import kotlin.time.Clock
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.SharedHarmonicFilterButton
 
@@ -146,6 +147,7 @@ fun SharedStoriesScreen(
         Int,
         StoryDisplaySettings,
         StoryPreviewResourceState?,
+        Long,
     ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
@@ -339,6 +341,7 @@ private fun StoriesList(
         Int,
         StoryDisplaySettings,
         StoryPreviewResourceState?,
+        Long,
     ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
@@ -346,11 +349,13 @@ private fun StoriesList(
     compactSelectedText: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val visibleCount = if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
-    val visibleStories = remember(stories, visibleCount, controller.contentVersion) {
-        stories.take(visibleCount.coerceAtLeast(0).coerceAtMost(stories.size))
+    val visibleCount = (
+        if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
+    ).coerceIn(0, stories.size)
+    val modelNowMillis = remember(stories, settings, controller.contentVersion) {
+        Clock.System.now().toEpochMilliseconds()
     }
-    val centerFailure = !searchMode && visibleStories.isEmpty() &&
+    val centerFailure = !searchMode && visibleCount == 0 &&
         (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
@@ -384,7 +389,8 @@ private fun StoriesList(
     ) {
         Box(Modifier.fillMaxSize()) {
             SharedLazyContentList(
-                items = visibleStories,
+                items = stories,
+                itemCount = visibleCount,
                 state = listState,
                 key = { story -> story.id },
                 contentType = { story -> if (story.isComment) "comment" else "story" },
@@ -446,7 +452,13 @@ private fun StoriesList(
                         val model = remember(
                             story, index, settings, contentVersion, storyRevision, previewResource,
                         ) {
-                            storyItemModel(story, index, settings, previewResource)
+                            storyItemModel(
+                                story,
+                                index,
+                                settings,
+                                previewResource,
+                                modelNowMillis,
+                            )
                         }
                         val style = remember(story, settings, contentVersion, storyRevision, model.summary) {
                             settings.toItemStyle(story, model)

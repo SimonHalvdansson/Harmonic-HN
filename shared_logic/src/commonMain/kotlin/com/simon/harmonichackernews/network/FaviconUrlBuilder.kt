@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.utils.DomainNamePolicy
+
 object FaviconUrlBuilder {
     const val PROVIDER_GOOGLE = "google"
     const val PROVIDER_DUCKDUCKGO = "duckduckgo"
@@ -11,9 +13,9 @@ object FaviconUrlBuilder {
     }
 
     fun faviconUrl(pageUrl: String, provider: String?): String {
-        val parsed = pageUrl.toNetworkUrlOrNull()
+        val host = DomainNamePolicy.fromUrl(pageUrl)
             ?: throw IllegalArgumentException("Invalid page URL")
-        return faviconUrlForHost(parsed.host.removePrefix("www."), provider)
+        return faviconUrlForHost(host, provider)
     }
 
     fun faviconUrlTemplate(provider: String?): String = faviconUrlForHost("{host}", provider)
