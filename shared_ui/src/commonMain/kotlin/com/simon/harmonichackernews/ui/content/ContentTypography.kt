@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.content
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.georgia_bold
@@ -11,6 +12,7 @@ import com.simon.harmonichackernews.resources.google_sans_bold
 import com.simon.harmonichackernews.resources.google_sans_code_regular
 import com.simon.harmonichackernews.resources.google_sans_flex_rounded_bold
 import com.simon.harmonichackernews.resources.google_sans_flex_rounded_regular
+import com.simon.harmonichackernews.resources.google_sans_flex_rounded_variable_latin
 import com.simon.harmonichackernews.resources.google_sans_regular
 import com.simon.harmonichackernews.resources.jetbrains_mono_bold
 import com.simon.harmonichackernews.resources.jetbrains_mono_regular
@@ -25,6 +27,7 @@ import org.jetbrains.compose.resources.Font
 
 data class ContentTypography(
     val family: FontFamily,
+    val storyMetaFamily: FontFamily,
     val storyTitleSize: Float,
     val storySummarySize: Float,
     val storyMetaSize: Float,
@@ -49,7 +52,8 @@ fun rememberContentTypography(
     val clampedStorySize = TextPreferences.clampStoryTextSize(storyTextSize)
     val clampedCommentSize = TextPreferences.clampCommentTextSize(commentTextSize)
     val family = contentFontFamily(font)
-    return remember(font, family, clampedStorySize, clampedCommentSize) {
+    val storyMetaFamily = storyMetaFontFamily(font, family)
+    return remember(font, family, storyMetaFamily, clampedStorySize, clampedCommentSize) {
         val metrics = FontMetrics.forFont(font)
         val storyDelta = clampedStorySize - TextPreferences.DEFAULT_STORY_TEXT_SIZE
         val storyScale = clampedStorySize / TextPreferences.DEFAULT_STORY_TEXT_SIZE
@@ -58,6 +62,7 @@ fun rememberContentTypography(
 
         ContentTypography(
             family = family,
+            storyMetaFamily = storyMetaFamily,
             storyTitleSize = metrics.storyTitle + storyDelta,
             storySummarySize = maxOf(12f, clampedStorySize - 3.5f),
             storyMetaSize = metrics.storyMeta * storyScale,
@@ -72,6 +77,21 @@ fun rememberContentTypography(
             referenceLabelSize = maxOf(12f, clampedCommentSize - 2f) + explicitAdjustment,
         )
     }
+}
+
+@Composable
+private fun storyMetaFontFamily(font: String, fallback: FontFamily): FontFamily {
+    if (font != "googlesansflexrounded") return fallback
+
+    val condensed = Font(
+        resource = Res.font.google_sans_flex_rounded_variable_latin,
+        weight = FontWeight.Normal,
+        variationSettings = FontVariation.Settings(
+            FontVariation.width(90f),
+            FontVariation.weight(FontWeight.Normal.weight),
+        ),
+    )
+    return remember(condensed) { FontFamily(condensed) }
 }
 
 internal data class FontMetrics(

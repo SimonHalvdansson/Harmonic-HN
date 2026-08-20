@@ -812,7 +812,7 @@ private fun StoryMeta(
             text = metaText,
             modifier = Modifier.weight(1f),
             color = HarmonicTheme.colors.storyDisabled,
-            fontFamily = typography.family,
+            fontFamily = typography.storyMetaFamily,
             fontSize = metaSize.sp,
             style = legacyTextStyle,
         )
