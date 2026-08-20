@@ -60,6 +60,7 @@ class CommentThreadStore {
     val allComments: MutableList<Comment> = mutableListOf()
     val displayedComments: MutableList<Comment> = mutableListOf()
 
+    private val commentsById = mutableMapOf<Int, Comment>()
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
@@ -71,6 +72,8 @@ class CommentThreadStore {
     fun reset(story: Story?, header: Comment = Comment(), sorting: String = CommentSorter.DEFAULT) {
         allComments.clear()
         allComments.add(header)
+        commentsById.clear()
+        commentsById[header.id] = header
         displayedComments.clear()
         displayedComments.add(header)
         searchableTextById.clear()
@@ -93,11 +96,10 @@ class CommentThreadStore {
         collapseTopLevel: Boolean,
     ) {
         val header = allComments.firstOrNull() ?: Comment()
-        val existingById = allComments.drop(1).associateBy(Comment::id)
         val nextComments = ArrayList<Comment>(parsedComments.size + 1)
         nextComments.add(header)
         parsedComments.forEach { parsed ->
-            val existing = existingById[parsed.id]
+            val existing = commentsById[parsed.id]
             if (existing == null) {
                 nextComments.add(parsed)
             } else {
@@ -128,19 +130,18 @@ class CommentThreadStore {
     }
 
     fun toggleExpanded(commentId: Int): Boolean {
-        val comment = allComments.firstOrNull { it.id == commentId } ?: return false
+        val comment = commentsById[commentId] ?: return false
         comment.expanded = !comment.expanded
         publish()
         return comment.expanded
     }
 
     fun expandParents(commentId: Int): Boolean {
-        val byId = allComments.associateBy(Comment::id)
-        var parentId = byId[commentId]?.parent ?: return false
+        var parentId = commentsById[commentId]?.parent ?: return false
         var expandedAny = false
         val visited = mutableSetOf<Int>()
         while (parentId > 0 && visited.add(parentId)) {
-            val parent = byId[parentId] ?: break
+            val parent = commentsById[parentId] ?: break
             if (!parent.expanded) {
                 parent.expanded = true
                 expandedAny = true
@@ -156,9 +157,7 @@ class CommentThreadStore {
         publish()
     }
 
-    fun findComment(commentId: Int): Comment? =
-        displayedComments.firstOrNull { it.id == commentId }
-            ?: allComments.firstOrNull { it.id == commentId }
+    fun findComment(commentId: Int): Comment? = commentsById[commentId]
 
     fun showCommentsByOp(): Boolean {
         val story = currentStory
@@ -196,6 +195,8 @@ class CommentThreadStore {
         }
         allComments.clear()
         allComments.addAll(comments)
+        commentsById.clear()
+        allComments.forEach { comment -> commentsById[comment.id] = comment }
         searchableTextById.keys.retainAll(allComments.mapTo(mutableSetOf(), Comment::id))
         rebuildDisplayedComments()
         publish(story = story, sorting = sorting)
@@ -244,24 +245,30 @@ class CommentThreadStore {
         val visible = buildVisibleComments(displayedComments)
         val revision = state.value.revision + 1
         currentStory = story
-        val allSnapshots = allComments.associate { comment ->
-            comment.id to comment.toPortableItem()
+        val snapshotsById = HashMap<Int, PortableCommentItem>(allComments.size)
+        val allSnapshots = ArrayList<PortableCommentItem>(allComments.size)
+        allComments.forEach { comment ->
+            val snapshot = comment.toPortableItem()
+            snapshotsById[comment.id] = snapshot
+            allSnapshots += snapshot
         }
-        val displayedSnapshots = displayedComments.map { it.toPortableItem() }
+        val displayedSnapshots = displayedComments.map { comment ->
+            snapshotsById.getValue(comment.id)
+        }
         val nextState = PortableCommentThreadState(
             story = story?.toSnapshot(),
-            allComments = allComments.map { it.toPortableItem() },
+            allComments = allSnapshots,
             displayedComments = displayedSnapshots,
             sorting = sorting,
             commentsByOp = actualCommentsByOp,
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
-            searchResults = results.map { it.toPortableItem() },
+            searchResults = results.map { comment -> snapshotsById.getValue(comment.id) },
             searchResultIds = results.map(Comment::id),
             visibleComments = visible.map { item ->
                 PortableVisibleComment(
                     sourceIndex = item.sourceIndex,
-                    comment = allSnapshots.getValue(item.comment.id),
+                    comment = snapshotsById.getValue(item.comment.id),
                     hiddenReplyCount = item.hiddenReplyCount,
                 )
             },

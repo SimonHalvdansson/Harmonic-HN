@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.data.Story
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentThreadStoreTest {
@@ -51,6 +53,51 @@ class CommentThreadStoreTest {
             listOf(1 to 3, 2 to 1, 3 to 0, 4 to 0, 5 to 1, 6 to 0),
             store.state.value.visibleComments.map { it.comment.id to it.hiddenReplyCount },
         )
+    }
+
+    @Test
+    fun portableListsReuseTheSameImmutableCommentSnapshots() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.appendLoadedComments(
+            story = story(),
+            loadedComments = listOf(comment(1, -1, 0, "comment")),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+
+        val state = store.state.value
+        val snapshot = state.allComments[1]
+        assertSame(snapshot, state.displayedComments[1])
+        assertSame(snapshot, state.searchResults[0])
+        assertSame(snapshot, state.visibleComments[0].comment)
+    }
+
+    @Test
+    fun commentIndexDropsRemovedAndResetComments() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.appendLoadedComments(
+            story = story(),
+            loadedComments = listOf(
+                comment(1, -1, 0, "removed"),
+                comment(2, -1, 0, "retained"),
+            ),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+
+        store.replaceParsedComments(
+            story = story(),
+            parsedComments = listOf(comment(2, -1, 0, "updated")),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+
+        assertNull(store.findComment(1))
+        assertEquals("updated", store.findComment(2)?.text)
+        store.reset(story = story())
+        assertNull(store.findComment(2))
     }
 
     @Test

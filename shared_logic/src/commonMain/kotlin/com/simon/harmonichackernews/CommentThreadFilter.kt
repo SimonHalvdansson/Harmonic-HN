@@ -42,6 +42,9 @@ object CommentThreadFilter {
             if (author != comment.by) {
                 continue
             }
+            if (comment.id in includedCommentIds) {
+                continue
+            }
 
             includeCommentAndAncestors(
                 comment,
@@ -75,7 +78,7 @@ object CommentThreadFilter {
         var current = comment
         var guard = 0
         while (current != null && guard++ < maxDepth) {
-            includedCommentIds.add(current.id)
+            if (!includedCommentIds.add(current.id)) break
             current = commentsById[current.parent]
         }
     }
