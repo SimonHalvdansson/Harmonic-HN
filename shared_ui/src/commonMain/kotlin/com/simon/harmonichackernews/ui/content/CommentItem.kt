@@ -747,9 +747,13 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
 }
 
 private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
-    .replace(Regex("<p\\s*>", RegexOption.IGNORE_CASE), "<br><br>")
-    .replace(Regex("</p>\\s*<p", RegexOption.IGNORE_CASE), "</p><br><p")
-    .replace(Regex("</div>\\s*<div", RegexOption.IGNORE_CASE), "</div><br><div")
+    .replace(commentParagraphStartPattern, "<br><br>")
+    .replace(commentParagraphBoundaryPattern, "</p><br><p")
+    .replace(commentDivBoundaryPattern, "</div><br><div")
+
+private val commentParagraphStartPattern = Regex("<p\\s*>", RegexOption.IGNORE_CASE)
+private val commentParagraphBoundaryPattern = Regex("</p>\\s*<p", RegexOption.IGNORE_CASE)
+private val commentDivBoundaryPattern = Regex("</div>\\s*<div", RegexOption.IGNORE_CASE)
 
 private fun highlightSearchMatches(
     body: AnnotatedString,
