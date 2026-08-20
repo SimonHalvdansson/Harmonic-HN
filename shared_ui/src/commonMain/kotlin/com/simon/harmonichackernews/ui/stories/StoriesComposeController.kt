@@ -302,8 +302,8 @@ class StoriesComposeController private constructor(
         syncInteractionState()
     }
 
-    fun consumeScrollBy(request: StoryScrollRequest) {
-        interactionStore.consumeScrollRequest(request)
+    fun consumeScrollBy(request: StoryScrollRequest, consumedDy: Int) {
+        interactionStore.consumeScrollRequest(request, consumedDy)
         syncInteractionState()
     }
 
@@ -426,8 +426,8 @@ class StoriesComposeController private constructor(
         listener.onStoryPreviewStopScroll()
     }
 
-    fun getStoryPagingDistance(firstStoryId: Int, secondStoryId: Int): Int {
-        return interactionStore.getStoryPagingDistance(firstStoryId, secondStoryId)
+    fun getAdjacentStoryPagingDistance(precedingStoryId: Int): Int {
+        return interactionStore.getAdjacentStoryPagingDistance(precedingStoryId)
     }
 
     fun updateStoryBounds(storyId: Int, bounds: Rect) {

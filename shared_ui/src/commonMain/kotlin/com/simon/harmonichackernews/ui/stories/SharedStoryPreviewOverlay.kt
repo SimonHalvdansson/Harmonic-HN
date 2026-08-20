@@ -128,9 +128,8 @@ fun SharedStoryPreviewOverlay(
                             .coerceAtMost(state.stories.lastIndex - 1)
                         val end = min(position, segment + 1f)
                         val first = state.stories[segment]
-                        val second = state.stories[segment + 1]
                         pendingListScroll += (end - cursor) *
-                            controller.getStoryPagingDistance(first.id, second.id)
+                            controller.getAdjacentStoryPagingDistance(first.id)
                         cursor = end
                     }
                 } else {
@@ -140,9 +139,8 @@ fun SharedStoryPreviewOverlay(
                             .coerceAtMost(state.stories.lastIndex - 1)
                         val end = max(position, segment.toFloat())
                         val first = state.stories[segment]
-                        val second = state.stories[segment + 1]
                         pendingListScroll += (end - cursor) *
-                            controller.getStoryPagingDistance(first.id, second.id)
+                            controller.getAdjacentStoryPagingDistance(first.id)
                         cursor = end
                     }
                 }

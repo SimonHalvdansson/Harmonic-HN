@@ -56,8 +56,17 @@ class StoriesInteractionStoreTest {
         assertTrue(store.state.headerPinnedForPreview)
 
         store.consumeScrollRequest(first)
-        assertEquals(second, store.state.scrollRequest)
-        store.consumeScrollRequest(second)
+        val reversedRemainder = requireNotNull(store.state.scrollRequest)
+        assertEquals(-5, reversedRemainder.dy)
+        store.consumeScrollRequest(reversedRemainder)
+        assertNull(store.state.scrollRequest)
+
+        store.requestScrollBy(20)
+        val partial = requireNotNull(store.state.scrollRequest)
+        store.requestScrollBy(10)
+        store.consumeScrollRequest(partial, consumedDy = 12)
+        assertEquals(18, store.state.scrollRequest?.dy)
+        store.consumeScrollRequest(requireNotNull(store.state.scrollRequest))
         assertNull(store.state.scrollRequest)
         store.unpinPreviewHeader()
         assertFalse(store.state.headerPinnedForPreview)
@@ -94,8 +103,10 @@ class StoriesInteractionStoreTest {
         val dismissVersion = store.state.storyPreviewDismissRequestVersion
         store.requestDismissStoryPreview()
         assertEquals(dismissVersion, store.state.storyPreviewDismissRequestVersion)
+        store.requestScrollBy(50)
         assertTrue(store.completeStoryPreviewDismiss())
         assertNull(store.state.storyPreviewOverlay)
+        assertNull(store.state.scrollRequest)
         assertTrue(store.state.storyPagingAlphas.isEmpty())
         assertFalse(store.completeStoryPreviewDismiss())
     }
@@ -116,11 +127,12 @@ class StoriesInteractionStoreTest {
 
         store.updateStoryItemHeight(1, 80)
         store.updateStoryItemHeight(2, 120)
-        assertEquals(200, store.getStoryPagingDistance(1, 3))
-        assertEquals(100, store.getStoryPagingDistance(3, 3))
+        assertEquals(80, store.getAdjacentStoryPagingDistance(1))
+        assertEquals(120, store.getAdjacentStoryPagingDistance(2))
+        assertEquals(100, store.getAdjacentStoryPagingDistance(3))
 
         store.updateContent(listOf(story(3)), emptyList(), searching = false, lastSearch = "")
-        assertEquals(96, store.getStoryPagingDistance(3, 999))
+        assertEquals(96, store.getAdjacentStoryPagingDistance(3))
     }
 
     @Test

@@ -189,8 +189,17 @@ fun SharedStoriesScreen(
     val scrollRequest = controller.scrollByRequest
     LaunchedEffect(scrollRequest) {
         scrollRequest?.let { request ->
-            (if (controller.searching) searchState else mainState).scrollBy(request.dy.toFloat())
-            controller.consumeScrollBy(request)
+            // dispatchRawDelta is synchronous: applying and acknowledging this accumulated delta
+            // cannot be split by cancellation when a newer pager sample arrives.
+            val consumed = (if (controller.searching) searchState else mainState)
+                .dispatchRawDelta(request.dy.toFloat())
+                .roundToInt()
+            // A list boundary cannot consume the requested movement. Treat that request as handled
+            // so an unreachable anchor cannot keep getting re-issued.
+            controller.consumeScrollBy(
+                request,
+                consumedDy = consumed.takeIf { it != 0 } ?: request.dy,
+            )
         }
     }
 

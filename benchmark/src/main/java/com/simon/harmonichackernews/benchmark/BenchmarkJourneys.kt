@@ -32,7 +32,9 @@ internal fun prepareBenchmarkApp() {
 
 private fun UiDevice.awaitHomeScreen() {
     waitForIdle()
-    wait(Until.findObject(By.text("Get started")), 2_000)?.click()
+    wait(Until.findObject(By.text("Get started")), 2_000)?.let { label ->
+        (label.parent ?: label).click()
+    }
     check(wait(Until.hasObject(By.text("Top Stories")), 30_000)) {
         "The stories screen did not appear"
     }

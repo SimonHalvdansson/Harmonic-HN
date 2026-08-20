@@ -184,8 +184,17 @@ class StoriesInteractionStore(
         state = state.copy(headerPinnedForPreview = false)
     }
 
-    fun consumeScrollRequest(request: StoryScrollRequest) {
-        if (state.scrollRequest == request) state = state.copy(scrollRequest = null)
+    fun consumeScrollRequest(request: StoryScrollRequest, consumedDy: Int = request.dy) {
+        val current = state.scrollRequest ?: return
+        if (current.serial < request.serial || consumedDy == 0) return
+        val remainingDy = current.dy - consumedDy
+        state = state.copy(
+            scrollRequest = if (remainingDy == 0) {
+                null
+            } else {
+                StoryScrollRequest(current.serial, LayoutDelta(remainingDy))
+            },
+        )
     }
 
     fun showStoryPreview(
@@ -243,6 +252,7 @@ class StoriesInteractionStore(
             visibleStoryPreviewId = -1,
             storyPagingAlphas = emptyMap(),
             suppressedStoryIds = emptySet(),
+            scrollRequest = null,
             headerPinnedForPreview = false,
         )
         return true
@@ -358,25 +368,22 @@ class StoriesInteractionStore(
         return true
     }
 
-    fun getStoryPagingDistance(firstStoryId: Int, secondStoryId: Int): Int {
-        val activeStories = if (state.searching) searchStories else mainStories
-        val first = activeStories.indexOfFirst { it.id == firstStoryId }
-        val second = activeStories.indexOfFirst { it.id == secondStoryId }
-        if (first < 0 || second < 0 || first == second) return averageStoryHeight()
-        val start = minOf(first, second)
-        val end = maxOf(first, second)
-        return (start until end).sumOf { index ->
-            storyItemExtents[activeStories[index].id]?.value?.coerceAtLeast(1)
-                ?: averageStoryHeight()
-        }
+    fun getAdjacentStoryPagingDistance(precedingStoryId: Int): Int {
+        return storyItemExtents[precedingStoryId]
+            ?.value
+            ?.coerceAtLeast(1)
+            ?: averageStoryHeight()
     }
 
     private fun averageStoryHeight(): Int {
-        val heights = storyItemExtents.values.map(LayoutDistance::value).filter { it > 0 }
-        return if (heights.isEmpty()) {
-            defaultStoryExtent.value
-        } else {
-            heights.sum() / heights.size
+        var total = 0
+        var count = 0
+        for (extent in storyItemExtents.values) {
+            if (extent.value > 0) {
+                total += extent.value
+                count++
+            }
         }
+        return if (count == 0) defaultStoryExtent.value else total / count
     }
 }

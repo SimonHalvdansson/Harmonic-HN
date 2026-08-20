@@ -8,7 +8,6 @@ import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import androidx.test.filters.RequiresDevice
 import org.junit.Rule
 import org.junit.Before
 import org.junit.Test
@@ -34,7 +33,6 @@ class HarmonicMacrobenchmark {
     )
 
     @Test
-    @RequiresDevice
     fun storyListScroll() = rule.measureRepeated(
         packageName = BenchmarkPackageName,
         metrics = listOf(FrameTimingMetric()),
