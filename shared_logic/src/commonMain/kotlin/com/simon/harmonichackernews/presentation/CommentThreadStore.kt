@@ -277,16 +277,49 @@ class CommentThreadStore {
 
     private fun buildVisibleComments(source: List<Comment>): List<MutableVisibleComment> {
         if (source.size <= 1) return emptyList()
-        val byId = source.associateBy(Comment::id)
-        return source.mapIndexedNotNull { index, comment ->
-            if (index == 0 || !isVisible(comment, byId)) return@mapIndexedNotNull null
-            var lastChild = index
-            for (candidate in index + 1 until source.size) {
-                if (source[candidate].depth <= comment.depth) break
-                lastChild = candidate
+
+        val byId = HashMap<Int, Comment>(source.size)
+        source.forEach { comment -> byId[comment.id] = comment }
+
+        // The flattened thread is in parent-before-child order. Cache each parent's visibility so
+        // descendants do not repeatedly walk the same ancestor chain.
+        val visibilityById = HashMap<Int, Boolean>(source.size)
+        val visibleByIndex = BooleanArray(source.size)
+        for (index in 1..<source.size) {
+            val comment = source[index]
+            val parent = byId[comment.parent]
+            val visible = when {
+                comment.parent == -1 || parent == null -> true
+                !parent.expanded -> false
+                else -> visibilityById[parent.id] ?: isVisible(parent, byId)
             }
-            MutableVisibleComment(index, comment, lastChild - index)
+            visibleByIndex[index] = visible
+            visibilityById[comment.id] = visible
         }
+
+        // Find the first following item at the same or a shallower depth for every comment in one
+        // pass. Previously, each visible comment scanned the rest of its subtree independently.
+        val subtreeEndExclusive = IntArray(source.size) { source.size }
+        val openAncestors = IntArray(source.size)
+        var openCount = 0
+        for (index in 1..<source.size) {
+            val depth = source[index].depth
+            while (openCount > 0 && source[openAncestors[openCount - 1]].depth >= depth) {
+                subtreeEndExclusive[openAncestors[--openCount]] = index
+            }
+            openAncestors[openCount++] = index
+        }
+
+        val visibleComments = ArrayList<MutableVisibleComment>(source.size - 1)
+        for (index in 1..<source.size) {
+            if (!visibleByIndex[index]) continue
+            visibleComments += MutableVisibleComment(
+                sourceIndex = index,
+                comment = source[index],
+                hiddenReplyCount = subtreeEndExclusive[index] - index - 1,
+            )
+        }
+        return visibleComments
     }
 
     private fun isVisible(comment: Comment, byId: Map<Int, Comment>): Boolean {

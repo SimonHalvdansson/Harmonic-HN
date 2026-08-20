@@ -30,6 +30,30 @@ class CommentThreadStoreTest {
     }
 
     @Test
+    fun visibleReplyCountsStopAtTheNextSibling() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.replaceParsedComments(
+            story = story(),
+            parsedComments = listOf(
+                comment(1, -1, 0, "first root").also { it.expanded = true },
+                comment(2, 1, 1, "first child").also { it.expanded = true },
+                comment(3, 2, 2, "grandchild"),
+                comment(4, 1, 1, "second child"),
+                comment(5, -1, 0, "second root").also { it.expanded = true },
+                comment(6, 5, 1, "second root child"),
+            ),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+
+        assertEquals(
+            listOf(1 to 3, 2 to 1, 3 to 0, 4 to 0, 5 to 1, 6 to 0),
+            store.state.value.visibleComments.map { it.comment.id to it.hiddenReplyCount },
+        )
+    }
+
+    @Test
     fun searchUsesVisibleTextInsteadOfHtmlMarkup() {
         val store = CommentThreadStore()
         store.reset(story = story())
