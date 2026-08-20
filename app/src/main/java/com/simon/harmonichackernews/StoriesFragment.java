@@ -47,6 +47,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
@@ -67,6 +68,7 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.search.SearchBar;
+import com.google.android.material.snackbar.Snackbar;
 import com.simon.harmonichackernews.adapters.StoryDisplaySettings;
 import com.simon.harmonichackernews.adapters.StoryRecyclerViewAdapter;
 import com.simon.harmonichackernews.data.Bookmark;
@@ -79,6 +81,7 @@ import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
+import com.simon.harmonichackernews.utils.DismissedStoryStore;
 import com.simon.harmonichackernews.utils.FontUtils;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.HistoriesUtils;
@@ -132,6 +135,7 @@ public class StoriesFragment extends Fragment {
     private AppBarLayout.OnOffsetChangedListener appBarOffsetChangedListener;
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
     private RecyclerView.OnScrollListener searchRecyclerViewScrollListener;
+    private ItemTouchHelper mainStorySwipeHelper;
     private RecyclerView.AdapterDataObserver storyAdapterDataObserver;
     private RecyclerView.AdapterDataObserver searchStoryAdapterDataObserver;
     private MaterialButtonToggleGroup.OnButtonCheckedListener userItemFilterCheckedListener;
@@ -632,6 +636,7 @@ public class StoriesFragment extends Fragment {
         setupAdapter();
         mainRecyclerView.setAdapter(mainAdapter);
         searchRecyclerView.setAdapter(searchAdapter);
+        setupMainStorySwipeHelper();
         registerStoryAdapterDataObservers();
         syncActiveStoryListToSearchState();
         applySearchRecyclerVisibility(false);
@@ -1255,6 +1260,139 @@ public class StoriesFragment extends Fragment {
                                         @NonNull LinearLayoutManager targetLayoutManager) {
         targetRecyclerView.setHasFixedSize(true);
         targetRecyclerView.setLayoutManager(targetLayoutManager);
+    }
+
+    private void setupMainStorySwipeHelper() {
+        mainStorySwipeHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, 0) {
+            @Override
+            public int getMovementFlags(@NonNull RecyclerView recyclerView,
+                                         @NonNull RecyclerView.ViewHolder viewHolder) {
+                if (!isDismissibleMainStoryFeed()
+                        || !(viewHolder instanceof StoryRecyclerViewAdapter.StoryViewHolder)) {
+                    return 0;
+                }
+                return makeMovementFlags(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT);
+            }
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAbsoluteAdapterPosition();
+                if (!isDismissibleMainStoryFeed()
+                        || position < 0
+                        || position >= mainStories.size()) {
+                    if (mainAdapter != null
+                            && position >= 0
+                            && position < mainAdapter.getItemCount()) {
+                        mainAdapter.notifyItemChanged(position);
+                    }
+                    return;
+                }
+
+                Story story = mainStories.get(position);
+                StoryRecyclerViewAdapter dismissalAdapter = mainAdapter;
+                List<Story> dismissalStories = mainStories;
+                int dismissalType = mainAdapter.type;
+                int loadedToBeforeRemoval = loadedTo;
+                int removalGeneration = storyListGeneration;
+                removeStoryAt(position, removalGeneration, true);
+                DismissedStoryStore.dismiss(requireContext(), story.id);
+
+                Snackbar.make(binding.getRoot(), "Story hidden", Snackbar.LENGTH_LONG)
+                        .setAction("UNDO", v -> restoreDismissedStory(
+                                story,
+                                position,
+                                loadedToBeforeRemoval,
+                                removalGeneration,
+                                dismissalAdapter,
+                                dismissalStories,
+                                dismissalType))
+                        .show();
+            }
+        });
+        mainStorySwipeHelper.attachToRecyclerView(mainRecyclerView);
+    }
+
+    private boolean isDismissibleMainStoryFeed() {
+        if (searching || adapter == null || adapter != mainAdapter) {
+            return false;
+        }
+
+        switch (getCurrentStoryType()) {
+            case TOP_STORIES:
+            case NEW_STORIES:
+            case BEST_STORIES:
+            case ASK_HN:
+            case SHOW_HN:
+            case HN_JOBS:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean isCurrentMainStoryUndoContext(
+            @NonNull StoryRecyclerViewAdapter expectedAdapter,
+            @NonNull List<Story> expectedStories,
+            int expectedType) {
+        return isAdded()
+                && getView() != null
+                && !searching
+                && adapter == expectedAdapter
+                && stories == expectedStories
+                && expectedAdapter.type == expectedType;
+    }
+
+    private void restoreDismissedStory(@NonNull Story story,
+                                       int originalPosition,
+                                       int loadedToBeforeRemoval,
+                                       int removalGeneration,
+                                       @NonNull StoryRecyclerViewAdapter expectedAdapter,
+                                       @NonNull List<Story> expectedStories,
+                                       int expectedType) {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+        if (!isCurrentMainStoryUndoContext(expectedAdapter, expectedStories, expectedType)) {
+            DismissedStoryStore.restore(context, story.id);
+            return;
+        }
+
+        boolean sameGeneration = isCurrentStoryActionContext(
+                removalGeneration, expectedAdapter, expectedStories);
+        DismissedStoryStore.restore(context, story.id);
+        for (Story existingStory : mainStories) {
+            if (existingStory.id == story.id) {
+                return;
+            }
+        }
+
+        int restorePosition = Math.min(originalPosition, mainStories.size());
+        mainStories.add(restorePosition, story);
+        if (sameGeneration && originalPosition <= loadedToBeforeRemoval) {
+            loadedTo = Math.min(mainStories.size() - 1, loadedTo + 1);
+        }
+
+        if (mainAdapter.paginationMode) {
+            mainAdapter.notifyDataSetChanged();
+        } else {
+            mainAdapter.notifyItemInserted(restorePosition);
+            mainAdapter.updateStoryIndicesFromPosition(restorePosition);
+        }
+
+        if (!story.loaded) {
+            loadStory(story, 0, storyListGeneration);
+        }
+        if (sameGeneration) {
+            loadVisibleStories(storyListGeneration);
+        }
     }
 
     private void configureStoryItemAnimator(@Nullable RecyclerView.ItemAnimator itemAnimator) {
@@ -3716,6 +3854,10 @@ public class StoriesFragment extends Fragment {
         if (mainRecyclerView != null || searchRecyclerView != null) {
             cancelSearchContentExitAnimation(false);
             if (mainRecyclerView != null) {
+                if (mainStorySwipeHelper != null) {
+                    mainStorySwipeHelper.attachToRecyclerView(null);
+                    mainStorySwipeHelper = null;
+                }
                 if (recyclerViewScrollListener != null) {
                     mainRecyclerView.removeOnScrollListener(recyclerViewScrollListener);
                 }
@@ -4704,6 +4846,11 @@ public class StoriesFragment extends Fragment {
         Context ctx = getContext();
 
         for (int id : itemIds) {
+            if (ctx != null
+                    && isDismissibleMainStoryFeed()
+                    && DismissedStoryStore.isDismissed(ctx, id)) {
+                continue;
+            }
             if (hideClicked && HistoriesUtils.INSTANCE.isHistoryExist(id)) {
                 continue;
             }
@@ -6048,11 +6195,22 @@ public class StoriesFragment extends Fragment {
         applySearchRecyclerVisibility(false);
     }
 
+    private ArrayList<Story> filterDismissedMainStories(List<Story> sourceStories) {
+        ArrayList<Story> filteredStories = new ArrayList<>();
+        Context context = getContext();
+        for (Story story : sourceStories) {
+            if (context == null || !DismissedStoryStore.isDismissed(context, story.id)) {
+                filteredStories.add(story);
+            }
+        }
+        return filteredStories;
+    }
+
     private void showCachedStories() {
         showingCached = true;
         swipeRefreshLayout.setRefreshing(false);
 
-        replaceStories(Utils.loadCachedStories(getContext()));
+        replaceStories(filterDismissedMainStories(Utils.loadCachedStories(getContext())));
         loadedTo = stories.size() - 1;
         loadingFailed = false;
         loadingFailedServerError = false;
