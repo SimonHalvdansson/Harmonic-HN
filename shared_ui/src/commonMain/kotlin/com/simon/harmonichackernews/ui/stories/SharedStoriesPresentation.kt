@@ -90,6 +90,12 @@ data class StorySearchPresentationState(
 
 private val StoriesRootEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
+internal fun resolvedStandardSearchProgress(
+    searching: Boolean,
+    suppressSearchAutoFocus: Boolean,
+    animatedProgress: Float,
+): Float = if (!searching && suppressSearchAutoFocus) 0f else animatedProgress
+
 /** Shared root transition between a primary story feed and its search results. */
 @Composable
 fun SharedStoriesRoot(
@@ -102,7 +108,7 @@ fun SharedStoriesRoot(
     searchLayer: @Composable () -> Unit,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
-    val standardSearchProgress by animateFloatAsState(
+    val animatedSearchProgress by animateFloatAsState(
         targetValue = if (searching) 1f else 0f,
         animationSpec = if (!searching && suppressSearchAutoFocus) {
             snap()
@@ -110,6 +116,11 @@ fun SharedStoriesRoot(
             tween(180, easing = StoriesRootEasing)
         },
         label = "stories search transition",
+    )
+    val standardSearchProgress = resolvedStandardSearchProgress(
+        searching = searching,
+        suppressSearchAutoFocus = suppressSearchAutoFocus,
+        animatedProgress = animatedSearchProgress,
     )
     val progress = predictiveBackProgress.coerceIn(0f, 1f)
     val predictiveSearchFade = (progress / 0.5f).coerceIn(0f, 1f)

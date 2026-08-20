@@ -87,7 +87,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -137,6 +136,7 @@ import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.SharedHarmonicFilterButton
@@ -178,7 +178,10 @@ fun SharedStoriesScreen(
         }
         if (request.target == 1f) {
             controller.listener.onCloseSearch()
-            withFrameNanos { }
+            // Keep the completed predictive frame in place until the feature state confirms the
+            // search has closed. Resetting the gesture after an arbitrary frame can briefly reveal
+            // the still-active search layer when that state update arrives a frame later.
+            snapshotFlow { controller.searching }.first { searching -> !searching }
         }
         controller.endPredictiveBack(request)
     }
