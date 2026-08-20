@@ -33,7 +33,6 @@ data class StoriesInteractionState(
     val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest? = null,
     val frontDatePickerRequest: StoryFrontDatePickerRequest? = null,
     val scrollRequest: StoryScrollRequest? = null,
-    val headerPinnedForPreview: Boolean = false,
     val storyPagingAlphas: Map<Int, Float> = emptyMap(),
     val storyPreviewOverlay: StoryPreviewOverlayState? = null,
     val storyPreviewDismissRequestVersion: Int = 0,
@@ -172,16 +171,11 @@ class StoriesInteractionStore(
     fun requestScrollBy(delta: LayoutDelta) {
         if (delta.value == 0) return
         state = state.copy(
-            headerPinnedForPreview = true,
             scrollRequest = StoryScrollRequest(
                 serial = ++requestSerial,
                 delta = LayoutDelta((state.scrollRequest?.dy ?: 0) + delta.value),
             ),
         )
-    }
-
-    fun unpinPreviewHeader() {
-        state = state.copy(headerPinnedForPreview = false)
     }
 
     fun consumeScrollRequest(request: StoryScrollRequest, consumedDy: Int = request.dy) {
@@ -253,7 +247,6 @@ class StoriesInteractionStore(
             storyPagingAlphas = emptyMap(),
             suppressedStoryIds = emptySet(),
             scrollRequest = null,
-            headerPinnedForPreview = false,
         )
         return true
     }

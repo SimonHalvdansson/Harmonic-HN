@@ -23,7 +23,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,9 +48,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
@@ -96,7 +92,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -366,25 +361,12 @@ private fun StoriesList(
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
     val headerHeight = with(density) { headerHeightPx.toDp() }
-    val headerPinnedForPreview = controller.headerPinnedForPreview
-    val headerCollapsePx by remember(listState, headerPinnedForPreview, headerHeightPx) {
+    val headerCollapsePx by remember(listState, headerHeightPx) {
         derivedStateOf {
-            if (headerPinnedForPreview) {
-                0
-            } else if (listState.firstVisibleItemIndex > 0) {
+            if (listState.firstVisibleItemIndex > 0) {
                 headerHeightPx
             } else {
                 listState.firstVisibleItemScrollOffset.coerceAtMost(headerHeightPx)
-            }
-        }
-    }
-    val userScrollConnection = remember(controller) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    controller.unpinPreviewHeader()
-                }
-                return Offset.Zero
             }
         }
     }
@@ -406,9 +388,7 @@ private fun StoriesList(
                 state = listState,
                 key = { story -> story.id },
                 contentType = { story -> if (story.isComment) "comment" else "story" },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(userScrollConnection),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = startInset + safeStart,
                     top = headerHeight,

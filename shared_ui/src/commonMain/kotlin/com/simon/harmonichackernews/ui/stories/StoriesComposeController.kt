@@ -148,7 +148,6 @@ class StoriesComposeController private constructor(
     val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
         get() = interactionState.predictiveBackSettleRequest
     val scrollByRequest: StoryScrollRequest? get() = interactionState.scrollRequest
-    val headerPinnedForPreview: Boolean get() = interactionState.headerPinnedForPreview
     val storyPagingAlphas: Map<Int, Float> get() = interactionState.storyPagingAlphas
     val storyPreviewOverlay: StoryPreviewOverlayState?
         get() = interactionState.storyPreviewOverlay
@@ -294,11 +293,6 @@ class StoriesComposeController private constructor(
 
     fun requestScrollBy(dy: Int) {
         interactionStore.requestScrollBy(dy)
-        syncInteractionState()
-    }
-
-    fun unpinPreviewHeader() {
-        interactionStore.unpinPreviewHeader()
         syncInteractionState()
     }
 

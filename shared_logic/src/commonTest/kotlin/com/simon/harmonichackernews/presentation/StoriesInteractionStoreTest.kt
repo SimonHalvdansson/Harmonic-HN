@@ -53,7 +53,6 @@ class StoriesInteractionStoreTest {
         val second = requireNotNull(store.state.scrollRequest)
         assertEquals(15, second.dy)
         assertEquals(LayoutDelta(15), second.delta)
-        assertTrue(store.state.headerPinnedForPreview)
 
         store.consumeScrollRequest(first)
         val reversedRemainder = requireNotNull(store.state.scrollRequest)
@@ -68,8 +67,6 @@ class StoriesInteractionStoreTest {
         assertEquals(18, store.state.scrollRequest?.dy)
         store.consumeScrollRequest(requireNotNull(store.state.scrollRequest))
         assertNull(store.state.scrollRequest)
-        store.unpinPreviewHeader()
-        assertFalse(store.state.headerPinnedForPreview)
     }
 
     @Test
