@@ -474,13 +474,21 @@ private fun StoryTextColumn(
         content = content,
     ) { measurables, constraints ->
         val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
-        val placeables = measurables.map { it.measure(childConstraints) }
-        val width = (placeables.maxOfOrNull { it.width } ?: 0)
+        var measuredWidth = 0
+        var measuredHeight = 0
+        var firstBaseline = AlignmentLine.Unspecified
+        val placeables = Array(measurables.size) { index ->
+            val placeable = measurables[index].measure(childConstraints)
+            measuredWidth = maxOf(measuredWidth, placeable.width)
+            measuredHeight += placeable.height
+            if (index == 0) firstBaseline = placeable[FirstBaseline]
+            placeable
+        }
+        val width = measuredWidth
             .coerceIn(constraints.minWidth, constraints.maxWidth)
-        val height = placeables.sumOf { it.height }
+        val height = measuredHeight
             .coerceIn(constraints.minHeight, constraints.maxHeight)
-        val firstBaseline = placeables.firstOrNull()?.get(FirstBaseline)
-        val alignmentLines = if (firstBaseline != null && firstBaseline != AlignmentLine.Unspecified) {
+        val alignmentLines = if (firstBaseline != AlignmentLine.Unspecified) {
             mapOf<AlignmentLine, Int>(FirstBaseline to firstBaseline)
         } else {
             emptyMap<AlignmentLine, Int>()

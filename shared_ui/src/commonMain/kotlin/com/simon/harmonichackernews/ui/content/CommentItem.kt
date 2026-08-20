@@ -136,7 +136,7 @@ fun CommentItem(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
         style = style,
         showIndicator = style.depthIndicatorMode != "none",
-        indicatorColor = depthColors().first(),
+        indicatorColor = CommentDepthColors.first(),
         highlighted = false,
         onClick = {},
         onLongClick = {},
@@ -218,7 +218,7 @@ fun CommentItem(
     val showIndicator = !flattenHierarchy && style.depthIndicatorMode != "none" &&
         (effectiveDepth > 0 || showTopLevelIndicator)
     val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
-        .coerceAtLeast(0) % depthColors().size
+        .coerceAtLeast(0) % CommentDepthColors.size
     val references = remember(comment.expandedAnchorText, style.collectLinks) {
         if (style.collectLinks) CollectedReferenceLinks.parse(comment.expandedAnchorText) else null
     }
@@ -227,10 +227,14 @@ fun CommentItem(
         ?.contentBlocks
         ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
-    val hiddenPreview = remember(comment.text) {
-        Ksoup.parse(comment.text.orEmpty().take(240)).text().replace('\n', ' ').take(120)
-    }
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
+    val hiddenPreview = remember(comment.text, textCollapsed) {
+        if (textCollapsed) {
+            Ksoup.parse(comment.text.orEmpty().take(240)).text().replace('\n', ' ').take(120)
+        } else {
+            null
+        }
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
@@ -250,7 +254,7 @@ fun CommentItem(
                 .padding(top = top, bottom = bottom),
             style = style,
             showIndicator = showIndicator,
-            indicatorColor = depthColors()[indicatorIndex],
+            indicatorColor = CommentDepthColors[indicatorIndex],
             highlighted = highlighted,
             onClick = onToggleExpanded,
             onLongClick = onShowActions,
@@ -261,7 +265,7 @@ fun CommentItem(
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
-                hiddenPreview = hiddenPreview.takeIf { textCollapsed },
+                hiddenPreview = hiddenPreview,
                 hiddenReplyCount = hiddenReplyCount.takeIf {
                     it > 0
                 },
@@ -778,7 +782,7 @@ private fun highlightSearchMatches(
     }
 }
 
-private fun depthColors(): List<Color> = listOf(
+private val CommentDepthColors = listOf(
     Color(0xff5e97f6),
     Color(0xff9ccc65),
     Color(0xffffb74d),
