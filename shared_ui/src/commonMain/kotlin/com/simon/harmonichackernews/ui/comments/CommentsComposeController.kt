@@ -193,11 +193,10 @@ class CommentsComposeController private constructor(
 
     fun updateContent(state: CommentsScreenState) {
         val updateBecameVisible = !screenState.showUpdate && state.showUpdate
-        screenState = state.copy(
-            comments = state.comments.toList(),
-            searchResults = state.searchResults.toList(),
-            visibleComments = state.visibleComments.toList(),
-        )
+        // CommentsScreenStateFactory already exposes immutable presentation snapshots. Copying
+        // all three thread lists here made every load and state change allocate and traverse the
+        // full thread again on the UI thread.
+        screenState = state
         interactionStore.updateTopInset(state.topInsetPx)
         interactionStore.synchronizeCommentActionState(
             favoriteLoadingId = state.commentFavoriteLoadingId,

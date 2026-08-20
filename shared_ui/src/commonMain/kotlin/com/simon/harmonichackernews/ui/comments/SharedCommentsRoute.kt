@@ -24,6 +24,9 @@ fun SharedCommentsRoute(
     val userTags = remember(controller.contentVersion, dependencies.userTags) {
         dependencies.userTags.tags()
     }
+    val openLink: (String) -> Unit = remember(dependencies.links) {
+        { url: String -> dependencies.links.open(url).let { } }
+    }
     SharedCommentsScreen(
         controller = controller,
         listModifier = listModifier,
@@ -31,7 +34,9 @@ fun SharedCommentsRoute(
         showScrollbar = commentPreferences.showScrollbar,
         smoothScroll = commentPreferences.smoothScroll,
         userTags = userTags,
-        onOpenLink = { url -> dependencies.links.open(url) },
+        // Keep the callback stable so CommentBodyText can retain its parsed AnnotatedString when
+        // loading, voting, sheet progress, or another screen-level state causes recomposition.
+        onOpenLink = openLink,
         headerContent = { settings?.let { headerContent(it) } },
         searchDialog = { settings?.let { searchDialog(it) } },
         actionOverlay = { settings?.let { actionOverlay(it) } },

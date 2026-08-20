@@ -19,6 +19,10 @@ object CollectedReferenceLinks {
 
     fun parse(inputHtml: String?): Result {
         if (inputHtml.isNullOrEmpty()) return Result.empty(inputHtml)
+        // The overwhelming majority of HN comments have no links. Avoid building a Ksoup DOM for
+        // those rows; links represented by anchors, explicit URLs, and bare domains still take the
+        // full extraction path below.
+        if (!mayContainLink(inputHtml)) return Result.empty(inputHtml)
         val document = Ksoup.parse(inputHtml)
         document.outputSettings().prettyPrint(false)
         val nodes = document.body().childNodes().toList()
@@ -71,6 +75,11 @@ object CollectedReferenceLinks {
         }
         return Result(body, links, contentBlocks)
     }
+
+    private fun mayContainLink(inputHtml: String): Boolean =
+        inputHtml.indexOf("<a", ignoreCase = true) >= 0 ||
+            urlPattern.containsMatchIn(inputHtml) ||
+            bareDomainPattern.containsMatchIn(inputHtml)
 
     private fun parseNode(
         node: Node,
