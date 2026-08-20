@@ -736,6 +736,7 @@ private fun StoryMeta(
                     baseColorArgb = tintBaseColorArgb,
                     paletteTintConfigKey = paletteTintConfigKey,
                     enabled = extractTint,
+                    sharedCacheKey = model.faviconUrl,
                 )
                 LaunchedEffect(extractedTint) {
                     extractedTint?.let(onTintExtracted)
