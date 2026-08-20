@@ -63,9 +63,13 @@ private class AndroidLocalModelTransferScheduler(
 ) : LocalModelTransferScheduler {
     private val work = ConcurrentHashMap<String, WorkInfo>()
     private var observer: () -> Unit = {}
-    private val manager = WorkManager.getInstance(context)
+    private val manager by lazy { WorkManager.getInstance(context) }
+    private var observing = false
 
-    init {
+    private fun ensureObserving() {
+        if (observing) return
+        observing = true
+        var registering = true
         com.simon.harmonichackernews.summary.LocalModelCatalog.models
             .filter(LocalModelDefinition::downloadable)
             .forEach { model ->
@@ -74,9 +78,10 @@ private class AndroidLocalModelTransferScheduler(
                         val selected = infos.orEmpty().firstOrNull(::isActive)
                             ?: infos.orEmpty().firstOrNull { it.state == WorkInfo.State.FAILED }
                         if (selected == null) work.remove(model.id) else work[model.id] = selected
-                        observer()
+                        if (!registering) observer()
                     }
             }
+        registering = false
     }
 
     override fun work(modelId: String): LocalModelWorkSnapshot? = work[modelId]?.let { info ->
@@ -95,6 +100,7 @@ private class AndroidLocalModelTransferScheduler(
     override fun isActive(modelId: String): Boolean = work[modelId]?.let(::isActive) == true
 
     override fun enqueue(model: LocalModelDefinition) {
+        ensureObserving()
         val input = Data.Builder()
             .putString(LocalModelDownloadWorker.KEY_MODEL_ID, model.id)
             .putString(LocalModelDownloadWorker.KEY_MODEL_NAME, model.displayName)
@@ -113,6 +119,7 @@ private class AndroidLocalModelTransferScheduler(
     }
 
     override fun cancel(modelId: String, onCancelled: () -> Unit) {
+        ensureObserving()
         manager.cancelUniqueWork(workName(modelId)).result.addListener({
             work.remove(modelId)
             onCancelled()
@@ -122,6 +129,7 @@ private class AndroidLocalModelTransferScheduler(
 
     override fun setObserver(observer: () -> Unit) {
         this.observer = observer
+        ensureObserving()
         observer()
     }
 

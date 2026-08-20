@@ -26,7 +26,7 @@ interface LocalModelRuntimeDelivery {
 class LocalModelService(
     preferences: KeyValueStore,
     storage: LocalModelStorage,
-    transfers: LocalModelTransferScheduler,
+    private val transfers: LocalModelTransferScheduler,
     private val runtimeDelivery: LocalModelRuntimeDelivery,
     capabilities: LocalModelDeviceCapabilities,
     private val models: List<LocalModelDefinition> = LocalModelCatalog.models,
@@ -45,9 +45,16 @@ class LocalModelService(
         transfers = transfers,
         capabilities = capabilities,
     )
-    private val mutableState = MutableStateFlow(LocalModelManagerState())
+    private val mutableState = MutableStateFlow(
+        LocalModelManagerState(selectedModelId = lifecycle.selectedModel.id),
+    )
+    private var monitoringTransfers = false
 
-    val state: StateFlow<LocalModelManagerState> = mutableState.asStateFlow()
+    val state: StateFlow<LocalModelManagerState>
+        get() {
+            ensureTransferMonitoring()
+            return mutableState.asStateFlow()
+        }
     val catalog: List<LocalModelDefinition> get() = models
     val selectedModel: LocalModelDefinition get() = lifecycle.selectedModel
     val isIncluded: Boolean get() = runtimeDelivery.included
@@ -58,10 +65,7 @@ class LocalModelService(
         }
 
     init {
-        transfers.setObserver(::refresh)
-        runtimeDelivery.setObserver(::refresh)
         runtimeDelivery.setModelDownloadStarter(::requestModelDownload)
-        refresh()
     }
 
     fun model(id: String?): LocalModelDefinition = lifecycle.model(id)
@@ -81,7 +85,10 @@ class LocalModelService(
     fun installedPath(model: LocalModelDefinition = selectedModel): String =
         lifecycle.installedPath(model)
 
-    fun status(model: LocalModelDefinition): LocalModelTransferStatus = lifecycle.status(model)
+    fun status(model: LocalModelDefinition): LocalModelTransferStatus {
+        ensureTransferMonitoring()
+        return lifecycle.status(model)
+    }
 
     fun runtimeStatus(runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
         runtimeDelivery.status(runtime)
@@ -105,6 +112,7 @@ class LocalModelService(
     }
 
     fun requestRuntimeAndModelDownload(modelId: String?): String? {
+        ensureTransferMonitoring()
         val model = model(modelId)
         if (!model.downloadable) return "${model.displayName} is system managed."
         if (!isSupported(model)) return unsupportedReason(model) + "."
@@ -126,6 +134,7 @@ class LocalModelService(
     }
 
     fun requestModelDownload(modelId: String?): String? {
+        ensureTransferMonitoring()
         val model = model(modelId)
         val message = when (val result = lifecycle.requestDownload(model.id)) {
             LocalModelDownloadResult.Started,
@@ -144,6 +153,7 @@ class LocalModelService(
     }
 
     fun cancel(modelId: String?) {
+        ensureTransferMonitoring()
         val model = model(modelId)
         val runtime = runtimeStatus(model.runtime)
         if (runtime.active && runtime.pendingModelId == model.id) {
@@ -154,7 +164,10 @@ class LocalModelService(
         }
     }
 
-    fun remove(modelId: String?) = lifecycle.remove(modelId, ::refresh)
+    fun remove(modelId: String?) {
+        ensureTransferMonitoring()
+        lifecycle.remove(modelId, ::refresh)
+    }
 
     fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
         model.downloadable && isSupported(model) && isDownloaded(model) &&
@@ -184,6 +197,19 @@ class LocalModelService(
     )
 
     fun refresh() {
+        ensureTransferMonitoring()
+        refreshState()
+    }
+
+    private fun ensureTransferMonitoring() {
+        if (monitoringTransfers) return
+        monitoringTransfers = true
+        transfers.setObserver(::refreshState)
+        runtimeDelivery.setObserver(::refreshState)
+        refreshState()
+    }
+
+    private fun refreshState() {
         mutableState.value = LocalModelManagerState(
             selectedModelId = selectedModel.id,
             statuses = models.associate { it.id to lifecycle.status(it) },

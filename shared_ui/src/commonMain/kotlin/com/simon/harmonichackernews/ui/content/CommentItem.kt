@@ -14,12 +14,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -61,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
@@ -74,6 +73,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import kotlin.math.min
+import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
 @Immutable
@@ -236,22 +236,23 @@ fun CommentItem(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val start = min(16.dp.value + 12.dp.value * effectiveDepth, maxWidth.value * 0.6f).dp
-        val shadowPadding = if (style.cardStyle) 4.dp else 0.dp
-        val top = if (style.cardStyle) {
-            if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
-        } else if (effectiveDepth > 0 && !collapseParent) {
-            10.dp
-        } else {
-            6.dp
-        }
-        val bottom = if (style.cardStyle) 0.dp else 6.dp
+    val top = if (style.cardStyle) {
+        if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
+    } else if (effectiveDepth > 0 && !collapseParent) {
+        10.dp
+    } else {
+        6.dp
+    }
+    val bottom = if (style.cardStyle) 0.dp else 6.dp
+    CommentItemLayout(
+        modifier = modifier,
+        effectiveDepth = effectiveDepth,
+        cardStyle = style.cardStyle,
+        topPadding = top,
+        bottomPadding = bottom,
+    ) {
         SharedCommentSurface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = (start - shadowPadding).coerceAtLeast(0.dp), end = 16.dp)
-                .padding(top = top, bottom = bottom),
+            modifier = Modifier.fillMaxWidth(),
             style = style,
             showIndicator = showIndicator,
             indicatorColor = CommentDepthColors[indicatorIndex],
@@ -312,6 +313,51 @@ fun CommentItem(
                     }
                 }
             }
+        }
+    }
+}
+
+/** Applies depth indentation from incoming constraints without a BoxWithConstraints subcompose. */
+@Composable
+private fun CommentItemLayout(
+    modifier: Modifier,
+    effectiveDepth: Int,
+    cardStyle: Boolean,
+    topPadding: Dp,
+    bottomPadding: Dp,
+    content: @Composable () -> Unit,
+) {
+    Layout(
+        modifier = modifier.fillMaxWidth(),
+        content = content,
+    ) { measurables, constraints ->
+        val desiredStart = 16.dp.roundToPx() + 12.dp.roundToPx() * effectiveDepth
+        val cappedStart = min(desiredStart, (constraints.maxWidth * 0.6f).roundToInt())
+        val shadowPadding = if (cardStyle) 4.dp.roundToPx() else 0
+        val startPadding = (cappedStart - shadowPadding).coerceAtLeast(0)
+        val endPadding = 16.dp.roundToPx()
+        val topPaddingPx = topPadding.roundToPx()
+        val bottomPaddingPx = bottomPadding.roundToPx()
+        val contentWidth = (constraints.maxWidth - startPadding - endPadding).coerceAtLeast(0)
+        val contentHeight = if (constraints.hasBoundedHeight) {
+            (constraints.maxHeight - topPaddingPx - bottomPaddingPx).coerceAtLeast(0)
+        } else {
+            constraints.maxHeight
+        }
+        val placeable = measurables.single().measure(
+            constraints.copy(
+                minWidth = contentWidth,
+                maxWidth = contentWidth,
+                minHeight = 0,
+                maxHeight = contentHeight,
+            ),
+        )
+
+        layout(
+            width = constraints.maxWidth,
+            height = topPaddingPx + placeable.height + bottomPaddingPx,
+        ) {
+            placeable.placeRelative(startPadding, topPaddingPx)
         }
     }
 }
@@ -465,11 +511,10 @@ private fun SharedCommentSurface(
         label = "comment divider alpha",
     )
     Column(modifier) {
-        Row(
+        Layout(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(shadowPadding)
-                .height(IntrinsicSize.Min)
                 .shadow((cardProgress * 1f).dp, shape, clip = false)
                 .clip(shape)
                 .background(background)
@@ -484,23 +529,54 @@ private fun SharedCommentSurface(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
-        ) {
-            Box(
-                Modifier
-                    .width(indicatorWidth)
-                    .fillMaxHeight()
-                    .graphicsLayer(alpha = indicatorAlpha)
-                    .background(indicatorColor),
-            )
-            Box(Modifier.width(indicatorMargin))
-            Column(
-                Modifier.weight(1f).padding(
-                    start = contentStartPadding,
-                    top = contentVerticalPadding,
-                    end = contentEndPadding,
-                    bottom = contentVerticalPadding,
+            content = {
+                Box(
+                    Modifier
+                        .width(indicatorWidth)
+                        .graphicsLayer(alpha = indicatorAlpha)
+                        .background(indicatorColor),
+                )
+                Column(
+                    Modifier.padding(
+                        start = contentStartPadding,
+                        top = contentVerticalPadding,
+                        end = contentEndPadding,
+                        bottom = contentVerticalPadding,
+                    ),
+                ) { content() }
+            },
+        ) { measurables, constraints ->
+            val indicatorWidthPx = indicatorWidth.roundToPx()
+                .coerceAtMost(constraints.maxWidth)
+            val indicatorMarginPx = indicatorMargin.roundToPx()
+                .coerceAtMost((constraints.maxWidth - indicatorWidthPx).coerceAtLeast(0))
+            val contentWidth = (
+                constraints.maxWidth - indicatorWidthPx - indicatorMarginPx
+            ).coerceAtLeast(0)
+            val contentPlaceable = measurables[1].measure(
+                constraints.copy(
+                    minWidth = contentWidth,
+                    maxWidth = contentWidth,
+                    minHeight = 0,
                 ),
-            ) { content() }
+            )
+            val rowHeight = contentPlaceable.height
+            val indicatorPlaceable = measurables[0].measure(
+                constraints.copy(
+                    minWidth = indicatorWidthPx,
+                    maxWidth = indicatorWidthPx,
+                    minHeight = rowHeight,
+                    maxHeight = rowHeight,
+                ),
+            )
+
+            layout(constraints.maxWidth, rowHeight) {
+                indicatorPlaceable.placeRelative(0, 0)
+                contentPlaceable.placeRelative(
+                    indicatorWidthPx + indicatorMarginPx,
+                    0,
+                )
+            }
         }
         Box(
             Modifier.fillMaxWidth().height(dividerHeight).padding(horizontal = dividerInset),

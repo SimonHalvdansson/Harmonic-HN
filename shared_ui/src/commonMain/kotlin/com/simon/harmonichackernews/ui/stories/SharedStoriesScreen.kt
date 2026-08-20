@@ -421,6 +421,8 @@ private fun StoriesList(
                     null
                 },
             ) { index, story ->
+                    // Loaded stories often replace shorter skeletons in batches. Keep fades, but
+                    // snap placement so neighboring rows never spring through each other.
                     if (story.isComment) {
                         val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
                             controller.updateStoryItemHeight(story.id, coordinates.size.height)
@@ -431,14 +433,18 @@ private fun StoriesList(
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
                             commentText = commentText,
-                            modifier = Modifier.animateItem().then(itemHeightModifier),
+                            modifier = Modifier
+                                .animateItem(placementSpec = null)
+                                .then(itemHeightModifier),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
                         val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
                             controller.updateStoryItemHeight(story.id, coordinates.size.height)
                         }
                         StoryLoadingItem(
-                            modifier = Modifier.animateItem().then(itemHeightModifier),
+                            modifier = Modifier
+                                .animateItem(placementSpec = null)
+                                .then(itemHeightModifier),
                         )
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
@@ -471,7 +477,7 @@ private fun StoriesList(
                         val storyTintBase = model.tintFallbackArgb
                             ?: HarmonicTheme.colors.storyCardBackground.toArgb()
                         val itemModifier = Modifier
-                            .animateItem()
+                            .animateItem(placementSpec = null)
                             .graphicsLayer(
                                 alpha = (if (suppressed) 0f else pagingAlpha) * revealAlpha,
                             )

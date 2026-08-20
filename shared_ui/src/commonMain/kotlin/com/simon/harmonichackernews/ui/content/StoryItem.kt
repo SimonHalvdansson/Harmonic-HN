@@ -22,7 +22,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -317,20 +316,19 @@ fun StoryItem(
                         },
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    verticalAlignment = Alignment.CenterVertically,
+                val comments: @Composable () -> Unit = {
+                    StoryCommentRail(
+                        model = model,
+                        style = style,
+                        typography = typography,
+                        onClick = onCommentClick,
+                        animateChanges = animate,
+                    )
+                }
+                StoryContentRow(
+                    commentsOnLeft = style.commentsOnLeft,
+                    comments = comments,
                 ) {
-                    val comments: @Composable () -> Unit = {
-                        StoryCommentRail(
-                            model = model,
-                            style = style,
-                            typography = typography,
-                            onClick = onCommentClick,
-                            animateChanges = animate,
-                        )
-                    }
-                    if (style.commentsOnLeft) comments()
                     StoryMainContent(
                         model = model,
                         style = style,
@@ -358,10 +356,57 @@ fun StoryItem(
                             onFaviconTintExtracted?.invoke(tintColor)
                         },
                         animateChanges = animate,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier,
                     )
-                    if (!style.commentsOnLeft) comments()
                 }
+            }
+        }
+    }
+}
+
+/** Measures the variable story content once, then gives the fixed comment rail the same height. */
+@Composable
+private fun StoryContentRow(
+    commentsOnLeft: Boolean,
+    comments: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Layout(
+        modifier = Modifier.fillMaxWidth(),
+        content = {
+            if (commentsOnLeft) comments()
+            content()
+            if (!commentsOnLeft) comments()
+        },
+    ) { measurables, constraints ->
+        val railWidth = 60.dp.roundToPx().coerceAtMost(constraints.maxWidth)
+        val contentWidth = (constraints.maxWidth - railWidth).coerceAtLeast(0)
+        val contentIndex = if (commentsOnLeft) 1 else 0
+        val railIndex = if (commentsOnLeft) 0 else 1
+        val contentPlaceable = measurables[contentIndex].measure(
+            constraints.copy(
+                minWidth = contentWidth,
+                maxWidth = contentWidth,
+                minHeight = 0,
+            ),
+        )
+        val rowHeight = contentPlaceable.height
+        val railPlaceable = measurables[railIndex].measure(
+            constraints.copy(
+                minWidth = railWidth,
+                maxWidth = railWidth,
+                minHeight = rowHeight,
+                maxHeight = rowHeight,
+            ),
+        )
+
+        layout(constraints.maxWidth, rowHeight) {
+            if (commentsOnLeft) {
+                railPlaceable.placeRelative(0, 0)
+                contentPlaceable.placeRelative(railWidth, 0)
+            } else {
+                contentPlaceable.placeRelative(0, 0)
+                railPlaceable.placeRelative(contentWidth, 0)
             }
         }
     }
