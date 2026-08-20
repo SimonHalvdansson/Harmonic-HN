@@ -56,12 +56,24 @@ object PaletteTintPreferences {
         clampTone(tone),
     ).joinToString("|")
 
-    fun normalizeConfigKey(modeOrConfigKey: String?): String = configKey(
-        modeOrConfigKey,
-        strength(modeOrConfigKey),
-        colorfulness(modeOrConfigKey),
-        tone(modeOrConfigKey),
-    )
+    fun normalizeConfigKey(modeOrConfigKey: String?): String {
+        // This is called repeatedly while story rows resolve their preview and favicon tint state.
+        // Split once instead of independently tokenizing the same value for every field.
+        val parts = modeOrConfigKey?.split('|')
+        val mode = when (parts?.getOrNull(0)) {
+            VIBRANT -> VIBRANT
+            DOMINANT -> DOMINANT
+            else -> DEFAULT
+        }
+        val strength = clampStrength(
+            parts?.getOrNull(1)?.toIntOrNull() ?: DEFAULT_STRENGTH,
+        )
+        val colorfulness = clampColorfulness(
+            parts?.getOrNull(2)?.toIntOrNull() ?: DEFAULT_COLORFULNESS,
+        )
+        val tone = clampTone(parts?.getOrNull(3)?.toIntOrNull() ?: DEFAULT_TONE)
+        return "$mode|$strength|$colorfulness|$tone"
+    }
 
     fun strength(value: String?): Int = clampStrength(configInt(value, 1, DEFAULT_STRENGTH))
     fun colorfulness(value: String?): Int =
