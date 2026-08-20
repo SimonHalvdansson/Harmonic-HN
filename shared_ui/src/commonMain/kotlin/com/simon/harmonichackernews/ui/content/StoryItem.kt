@@ -56,6 +56,7 @@ import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -82,6 +83,7 @@ import org.jetbrains.compose.resources.painterResource
 
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val StoryCardShape = RoundedCornerShape(8.dp)
 
 @Immutable
 data class StoryItemUiModel(
@@ -154,7 +156,7 @@ fun StoryItem(
     onLinkClick: (() -> Unit)? = null,
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
-    onBoundsChanged: ((Rect) -> Unit)? = null,
+    onGeometryChanged: ((bounds: Rect, itemHeightPx: Int) -> Unit)? = null,
     onPreviewLoadSuccess: (() -> Unit)? = null,
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
@@ -171,12 +173,16 @@ fun StoryItem(
         animationSpec = tween(if (animate) 180 else 0),
         label = "story dim alpha",
     )
-    val cardProgress by animateFloatAsState(
-        targetValue = if (style.cardStyle) 1f else 0f,
-        animationSpec = if (animate) contentTween() else snap(),
-        label = "story card style",
-    )
-    val cardShape = RoundedCornerShape(8.dp)
+    val cardProgress = if (listItem) {
+        if (style.cardStyle) 1f else 0f
+    } else {
+        val animatedCardProgress by animateFloatAsState(
+            targetValue = if (style.cardStyle) 1f else 0f,
+            animationSpec = contentTween(),
+            label = "story card style",
+        )
+        animatedCardProgress
+    }
     var previewFailed by remember(model.previewImageUrl, model.previewImageLoadFailed) {
         mutableStateOf(model.previewImageLoadFailed)
     }
@@ -214,6 +220,50 @@ fun StoryItem(
         animationSpec = contentTween(),
         label = "story card tint",
     )
+    val geometryModifier = if (onGeometryChanged == null) {
+        Modifier
+    } else {
+        val itemVerticalPaddingPx = with(LocalDensity.current) {
+            (if (listItem) 8.dp else 28.dp).roundToPx()
+        }
+        Modifier.onGloballyPositioned { coordinates ->
+            onGeometryChanged(
+                coordinates.boundsInWindow(),
+                coordinates.size.height + itemVerticalPaddingPx,
+            )
+        }
+    }
+    val cardDecorationModifier = if (listItem) {
+        when {
+            style.cardStyle -> Modifier
+                .shadow(elevation = 1.dp, shape = StoryCardShape, clip = false)
+                .clip(StoryCardShape)
+                .background(background)
+                .border(
+                    width = 1.dp,
+                    color = colors.outlineVariant,
+                    shape = StoryCardShape,
+                )
+            style.tintCard -> Modifier
+                .clip(StoryCardShape)
+                .background(background)
+            else -> Modifier
+        }
+    } else {
+        Modifier
+            .shadow(
+                elevation = cardProgress.dp,
+                shape = StoryCardShape,
+                clip = false,
+            )
+            .clip(StoryCardShape)
+            .background(background)
+            .border(
+                width = 1.dp,
+                color = colors.outlineVariant.copy(alpha = cardProgress),
+                shape = StoryCardShape,
+            )
+    }
 
     Column(
         modifier = modifier
@@ -227,19 +277,8 @@ fun StoryItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onGloballyPositioned { onBoundsChanged?.invoke(it.boundsInWindow()) }
-                    .shadow(
-                        elevation = (cardProgress * 1f).dp,
-                        shape = cardShape,
-                        clip = false,
-                    )
-                    .clip(cardShape)
-                    .background(background)
-                    .border(
-                        width = 1.dp,
-                        color = colors.outlineVariant.copy(alpha = cardProgress),
-                        shape = cardShape,
-                    ),
+                    .then(geometryModifier)
+                    .then(cardDecorationModifier),
             ) {
                 AnimatedVisibility(
                     visible = style.previewImageMode == "large" && hasPreview,

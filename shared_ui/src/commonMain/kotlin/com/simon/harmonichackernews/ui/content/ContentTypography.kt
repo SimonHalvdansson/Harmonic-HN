@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.Font as ComposeFont
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +25,11 @@ import com.simon.harmonichackernews.resources.verdana_bold
 import com.simon.harmonichackernews.resources.verdana_regular
 import com.simon.harmonichackernews.settings.TextPreferences
 import org.jetbrains.compose.resources.Font
+
+private val CondensedStoryMetaVariationSettings = FontVariation.Settings(
+    FontVariation.width(90f),
+    FontVariation.weight(FontWeight.Normal.weight),
+)
 
 data class ContentTypography(
     val family: FontFamily,
@@ -86,12 +92,9 @@ private fun storyMetaFontFamily(font: String, fallback: FontFamily): FontFamily 
     val condensed = Font(
         resource = Res.font.google_sans_flex_rounded_variable_latin,
         weight = FontWeight.Normal,
-        variationSettings = FontVariation.Settings(
-            FontVariation.width(90f),
-            FontVariation.weight(FontWeight.Normal.weight),
-        ),
+        variationSettings = CondensedStoryMetaVariationSettings,
     )
-    return remember(condensed) { FontFamily(condensed) }
+    return remember(font) { FontFamily(condensed) }
 }
 
 internal data class FontMetrics(
@@ -122,37 +125,52 @@ internal data class FontMetrics(
 
 @Composable
 private fun contentFontFamily(font: String): FontFamily = when (font) {
-    "productsans" -> FontFamily(
+    "productsans" -> rememberFontFamily(
+        font,
         Font(Res.font.product_sans_regular, FontWeight.Normal),
         Font(Res.font.product_sans_bold, FontWeight.Bold),
     )
-    "googlesans" -> FontFamily(
+    "googlesans" -> rememberFontFamily(
+        font,
         Font(Res.font.google_sans_regular, FontWeight.Normal),
         Font(Res.font.google_sans_bold, FontWeight.Bold),
     )
     "devicedefault" -> FontFamily.SansSerif
-    "verdana" -> FontFamily(
+    "verdana" -> rememberFontFamily(
+        font,
         Font(Res.font.verdana_regular, FontWeight.Normal),
         Font(Res.font.verdana_bold, FontWeight.Bold),
     )
-    "jetbrainsmono" -> FontFamily(
+    "jetbrainsmono" -> rememberFontFamily(
+        font,
         Font(Res.font.jetbrains_mono_regular, FontWeight.Normal),
         Font(Res.font.jetbrains_mono_bold, FontWeight.Bold),
     )
-    "googlesanscode" -> FontFamily(
+    "googlesanscode" -> rememberFontFamily(
+        font,
         Font(Res.font.google_sans_code_regular, FontWeight.Normal),
         Font(Res.font.google_sans_code_regular, FontWeight.Bold),
     )
-    "georgia" -> FontFamily(
+    "georgia" -> rememberFontFamily(
+        font,
         Font(Res.font.georgia_regular, FontWeight.Normal),
         Font(Res.font.georgia_bold, FontWeight.Bold),
     )
-    "robotoslab" -> FontFamily(
+    "robotoslab" -> rememberFontFamily(
+        font,
         Font(Res.font.roboto_slab_regular, FontWeight.Normal),
         Font(Res.font.roboto_slab_bold, FontWeight.Bold),
     )
-    else -> FontFamily(
+    else -> rememberFontFamily(
+        font,
         Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal),
         Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold),
     )
 }
+
+@Composable
+private fun rememberFontFamily(
+    fontKey: String,
+    regular: ComposeFont,
+    bold: ComposeFont,
+): FontFamily = remember(fontKey) { FontFamily(regular, bold) }

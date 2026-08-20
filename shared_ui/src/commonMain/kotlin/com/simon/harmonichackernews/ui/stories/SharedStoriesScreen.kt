@@ -421,20 +421,25 @@ private fun StoriesList(
                     null
                 },
             ) { index, story ->
-                    val itemBoundsModifier = Modifier.onGloballyPositioned { bounds ->
-                        controller.updateStoryItemHeight(story.id, bounds.size.height)
-                    }
                     if (story.isComment) {
+                        val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
+                            controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                        }
                         SavedCommentStoryItem(
                             story = story,
                             settings = settings,
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
                             commentText = commentText,
-                            modifier = Modifier.animateItem().then(itemBoundsModifier),
+                            modifier = Modifier.animateItem().then(itemHeightModifier),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
-                        StoryLoadingItem(modifier = Modifier.animateItem().then(itemBoundsModifier))
+                        val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
+                            controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                        }
+                        StoryLoadingItem(
+                            modifier = Modifier.animateItem().then(itemHeightModifier),
+                        )
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
@@ -470,73 +475,72 @@ private fun StoriesList(
                             .graphicsLayer(
                                 alpha = (if (suppressed) 0f else pagingAlpha) * revealAlpha,
                             )
-                        Box(modifier = itemBoundsModifier) {
-                            StoryItem(
-                                model = model,
-                                style = style,
-                                modifier = itemModifier,
-                                listItem = true,
-                                onLinkClick = { controller.listener.onLinkClick(story) },
-                                onLinkLongClick = {
-                                    controller.listener.onStoryLongClick(
+                        StoryItem(
+                            model = model,
+                            style = style,
+                            modifier = itemModifier,
+                            listItem = true,
+                            onLinkClick = { controller.listener.onLinkClick(story) },
+                            onLinkLongClick = {
+                                controller.listener.onStoryLongClick(
+                                    story,
+                                    storyTintBase,
+                                )?.let(controller::showStoryPreview)
+                            },
+                            onCommentClick = { controller.listener.onCommentClick(story) },
+                            onGeometryChanged = { bounds, itemHeightPx ->
+                                controller.updateStoryItemHeight(story.id, itemHeightPx)
+                                controller.updateStoryBounds(story.id, bounds)
+                            },
+                            onPreviewLoadSuccess = {
+                                model.previewImageUrl?.let { imageUrl ->
+                                    controller.listener.onStoryPreviewImageLoaded(
+                                        story.id,
+                                        story.url.orEmpty(),
+                                        imageUrl,
+                                    )
+                                }
+                            },
+                            onPreviewLoadFailed = {
+                                model.previewImageUrl?.let { imageUrl ->
+                                    controller.listener.onStoryPreviewImageLoadFailed(
+                                        story.id,
+                                        story.url.orEmpty(),
+                                        imageUrl,
+                                    )
+                                }
+                            },
+                            onPreviewTintExtracted = { tintColor ->
+                                val sourceUrl = model.previewImageUrl
+                                val baseColor = model.tintFallbackArgb
+                                if (sourceUrl != null && baseColor != null) {
+                                    controller.listener.onStoryTintExtracted(
                                         story,
-                                        storyTintBase,
-                                    )?.let(controller::showStoryPreview)
-                                },
-                                onCommentClick = { controller.listener.onCommentClick(story) },
-                                onBoundsChanged = { bounds ->
-                                    controller.updateStoryBounds(story.id, bounds)
-                                },
-                                onPreviewLoadSuccess = {
-                                    model.previewImageUrl?.let { imageUrl ->
-                                        controller.listener.onStoryPreviewImageLoaded(
-                                            story.id,
-                                            story.url.orEmpty(),
-                                            imageUrl,
-                                        )
-                                    }
-                                },
-                                onPreviewLoadFailed = {
-                                    model.previewImageUrl?.let { imageUrl ->
-                                        controller.listener.onStoryPreviewImageLoadFailed(
-                                            story.id,
-                                            story.url.orEmpty(),
-                                            imageUrl,
-                                        )
-                                    }
-                                },
-                                onPreviewTintExtracted = { tintColor ->
-                                    val sourceUrl = model.previewImageUrl
-                                    val baseColor = model.tintFallbackArgb
-                                    if (sourceUrl != null && baseColor != null) {
-                                        controller.listener.onStoryTintExtracted(
-                                            story,
-                                            sourceUrl,
-                                            baseColor,
-                                            style.paletteTintConfigKey,
-                                            tintColor,
-                                            false,
-                                        )
-                                        controller.invalidateStory(story.id)
-                                    }
-                                },
-                                onFaviconTintExtracted = { tintColor ->
-                                    val sourceUrl = model.faviconUrl
-                                    val baseColor = model.tintFallbackArgb
-                                    if (sourceUrl != null && baseColor != null) {
-                                        controller.listener.onStoryTintExtracted(
-                                            story,
-                                            sourceUrl,
-                                            baseColor,
-                                            style.paletteTintConfigKey,
-                                            tintColor,
-                                            true,
-                                        )
-                                        controller.invalidateStory(story.id)
-                                    }
-                                },
-                            )
-                        }
+                                        sourceUrl,
+                                        baseColor,
+                                        style.paletteTintConfigKey,
+                                        tintColor,
+                                        false,
+                                    )
+                                    controller.invalidateStory(story.id)
+                                }
+                            },
+                            onFaviconTintExtracted = { tintColor ->
+                                val sourceUrl = model.faviconUrl
+                                val baseColor = model.tintFallbackArgb
+                                if (sourceUrl != null && baseColor != null) {
+                                    controller.listener.onStoryTintExtracted(
+                                        story,
+                                        sourceUrl,
+                                        baseColor,
+                                        style.paletteTintConfigKey,
+                                        tintColor,
+                                        true,
+                                    )
+                                    controller.invalidateStory(story.id)
+                                }
+                            },
+                        )
                     }
             }
 
