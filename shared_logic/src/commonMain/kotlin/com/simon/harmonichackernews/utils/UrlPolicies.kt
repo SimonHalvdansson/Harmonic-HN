@@ -163,8 +163,62 @@ object AgePolicy {
 
 object DomainNamePolicy {
     fun fromUrl(url: String?): String? {
-        val host = url?.removeSuffix("#")?.toNetworkUrlOrNull()?.host.orEmpty()
+        val normalizedUrl = url?.removeSuffix("#") ?: return null
+        val host = fastHttpHost(normalizedUrl)
+            ?: normalizedUrl.toNetworkUrlOrNull()?.host.orEmpty()
         return host.takeIf(String::isNotEmpty)?.removePrefix("www.")
+    }
+
+    /**
+     * Avoid constructing a complete URL model for ordinary lower-case HTTP(S) story links.
+     * Anything ambiguous stays on Ktor's fully validating parser in [fromUrl].
+     */
+    private fun fastHttpHost(url: String): String? {
+        val authorityStart = when {
+            url.startsWith("https://") -> 8
+            url.startsWith("http://") -> 7
+            else -> return null
+        }
+        var authorityEnd = url.length
+        for (index in authorityStart..<url.length) {
+            if (url[index] == '/' || url[index] == '?' || url[index] == '#') {
+                authorityEnd = index
+                break
+            }
+        }
+
+        var hostEnd = authorityEnd
+        val portSeparator = url.lastIndexOf(':', authorityEnd - 1)
+        if (portSeparator >= authorityStart) {
+            if (!hasValidPort(url, portSeparator + 1, authorityEnd)) return null
+            hostEnd = portSeparator
+        }
+
+        var hostStart = authorityStart
+        if (hostEnd - hostStart > 4 && url.regionMatches(hostStart, "www.", 0, 4)) {
+            hostStart += 4
+        }
+        if (hostStart == hostEnd) return null
+        for (index in hostStart..<hostEnd) {
+            val character = url[index]
+            if (character !in 'a'..'z' && character !in '0'..'9' &&
+                character != '.' && character != '-'
+            ) {
+                return null
+            }
+        }
+        return url.substring(hostStart, hostEnd)
+    }
+
+    private fun hasValidPort(url: String, start: Int, end: Int): Boolean {
+        if (start == end || end - start > 5) return false
+        var port = 0
+        for (index in start..<end) {
+            val character = url[index]
+            if (character !in '0'..'9') return false
+            port = port * 10 + (character - '0')
+        }
+        return port <= 65_535
     }
 
     fun formatForDisplay(domain: String?, includeTopLevelDomain: Boolean): String? {
