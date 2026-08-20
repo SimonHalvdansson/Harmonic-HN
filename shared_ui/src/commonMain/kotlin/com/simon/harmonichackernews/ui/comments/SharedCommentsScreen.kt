@@ -40,7 +40,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -53,8 +52,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -163,6 +160,19 @@ fun SharedCommentsScreen(
     val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
+    val itemStyle = remember(settings, animateComments) {
+        CommentItemStyle(
+            cardStyle = settings.cardStyle,
+            showCardBorder = settings.cardBorder,
+            textSize = settings.preferredTextSize,
+            collectLinks = settings.collectReferenceLinks,
+            emphasizeMeta = settings.highlightCommentMeta,
+            depthIndicatorMode = settings.commentDepthIndicatorMode,
+            showDivider = settings.showDividers,
+            preferredFont = settings.font,
+            animateChanges = animateComments,
+        )
+    }
 
     LaunchedEffect(listState, visibleComments) {
         snapshotFlow {
@@ -180,7 +190,7 @@ fun SharedCommentsScreen(
                 coverage,
             )
         }.distinctUntilChanged().collect { (_, _, coverage) ->
-            controller.updateScrollPosition(listState, visibleComments.map { item -> item.comment })
+            controller.updateScrollPosition(listState, visibleComments)
             controller.updateStatusBarHeaderCoverage(coverage)
             controller.listener.onHeaderCoverageChanged(coverage)
         }
@@ -297,23 +307,10 @@ fun SharedCommentsScreen(
             headerKey = "header",
             header = headerContent,
         ) { _, item ->
-                DisposableEffect(item.comment.id) {
-                    onDispose { controller.removeCommentBounds(item.comment.id) }
-                }
                 val tag = item.comment.by?.lowercase()?.trim()?.let(userTags::get)
                 CommentItem(
                     comment = item.comment,
-                    style = CommentItemStyle(
-                        cardStyle = settings.cardStyle,
-                        showCardBorder = settings.cardBorder,
-                        textSize = settings.preferredTextSize,
-                        collectLinks = settings.collectReferenceLinks,
-                        emphasizeMeta = settings.highlightCommentMeta,
-                        depthIndicatorMode = settings.commentDepthIndicatorMode,
-                        showDivider = settings.showDividers,
-                        preferredFont = settings.font,
-                        animateChanges = animateComments,
-                    ),
+                    style = itemStyle,
                     storyAuthor = controller.story.by,
                     accountUser = controller.accountUser,
                     userTag = tag,
@@ -326,25 +323,19 @@ fun SharedCommentsScreen(
                         .graphicsLayer(
                             alpha = if (item.comment.id in controller.suppressedCommentIds) 0f else 1f,
                         )
-                        .onGloballyPositioned { coordinates ->
-                            controller.updateCommentBounds(
-                                item.comment.id,
-                                coordinates.boundsInWindow(),
-                            )
-                        }
                         .then(if (animateComments) Modifier.animateItem() else Modifier),
-                    onToggleExpanded = {
+                    onToggleExpanded = { sourceBounds ->
                         if (settings.swapLongPressTap) {
-                            controller.showCommentActions(item.comment)
+                            controller.showCommentActions(item.comment, sourceBounds)
                         } else {
                             controller.listener.onToggleComment(item.comment, item.sourceIndex)
                         }
                     },
-                    onShowActions = {
+                    onShowActions = { sourceBounds ->
                         if (settings.swapLongPressTap) {
                             controller.listener.onToggleComment(item.comment, item.sourceIndex)
                         } else {
-                            controller.showCommentActions(item.comment)
+                            controller.showCommentActions(item.comment, sourceBounds)
                         }
                     },
                     onLinkLongClick = { url, title, bounds ->

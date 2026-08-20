@@ -99,6 +99,15 @@ data class CommentItemStyle(
     val transparentNonCardBackground: Boolean = false,
 )
 
+private class CommentItemGeometry {
+    var coordinates: LayoutCoordinates? = null
+
+    fun boundsInWindowOrNull(): Rect? = coordinates
+        ?.takeIf { it.isAttached }
+        ?.boundsInWindow()
+        ?.takeIf { it.width > 0f && it.height > 0f }
+}
+
 val SettingsCommentPreviewModel = CommentItemUiModel(
     author = "pg",
     age = "1h",
@@ -198,8 +207,8 @@ fun CommentItem(
     flattenHierarchy: Boolean = false,
     forceExpanded: Boolean = false,
     searchTerm: String = "",
-    onToggleExpanded: () -> Unit,
-    onShowActions: () -> Unit,
+    onToggleExpanded: (Rect?) -> Unit,
+    onShowActions: (Rect?) -> Unit,
     onLinkLongClick: (String, String, Rect) -> Unit,
     onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect) -> Unit,
     onLinkClick: (String) -> Unit = {},
@@ -222,10 +231,12 @@ fun CommentItem(
     val references = remember(comment.expandedAnchorText, style.collectLinks) {
         if (style.collectLinks) CollectedReferenceLinks.parse(comment.expandedAnchorText) else null
     }
-    val contentBlocks = references
-        ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
-        ?.contentBlocks
-        ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
+    val contentBlocks = remember(references, comment.expandedAnchorText) {
+        references
+            ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
+            ?.contentBlocks
+            ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
+    }
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val hiddenPreview = remember(comment.text, textCollapsed) {
@@ -244,8 +255,13 @@ fun CommentItem(
         6.dp
     }
     val bottom = if (style.cardStyle) 0.dp else 6.dp
+    val itemGeometry = remember { CommentItemGeometry() }
     CommentItemLayout(
-        modifier = modifier,
+        modifier = modifier.onGloballyPositioned { coordinates ->
+            // Coordinates remain live as ancestors scroll. Resolve the window-space rectangle
+            // only for an actual tap/long-press instead of doing the transform every frame.
+            itemGeometry.coordinates = coordinates
+        },
         effectiveDepth = effectiveDepth,
         cardStyle = style.cardStyle,
         topPadding = top,
@@ -257,8 +273,8 @@ fun CommentItem(
             showIndicator = showIndicator,
             indicatorColor = CommentDepthColors[indicatorIndex],
             highlighted = highlighted,
-            onClick = onToggleExpanded,
-            onLongClick = onShowActions,
+            onClick = { onToggleExpanded(itemGeometry.boundsInWindowOrNull()) },
+            onLongClick = { onShowActions(itemGeometry.boundsInWindowOrNull()) },
         ) {
             CommentMeta(
                 author = comment.by.orEmpty(),

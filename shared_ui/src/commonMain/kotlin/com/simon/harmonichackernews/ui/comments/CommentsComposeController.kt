@@ -115,7 +115,6 @@ class CommentsComposeController private constructor(
 
     private val interactionStore = CommentsInteractionStore(initialShowWebsite, shouldSmoothScroll)
     private var interactionState by mutableStateOf(interactionStore.state)
-    private val commentBounds = mutableMapOf<Int, androidx.compose.ui.geometry.Rect>()
     private var commentActionSourceBounds: androidx.compose.ui.geometry.Rect? = null
     private var linkPreviewSourceBounds by
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
@@ -339,12 +338,15 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
-    fun showCommentActions(comment: PortableCommentItem) {
+    fun showCommentActions(
+        comment: PortableCommentItem,
+        sourceBounds: androidx.compose.ui.geometry.Rect? = null,
+    ) {
         // Long presses can arrive from multiple comments before Compose has a chance to render
         // the overlay. Keep the overlay single-owner so a rejected second request cannot leave
         // its source comment suppressed without a corresponding dialog.
         if (!interactionStore.showCommentActions(comment, stopScroll = true)) return
-        commentActionSourceBounds = commentBounds[comment.id]
+        commentActionSourceBounds = sourceBounds
         syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
@@ -459,17 +461,6 @@ class CommentsComposeController private constructor(
         interactionStore.consumeScrollRequest(request)
         syncInteractionState()
     }
-
-    fun updateCommentBounds(commentId: Int, bounds: androidx.compose.ui.geometry.Rect) {
-        if (bounds.width > 0f && bounds.height > 0f) commentBounds[commentId] = bounds
-    }
-
-    fun removeCommentBounds(commentId: Int) {
-        commentBounds.remove(commentId)
-    }
-
-    fun commentBoundsFor(commentId: Int): androidx.compose.ui.geometry.Rect? =
-        commentBounds[commentId]
 
     fun showReferencePreview(
         link: CollectedReferenceLinks.ReferenceLink,
@@ -601,9 +592,9 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
-    fun updateScrollPosition(state: LazyListState, visibleComments: List<PortableCommentItem>) {
+    fun updateScrollPosition(state: LazyListState, visibleComments: List<PortableVisibleComment>) {
         val commentIndex = state.firstVisibleItemIndex - 1
-        firstVisibleCommentId = visibleComments.getOrNull(commentIndex)?.id ?: 0
+        firstVisibleCommentId = visibleComments.getOrNull(commentIndex)?.comment?.id ?: 0
         firstVisibleCommentOffset = state.firstVisibleItemScrollOffset
         isScrolledToTop = state.firstVisibleItemIndex == 0 && state.firstVisibleItemScrollOffset == 0
         listener.onScrollPositionChanged(firstVisibleCommentId, firstVisibleCommentOffset)

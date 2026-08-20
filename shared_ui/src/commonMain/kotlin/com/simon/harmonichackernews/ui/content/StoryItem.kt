@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -53,9 +52,12 @@ import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -83,6 +85,11 @@ import org.jetbrains.compose.resources.painterResource
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
+
+private class StoryItemGeometry {
+    var coordinates: LayoutCoordinates? = null
+    var itemHeightPx: Int = 0
+}
 
 @Immutable
 data class StoryItemUiModel(
@@ -167,11 +174,18 @@ fun StoryItem(
         storyTextSize = style.textSize,
     )
     val animate = !listItem
-    val dimAlpha by animateFloatAsState(
-        targetValue = if (style.dimmed) 0.6f else 1f,
-        animationSpec = tween(if (animate) 180 else 0),
-        label = "story dim alpha",
-    )
+    val dimAlpha = if (animate) {
+        val animatedDimAlpha by animateFloatAsState(
+            targetValue = if (style.dimmed) 0.6f else 1f,
+            animationSpec = tween(180),
+            label = "story dim alpha",
+        )
+        animatedDimAlpha
+    } else if (style.dimmed) {
+        0.6f
+    } else {
+        1f
+    }
     val cardProgress = if (listItem) {
         if (style.cardStyle) 1f else 0f
     } else {
@@ -214,22 +228,47 @@ fun StoryItem(
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old
     // blend so an arriving preview/favicon tint does not flash into place.
-    val background by animateColorAsState(
-        targetValue = targetBackground,
-        animationSpec = contentTween(),
-        label = "story card tint",
-    )
+    val background = if (animate) {
+        val animatedBackground by animateColorAsState(
+            targetValue = targetBackground,
+            animationSpec = contentTween(),
+            label = "story card tint",
+        )
+        animatedBackground
+    } else {
+        targetBackground
+    }
+    val itemGeometry = remember { StoryItemGeometry() }
+    val itemVerticalPaddingPx = with(LocalDensity.current) {
+        (if (listItem) 8.dp else 28.dp).roundToPx()
+    }
     val geometryModifier = if (onGeometryChanged == null) {
         Modifier
     } else {
-        val itemVerticalPaddingPx = with(LocalDensity.current) {
-            (if (listItem) 8.dp else 28.dp).roundToPx()
-        }
-        Modifier.onGloballyPositioned { coordinates ->
-            onGeometryChanged(
-                coordinates.boundsInWindow(),
-                coordinates.size.height + itemVerticalPaddingPx,
-            )
+        Modifier
+            .onSizeChanged { size ->
+                val itemHeightPx = size.height + itemVerticalPaddingPx
+                if (itemGeometry.itemHeightPx != itemHeightPx) {
+                    itemGeometry.itemHeightPx = itemHeightPx
+                    onGeometryChanged(Rect.Zero, itemHeightPx)
+                }
+            }
+            .onGloballyPositioned { coordinates ->
+                // Keep the live coordinates, but defer the relatively expensive window transform
+                // until the user actually opens a preview. Scrolling otherwise recalculates and
+                // stores every visible story rectangle on every placement pass.
+                itemGeometry.coordinates = coordinates
+            }
+    }
+    val trackedLinkLongClick = onLinkLongClick?.let { longClick ->
+        {
+            itemGeometry.coordinates
+                ?.takeIf(LayoutCoordinates::isAttached)
+                ?.boundsInWindow()
+                ?.let { bounds ->
+                    onGeometryChanged?.invoke(bounds, itemGeometry.itemHeightPx)
+                }
+            longClick()
         }
     }
     val cardDecorationModifier = if (listItem) {
@@ -284,16 +323,30 @@ fun StoryItem(
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
-                    val imageInset by animateDpAsState(
-                        targetValue = if (style.borderlessLargeImage) 0.dp else 10.dp,
-                        animationSpec = if (animate) contentTween() else snap(),
-                        label = "large story image inset",
-                    )
-                    val imageRadius by animateDpAsState(
-                        targetValue = if (style.borderlessLargeImage) 0.dp else 8.dp,
-                        animationSpec = if (animate) contentTween() else snap(),
-                        label = "large story image radius",
-                    )
+                    val imageInset = if (animate) {
+                        val animatedInset by animateDpAsState(
+                            targetValue = if (style.borderlessLargeImage) 0.dp else 10.dp,
+                            animationSpec = contentTween(),
+                            label = "large story image inset",
+                        )
+                        animatedInset
+                    } else if (style.borderlessLargeImage) {
+                        0.dp
+                    } else {
+                        10.dp
+                    }
+                    val imageRadius = if (animate) {
+                        val animatedRadius by animateDpAsState(
+                            targetValue = if (style.borderlessLargeImage) 0.dp else 8.dp,
+                            animationSpec = contentTween(),
+                            label = "large story image radius",
+                        )
+                        animatedRadius
+                    } else if (style.borderlessLargeImage) {
+                        0.dp
+                    } else {
+                        8.dp
+                    }
                     StoryPreviewImage(
                         model = model,
                         modifier = Modifier
@@ -336,7 +389,7 @@ fun StoryItem(
                         hasSmallPreview = hasPreview && style.previewImageMode == "small",
                         dimAlpha = dimAlpha,
                         onLinkClick = onLinkClick,
-                        onLinkLongClick = onLinkLongClick,
+                        onLinkLongClick = trackedLinkLongClick,
                         onPreviewLoadFailed = {
                             previewFailed = true
                             onPreviewLoadFailed?.invoke()
@@ -432,31 +485,62 @@ private fun StoryMainContent(
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
-    val titleSize by animateFloatAsState(
-        targetValue = typography.storyTitleSize,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story title size",
-    )
-    val summarySize by animateFloatAsState(
-        targetValue = typography.storySummarySize,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story summary size",
-    )
-    val indexAlpha by animateFloatAsState(
-        targetValue = if (style.showIndex) 1f else 0f,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story index alpha",
-    )
-    val indexWidth by animateDpAsState(
-        targetValue = if (style.showIndex) 38.dp else 0.dp,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story index width",
-    )
-    val titleStartPadding by animateDpAsState(
-        targetValue = if (style.showIndex) 2.dp else 4.dp,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story title start padding",
-    )
+    val titleSize = if (animateChanges) {
+        val animatedTitleSize by animateFloatAsState(
+            targetValue = typography.storyTitleSize,
+            animationSpec = contentTween(),
+            label = "story title size",
+        )
+        animatedTitleSize
+    } else {
+        typography.storyTitleSize
+    }
+    val summarySize = if (animateChanges) {
+        val animatedSummarySize by animateFloatAsState(
+            targetValue = typography.storySummarySize,
+            animationSpec = contentTween(),
+            label = "story summary size",
+        )
+        animatedSummarySize
+    } else {
+        typography.storySummarySize
+    }
+    val indexAlpha = if (animateChanges) {
+        val animatedIndexAlpha by animateFloatAsState(
+            targetValue = if (style.showIndex) 1f else 0f,
+            animationSpec = contentTween(),
+            label = "story index alpha",
+        )
+        animatedIndexAlpha
+    } else if (style.showIndex) {
+        1f
+    } else {
+        0f
+    }
+    val indexWidth = if (animateChanges) {
+        val animatedIndexWidth by animateDpAsState(
+            targetValue = if (style.showIndex) 38.dp else 0.dp,
+            animationSpec = contentTween(),
+            label = "story index width",
+        )
+        animatedIndexWidth
+    } else if (style.showIndex) {
+        38.dp
+    } else {
+        0.dp
+    }
+    val titleStartPadding = if (animateChanges) {
+        val animatedTitleStartPadding by animateDpAsState(
+            targetValue = if (style.showIndex) 2.dp else 4.dp,
+            animationSpec = contentTween(),
+            label = "story title start padding",
+        )
+        animatedTitleStartPadding
+    } else if (style.showIndex) {
+        2.dp
+    } else {
+        4.dp
+    }
     Row(
         modifier = modifier
             .combinedClickable(
@@ -668,11 +752,6 @@ private fun StoryMeta(
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
-    val metaSize by animateFloatAsState(
-        targetValue = typography.storyMetaSize,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story meta size",
-    )
     val domainSuffix = model.domain
         .takeIf {
             model.domainWithoutTopLevel.isNotEmpty() &&
@@ -680,6 +759,51 @@ private fun StoryMeta(
         }
         ?.removePrefix(model.domainWithoutTopLevel)
         .orEmpty()
+    if (!animateChanges) {
+        val metaText = remember(
+            model.points,
+            model.domainWithoutTopLevel,
+            domainSuffix,
+            model.age,
+            style.showPoints,
+            style.compactPoints,
+            style.includeTopLevelDomain,
+        ) {
+            AnnotatedString(
+                buildString {
+                    if (style.showPoints) {
+                        if (style.compactPoints) append('+')
+                        append(model.points)
+                        if (!style.compactPoints) append(" points")
+                        append(" • ")
+                    }
+                    append(model.domainWithoutTopLevel)
+                    if (style.includeTopLevelDomain) append(domainSuffix)
+                    append(" • ")
+                    append(model.age)
+                },
+            )
+        }
+        StoryMetaRow(
+            model = model,
+            style = style,
+            typography = typography,
+            dimAlpha = dimAlpha,
+            tintBaseColorArgb = tintBaseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            extractTint = extractTint,
+            onTintExtracted = onTintExtracted,
+            metaText = metaText,
+            metaSize = typography.storyMetaSize,
+            modifier = modifier,
+        )
+        return
+    }
+    val metaSize by animateFloatAsState(
+        targetValue = typography.storyMetaSize,
+        animationSpec = contentTween(),
+        label = "story meta size",
+    )
     val pointsVisibilityProgress = remember(model.points) {
         Animatable(if (style.showPoints) 1f else 0f)
     }
@@ -809,6 +933,35 @@ private fun StoryMeta(
         }
         append(" • ${model.age}")
     }
+    StoryMetaRow(
+        model = model,
+        style = style,
+        typography = typography,
+        dimAlpha = dimAlpha,
+        tintBaseColorArgb = tintBaseColorArgb,
+        paletteTintConfigKey = paletteTintConfigKey,
+        extractTint = extractTint,
+        onTintExtracted = onTintExtracted,
+        metaText = metaText,
+        metaSize = metaSize,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun StoryMetaRow(
+    model: StoryItemUiModel,
+    style: StoryItemStyle,
+    typography: ContentTypography,
+    dimAlpha: Float,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractTint: Boolean,
+    onTintExtracted: (Int) -> Unit,
+    metaText: AnnotatedString,
+    metaSize: Float,
+    modifier: Modifier,
+) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(style.showFavicon) {
             if (model.faviconUrl != null) {
@@ -922,11 +1075,16 @@ private fun StoryCommentRail(
     onClick: (() -> Unit)?,
     animateChanges: Boolean,
 ) {
-    val countSize by animateFloatAsState(
-        targetValue = typography.storyCommentCountSize,
-        animationSpec = if (animateChanges) contentTween() else snap(),
-        label = "story comment count size",
-    )
+    val countSize = if (animateChanges) {
+        val animatedCountSize by animateFloatAsState(
+            targetValue = typography.storyCommentCountSize,
+            animationSpec = contentTween(),
+            label = "story comment count size",
+        )
+        animatedCountSize
+    } else {
+        typography.storyCommentCountSize
+    }
     Column(
         modifier = Modifier
             .width(60.dp)
