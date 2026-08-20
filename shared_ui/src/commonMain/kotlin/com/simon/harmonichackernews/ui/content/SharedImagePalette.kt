@@ -7,8 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
+import coil3.Image
+import com.kmpalette.generatePalette
 import com.kmpalette.extensions.painter.rememberPainterPaletteState
 import com.kmpalette.palette.graphics.Palette
 import com.simon.harmonichackernews.settings.PreviewTintPalette
@@ -16,8 +19,12 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.PreviewTintSwatch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -25,7 +32,78 @@ import kotlin.math.min
 
 private const val PaletteSampleSize = 96
 private const val MaxSharedPaletteTintEntries = 256
+private const val MaxConcurrentPaletteExtractions = 4
 private val SharedPaletteTintCache = PaletteTintCache(MaxSharedPaletteTintEntries)
+private val SharedPaletteExtractionRunner = PaletteExtractionRunner(
+    maxConcurrentExtractions = MaxConcurrentPaletteExtractions,
+)
+
+/**
+ * Extracts a tint directly from a shareable Coil bitmap. Rasterization, palette generation, and
+ * tint selection all run behind a bounded background-work gate; Compose receives only the result.
+ */
+@Composable
+internal fun rememberCoilImagePaletteTint(
+    image: Image?,
+    fallbackPainter: Painter?,
+    baseColorArgb: Int,
+    paletteTintConfigKey: String,
+    enabled: Boolean = true,
+    sharedCacheKey: String? = null,
+): Int? = if (image?.supportsOffMainPaletteSampling() == true) {
+    rememberImagePaletteTint(
+        image = image,
+        baseColorArgb = baseColorArgb,
+        paletteTintConfigKey = paletteTintConfigKey,
+        enabled = enabled,
+        sharedCacheKey = sharedCacheKey,
+    )
+} else {
+    rememberPainterPaletteTint(
+        painter = fallbackPainter,
+        baseColorArgb = baseColorArgb,
+        paletteTintConfigKey = paletteTintConfigKey,
+        enabled = enabled,
+        sharedCacheKey = sharedCacheKey,
+    )
+}
+
+@Composable
+private fun rememberImagePaletteTint(
+    image: Image,
+    baseColorArgb: Int,
+    paletteTintConfigKey: String,
+    enabled: Boolean,
+    sharedCacheKey: String?,
+): Int? {
+    var tint by remember(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
+        mutableStateOf<Int?>(null)
+    }
+
+    LaunchedEffect(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
+        if (!enabled) {
+            tint = null
+            return@LaunchedEffect
+        }
+        val extract: suspend () -> Int? = {
+            SharedPaletteExtractionRunner.run {
+                image.toPaletteSampleBitmap()?.calculateTint(
+                    baseColorArgb = baseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                )
+            }
+        }
+        tint = if (sharedCacheKey != null) {
+            SharedPaletteTintCache.getOrExtract(
+                PaletteTintCacheKey(sharedCacheKey, baseColorArgb, paletteTintConfigKey),
+                extract,
+            )
+        } else {
+            extract()
+        }
+    }
+    return tint
+}
 
 /** Shared palette extraction for Coil and Compose resource painters. */
 @Composable
@@ -181,6 +259,22 @@ internal class PaletteTintCache(
     }
 }
 
+/** Limits simultaneous image processing so favicon bursts do not saturate every CPU core. */
+internal class PaletteExtractionRunner(
+    maxConcurrentExtractions: Int,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+) {
+    private val semaphore = Semaphore(maxConcurrentExtractions)
+
+    init {
+        require(maxConcurrentExtractions > 0)
+    }
+
+    suspend fun <T> run(block: suspend () -> T): T = withContext(dispatcher) {
+        semaphore.withPermit { block() }
+    }
+}
+
 /**
  * Gives KMPalette a bounded-size [Painter] so its built-in loader does not first rasterize a large
  * preview at its full intrinsic dimensions. The source painter remains the one returned by Coil.
@@ -202,6 +296,32 @@ private fun Size.paletteSampleSize(): Size {
     return Size(
         width = max(1f, width * scale),
         height = max(1f, height * scale),
+    )
+}
+
+private fun Image.toPaletteSampleBitmap(): ImageBitmap? {
+    val dimensions = paletteSampleDimensions(width, height)
+    return toPaletteImageBitmap(dimensions.first, dimensions.second)
+}
+
+internal fun paletteSampleDimensions(width: Int, height: Int): Pair<Int, Int> {
+    val safeWidth = width.coerceAtLeast(1)
+    val safeHeight = height.coerceAtLeast(1)
+    val scale = min(PaletteSampleSize.toFloat() / safeWidth, PaletteSampleSize.toFloat() / safeHeight)
+    return max(1, (safeWidth * scale).toInt()) to max(1, (safeHeight * scale).toInt())
+}
+
+private suspend fun ImageBitmap.calculateTint(
+    baseColorArgb: Int,
+    paletteTintConfigKey: String,
+): Int {
+    val palette = generatePalette {
+        maximumColorCount(16)
+    }
+    return PreviewTintPolicy.calculateCardTint(
+        baseColorArgb,
+        palette.toPreviewTintPalette(),
+        paletteTintConfigKey,
     )
 }
 

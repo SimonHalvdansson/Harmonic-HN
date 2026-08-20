@@ -730,9 +730,11 @@ private fun StoryMeta(
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
                 var failed by remember(model.faviconUrl) { mutableStateOf(false) }
+                var loadedImage by remember(model.faviconUrl) { mutableStateOf<coil3.Image?>(null) }
                 var loadedPainter by remember(model.faviconUrl) { mutableStateOf<Painter?>(null) }
-                val extractedTint = rememberPainterPaletteTint(
-                    painter = loadedPainter,
+                val extractedTint = rememberCoilImagePaletteTint(
+                    image = loadedImage,
+                    fallbackPainter = loadedPainter,
                     baseColorArgb = tintBaseColorArgb,
                     paletteTintConfigKey = paletteTintConfigKey,
                     enabled = extractTint,
@@ -772,6 +774,7 @@ private fun StoryMeta(
                                 .graphicsLayer(alpha = dimAlpha * loadAlpha),
                             onSuccess = { success ->
                                 loaded = true
+                                loadedImage = success.result.image
                                 loadedPainter = success.painter
                             },
                             onError = { failed = true },

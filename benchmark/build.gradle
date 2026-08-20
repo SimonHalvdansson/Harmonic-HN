@@ -30,6 +30,11 @@ baselineProfile {
 
 dependencies {
     implementation(project(":shared_logic"))
+    implementation(project(":shared_resources"))
+    implementation(project(":shared_ui"))
+    implementation(libs.coil)
+    implementation(libs.compose.multiplatform.ui)
+    implementation(libs.kmpalette.core)
     implementation(libs.androidx.benchmark.junit4)
     implementation(libs.androidx.benchmark.macro.junit4)
     implementation(libs.androidx.test.ext.junit)
