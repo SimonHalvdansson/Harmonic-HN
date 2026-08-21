@@ -12,12 +12,13 @@ android {
         minSdk = 26
         targetSdk = 37
         testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
-        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
+                "EMULATOR,DEBUGGABLE,NOT-AOT-COMPILED"
     }
 
     buildTypes {
         benchmark {
-            debuggable = true
+            debuggable = false
             matchingFallbacks.add("release")
         }
     }
@@ -35,6 +36,7 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.compose.multiplatform.ui)
     implementation(libs.kmpalette.core)
+    implementation(libs.ksoup)
     implementation(libs.androidx.benchmark.junit4)
     implementation(libs.androidx.benchmark.macro.junit4)
     implementation(libs.androidx.test.ext.junit)

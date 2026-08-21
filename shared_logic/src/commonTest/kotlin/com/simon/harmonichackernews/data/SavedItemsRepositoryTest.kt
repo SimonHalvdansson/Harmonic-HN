@@ -14,6 +14,18 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun codecPreservesNumericLimitsAndRejectsOverflowOrDuplicateSeparators() {
+        assertEquals(
+            listOf(TimestampedItem(Int.MAX_VALUE, Long.MAX_VALUE)),
+            SavedItemCodec.decode("${Int.MAX_VALUE}q${Long.MAX_VALUE}"),
+        )
+        assertEquals(
+            emptyList(),
+            SavedItemCodec.decode("2147483648q1-1q9223372036854775808-1q2q3"),
+        )
+    }
+
+    @Test
     fun legacyEncodedValuesRemainReadableAndMalformedEntriesAreIgnored() {
         val store = TestKeyValueStore(
             mapOf(SavedItemKeys.BOOKMARKS to "10q100-broken-20q200-30qbad"),

@@ -95,12 +95,15 @@ class StoryResourceTintRepository(
         tint: StoryResourceTintState,
     ) {
         val prefix = prefix(storyId, kind)
-        store.putString("$prefix.source", tint.sourceUrl)
-        store.putInt("$prefix.base", tint.baseColorArgb)
-        store.putString("$prefix.palette", tint.paletteConfigKey)
-        store.putInt("$prefix.tint", tint.tintColorArgb)
         val key = entryKey(storyId, kind)
-        store.putStringSet(INDEX_KEY, store.getStringSet(INDEX_KEY) + key)
+        val index = store.getStringSet(INDEX_KEY) + key
+        store.update {
+            putString("$prefix.source", tint.sourceUrl)
+            putInt("$prefix.base", tint.baseColorArgb)
+            putString("$prefix.palette", tint.paletteConfigKey)
+            putInt("$prefix.tint", tint.tintColorArgb)
+            putStringSet(INDEX_KEY, index)
+        }
         invalidateReadCache(storyId, kind)
         cacheRead(
             ReadKey(storyId, kind, tint.sourceUrl, tint.baseColorArgb, tint.paletteConfigKey),

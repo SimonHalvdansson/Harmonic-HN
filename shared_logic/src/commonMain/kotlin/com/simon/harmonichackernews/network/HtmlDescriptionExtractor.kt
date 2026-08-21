@@ -10,8 +10,10 @@ object HtmlDescriptionExtractor {
     private const val MIN_LETTER_CHARS = 20
     private const val MIN_LATIN_WORDS = 5
     private const val MAX_CANDIDATE_CHARS = 600
-    private val WORD_PATTERN = Regex("[\\p{L}\\p{N}][\\p{L}\\p{N}'’_-]*")
-    private val SENTENCE_PUNCTUATION_PATTERN = Regex("[.!?。！？]")
+    private val LEADING_TITLE_SEPARATOR_PATTERN = Regex("^[|:–—\\-\\s]+")
+    private val GITHUB_CONTRIBUTION_PATTERN = Regex(
+        "(?i)\\.?\\s*Contribute to .+ development by creating an account on GitHub\\.?$",
+    )
     private val POSITIVE_CONTAINER_PATTERN = Regex(
         "(?:^|[-_\\s])(article|articlebody|article-body|body|content|entry|main|post|story|text)"
                 + "(?:$|[-_\\s])",
@@ -73,14 +75,23 @@ object HtmlDescriptionExtractor {
         var bestText = ""
         var bestScore = Int.MIN_VALUE
         var paragraphIndex = 0
+        val excludedCache = mutableMapOf<Element, Boolean>()
+        val containerScoreCache = mutableMapOf<Element, Int>()
         for (paragraph in document.select("p")) {
             val text = clean(paragraph.text())
-            if (!isUsableParagraph(paragraph, text, pageTitle, fallbackTitle)) {
+            if (!isUsableParagraph(
+                    paragraph,
+                    text,
+                    pageTitle,
+                    fallbackTitle,
+                    excludedCache,
+                )
+            ) {
                 paragraphIndex++
                 continue
             }
 
-            val score = scoreParagraph(paragraph, text, paragraphIndex)
+            val score = scoreParagraph(paragraph, text, paragraphIndex, containerScoreCache)
             if (score > bestScore) {
                 bestParagraph = paragraph
                 bestText = text
@@ -93,7 +104,7 @@ object HtmlDescriptionExtractor {
         }
 
         for (container in document.select("[itemprop~=articleBody], article, main, [role=main]")) {
-            if (isExcluded(container)) {
+            if (isExcluded(container, excludedCache)) {
                 continue
             }
             val text = withoutLeadingTitle(clean(container.text()), pageTitle)
@@ -108,9 +119,12 @@ object HtmlDescriptionExtractor {
         paragraph: Element,
         text: String,
         pageTitle: String?,
-        fallbackTitle: String?
+        fallbackTitle: String?,
+        excludedCache: MutableMap<Element, Boolean>,
     ): Boolean {
-        if (!isMeaningful(text, pageTitle, fallbackTitle) || isExcluded(paragraph)) {
+        if (!isMeaningful(text, pageTitle, fallbackTitle) ||
+            isExcluded(paragraph, excludedCache)
+        ) {
             return false
         }
 
@@ -121,76 +135,62 @@ object HtmlDescriptionExtractor {
         return linkedChars <= text.length * 0.35f
     }
 
-    private fun isExcluded(element: Element?): Boolean {
-        var current = element
-        while (current != null) {
-            val tag = current.tagName()
-            if ("aside" == tag
-                || "code" == tag
-                || "dialog" == tag
-                || "footer" == tag
-                || "form" == tag
-                || "header" == tag
-                || "li" == tag
-                || "nav" == tag
-                || "pre" == tag
-            ) {
-                return true
-            }
-
-            val identifiers = current.id() + " " + current.className()
-            if (NEGATIVE_CONTAINER_PATTERN.containsMatchIn(identifiers)
-                || current.hasAttr("hidden")
-                || "true".equals(current.attr("aria-hidden"), ignoreCase = true)
-            ) {
-                return true
-            }
-            val style = current.attr("style").lowercase().replace(" ", "")
-            if (style.contains("display:none") || style.contains("visibility:hidden")) {
-                return true
-            }
-            current = current.parent()
-        }
-        return false
+    private fun isExcluded(
+        element: Element,
+        cache: MutableMap<Element, Boolean>,
+    ): Boolean {
+        cache[element]?.let { return it }
+        val tag = element.tagName()
+        val identifiers = element.id() + " " + element.className()
+        val style = element.attr("style").lowercase().replace(" ", "")
+        val excluded = tag == "aside" || tag == "code" || tag == "dialog" ||
+            tag == "footer" || tag == "form" || tag == "header" || tag == "li" ||
+            tag == "nav" || tag == "pre" ||
+            NEGATIVE_CONTAINER_PATTERN.containsMatchIn(identifiers) ||
+            element.hasAttr("hidden") ||
+            "true".equals(element.attr("aria-hidden"), ignoreCase = true) ||
+            style.contains("display:none") || style.contains("visibility:hidden") ||
+            element.parent()?.let { isExcluded(it, cache) } == true
+        cache[element] = excluded
+        return excluded
     }
 
-    private fun scoreParagraph(paragraph: Element, text: String, paragraphIndex: Int): Int {
+    private fun scoreParagraph(
+        paragraph: Element,
+        text: String,
+        paragraphIndex: Int,
+        containerScoreCache: MutableMap<Element, Int>,
+    ): Int {
         var score = min(text.length, 240) / 4
-        if (SENTENCE_PUNCTUATION_PATTERN.containsMatchIn(text)) {
+        if (text.any { it == '.' || it == '!' || it == '?' || it == '。' || it == '！' || it == '？' }) {
             score += 20
         }
-
-        var positiveContainerFound = false
-        var current = paragraph.parent()
-        while (current != null) {
-            if ("article" == current.tagName()
-                || current.hasAttr("itemprop")
-                && current.attr("itemprop").lowercase().contains("articlebody")
-            ) {
-                score += 500
-                positiveContainerFound = true
-                break
-            }
-            if ("main" == current.tagName() || "main".equals(
-                    current.attr("role"),
-                    ignoreCase = true
-                )
-            ) {
-                score += 400
-                positiveContainerFound = true
-                break
-            }
-            val identifiers = current.id() + " " + current.className()
-            if (POSITIVE_CONTAINER_PATTERN.containsMatchIn(identifiers)) {
-                positiveContainerFound = true
-            }
-            current = current.parent()
-        }
-        if (positiveContainerFound) {
-            score += 250
-        }
-
+        score += paragraph.parent()?.let { positiveContainerScore(it, containerScoreCache) } ?: 0
         return score - min(paragraphIndex, 100) * 3
+    }
+
+    private fun positiveContainerScore(
+        element: Element,
+        cache: MutableMap<Element, Int>,
+    ): Int {
+        cache[element]?.let { return it }
+        val score = when {
+            element.tagName() == "article" ||
+                element.attr("itemprop").contains("articlebody", ignoreCase = true) -> 750
+            element.tagName() == "main" ||
+                element.attr("role").equals("main", ignoreCase = true) -> 650
+            else -> {
+                val ancestorScore = element.parent()?.let {
+                    positiveContainerScore(it, cache)
+                } ?: 0
+                if (ancestorScore > 0 || POSITIVE_CONTAINER_PATTERN.containsMatchIn(
+                        element.id() + " " + element.className(),
+                    )
+                ) maxOf(ancestorScore, 250) else 0
+            }
+        }
+        cache[element] = score
+        return score
     }
 
     private fun duplicatesTitle(value: String?, pageTitle: String?): Boolean {
@@ -208,7 +208,8 @@ object HtmlDescriptionExtractor {
             && value.regionMatches(0, cleanedTitle, 0, cleanedTitle.length, ignoreCase = true)
         ) {
             return clean(
-                value.substring(cleanedTitle.length).replaceFirst("^[|:–—\\-\\s]+".toRegex(), "")
+                value.substring(cleanedTitle.length)
+                    .replaceFirst(LEADING_TITLE_SEPARATOR_PATTERN, "")
             )
         }
         return value
@@ -216,19 +217,34 @@ object HtmlDescriptionExtractor {
 
     private fun withoutProviderBoilerplate(value: String): String {
         return clean(
-            value.replaceFirst(
-                "(?i)\\.?\\s*Contribute to .+ development by creating an account on GitHub\\.?$".toRegex(),
-                ""
-            )
+            value.replaceFirst(GITHUB_CONTRIBUTION_PATTERN, "")
         )
     }
 
     private fun normalizeComparable(value: String?): String {
-        return clean(value).lowercase().replace("[^\\p{L}\\p{N}]+".toRegex(), "")
+        val cleaned = clean(value)
+        return buildString(cleaned.length) {
+            cleaned.forEach { character ->
+                if (character.isLetterOrDigit()) append(character.lowercaseChar())
+            }
+        }
     }
 
     private fun countWords(value: String): Int {
-        return WORD_PATTERN.findAll(value).count()
+        var count = 0
+        var inWord = false
+        for (character in value) {
+            when {
+                character.isLetterOrDigit() -> {
+                    if (!inWord) count++
+                    inWord = true
+                }
+                inWord && (character == '\'' || character == '’' ||
+                    character == '_' || character == '-') -> Unit
+                else -> inWord = false
+            }
+        }
+        return count
     }
 
     private fun countLetters(value: String): Int {
@@ -253,8 +269,20 @@ object HtmlDescriptionExtractor {
     }
 
     private fun clean(value: String?): String {
-        return if (value == null) "" else value.replace('\u00a0', ' ')
-            .replace("\\s+".toRegex(), " ").trim { it <= ' ' }
+        if (value.isNullOrEmpty()) return ""
+        val result = StringBuilder(value.length)
+        var pendingSpace = false
+        for (source in value) {
+            val character = if (source == '\u00a0') ' ' else source
+            if (character.isWhitespace()) {
+                pendingSpace = result.isNotEmpty()
+            } else {
+                if (pendingSpace) result.append(' ')
+                result.append(character)
+                pendingSpace = false
+            }
+        }
+        return result.toString()
     }
 
     private fun truncate(value: String?): String {

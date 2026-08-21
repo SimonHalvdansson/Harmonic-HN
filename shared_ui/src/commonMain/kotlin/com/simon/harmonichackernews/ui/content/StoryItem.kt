@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -39,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +92,32 @@ import org.jetbrains.compose.resources.painterResource
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
+
+/** Avoids transition state and animated layouts for immutable story-list presentation. */
+@Composable
+private fun StoryVisibility(
+    visible: Boolean,
+    animate: Boolean,
+    modifier: Modifier = Modifier,
+    enter: EnterTransition? = null,
+    exit: ExitTransition? = null,
+    content: @Composable () -> Unit,
+) {
+    if (animate) {
+        if (enter != null && exit != null) {
+            AnimatedVisibility(
+                visible = visible,
+                modifier = modifier,
+                enter = enter,
+                exit = exit,
+            ) { content() }
+        } else {
+            AnimatedVisibility(visible = visible, modifier = modifier) { content() }
+        }
+    } else if (visible) {
+        Box(modifier = modifier, propagateMinConstraints = true) { content() }
+    }
+}
 
 private class StoryItemGeometry {
     var coordinates: LayoutCoordinates? = null
@@ -162,6 +191,18 @@ private fun LayoutCoordinates?.windowBoundsOrNull(): Rect? =
             )
         }
         ?.takeIf { it.width > 0f && it.height > 0f }
+
+@Composable
+private fun Modifier.captureStoryPreviewElement(
+    enabled: Boolean,
+    onPositioned: (LayoutCoordinates) -> Unit,
+    onLayerChanged: (GraphicsLayer) -> Unit,
+): Modifier = if (enabled) {
+    onGloballyPositioned(onPositioned)
+        .captureStoryPreviewSourceContent(onLayerChanged)
+} else {
+    this
+}
 
 @Immutable
 data class StoryItemUiModel(
@@ -313,6 +354,8 @@ fun StoryItem(
         targetBackground
     }
     val itemGeometry = remember { StoryItemGeometry() }
+    var sourceCaptureRequested by remember { mutableStateOf(false) }
+    val captureSourceContent = capturePreviewSourceGeometry || sourceCaptureRequested
     val density = LocalDensity.current
     val itemVerticalPaddingPx = with(density) {
         (if (listItem) 8.dp else 28.dp).roundToPx()
@@ -344,8 +387,13 @@ fun StoryItem(
                 itemGeometry.coordinates = coordinates
             }
     }
-    val trackedLinkLongClick = onLinkLongClick?.let { longClick ->
-        {
+    val trackedLinkLongClick = onLinkLongClick?.let {
+        { sourceCaptureRequested = true }
+    }
+    LaunchedEffect(sourceCaptureRequested, onLinkLongClick) {
+        if (sourceCaptureRequested) {
+            // Let the newly attached recording modifiers draw once before publishing the source.
+            withFrameNanos { }
             itemGeometry.coordinates
                 ?.takeIf(LayoutCoordinates::isAttached)
                 ?.boundsInWindow()
@@ -354,7 +402,8 @@ fun StoryItem(
                 }
             itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
                 ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
-            longClick()
+            onLinkLongClick?.invoke()
+            sourceCaptureRequested = false
         }
     }
     LaunchedEffect(
@@ -416,8 +465,9 @@ fun StoryItem(
                     .then(geometryModifier)
                     .then(cardDecorationModifier),
             ) {
-                AnimatedVisibility(
+                StoryVisibility(
                     visible = style.previewImageMode == "large" && hasPreview,
+                    animate = animate,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
@@ -451,11 +501,12 @@ fun StoryItem(
                             .fillMaxWidth()
                             .height(176.dp)
                             .padding(start = imageInset, top = imageInset, end = imageInset)
-                            .onGloballyPositioned { itemGeometry.largeImageCoordinates = it }
                             .clip(RoundedCornerShape(imageRadius))
-                            .captureStoryPreviewSourceContent {
-                                itemGeometry.largeImageLayer = it
-                            }
+                            .captureStoryPreviewElement(
+                                enabled = captureSourceContent,
+                                onPositioned = { itemGeometry.largeImageCoordinates = it },
+                                onLayerChanged = { itemGeometry.largeImageLayer = it },
+                            )
                             .graphicsLayer(alpha = dimAlpha),
                         onLoadFailed = {
                             previewFailed = true
@@ -478,11 +529,11 @@ fun StoryItem(
                         typography = typography,
                         onClick = onCommentClick,
                         animateChanges = animate,
-                        modifier = Modifier.onGloballyPositioned {
-                            itemGeometry.commentsCoordinates = it
-                        }.captureStoryPreviewSourceContent {
-                            itemGeometry.commentsLayer = it
-                        },
+                        modifier = Modifier.captureStoryPreviewElement(
+                            enabled = captureSourceContent,
+                            onPositioned = { itemGeometry.commentsCoordinates = it },
+                            onLayerChanged = { itemGeometry.commentsLayer = it },
+                        ),
                     )
                 }
                 StoryContentRow(
@@ -516,6 +567,7 @@ fun StoryItem(
                             onFaviconTintExtracted?.invoke(tintColor)
                         },
                         animateChanges = animate,
+                        capturePreviewSource = captureSourceContent,
                         itemGeometry = itemGeometry,
                         modifier = Modifier,
                     )
@@ -591,6 +643,7 @@ private fun StoryMainContent(
     extractFaviconTint: Boolean,
     onFaviconTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
+    capturePreviewSource: Boolean,
     itemGeometry: StoryItemGeometry,
     modifier: Modifier,
 ) {
@@ -665,8 +718,11 @@ private fun StoryMainContent(
             modifier = Modifier
                 .width(indexWidth)
                 .alignBy(FirstBaseline)
-                .onGloballyPositioned { itemGeometry.indexCoordinates = it }
-                .captureStoryPreviewSourceContent { itemGeometry.indexLayer = it }
+                .captureStoryPreviewElement(
+                    enabled = capturePreviewSource,
+                    onPositioned = { itemGeometry.indexCoordinates = it },
+                    onLayerChanged = { itemGeometry.indexLayer = it },
+                )
                 .graphicsLayer { alpha = indexAlpha },
             color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
             else HarmonicTheme.colors.storyNormal,
@@ -685,8 +741,11 @@ private fun StoryMainContent(
                 text = model.title,
                 badge = model.titleBadge,
                 modifier = Modifier
-                    .onGloballyPositioned { itemGeometry.titleCoordinates = it }
-                    .captureStoryPreviewSourceContent { itemGeometry.titleLayer = it },
+                    .captureStoryPreviewElement(
+                        enabled = capturePreviewSource,
+                        onPositioned = { itemGeometry.titleCoordinates = it },
+                        onLayerChanged = { itemGeometry.titleLayer = it },
+                    ),
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
@@ -694,13 +753,19 @@ private fun StoryMainContent(
                 fontSize = titleSize.sp,
                 style = legacyTextStyle,
             )
-            AnimatedVisibility(style.showSummary && model.summary.isNotBlank()) {
+            StoryVisibility(
+                visible = style.showSummary && model.summary.isNotBlank(),
+                animate = animateChanges,
+            ) {
                 Text(
                     text = model.summary,
                     modifier = Modifier
                         .padding(top = 3.dp)
-                        .onGloballyPositioned { itemGeometry.summaryCoordinates = it }
-                        .captureStoryPreviewSourceContent { itemGeometry.summaryLayer = it },
+                        .captureStoryPreviewElement(
+                            enabled = capturePreviewSource,
+                            onPositioned = { itemGeometry.summaryCoordinates = it },
+                            onLayerChanged = { itemGeometry.summaryLayer = it },
+                        ),
                     color = HarmonicTheme.colors.storyDisabled,
                     fontFamily = typography.family,
                     fontSize = summarySize.sp,
@@ -722,13 +787,17 @@ private fun StoryMainContent(
                     animateChanges = animateChanges,
                     modifier = Modifier
                         .padding(top = 3.dp)
-                        .onGloballyPositioned { itemGeometry.metaCoordinates = it }
-                        .captureStoryPreviewSourceContent { itemGeometry.metaLayer = it },
+                        .captureStoryPreviewElement(
+                            enabled = capturePreviewSource,
+                            onPositioned = { itemGeometry.metaCoordinates = it },
+                            onLayerChanged = { itemGeometry.metaLayer = it },
+                        ),
                 )
             }
         }
-        AnimatedVisibility(
+        StoryVisibility(
             visible = hasSmallPreview,
+            animate = animateChanges,
             modifier = Modifier.align(Alignment.CenterVertically),
             enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
             exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
@@ -738,9 +807,12 @@ private fun StoryMainContent(
                 modifier = Modifier
                     .padding(start = 4.dp)
                     .size(width = 72.dp, height = 52.dp)
-                    .onGloballyPositioned { itemGeometry.smallImageCoordinates = it }
                     .clip(RoundedCornerShape(6.dp))
-                    .captureStoryPreviewSourceContent { itemGeometry.smallImageLayer = it }
+                    .captureStoryPreviewElement(
+                        enabled = capturePreviewSource,
+                        onPositioned = { itemGeometry.smallImageCoordinates = it },
+                        onLayerChanged = { itemGeometry.smallImageLayer = it },
+                    )
                     .graphicsLayer(alpha = dimAlpha),
                 onLoadFailed = onPreviewLoadFailed,
                 onLoadSuccess = onPreviewLoadSuccess,
@@ -917,6 +989,7 @@ private fun StoryMeta(
             onTintExtracted = onTintExtracted,
             metaText = metaText,
             metaSize = typography.storyMetaSize,
+            animateChanges = animateChanges,
             modifier = modifier,
         )
         return
@@ -1066,6 +1139,7 @@ private fun StoryMeta(
         onTintExtracted = onTintExtracted,
         metaText = metaText,
         metaSize = metaSize,
+        animateChanges = animateChanges,
         modifier = modifier,
     )
 }
@@ -1082,10 +1156,11 @@ private fun StoryMetaRow(
     onTintExtracted: (Int) -> Unit,
     metaText: AnnotatedString,
     metaSize: Float,
+    animateChanges: Boolean,
     modifier: Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        AnimatedVisibility(style.showFavicon) {
+        StoryVisibility(visible = style.showFavicon, animate = animateChanges) {
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
                 var failed by remember(model.faviconUrl) { mutableStateOf(false) }
@@ -1226,7 +1301,10 @@ private fun StoryCommentRail(
             modifier = Modifier.size(24.dp),
             tint = HarmonicTheme.colors.drawable.copy(alpha = if (style.dimmed) 0.6f else 1f),
         )
-        AnimatedVisibility(style.showCommentCount && !style.compact) {
+        StoryVisibility(
+            visible = style.showCommentCount && !style.compact,
+            animate = animateChanges,
+        ) {
             Text(
                 text = model.commentCount.toString(),
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled

@@ -377,8 +377,6 @@ class CommentsCoordinator(
         progressIndicator = host.progressIndicator
 
         val shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite
-        val shouldInitializeWebViewInBackground = integratedWebview
-                && !showWebsite && webViewController!!.shouldInitializeInBackground(requireContext())
 
         if (shouldInitializeWebViewBeforeFirstDraw) {
             webViewController!!.initialize()
@@ -404,12 +402,6 @@ class CommentsCoordinator(
                     loadInitialStoryAndComments(restoreScrollFromCache)
                 }
             })
-        }
-        if (shouldInitializeWebViewInBackground && webViewController != null) {
-            view.postDelayed(
-                webViewController!!.initializeRunnable,
-                WEBVIEW_BACKGROUND_INITIALIZATION_DELAY_MS
-            )
         }
     }
 
@@ -516,7 +508,7 @@ class CommentsCoordinator(
             override fun collapseSheetForWebsite() = collapseBottomSheetForWebsite()
 
             override fun onSheetProgressChanged(expandedFraction: Float) {
-                if (expandedFraction < 0.999f && integratedWebview &&
+                if (expandedFraction < WEBSITE_PRELOAD_SHEET_THRESHOLD && integratedWebview &&
                     webViewController?.hasWebView() == false
                 ) webViewController?.initializeForVisibleWebsite()
                 updateCommentsStatusBarAppearance()
@@ -1194,9 +1186,9 @@ class CommentsCoordinator(
             "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_TITLE"
         private const val STATE_PREVIEW_IMAGE_DIALOG_URL =
             "com.simon.harmonichackernews.STATE_PREVIEW_IMAGE_DIALOG_URL"
-        // Keep WebView startup clear of the comments entrance transition. WebView process and
-        // renderer initialization can otherwise land on the same frames as the shared transition
-        // on physical devices, which makes opening a story feel much heavier than it is.
-        private const val WEBVIEW_BACKGROUND_INITIALIZATION_DELAY_MS = 900L
+        // Ignore tiny nested-scroll/settling deviations while the comments sheet is effectively
+        // fully expanded. A real website reveal still preloads after the first 2% of travel, and
+        // the settled callback remains the correctness fallback.
+        private const val WEBSITE_PRELOAD_SHEET_THRESHOLD = 0.98f
     }
 }

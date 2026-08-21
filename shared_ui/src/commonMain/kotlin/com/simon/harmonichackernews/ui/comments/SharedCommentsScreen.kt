@@ -329,6 +329,9 @@ fun SharedCommentsScreen(
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
                     highlighted = item.comment.id == controller.highlightedCommentId,
                     suppressedReferenceUrl = suppressedReferenceUrl,
+                    captureActionSource =
+                        item.comment.id == controller.getVisibleCommentActionId(),
+                    showActionsOnClick = settings.swapLongPressTap,
                     modifier = Modifier
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .graphicsLayer(

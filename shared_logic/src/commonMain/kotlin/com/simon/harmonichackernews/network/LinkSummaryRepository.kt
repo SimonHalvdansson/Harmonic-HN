@@ -188,15 +188,7 @@ object LinkSummaryParser {
             "|^https?://(?:www\\.)?youtu\\.be/([A-Za-z0-9_-]{11})(?:[?&#/].*)?$",
         RegexOption.IGNORE_CASE,
     )
-    private val imageSelectors = arrayOf(
-        "meta[property=og:image:secure_url]",
-        "meta[property=og:image:url]",
-        "meta[property=og:image]",
-        "meta[name=twitter:image:src]",
-        "meta[name=twitter:image]",
-        "meta[itemprop=image]",
-        "link[rel=image_src]",
-    )
+    private val whitespacePattern = Regex("\\s+")
 
     fun buildYoutubeOEmbedUrl(pageUrl: String?): String? {
         if (!isYoutubeVideoUrl(pageUrl)) return null
@@ -258,36 +250,39 @@ object LinkSummaryParser {
         finalUrl: String,
     ): LinkSummary {
         val document = Ksoup.parse(html, baseUri = finalUrl)
+        // CSS selection walks the document. Index the metadata once instead of repeating that
+        // traversal for every OpenGraph, Twitter and article field.
+        val metadata = MetadataIndex(document)
         val title = firstNonEmpty(
-            metaContent(document, "meta[property=og:title]"),
-            metaContent(document, "meta[name=twitter:title]"),
+            metadata.property("og:title"),
+            metadata.name("twitter:title"),
             document.title(),
             fallbackTitle,
         )
         val siteName = firstNonEmpty(
-            metaContent(document, "meta[property=og:site_name]"),
+            metadata.property("og:site_name"),
             finalUrl.toNetworkUrlOrNull()?.host,
         )
         val author = firstNonEmpty(
-            metaContent(document, "meta[name=author]"),
-            metaContent(document, "meta[property=article:author]"),
-            metaContent(document, "meta[name=byl]"),
+            metadata.name("author"),
+            metadata.property("article:author"),
+            metadata.name("byl"),
             elementText(document.selectFirst("[rel=author]")),
         )
         val publishedTime = firstNonEmpty(
-            metaContent(document, "meta[property=article:published_time]"),
-            metaContent(document, "meta[itemprop=datePublished]"),
-            metaContent(document, "meta[name=date]"),
+            metadata.property("article:published_time"),
+            metadata.itemProp("datePublished"),
+            metadata.name("date"),
             elementAttribute(document.selectFirst("time[datetime]"), "datetime"),
         )
         val language = firstNonEmpty(
             elementAttribute(document.selectFirst("html[lang]"), "lang"),
-            metaContent(document, "meta[http-equiv=content-language]"),
+            metadata.httpEquiv("content-language"),
         )
         val metadataDescription = firstNonEmpty(
-            metaContent(document, "meta[property=og:description]"),
-            metaContent(document, "meta[name=description]"),
-            metaContent(document, "meta[name=twitter:description]"),
+            metadata.property("og:description"),
+            metadata.name("description"),
+            metadata.name("twitter:description"),
         )
         return LinkSummary(
             title = clean(title),
@@ -305,7 +300,7 @@ object LinkSummaryParser {
                 ),
                 MAX_DESCRIPTION_CHARS,
             ),
-            imageUrl = extractImageUrl(document, finalUrl),
+            imageUrl = extractImageUrl(metadata, document, finalUrl),
             finalUrl = finalUrl,
         )
     }
@@ -373,7 +368,7 @@ object LinkSummaryParser {
 
     fun clean(value: String?): String = value.orEmpty()
         .replace('\u00a0', ' ')
-        .replace("\\s+".toRegex(), " ")
+        .replace(whitespacePattern, " ")
         .trim()
 
     private fun buildHackerNewsMetadata(
@@ -408,21 +403,29 @@ object LinkSummaryParser {
     private fun formatCount(count: Int, singular: String, plural: String): String =
         "$count ${if (count == 1) singular else plural}"
 
-    private fun extractImageUrl(document: Document, baseUrl: String): String {
+    private fun extractImageUrl(
+        metadata: MetadataIndex,
+        document: Document,
+        baseUrl: String,
+    ): String {
         val parsedBase = baseUrl.toNetworkUrlOrNull()
-        for (selector in imageSelectors) {
-            val element = document.selectFirst(selector) ?: continue
-            val candidate = element.attr(if (element.tagName() == "link") "href" else "content")
-                .trim()
+        val candidates = arrayOf(
+            metadata.property("og:image:secure_url"),
+            metadata.property("og:image:url"),
+            metadata.property("og:image"),
+            metadata.name("twitter:image:src"),
+            metadata.name("twitter:image"),
+            metadata.itemProp("image"),
+            document.selectFirst("link[rel=image_src]")?.attr("href").orEmpty(),
+        )
+        for (value in candidates) {
+            val candidate = value.trim()
             if (candidate.isEmpty() || candidate.startsWith("data:")) continue
             val parsedImage = parsedBase?.resolve(candidate) ?: candidate.toNetworkUrlOrNull()
             if (parsedImage != null && isHttpScheme(parsedImage)) return parsedImage.toString()
         }
         return ""
     }
-
-    private fun metaContent(document: Document, selector: String): String =
-        elementAttribute(document.selectFirst(selector), "content")
 
     private fun elementAttribute(element: Element?, attribute: String): String =
         element?.attr(attribute).orEmpty()
@@ -444,6 +447,32 @@ object LinkSummaryParser {
         value?.all(Char::isDigit) == true && (value.toIntOrNull() ?: 0) > 0
 
     private fun isHttpScheme(url: NetworkUrl): Boolean = url.scheme == "http" || url.scheme == "https"
+
+    private class MetadataIndex(document: Document) {
+        private val properties = mutableMapOf<String, String>()
+        private val names = mutableMapOf<String, String>()
+        private val itemProps = mutableMapOf<String, String>()
+        private val httpEquivs = mutableMapOf<String, String>()
+
+        init {
+            for (element in document.select("meta")) {
+                val content = element.attr("content")
+                putFirst(properties, element.attr("property"), content)
+                putFirst(names, element.attr("name"), content)
+                putFirst(itemProps, element.attr("itemprop"), content)
+                putFirst(httpEquivs, element.attr("http-equiv"), content)
+            }
+        }
+
+        fun property(key: String): String = properties[key].orEmpty()
+        fun name(key: String): String = names[key].orEmpty()
+        fun itemProp(key: String): String = itemProps[key].orEmpty()
+        fun httpEquiv(key: String): String = httpEquivs[key].orEmpty()
+
+        private fun putFirst(target: MutableMap<String, String>, key: String, value: String) {
+            if (key.isNotEmpty() && key !in target) target[key] = value
+        }
+    }
 
     private val imageExtensions = listOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")
 }

@@ -129,7 +129,6 @@ internal class CommentsWebViewController(
     }
 
     private val webViewHandler = Handler(Looper.getMainLooper())
-    val initializeRunnable = Runnable(::initialize)
     private val webViewBackdropFadeInRunnable = Runnable {
         webViewBackdrop?.animate()
             ?.alpha(1f)
@@ -227,12 +226,6 @@ internal class CommentsWebViewController(
             startedLoading = true
             loadUrl(story?.url)
         }
-    }
-
-    fun shouldInitializeInBackground(context: Context?): Boolean {
-        return context != null
-                && (shouldPreloadStoryUrl(context)
-                || linkPreviewController.shouldInitializeWebViewForPreview(context))
     }
 
     fun hasWebView(): Boolean {
@@ -1352,7 +1345,6 @@ internal class CommentsWebViewController(
     fun onDestroyView(rootView: View?) {
         hideCustomView(false)
 
-        rootView?.removeCallbacks(initializeRunnable)
         downloadButton?.setOnClickListener(null)
         webViewBackdrop?.apply {
             removeCallbacks(webViewBackdropFadeInRunnable)

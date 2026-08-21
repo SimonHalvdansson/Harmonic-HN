@@ -4,6 +4,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.text.format.DateFormat
 import com.simon.harmonichackernews.network.createAndroidLocalSummaryEngine
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
@@ -72,10 +75,58 @@ class AndroidClipboardService(context: Context) : ClipboardService {
 
 class AndroidConnectivityService(context: Context) : ConnectivityService {
     private val appContext = context.applicationContext
+    private val manager =
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+    @Volatile
+    private var online = false
+    @Volatile
+    private var unmetered = false
+    private val callback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            manager?.getNetworkCapabilities(network)?.let(::updateCapabilities)
+        }
 
-    override fun isOnline(): Boolean = AndroidNetworkStatus.isOnline(appContext)
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities,
+        ) {
+            updateCapabilities(networkCapabilities)
+        }
 
-    override fun isUnmetered(): Boolean = AndroidNetworkStatus.isUnmetered(appContext)
+        override fun onLost(network: Network) {
+            val activeNetwork = manager?.activeNetwork
+            val activeCapabilities = activeNetwork
+                ?.takeUnless { it == network }
+                ?.let { manager.getNetworkCapabilities(it) }
+            if (activeCapabilities == null) {
+                online = false
+                unmetered = false
+            } else {
+                updateCapabilities(activeCapabilities)
+            }
+        }
+    }
+    private val callbackRegistered: Boolean
+
+    init {
+        manager?.activeNetwork
+            ?.let(manager::getNetworkCapabilities)
+            ?.let(::updateCapabilities)
+        callbackRegistered = manager?.let {
+            runCatching { it.registerDefaultNetworkCallback(callback) }.isSuccess
+        } == true
+    }
+
+    override fun isOnline(): Boolean =
+        if (callbackRegistered) online else AndroidNetworkStatus.isOnline(appContext)
+
+    override fun isUnmetered(): Boolean =
+        if (callbackRegistered) unmetered else AndroidNetworkStatus.isUnmetered(appContext)
+
+    private fun updateCapabilities(capabilities: NetworkCapabilities) {
+        online = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        unmetered = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
 }
 
 class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {

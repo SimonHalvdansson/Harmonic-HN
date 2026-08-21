@@ -291,9 +291,9 @@ class StoriesStore internal constructor(
         return StoriesState(
             mainList = runtime.mainStore.state.value,
             searchList = runtime.searchStore.state.value,
-            previewResources = runtime.previewResourceStates.toMap(),
+            previewResources = runtime.previewResourceStates,
             displaySettings = runtime.settingsState.value.displaySettings,
-            availableStoryTypes = runtime.availableStoryTypes.toList(),
+            availableStoryTypes = runtime.availableStoryTypes,
             selectedTypeIndex = runtime.selectedStoryTypeIndex(),
             currentType = runtime.currentType,
             searching = runtime.searching,

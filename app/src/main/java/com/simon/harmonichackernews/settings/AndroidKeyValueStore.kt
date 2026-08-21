@@ -71,6 +71,40 @@ class AndroidKeyValueStore private constructor(
         preferences.edit().putStringSet(key, value?.toSet()).apply()
     }
 
+    override fun update(block: KeyValueStore.Editor.() -> Unit) {
+        val editor = preferences.edit()
+        block(object : KeyValueStore.Editor {
+            override fun remove(key: String) {
+                editor.remove(key)
+            }
+
+            override fun putString(key: String, value: String?) {
+                editor.putString(key, value)
+            }
+
+            override fun putBoolean(key: String, value: Boolean) {
+                editor.putBoolean(key, value)
+            }
+
+            override fun putInt(key: String, value: Int) {
+                editor.putInt(key, value)
+            }
+
+            override fun putLong(key: String, value: Long) {
+                editor.putLong(key, value)
+            }
+
+            override fun putFloat(key: String, value: Float) {
+                editor.putFloat(key, value)
+            }
+
+            override fun putStringSet(key: String, value: Set<String>?) {
+                editor.putStringSet(key, value?.toSet())
+            }
+        })
+        editor.apply()
+    }
+
     companion object {
         fun global(context: Context): AndroidKeyValueStore = AndroidKeyValueStore(
             context.applicationContext.getSharedPreferences(

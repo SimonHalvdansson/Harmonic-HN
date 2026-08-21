@@ -28,11 +28,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,6 +141,11 @@ private class CommentItemGeometry {
     }
 }
 
+private enum class CommentActionSourceGesture {
+    Click,
+    LongClick,
+}
+
 val SettingsCommentPreviewModel = CommentItemUiModel(
     author = "pg",
     age = "1h",
@@ -239,6 +246,8 @@ fun CommentItem(
     forceExpanded: Boolean = false,
     searchTerm: String = "",
     suppressedReferenceUrl: String? = null,
+    captureActionSource: Boolean = false,
+    showActionsOnClick: Boolean = false,
     onToggleExpanded: (Rect?) -> Unit,
     onShowActions: (Rect?) -> Unit,
     onActionSourceGeometryChanged: ((CommentActionSourceGeometry) -> Unit)? = null,
@@ -289,8 +298,23 @@ fun CommentItem(
     }
     val bottom = if (style.cardStyle) 0.dp else 6.dp
     val itemGeometry = remember { CommentItemGeometry() }
+    var pendingActionSourceGesture by remember {
+        mutableStateOf<CommentActionSourceGesture?>(null)
+    }
     fun publishActionSourceGeometry() {
         itemGeometry.snapshot()?.let { onActionSourceGeometryChanged?.invoke(it) }
+    }
+    LaunchedEffect(pendingActionSourceGesture) {
+        val gesture = pendingActionSourceGesture ?: return@LaunchedEffect
+        // Record the row once only when the gesture is going to open the shared-element overlay.
+        withFrameNanos { }
+        publishActionSourceGeometry()
+        val bounds = itemGeometry.boundsInWindowOrNull()
+        when (gesture) {
+            CommentActionSourceGesture.Click -> onToggleExpanded(bounds)
+            CommentActionSourceGesture.LongClick -> onShowActions(bounds)
+        }
+        pendingActionSourceGesture = null
     }
     CommentItemLayout(
         modifier = modifier,
@@ -306,13 +330,20 @@ fun CommentItem(
             indicatorColor = CommentDepthColors[indicatorIndex],
             highlighted = highlighted,
             itemGeometry = itemGeometry,
+            captureSource = captureActionSource || pendingActionSourceGesture != null,
             onClick = {
-                publishActionSourceGeometry()
-                onToggleExpanded(itemGeometry.boundsInWindowOrNull())
+                if (showActionsOnClick) {
+                    pendingActionSourceGesture = CommentActionSourceGesture.Click
+                } else {
+                    onToggleExpanded(itemGeometry.boundsInWindowOrNull())
+                }
             },
             onLongClick = {
-                publishActionSourceGeometry()
-                onShowActions(itemGeometry.boundsInWindowOrNull())
+                if (showActionsOnClick) {
+                    onShowActions(itemGeometry.boundsInWindowOrNull())
+                } else {
+                    pendingActionSourceGesture = CommentActionSourceGesture.LongClick
+                }
             },
         ) {
             CommentMeta(
@@ -474,6 +505,7 @@ private fun SharedCommentSurface(
     indicatorColor: Color,
     highlighted: Boolean,
     itemGeometry: CommentItemGeometry? = null,
+    captureSource: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     content: @Composable () -> Unit,
@@ -571,12 +603,17 @@ private fun SharedCommentSurface(
         itemGeometry?.containerBorderWidthDp =
             if (style.cardStyle && style.showCardBorder) 1f else 0f
     }
+    val contentCaptureModifier = if (itemGeometry != null && captureSource) {
+        Modifier.captureCommentActionSourceContent { itemGeometry.contentLayer = it }
+    } else {
+        Modifier
+    }
     val sourceCaptureModifier = if (itemGeometry == null) {
         Modifier
     } else {
         Modifier
             .onGloballyPositioned { itemGeometry.coordinates = it }
-            .captureCommentActionSourceContent { itemGeometry.contentLayer = it }
+            .then(contentCaptureModifier)
     }
     Column(modifier) {
         Box(Modifier.fillMaxWidth().padding(shadowPadding)) {

@@ -14,17 +14,61 @@ data class TimestampedItem(
 object SavedItemCodec {
     fun decode(value: String?, sortedByCreated: Boolean = false): List<TimestampedItem> {
         if (value.isNullOrEmpty()) return emptyList()
-        val items = value.splitToSequence('-').mapNotNull { encoded ->
-            val separator = encoded.indexOf('q')
-            if (separator <= 0 || separator == encoded.lastIndex || encoded.indexOf('q', separator + 1) >= 0) {
-                return@mapNotNull null
+        val items = ArrayList<TimestampedItem>()
+        var segmentStart = 0
+        while (segmentStart <= value.length) {
+            val segmentEnd = value.indexOf('-', segmentStart).let {
+                if (it < 0) value.length else it
             }
-            val id = encoded.substring(0, separator).toIntOrNull() ?: return@mapNotNull null
-            val created = encoded.substring(separator + 1).toLongOrNull() ?: return@mapNotNull null
-            TimestampedItem(id, created)
-        }.toMutableList()
+            val separator = value.indexOf('q', segmentStart)
+            if (separator in (segmentStart + 1)..<segmentEnd &&
+                value.indexOf('q', separator + 1).let { it < 0 || it >= segmentEnd }
+            ) {
+                val id = parseInt(value, segmentStart, separator)
+                val created = parseLong(value, separator + 1, segmentEnd)
+                if (id != null && created != null) items += TimestampedItem(id, created)
+            }
+            if (segmentEnd == value.length) break
+            segmentStart = segmentEnd + 1
+        }
         if (sortedByCreated) items.sortByDescending(TimestampedItem::created)
         return items
+    }
+
+    private fun parseInt(value: String, start: Int, end: Int): Int? {
+        if (start >= end) return null
+        var index = start
+        val negative = value[index] == '-'
+        if (negative && ++index == end) return null
+        val limit = if (negative) Int.MIN_VALUE else -Int.MAX_VALUE
+        val multiplicationLimit = limit / 10
+        var result = 0
+        while (index < end) {
+            val digit = value[index++] - '0'
+            if (digit !in 0..9 || result < multiplicationLimit) return null
+            result *= 10
+            if (result < limit + digit) return null
+            result -= digit
+        }
+        return if (negative) result else -result
+    }
+
+    private fun parseLong(value: String, start: Int, end: Int): Long? {
+        if (start >= end) return null
+        var index = start
+        val negative = value[index] == '-'
+        if (negative && ++index == end) return null
+        val limit = if (negative) Long.MIN_VALUE else -Long.MAX_VALUE
+        val multiplicationLimit = limit / 10L
+        var result = 0L
+        while (index < end) {
+            val digit = value[index++] - '0'
+            if (digit !in 0..9 || result < multiplicationLimit) return null
+            result *= 10L
+            if (result < limit + digit) return null
+            result -= digit
+        }
+        return if (negative) result else -result
     }
 
     fun encode(items: List<TimestampedItem>): String =
