@@ -63,6 +63,10 @@ import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
@@ -598,11 +602,30 @@ private fun CommentNavigationButtons(
     onFirst: () -> Unit,
     onLast: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(28.dp)
+    val hazeState = currentCommentsHazeState()
+    val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.5f)
+
     Row(
         modifier = Modifier
-            .shadow(8.dp, RoundedCornerShape(28.dp), clip = false)
-            .clip(RoundedCornerShape(28.dp))
-            .background(HarmonicTheme.colors.overlayButton),
+            .shadow(8.dp, shape, clip = false)
+            .clip(shape)
+            .then(
+                if (hazeState == null) {
+                    Modifier
+                } else {
+                    Modifier.hazeBlur(
+                        input = HazeInput.Sources(hazeState),
+                        style = HazeBlurStyle {
+                            blurRadius(6.dp)
+                            colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
+                            noiseFactor(0f)
+                            fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
+                        },
+                    )
+                },
+            )
+            .background(surfaceColor),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
