@@ -36,7 +36,7 @@ fun SharedCommentsUpButton(
     val colors = HarmonicTheme.colors
     val shape = RoundedCornerShape(percent = 50)
     val hazeState = currentCommentsHazeState()
-    val surfaceColor = colors.surfaceContainerHigh.copy(alpha = 0.6f)
+    val surfaceColor = colors.surfaceContainerHigh.copy(alpha = 0.5f)
 
     Surface(
         onClick = onClick,
@@ -56,7 +56,7 @@ fun SharedCommentsUpButton(
                         Modifier.hazeBlur(
                             input = HazeInput.Sources(hazeState),
                             style = HazeBlurStyle {
-                                blurRadius(8.dp)
+                                blurRadius(6.dp)
                                 colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
                                 noiseFactor(0f)
                                 fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
