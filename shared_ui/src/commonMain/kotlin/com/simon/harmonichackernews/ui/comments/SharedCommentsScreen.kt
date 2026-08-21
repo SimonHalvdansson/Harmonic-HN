@@ -308,6 +308,9 @@ fun SharedCommentsScreen(
             header = headerContent,
         ) { _, item ->
                 val tag = item.comment.by?.lowercase()?.trim()?.let(userTags::get)
+                val suppressed = item.comment.id in controller.suppressedCommentIds
+                val keepActionSourceVisible =
+                    controller.shouldKeepCommentActionSourceVisible(item.comment.id)
                 CommentItem(
                     comment = item.comment,
                     style = itemStyle,
@@ -321,7 +324,7 @@ fun SharedCommentsScreen(
                     modifier = Modifier
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .graphicsLayer(
-                            alpha = if (item.comment.id in controller.suppressedCommentIds) 0f else 1f,
+                            alpha = if (suppressed && !keepActionSourceVisible) 0f else 1f,
                         )
                         .then(if (animateComments) Modifier.animateItem() else Modifier),
                     onToggleExpanded = { sourceBounds ->
@@ -337,6 +340,9 @@ fun SharedCommentsScreen(
                         } else {
                             controller.showCommentActions(item.comment, sourceBounds)
                         }
+                    },
+                    onActionSourceGeometryChanged = { geometry ->
+                        controller.updateCommentActionSourceGeometry(item.comment.id, geometry)
                     },
                     onLinkLongClick = { url, title, bounds ->
                         controller.showReferencePreview(

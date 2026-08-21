@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,14 +38,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -69,6 +73,8 @@ import com.fleeksoft.ksoup.nodes.TextNode
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
+import com.simon.harmonichackernews.ui.comments.CommentActionSourceGeometry
+import com.simon.harmonichackernews.ui.comments.captureCommentActionSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
@@ -101,11 +107,35 @@ data class CommentItemStyle(
 
 private class CommentItemGeometry {
     var coordinates: LayoutCoordinates? = null
+    var contentLayer: GraphicsLayer? = null
+    var containerColor: Color = Color.Transparent
+    var containerCornerRadiusDp: Float = 0f
+    var containerElevationDp: Float = 0f
+    var containerBorderColor: Color = Color.Transparent
+    var containerBorderWidthDp: Float = 0f
 
     fun boundsInWindowOrNull(): Rect? = coordinates
         ?.takeIf { it.isAttached }
-        ?.boundsInWindow()
+        ?.let {
+            Rect(
+                offset = it.positionInWindow(),
+                size = Size(it.size.width.toFloat(), it.size.height.toFloat()),
+            )
+        }
         ?.takeIf { it.width > 0f && it.height > 0f }
+
+    fun snapshot(): CommentActionSourceGeometry? {
+        val container = boundsInWindowOrNull() ?: return null
+        return CommentActionSourceGeometry(
+            container = container,
+            containerColor = containerColor,
+            containerCornerRadiusDp = containerCornerRadiusDp,
+            containerElevationDp = containerElevationDp,
+            containerBorderColor = containerBorderColor,
+            containerBorderWidthDp = containerBorderWidthDp,
+            contentLayer = contentLayer?.takeUnless(GraphicsLayer::isReleased),
+        )
+    }
 }
 
 val SettingsCommentPreviewModel = CommentItemUiModel(
@@ -209,6 +239,7 @@ fun CommentItem(
     searchTerm: String = "",
     onToggleExpanded: (Rect?) -> Unit,
     onShowActions: (Rect?) -> Unit,
+    onActionSourceGeometryChanged: ((CommentActionSourceGeometry) -> Unit)? = null,
     onLinkLongClick: (String, String, Rect) -> Unit,
     onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect) -> Unit,
     onLinkClick: (String) -> Unit = {},
@@ -256,12 +287,11 @@ fun CommentItem(
     }
     val bottom = if (style.cardStyle) 0.dp else 6.dp
     val itemGeometry = remember { CommentItemGeometry() }
+    fun publishActionSourceGeometry() {
+        itemGeometry.snapshot()?.let { onActionSourceGeometryChanged?.invoke(it) }
+    }
     CommentItemLayout(
-        modifier = modifier.onGloballyPositioned { coordinates ->
-            // Coordinates remain live as ancestors scroll. Resolve the window-space rectangle
-            // only for an actual tap/long-press instead of doing the transform every frame.
-            itemGeometry.coordinates = coordinates
-        },
+        modifier = modifier,
         effectiveDepth = effectiveDepth,
         cardStyle = style.cardStyle,
         topPadding = top,
@@ -273,8 +303,15 @@ fun CommentItem(
             showIndicator = showIndicator,
             indicatorColor = CommentDepthColors[indicatorIndex],
             highlighted = highlighted,
-            onClick = { onToggleExpanded(itemGeometry.boundsInWindowOrNull()) },
-            onLongClick = { onShowActions(itemGeometry.boundsInWindowOrNull()) },
+            itemGeometry = itemGeometry,
+            onClick = {
+                publishActionSourceGeometry()
+                onToggleExpanded(itemGeometry.boundsInWindowOrNull())
+            },
+            onLongClick = {
+                publishActionSourceGeometry()
+                onShowActions(itemGeometry.boundsInWindowOrNull())
+            },
         ) {
             CommentMeta(
                 author = comment.by.orEmpty(),
@@ -437,6 +474,7 @@ private fun SharedCommentSurface(
     showIndicator: Boolean,
     indicatorColor: Color,
     highlighted: Boolean,
+    itemGeometry: CommentItemGeometry? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     content: @Composable () -> Unit,
@@ -526,72 +564,89 @@ private fun SharedCommentSurface(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment divider alpha",
     )
+    SideEffect {
+        itemGeometry?.containerColor = background
+        itemGeometry?.containerCornerRadiusDp = if (style.cardStyle) 8f else 0f
+        itemGeometry?.containerElevationDp = if (style.cardStyle) 1f else 0f
+        itemGeometry?.containerBorderColor = colors.commentDivider
+        itemGeometry?.containerBorderWidthDp =
+            if (style.cardStyle && style.showCardBorder) 1f else 0f
+    }
+    val sourceCaptureModifier = if (itemGeometry == null) {
+        Modifier
+    } else {
+        Modifier
+            .onGloballyPositioned { itemGeometry.coordinates = it }
+            .captureCommentActionSourceContent { itemGeometry.contentLayer = it }
+    }
     Column(modifier) {
-        Layout(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(shadowPadding)
-                .shadow((cardProgress * 1f).dp, shape, clip = false)
-                .clip(shape)
-                .background(background)
-                .border(
-                    1.dp,
-                    colors.commentDivider.copy(alpha = borderAlpha),
-                    shape,
-                )
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                ),
-            content = {
-                Box(
-                    Modifier
-                        .width(indicatorWidth)
-                        .graphicsLayer(alpha = indicatorAlpha)
-                        .background(indicatorColor),
-                )
-                Column(
-                    Modifier.padding(
-                        start = contentStartPadding,
-                        top = contentVerticalPadding,
-                        end = contentEndPadding,
-                        bottom = contentVerticalPadding,
+        Box(Modifier.fillMaxWidth().padding(shadowPadding)) {
+            Layout(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow((cardProgress * 1f).dp, shape, clip = false)
+                    .clip(shape)
+                    .background(background)
+                    .border(
+                        1.dp,
+                        colors.commentDivider.copy(alpha = borderAlpha),
+                        shape,
+                    )
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                    .then(sourceCaptureModifier),
+                content = {
+                    Box(
+                        Modifier
+                            .width(indicatorWidth)
+                            .graphicsLayer(alpha = indicatorAlpha)
+                            .background(indicatorColor),
+                    )
+                    Column(
+                        Modifier.padding(
+                            start = contentStartPadding,
+                            top = contentVerticalPadding,
+                            end = contentEndPadding,
+                            bottom = contentVerticalPadding,
+                        ),
+                    ) { content() }
+                },
+            ) { measurables, constraints ->
+                val indicatorWidthPx = indicatorWidth.roundToPx()
+                    .coerceAtMost(constraints.maxWidth)
+                val indicatorMarginPx = indicatorMargin.roundToPx()
+                    .coerceAtMost((constraints.maxWidth - indicatorWidthPx).coerceAtLeast(0))
+                val contentWidth = (
+                    constraints.maxWidth - indicatorWidthPx - indicatorMarginPx
+                ).coerceAtLeast(0)
+                val contentPlaceable = measurables[1].measure(
+                    constraints.copy(
+                        minWidth = contentWidth,
+                        maxWidth = contentWidth,
+                        minHeight = 0,
                     ),
-                ) { content() }
-            },
-        ) { measurables, constraints ->
-            val indicatorWidthPx = indicatorWidth.roundToPx()
-                .coerceAtMost(constraints.maxWidth)
-            val indicatorMarginPx = indicatorMargin.roundToPx()
-                .coerceAtMost((constraints.maxWidth - indicatorWidthPx).coerceAtLeast(0))
-            val contentWidth = (
-                constraints.maxWidth - indicatorWidthPx - indicatorMarginPx
-            ).coerceAtLeast(0)
-            val contentPlaceable = measurables[1].measure(
-                constraints.copy(
-                    minWidth = contentWidth,
-                    maxWidth = contentWidth,
-                    minHeight = 0,
-                ),
-            )
-            val rowHeight = contentPlaceable.height
-            val indicatorPlaceable = measurables[0].measure(
-                constraints.copy(
-                    minWidth = indicatorWidthPx,
-                    maxWidth = indicatorWidthPx,
-                    minHeight = rowHeight,
-                    maxHeight = rowHeight,
-                ),
-            )
-
-            layout(constraints.maxWidth, rowHeight) {
-                indicatorPlaceable.placeRelative(0, 0)
-                contentPlaceable.placeRelative(
-                    indicatorWidthPx + indicatorMarginPx,
-                    0,
                 )
+                val rowHeight = contentPlaceable.height
+                val indicatorPlaceable = measurables[0].measure(
+                    constraints.copy(
+                        minWidth = indicatorWidthPx,
+                        maxWidth = indicatorWidthPx,
+                        minHeight = rowHeight,
+                        maxHeight = rowHeight,
+                    ),
+                )
+
+                layout(constraints.maxWidth, rowHeight) {
+                    indicatorPlaceable.placeRelative(0, 0)
+                    contentPlaceable.placeRelative(
+                        indicatorWidthPx + indicatorMarginPx,
+                        0,
+                    )
+                }
             }
         }
         Box(

@@ -116,6 +116,10 @@ class CommentsComposeController private constructor(
     private val interactionStore = CommentsInteractionStore(initialShowWebsite, shouldSmoothScroll)
     private var interactionState by mutableStateOf(interactionStore.state)
     private var commentActionSourceBounds: androidx.compose.ui.geometry.Rect? = null
+    private var pendingCommentActionSourceGeometry:
+        Pair<Int, CommentActionSourceGeometry>? = null
+    private var commentActionSourceGeometry: CommentActionSourceGeometry? = null
+    private var sourceCoveredByCommentActionTransition by mutableStateOf(false)
     private var linkPreviewSourceBounds by
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
 
@@ -135,7 +139,7 @@ class CommentsComposeController private constructor(
     val searchDialogVisible: Boolean get() = interactionState.searchDialogVisible
     val commentActionOverlay: CommentActionOverlayState?
         get() = interactionState.commentAction?.let {
-            CommentActionOverlayState(it, commentActionSourceBounds)
+            CommentActionOverlayState(it, commentActionSourceBounds, commentActionSourceGeometry)
         }
     val commentActionDismissRequest: Int
         get() = interactionState.commentActionDismissRequestVersion
@@ -346,6 +350,15 @@ class CommentsComposeController private constructor(
         // its source comment suppressed without a corresponding dialog.
         if (!interactionStore.showCommentActions(comment, stopScroll = true)) return
         commentActionSourceBounds = sourceBounds
+        commentActionSourceGeometry = pendingCommentActionSourceGeometry
+            ?.takeIf { (commentId, geometry) ->
+                commentId == comment.id &&
+                    sourceBounds != null &&
+                    geometry.container == sourceBounds
+            }
+            ?.second
+        pendingCommentActionSourceGeometry = null
+        sourceCoveredByCommentActionTransition = false
         syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
@@ -353,6 +366,8 @@ class CommentsComposeController private constructor(
     fun restoreCommentActions(comment: PortableCommentItem) {
         if (!interactionStore.showCommentActions(comment, stopScroll = false)) return
         commentActionSourceBounds = null
+        commentActionSourceGeometry = null
+        sourceCoveredByCommentActionTransition = false
         syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
@@ -387,8 +402,27 @@ class CommentsComposeController private constructor(
     fun completeCommentActionDismiss() {
         if (!interactionStore.completeCommentActionDismiss()) return
         commentActionSourceBounds = null
+        commentActionSourceGeometry = null
+        sourceCoveredByCommentActionTransition = false
         syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(false)
+    }
+
+    fun updateCommentActionSourceGeometry(
+        commentId: Int,
+        geometry: CommentActionSourceGeometry,
+    ) {
+        if (geometry.container.width <= 0f || geometry.container.height <= 0f) return
+        pendingCommentActionSourceGeometry = commentId to geometry
+    }
+
+    /** Keeps the real comment visible until a progress-zero overlay covers the same pixels. */
+    fun shouldKeepCommentActionSourceVisible(commentId: Int): Boolean =
+        commentActionOverlay?.comment?.id == commentId &&
+            !sourceCoveredByCommentActionTransition
+
+    fun setCommentActionSourceCovered(covered: Boolean) {
+        sourceCoveredByCommentActionTransition = covered
     }
 
     fun setCommentActionFavoriteLoading(commentId: Int, loading: Boolean) {
@@ -651,6 +685,7 @@ class CommentsComposeController private constructor(
 data class CommentActionOverlayState(
     val comment: PortableCommentItem,
     val sourceBounds: androidx.compose.ui.geometry.Rect?,
+    val sourceGeometry: CommentActionSourceGeometry? = null,
 )
 
 sealed interface CommentLinkPreviewOverlayState {
