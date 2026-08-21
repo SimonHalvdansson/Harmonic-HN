@@ -91,6 +91,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -143,6 +144,7 @@ import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.SharedLazyContentList
+import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -232,6 +234,7 @@ fun HeaderStoryBody(
     onReferenceLongClick: (
         CollectedReferenceLinks.ReferenceLink,
         androidx.compose.ui.geometry.Rect,
+        GraphicsLayer?,
     ) -> Unit,
     onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
@@ -333,6 +336,7 @@ private fun HeaderReferenceRow(
     onLongClick: (
         CollectedReferenceLinks.ReferenceLink,
         androidx.compose.ui.geometry.Rect,
+        GraphicsLayer?,
     ) -> Unit,
 ) {
     val platform = LocalCommentsPreviewPlatform.current
@@ -342,54 +346,58 @@ private fun HeaderReferenceRow(
         commentTextSize = settings.preferredTextSize,
     )
     var bounds by remember(link.url) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer(alpha = if (suppressed) 0f else 1f)
-            .padding(top = 4.dp)
-            .defaultMinSize(minHeight = 38.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
-            .onGloballyPositioned { bounds = it.boundsInWindow() }
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
-                onClick = { platform.openLink(link.url) },
-                onLongClick = { onLongClick(link, bounds) },
-            )
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            model = runCatching {
-                FaviconUrlBuilder.faviconUrl(link.url.orEmpty(), settings.faviconProvider)
-            }.getOrNull(),
-            fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-            error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-            contentDescription = null,
+    var sourceContentLayer by remember(link.url) { mutableStateOf<GraphicsLayer?>(null) }
+    Box(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Row(
             modifier = Modifier
-                .padding(end = 8.dp)
-                .size(17.dp),
-        )
-        if (link.hasNumber()) {
+                .fillMaxWidth()
+                .graphicsLayer(alpha = if (suppressed) 0f else 1f)
+                .defaultMinSize(minHeight = 38.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
+                .onGloballyPositioned { bounds = it.boundsInWindow() }
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                    onClick = { platform.openLink(link.url) },
+                    onLongClick = { onLongClick(link, bounds, sourceContentLayer) },
+                )
+                .captureSharedTransformSourceContent { sourceContentLayer = it }
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AsyncImage(
+                model = runCatching {
+                    FaviconUrlBuilder.faviconUrl(link.url.orEmpty(), settings.faviconProvider)
+                }.getOrNull(),
+                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(17.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+            )
+            if (link.hasNumber()) {
+                Text(
+                    link.markerLabel.orEmpty(),
+                    modifier = Modifier.padding(end = 8.dp),
+                    color = colors.storyDisabled,
+                    fontFamily = typography.family,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = typography.referenceMarkerSize.sp,
+                )
+            }
             Text(
-                link.markerLabel.orEmpty(),
-                modifier = Modifier.padding(end = 8.dp),
-                color = colors.storyDisabled,
+                ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                modifier = Modifier.weight(1f),
+                color = colors.storyNormal,
                 fontFamily = typography.family,
-                fontWeight = FontWeight.Bold,
-                fontSize = typography.referenceMarkerSize.sp,
+                fontSize = typography.referenceLabelSize.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(
-            ReferenceLinkRowUtils.getReferenceLinkLabel(link),
-            modifier = Modifier.weight(1f),
-            color = colors.storyNormal,
-            fontFamily = typography.family,
-            fontSize = typography.referenceLabelSize.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 

@@ -264,11 +264,13 @@ fun SharedCommentsHeader(
                                         story = story,
                                         settings = settings,
                                         suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
-                                        onReferenceLongClick = { link, bounds ->
+                                        onReferenceLongClick = { link, bounds, sourceContentLayer ->
                                             controller.showReferencePreview(
                                                 link = link,
                                                 sourceBounds = bounds,
                                                 headerReference = true,
+                                                sourceContainerColor = visibleHeaderBackground,
+                                                sourceContentLayer = sourceContentLayer,
                                             )
                                         },
                                         onLinkLongClick = { url, title, bounds ->

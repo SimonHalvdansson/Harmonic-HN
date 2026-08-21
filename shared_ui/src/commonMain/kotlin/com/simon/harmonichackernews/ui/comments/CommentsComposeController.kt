@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
@@ -102,8 +103,6 @@ class CommentsComposeController private constructor(
         private set
     var headerPreviewSuppressed by mutableStateOf(false)
         private set
-    var suppressedHeaderReferenceUrl by mutableStateOf<String?>(null)
-        private set
     var webViewFullscreen by mutableStateOf(false)
         private set
     var isScrolledToTop by mutableStateOf(true)
@@ -122,6 +121,10 @@ class CommentsComposeController private constructor(
     private var sourceCoveredByCommentActionTransition by mutableStateOf(false)
     private var linkPreviewSourceBounds by
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    private var linkPreviewSourceIsReferenceRow by mutableStateOf(false)
+    private var linkPreviewSourceContainerColor by mutableStateOf<Color?>(null)
+    private var linkPreviewSourceContentLayer by mutableStateOf<GraphicsLayer?>(null)
+    private var linkPreviewSourceCovered by mutableStateOf(false)
 
     val sheetSlideOffset: Float get() = interactionState.sheetSlideOffset
     val topInsetPx: Int get() = interactionState.topInsetPx
@@ -164,6 +167,9 @@ class CommentsComposeController private constructor(
                 sourceBounds = linkPreviewSourceBounds,
                 sourceCommentId = preview.sourceCommentId,
                 headerReference = preview.headerReference,
+                sourceIsReferenceRow = linkPreviewSourceIsReferenceRow,
+                sourceContainerColor = linkPreviewSourceContainerColor,
+                sourceContentLayer = linkPreviewSourceContentLayer,
             )
             is CommentLinkPreview.Image -> CommentLinkPreviewOverlayState.Image(
                 imageUrl = preview.imageUrl,
@@ -183,6 +189,13 @@ class CommentsComposeController private constructor(
         get() = interactionState.linkPreviewPredictiveBackSettleRequest
     val linkPreviewVisibleUrl: String?
         get() = interactionState.linkPreviewVisibleUrl
+    val suppressedHeaderReferenceUrl: String?
+        get() = (interactionState.linkPreview as? CommentLinkPreview.Reference)
+            ?.takeIf {
+                it.headerReference && linkPreviewSourceIsReferenceRow &&
+                    linkPreviewSourceCovered
+            }
+            ?.originalUrl
 
     private fun syncInteractionState() {
         interactionState = interactionStore.state
@@ -500,6 +513,8 @@ class CommentsComposeController private constructor(
         sourceBounds: androidx.compose.ui.geometry.Rect?,
         sourceCommentId: Int = -1,
         headerReference: Boolean = false,
+        sourceContainerColor: Color? = null,
+        sourceContentLayer: GraphicsLayer? = null,
     ) {
         val url = link.url?.takeIf(String::isNotBlank) ?: return
         showReferencePreview(
@@ -509,6 +524,9 @@ class CommentsComposeController private constructor(
             sourceBounds = sourceBounds,
             sourceCommentId = sourceCommentId,
             headerReference = headerReference,
+            sourceIsReferenceRow = true,
+            sourceContainerColor = sourceContainerColor,
+            sourceContentLayer = sourceContentLayer,
         )
     }
 
@@ -519,6 +537,9 @@ class CommentsComposeController private constructor(
         sourceBounds: androidx.compose.ui.geometry.Rect? = null,
         sourceCommentId: Int = -1,
         headerReference: Boolean = false,
+        sourceIsReferenceRow: Boolean = false,
+        sourceContainerColor: Color? = null,
+        sourceContentLayer: GraphicsLayer? = null,
     ) {
         if (!interactionStore.showReferencePreview(
             originalUrl = url,
@@ -528,6 +549,10 @@ class CommentsComposeController private constructor(
             headerReference = headerReference,
         )) return
         linkPreviewSourceBounds = sourceBounds
+        linkPreviewSourceIsReferenceRow = sourceIsReferenceRow
+        linkPreviewSourceContainerColor = sourceContainerColor
+        linkPreviewSourceContentLayer = sourceContentLayer
+        linkPreviewSourceCovered = false
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
@@ -544,6 +569,10 @@ class CommentsComposeController private constructor(
             backgroundColor = backgroundColor,
         )) return
         linkPreviewSourceBounds = sourceBounds
+        linkPreviewSourceIsReferenceRow = false
+        linkPreviewSourceContainerColor = null
+        linkPreviewSourceContentLayer = null
+        linkPreviewSourceCovered = false
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
@@ -569,9 +598,26 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
+    fun coverLinkPreviewReferenceSource() {
+        if (!linkPreviewSourceIsReferenceRow || linkPreviewSourceCovered) return
+        linkPreviewSourceCovered = true
+    }
+
+    fun suppressedReferenceUrlForComment(commentId: Int): String? =
+        (interactionState.linkPreview as? CommentLinkPreview.Reference)
+            ?.takeIf {
+                it.sourceCommentId == commentId && linkPreviewSourceIsReferenceRow &&
+                    linkPreviewSourceCovered
+            }
+            ?.originalUrl
+
     fun completeLinkPreviewDismiss() {
         if (!interactionStore.completeLinkPreviewDismiss()) return
         linkPreviewSourceBounds = null
+        linkPreviewSourceIsReferenceRow = false
+        linkPreviewSourceContainerColor = null
+        linkPreviewSourceContentLayer = null
+        linkPreviewSourceCovered = false
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(false)
     }
@@ -698,6 +744,9 @@ sealed interface CommentLinkPreviewOverlayState {
         override val sourceBounds: androidx.compose.ui.geometry.Rect?,
         val sourceCommentId: Int?,
         val headerReference: Boolean,
+        val sourceIsReferenceRow: Boolean,
+        val sourceContainerColor: Color?,
+        val sourceContentLayer: GraphicsLayer?,
     ) : CommentLinkPreviewOverlayState
 
     data class Image(

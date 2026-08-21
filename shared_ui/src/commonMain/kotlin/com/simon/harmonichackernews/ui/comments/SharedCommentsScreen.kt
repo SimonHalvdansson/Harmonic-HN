@@ -149,6 +149,7 @@ fun SharedCommentsScreen(
         return
     }
 
+    val colors = HarmonicTheme.colors
     val commentsHazeState = currentCommentsHazeState()
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
@@ -311,6 +312,8 @@ fun SharedCommentsScreen(
                 val suppressed = item.comment.id in controller.suppressedCommentIds
                 val keepActionSourceVisible =
                     controller.shouldKeepCommentActionSourceVisible(item.comment.id)
+                val suppressedReferenceUrl =
+                    controller.suppressedReferenceUrlForComment(item.comment.id)
                 CommentItem(
                     comment = item.comment,
                     style = itemStyle,
@@ -321,6 +324,7 @@ fun SharedCommentsScreen(
                     collapseParent = settings.collapseParent,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
                     highlighted = item.comment.id == controller.highlightedCommentId,
+                    suppressedReferenceUrl = suppressedReferenceUrl,
                     modifier = Modifier
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .graphicsLayer(
@@ -352,11 +356,17 @@ fun SharedCommentsScreen(
                             sourceCommentId = item.comment.id,
                         )
                     },
-                    onReferenceLongClick = { link, bounds ->
+                    onReferenceLongClick = { link, bounds, sourceContentLayer ->
                         controller.showReferencePreview(
                             link = link,
                             sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
+                            sourceContainerColor = if (settings.cardStyle) {
+                                colors.surfaceContainerHigh
+                            } else {
+                                colors.background
+                            },
+                            sourceContentLayer = sourceContentLayer,
                         )
                     },
                     onLinkClick = onOpenLink,

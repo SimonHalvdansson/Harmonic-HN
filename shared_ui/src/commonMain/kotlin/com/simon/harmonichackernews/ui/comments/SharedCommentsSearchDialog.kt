@@ -99,7 +99,7 @@ fun SharedCommentsSearchContent(
             onToggleExpanded = { _ -> onCommentSelected(comment) },
             onShowActions = { _ -> onCommentSelected(comment) },
             onLinkLongClick = { _, _, _ -> },
-            onReferenceLongClick = { _, _ -> },
+            onReferenceLongClick = { _, _, _ -> },
             onLinkClick = onOpenLink,
         )
     }

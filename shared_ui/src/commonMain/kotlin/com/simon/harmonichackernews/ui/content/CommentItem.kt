@@ -75,6 +75,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.ui.comments.CommentActionSourceGeometry
 import com.simon.harmonichackernews.ui.comments.captureCommentActionSourceContent
+import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
@@ -211,7 +212,7 @@ fun CommentItem(
                 marker = model.referenceMarker,
                 label = model.referenceUrl,
                 onClick = {},
-                onLongClick = {},
+                onLongClick = { _, _ -> },
             )
         }
     }
@@ -237,11 +238,12 @@ fun CommentItem(
     flattenHierarchy: Boolean = false,
     forceExpanded: Boolean = false,
     searchTerm: String = "",
+    suppressedReferenceUrl: String? = null,
     onToggleExpanded: (Rect?) -> Unit,
     onShowActions: (Rect?) -> Unit,
     onActionSourceGeometryChanged: ((CommentActionSourceGeometry) -> Unit)? = null,
     onLinkLongClick: (String, String, Rect) -> Unit,
-    onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect) -> Unit,
+    onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect, GraphicsLayer?) -> Unit,
     onLinkClick: (String) -> Unit = {},
 ) {
     val colors = HarmonicTheme.colors
@@ -348,17 +350,14 @@ fun CommentItem(
                                 onLinkLongClick = onLinkLongClick,
                             )
                         } else {
-                            var bounds by remember(link.url) { mutableStateOf(Rect.Zero) }
                             ReferenceRow(
                                 marker = link.markerLabel.orEmpty(),
                                 label = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
-                                modifier = Modifier.onGloballyPositioned {
-                                    bounds = it.boundsInWindow()
-                                },
+                                suppressed = link.url == suppressedReferenceUrl,
                                 onClick = { link.url?.let(onLinkClick) },
-                                onLongClick = {
+                                onLongClick = { bounds, sourceContentLayer ->
                                     if (bounds.width > 0f && bounds.height > 0f) {
-                                        onReferenceLongClick(link, bounds)
+                                        onReferenceLongClick(link, bounds, sourceContentLayer)
                                     }
                                 },
                             )
@@ -782,43 +781,50 @@ private fun ReferenceRow(
     marker: String,
     label: String,
     modifier: Modifier = Modifier,
+    suppressed: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (Rect, GraphicsLayer?) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp)
-            .defaultMinSize(minHeight = 38.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
-                onClick = onClick,
-                onLongClick = onLongClick,
+    var bounds by remember(label) { mutableStateOf(Rect.Zero) }
+    var sourceContentLayer by remember(label) { mutableStateOf<GraphicsLayer?>(null) }
+    Box(modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer(alpha = if (suppressed) 0f else 1f)
+                .defaultMinSize(minHeight = 38.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
+                .onGloballyPositioned { bounds = it.boundsInWindow() }
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                    onClick = onClick,
+                    onLongClick = { onLongClick(bounds, sourceContentLayer) },
+                )
+                .captureSharedTransformSourceContent { sourceContentLayer = it }
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_public),
+                contentDescription = null,
+                tint = colors.drawable,
+                modifier = Modifier.padding(end = 8.dp).size(17.dp),
             )
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(Res.drawable.ic_public),
-            contentDescription = null,
-            tint = colors.drawable,
-            modifier = Modifier.padding(end = 8.dp).size(17.dp),
-        )
-        if (marker.isNotBlank()) {
-            Text(marker, modifier = Modifier.padding(end = 8.dp), color = colors.storyDisabled, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            if (marker.isNotBlank()) {
+                Text(marker, modifier = Modifier.padding(end = 8.dp), color = colors.storyDisabled, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            Text(
+                label,
+                modifier = Modifier.weight(1f),
+                color = colors.storyNormal,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Text(
-            label,
-            modifier = Modifier.weight(1f),
-            color = colors.storyNormal,
-            fontSize = 13.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 

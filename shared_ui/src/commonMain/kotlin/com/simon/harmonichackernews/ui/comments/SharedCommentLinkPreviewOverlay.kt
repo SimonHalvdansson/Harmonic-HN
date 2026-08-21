@@ -100,6 +100,13 @@ fun SharedCommentLinkPreviewOverlay(
     }
 
     val imageOnly = state is CommentLinkPreviewOverlayState.Image
+    val referenceRowSource =
+        (state as? CommentLinkPreviewOverlayState.Reference)?.sourceIsReferenceRow == true
+    val previewContainerColor = if (imageOnly) {
+        Color.Transparent
+    } else {
+        HarmonicTheme.colors.surfaceContainerHigh
+    }
     SharedTransformOverlay(
         contentKey = state,
         sourceBounds = state.sourceBounds,
@@ -113,11 +120,28 @@ fun SharedCommentLinkPreviewOverlay(
         },
         horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
         verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
-        shape = RoundedCornerShape(28.dp),
-        containerColor = if (imageOnly) Color.Transparent else HarmonicTheme.colors.surfaceContainerHigh,
+        targetCornerRadius = 28.dp,
+        sourceCornerRadius = if (referenceRowSource) 6.dp else 0.dp,
+        containerColor = previewContainerColor,
+        sourceContainerColor = if (referenceRowSource) {
+            state.sourceContainerColor
+                ?: HarmonicTheme.colors.background
+        } else {
+            previewContainerColor.copy(alpha = 0f)
+        },
+        sourceBorderColor = HarmonicTheme.colors.commentDivider,
+        sourceBorderWidth = if (referenceRowSource) 1.dp else 0.dp,
+        sourceAnchorSize = if (imageOnly || referenceRowSource) null else 8.dp,
         shadowElevation = if (imageOnly) 0.dp else 8.dp,
-        keepContentOpaqueWithSource = imageOnly,
+        scaleContentWithContainer = imageOnly,
+        keepContentOpaqueWithSource = imageOnly || referenceRowSource,
         consumeAllGestures = false,
+        sourceContentLayer = if (referenceRowSource) state.sourceContentLayer else null,
+        onSourceReadyToCover = if (referenceRowSource) {
+            controller::coverLinkPreviewReferenceSource
+        } else {
+            null
+        },
         onDismissRequest = controller::requestDismissLinkPreview,
         onDismissAnimationFinished = controller::completeLinkPreviewDismiss,
     ) {
@@ -343,7 +367,7 @@ private fun ReferenceMetadata(
                 fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
                 error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
                 contentDescription = null,
-                modifier = Modifier.size(17.dp),
+                modifier = Modifier.size(17.dp).clip(RoundedCornerShape(3.dp)),
             )
             Text(
                 text = domain,

@@ -4,7 +4,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -47,13 +46,16 @@ fun Modifier.detectAnnotatedLinkLongPress(
         val range = text.getLinkAnnotations(offset, (offset + 1).coerceAtMost(text.length))
             .firstOrNull { it.item is LinkAnnotation.Url } ?: return@awaitEachGesture
         val link = range.item as LinkAnnotation.Url
-        val bounds = annotatedRangeBoundsInWindow(
-            range.start,
-            range.end,
-            text.length,
-            layout,
-            coordinates(),
-        ) ?: return@awaitEachGesture
+        val textCoordinates = coordinates()
+            ?.takeIf { it.isAttached }
+            ?: return@awaitEachGesture
+        val pressInWindow = textCoordinates.localToWindow(longPress.position)
+        val bounds = Rect(
+            left = pressInWindow.x - 0.5f,
+            top = pressInWindow.y - 0.5f,
+            right = pressInWindow.x + 0.5f,
+            bottom = pressInWindow.y + 0.5f,
+        )
         longPress.consume()
         linkGestureState.markLongPress()
         onLongPress(
@@ -67,29 +69,3 @@ fun Modifier.detectAnnotatedLinkLongPress(
         } while (event.changes.any { it.pressed })
     }
 }
-
-private fun annotatedRangeBoundsInWindow(
-    start: Int,
-    end: Int,
-    textLength: Int,
-    layout: TextLayoutResult,
-    coordinates: LayoutCoordinates?,
-): Rect? {
-    if (coordinates == null || !coordinates.isAttached || textLength <= 0) return null
-    val first = start.coerceIn(0, textLength - 1)
-    val lastExclusive = end.coerceIn(first + 1, textLength)
-    var localBounds = layout.getBoundingBox(first)
-    for (offset in (first + 1) until lastExclusive) {
-        localBounds = localBounds.expandToInclude(layout.getBoundingBox(offset))
-    }
-    val topLeft = coordinates.localToWindow(Offset(localBounds.left, localBounds.top))
-    val bottomRight = coordinates.localToWindow(Offset(localBounds.right, localBounds.bottom))
-    return Rect(topLeft, bottomRight)
-}
-
-private fun Rect.expandToInclude(other: Rect): Rect = Rect(
-    left = minOf(left, other.left),
-    top = minOf(top, other.top),
-    right = maxOf(right, other.right),
-    bottom = maxOf(bottom, other.bottom),
-)
