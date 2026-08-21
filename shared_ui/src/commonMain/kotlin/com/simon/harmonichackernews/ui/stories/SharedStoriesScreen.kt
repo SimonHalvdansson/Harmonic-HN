@@ -352,7 +352,7 @@ private fun StoriesList(
     val visibleCount = (
         if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
     ).coerceIn(0, stories.size)
-    val modelNowMillis = remember(stories, settings, controller.contentVersion) {
+    val modelNowMillis = remember(stories, settings) {
         Clock.System.now().toEpochMilliseconds()
     }
     val centerFailure = !searchMode && visibleCount == 0 &&
@@ -456,12 +456,11 @@ private fun StoriesList(
                             animationSpec = tween(220, easing = StoriesEasing),
                             label = "loaded story reveal",
                         )
-                        val contentVersion = controller.contentVersion
                         val storyRevision = controller.storyRevision(story.id)
                         val previewResource = controller.previewResources[story.id]
                             ?.takeIf { it.pageUrl == story.url }
                         val model = remember(
-                            story, index, settings, contentVersion, storyRevision, previewResource,
+                            story, index, settings, storyRevision, previewResource,
                         ) {
                             storyItemModel(
                                 story,
@@ -471,7 +470,7 @@ private fun StoriesList(
                                 modelNowMillis,
                             )
                         }
-                        val style = remember(story, settings, contentVersion, storyRevision, model.summary) {
+                        val style = remember(story, settings, storyRevision, model.summary) {
                             settings.toItemStyle(story, model)
                         }
                         val storyTintBase = model.tintFallbackArgb

@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.data.Story
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class StoryListStoreTest {
@@ -167,6 +169,33 @@ class StoryListStoreTest {
             ),
         )
         assertFalse(store.stories.single().clicked)
+    }
+
+    @Test
+    fun metadataUpdatesReuseTheExistingItemSnapshots() {
+        val store = StoryListStore()
+        store.replace(listOf(story(1), story(2)))
+        val items = store.state.value.items
+
+        store.beginLoadMore()
+
+        assertSame(items, store.state.value.items)
+    }
+
+    @Test
+    fun targetedContentChangeOnlyRebuildsTheChangedStorySnapshot() {
+        val store = StoryListStore()
+        store.replace(listOf(story(1), story(2), story(3)))
+        val before = store.state.value.items
+        val changed = store.stories[1].also { it.title = "Updated" }
+
+        store.contentChanged(changed)
+
+        val after = store.state.value.items
+        assertSame(before[0], after[0])
+        assertNotSame(before[1], after[1])
+        assertEquals("Updated", after[1].title)
+        assertSame(before[2], after[2])
     }
 
     private fun story(id: Int, loaded: Boolean = true) = Story("Story $id", id, loaded, false)

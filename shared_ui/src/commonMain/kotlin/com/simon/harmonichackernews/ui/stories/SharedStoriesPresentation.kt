@@ -96,6 +96,12 @@ internal fun resolvedStandardSearchProgress(
     animatedProgress: Float,
 ): Float = if (!searching && suppressSearchAutoFocus) 0f else animatedProgress
 
+internal fun shouldComposeSearchLayer(
+    searching: Boolean,
+    predictiveBackActive: Boolean,
+    searchProgress: Float,
+): Boolean = searching || predictiveBackActive || searchProgress > 0f
+
 /** Shared root transition between a primary story feed and its search results. */
 @Composable
 fun SharedStoriesRoot(
@@ -154,21 +160,23 @@ fun SharedStoriesRoot(
                 },
             content = mainLayer,
         )
-        StableStoryLayer(
-            active = searchActive,
-            modifier = Modifier
-                .matchParentSize()
-                .zIndex(if (searchActive) 1f else 0f)
-                .graphicsLayer {
-                    alpha = searchAlpha
-                    translationY = if (predictiveBackActive) {
-                        24.dp.toPx() * predictiveSearchFade
-                    } else {
-                        24.dp.toPx() * (1f - standardSearchProgress)
-                    }
-                },
-            content = searchLayer,
-        )
+        if (shouldComposeSearchLayer(searching, predictiveBackActive, standardSearchProgress)) {
+            StableStoryLayer(
+                active = searchActive,
+                modifier = Modifier
+                    .matchParentSize()
+                    .zIndex(if (searchActive) 1f else 0f)
+                    .graphicsLayer {
+                        alpha = searchAlpha
+                        translationY = if (predictiveBackActive) {
+                            24.dp.toPx() * predictiveSearchFade
+                        } else {
+                            24.dp.toPx() * (1f - standardSearchProgress)
+                        }
+                    },
+                content = searchLayer,
+            )
+        }
         overlay()
     }
 }

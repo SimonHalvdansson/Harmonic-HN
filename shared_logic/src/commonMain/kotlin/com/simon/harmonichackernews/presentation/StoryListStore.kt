@@ -173,6 +173,7 @@ class StoryListStore(
             failure = null,
             showingCached = false,
             loadedThroughIndex = if (clearItems) -1 else state.value.loadedThroughIndex,
+            refreshItems = clearItems,
         )
     }
 
@@ -218,18 +219,20 @@ class StoryListStore(
             refreshing = false,
             loadMoreInProgress = false,
             failure = failure,
+            refreshItems = false,
         )
     }
 
     fun setFailure(failure: StoryLoadFailure?) {
         if (failure == null) {
-            publish(failure = null)
+            publish(failure = null, refreshItems = false)
         } else {
             publish(
                 loading = false,
                 refreshing = false,
                 loadMoreInProgress = false,
                 failure = failure,
+                refreshItems = false,
             )
         }
     }
@@ -240,6 +243,7 @@ class StoryListStore(
             loading = false,
             refreshing = false,
             loadMoreInProgress = false,
+            refreshItems = false,
         )
     }
 
@@ -258,8 +262,8 @@ class StoryListStore(
         publish()
     }
 
-    fun contentChanged() {
-        publish()
+    fun contentChanged(story: Story? = null) {
+        publish(changedStory = story)
     }
 
     fun syncHistory(
@@ -310,11 +314,12 @@ class StoryListStore(
             } else {
                 Int.MAX_VALUE
             },
+            refreshItems = false,
         )
     }
 
     fun beginLoadMore() {
-        publish(loadMoreInProgress = true, failure = null)
+        publish(loadMoreInProgress = true, failure = null, refreshItems = false)
     }
 
     fun beginNextPage(requestGeneration: Int): StoryPageLoadPlan? {
@@ -328,6 +333,7 @@ class StoryListStore(
             visibleStoryCount = plan.nextVisibleCount,
             loadMoreInProgress = true,
             failure = null,
+            refreshItems = false,
         )
         return plan
     }
@@ -336,7 +342,7 @@ class StoryListStore(
         val completed = paginationSession.finishStory(storyId, requestGeneration)
         if (completed) {
             paginationSession.clear()
-            publish(loadMoreInProgress = false)
+            publish(loadMoreInProgress = false, refreshItems = false)
         }
         return completed
     }
@@ -345,15 +351,19 @@ class StoryListStore(
 
     fun clearPendingPage() {
         paginationSession.clear()
-        publish(loadMoreInProgress = false)
+        publish(loadMoreInProgress = false, refreshItems = false)
     }
 
     fun finishLoadMore(canLoadMore: Boolean) {
-        publish(loadMoreInProgress = false, canLoadMore = canLoadMore)
+        publish(
+            loadMoreInProgress = false,
+            canLoadMore = canLoadMore,
+            refreshItems = false,
+        )
     }
 
     fun setCanLoadMore(canLoadMore: Boolean) {
-        publish(canLoadMore = canLoadMore)
+        publish(canLoadMore = canLoadMore, refreshItems = false)
     }
 
     fun revealNextPage(): Int {
@@ -363,20 +373,24 @@ class StoryListStore(
         } else {
             Int.MAX_VALUE
         }
-        publish(visibleStoryCount = nextVisibleCount)
+        publish(visibleStoryCount = nextVisibleCount, refreshItems = false)
         return nextVisibleCount
     }
 
     fun setVisibleStoryCount(count: Int) {
-        publish(visibleStoryCount = if (state.value.paginationEnabled) count.coerceAtLeast(0) else Int.MAX_VALUE)
+        publish(
+            visibleStoryCount = if (state.value.paginationEnabled) count.coerceAtLeast(0)
+            else Int.MAX_VALUE,
+            refreshItems = false,
+        )
     }
 
     fun markLoadedThrough(index: Int) {
-        publish(loadedThroughIndex = index.coerceAtLeast(-1))
+        publish(loadedThroughIndex = index.coerceAtLeast(-1), refreshItems = false)
     }
 
     fun setShowingCached(showingCached: Boolean) {
-        publish(showingCached = showingCached)
+        publish(showingCached = showingCached, refreshItems = false)
     }
 
     fun filteredSavedItems(
@@ -402,12 +416,16 @@ class StoryListStore(
         canLoadMore: Boolean = state.value.canLoadMore,
         showingCached: Boolean = state.value.showingCached,
         failure: StoryLoadFailure? = state.value.failure,
+        refreshItems: Boolean = true,
+        changedStory: Story? = null,
     ) {
         val current = state.value
         val revision = current.revision + 1
         val nextState = PortableStoryListState(
-            items = stories.map { story ->
-                StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+            items = when {
+                !refreshItems -> current.items
+                changedStory != null -> snapshotsWithChangedStory(current.items, changedStory)
+                else -> stories.map { story -> story.toListItemSnapshot() }
             },
             visibleStoryCount = visibleStoryCount,
             loadedThroughIndex = loadedThroughIndex,
@@ -422,6 +440,24 @@ class StoryListStore(
         )
         mutableState.value = nextState
     }
+
+    private fun snapshotsWithChangedStory(
+        currentItems: List<StoryListItemSnapshot>,
+        changedStory: Story,
+    ): List<StoryListItemSnapshot> {
+        val changedIndex = stories.indexOf(changedStory)
+        if (currentItems.size != stories.size || changedIndex !in currentItems.indices ||
+            currentItems[changedIndex].id != changedStory.id
+        ) {
+            return stories.map { story -> story.toListItemSnapshot() }
+        }
+        return currentItems.toMutableList().apply {
+            this[changedIndex] = changedStory.toListItemSnapshot()
+        }
+    }
+
+    private fun Story.toListItemSnapshot(): StoryListItemSnapshot =
+        StoryListItemSnapshot(toSnapshot(), presentationSnapshot())
 
     companion object {
         const val DEFAULT_PAGE_SIZE = 30

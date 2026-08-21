@@ -169,28 +169,27 @@ class StoriesComposeController private constructor(
     }
 
     fun updateContent(state: StoriesScreenState) {
-        screenState = state.copy(
-            mainStories = state.mainStories.toList(),
-            searchStories = state.searchStories.toList(),
-            previewResources = state.previewResources.toMap(),
-            typeLabels = state.typeLabels.toList(),
-            searchSortLabels = state.searchSortLabels.toList(),
-            searchDateLabels = state.searchDateLabels.toList(),
-            searchPointsLabels = state.searchPointsLabels.toList(),
-            searchCommentsLabels = state.searchCommentsLabels.toList(),
-            cacheProgressMax = state.cacheProgressMax.coerceAtLeast(1),
-        )
+        // StoriesScreenStateFactory receives immutable store snapshots. Preserve those list/map
+        // instances so header-only publications don't traverse and copy the entire feed on the UI
+        // thread, and so row-level remember keys can distinguish unchanged content cheaply.
+        screenState = if (state.cacheProgressMax > 0) {
+            state
+        } else {
+            state.copy(cacheProgressMax = 1)
+        }
         interactionStore.updateContent(
             state.mainStories,
             state.searchStories,
             state.searching,
             state.lastSearch,
         )
-        val currentStoryIds = buildSet(state.mainStories.size + state.searchStories.size) {
-            state.mainStories.forEach { add(it.id) }
-            state.searchStories.forEach { add(it.id) }
+        if (storyRevisions.isNotEmpty()) {
+            val currentStoryIds = buildSet(state.mainStories.size + state.searchStories.size) {
+                state.mainStories.forEach { add(it.id) }
+                state.searchStories.forEach { add(it.id) }
+            }
+            storyRevisions.keys.retainAll(currentStoryIds)
         }
-        storyRevisions.keys.retainAll(currentStoryIds)
         syncInteractionState()
         contentVersion++
     }

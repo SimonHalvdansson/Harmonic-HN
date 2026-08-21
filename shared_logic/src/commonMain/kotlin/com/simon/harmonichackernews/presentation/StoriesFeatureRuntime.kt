@@ -948,11 +948,13 @@ class StoriesFeatureRuntime(
     fun publishStoryContentChanged(story: Story? = null) {
         when {
             story == null -> activeStore.contentChanged()
-            story in mainStories -> mainStore.contentChanged()
-            story in searchStories -> searchStore.contentChanged()
+            story in mainStories -> mainStore.contentChanged(story)
+            story in searchStories -> searchStore.contentChanged(story)
             else -> return
         }
-        changed(story)
+        // The store snapshot was already published above. Emit the cross-feature update without
+        // rebuilding the same list snapshot a second time.
+        emit(StoriesRuntimeEffect.StoryChanged(story?.id))
     }
 
     fun mergeExternalStoryUpdate(update: Story): Boolean {
@@ -1357,8 +1359,8 @@ class StoriesFeatureRuntime(
     private fun changed(story: Story? = null) {
         when {
             story == null -> activeStore.contentChanged()
-            mainStories.contains(story) -> mainStore.contentChanged()
-            searchStories.contains(story) -> searchStore.contentChanged()
+            mainStories.contains(story) -> mainStore.contentChanged(story)
+            searchStories.contains(story) -> searchStore.contentChanged(story)
         }
         emit(StoriesRuntimeEffect.StoryChanged(story?.id))
     }

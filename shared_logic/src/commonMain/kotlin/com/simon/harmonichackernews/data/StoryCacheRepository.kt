@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.network.JSONParser
+import kotlin.concurrent.Volatile
 
 data class CacheFileInfo(
     val key: String,
@@ -122,6 +123,9 @@ class StoryCacheRepository(
     private val metadata: StoryCacheMetadataStore,
     private val maximumStories: Int = DEFAULT_MAXIMUM_STORIES,
 ) {
+    @Volatile
+    private var recentStoryAvailability: RecentStoryAvailability? = null
+
     fun storeStory(storyId: Int, payload: String?, cachedAtMillis: Long): Boolean {
         if (storyId <= 0 || payload.isNullOrEmpty() || payload == JSONParser.ALGOLIA_ERROR_STRING) {
             return false
@@ -150,6 +154,7 @@ class StoryCacheRepository(
         )
         metadata.putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
         update.evictedStoryIds.forEach(::removeFilesAndArticleMetadata)
+        recentStoryAvailability = null
         return true
     }
 
@@ -183,8 +188,27 @@ class StoryCacheRepository(
         Story().apply { id = entry.storyId }.takeIf { hydrateStory(it) && !it.isComment }
     }
 
-    fun hasRecentStories(nowMillis: Long): Boolean = recentEntries(nowMillis).any { entry ->
-        Story().apply { id = entry.storyId }.let { hydrateStory(it) && !it.isComment }
+    fun hasRecentStories(nowMillis: Long): Boolean {
+        recentStoryAvailability?.takeIf { cached ->
+            nowMillis >= cached.checkedAtMillis &&
+                nowMillis <= cached.validThroughMillis
+        }?.let { return it.available }
+
+        val entry = recentEntries(nowMillis).firstOrNull { candidate ->
+            Story().apply { id = candidate.storyId }.let { hydrateStory(it) && !it.isComment }
+        }
+        recentStoryAvailability = RecentStoryAvailability(
+            available = entry != null,
+            checkedAtMillis = nowMillis,
+            // Bound reuse even though mutations invalidate the value. This also bounds staleness
+            // if a background cache write races the UI thread's availability read.
+            validThroughMillis = minOf(
+                entry?.cachedAtMillis?.plus(StoryCacheIndex.DEFAULT_MAX_AGE_MILLIS)
+                    ?: Long.MAX_VALUE,
+                nowMillis + RECENT_AVAILABILITY_CACHE_MILLIS,
+            ),
+        )
+        return entry != null
     }
 
     fun cachedItemIds(): Set<Int> = buildSet {
@@ -210,6 +234,7 @@ class StoryCacheRepository(
             StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId),
         )
         removeFilesAndArticleMetadata(storyId)
+        recentStoryAvailability = null
     }
 
     fun clear(): Int {
@@ -225,6 +250,7 @@ class StoryCacheRepository(
                 metadata.remove(key)
             }
         }
+        recentStoryAvailability = null
         return count
     }
 
@@ -292,5 +318,12 @@ class StoryCacheRepository(
 
     private companion object {
         const val DEFAULT_MAXIMUM_STORIES = 200
+        const val RECENT_AVAILABILITY_CACHE_MILLIS = 1_000L
+
+        data class RecentStoryAvailability(
+            val available: Boolean,
+            val checkedAtMillis: Long,
+            val validThroughMillis: Long,
+        )
     }
 }

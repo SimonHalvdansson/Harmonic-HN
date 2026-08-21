@@ -86,6 +86,19 @@ class StoryCacheRepositoryTest {
         assertEquals("windows-1252", ArticleCacheMetadata.charsetName("text/html; Charset=\"windows-1252\""))
     }
 
+    @Test
+    fun recentStoryAvailabilityReusesItsValidatedCacheEntry() {
+        val files = FakeFiles()
+        val repository = StoryCacheRepository(files, FakeMetadata())
+        repository.storeStory(42, storyJson(42, "Cached"), cachedAtMillis = 1_000)
+
+        assertTrue(repository.hasRecentStories(nowMillis = 2_000))
+        val readsAfterValidation = files.readTextCount
+        assertTrue(repository.hasRecentStories(nowMillis = 3_000))
+
+        assertEquals(readsAfterValidation, files.readTextCount)
+    }
+
     private fun storyJson(id: Int, title: String): String =
         """{"id":$id,"type":"story","title":"$title","author":"alice","points":12,"created_at_i":123,"url":"https://example.com/$id","children":[]}"""
 
@@ -93,10 +106,12 @@ class StoryCacheRepositoryTest {
         private val values = mutableMapOf<Pair<String, String>, ByteArray>()
         var lastCharset: String? = null
         var lastTouch: Long? = null
+        var readTextCount: Int = 0
 
         override fun read(namespace: String, key: String): ByteArray? = values[namespace to key]
 
         override fun readText(namespace: String, key: String, charsetName: String): String? {
+            readTextCount++
             lastCharset = charsetName
             return read(namespace, key)?.decodeToString()
         }
