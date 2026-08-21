@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -28,12 +28,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -48,9 +52,6 @@ import kotlin.math.min
 private const val TransformDurationMillis = 280
 private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
-private val StoryPreviewShape = RoundedCornerShape(28.dp)
-private val StoryPreviewShadowElevation = 8.dp
-
 /** Shared pager, list synchronization, container transform, and predictive-back presentation. */
 @Composable
 fun SharedStoryPreviewOverlay(
@@ -71,26 +72,131 @@ fun SharedStoryPreviewOverlay(
     )
     val transformProgress = remember(state) { Animatable(0f) }
     val predictiveProgressAnimation = remember(state) { Animatable(0f) }
+    var overlayActive by remember(state) { mutableStateOf(false) }
+    var hideTargetContent by remember(state) { mutableStateOf(true) }
+    var drawOverlayShadows by remember(state) { mutableStateOf(false) }
+    var openingStarted by remember(state) { mutableStateOf(false) }
+    var openingCompleted by remember(state) { mutableStateOf(false) }
+    var closingStarted by remember(state) { mutableStateOf(false) }
+    var rootOffset by remember(state) { mutableStateOf(Offset.Zero) }
     var targetBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var lastPagerPosition by remember(state) { mutableFloatStateOf(state.initialPage.toFloat()) }
-    var pendingListScroll by remember(state) { mutableFloatStateOf(0f) }
+    var targetImageBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetTitleBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetSummaryBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetMetaBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetSupplementaryBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetCommentsButtonBounds by remember(state) { mutableStateOf<Rect?>(null) }
+    var targetImageLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
+    var targetTitleLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
+    var targetSummaryLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
+    var targetMetaLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
+    var targetSupplementaryLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
     val dismissRequest = controller.storyPreviewDismissRequest
     val predictiveSettleRequest = controller.storyPreviewPredictiveBackSettleRequest
+    // An interrupted opening has not exposed interactive dialog content, so its existing snapshots
+    // are already current. Reusing them makes the transform reverse immediately. A fully opened
+    // dialog still refreshes snapshots on dismiss to include any actions or late-loaded content.
+    val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
+    val targetImageCapture = rememberLayerSnapshot(targetImageLayer, snapshotRefreshKey)
+    val targetTitleCapture = rememberLayerSnapshot(targetTitleLayer, snapshotRefreshKey)
+    val targetSummaryCapture = rememberLayerSnapshot(targetSummaryLayer, snapshotRefreshKey)
+    val targetMetaCapture = rememberLayerSnapshot(targetMetaLayer, snapshotRefreshKey)
+    val targetSupplementaryCapture =
+        rememberLayerSnapshot(targetSupplementaryLayer, snapshotRefreshKey)
+    val currentStory = state.stories[pagerState.currentPage]
+    val sourceGeometry = controller.sourceGeometryForStory(currentStory.id)
+    val sourceImageCapture = rememberLayerSnapshot(sourceGeometry?.imageLayer, snapshotRefreshKey)
+    val sourceTitleCapture = rememberLayerSnapshot(sourceGeometry?.titleLayer, snapshotRefreshKey)
+    val sourceSummaryCapture = rememberLayerSnapshot(sourceGeometry?.summaryLayer, snapshotRefreshKey)
+    val sourceMetaCapture = rememberLayerSnapshot(sourceGeometry?.metaLayer, snapshotRefreshKey)
+    val sourceIndexCapture = rememberLayerSnapshot(sourceGeometry?.indexLayer, snapshotRefreshKey)
+    val sourceCommentsCapture = rememberLayerSnapshot(
+        sourceGeometry?.commentsLayer,
+        snapshotRefreshKey,
+    )
+    val targetImageSnapshot = targetImageCapture.image
+    val targetTitleSnapshot = targetTitleCapture.image
+    val targetSummarySnapshot = targetSummaryCapture.image
+    val targetMetaSnapshot = targetMetaCapture.image
+    val targetSupplementarySnapshot = targetSupplementaryCapture.image
+    val sourceImageSnapshot = sourceImageCapture.image
+    val sourceTitleSnapshot = sourceTitleCapture.image
+    val sourceSummarySnapshot = sourceSummaryCapture.image
+    val sourceMetaSnapshot = sourceMetaCapture.image
+    val sourceIndexSnapshot = sourceIndexCapture.image
+    val sourceCommentsSnapshot = sourceCommentsCapture.image
+    var lastPagerPosition by remember(state) { mutableFloatStateOf(state.initialPage.toFloat()) }
+    var pendingListScroll by remember(state) { mutableFloatStateOf(0f) }
+    fun sourceSnapshotReady(bounds: Rect?, capture: LayerSnapshot): Boolean =
+        bounds == null || capture.isCurrent(snapshotRefreshKey)
+    val sourceSnapshotsReady =
+        sourceGeometry != null &&
+            sourceSnapshotReady(sourceGeometry.image, sourceImageCapture) &&
+            sourceSnapshotReady(sourceGeometry.title, sourceTitleCapture) &&
+            sourceSnapshotReady(sourceGeometry.summary, sourceSummaryCapture) &&
+            sourceSnapshotReady(sourceGeometry.meta, sourceMetaCapture) &&
+            sourceSnapshotReady(sourceGeometry.index, sourceIndexCapture) &&
+            sourceSnapshotReady(sourceGeometry.comments, sourceCommentsCapture)
+    val snapshotsReadyForTransition =
+        sourceSnapshotsReady &&
+            targetBounds != null &&
+            targetCommentsButtonBounds != null &&
+            targetTitleBounds != null &&
+            targetTitleCapture.isCurrent(snapshotRefreshKey) &&
+            targetMetaCapture.isCurrent(snapshotRefreshKey) &&
+            targetSupplementaryCapture.isCurrent(snapshotRefreshKey) &&
+            (targetImageLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } == null ||
+                targetImageCapture.isCurrent(snapshotRefreshKey)) &&
+            (targetSummaryLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } == null ||
+                targetSummaryCapture.isCurrent(snapshotRefreshKey))
 
-    LaunchedEffect(state, targetBounds) {
-        if (targetBounds != null && dismissRequest == 0) {
-            transformProgress.animateTo(
-                1f,
-                tween(TransformDurationMillis, easing = FastOutSlowInEasing),
-            )
+    LaunchedEffect(
+        state,
+        snapshotsReadyForTransition,
+        dismissRequest,
+    ) {
+        if (!snapshotsReadyForTransition || dismissRequest != 0 || openingStarted) {
+            return@LaunchedEffect
         }
+        openingStarted = true
+        // First cover the still-live source with an identical progress-zero overlay. Only hide the
+        // list row after that overlay has reached the screen, so there is no empty handoff frame.
+        overlayActive = true
+        withFrameNanos { }
+        controller.setStoryPreviewSourceCovered(true)
+        drawOverlayShadows = true
+        withFrameNanos { }
+        transformProgress.animateTo(
+            1f,
+            tween(TransformDurationMillis, easing = FastOutSlowInEasing),
+        )
+        // Likewise, draw the final card below the progress-one overlay for one frame before the
+        // overlay is removed.
+        hideTargetContent = false
+        drawOverlayShadows = false
+        withFrameNanos { }
+        openingCompleted = true
+        overlayActive = false
     }
-    LaunchedEffect(dismissRequest) {
+    LaunchedEffect(dismissRequest, snapshotsReadyForTransition) {
         if (dismissRequest == 0) return@LaunchedEffect
+        if (!snapshotsReadyForTransition || closingStarted) return@LaunchedEffect
+        closingStarted = true
+        // Put the overlay over the still-live dialog first, then hide the live dialog beneath it.
+        overlayActive = true
+        withFrameNanos { }
+        hideTargetContent = true
+        drawOverlayShadows = true
+        withFrameNanos { }
         transformProgress.animateTo(
             0f,
             tween(TransformDurationMillis, easing = FastOutSlowInEasing),
         )
+        // Reveal the list row underneath the identical progress-zero overlay before removing the
+        // dialog host. This closes the second possible one-frame gap.
+        controller.setStoryPreviewSourceCovered(false)
+        drawOverlayShadows = false
+        withFrameNanos { }
         controller.completeStoryPreviewDismiss()
     }
     LaunchedEffect(controller.storyPreviewPredictiveBackProgress, predictiveSettleRequest) {
@@ -171,25 +277,94 @@ fun SharedStoryPreviewOverlay(
         predictiveEased * backDirection
     val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } *
         predictiveEased
-    val currentStory = state.stories[pagerState.currentPage]
-    val sourceBounds = controller.sourceBoundsForStory(currentStory.id)
-    val target = targetBounds
-    val startScaleX = if (sourceBounds != null && target != null && target.width > 0f) {
-        (sourceBounds.width / target.width).coerceIn(0.08f, 1.15f)
-    } else 0.96f
-    val startScaleY = if (sourceBounds != null && target != null && target.height > 0f) {
-        (sourceBounds.height / target.height).coerceIn(0.08f, 1.15f)
-    } else 0.96f
-    val startTranslationX = if (sourceBounds != null && target != null) {
-        sourceBounds.center.x - target.center.x
-    } else 0f
-    val startTranslationY = if (sourceBounds != null && target != null) {
-        sourceBounds.center.y - target.center.y
-    } else 0f
+    val sharedTransition = StoryPreviewSharedTransitionState(
+        progress = progress,
+        active = overlayActive,
+        hideTargetContent = hideTargetContent,
+        drawOverlayShadows = drawOverlayShadows,
+        source = sourceGeometry,
+        sourceSnapshot = { element ->
+            when (element) {
+                StoryPreviewSourceElement.Image -> sourceImageSnapshot
+                StoryPreviewSourceElement.Title -> sourceTitleSnapshot
+                StoryPreviewSourceElement.Summary -> sourceSummarySnapshot
+                StoryPreviewSourceElement.Meta -> sourceMetaSnapshot
+                StoryPreviewSourceElement.Index -> sourceIndexSnapshot
+                StoryPreviewSourceElement.Comments -> sourceCommentsSnapshot
+            }
+        },
+        targetContainer = targetBounds,
+        targetCommentsButton = targetCommentsButtonBounds,
+        rootOffset = rootOffset,
+        targetBounds = { element ->
+            when (element) {
+                StoryPreviewSharedElement.Image -> targetImageBounds
+                StoryPreviewSharedElement.Title -> targetTitleBounds
+                StoryPreviewSharedElement.Summary -> targetSummaryBounds
+                StoryPreviewSharedElement.Meta -> targetMetaBounds
+                StoryPreviewSharedElement.Supplementary -> targetSupplementaryBounds
+            }
+        },
+        targetSnapshot = { element ->
+            when (element) {
+                StoryPreviewSharedElement.Image -> targetImageSnapshot
+                StoryPreviewSharedElement.Title -> targetTitleSnapshot
+                StoryPreviewSharedElement.Summary -> targetSummarySnapshot
+                StoryPreviewSharedElement.Meta -> targetMetaSnapshot
+                StoryPreviewSharedElement.Supplementary -> targetSupplementarySnapshot
+            }
+        },
+        updateTargetBounds = { element, bounds ->
+            when (element) {
+                StoryPreviewSharedElement.Image -> {
+                    if (targetImageBounds != bounds) targetImageBounds = bounds
+                }
+                StoryPreviewSharedElement.Title -> {
+                    if (targetTitleBounds != bounds) targetTitleBounds = bounds
+                }
+                StoryPreviewSharedElement.Summary -> {
+                    if (targetSummaryBounds != bounds) targetSummaryBounds = bounds
+                }
+                StoryPreviewSharedElement.Meta -> {
+                    if (targetMetaBounds != bounds) targetMetaBounds = bounds
+                }
+                StoryPreviewSharedElement.Supplementary -> {
+                    if (targetSupplementaryBounds != bounds) {
+                        targetSupplementaryBounds = bounds
+                    }
+                }
+            }
+        },
+        updateTargetLayer = { element, layer ->
+            when (element) {
+                StoryPreviewSharedElement.Image -> {
+                    if (targetImageLayer !== layer) targetImageLayer = layer
+                }
+                StoryPreviewSharedElement.Title -> {
+                    if (targetTitleLayer !== layer) targetTitleLayer = layer
+                }
+                StoryPreviewSharedElement.Summary -> {
+                    if (targetSummaryLayer !== layer) targetSummaryLayer = layer
+                }
+                StoryPreviewSharedElement.Meta -> {
+                    if (targetMetaLayer !== layer) targetMetaLayer = layer
+                }
+                StoryPreviewSharedElement.Supplementary -> {
+                    if (targetSupplementaryLayer !== layer) targetSupplementaryLayer = layer
+                }
+            }
+        },
+        updateCommentsButtonBounds = { bounds ->
+            if (targetCommentsButtonBounds != bounds) {
+                targetCommentsButtonBounds = bounds
+            }
+        },
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { rootOffset = it.boundsInWindow().topLeft }
             .background(
                 Color.Black.copy(
                     alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
@@ -223,52 +398,98 @@ fun SharedStoryPreviewOverlay(
                     .graphicsLayer(alpha = pageAlpha),
                 contentAlignment = Alignment.Center,
             ) {
-                cardContent(
-                    state.stories[page],
-                    page,
-                    Color(state.cardColors[page]),
-                    Modifier
-                        .widthIn(
-                            max = if (tablet) {
-                                HarmonicDimens.compose_comment_action_tablet_max_width
-                            } else {
-                                HarmonicDimens.compose_comment_action_max_width
-                            },
-                        )
-                        .fillMaxWidth()
-                        .then(
-                            if (page == pagerState.currentPage) {
-                                Modifier.onGloballyPositioned { targetBounds = it.boundsInWindow() }
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .graphicsLayer {
-                            shadowElevation = StoryPreviewShadowElevation.toPx()
-                            shape = StoryPreviewShape
-                            clip = false
-                            if (page == pagerState.currentPage) {
-                                val sharedScaleX = startScaleX + (1f - startScaleX) * progress
-                                val sharedScaleY = startScaleY + (1f - startScaleY) * progress
+                val currentPage = page == pagerState.currentPage
+                val cardModifier = Modifier
+                    .widthIn(
+                        max = if (tablet) {
+                            HarmonicDimens.compose_comment_action_tablet_max_width
+                        } else {
+                            HarmonicDimens.compose_comment_action_max_width
+                        },
+                    )
+                    .fillMaxWidth()
+                    .then(
+                        if (currentPage) {
+                            Modifier.onGloballyPositioned { targetBounds = it.boundsInWindow() }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(
+                        if (currentPage && predictiveEased > 0f) {
+                            Modifier.graphicsLayer {
                                 val backScale = 1f - 0.1f * predictiveEased
-                                scaleX = sharedScaleX * backScale
-                                scaleY = sharedScaleY * backScale
-                                translationX = startTranslationX * (1f - progress) + backTranslationX
-                                translationY = startTranslationY * (1f - progress) + backTranslationY
-                                alpha = if (sourceBounds == null) progress else max(0.7f, progress)
+                                scaleX = backScale
+                                scaleY = backScale
+                                translationX = backTranslationX
+                                translationY = backTranslationY
                                 transformOrigin = TransformOrigin(
                                     if (backDirection > 0f) 0f else 1f,
                                     0.5f,
                                 )
                             }
+                        } else {
+                            Modifier
                         }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        ),
-                )
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    )
+                if (currentPage) {
+                    CompositionLocalProvider(
+                        LocalStoryPreviewSharedTransition provides sharedTransition,
+                    ) {
+                        cardContent(
+                            state.stories[page],
+                            page,
+                            Color(state.cardColors[page]),
+                            cardModifier,
+                        )
+                    }
+                } else {
+                    cardContent(
+                        state.stories[page],
+                        page,
+                        Color(state.cardColors[page]),
+                        cardModifier,
+                    )
+                }
             }
         }
+        StoryPreviewTransitionOverlay(
+            transition = sharedTransition,
+            color = Color(state.cardColors[pagerState.currentPage]),
+        )
     }
+}
+
+@Composable
+private fun rememberLayerSnapshot(
+    layer: GraphicsLayer?,
+    refreshKey: Int,
+): LayerSnapshot {
+    // Keep the last bitmap visible while a dismiss-triggered refresh is recorded. Replacing it
+    // with null here produces a single empty overlay frame when an opening animation is reversed.
+    var snapshot by remember(layer) { mutableStateOf(LayerSnapshot()) }
+    LaunchedEffect(layer, refreshKey) {
+        val currentLayer = layer ?: return@LaunchedEffect
+        // The layer is published at composition time and recorded during draw.
+        withFrameNanos { }
+        if (!currentLayer.isReleased && currentLayer.size.width > 0 && currentLayer.size.height > 0) {
+            snapshot = LayerSnapshot(
+                image = currentLayer.toImageBitmap(),
+                refreshKey = refreshKey,
+            )
+        }
+    }
+    return snapshot
+}
+
+private data class LayerSnapshot(
+    val image: ImageBitmap? = null,
+    val refreshKey: Int? = null,
+) {
+    fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
 }

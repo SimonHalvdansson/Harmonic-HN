@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.ui.stories
 
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -38,7 +38,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,8 +73,6 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 private const val TextStorySummaryMaxChars = 600
-private val SharedStoryPreviewShape = RoundedCornerShape(28.dp)
-
 data class StoryPreviewSummaryState(
     val loading: Boolean,
     val result: LinkSummary? = null,
@@ -155,12 +152,11 @@ fun SharedStoryPreviewCard(
         append(" • ").append(ItemTimeFormatter.formatNow(story.createdAtEpochSeconds))
     }
 
-    Surface(
-        modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
-        shape = SharedStoryPreviewShape,
-        color = cardColor,
-        shadowElevation = 0.dp,
-    ) {
+    Box(modifier = modifier) {
+        StoryPreviewContainerBackground(
+            color = cardColor,
+            modifier = Modifier.matchParentSize(),
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -178,35 +174,46 @@ fun SharedStoryPreviewCard(
                     label = "story preview image content",
                 ) { (currentImageUrl, imageLoading) ->
                     when {
-                        currentImageUrl != null -> SharedNetworkImage(
-                            url = currentImageUrl,
-                            contentDescription = null,
+                        currentImageUrl != null -> StoryPreviewSharedElement(
+                            element = StoryPreviewSharedElement.Image,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            crossfade = true,
-                            onSuccess = {
-                                onPreviewImageLoaded(
-                                    story.id,
-                                    story.url.orEmpty(),
-                                    currentImageUrl,
-                                )
-                            },
-                            onError = {
-                                imageLoadFailed = true
-                                onPreviewImageError(
-                                    story.id,
-                                    story.url.orEmpty(),
-                                    currentImageUrl,
-                                )
-                            },
-                        )
-                        imageLoading -> StoryPreviewShimmer(
-                            Modifier
+                        ) {
+                            SharedNetworkImage(
+                                url = currentImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                // The shared-element transform supplies its own source/destination
+                                // blend. A second Coil crossfade can make the first cold-load
+                                // snapshot almost transparent until the live card takes over.
+                                crossfade = false,
+                                onSuccess = {
+                                    onPreviewImageLoaded(
+                                        story.id,
+                                        story.url.orEmpty(),
+                                        currentImageUrl,
+                                    )
+                                },
+                                onError = {
+                                    imageLoadFailed = true
+                                    onPreviewImageError(
+                                        story.id,
+                                        story.url.orEmpty(),
+                                        currentImageUrl,
+                                    )
+                                },
+                            )
+                        }
+                        imageLoading -> StoryPreviewSharedElement(
+                            element = StoryPreviewSharedElement.Image,
+                            modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f),
-                        )
+                        ) {
+                            StoryPreviewShimmer(Modifier.fillMaxSize())
+                        }
                         else -> Spacer(Modifier.height(0.dp))
                     }
                 }
@@ -219,49 +226,53 @@ fun SharedStoryPreviewCard(
                         transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
                         label = "story preview title content",
                     ) { currentTitle ->
-                        StoryTitleText(
-                            text = currentTitle,
-                            badge = storyTitle.badge,
-                            color = HarmonicTheme.colors.storyNormal,
-                            fontFamily = typography.family,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = (typography.storyTitleSize + 2.5f).sp,
-                            lineHeight = (typography.storyTitleSize + 5.5f).sp,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.padding(top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (faviconUrl != null) {
-                            AsyncImage(
-                                model = faviconUrl,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                placeholder = tintedPainterResource(
-                                    Res.drawable.ic_public,
-                                    HarmonicTheme.colors.drawable,
-                                ),
-                                error = tintedPainterResource(
-                                    Res.drawable.ic_public,
-                                    HarmonicTheme.colors.drawable,
-                                ),
-                                fallback = tintedPainterResource(
-                                    Res.drawable.ic_public,
-                                    HarmonicTheme.colors.drawable,
-                                ),
+                        StoryPreviewSharedElement(StoryPreviewSharedElement.Title) {
+                            StoryTitleText(
+                                text = currentTitle,
+                                badge = storyTitle.badge,
+                                color = HarmonicTheme.colors.storyNormal,
+                                fontFamily = typography.family,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = (typography.storyTitleSize + 2.5f).sp,
+                                lineHeight = (typography.storyTitleSize + 5.5f).sp,
                             )
-                            Spacer(Modifier.width(6.dp))
                         }
-                        Text(
-                            text = meta,
-                            color = HarmonicTheme.colors.storyDisabled,
-                            fontFamily = typography.family,
-                            fontSize = typography.storyMetaSize.sp,
-                            lineHeight = (typography.storyMetaSize + 3f).sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    }
+                    StoryPreviewSharedElement(
+                        element = StoryPreviewSharedElement.Meta,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (faviconUrl != null) {
+                                AsyncImage(
+                                    model = faviconUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    placeholder = tintedPainterResource(
+                                        Res.drawable.ic_public,
+                                        HarmonicTheme.colors.drawable,
+                                    ),
+                                    error = tintedPainterResource(
+                                        Res.drawable.ic_public,
+                                        HarmonicTheme.colors.drawable,
+                                    ),
+                                    fallback = tintedPainterResource(
+                                        Res.drawable.ic_public,
+                                        HarmonicTheme.colors.drawable,
+                                    ),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(
+                                text = meta,
+                                color = HarmonicTheme.colors.storyDisabled,
+                                fontFamily = typography.family,
+                                fontSize = typography.storyMetaSize.sp,
+                                lineHeight = (typography.storyMetaSize + 3f).sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
@@ -269,106 +280,150 @@ fun SharedStoryPreviewCard(
             Column(
                 Modifier.padding(start = 20.dp, top = 7.dp, end = 20.dp, bottom = 18.dp),
             ) {
-                AnimatedContent(
-                    targetState = description to (summaryState.loading && story.isLink),
-                    transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
-                    label = "story preview description content",
-                ) { (currentDescription, descriptionLoading) ->
-                    when {
-                        !currentDescription.isNullOrBlank() -> SelectionContainer {
-                            Text(
-                                text = currentDescription,
-                                color = HarmonicTheme.colors.storyNormal,
-                                fontFamily = typography.family,
-                                fontSize = typography.commentTextSize.sp,
-                                lineHeight = (typography.commentTextSize + 2f).sp,
-                                style = textStyle,
-                            )
+                StoryPreviewSharedElement(StoryPreviewSharedElement.Summary) {
+                    AnimatedContent(
+                        targetState = description to (summaryState.loading && story.isLink),
+                        transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
+                        label = "story preview description content",
+                    ) { (currentDescription, descriptionLoading) ->
+                        when {
+                            !currentDescription.isNullOrBlank() -> SelectionContainer {
+                                Text(
+                                    text = currentDescription,
+                                    color = HarmonicTheme.colors.storyNormal,
+                                    fontFamily = typography.family,
+                                    fontSize = typography.commentTextSize.sp,
+                                    lineHeight = (typography.commentTextSize + 2f).sp,
+                                    style = textStyle,
+                                )
+                            }
+                            descriptionLoading -> DescriptionShimmer()
+                            else -> Spacer(Modifier.height(0.dp))
                         }
-                        descriptionLoading -> DescriptionShimmer()
-                        else -> Spacer(Modifier.height(0.dp))
                     }
                 }
-                HorizontalDivider(
-                    modifier = Modifier.padding(top = 10.dp),
-                    color = HarmonicTheme.colors.commentDivider.copy(alpha = 0.45f),
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                StoryPreviewSharedElement(
+                    element = StoryPreviewSharedElement.Supplementary,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    if (hasAccount) {
-                        StoryPreviewActionIcon(
-                            icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
-                            description = if (upvoted) "Remove upvote" else "Upvote",
-                            loading = voteLoading,
-                        ) {
-                            controller.onStoryPreviewAction(
-                                page,
-                                StoryPreviewActionKind.Vote,
-                            )
-                        }
-                    }
-                    StoryPreviewActionIcon(
-                        icon = if (story.clicked) Res.drawable.ic_visibility_off else Res.drawable.ic_visibility,
-                        description = if (story.clicked) "Mark as unread" else "Mark as read",
-                    ) {
-                        controller.onStoryPreviewAction(
-                            page,
-                            StoryPreviewActionKind.Read,
+                    Column(Modifier.fillMaxWidth()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(top = 10.dp),
+                            color = HarmonicTheme.colors.commentDivider.copy(alpha = 0.45f),
                         )
-                    }
-                    if (bookmarksEnabled) {
-                        StoryPreviewActionIcon(
-                            icon = if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
-                            description = if (bookmarked) "Remove bookmark" else "Bookmark",
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            controller.onStoryPreviewAction(
-                                page,
-                                StoryPreviewActionKind.Bookmark,
-                            )
+                            if (hasAccount) {
+                                StoryPreviewActionIcon(
+                                    icon = if (upvoted) {
+                                        Res.drawable.ic_thumb_up_filled
+                                    } else {
+                                        Res.drawable.ic_thumb_up
+                                    },
+                                    description = if (upvoted) "Remove upvote" else "Upvote",
+                                    loading = voteLoading,
+                                ) {
+                                    controller.onStoryPreviewAction(
+                                        page,
+                                        StoryPreviewActionKind.Vote,
+                                    )
+                                }
+                            }
+                            StoryPreviewActionIcon(
+                                icon = if (story.clicked) {
+                                    Res.drawable.ic_visibility_off
+                                } else {
+                                    Res.drawable.ic_visibility
+                                },
+                                description = if (story.clicked) {
+                                    "Mark as unread"
+                                } else {
+                                    "Mark as read"
+                                },
+                            ) {
+                                controller.onStoryPreviewAction(
+                                    page,
+                                    StoryPreviewActionKind.Read,
+                                )
+                            }
+                            if (bookmarksEnabled) {
+                                StoryPreviewActionIcon(
+                                    icon = if (bookmarked) {
+                                        Res.drawable.ic_bookmark_filled
+                                    } else {
+                                        Res.drawable.ic_bookmark
+                                    },
+                                    description = if (bookmarked) {
+                                        "Remove bookmark"
+                                    } else {
+                                        "Bookmark"
+                                    },
+                                ) {
+                                    controller.onStoryPreviewAction(
+                                        page,
+                                        StoryPreviewActionKind.Bookmark,
+                                    )
+                                }
+                            }
+                            if (hasAccount) {
+                                StoryPreviewActionIcon(
+                                    icon = if (favorited) {
+                                        Res.drawable.ic_star_filled
+                                    } else {
+                                        Res.drawable.ic_star
+                                    },
+                                    description = if (favorited) {
+                                        "Remove favorite"
+                                    } else {
+                                        "Favorite"
+                                    },
+                                    loading = favoriteLoading,
+                                ) {
+                                    controller.onStoryPreviewAction(
+                                        page,
+                                        StoryPreviewActionKind.Favorite,
+                                    )
+                                }
+                            }
+                            ElevatedButton(
+                                onClick = { controller.onStoryPreviewNavigate(page, false) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                                    .padding(start = 4.dp)
+                                    .trackStoryPreviewCommentsButton()
+                                    .semantics {
+                                        contentDescription =
+                                            "Comments (${story.descendantCount})"
+                                    },
+                                colors = ButtonDefaults.elevatedButtonColors(
+                                    containerColor =
+                                        MaterialTheme.colorScheme.surfaceContainerLow,
+                                    contentColor = HarmonicTheme.colors.storyNormal,
+                                ),
+                            ) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_comment),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    if (hasAccount) {
+                                        story.descendantCount.toString()
+                                    } else {
+                                        "Comments"
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip,
+                                    fontSize = 13.sp,
+                                )
+                            }
                         }
-                    }
-                    if (hasAccount) {
-                        StoryPreviewActionIcon(
-                            icon = if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star,
-                            description = if (favorited) "Remove favorite" else "Favorite",
-                            loading = favoriteLoading,
-                        ) {
-                            controller.onStoryPreviewAction(
-                                page,
-                                StoryPreviewActionKind.Favorite,
-                            )
-                        }
-                    }
-                    ElevatedButton(
-                        onClick = { controller.onStoryPreviewNavigate(page, false) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp)
-                            .padding(start = 4.dp)
-                            .semantics {
-                                contentDescription = "Comments (${story.descendantCount})"
-                            },
-                        colors = ButtonDefaults.elevatedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = HarmonicTheme.colors.storyNormal,
-                        ),
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_comment),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (hasAccount) story.descendantCount.toString() else "Comments",
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            fontSize = 13.sp,
-                        )
                     }
                 }
             }

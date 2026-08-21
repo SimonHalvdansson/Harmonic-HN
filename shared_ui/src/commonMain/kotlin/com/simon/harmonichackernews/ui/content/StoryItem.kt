@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.AlignmentLine
@@ -56,6 +57,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -77,6 +79,8 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.resources.web_preview
+import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
+import com.simon.harmonichackernews.ui.stories.captureStoryPreviewSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -89,7 +93,75 @@ private val StoryCardShape = RoundedCornerShape(8.dp)
 private class StoryItemGeometry {
     var coordinates: LayoutCoordinates? = null
     var itemHeightPx: Int = 0
+    var largeImageCoordinates: LayoutCoordinates? = null
+    var smallImageCoordinates: LayoutCoordinates? = null
+    var titleCoordinates: LayoutCoordinates? = null
+    var summaryCoordinates: LayoutCoordinates? = null
+    var metaCoordinates: LayoutCoordinates? = null
+    var indexCoordinates: LayoutCoordinates? = null
+    var commentsCoordinates: LayoutCoordinates? = null
+    var largeImageLayer: GraphicsLayer? = null
+    var smallImageLayer: GraphicsLayer? = null
+    var titleLayer: GraphicsLayer? = null
+    var summaryLayer: GraphicsLayer? = null
+    var metaLayer: GraphicsLayer? = null
+    var indexLayer: GraphicsLayer? = null
+    var commentsLayer: GraphicsLayer? = null
+
+    fun snapshot(
+        style: StoryItemStyle,
+        hasPreview: Boolean,
+        imageCornerRadiusPx: Float,
+    ): StoryPreviewSourceGeometry? {
+        val containerBounds = coordinates.windowBoundsOrNull() ?: return null
+        val imageCoordinates = when {
+            !hasPreview || style.previewImageMode == "off" -> null
+            style.previewImageMode == "large" -> largeImageCoordinates
+            else -> smallImageCoordinates
+        }
+        val imageLayer = when {
+            !hasPreview || style.previewImageMode == "off" -> null
+            style.previewImageMode == "large" -> largeImageLayer
+            else -> smallImageLayer
+        }
+        return StoryPreviewSourceGeometry(
+            container = containerBounds,
+            containerElevationDp = if (style.cardStyle) 1f else 0f,
+            image = imageCoordinates.windowBoundsOrNull(),
+            title = titleCoordinates.windowBoundsOrNull(),
+            summary = summaryCoordinates
+                .takeIf { style.showSummary }
+                .windowBoundsOrNull(),
+            meta = metaCoordinates
+                .takeIf { !style.compact }
+                .windowBoundsOrNull(),
+            index = indexCoordinates.windowBoundsOrNull(),
+            comments = commentsCoordinates.windowBoundsOrNull(),
+            imageCornerRadiusPx = imageCornerRadiusPx,
+            imageLayer = imageLayer?.takeUnless(GraphicsLayer::isReleased),
+            titleLayer = titleLayer?.takeUnless(GraphicsLayer::isReleased),
+            summaryLayer = summaryLayer?.takeUnless(GraphicsLayer::isReleased),
+            metaLayer = metaLayer?.takeUnless(GraphicsLayer::isReleased),
+            indexLayer = indexLayer?.takeUnless(GraphicsLayer::isReleased),
+            commentsLayer = commentsLayer?.takeUnless(GraphicsLayer::isReleased),
+        )
+    }
 }
+
+private fun LayoutCoordinates?.windowBoundsOrNull(): Rect? =
+    this
+        ?.takeIf(LayoutCoordinates::isAttached)
+        ?.let { coordinates ->
+            val topLeft = coordinates.positionInWindow()
+            Rect(
+                offset = topLeft,
+                size = androidx.compose.ui.geometry.Size(
+                    coordinates.size.width.toFloat(),
+                    coordinates.size.height.toFloat(),
+                ),
+            )
+        }
+        ?.takeIf { it.width > 0f && it.height > 0f }
 
 @Immutable
 data class StoryItemUiModel(
@@ -163,6 +235,8 @@ fun StoryItem(
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
     onGeometryChanged: ((bounds: Rect, itemHeightPx: Int) -> Unit)? = null,
+    onPreviewSourceGeometryChanged: ((StoryPreviewSourceGeometry) -> Unit)? = null,
+    capturePreviewSourceGeometry: Boolean = false,
     onPreviewLoadSuccess: (() -> Unit)? = null,
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
@@ -239,10 +313,20 @@ fun StoryItem(
         targetBackground
     }
     val itemGeometry = remember { StoryItemGeometry() }
-    val itemVerticalPaddingPx = with(LocalDensity.current) {
+    val density = LocalDensity.current
+    val itemVerticalPaddingPx = with(density) {
         (if (listItem) 8.dp else 28.dp).roundToPx()
     }
-    val geometryModifier = if (onGeometryChanged == null) {
+    val previewImageCornerRadiusPx = with(density) {
+        when {
+            style.previewImageMode == "small" -> 6.dp.toPx()
+            style.previewImageMode == "large" && !style.borderlessLargeImage -> 8.dp.toPx()
+            else -> 0f
+        }
+    }
+    val geometryModifier = if (
+        onGeometryChanged == null && onPreviewSourceGeometryChanged == null
+    ) {
         Modifier
     } else {
         Modifier
@@ -250,7 +334,7 @@ fun StoryItem(
                 val itemHeightPx = size.height + itemVerticalPaddingPx
                 if (itemGeometry.itemHeightPx != itemHeightPx) {
                     itemGeometry.itemHeightPx = itemHeightPx
-                    onGeometryChanged(Rect.Zero, itemHeightPx)
+                    onGeometryChanged?.invoke(Rect.Zero, itemHeightPx)
                 }
             }
             .onGloballyPositioned { coordinates ->
@@ -268,7 +352,21 @@ fun StoryItem(
                 ?.let { bounds ->
                     onGeometryChanged?.invoke(bounds, itemGeometry.itemHeightPx)
                 }
+            itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+                ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
             longClick()
+        }
+    }
+    LaunchedEffect(
+        capturePreviewSourceGeometry,
+        style.previewImageMode,
+        style.showSummary,
+        style.compact,
+        hasPreview,
+    ) {
+        if (capturePreviewSourceGeometry) {
+            itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+                ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
         }
     }
     val cardDecorationModifier = if (listItem) {
@@ -353,7 +451,11 @@ fun StoryItem(
                             .fillMaxWidth()
                             .height(176.dp)
                             .padding(start = imageInset, top = imageInset, end = imageInset)
+                            .onGloballyPositioned { itemGeometry.largeImageCoordinates = it }
                             .clip(RoundedCornerShape(imageRadius))
+                            .captureStoryPreviewSourceContent {
+                                itemGeometry.largeImageLayer = it
+                            }
                             .graphicsLayer(alpha = dimAlpha),
                         onLoadFailed = {
                             previewFailed = true
@@ -376,6 +478,11 @@ fun StoryItem(
                         typography = typography,
                         onClick = onCommentClick,
                         animateChanges = animate,
+                        modifier = Modifier.onGloballyPositioned {
+                            itemGeometry.commentsCoordinates = it
+                        }.captureStoryPreviewSourceContent {
+                            itemGeometry.commentsLayer = it
+                        },
                     )
                 }
                 StoryContentRow(
@@ -409,6 +516,7 @@ fun StoryItem(
                             onFaviconTintExtracted?.invoke(tintColor)
                         },
                         animateChanges = animate,
+                        itemGeometry = itemGeometry,
                         modifier = Modifier,
                     )
                 }
@@ -483,6 +591,7 @@ private fun StoryMainContent(
     extractFaviconTint: Boolean,
     onFaviconTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
+    itemGeometry: StoryItemGeometry,
     modifier: Modifier,
 ) {
     val titleSize = if (animateChanges) {
@@ -556,6 +665,8 @@ private fun StoryMainContent(
             modifier = Modifier
                 .width(indexWidth)
                 .alignBy(FirstBaseline)
+                .onGloballyPositioned { itemGeometry.indexCoordinates = it }
+                .captureStoryPreviewSourceContent { itemGeometry.indexLayer = it }
                 .graphicsLayer { alpha = indexAlpha },
             color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
             else HarmonicTheme.colors.storyNormal,
@@ -573,6 +684,9 @@ private fun StoryMainContent(
             StoryTitleText(
                 text = model.title,
                 badge = model.titleBadge,
+                modifier = Modifier
+                    .onGloballyPositioned { itemGeometry.titleCoordinates = it }
+                    .captureStoryPreviewSourceContent { itemGeometry.titleLayer = it },
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
@@ -583,7 +697,10 @@ private fun StoryMainContent(
             AnimatedVisibility(style.showSummary && model.summary.isNotBlank()) {
                 Text(
                     text = model.summary,
-                    modifier = Modifier.padding(top = 3.dp),
+                    modifier = Modifier
+                        .padding(top = 3.dp)
+                        .onGloballyPositioned { itemGeometry.summaryCoordinates = it }
+                        .captureStoryPreviewSourceContent { itemGeometry.summaryLayer = it },
                     color = HarmonicTheme.colors.storyDisabled,
                     fontFamily = typography.family,
                     fontSize = summarySize.sp,
@@ -603,7 +720,10 @@ private fun StoryMainContent(
                     extractTint = extractFaviconTint,
                     onTintExtracted = onFaviconTintExtracted,
                     animateChanges = animateChanges,
-                    modifier = Modifier.padding(top = 3.dp),
+                    modifier = Modifier
+                        .padding(top = 3.dp)
+                        .onGloballyPositioned { itemGeometry.metaCoordinates = it }
+                        .captureStoryPreviewSourceContent { itemGeometry.metaLayer = it },
                 )
             }
         }
@@ -618,7 +738,9 @@ private fun StoryMainContent(
                 modifier = Modifier
                     .padding(start = 4.dp)
                     .size(width = 72.dp, height = 52.dp)
+                    .onGloballyPositioned { itemGeometry.smallImageCoordinates = it }
                     .clip(RoundedCornerShape(6.dp))
+                    .captureStoryPreviewSourceContent { itemGeometry.smallImageLayer = it }
                     .graphicsLayer(alpha = dimAlpha),
                 onLoadFailed = onPreviewLoadFailed,
                 onLoadSuccess = onPreviewLoadSuccess,
@@ -1074,6 +1196,7 @@ private fun StoryCommentRail(
     typography: ContentTypography,
     onClick: (() -> Unit)?,
     animateChanges: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val countSize = if (animateChanges) {
         val animatedCountSize by animateFloatAsState(
@@ -1089,6 +1212,7 @@ private fun StoryCommentRail(
         modifier = Modifier
             .width(60.dp)
             .fillMaxHeight()
+            .then(modifier)
             .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

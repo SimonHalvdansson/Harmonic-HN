@@ -449,6 +449,8 @@ private fun StoriesList(
                     } else {
                         val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
                         val suppressed = controller.isStorySuppressed(story.id)
+                        val keepPreviewSourceVisible =
+                            controller.shouldKeepStoryPreviewSourceVisible(story.id)
                         var revealed by rememberSaveable(story.id) { mutableStateOf(false) }
                         LaunchedEffect(story.id) { revealed = true }
                         val revealAlpha by animateFloatAsState(
@@ -473,12 +475,25 @@ private fun StoriesList(
                         val style = remember(story, settings, storyRevision, model.summary) {
                             settings.toItemStyle(story, model)
                         }
-                        val storyTintBase = model.tintFallbackArgb
-                            ?: HarmonicTheme.colors.storyCardBackground.toArgb()
+                        val untintedStoryBackground = if (style.cardStyle) {
+                            HarmonicTheme.colors.surfaceContainerHigh
+                        } else {
+                            HarmonicTheme.colors.background
+                        }
+                        val storyTintBase = if (style.tintCard) {
+                            model.tintFallbackArgb
+                                ?: HarmonicTheme.colors.storyCardBackground.toArgb()
+                        } else {
+                            untintedStoryBackground.toArgb()
+                        }
                         val itemModifier = Modifier
                             .animateItem(placementSpec = null)
                             .graphicsLayer(
-                                alpha = (if (suppressed) 0f else pagingAlpha) * revealAlpha,
+                                alpha = if (keepPreviewSourceVisible) {
+                                    revealAlpha
+                                } else {
+                                    (if (suppressed) 0f else pagingAlpha) * revealAlpha
+                                },
                             )
                         StoryItem(
                             model = model,
@@ -490,13 +505,30 @@ private fun StoriesList(
                                 controller.listener.onStoryLongClick(
                                     story,
                                     storyTintBase,
-                                )?.let(controller::showStoryPreview)
+                                )?.let { deck ->
+                                    controller.showStoryPreview(
+                                        if (style.tintCard) {
+                                            deck
+                                        } else {
+                                            deck.copy(
+                                                cardColors = List(deck.stories.size) {
+                                                    storyTintBase
+                                                },
+                                            )
+                                        },
+                                    )
+                                }
                             },
                             onCommentClick = { controller.listener.onCommentClick(story) },
                             onGeometryChanged = { bounds, itemHeightPx ->
                                 controller.updateStoryItemHeight(story.id, itemHeightPx)
                                 controller.updateStoryBounds(story.id, bounds)
                             },
+                            onPreviewSourceGeometryChanged = { geometry ->
+                                controller.updateStoryPreviewSourceGeometry(story.id, geometry)
+                            },
+                            capturePreviewSourceGeometry =
+                                controller.visibleStoryPreviewId == story.id,
                             onPreviewLoadSuccess = {
                                 model.previewImageUrl?.let { imageUrl ->
                                     controller.listener.onStoryPreviewImageLoaded(

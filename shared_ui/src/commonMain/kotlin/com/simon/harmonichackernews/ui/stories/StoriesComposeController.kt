@@ -136,7 +136,9 @@ class StoriesComposeController private constructor(
     private val interactionStore = StoriesInteractionStore(defaultStoryHeightPx)
     private var interactionState by mutableStateOf(interactionStore.state)
     private val storyBounds = mutableMapOf<Int, Rect>()
+    private val storyPreviewSourceGeometries = mutableMapOf<Int, StoryPreviewSourceGeometry>()
     private val storyRevisions = mutableMapOf<Int, MutableIntState>()
+    private var sourceCoveredByStoryPreviewTransition by mutableStateOf(false)
 
     val searching: Boolean get() = interactionState.searching
     val searchDraft: String get() = interactionState.searchDraft
@@ -316,6 +318,7 @@ class StoriesComposeController private constructor(
                 openedStoryId,
             )
         ) return
+        sourceCoveredByStoryPreviewTransition = false
         requestStopStoryPreviewScroll()
         syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(true)
@@ -339,6 +342,7 @@ class StoriesComposeController private constructor(
 
     fun completeStoryPreviewDismiss() {
         if (!interactionStore.completeStoryPreviewDismiss()) return
+        sourceCoveredByStoryPreviewTransition = false
         syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(false)
     }
@@ -375,7 +379,11 @@ class StoriesComposeController private constructor(
     }
 
     fun sourceBoundsForStory(storyId: Int): Rect? =
-        storyBounds[storyId]
+        sourceGeometryForStory(storyId)?.container
+
+    fun sourceGeometryForStory(storyId: Int): StoryPreviewSourceGeometry? =
+        storyPreviewSourceGeometries[storyId]
+            ?: storyBounds[storyId]?.let(::StoryPreviewSourceGeometry)
 
     fun onStoryPreviewPagePosition(
         lowerPage: Int,
@@ -428,12 +436,33 @@ class StoriesComposeController private constructor(
         if (storyBounds[storyId] != bounds) storyBounds[storyId] = bounds
     }
 
+    fun updateStoryPreviewSourceGeometry(
+        storyId: Int,
+        geometry: StoryPreviewSourceGeometry,
+    ) {
+        if (geometry.container.width <= 0f || geometry.container.height <= 0f) return
+        storyBounds[storyId] = geometry.container
+        if (storyPreviewSourceGeometries[storyId] != geometry) {
+            storyPreviewSourceGeometries[storyId] = geometry
+        }
+    }
+
     fun updateStoryItemHeight(storyId: Int, heightPx: Int) {
         interactionStore.updateStoryItemHeight(storyId, heightPx)
     }
 
     fun isStorySuppressed(storyId: Int): Boolean =
         storyId in interactionState.suppressedStoryIds
+
+    /** Keeps the live source row visible until the transition overlay has covered it. */
+    fun shouldKeepStoryPreviewSourceVisible(storyId: Int): Boolean =
+        storyPreviewOverlay != null &&
+            visibleStoryPreviewId == storyId &&
+            !sourceCoveredByStoryPreviewTransition
+
+    fun setStoryPreviewSourceCovered(covered: Boolean) {
+        sourceCoveredByStoryPreviewTransition = covered
+    }
 
     fun isBookmarked(storyId: Int): Boolean = savedItemState.isBookmarked(storyId)
 
