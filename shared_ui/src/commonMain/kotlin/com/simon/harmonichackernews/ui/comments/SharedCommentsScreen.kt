@@ -628,7 +628,7 @@ private fun CommentNavigationButtons(
 
     Row(
         modifier = Modifier
-            .shadow(8.dp, shape, clip = false)
+            .shadow(6.dp, shape, clip = false)
             .clip(shape)
             .then(
                 if (hazeState == null) {

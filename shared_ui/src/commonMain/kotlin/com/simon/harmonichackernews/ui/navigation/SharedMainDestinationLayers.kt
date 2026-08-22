@@ -60,7 +60,6 @@ fun SharedMainDestinationLayers(
     settingsPredictiveModifier: Modifier = Modifier,
     submissionsPredictiveModifier: Modifier = Modifier,
     editorPredictiveModifier: Modifier = Modifier,
-    storyPreview: (@Composable () -> Unit)? = null,
     linkPreview: (@Composable () -> Unit)? = null,
 ) {
     Box(modifier.fillMaxSize()) {
@@ -79,9 +78,6 @@ fun SharedMainDestinationLayers(
             base()
         }
 
-        storyPreview?.let { content ->
-            Box(Modifier.fillMaxSize().zIndex(4f)) { content() }
-        }
         linkPreview?.let { content ->
             Box(Modifier.fillMaxSize().zIndex(4.5f)) { content() }
         }

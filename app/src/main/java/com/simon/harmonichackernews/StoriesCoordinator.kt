@@ -15,6 +15,7 @@ import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
 import com.simon.harmonichackernews.presentation.StoriesState
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
@@ -53,6 +54,7 @@ class StoriesCoordinator(
         ),
     )
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
+    private var hostActive = navigation.currentDestination == MainDestination.STORIES
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
 
     init {
@@ -103,7 +105,7 @@ class StoriesCoordinator(
                 )
             }
             override fun onStoryPreviewVisibilityChanged(showing: Boolean) {
-                linkSummaryBackCallback?.isEnabled = showing
+                updateStoryPreviewBackCallback()
             }
 
             override fun isSplitLayout(): Boolean = isFoldableSplitLayout
@@ -244,6 +246,16 @@ class StoriesCoordinator(
 
     private val isFoldableSplitLayout: Boolean
         get() = !destroyed && navigation.isAdaptiveFoldable()
+
+    fun setHostActive(active: Boolean) {
+        hostActive = active
+        updateStoryPreviewBackCallback()
+    }
+
+    private fun updateStoryPreviewBackCallback() {
+        linkSummaryBackCallback?.isEnabled =
+            hostActive && composeController?.isStoryPreviewShowing() == true
+    }
 
     fun onStart() {
         storiesStore.onStart()

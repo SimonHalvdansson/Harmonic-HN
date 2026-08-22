@@ -28,7 +28,6 @@ fun SharedHarmonicAppRoot(
     settingsPredictiveModifier: Modifier = Modifier,
     submissionsPredictiveModifier: Modifier = Modifier,
     editorPredictiveModifier: Modifier = Modifier,
-    storyPreview: (@Composable () -> Unit)? = null,
     linkPreview: (@Composable () -> Unit)? = null,
 ) {
     val destinations = navigation.destinationStack.map { it.destination }
@@ -65,7 +64,6 @@ fun SharedHarmonicAppRoot(
         settingsPredictiveModifier = settingsPredictiveModifier,
         submissionsPredictiveModifier = submissionsPredictiveModifier,
         editorPredictiveModifier = editorPredictiveModifier,
-        storyPreview = storyPreview,
         linkPreview = linkPreview,
     )
 }

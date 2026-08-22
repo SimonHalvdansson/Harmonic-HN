@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -207,9 +208,9 @@ private fun handleDesktopBack(
         commentsController?.isCommentActionOverlayShowing() == true ->
             commentsController.requestDismissCommentActions()
         commentsController?.searchDialogVisible == true -> commentsController.dismissCommentSearch()
+        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
-        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.searching == true -> storiesController.finishSearchBack()
         else -> return false
     }
@@ -242,11 +243,6 @@ private fun DesktopAppContent(
         completedSettingsPredictiveBack = false,
         completedSubmissionsPredictiveBack = false,
         completedEditorPredictiveBack = false,
-        storyPreview = storiesController
-            ?.takeIf(StoriesComposeController::isStoryPreviewShowing)
-            ?.let { controller ->
-                { DesktopStoryPreviewOverlay(app, controller) }
-            },
         linkPreview = commentsController
             ?.takeIf(CommentsComposeController::isLinkPreviewOverlayShowing)
             ?.let { controller ->
@@ -441,14 +437,19 @@ private fun DesktopStoriesContent(
         }
     }
 
-    SharedStoriesRoute(
-        controller = controller,
-        tintStore = app.storyResourceTints,
-        commentText = { AnnotatedString(it) },
-        filterColors = filterColors,
-        extraCompactSelectedText = false,
-        compactSelectedText = false,
-    )
+    Box(Modifier.fillMaxSize()) {
+        SharedStoriesRoute(
+            controller = controller,
+            tintStore = app.storyResourceTints,
+            commentText = { AnnotatedString(it) },
+            filterColors = filterColors,
+            extraCompactSelectedText = false,
+            compactSelectedText = false,
+        )
+        if (controller.isStoryPreviewShowing()) {
+            DesktopStoryPreviewOverlay(app, controller)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)

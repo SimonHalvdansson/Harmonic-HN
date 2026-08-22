@@ -401,7 +401,14 @@ class StoriesComposeController private constructor(
 
     fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
         val target = interactionStore.storyPreviewTarget(page) ?: return
-        if (!listener.onStoryPreviewNavigate(target.story, showWebsite)) {
+        val remainsVisibleBesideDestination = listener.onStoryPreviewNavigate(
+            target.story,
+            showWebsite,
+        )
+        // Comments cover the Stories pane, so keep its preview exactly as it was for Back. Opening
+        // the website retains the existing behavior: close the preview unless both panes remain
+        // visible side by side.
+        if (showWebsite && !remainsVisibleBesideDestination) {
             interactionStore.requestDismissStoryPreview()
             syncInteractionState()
         }

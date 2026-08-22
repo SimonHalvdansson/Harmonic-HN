@@ -245,13 +245,13 @@ private fun iosBackVisualTarget(
         commentsController?.isLinkPreviewOverlayShowing() == true ||
         commentsController?.isCommentActionOverlayShowing() == true ||
         commentsController?.searchDialogVisible == true ||
-        commentsController?.isWebsiteVisible() == true ||
-        storiesController?.isStoryPreviewShowing() == true || storiesController?.searching == true ->
-        IosBackVisualTarget.None
+        commentsController?.isWebsiteVisible() == true -> IosBackVisualTarget.None
     navigation.editorRequest != null -> IosBackVisualTarget.Editor
     navigation.submissionsRequest != null -> IosBackVisualTarget.Submissions
     navigation.settingsRequest != null -> IosBackVisualTarget.Settings
     navigation.storyRequest != null -> IosBackVisualTarget.Story
+    storiesController?.isStoryPreviewShowing() == true || storiesController?.searching == true ->
+        IosBackVisualTarget.None
     else -> IosBackVisualTarget.None
 }
 
@@ -280,9 +280,9 @@ private fun handleIosBack(
             commentsController.requestDismissCommentActions()
         commentsController?.searchDialogVisible == true -> commentsController.dismissCommentSearch()
         commentsController?.isWebsiteVisible() == true -> commentsController.requestExpandSheet()
+        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
-        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.searching == true -> storiesController.finishSearchBack()
         else -> return false
     }
@@ -344,11 +344,6 @@ private fun IosAppContent(
         } else {
             Modifier
         },
-        storyPreview = storiesController
-            ?.takeIf(StoriesComposeController::isStoryPreviewShowing)
-            ?.let { controller ->
-                { IosStoryPreviewOverlay(app, controller) }
-            },
         linkPreview = commentsController
             ?.takeIf(CommentsComposeController::isLinkPreviewOverlayShowing)
             ?.let { controller ->
@@ -577,6 +572,9 @@ private fun IosStoriesContent(
             compactSelectedText = false,
         )
         IosStatusBarProtection(HarmonicTheme.colors.background)
+        if (controller.isStoryPreviewShowing()) {
+            IosStoryPreviewOverlay(app, controller)
+        }
     }
 }
 

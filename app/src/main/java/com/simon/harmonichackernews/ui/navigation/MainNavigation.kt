@@ -375,6 +375,7 @@ class MainNavigationController internal constructor(
 
     fun attachStoriesCoordinator(coordinator: StoriesCoordinator) {
         storiesCoordinator = coordinator
+        coordinator.setHostActive(currentDestination == MainDestination.STORIES)
     }
 
     fun onStart() = storiesCoordinator?.onStart()
@@ -414,6 +415,10 @@ class MainNavigationController internal constructor(
 
     internal fun updateCommentsHostDestination(destination: MainDestination) {
         commentsCoordinator?.setHostActive(destination == MainDestination.STORY)
+    }
+
+    internal fun updateStoriesHostDestination(destination: MainDestination) {
+        storiesCoordinator?.setHostActive(destination == MainDestination.STORIES)
     }
 
     internal fun consumeCommentsSavedState(requestSerial: Int): Bundle? {
@@ -583,6 +588,7 @@ private fun MainNavigation(
             twoPane = isTwoPane,
             foldable = isTwoPane && isFoldable,
         )
+        controller.updateStoriesHostDestination(navigationSnapshot.currentDestination)
         controller.updateCommentsHostDestination(navigationSnapshot.currentDestination)
     }
     val paneProportion = if (isFoldable) {
@@ -937,11 +943,6 @@ private fun MainNavigation(
                 },
             ),
         editorPredictiveModifier = activeEditorBackAnimation?.exitModifier ?: Modifier,
-        storyPreview = controller.storiesComposeController
-            ?.takeIf { it.storyPreviewOverlay != null }
-            ?.let { storiesController ->
-                { StoryPreviewOverlay(storiesController) }
-            },
         linkPreview = controller.commentsComposeController
             ?.takeIf { it.linkPreviewOverlay != null }
             ?.let { commentsController ->
@@ -1229,13 +1230,17 @@ private fun StoriesPane(
     drawStatusBarProtection: Boolean = false,
 ) {
     Box(Modifier.fillMaxSize()) {
-        controller.storiesComposeController?.let { StoriesScreen(it) }
+        val storiesController = controller.storiesComposeController
+        storiesController?.let { StoriesScreen(it) }
         if (drawStatusBarProtection) {
             StatusBarProtection(
                 color = statusBarColor,
                 statusBarHeight = statusBarHeight,
             )
         }
+        storiesController
+            ?.takeIf { it.storyPreviewOverlay != null }
+            ?.let { StoryPreviewOverlay(it) }
     }
 }
 
