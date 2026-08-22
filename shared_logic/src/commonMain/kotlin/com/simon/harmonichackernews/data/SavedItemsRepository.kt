@@ -41,6 +41,7 @@ class SavedItemsRepository(
     private val mutationMutex = Mutex()
     private val mutableChanges = MutableSharedFlow<SavedItemsChange>(extraBufferCapacity = 32)
     private val itemCache = mutableMapOf<ItemCacheKey, List<TimestampedItem>>()
+    private val itemIdsCache = mutableMapOf<SavedItemSource, Set<Int>>()
     private val commentIdsCache = mutableMapOf<SavedItemSource, Set<Int>>()
 
     /** Mutations made through this repository instance, after they have been persisted. */
@@ -54,14 +55,19 @@ class SavedItemsRepository(
         return itemCache[key] ?: SavedItemCodec.decode(
             store.getString(itemKey(source)),
             sortedByCreated,
-        ).also { itemCache[key] = it }
+        ).also { items ->
+            itemCache[key] = items
+            itemIdsCache.getOrPut(source) {
+                items.mapTo(mutableSetOf(), TimestampedItem::id)
+            }
+        }
     }
 
     fun loadItemsByDescendingId(source: SavedItemSource): List<TimestampedItem> =
         loadItems(source).sortedByDescending(TimestampedItem::id)
 
     fun contains(source: SavedItemSource, id: Int): Boolean =
-        loadItems(source).any { it.id == id }
+        id in loadItemIds(source)
 
     fun saveItems(source: SavedItemSource, items: List<TimestampedItem>) {
         writeItems(source, items)
@@ -152,12 +158,19 @@ class SavedItemsRepository(
         )
     }
 
+    private fun loadItemIds(source: SavedItemSource): Set<Int> {
+        itemIdsCache[source]?.let { return it }
+        loadItems(source)
+        return itemIdsCache.getValue(source)
+    }
+
     private fun writeItems(source: SavedItemSource, items: List<TimestampedItem>) {
         store.putString(itemKey(source), SavedItemCodec.encode(items))
         val cachedItems = items.toList()
         itemCache[ItemCacheKey(source, sortedByCreated = false)] = cachedItems
         itemCache[ItemCacheKey(source, sortedByCreated = true)] =
             cachedItems.sortedByDescending(TimestampedItem::created)
+        itemIdsCache[source] = cachedItems.mapTo(mutableSetOf(), TimestampedItem::id)
     }
 
     private fun writeCommentIds(source: SavedItemSource, ids: Set<Int>) {

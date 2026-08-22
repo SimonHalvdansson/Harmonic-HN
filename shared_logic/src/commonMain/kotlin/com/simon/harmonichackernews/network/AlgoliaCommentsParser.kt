@@ -143,13 +143,13 @@ class AlgoliaCommentsParser(
         coroutineContext.ensureActive()
         val rawText = payload.text.trim()
         val author = payload.author.trim()
+        if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return null
+        if (filteredUsers.isNotEmpty() && author.lowercase() in filteredUsers) return null
+
         val childNodes = payload.children.mapNotNull { child ->
             parseComment(child, depth + 1, filteredUsers)
         }.sortedByDescending { node -> node.comment.children }
         coroutineContext.ensureActive()
-
-        if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return null
-        if (author.lowercase() in filteredUsers) return null
 
         return ParsedCommentNode(
             comment = Comment().also { comment ->

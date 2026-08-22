@@ -17,7 +17,7 @@ data class StoryPreviewOverlayState(
     val cardBackgrounds: List<ArgbColor>,
     val initialPage: Int,
 ) {
-    val cardColors: List<Int> get() = cardBackgrounds.map(ArgbColor::value)
+    val cardColors: List<Int> = cardBackgrounds.map(ArgbColor::value)
 }
 
 data class StoryPreviewTarget(val story: StoryListItemSnapshot)

@@ -127,8 +127,13 @@ class CommentsStore internal constructor(
         if (closed) return
         when (intent) {
             is CommentsIntent.ToggleComment -> runtime.toggleExpanded(intent.commentId)
-            is CommentsIntent.RecordScrollPosition ->
+            is CommentsIntent.RecordScrollPosition -> {
                 runtime.recordScrollPosition(intent.commentId, intent.offset)
+                // Scroll restoration lives in CommentsSessionState, not CommentsState. Publishing
+                // here rebuilt the complete immutable story snapshot for every scroll offset even
+                // though collectors could not observe a state change.
+                return
+            }
             is CommentsIntent.CommentAction -> runtime.commentAction(
                 action = intent.action,
                 comment = intent.comment,

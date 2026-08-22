@@ -45,11 +45,44 @@ object LocalSummaryPreparation {
 
     private fun truncateWords(text: String, maximumWords: Int): String {
         val trimmed = text.trim()
-        val words = trimmed.split(whitespace)
-        return if (words.size <= maximumWords) trimmed else words.take(maximumWords).joinToString(" ")
+        require(maximumWords >= 0) { "maximumWords must not be negative" }
+        if (maximumWords == 0 || trimmed.isEmpty()) return ""
+
+        var index = 0
+        var words = 0
+        var prefixEnd = 0
+        while (index < trimmed.length) {
+            while (index < trimmed.length && trimmed[index].isRegexWhitespace()) index++
+            if (index == trimmed.length) break
+            if (++words > maximumWords) {
+                return normalizeWordPrefix(trimmed, prefixEnd)
+            }
+            while (index < trimmed.length && !trimmed[index].isRegexWhitespace()) index++
+            prefixEnd = index
+        }
+        return trimmed
     }
 
-    private val whitespace = Regex("\\s+")
+    private fun normalizeWordPrefix(value: String, endIndex: Int): String = buildString(endIndex) {
+        var index = 0
+        var pendingSeparator = false
+        while (index < endIndex) {
+            val character = value[index++]
+            if (character.isRegexWhitespace()) {
+                pendingSeparator = isNotEmpty()
+            } else {
+                if (pendingSeparator) append(' ')
+                append(character)
+                pendingSeparator = false
+            }
+        }
+    }
+
+    /** Kotlin/JVM's default `Regex("\\s")` character set, kept portable and allocation-free. */
+    private fun Char.isRegexWhitespace(): Boolean =
+        this == ' ' || this == '\t' || this == '\n' || this == '\u000B' ||
+            this == '\u000C' || this == '\r'
+
     private const val LOW_MEMORY_THRESHOLD_BYTES = 8L * 1024L * 1024L * 1024L
     private const val LOW_MEMORY_MAX_WORDS = 500
     private const val DEFAULT_MAX_WORDS = 1500

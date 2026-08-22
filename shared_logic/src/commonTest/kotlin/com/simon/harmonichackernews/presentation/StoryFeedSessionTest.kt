@@ -33,6 +33,37 @@ class StoryFeedSessionTest {
     }
 
     @Test
+    fun visibilityPolicyOnlyAppliesEnabledFiltersAndPreservesHiringRules() {
+        val ordinaryStory = story(
+            title = "Crypto news",
+            by = "Spammer",
+            url = "https://news.example.com/post",
+        )
+
+        assertFalse(StoryVisibilityPolicy().shouldHide(ordinaryStory, StoryType.TOP_STORIES))
+        assertFalse(
+            StoryVisibilityPolicy(
+                StoryVisibilityConfig(filteredWords = listOf("unrelated")),
+            ).shouldHide(ordinaryStory, StoryType.TOP_STORIES),
+        )
+        assertFalse(
+            StoryVisibilityPolicy(
+                StoryVisibilityConfig(filteredDomains = listOf("other.example")),
+            ).shouldHide(ordinaryStory, StoryType.TOP_STORIES),
+        )
+        assertFalse(
+            StoryVisibilityPolicy(
+                StoryVisibilityConfig(filteredUsers = setOf("someone-else")),
+            ).shouldHide(ordinaryStory, StoryType.TOP_STORIES),
+        )
+
+        val hiring = story(title = "Hiring", by = "WhoIsHiring")
+        val hideJobs = StoryVisibilityPolicy(StoryVisibilityConfig(hideJobs = true))
+        assertTrue(hideJobs.shouldHide(hiring, StoryType.TOP_STORIES))
+        assertFalse(hideJobs.shouldHide(hiring, StoryType.HN_JOBS))
+    }
+
+    @Test
     fun aNewGenerationInvalidatesLoadsFromTheOldGeneration() {
         val session = StoryFeedLoadSession(staleLoadMillis = 1_000)
         val firstGeneration = session.beginGeneration()
@@ -89,6 +120,67 @@ class StoryFeedSessionTest {
         planner.startNextBatch()
 
         assertEquals(listOf(stories[2]), planner.drain(stories))
+        assertTrue(planner.complete)
+    }
+
+    @Test
+    fun prefetchPlannerDrainsAQueuedBatchInDisplayOrderAndDropsMissingRows() {
+        val planner = PreviewPrefetchPlanner(batchSize = 1, visibleThreshold = 4)
+        val stories = listOf(
+            story(id = 1, loaded = true),
+            story(id = 2),
+            story(id = 3),
+            story(id = 4),
+        )
+        planner.begin(targetIndex = stories.lastIndex, enabled = true)
+        assertEquals(listOf(stories[0]), planner.enqueue(stories[0], stories))
+        assertTrue(planner.requestNextBatchSchedule())
+
+        stories.drop(1).forEach { it.loaded = true }
+        assertEquals(emptyList(), planner.enqueue(stories[3], stories))
+        assertEquals(emptyList(), planner.enqueue(stories[1], stories))
+        assertEquals(emptyList(), planner.enqueue(stories[2], stories))
+
+        planner.startNextBatch()
+        assertEquals(listOf(stories[1]), planner.drain(stories))
+        assertTrue(planner.requestNextBatchSchedule())
+        planner.startNextBatch()
+        assertEquals(
+            listOf(stories[2]),
+            planner.drain(listOf(stories[0], stories[2])),
+        )
+        assertTrue(planner.requestNextBatchSchedule())
+        planner.startNextBatch()
+        assertEquals(emptyList(), planner.drain(listOf(stories[0], stories[2])))
+        assertTrue(planner.complete)
+    }
+
+    @Test
+    fun prefetchPlannerKeepsPositiveIdsUniqueButAllowsRepeatedZeroIdRows() {
+        val planner = PreviewPrefetchPlanner(batchSize = 1, visibleThreshold = 4)
+        val gate = story(id = 1, loaded = true)
+        val positive = story(id = 2)
+        val zeroId = story(id = 0)
+        val stories = listOf(gate, positive, zeroId)
+        planner.begin(targetIndex = stories.lastIndex, enabled = true)
+        assertEquals(listOf(gate), planner.enqueue(gate, stories))
+        assertTrue(planner.requestNextBatchSchedule())
+
+        positive.loaded = true
+        zeroId.loaded = true
+        assertEquals(emptyList(), planner.enqueue(positive, stories))
+        assertEquals(emptyList(), planner.enqueue(positive, stories))
+        assertEquals(emptyList(), planner.enqueue(zeroId, stories))
+        assertEquals(emptyList(), planner.enqueue(zeroId, stories))
+
+        planner.startNextBatch()
+        assertEquals(listOf(positive), planner.drain(stories))
+        assertTrue(planner.requestNextBatchSchedule())
+        planner.startNextBatch()
+        assertEquals(listOf(zeroId), planner.drain(stories))
+        assertTrue(planner.requestNextBatchSchedule())
+        planner.startNextBatch()
+        assertEquals(listOf(zeroId), planner.drain(stories))
         assertTrue(planner.complete)
     }
 

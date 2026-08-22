@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
@@ -28,10 +29,51 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
+    @Test
+    fun scrollPositionIntentUpdatesSessionWithoutPublishingCommentsState() = runTest {
+        val session = CommentsSessionState()
+        val story = Story("Shared", 42, true, false)
+        session.story = story
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L }
+        val store = CommentsStore(backgroundScope, runtime)
+        val initialState = store.state.value
+        val emissions = mutableListOf<CommentsState>()
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            store.state.collect(emissions::add)
+        }
+        runCurrent()
+
+        // Make a rebuilt snapshot observably different so this test catches an accidental publish,
+        // rather than relying on StateFlow to conflate equal state values.
+        story.title = "Changed behind the published snapshot"
+        store.accept(CommentsIntent.RecordScrollPosition(commentId = 7, offset = 24))
+        runCurrent()
+
+        assertSame(initialState, store.state.value)
+        assertEquals(1, emissions.size)
+        assertTrue(session.scrollProgress.initialized)
+        assertEquals(story.id, session.scrollProgress.storyId)
+        assertEquals(7, session.scrollProgress.topCommentId)
+        assertEquals(-24, session.scrollProgress.topCommentOffset)
+        collection.cancel()
+    }
+
     @Test
     fun featureRuntimeOwnsInitializationSearchAndPlatformDecisionRouting() = runTest {
         val session = CommentsSessionState()

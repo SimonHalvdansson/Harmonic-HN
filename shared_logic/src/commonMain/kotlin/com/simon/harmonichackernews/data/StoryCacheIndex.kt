@@ -23,14 +23,21 @@ object StoryCacheIndex {
             StoryCacheEntry::storyId,
         ).toMutableMap()
         validEntries[storyId] = StoryCacheEntry(storyId, cachedAtMillis)
-        val evicted = mutableListOf<Int>()
-        while (validEntries.size > maximumEntries.coerceAtLeast(0)) {
-            val oldest = validEntries.values.minWithOrNull(
+        val evictionCount = validEntries.size - maximumEntries.coerceAtLeast(0)
+        val evicted = if (evictionCount > 0) {
+            val evictionOrder = validEntries.values.sortedWith(
                 compareBy<StoryCacheEntry>(StoryCacheEntry::cachedAtMillis)
                     .thenBy(StoryCacheEntry::storyId),
-            ) ?: break
-            validEntries.remove(oldest.storyId)
-            evicted += oldest.storyId
+            )
+            ArrayList<Int>(evictionCount).apply {
+                repeat(evictionCount) { index ->
+                    val entry = evictionOrder[index]
+                    validEntries.remove(entry.storyId)
+                    add(entry.storyId)
+                }
+            }
+        } else {
+            emptyList()
         }
         return StoryCacheIndexUpdate(validEntries.values.mapTo(linkedSetOf(), ::encode), evicted)
     }
@@ -52,18 +59,45 @@ object StoryCacheIndex {
         maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
     ): List<StoryCacheEntry> {
         val oldestAllowed = nowMillis - maxAgeMillis.coerceAtLeast(0L)
-        return entries(encodedEntries)
-            .filter { it.cachedAtMillis >= oldestAllowed }
-            .sortedWith(compareBy(StoryCacheEntry::cachedAtMillis, StoryCacheEntry::storyId))
+        val recent = ArrayList<StoryCacheEntry>(encodedEntries.size)
+        encodedEntries.forEach { value ->
+            val entry = parse(value) ?: return@forEach
+            if (entry.cachedAtMillis >= oldestAllowed) recent += entry
+        }
+        recent.sortWith(compareBy(StoryCacheEntry::cachedAtMillis, StoryCacheEntry::storyId))
+        return recent
     }
 
     private fun parse(value: String): StoryCacheEntry? {
-        val separator = value.indexOf('-')
-        if (separator <= 0 || separator == value.lastIndex || value.indexOf('-', separator + 1) >= 0) {
-            return null
+        if (value.isEmpty()) return null
+
+        var index = 0
+        if (value[index] == '+') index++
+
+        var id = 0
+        var idDigits = 0
+        while (index < value.length && value[index] != '-') {
+            val digit = value[index] - '0'
+            if (digit !in 0..9 || id > (Int.MAX_VALUE - digit) / 10) return null
+            id = id * 10 + digit
+            idDigits++
+            index++
         }
-        val id = value.substring(0, separator).toIntOrNull()?.takeIf { it > 0 } ?: return null
-        val time = value.substring(separator + 1).toLongOrNull()?.takeIf { it >= 0 } ?: return null
+        if (idDigits == 0 || id <= 0 || index >= value.lastIndex) return null
+        index++
+
+        if (value[index] == '+') index++
+
+        var time = 0L
+        var timeDigits = 0
+        while (index < value.length) {
+            val digit = value[index] - '0'
+            if (digit !in 0..9 || time > (Long.MAX_VALUE - digit) / 10L) return null
+            time = time * 10L + digit
+            timeDigits++
+            index++
+        }
+        if (timeDigits == 0) return null
         return StoryCacheEntry(id, time)
     }
 

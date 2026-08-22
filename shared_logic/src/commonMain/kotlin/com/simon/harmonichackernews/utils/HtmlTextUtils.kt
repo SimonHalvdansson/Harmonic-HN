@@ -22,14 +22,7 @@ object HtmlTextUtils {
     }
 
     fun normalizeAndTruncatePlainText(value: String, maximumChars: Int): String {
-        val normalized = value
-            .replace('\u00a0', ' ')
-            .replace("\r\n", "\n")
-            .replace('\r', '\n')
-            .replace(Regex("[\\t\\u000B\\f ]+"), " ")
-            .replace(Regex(" *\\n *"), "\n")
-            .replace(Regex("\\n{3,}"), "\n\n")
-            .trim()
+        val normalized = normalizePlainText(value)
         if (maximumChars <= 0 || normalized.length <= maximumChars) return normalized
         val minimumBoundary = (maximumChars * 0.75f).toInt()
         val end = (maximumChars - 1 downTo minimumBoundary)
@@ -37,6 +30,56 @@ object HtmlTextUtils {
             ?: maximumChars
         return normalized.substring(0, end).trim() + "…"
     }
+
+    private fun normalizePlainText(value: String): String {
+        if (value.isEmpty()) return value
+        val normalized = StringBuilder(value.length)
+        var pendingSpace = false
+        var pendingNewlines = 0
+        var index = 0
+
+        fun flushPending() {
+            if (pendingNewlines > 0) {
+                repeat(minOf(pendingNewlines, 2)) { normalized.append('\n') }
+            } else if (pendingSpace) {
+                normalized.append(' ')
+            }
+            pendingSpace = false
+            pendingNewlines = 0
+        }
+
+        while (index < value.length) {
+            val character = value[index++]
+            when {
+                character == '\r' -> {
+                    if (index < value.length && value[index] == '\n') index++
+                    pendingSpace = false
+                    pendingNewlines++
+                }
+
+                character == '\n' -> {
+                    pendingSpace = false
+                    pendingNewlines++
+                }
+
+                character.isCollapsibleHorizontalWhitespace() -> {
+                    if (pendingNewlines == 0) pendingSpace = true
+                }
+
+                else -> {
+                    flushPending()
+                    normalized.append(character)
+                }
+            }
+        }
+
+        // Pending ASCII whitespace would be removed by the final trim, so avoid materializing it.
+        return normalized.toString().trim()
+    }
+
+    private fun Char.isCollapsibleHorizontalWhitespace(): Boolean =
+        this == ' ' || this == '\t' || this == '\u000B' || this == '\u000C' ||
+            this == '\u00A0'
 }
 
 object StoryTitlePolicy {

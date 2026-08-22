@@ -36,18 +36,35 @@ class StoryVisibilityPolicy(
     }
 
     fun shouldHide(story: Story, storyType: StoryType): Boolean {
-        val author = story.by.orEmpty().normalizeFilterValue()
-        if (author.isNotEmpty() && author in config.filteredUsers) return true
+        val current = config
+        if (current.filteredUsers.isEmpty() && current.filteredWords.isEmpty() &&
+            current.filteredDomains.isEmpty() && (!current.hideJobs || storyType == StoryType.HN_JOBS)
+        ) {
+            return false
+        }
 
-        val title = story.title.orEmpty().lowercase()
-        if (config.filteredWords.any(title::contains)) return true
+        var normalizedAuthor: String? = null
+        if (current.filteredUsers.isNotEmpty()) {
+            val author = story.by.orEmpty().normalizeFilterValue()
+            normalizedAuthor = author
+            if (author.isNotEmpty() && author in current.filteredUsers) return true
+        }
 
-        val domain = runCatching { story.getDisplayDomain(true).orEmpty().lowercase() }
-            .getOrDefault("")
-        if (domain.isNotEmpty() && config.filteredDomains.any(domain::contains)) return true
+        if (current.filteredWords.isNotEmpty()) {
+            val title = story.title.orEmpty().lowercase()
+            if (current.filteredWords.any(title::contains)) return true
+        }
 
-        return config.hideJobs && storyType != StoryType.HN_JOBS &&
-            (story.isJob || author == WHO_IS_HIRING)
+        if (current.filteredDomains.isNotEmpty()) {
+            val domain = runCatching { story.getDisplayDomain(true).orEmpty().lowercase() }
+                .getOrDefault("")
+            if (domain.isNotEmpty() && current.filteredDomains.any(domain::contains)) return true
+        }
+
+        if (!current.hideJobs || storyType == StoryType.HN_JOBS) return false
+        if (story.isJob) return true
+        val author = normalizedAuthor ?: story.by.orEmpty().normalizeFilterValue()
+        return author == WHO_IS_HIRING
     }
 
     private fun StoryVisibilityConfig.normalized() = copy(
@@ -149,8 +166,11 @@ class PreviewPrefetchPlanner(
     fun drain(stories: List<Story>): List<Story> {
         if (scheduled) return emptyList()
         val selected = mutableListOf<Story>()
+        // A single queued row is cheaper to find directly. Larger queues use one display-index
+        // map for the entire drain instead of rescanning the story list for every queue candidate.
+        val displayIndexes = if (queue.size > 1) firstDisplayIndexes(stories) else null
         while (slotsRemaining > 0) {
-            val story = removeNext(stories) ?: break
+            val story = removeNext(stories, displayIndexes) ?: break
             if (story.id > 0) requestedIds += story.id
             slotsRemaining--
             selected += story
@@ -198,22 +218,43 @@ class PreviewPrefetchPlanner(
         return if (last >= first) first..last else null
     }
 
-    private fun removeNext(stories: List<Story>): Story? {
-        while (true) {
-            val bestIndex = queue.indices.minByOrNull { index ->
-                stories.indexOf(queue[index]).takeIf { it >= 0 } ?: Int.MAX_VALUE
-            } ?: return null
-            val story = queue[bestIndex]
-            val storyIndex = stories.indexOf(story)
-            if (storyIndex >= 0 && story.loaded && !story.loadingFailed) {
-                queue.removeAt(bestIndex)
-                if (story.id > 0) queuedIds.remove(story.id)
-                return story
+    private fun removeNext(
+        stories: List<Story>,
+        displayIndexes: Map<Story, Int>?,
+    ): Story? {
+        while (queue.isNotEmpty()) {
+            var bestQueueIndex = 0
+            var bestDisplayIndex = displayIndex(queue[0], stories, displayIndexes)
+            var bestRank = bestDisplayIndex.takeIf { it >= 0 } ?: Int.MAX_VALUE
+            for (queueIndex in 1..<queue.size) {
+                val candidateDisplayIndex = displayIndex(queue[queueIndex], stories, displayIndexes)
+                val candidateRank = candidateDisplayIndex.takeIf { it >= 0 } ?: Int.MAX_VALUE
+                if (candidateRank < bestRank) {
+                    bestQueueIndex = queueIndex
+                    bestDisplayIndex = candidateDisplayIndex
+                    bestRank = candidateRank
+                }
             }
-            queue.removeAt(bestIndex)
+
+            val story = queue.removeAt(bestQueueIndex)
             if (story.id > 0) queuedIds.remove(story.id)
+            if (bestDisplayIndex >= 0 && story.loaded && !story.loadingFailed) return story
         }
+        return null
     }
+
+    private fun firstDisplayIndexes(stories: List<Story>): Map<Story, Int> =
+        HashMap<Story, Int>(stories.size).apply {
+            stories.forEachIndexed { index, story ->
+                if (story !in this) this[story] = index
+            }
+        }
+
+    private fun displayIndex(
+        story: Story,
+        stories: List<Story>,
+        displayIndexes: Map<Story, Int>?,
+    ): Int = if (displayIndexes == null) stories.indexOf(story) else displayIndexes[story] ?: -1
 
     private fun updateCompletion(stories: List<Story>) {
         if (complete || targetIndex < 0 || queue.isNotEmpty()) return

@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class StoriesInteractionStoreTest {
@@ -80,6 +81,9 @@ class StoriesInteractionStoreTest {
             listOf(ArgbColor(10), ArgbColor(20), ArgbColor(30)),
             store.state.storyPreviewOverlay?.cardBackgrounds,
         )
+        val overlay = requireNotNull(store.state.storyPreviewOverlay)
+        assertEquals(listOf(10, 20, 30), overlay.cardColors)
+        assertSame(overlay.cardColors, overlay.cardColors)
         assertEquals(1, store.state.storyPreviewOverlay?.initialPage)
         assertEquals(2, store.state.visibleStoryPreviewId)
         assertEquals(setOf(2), store.state.suppressedStoryIds)

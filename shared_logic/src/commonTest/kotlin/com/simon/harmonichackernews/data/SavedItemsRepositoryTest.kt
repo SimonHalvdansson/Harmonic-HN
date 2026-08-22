@@ -53,6 +53,67 @@ class SavedItemsRepositoryTest {
     }
 
     @Test
+    fun membershipCachePreservesDuplicateRemovalAndItemOrder() {
+        val repository = SavedItemsRepository(
+            TestKeyValueStore(
+                mapOf(SavedItemKeys.BOOKMARKS to "3q30-1q10-3q20-2q40"),
+            ),
+        )
+
+        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 3))
+        assertTrue(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 50))
+        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 3))
+        assertEquals(
+            listOf(
+                TimestampedItem(1, 10),
+                TimestampedItem(3, 20),
+                TimestampedItem(2, 40),
+            ),
+            repository.loadItems(SavedItemSource.BOOKMARKS),
+        )
+
+        assertTrue(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 60))
+        assertFalse(repository.contains(SavedItemSource.BOOKMARKS, 3))
+        assertEquals(
+            listOf(TimestampedItem(1, 10), TimestampedItem(2, 40)),
+            repository.loadItems(SavedItemSource.BOOKMARKS),
+        )
+    }
+
+    @Test
+    fun directSavesPreserveListSemanticsAndSnapshotsRefreshCachedMembership() {
+        val repository = SavedItemsRepository(
+            TestKeyValueStore(mapOf(SavedItemKeys.FAVORITES to "1q10")),
+        )
+
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 1))
+        val saved = listOf(
+            TimestampedItem(4, 40),
+            TimestampedItem(2, 20),
+            TimestampedItem(4, 10),
+        )
+        repository.saveItems(SavedItemSource.FAVORITES, saved)
+
+        assertFalse(repository.contains(SavedItemSource.FAVORITES, 1))
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 4))
+        assertEquals(saved, repository.loadItems(SavedItemSource.FAVORITES))
+
+        repository.saveSnapshot(
+            source = SavedItemSource.FAVORITES,
+            snapshot = SavedItemSnapshot(itemIds = listOf(8, 6, 8), commentIds = setOf(6)),
+            createdAtMillis = 100,
+        )
+
+        assertFalse(repository.contains(SavedItemSource.FAVORITES, 4))
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 8))
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 6))
+        assertEquals(
+            listOf(TimestampedItem(8, 100), TimestampedItem(6, 99)),
+            repository.loadItems(SavedItemSource.FAVORITES),
+        )
+    }
+
+    @Test
     fun snapshotsNormalizeDuplicatesAndRestrictCommentIdsToSavedItems() {
         val snapshot = SavedItemSnapshots.normalize(
             itemIds = listOf(2, 5, 2, 3),
