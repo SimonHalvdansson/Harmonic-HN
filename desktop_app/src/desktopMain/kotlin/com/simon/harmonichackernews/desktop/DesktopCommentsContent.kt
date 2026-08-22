@@ -224,6 +224,7 @@ internal fun DesktopCommentsContent(
             Box(Modifier.weight(1f)) {
                 SharedCommentsRoute(
                     controller = host.controller,
+                    reserveUpButtonInset = showFloatingUpButton,
                     headerContent = { settings ->
                         DesktopCommentsHeader(app, scene, host.controller, settings)
                     },

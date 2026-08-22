@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 fun SharedCommentsRoute(
     controller: CommentsComposeController,
     listModifier: Modifier = Modifier,
+    reserveUpButtonInset: Boolean = false,
     headerContent: @Composable (CommentDisplaySettings) -> Unit,
     searchDialog: @Composable (CommentDisplaySettings) -> Unit,
     actionOverlay: @Composable (CommentDisplaySettings) -> Unit,
@@ -30,6 +31,7 @@ fun SharedCommentsRoute(
     SharedCommentsScreen(
         controller = controller,
         listModifier = listModifier,
+        reserveUpButtonInset = reserveUpButtonInset,
         animateComments = commentPreferences.animateChanges,
         showScrollbar = commentPreferences.showScrollbar,
         smoothScroll = commentPreferences.smoothScroll,

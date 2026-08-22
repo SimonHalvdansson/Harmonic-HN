@@ -1285,7 +1285,10 @@ private fun CommentsPane(
                     val showFloatingUpButton = showUpButton &&
                         commentsController.displaySettings?.showUpButton == true
                     if (!commentsController.webViewFullscreen) {
-                        CommentsScaffold(commentsController)
+                        CommentsScaffold(
+                            controller = commentsController,
+                            reserveUpButtonInset = showFloatingUpButton,
+                        )
                     }
                     val showStatusBarProtection = drawStatusBarProtection &&
                         !(commentsController.integratedWebView &&

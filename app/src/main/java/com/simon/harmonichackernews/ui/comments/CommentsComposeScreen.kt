@@ -57,7 +57,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 /** Android shell for system insets, nested-scroll interop, and image/cache facilities. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CommentsScaffold(controller: CommentsComposeController) {
+internal fun CommentsScaffold(
+    controller: CommentsComposeController,
+    reserveUpButtonInset: Boolean,
+) {
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val peekHeight = navigationBottom + if (controller.displaySettings?.isTablet == true) 81.dp else 68.dp
@@ -120,7 +123,7 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
                         .fillMaxWidth()
                         .height(fullHeight),
                 ) {
-                    CommentsScreen(controller)
+                    CommentsScreen(controller, reserveUpButtonInset)
                 }
             },
             content = {},
@@ -129,11 +132,15 @@ internal fun CommentsScaffold(controller: CommentsComposeController) {
 }
 
 @Composable
-internal fun CommentsScreen(controller: CommentsComposeController) {
+internal fun CommentsScreen(
+    controller: CommentsComposeController,
+    reserveUpButtonInset: Boolean,
+) {
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
     SharedCommentsRoute(
         controller = controller,
         listModifier = Modifier.nestedScroll(nestedScrollInterop),
+        reserveUpButtonInset = reserveUpButtonInset,
         headerContent = { settings ->
             CommentsHeader(
                 controller = controller,

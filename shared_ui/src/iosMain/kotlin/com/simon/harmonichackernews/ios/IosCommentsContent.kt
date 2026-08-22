@@ -222,10 +222,13 @@ internal fun IosCommentsContent(
         host.store.loadInitial(restoreScrollFromCache = host.restoringStoredProgress)
     }
 
+    val showFloatingUpButton = showUpButton &&
+        host.controller.displaySettings?.showUpButton == true
     val comments: @Composable () -> Unit = {
         Box(Modifier.fillMaxSize()) {
             SharedCommentsRoute(
                 controller = host.controller,
+                reserveUpButtonInset = showFloatingUpButton,
                 headerContent = { settings ->
                     IosCommentsHeader(app, scene, host.controller, settings)
                 },
@@ -262,8 +265,6 @@ internal fun IosCommentsContent(
         host.controller.statusBarHeaderColor ?: background,
         host.controller.statusBarHeaderCoverage,
     )
-    val showFloatingUpButton = showUpButton &&
-        host.controller.displaySettings?.showUpButton == true
     val showStatusBarProtection = !(host.controller.integratedWebView &&
         host.controller.isScrolledToTop)
     SharedCommentsHazeHost {

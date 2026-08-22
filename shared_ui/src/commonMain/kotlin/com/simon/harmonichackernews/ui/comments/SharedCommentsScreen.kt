@@ -73,6 +73,7 @@ import kotlin.math.abs
 import org.jetbrains.compose.resources.painterResource
 
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
+private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
 
 private suspend fun LazyListState.animateToCommentNavigationTarget(
     index: Int,
@@ -131,6 +132,7 @@ private suspend fun LazyListState.animateToCommentNavigationTarget(
 fun SharedCommentsScreen(
     controller: CommentsComposeController,
     listModifier: Modifier,
+    reserveUpButtonInset: Boolean,
     animateComments: Boolean,
     showScrollbar: Boolean,
     smoothScroll: Boolean,
@@ -160,6 +162,11 @@ fun SharedCommentsScreen(
     val visibleComments = controller.visibleComments
     val density = LocalDensity.current
     val topInsetPx = WindowInsets.statusBars.getTop(density)
+    val navigationTopOffsetPx = topInsetPx + if (reserveUpButtonInset) {
+        with(density) { COMMENTS_UP_BUTTON_NAVIGATION_INSET.roundToPx() }
+    } else {
+        0
+    }
     val statusBarInset = with(density) { topInsetPx.toDp() }
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
@@ -202,7 +209,7 @@ fun SharedCommentsScreen(
     }
 
     val navigationRequest = controller.navigationRequest
-    LaunchedEffect(navigationRequest, visibleComments) {
+    LaunchedEffect(navigationRequest, visibleComments, navigationTopOffsetPx) {
         val request = navigationRequest ?: return@LaunchedEffect
         val target = when (request.edge) {
             CommentNavigationEdge.First -> -1
@@ -213,11 +220,11 @@ fun SharedCommentsScreen(
                 comments = visibleComments,
                 forward = request.forward,
                 topLevelOnly = request.topLevelOnly,
-                topOffsetPx = topInsetPx,
+                topOffsetPx = navigationTopOffsetPx,
             )
         }
         val listIndex = target + 1
-        val scrollOffset = if (listIndex == 0) 0 else -topInsetPx
+        val scrollOffset = if (listIndex == 0) 0 else -navigationTopOffsetPx
         if (request.animate) {
             listState.animateToCommentNavigationTarget(
                 index = listIndex,
