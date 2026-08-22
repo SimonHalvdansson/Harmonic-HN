@@ -382,10 +382,15 @@ fun StoryItem(
                 }
             }
             .onGloballyPositioned { coordinates ->
-                // Keep the live coordinates, but defer the relatively expensive window transform
-                // until the user actually opens a preview. Scrolling otherwise recalculates and
-                // stores every visible story rectangle on every placement pass.
                 itemGeometry.coordinates = coordinates
+                // Normally defer the window transforms until a preview needs this row. Once it is
+                // the pager's settled source, however, keep its published geometry aligned with
+                // the list. The last pager-driven list delta can land after the page settles; a
+                // one-shot snapshot would then make the dismiss transform end at the old position.
+                if (capturePreviewSourceGeometry) {
+                    itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+                        ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
+                }
             }
     }
     val trackedLinkLongClick = onLinkLongClick?.let {
