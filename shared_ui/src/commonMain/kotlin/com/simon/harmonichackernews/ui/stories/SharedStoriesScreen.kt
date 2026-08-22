@@ -366,12 +366,16 @@ private fun StoriesList(
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
     val headerHeight = with(density) { headerHeightPx.toDp() }
-    val headerCollapsePx by remember(listState, headerHeightPx) {
+    val headerCollapsePx by remember(listState, headerHeightPx, stories) {
         derivedStateOf {
-            if (listState.firstVisibleItemIndex > 0) {
-                headerHeightPx
-            } else {
-                listState.firstVisibleItemScrollOffset.coerceAtMost(headerHeightPx)
+            calculateStoriesHeaderCollapsePx(
+                headerHeightPx = headerHeightPx,
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+            ) { precedingIndex ->
+                stories.getOrNull(precedingIndex)
+                    ?.let { story -> controller.getAdjacentStoryPagingDistance(story.id) }
+                    ?: headerHeightPx
             }
         }
     }
@@ -608,6 +612,23 @@ private fun StoriesList(
             }
         }
     }
+}
+
+internal inline fun calculateStoriesHeaderCollapsePx(
+    headerHeightPx: Int,
+    firstVisibleItemIndex: Int,
+    firstVisibleItemScrollOffset: Int,
+    precedingItemHeightPx: (Int) -> Int,
+): Int {
+    if (headerHeightPx <= 0) return 0
+
+    var collapsePx = firstVisibleItemScrollOffset.coerceAtLeast(0)
+    var precedingIndex = 0
+    while (precedingIndex < firstVisibleItemIndex && collapsePx < headerHeightPx) {
+        collapsePx += precedingItemHeightPx(precedingIndex).coerceAtLeast(0)
+        precedingIndex++
+    }
+    return collapsePx.coerceAtMost(headerHeightPx)
 }
 
 @Composable
