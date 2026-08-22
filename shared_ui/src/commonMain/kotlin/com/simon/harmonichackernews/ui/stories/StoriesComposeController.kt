@@ -1,7 +1,10 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -135,9 +138,13 @@ class StoriesComposeController private constructor(
 
     private val interactionStore = StoriesInteractionStore(defaultStoryHeightPx)
     private var interactionState by mutableStateOf(interactionStore.state)
+    private var scrollByRequestState by mutableStateOf<StoryScrollRequest?>(null)
     private val storyBounds = mutableMapOf<Int, Rect>()
     private val storyPreviewSourceGeometries = mutableMapOf<Int, StoryPreviewSourceGeometry>()
     private val storyRevisions = mutableMapOf<Int, MutableIntState>()
+    private val storyPagingAlphaStates = mutableMapOf<Int, MutableFloatState>()
+    private var pagingLowerStoryId = -1
+    private var pagingUpperStoryId = -1
     private var sourceCoveredByStoryPreviewTransition by mutableStateOf(false)
 
     val searching: Boolean get() = interactionState.searching
@@ -149,7 +156,7 @@ class StoriesComposeController private constructor(
     val suppressSearchAutoFocus: Boolean get() = interactionState.suppressSearchAutoFocus
     val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
         get() = interactionState.predictiveBackSettleRequest
-    val scrollByRequest: StoryScrollRequest? get() = interactionState.scrollRequest
+    val scrollByRequest: StoryScrollRequest? get() = scrollByRequestState
     val storyPagingAlphas: Map<Int, Float> get() = interactionState.storyPagingAlphas
     val storyPreviewOverlay: StoryPreviewOverlayState?
         get() = interactionState.storyPreviewOverlay
@@ -168,6 +175,7 @@ class StoriesComposeController private constructor(
 
     private fun syncInteractionState() {
         interactionState = interactionStore.state
+        scrollByRequestState = interactionStore.state.scrollRequest
     }
 
     fun updateContent(state: StoriesScreenState) {
@@ -185,12 +193,13 @@ class StoriesComposeController private constructor(
             state.searching,
             state.lastSearch,
         )
-        if (storyRevisions.isNotEmpty()) {
+        if (storyRevisions.isNotEmpty() || storyPagingAlphaStates.isNotEmpty()) {
             val currentStoryIds = buildSet(state.mainStories.size + state.searchStories.size) {
                 state.mainStories.forEach { add(it.id) }
                 state.searchStories.forEach { add(it.id) }
             }
             storyRevisions.keys.retainAll(currentStoryIds)
+            storyPagingAlphaStates.keys.retainAll(currentStoryIds)
         }
         syncInteractionState()
         contentVersion++
@@ -294,38 +303,46 @@ class StoriesComposeController private constructor(
 
     fun requestScrollBy(dy: Int) {
         interactionStore.requestScrollBy(dy)
-        syncInteractionState()
+        scrollByRequestState = interactionStore.state.scrollRequest
     }
 
     fun consumeScrollBy(request: StoryScrollRequest, consumedDy: Int) {
         interactionStore.consumeScrollRequest(request, consumedDy)
-        syncInteractionState()
+        scrollByRequestState = interactionStore.state.scrollRequest
     }
 
     fun clearStoryPagingAlphas() {
+        resetStoryPagingAlphaStates()
         interactionStore.clearStoryPagingAlphas()
         syncInteractionState()
     }
 
     fun showStoryPreview(
         stories: List<StoryListItemSnapshot>,
-        cardColors: IntArray,
+        cardColors: List<Int>,
         openedStoryId: Int,
     ) {
         if (!interactionStore.showStoryPreview(
                 stories,
-                cardColors.toList(),
+                cardColors,
                 openedStoryId,
             )
         ) return
+        resetStoryPagingAlphaStates()
         sourceCoveredByStoryPreviewTransition = false
         requestStopStoryPreviewScroll()
         syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(true)
     }
 
+    fun showStoryPreview(
+        stories: List<StoryListItemSnapshot>,
+        cardColors: IntArray,
+        openedStoryId: Int,
+    ) = showStoryPreview(stories, cardColors.toList(), openedStoryId)
+
     fun showStoryPreview(deck: com.simon.harmonichackernews.presentation.StoryPreviewDeck) =
-        showStoryPreview(deck.stories, deck.cardColors.toIntArray(), deck.openedStoryId)
+        showStoryPreview(deck.stories, deck.cardColors, deck.openedStoryId)
 
     fun restoreStoryPreview(
         stories: List<StoryListItemSnapshot>,
@@ -342,6 +359,7 @@ class StoriesComposeController private constructor(
 
     fun completeStoryPreviewDismiss() {
         if (!interactionStore.completeStoryPreviewDismiss()) return
+        resetStoryPagingAlphaStates()
         sourceCoveredByStoryPreviewTransition = false
         syncInteractionState()
         listener.onStoryPreviewVisibilityChanged(false)
@@ -390,8 +408,50 @@ class StoriesComposeController private constructor(
         upperPage: Int,
         offset: Float,
     ) {
-        interactionStore.updateStoryPreviewPagePosition(lowerPage, upperPage, offset)
-        syncInteractionState()
+        val stories = interactionStore.state.storyPreviewOverlay?.stories ?: return
+        val lowerStoryId = stories.getOrNull(lowerPage)?.id ?: return
+        val upperStoryId = stories.getOrNull(upperPage)?.id ?: lowerStoryId
+        val normalizedOffset = offset.coerceIn(0f, 1f)
+
+        if (pagingLowerStoryId != lowerStoryId && pagingLowerStoryId != upperStoryId) {
+            setStoryPagingAlpha(pagingLowerStoryId, 1f)
+        }
+        if (pagingUpperStoryId != lowerStoryId && pagingUpperStoryId != upperStoryId) {
+            setStoryPagingAlpha(pagingUpperStoryId, 1f)
+        }
+        setStoryPagingAlpha(
+            lowerStoryId,
+            if (upperStoryId == lowerStoryId) 0f else normalizedOffset,
+        )
+        if (upperStoryId != lowerStoryId) {
+            setStoryPagingAlpha(upperStoryId, 1f - normalizedOffset)
+        }
+        pagingLowerStoryId = lowerStoryId
+        pagingUpperStoryId = upperStoryId
+
+        // This is a one-time transition. Subsequent drag samples only invalidate the two alpha
+        // states above instead of publishing a new whole-screen interaction snapshot each frame.
+        if (interactionState.suppressedStoryIds.isNotEmpty()) {
+            interactionStore.beginStoryPreviewPaging()
+            syncInteractionState()
+        }
+    }
+
+    fun storyPagingAlphaState(storyId: Int): FloatState =
+        storyPagingAlphaStates.getOrPut(storyId) { mutableFloatStateOf(1f) }
+
+    private fun setStoryPagingAlpha(storyId: Int, alpha: Float) {
+        if (storyId < 0) return
+        storyPagingAlphaStates.getOrPut(storyId) { mutableFloatStateOf(1f) }.floatValue = alpha
+    }
+
+    private fun resetStoryPagingAlphaStates() {
+        setStoryPagingAlpha(pagingLowerStoryId, 1f)
+        if (pagingUpperStoryId != pagingLowerStoryId) {
+            setStoryPagingAlpha(pagingUpperStoryId, 1f)
+        }
+        pagingLowerStoryId = -1
+        pagingUpperStoryId = -1
     }
 
     fun onStoryPreviewPageSettled(page: Int) {

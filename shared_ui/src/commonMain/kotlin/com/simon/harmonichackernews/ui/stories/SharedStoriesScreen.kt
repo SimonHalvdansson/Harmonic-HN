@@ -459,7 +459,7 @@ private fun StoriesList(
                                 .then(itemHeightModifier),
                         )
                     } else {
-                        val pagingAlpha = controller.storyPagingAlphas[story.id] ?: 1f
+                        val pagingAlpha = controller.storyPagingAlphaState(story.id)
                         val suppressed = controller.isStorySuppressed(story.id)
                         val keepPreviewSourceVisible =
                             controller.shouldKeepStoryPreviewSourceVisible(story.id)
@@ -507,13 +507,13 @@ private fun StoriesList(
                         }
                         val itemModifier = Modifier
                             .animateItem(placementSpec = null)
-                            .graphicsLayer(
+                            .graphicsLayer {
                                 alpha = if (keepPreviewSourceVisible) {
                                     revealAlpha
                                 } else {
-                                    (if (suppressed) 0f else pagingAlpha) * revealAlpha
-                                },
-                            )
+                                    (if (suppressed) 0f else pagingAlpha.floatValue) * revealAlpha
+                                }
+                            }
                         StoryItem(
                             model = model,
                             style = style,

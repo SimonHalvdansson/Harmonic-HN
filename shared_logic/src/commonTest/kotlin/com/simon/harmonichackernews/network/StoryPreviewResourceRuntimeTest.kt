@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -124,6 +125,30 @@ class StoryPreviewResourceRuntimeTest {
 
         assertTrue(runtime.stateFor(4)?.imageLoadFailed == true)
         assertFalse(runtime.beginImageLoad(4, PAGE_URL, "https://example.com/failed.png"))
+    }
+
+    @Test
+    fun identicalImageCompletionDoesNotRepublishTheResourceMap() = runTest {
+        val imageUrl = "https://example.com/image.png"
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(false, null, null)
+
+                override suspend fun load(request: StoryPreviewResourceRequest) =
+                    PreviewContent(imageUrl, null)
+            },
+        )
+        runtime.request(request(storyId = 5, loadSummary = false))
+        runCurrent()
+        assertTrue(runtime.beginImageLoad(5, PAGE_URL, imageUrl))
+        runtime.completeImageLoad(5, PAGE_URL, imageUrl, success = true)
+        val completedStates = runtime.states.value
+
+        runtime.completeImageLoad(5, PAGE_URL, imageUrl, success = true)
+
+        assertSame(completedStates, runtime.states.value)
     }
 
     @Test

@@ -16,9 +16,7 @@ data class StoryPreviewOverlayState(
     val stories: List<StoryListItemSnapshot>,
     val cardBackgrounds: List<ArgbColor>,
     val initialPage: Int,
-) {
-    val cardColors: List<Int> = cardBackgrounds.map(ArgbColor::value)
-}
+)
 
 data class StoryPreviewTarget(val story: StoryListItemSnapshot)
 
@@ -305,6 +303,12 @@ class StoriesInteractionStore(
                 if (upperPage != lowerPage) put(upper.id, 1f - normalizedOffset)
             },
         )
+    }
+
+    /** Releases the initially covered source row when live pager drawing takes over. */
+    fun beginStoryPreviewPaging() {
+        if (state.suppressedStoryIds.isEmpty()) return
+        state = state.copy(suppressedStoryIds = emptySet())
     }
 
     fun settleStoryPreviewPage(page: Int) {

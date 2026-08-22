@@ -130,26 +130,36 @@ fun SharedStoryPreviewCard(
                 .orEmpty()
         }
     }
-    val storyTitle = storyTitlePresentation(
-        title = story.title,
-        pdfTitle = story.presentation.pdfTitle,
-        videoTitle = story.presentation.videoTitle,
-    )
+    val storyTitle = remember(
+        story.title,
+        story.presentation.pdfTitle,
+        story.presentation.videoTitle,
+    ) {
+        storyTitlePresentation(
+            title = story.title,
+            pdfTitle = story.presentation.pdfTitle,
+            videoTitle = story.presentation.videoTitle,
+        )
+    }
     val title = if (storyTitle.badge != null) {
         storyTitle.text
     } else {
         summaryState.result?.title?.takeIf(String::isNotBlank) ?: storyTitle.text
     }
-    val domain = if (story.isLink) {
-        story.url?.let { DomainNamePolicy.fromUrl(it) ?: it }
-    } else {
-        story.author
+    val domain = remember(story.isLink, story.url, story.author) {
+        if (story.isLink) {
+            story.url?.let { DomainNamePolicy.fromUrl(it) ?: it }
+        } else {
+            story.author
+        }
     }
-    val meta = buildString {
-        append(story.score)
-        append(if (story.score == 1) " point" else " points")
-        if (!domain.isNullOrBlank()) append(" • ").append(domain)
-        append(" • ").append(ItemTimeFormatter.formatNow(story.createdAtEpochSeconds))
+    val meta = remember(story.score, story.createdAtEpochSeconds, domain) {
+        buildString {
+            append(story.score)
+            append(if (story.score == 1) " point" else " points")
+            if (!domain.isNullOrBlank()) append(" • ").append(domain)
+            append(" • ").append(ItemTimeFormatter.formatNow(story.createdAtEpochSeconds))
+        }
     }
 
     Box(modifier = modifier) {
