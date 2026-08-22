@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -430,12 +432,14 @@ private fun IosCommentsHeader(
                     }
                 },
                 onClick = controller.listener::onHeaderClick,
-                onLongClick = { bounds ->
+                onLongClick = { bounds, sourceContentLayer, imageAspectRatio ->
                     imageUrl?.let { url ->
                         controller.showImagePreview(
                             imageUrl = url,
                             description = "Preview image for ${controller.story.title.orEmpty()}",
                             sourceBounds = bounds,
+                            sourceContentLayer = sourceContentLayer,
+                            imageAspectRatio = imageAspectRatio,
                             backgroundColor = tintBase,
                         )
                     }
@@ -458,18 +462,23 @@ internal fun IosCommentLinkPreview(
             IosReferencePreview(app, scene, controller, state)
         },
         imageContent = { state ->
+            val imageRatio = state.imageAspectRatio ?: state.sourceBounds?.let { bounds ->
+                if (bounds.height > 0f) bounds.width / bounds.height else 16f / 9f
+            } ?: (16f / 9f)
             Column(
                 Modifier
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(HarmonicTheme.colors.surfaceContainerHigh),
+                    .fillMaxWidth()
+                    .heightIn(max = 720.dp)
+                    .verticalScroll(rememberScrollState()),
             ) {
                 AsyncImage(
                     model = state.imageUrl,
                     contentDescription = state.description,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp, max = 720.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(imageRatio.coerceIn(0.35f, 4f)),
                     contentScale = ContentScale.Fit,
                 )
-                if (state.description.isNotBlank()) Text(state.description)
             }
         },
     )

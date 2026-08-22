@@ -52,6 +52,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
@@ -85,6 +86,7 @@ fun SharedTransformOverlay(
     sourceAnchorSize: Dp? = null,
     shadowElevation: Dp = 8.dp,
     scaleContentWithContainer: Boolean = false,
+    preserveContentAspectRatio: Boolean = false,
     keepContentOpaqueWithSource: Boolean = false,
     consumeAllGestures: Boolean = true,
     sourceContentLayer: GraphicsLayer? = null,
@@ -147,13 +149,17 @@ fun SharedTransformOverlay(
     }
 
     val progress = transformProgress.value.coerceIn(0f, 1f)
-    val predictiveEased = predictiveBackProgress.coerceIn(0f, 1f).let {
-        1f - (1f - it) * (1f - it)
-    }
+    // A committed predictive gesture is still at full strength when the close morph starts, then
+    // must unwind to identity with that morph so its source bounds are restored exactly.
+    val predictiveVisualProgress = predictiveBackVisualProgress(
+        predictiveBackProgress = predictiveBackProgress,
+        transformProgress = progress,
+    )
     val backDirection = if (predictiveBackEdge == 1) -1f else 1f
-    val backTranslationX = with(density) { 56.dp.toPx() } * predictiveEased * backDirection
-    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveEased
-    val backScale = 1f - 0.1f * predictiveEased
+    val backTranslationX =
+        with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
+    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
+    val backScale = 1f - 0.1f * predictiveVisualProgress
     val rootOffset = rootBounds.topLeft
     val localTarget = targetBounds?.translate(-rootOffset.x, -rootOffset.y)
     val localViewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
@@ -214,6 +220,26 @@ fun SharedTransformOverlay(
     }
     val movingElevation = (shadowElevation.value * shadowProgress * backScale).dp
     val gestureBlocker = if (consumeAllGestures) Modifier.consumeModalGestures() else Modifier
+    val contentMorphScaleX = if (
+        scaleContentWithContainer && localTarget != null && localTarget.width > 0f &&
+        container != null
+    ) {
+        container.width / localTarget.width
+    } else {
+        1f
+    }
+    val contentMorphScaleY = if (
+        scaleContentWithContainer && localTarget != null && localTarget.height > 0f &&
+        container != null
+    ) {
+        container.height / localTarget.height
+    } else {
+        1f
+    }
+    val aspectRatioCorrection = aspectPreservingCropCorrection(
+        scaleX = contentMorphScaleX,
+        scaleY = contentMorphScaleY,
+    )
 
     Box(
         modifier = Modifier
@@ -225,7 +251,7 @@ fun SharedTransformOverlay(
                 .fillMaxSize()
                 .background(
                     Color.Black.copy(
-                        alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
+                        alpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress),
                     ),
                 )
                 .then(gestureBlocker)
@@ -291,24 +317,8 @@ fun SharedTransformOverlay(
                         .graphicsLayer {
                             val target = localTarget
                             val current = container
-                            val morphScaleX = if (
-                                scaleContentWithContainer && target != null && target.width > 0f &&
-                                current != null
-                            ) {
-                                current.width / target.width
-                            } else {
-                                1f
-                            }
-                            val morphScaleY = if (
-                                scaleContentWithContainer && target != null && target.height > 0f &&
-                                current != null
-                            ) {
-                                current.height / target.height
-                            } else {
-                                1f
-                            }
-                            scaleX = morphScaleX * backScale
-                            scaleY = morphScaleY * backScale
+                            scaleX = contentMorphScaleX * backScale
+                            scaleY = contentMorphScaleY * backScale
                             translationX = if (target != null && current != null) {
                                 val sharedTranslation = if (scaleContentWithContainer) {
                                     current.center.x - target.center.x
@@ -331,6 +341,7 @@ fun SharedTransformOverlay(
                             }
                             alpha = when {
                                 sourceBounds == null -> progress
+                                preserveContentAspectRatio -> 1f
                                 sourceSnapshotRequired ->
                                     ((progress - 0.12f) / 0.58f).coerceIn(0f, 1f)
                                 inlineSource ->
@@ -338,7 +349,7 @@ fun SharedTransformOverlay(
                                 keepContentOpaqueWithSource -> 1f
                                 else -> ((progress - 0.06f) / 0.64f).coerceIn(0f, 1f)
                             }
-                            transformOrigin = if (predictiveEased > 0f) {
+                            transformOrigin = if (predictiveVisualProgress > 0f) {
                                 TransformOrigin(
                                     pivotFractionX = if (backDirection > 0f) 0f else 1f,
                                     pivotFractionY = 0.5f,
@@ -354,7 +365,18 @@ fun SharedTransformOverlay(
                             onClick = {},
                         ),
                 ) {
-                    content()
+                    if (preserveContentAspectRatio) {
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = aspectRatioCorrection.scaleX
+                                scaleY = aspectRatioCorrection.scaleY
+                            },
+                        ) {
+                            content()
+                        }
+                    } else {
+                        content()
+                    }
                 }
             }
         }
@@ -364,11 +386,34 @@ fun SharedTransformOverlay(
             if (snapshotAlpha > 0f && visualContainer != null) {
                 androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                     clipPath(roundedPath(visualContainer, visualRadiusPx)) {
-                        drawImage(
-                            image = snapshot,
-                            topLeft = visualContainer.topLeft,
-                            alpha = snapshotAlpha,
-                        )
+                        if (preserveContentAspectRatio) {
+                            val snapshotScale = max(
+                                visualContainer.width / snapshot.width,
+                                visualContainer.height / snapshot.height,
+                            )
+                            val destinationWidth = snapshot.width * snapshotScale
+                            val destinationHeight = snapshot.height * snapshotScale
+                            drawImage(
+                                image = snapshot,
+                                dstOffset = IntOffset(
+                                    x = (visualContainer.center.x - destinationWidth / 2f)
+                                        .roundToInt(),
+                                    y = (visualContainer.center.y - destinationHeight / 2f)
+                                        .roundToInt(),
+                                ),
+                                dstSize = IntSize(
+                                    width = destinationWidth.roundToInt().coerceAtLeast(1),
+                                    height = destinationHeight.roundToInt().coerceAtLeast(1),
+                                ),
+                                alpha = snapshotAlpha,
+                            )
+                        } else {
+                            drawImage(
+                                image = snapshot,
+                                topLeft = visualContainer.topLeft,
+                                alpha = snapshotAlpha,
+                            )
+                        }
                     }
                 }
             }
@@ -401,20 +446,58 @@ private fun roundedPath(rect: Rect, radius: Float): Path = Path().apply {
     )
 }
 
-private fun Rect.transformedForPredictiveBack(
+internal fun Rect.transformedForPredictiveBack(
     scale: Float,
     pivotFractionX: Float,
     translation: Offset,
+    pivotBounds: Rect = this,
 ): Rect {
     val pivot = Offset(
-        x = left + width * pivotFractionX,
-        y = center.y,
+        x = pivotBounds.left + pivotBounds.width * pivotFractionX,
+        y = pivotBounds.center.y,
     )
     return Rect(
         left = pivot.x + (left - pivot.x) * scale + translation.x,
         top = pivot.y + (top - pivot.y) * scale + translation.y,
         right = pivot.x + (right - pivot.x) * scale + translation.x,
         bottom = pivot.y + (bottom - pivot.y) * scale + translation.y,
+    )
+}
+
+internal fun predictiveBackVisualProgress(
+    predictiveBackProgress: Float,
+    transformProgress: Float = 1f,
+): Float {
+    val normalized = predictiveBackProgress.coerceIn(0f, 1f)
+    val eased = 1f - (1f - normalized) * (1f - normalized)
+    return eased * transformProgress.coerceIn(0f, 1f)
+}
+
+/**
+ * Target bounds must describe the fully displayed dialog. Bounds read below a predictive-back
+ * graphics layer already contain its scale and translation; accepting them during the gesture
+ * makes a dismissal overlay apply that transform for a second time.
+ */
+internal fun shouldUpdateRestingTargetGeometry(
+    predictiveBackProgress: Float,
+    dismissRequestVersion: Int,
+): Boolean = predictiveBackProgress <= 0f && dismissRequestVersion == 0
+
+internal data class ContentAspectRatioCorrection(
+    val scaleX: Float,
+    val scaleY: Float,
+)
+
+/** Counteracts a non-uniform container transform so its content is center-cropped, not stretched. */
+internal fun aspectPreservingCropCorrection(
+    scaleX: Float,
+    scaleY: Float,
+): ContentAspectRatioCorrection {
+    if (scaleX <= 0f || scaleY <= 0f) return ContentAspectRatioCorrection(1f, 1f)
+    val uniformScale = max(scaleX, scaleY)
+    return ContentAspectRatioCorrection(
+        scaleX = uniformScale / scaleX,
+        scaleY = uniformScale / scaleY,
     )
 }
 

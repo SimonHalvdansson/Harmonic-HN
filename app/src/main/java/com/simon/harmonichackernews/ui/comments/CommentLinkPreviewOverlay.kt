@@ -186,9 +186,9 @@ private fun ReferencePreviewImage(
 private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
     val context = LocalContext.current
     val appComposition = LocalHarmonicUiDependencies.current
-    var imageRatio by remember(state.imageUrl, state.sourceBounds) {
+    var imageRatio by remember(state.imageUrl, state.sourceBounds, state.imageAspectRatio) {
         mutableFloatStateOf(
-            state.sourceBounds?.let { bounds ->
+            state.imageAspectRatio ?: state.sourceBounds?.let { bounds ->
                 if (bounds.height > 0f) bounds.width / bounds.height else 16f / 9f
             } ?: (16f / 9f),
         )

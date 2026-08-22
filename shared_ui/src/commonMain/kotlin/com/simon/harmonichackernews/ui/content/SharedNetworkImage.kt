@@ -32,6 +32,7 @@ fun SharedNetworkImage(
     paletteTintConfigKey: String = "default",
     extractTint: Boolean = false,
     onSuccess: () -> Unit = {},
+    onImageAspectRatio: (Float) -> Unit = {},
     onError: () -> Unit = {},
     onTintExtracted: (Int) -> Unit = {},
 ) {
@@ -61,6 +62,14 @@ fun SharedNetworkImage(
         contentScale = contentScale,
         onSuccess = { result ->
             painter = result.painter
+            result.painter.intrinsicSize.let { size ->
+                if (
+                    size.width.isFinite() && size.height.isFinite() &&
+                    size.width > 0f && size.height > 0f
+                ) {
+                    onImageAspectRatio(size.width / size.height)
+                }
+            }
             onSuccess()
         },
         onError = { onError() },

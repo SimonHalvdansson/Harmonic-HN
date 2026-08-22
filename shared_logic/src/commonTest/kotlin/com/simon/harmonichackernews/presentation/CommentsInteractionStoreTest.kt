@@ -61,7 +61,7 @@ class CommentsInteractionStoreTest {
         assertEquals(1f, store.state.commentActionPredictiveBackProgress)
         assertEquals(BackGestureEdge.RIGHT, store.state.commentActionBackGesture.edge)
         store.commitCommentActionPredictiveBack()
-        assertEquals(0f, store.state.commentActionPredictiveBackProgress)
+        assertEquals(1f, store.state.commentActionPredictiveBackProgress)
         assertEquals(1, store.state.commentActionDismissRequestVersion)
 
         assertTrue(store.completeCommentActionDismiss())

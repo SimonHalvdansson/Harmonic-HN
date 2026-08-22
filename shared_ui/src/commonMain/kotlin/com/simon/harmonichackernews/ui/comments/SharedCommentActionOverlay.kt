@@ -33,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
+import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import androidx.compose.material3.ButtonDefaults
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -115,6 +117,10 @@ fun SharedCommentActionOverlay(
     var openingCompleted by remember(comment.id) { mutableStateOf(false) }
     var closingStarted by remember(comment.id) { mutableStateOf(false) }
     val dismissRequest = controller.commentActionDismissRequest
+    val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
+        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+        dismissRequestVersion = dismissRequest,
+    )
     val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
     val sourceCapture = rememberCommentActionLayerSnapshot(source?.contentLayer, 0)
     val targetUserCapture = rememberCommentActionLayerSnapshot(targetUserLayer, snapshotRefreshKey)
@@ -180,12 +186,16 @@ fun SharedCommentActionOverlay(
     }
 
     val progress = transformProgress.value
-    val predictiveEased = controller.commentActionPredictiveBackProgress
-        .coerceIn(0f, 1f)
-        .let { 1f - (1f - it) * (1f - it) }
+    val predictiveVisualProgress = predictiveBackVisualProgress(
+        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+        transformProgress = progress,
+    )
     val backDirection = if (controller.commentActionPredictiveBackEdge == 1) -1f else 1f
-    val backTranslationX = with(density) { 56.dp.toPx() } * predictiveEased * backDirection
-    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveEased
+    val backScale = 1f - 0.1f * predictiveVisualProgress
+    val backPivotFractionX = if (backDirection > 0f) 0f else 1f
+    val backTranslationX =
+        with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
+    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
     val shape = RoundedCornerShape(HarmonicDimens.compose_comment_action_corner_radius)
     val sharedTransition = CommentActionSharedTransitionState(
         progress = progress,
@@ -195,6 +205,8 @@ fun SharedCommentActionOverlay(
         source = source,
         sourceSnapshot = sourceCapture.image,
         targetContainer = targetContainer,
+        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+        predictiveBackEdge = controller.commentActionPredictiveBackEdge,
         rootBounds = rootBounds,
         targetBounds = { element ->
             when (element) {
@@ -211,17 +223,19 @@ fun SharedCommentActionOverlay(
             }
         },
         updateTargetBounds = { element, bounds ->
-            when (element) {
-                CommentActionTargetElement.User -> if (targetUserBounds != bounds) {
-                    targetUserBounds = bounds
-                }
-                CommentActionTargetElement.Body -> if (targetBodyBounds != bounds) {
-                    targetBodyBounds = bounds
-                }
-                CommentActionTargetElement.Supplementary ->
-                    if (targetSupplementaryBounds != bounds) {
-                        targetSupplementaryBounds = bounds
+            if (updateRestingTargetGeometry) {
+                when (element) {
+                    CommentActionTargetElement.User -> if (targetUserBounds != bounds) {
+                        targetUserBounds = bounds
                     }
+                    CommentActionTargetElement.Body -> if (targetBodyBounds != bounds) {
+                        targetBodyBounds = bounds
+                    }
+                    CommentActionTargetElement.Supplementary ->
+                        if (targetSupplementaryBounds != bounds) {
+                            targetSupplementaryBounds = bounds
+                        }
+                }
             }
         },
         updateTargetLayer = { element, layer ->
@@ -251,7 +265,7 @@ fun SharedCommentActionOverlay(
                 .fillMaxSize()
                 .background(
                     Color.Black.copy(
-                        alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
+                        alpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress),
                     ),
                 )
                 .then(modalGestures)
@@ -274,26 +288,24 @@ fun SharedCommentActionOverlay(
             val fallbackPresentation = if (source == null) {
                 Modifier.graphicsLayer {
                     val fallbackScale = 0.96f + 0.04f * progress
-                    val backScale = 1f - 0.1f * predictiveEased
                     scaleX = fallbackScale * backScale
                     scaleY = fallbackScale * backScale
                     alpha = progress
                     translationX = backTranslationX
                     translationY = backTranslationY
                     transformOrigin = TransformOrigin(
-                        if (backDirection > 0f) 0f else 1f,
+                        backPivotFractionX,
                         0.5f,
                     )
                 }
-            } else if (predictiveEased > 0f) {
+            } else if (predictiveVisualProgress > 0f) {
                 Modifier.graphicsLayer {
-                    val backScale = 1f - 0.1f * predictiveEased
                     scaleX = backScale
                     scaleY = backScale
                     translationX = backTranslationX
                     translationY = backTranslationY
                     transformOrigin = TransformOrigin(
-                        if (backDirection > 0f) 0f else 1f,
+                        backPivotFractionX,
                         0.5f,
                     )
                 }
@@ -310,7 +322,11 @@ fun SharedCommentActionOverlay(
                         },
                     )
                     .fillMaxWidth()
-                    .onGloballyPositioned { targetContainer = it.boundsInWindow() }
+                    .onGloballyPositioned {
+                        if (updateRestingTargetGeometry) {
+                            targetContainer = it.boundsInWindow()
+                        }
+                    }
                     .then(fallbackPresentation)
                     .then(modalGestures)
                     .clickable(

@@ -102,6 +102,11 @@ fun SharedCommentLinkPreviewOverlay(
     val imageOnly = state is CommentLinkPreviewOverlayState.Image
     val referenceRowSource =
         (state as? CommentLinkPreviewOverlayState.Reference)?.sourceIsReferenceRow == true
+    val sharedSourceLayer = when (state) {
+        is CommentLinkPreviewOverlayState.Reference ->
+            state.sourceContentLayer.takeIf { referenceRowSource }
+        is CommentLinkPreviewOverlayState.Image -> state.sourceContentLayer
+    }
     val previewContainerColor = if (imageOnly) {
         Color.Transparent
     } else {
@@ -121,7 +126,11 @@ fun SharedCommentLinkPreviewOverlay(
         horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
         verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
         targetCornerRadius = 28.dp,
-        sourceCornerRadius = if (referenceRowSource) 6.dp else 0.dp,
+        sourceCornerRadius = when {
+            imageOnly -> 8.dp
+            referenceRowSource -> 6.dp
+            else -> 0.dp
+        },
         containerColor = previewContainerColor,
         sourceContainerColor = if (referenceRowSource) {
             state.sourceContainerColor
@@ -134,11 +143,12 @@ fun SharedCommentLinkPreviewOverlay(
         sourceAnchorSize = if (imageOnly || referenceRowSource) null else 8.dp,
         shadowElevation = if (imageOnly) 0.dp else 8.dp,
         scaleContentWithContainer = imageOnly,
+        preserveContentAspectRatio = imageOnly,
         keepContentOpaqueWithSource = imageOnly || referenceRowSource,
         consumeAllGestures = false,
-        sourceContentLayer = if (referenceRowSource) state.sourceContentLayer else null,
-        onSourceReadyToCover = if (referenceRowSource) {
-            controller::coverLinkPreviewReferenceSource
+        sourceContentLayer = sharedSourceLayer,
+        onSourceReadyToCover = if (sharedSourceLayer != null) {
+            controller::coverLinkPreviewSource
         } else {
             null
         },

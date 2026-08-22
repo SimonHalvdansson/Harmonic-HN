@@ -19,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.content.SharedNetworkImage
 
 /** Shared Coil loading, palette extraction and interaction for the comments header image. */
@@ -38,10 +40,12 @@ fun SharedHeaderPreviewImage(
     onTintExtracted: (Int) -> Unit,
     onImageResult: (success: Boolean) -> Unit,
     onClick: () -> Unit,
-    onLongClick: (Rect) -> Unit,
+    onLongClick: (bounds: Rect, sourceContentLayer: GraphicsLayer?, imageAspectRatio: Float?) -> Unit,
 ) {
     var failed by remember(imageUrl, initiallyFailed) { mutableStateOf(initiallyFailed) }
     var bounds by remember(imageUrl) { mutableStateOf(Rect.Zero) }
+    var sourceContentLayer by remember(imageUrl) { mutableStateOf<GraphicsLayer?>(null) }
+    var imageAspectRatio by remember(imageUrl) { mutableStateOf<Float?>(null) }
     AnimatedVisibility(
         visible = visible && !imageUrl.isNullOrBlank() && !failed,
         enter = fadeIn() + expandVertically(),
@@ -59,8 +63,9 @@ fun SharedHeaderPreviewImage(
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = { onLongClick(bounds) },
-                ),
+                    onLongClick = { onLongClick(bounds, sourceContentLayer, imageAspectRatio) },
+                )
+                .captureSharedTransformSourceContent { sourceContentLayer = it },
             contentScale = ContentScale.Crop,
             tintBaseColorArgb = tintBaseColorArgb,
             paletteTintConfigKey = paletteTintConfigKey,
@@ -70,6 +75,7 @@ fun SharedHeaderPreviewImage(
                 failed = false
                 onImageResult(true)
             },
+            onImageAspectRatio = { imageAspectRatio = it },
             onError = {
                 failed = true
                 onImageResult(false)

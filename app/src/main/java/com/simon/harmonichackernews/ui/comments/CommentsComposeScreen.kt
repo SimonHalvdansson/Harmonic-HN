@@ -260,7 +260,7 @@ private fun CommentsHeader(
                 previewUrl?.let { controller.listener.onHeaderPreviewImageResult(it, success) }
             },
             onClick = controller.listener::onHeaderClick,
-            onLongClick = { bounds ->
+            onLongClick = { bounds, sourceContentLayer, imageAspectRatio ->
                 previewImageUrl?.takeIf(String::isNotBlank)?.let { imageUrl ->
                     controller.showImagePreview(
                         imageUrl = imageUrl,
@@ -270,6 +270,8 @@ private fun CommentsHeader(
                             "Preview image for ${story.title}"
                         },
                         sourceBounds = bounds,
+                        sourceContentLayer = sourceContentLayer,
+                        imageAspectRatio = imageAspectRatio,
                         backgroundColor = visibleBackground.toArgb(),
                     )
                 }

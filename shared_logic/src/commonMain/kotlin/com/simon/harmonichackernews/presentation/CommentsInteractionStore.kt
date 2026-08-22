@@ -288,9 +288,8 @@ class CommentsInteractionStore(
 
     fun commitCommentActionPredictiveBack() {
         if (state.commentAction == null) return
-        state = state.copy(
-            commentActionBackGesture = state.commentActionBackGesture.copy(progress = 0f),
-        )
+        // Keep the last gesture position until the dismissal overlay has covered the live card.
+        // Clearing it here makes the card jump back to rest before its close animation begins.
         requestDismissCommentActions()
     }
 

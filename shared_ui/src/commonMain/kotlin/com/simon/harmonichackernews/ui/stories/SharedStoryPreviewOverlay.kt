@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -107,6 +108,10 @@ fun SharedStoryPreviewOverlay(
     var targetMetaLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
     var targetSupplementaryLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
     val dismissRequest = controller.storyPreviewDismissRequest
+    val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
+        predictiveBackProgress = controller.storyPreviewPredictiveBackProgress,
+        dismissRequestVersion = dismissRequest,
+    )
     val predictiveSettleRequest = controller.storyPreviewPredictiveBackSettleRequest
     // An interrupted opening has not exposed interactive dialog content, so its existing snapshots
     // are already current. Reusing them makes the transform reverse immediately. A fully opened
@@ -367,22 +372,24 @@ fun SharedStoryPreviewOverlay(
             }
         },
         updateTargetBounds = { element, bounds ->
-            when (element) {
-                StoryPreviewSharedElement.Image -> {
-                    if (targetImageBounds != bounds) targetImageBounds = bounds
-                }
-                StoryPreviewSharedElement.Title -> {
-                    if (targetTitleBounds != bounds) targetTitleBounds = bounds
-                }
-                StoryPreviewSharedElement.Summary -> {
-                    if (targetSummaryBounds != bounds) targetSummaryBounds = bounds
-                }
-                StoryPreviewSharedElement.Meta -> {
-                    if (targetMetaBounds != bounds) targetMetaBounds = bounds
-                }
-                StoryPreviewSharedElement.Supplementary -> {
-                    if (targetSupplementaryBounds != bounds) {
-                        targetSupplementaryBounds = bounds
+            if (updateRestingTargetGeometry) {
+                when (element) {
+                    StoryPreviewSharedElement.Image -> {
+                        if (targetImageBounds != bounds) targetImageBounds = bounds
+                    }
+                    StoryPreviewSharedElement.Title -> {
+                        if (targetTitleBounds != bounds) targetTitleBounds = bounds
+                    }
+                    StoryPreviewSharedElement.Summary -> {
+                        if (targetSummaryBounds != bounds) targetSummaryBounds = bounds
+                    }
+                    StoryPreviewSharedElement.Meta -> {
+                        if (targetMetaBounds != bounds) targetMetaBounds = bounds
+                    }
+                    StoryPreviewSharedElement.Supplementary -> {
+                        if (targetSupplementaryBounds != bounds) {
+                            targetSupplementaryBounds = bounds
+                        }
                     }
                 }
             }
@@ -407,7 +414,7 @@ fun SharedStoryPreviewOverlay(
             }
         },
         updateCommentsButtonBounds = { bounds ->
-            if (targetCommentsButtonBounds != bounds) {
+            if (updateRestingTargetGeometry && targetCommentsButtonBounds != bounds) {
                 targetCommentsButtonBounds = bounds
             }
         },
@@ -462,7 +469,11 @@ fun SharedStoryPreviewOverlay(
                     .fillMaxWidth()
                     .then(
                         if (currentPage) {
-                            Modifier.onGloballyPositioned { targetBounds = it.boundsInWindow() }
+                            Modifier.onGloballyPositioned {
+                                if (updateRestingTargetGeometry) {
+                                    targetBounds = it.boundsInWindow()
+                                }
+                            }
                         } else {
                             Modifier
                         },

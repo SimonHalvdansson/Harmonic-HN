@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
+import com.simon.harmonichackernews.ui.common.transformedForPredictiveBack
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -66,6 +68,8 @@ internal data class CommentActionSharedTransitionState(
     val source: CommentActionSourceGeometry?,
     val sourceSnapshot: ImageBitmap?,
     val targetContainer: Rect?,
+    val predictiveBackProgress: Float,
+    val predictiveBackEdge: Int,
     val rootBounds: Rect,
     val targetBounds: (CommentActionTargetElement) -> Rect?,
     val targetSnapshot: (CommentActionTargetElement) -> ImageBitmap?,
@@ -163,14 +167,30 @@ internal fun CommentActionTransitionOverlay(
         ?.translate(-rootOffset.x, -rootOffset.y)
         ?: visibleSource
     val progress = transition.progress.coerceIn(0f, 1f)
-    val container = lerp(visibleSource, targetContainer, progress)
     val density = LocalDensity.current
+    val predictiveVisualProgress = predictiveBackVisualProgress(
+        predictiveBackProgress = transition.predictiveBackProgress,
+        transformProgress = progress,
+    )
+    val backDirection = if (transition.predictiveBackEdge == 1) -1f else 1f
+    val backScale = 1f - 0.1f * predictiveVisualProgress
+    val backPivotFractionX = if (backDirection > 0f) 0f else 1f
+    val backTranslation = Offset(
+        x = with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection,
+        y = with(density) { 18.dp.toPx() } * predictiveVisualProgress,
+    )
+    val baseContainer = lerp(visibleSource, targetContainer, progress)
+    val container = baseContainer.transformedForPredictiveBack(
+        scale = backScale,
+        pivotFractionX = backPivotFractionX,
+        translation = backTranslation,
+    )
     val sourceRadiusPx = with(density) { source.containerCornerRadiusDp.dp.toPx() }
     val targetRadiusPx = with(density) { 28.dp.toPx() }
-    val radiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress)
+    val radiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress) * backScale
     val shape = RoundedCornerShape(with(density) { radiusPx.toDp() })
     val elevation = if (transition.drawOverlayShadows) {
-        lerp(source.containerElevationDp, 8f, progress).dp
+        (lerp(source.containerElevationDp, 8f, progress) * backScale).dp
     } else {
         0.dp
     }
@@ -211,7 +231,11 @@ internal fun CommentActionTransitionOverlay(
                 sourceContainer = localSource,
                 visibleSource = visibleSource,
                 targetContainer = targetContainer,
-                container = container,
+                baseContainer = baseContainer,
+                visualContainer = container,
+                predictiveBackScale = backScale,
+                predictiveBackPivotFractionX = backPivotFractionX,
+                predictiveBackTranslation = backTranslation,
                 radiusPx = radiusPx,
                 progress = progress,
             )
@@ -224,16 +248,26 @@ private fun DrawScope.drawCommentActionContent(
     sourceContainer: Rect,
     visibleSource: Rect,
     targetContainer: Rect,
-    container: Rect,
+    baseContainer: Rect,
+    visualContainer: Rect,
+    predictiveBackScale: Float,
+    predictiveBackPivotFractionX: Float,
+    predictiveBackTranslation: Offset,
     radiusPx: Float,
     progress: Float,
 ) {
-    val clip = roundedPath(container, radiusPx)
+    val clip = roundedPath(visualContainer, radiusPx)
     // The original comment should travel with its container, not inherit the dialog's changing
     // height. Scaling this bitmap made the source text progressively taller until it occupied the
     // whole dialog. Preserve its intrinsic size, like the fixed-size source accessories in the
     // story preview transition, and crossfade to the separately measured dialog groups instead.
-    val sourceDestination = moveBetweenContainers(sourceContainer, visibleSource, container)
+    val sourceDestination = moveBetweenContainers(sourceContainer, visibleSource, baseContainer)
+        .transformedForPredictiveBack(
+            scale = predictiveBackScale,
+            pivotFractionX = predictiveBackPivotFractionX,
+            translation = predictiveBackTranslation,
+            pivotBounds = baseContainer,
+        )
     clipPath(clip) {
         transition.sourceSnapshot?.let { snapshot ->
             drawSnapshotRegion(
@@ -252,7 +286,13 @@ private fun DrawScope.drawCommentActionContent(
             val snapshot = transition.targetSnapshot(element) ?: return@forEach
             // Destination content follows its container but retains its measured size. Scaling
             // the complete final dialog is the artifact this transition is replacing.
-            val destination = moveBetweenContainers(bounds, targetContainer, container)
+            val destination = moveBetweenContainers(bounds, targetContainer, baseContainer)
+                .transformedForPredictiveBack(
+                    scale = predictiveBackScale,
+                    pivotFractionX = predictiveBackPivotFractionX,
+                    translation = predictiveBackTranslation,
+                    pivotBounds = baseContainer,
+                )
             drawSnapshot(
                 snapshot = snapshot,
                 destination = destination,
