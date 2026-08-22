@@ -247,16 +247,8 @@ internal fun IosCommentsContent(
                         onOpenLink = { scene.links.open(it) },
                     )
                 },
-                actionOverlay = { settings ->
-                    SharedCommentActionOverlay(
-                        controller = host.controller,
-                        settings = settings,
-                        hasAccount = app.platform.accounts.load() != null,
-                        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
-                        textStyle = TextStyle.Default,
-                        onOpenLink = { scene.links.open(it) },
-                    )
-                },
+                // iOS hosts this above the pane-level status-bar protection and up button.
+                actionOverlay = {},
             )
         }
     }
@@ -297,6 +289,18 @@ internal fun IosCommentsContent(
                         .padding(start = 16.dp, top = 4.dp)
                         .zIndex(101f),
                 )
+            }
+            host.controller.displaySettings?.let { settings ->
+                Box(Modifier.fillMaxSize().zIndex(102f)) {
+                    SharedCommentActionOverlay(
+                        controller = host.controller,
+                        settings = settings,
+                        hasAccount = app.platform.accounts.load() != null,
+                        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
+                        textStyle = TextStyle.Default,
+                        onOpenLink = { scene.links.open(it) },
+                    )
+                }
             }
         }
     }
