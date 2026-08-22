@@ -142,6 +142,7 @@ private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 @Composable
 fun SharedStoriesScreen(
     controller: StoriesComposeController,
+    storyItemModelCacheKey: Int,
     storyItemModel: (
         StoryListItemSnapshot,
         Int,
@@ -213,6 +214,7 @@ fun SharedStoriesScreen(
                 stories = controller.mainStories,
                 listState = mainState,
                 searchMode = false,
+                storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
                 filterColors = filterColors,
@@ -227,6 +229,7 @@ fun SharedStoriesScreen(
                 stories = controller.searchStories,
                 listState = searchState,
                 searchMode = true,
+                storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
                 filterColors = filterColors,
@@ -336,6 +339,7 @@ private fun StoriesList(
     stories: List<StoryListItemSnapshot>,
     listState: LazyListState,
     searchMode: Boolean,
+    storyItemModelCacheKey: Int,
     storyItemModel: (
         StoryListItemSnapshot,
         Int,
@@ -465,8 +469,15 @@ private fun StoriesList(
                         val storyRevision = controller.storyRevision(story.id)
                         val previewResource = controller.previewResources[story.id]
                             ?.takeIf { it.pageUrl == story.url }
+                        // Palette tints are resolved against the theme's card background. Retain
+                        // row-model caching normally, but rebuild when that base color changes.
                         val model = remember(
-                            story, index, settings, storyRevision, previewResource,
+                            story,
+                            index,
+                            settings,
+                            storyRevision,
+                            previewResource,
+                            storyItemModelCacheKey,
                         ) {
                             storyItemModel(
                                 story,

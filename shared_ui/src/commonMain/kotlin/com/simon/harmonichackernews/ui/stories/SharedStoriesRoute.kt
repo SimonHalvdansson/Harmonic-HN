@@ -21,6 +21,7 @@ fun SharedStoriesRoute(
     val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     SharedStoriesScreen(
         controller = controller,
+        storyItemModelCacheKey = tintBaseColor,
         storyItemModel = { story, position, settings, previewResource, nowMillis ->
             storyItemUiModel(
                 story,
