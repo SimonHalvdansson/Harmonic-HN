@@ -218,6 +218,7 @@ fun CommentItem(
             ReferenceRow(
                 marker = model.referenceMarker,
                 label = model.referenceUrl,
+                modifier = Modifier.padding(top = 5.dp),
                 onClick = {},
                 onLongClick = { _, _ -> },
             )
@@ -279,6 +280,8 @@ fun CommentItem(
             ?.contentBlocks
             ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
     }
+    val hasInterleavedReferences = references?.hasInterleavedLinks() == true
+    val firstReferenceIndex = contentBlocks.indexOfFirst { it.getLink() != null }
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val hiddenPreview = remember(comment.text, textCollapsed) {
@@ -368,11 +371,16 @@ fun CommentItem(
                 exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
             ) {
                 Column {
-                    contentBlocks.forEach { block ->
+                    contentBlocks.forEachIndexed { index, block ->
                         val link = block.getLink()
                         if (link == null) {
                             CommentBodyText(
                                 html = block.bodyHtml.orEmpty(),
+                                modifier = if (hasInterleavedReferences && index > 0) {
+                                    Modifier.padding(top = 5.dp)
+                                } else {
+                                    Modifier
+                                },
                                 searchTerm = searchTerm,
                                 markedColor = markedColor,
                                 fontFamily = typography.family,
@@ -384,6 +392,11 @@ fun CommentItem(
                             ReferenceRow(
                                 marker = link.markerLabel.orEmpty(),
                                 label = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                                modifier = when {
+                                    hasInterleavedReferences -> Modifier.padding(bottom = 2.dp)
+                                    index == firstReferenceIndex -> Modifier.padding(top = 5.dp)
+                                    else -> Modifier
+                                },
                                 suppressed = link.url == suppressedReferenceUrl,
                                 onClick = { link.url?.let(onLinkClick) },
                                 onLongClick = { bounds, sourceContentLayer ->
@@ -448,6 +461,7 @@ private fun CommentItemLayout(
 @Composable
 private fun CommentBodyText(
     html: String,
+    modifier: Modifier = Modifier,
     searchTerm: String,
     markedColor: Color,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
@@ -478,7 +492,7 @@ private fun CommentBodyText(
     if (displayedBody.isNotEmpty()) {
         Text(
             text = displayedBody,
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .onGloballyPositioned { textCoordinates = it }
                 .detectAnnotatedLinkLongPress(
@@ -941,11 +955,13 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
 }
 
 private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
+    .replace(formattedCommentParagraphStartPattern, "<br><br>")
     .replace(commentParagraphStartPattern, "<br><br>")
     .replace(commentParagraphBoundaryPattern, "</p><br><p")
     .replace(commentDivBoundaryPattern, "</div><br><div")
 
 private val commentParagraphStartPattern = Regex("<p\\s*>", RegexOption.IGNORE_CASE)
+private val formattedCommentParagraphStartPattern = Regex("[\\r\\n]+[ \\t]*<p\\s*>", RegexOption.IGNORE_CASE)
 private val commentParagraphBoundaryPattern = Regex("</p>\\s*<p", RegexOption.IGNORE_CASE)
 private val commentDivBoundaryPattern = Regex("</div>\\s*<div", RegexOption.IGNORE_CASE)
 
