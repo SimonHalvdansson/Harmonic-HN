@@ -405,10 +405,15 @@ class MainNavigationController internal constructor(
 
     internal fun attachCommentsCoordinator(coordinator: CommentsCoordinator) {
         commentsCoordinator = coordinator
+        coordinator.setHostActive(currentDestination == MainDestination.STORY)
     }
 
     internal fun detachCommentsCoordinator(coordinator: CommentsCoordinator) {
         if (commentsCoordinator === coordinator) commentsCoordinator = null
+    }
+
+    internal fun updateCommentsHostDestination(destination: MainDestination) {
+        commentsCoordinator?.setHostActive(destination == MainDestination.STORY)
     }
 
     internal fun consumeCommentsSavedState(requestSerial: Int): Bundle? {
@@ -578,6 +583,7 @@ private fun MainNavigation(
             twoPane = isTwoPane,
             foldable = isTwoPane && isFoldable,
         )
+        controller.updateCommentsHostDestination(navigationSnapshot.currentDestination)
     }
     val paneProportion = if (isFoldable) {
         0.5f

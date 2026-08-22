@@ -389,6 +389,7 @@ private fun CommentActionCardContent(
         CommentActionTarget(CommentActionTargetElement.User) {
             Button(
                 onClick = {
+                    controller.requestDismissCommentActions()
                     controller.listener.onCommentAction(
                         comment,
                         CommentMenuAction.USER,
@@ -532,6 +533,7 @@ private fun CommentActionCardContent(
                     Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = {
+                            controller.requestDismissCommentActions()
                             controller.listener.onCommentAction(
                                 comment,
                                 CommentMenuAction.REPLY,

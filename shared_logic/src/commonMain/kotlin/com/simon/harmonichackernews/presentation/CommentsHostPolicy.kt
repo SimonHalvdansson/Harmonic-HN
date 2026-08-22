@@ -11,6 +11,7 @@ enum class CommentsBackTarget {
 }
 
 data class CommentsBackContext(
+    val hostActive: Boolean = true,
     val linkPreviewVisible: Boolean,
     val commentActionVisible: Boolean,
     val customWebContentVisible: Boolean,
@@ -23,6 +24,7 @@ data class CommentsBackContext(
 /** Back priority shared by native comments hosts, including predictive-back eligibility. */
 object CommentsBackPolicy {
     fun target(context: CommentsBackContext): CommentsBackTarget = when {
+        !context.hostActive -> CommentsBackTarget.NONE
         context.linkPreviewVisible -> CommentsBackTarget.LINK_PREVIEW
         context.commentActionVisible -> CommentsBackTarget.COMMENT_ACTION
         context.customWebContentVisible -> CommentsBackTarget.CUSTOM_WEB_CONTENT

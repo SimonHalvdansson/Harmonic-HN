@@ -114,6 +114,7 @@ class CommentsCoordinator(
     private var appliedStatusBarProtectionEnabled = false
     private var appliedStatusBarProtectionColor = Color.TRANSPARENT
     private var composeController: CommentsComposeController? = null
+    private var hostActive = true
 
     init {
         coroutineScope.launch { commentsStore.effects.collect(::handleCommentsRuntimeEffect) }
@@ -448,6 +449,12 @@ class CommentsCoordinator(
         return backPressedCallback?.isEnabled == true
     }
 
+    fun setHostActive(active: Boolean) {
+        if (hostActive == active) return
+        hostActive = active
+        syncOnBackPressedCallbackEnabledState()
+    }
+
     fun startInternalPredictiveBack(backEvent: BackEventCompat) {
         if (composeController?.isWebsiteVisible() == true) {
             webViewController?.beginPredictiveBackScrollFreeze()
@@ -668,6 +675,7 @@ class CommentsCoordinator(
             commentsController?.isWebsiteVisible() == true
         return CommentsBackPolicy.target(
             CommentsBackContext(
+                hostActive = hostActive,
                 linkPreviewVisible = commentsController?.isLinkPreviewOverlayShowing() == true,
                 commentActionVisible = commentsController?.isCommentActionOverlayShowing() == true,
                 customWebContentVisible = websiteController?.isShowingCustomView == true,

@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -43,6 +44,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -52,6 +54,18 @@ import kotlin.math.min
 private const val TransformDurationMillis = 280
 private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
+private const val PagerSettledOffsetTolerance = 0.001f
+
+internal fun storyPreviewPagerSettleTarget(
+    isScrollInProgress: Boolean,
+    currentPage: Int,
+    currentPageOffsetFraction: Float,
+): Int? = currentPage.takeIf {
+    !isScrollInProgress &&
+        currentPageOffsetFraction.isFinite() &&
+        abs(currentPageOffsetFraction) > PagerSettledOffsetTolerance
+}
+
 /** Shared pager, list synchronization, container transform, and predictive-back presentation. */
 @Composable
 fun SharedStoryPreviewOverlay(
@@ -70,6 +84,7 @@ fun SharedStoryPreviewOverlay(
         initialPage = state.initialPage,
         pageCount = { state.stories.size },
     )
+    val pagerSettlingScope = rememberCoroutineScope()
     val transformProgress = remember(state) { Animatable(0f) }
     val predictiveProgressAnimation = remember(state) { Animatable(0f) }
     var overlayActive by remember(state) { mutableStateOf(false) }
@@ -267,6 +282,24 @@ fun SharedStoryPreviewOverlay(
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .collect(controller::onStoryPreviewPageSettled)
+    }
+    LaunchedEffect(pagerState, state) {
+        snapshotFlow {
+            storyPreviewPagerSettleTarget(
+                isScrollInProgress = pagerState.isScrollInProgress,
+                currentPage = pagerState.currentPage,
+                currentPageOffsetFraction = pagerState.currentPageOffsetFraction,
+            )
+        }.distinctUntilChanged().collect { targetPage ->
+            if (targetPage != null) {
+                // Starting another gesture can cancel Pager's return animation after an incomplete
+                // swipe. Run the repair in a child job so that cancellation does not kill this
+                // observer; once the pager is idle again it can retry and finish centering the page.
+                pagerSettlingScope.launch {
+                    pagerState.animateScrollToPage(targetPage)
+                }
+            }
+        }
     }
 
     val progress = transformProgress.value
