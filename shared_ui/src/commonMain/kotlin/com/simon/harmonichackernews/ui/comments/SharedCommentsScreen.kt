@@ -306,7 +306,8 @@ fun SharedCommentsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
-                .then(listModifier),
+                .then(listModifier)
+                .commentsHazeSource(commentsHazeState),
             state = listState,
             contentPadding = PaddingValues(bottom = bottomPadding),
             headerKey = "header",
@@ -381,11 +382,7 @@ fun SharedCommentsScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .commentsHazeSource(commentsHazeState),
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         LaunchedEffect(controller.commentsRefreshInProgress) {
             if (!controller.commentsRefreshInProgress) {
                 controller.finishPullToRefresh()
@@ -423,19 +420,22 @@ fun SharedCommentsScreen(
             visible = settings.showNavigationBar && visibleComments.isNotEmpty(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = navigationBottom + 16.dp),
+                .padding(bottom = navigationBottom),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            CommentNavigationButtons(
-                onPrevious = { controller.navigatePrevious(true, false) },
-                onNext = { controller.navigateNext(true, false) },
-                onFirst = {
-                    controller.navigationRequest?.let(controller::consumeNavigationRequest)
-                    controller.navigateFirst()
-                },
-                onLast = controller::navigateLast,
-            )
+            // Keep the shadow inside AnimatedVisibility's bounds while its layer fades in.
+            Box(modifier = Modifier.padding(16.dp)) {
+                CommentNavigationButtons(
+                    onPrevious = { controller.navigatePrevious(true, false) },
+                    onNext = { controller.navigateNext(true, false) },
+                    onFirst = {
+                        controller.navigationRequest?.let(controller::consumeNavigationRequest)
+                        controller.navigateFirst()
+                    },
+                    onLast = controller::navigateLast,
+                )
+            }
         }
 
         if (showScrollbar && controller.sheetSlideOffset >= 0.999f) {
@@ -617,7 +617,7 @@ private fun CommentNavigationButtons(
 ) {
     val shape = RoundedCornerShape(28.dp)
     val hazeState = currentCommentsHazeState()
-    val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.5f)
+    val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
 
     Row(
         modifier = Modifier
@@ -625,7 +625,7 @@ private fun CommentNavigationButtons(
             .clip(shape)
             .then(
                 if (hazeState == null) {
-                    Modifier
+                    Modifier.background(surfaceColor)
                 } else {
                     Modifier.hazeBlur(
                         input = HazeInput.Sources(hazeState),
@@ -637,8 +637,7 @@ private fun CommentNavigationButtons(
                         },
                     )
                 },
-            )
-            .background(surfaceColor),
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
