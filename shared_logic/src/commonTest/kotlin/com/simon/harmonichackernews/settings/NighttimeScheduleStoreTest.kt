@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -48,6 +49,7 @@ class NighttimeScheduleStoreTest {
             scheduleStore = NighttimeScheduleStore(TestKeyValueStore()),
             launchState = AppLaunchStateStore(TestKeyValueStore()),
             settingsChanges = changes,
+            appearanceChanges = emptyFlow(),
             currentMinutesFromMidnight = { 12 * 60 },
             systemDark = { false },
         )
@@ -56,6 +58,28 @@ class NighttimeScheduleStoreTest {
 
         assertEquals(ThemePreferences.DEFAULT, selections.first().theme)
         assertEquals("amoled", selections.last().theme)
+        assertEquals(true, selections.last().dark)
+    }
+
+    @Test
+    fun appearanceSelectionsFollowSystemAndClockChanges() = runTest {
+        var systemDark = false
+        val runtime = AppearanceRuntime(
+            settings = TestKeyValueStore(),
+            scheduleStore = NighttimeScheduleStore(TestKeyValueStore()),
+            launchState = AppLaunchStateStore(TestKeyValueStore()),
+            settingsChanges = emptyFlow(),
+            appearanceChanges = flow {
+                systemDark = true
+                emit(Unit)
+            },
+            currentMinutesFromMidnight = { 12 * 60 },
+            systemDark = { systemDark },
+        )
+
+        val selections = runtime.selections.take(2).toList()
+
+        assertEquals(false, selections.first().dark)
         assertEquals(true, selections.last().dark)
     }
 }

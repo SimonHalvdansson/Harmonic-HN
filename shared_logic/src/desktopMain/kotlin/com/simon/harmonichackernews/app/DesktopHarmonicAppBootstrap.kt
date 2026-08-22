@@ -37,7 +37,6 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalTime
 import java.time.format.FormatStyle
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlinx.io.files.Path as KotlinPath
 
 /**
@@ -79,6 +78,7 @@ class DesktopHarmonicAppBootstrap(
         /** Creates the durable desktop application graph used by the installed app. */
         fun production(
             userAgent: String,
+            metadata: AppMetadata,
             paths: DesktopAppPaths = DesktopAppPaths.default(),
         ): DesktopHarmonicAppBootstrap {
             Files.createDirectories(paths.configDirectory)
@@ -92,13 +92,7 @@ class DesktopHarmonicAppBootstrap(
             val fileAccess = DesktopFileKeyValueStore(
                 paths.cacheDirectory.resolve("file-access.properties"),
             )
-            val credentials = desktopCredentialStore(
-                fallback = DesktopKeyValueCredentialStore(
-                    DesktopFileKeyValueStore(
-                        paths.configDirectory.resolve("credentials.properties"),
-                    ),
-                ),
-            )
+            val credentials = desktopCredentialStore()
             val persistentStorage = HarmonicPersistentStorageFactory.create(
                 roots = HarmonicStorageRoots(
                     files = KotlinPath(paths.filesDirectory.toString()),
@@ -109,17 +103,12 @@ class DesktopHarmonicAppBootstrap(
             )
             val history = StoredHistoryStore(appData).also { it.initialize() }
             val host = HarmonicHostConfiguration(
-                metadata = AppMetadata(
-                    name = "Harmonic",
-                    versionName = "1.0.0",
-                    buildType = "desktop",
-                    debug = true,
-                    debugSettingsEnabled = true,
-                ),
+                metadata = metadata,
                 settingsStore = settings,
                 appDataStore = appData,
                 previewCacheStore = previewCache,
                 settingsChanges = settings.changes,
+                appearanceChanges = DesktopSystemAppearance.changes,
                 currentMinutesFromMidnight = {
                     LocalTime.now().let { it.hour * 60 + it.minute }
                 },
@@ -286,83 +275,6 @@ data class DesktopAppPaths(
     }
 }
 
-private class DesktopKeyValueCredentialStore(
-    private val store: KeyValueStore,
-) : CredentialStore {
-    override fun read(id: String): String? = store.getString(id)
-    override fun write(id: String, value: String): Boolean = runCatching {
-        store.putString(id, value)
-    }.isSuccess
-    override fun remove(id: String): Boolean = runCatching { store.remove(id) }.isSuccess
-}
-
-private fun desktopCredentialStore(fallback: CredentialStore): CredentialStore =
-    if (System.getProperty("os.name").lowercase().contains("mac")) {
-        MacOsKeychainCredentialStore(fallback)
-    } else {
-        fallback
-    }
-
-/** Uses the login Keychain on macOS and transparently migrates older file-backed values. */
-private class MacOsKeychainCredentialStore(
-    private val fallback: CredentialStore,
-) : CredentialStore {
-    override fun read(id: String): String? {
-        val result = security("find-generic-password", "-s", SERVICE, "-a", id, "-w")
-        if (result.success) return result.output.trimEnd('\r', '\n')
-        return fallback.read(id)?.also { write(id, it) }
-    }
-
-    override fun write(id: String, value: String): Boolean {
-        val result = security(
-            "add-generic-password",
-            "-U",
-            "-s",
-            SERVICE,
-            "-a",
-            id,
-            "-w",
-            value,
-        )
-        return if (result.success) {
-            fallback.remove(id)
-            true
-        } else {
-            fallback.write(id, value)
-        }
-    }
-
-    override fun remove(id: String): Boolean {
-        val result = security("delete-generic-password", "-s", SERVICE, "-a", id)
-        val missing = result.output.contains("could not be found", ignoreCase = true)
-        val fallbackRemoved = fallback.remove(id)
-        return fallbackRemoved && (result.success || missing)
-    }
-
-    private fun security(vararg arguments: String): SecurityCommandResult = runCatching {
-        val process = ProcessBuilder(listOf("/usr/bin/security") + arguments)
-            .redirectErrorStream(true)
-            .start()
-        if (!process.waitFor(5, TimeUnit.SECONDS)) {
-            process.destroyForcibly()
-            return@runCatching SecurityCommandResult(false, "Keychain command timed out")
-        }
-        SecurityCommandResult(
-            success = process.exitValue() == 0,
-            output = process.inputStream.bufferedReader().use { it.readText() },
-        )
-    }.getOrElse { SecurityCommandResult(false, it.message.orEmpty()) }
-
-    private data class SecurityCommandResult(
-        val success: Boolean,
-        val output: String,
-    )
-
-    private companion object {
-        const val SERVICE = "com.simon.harmonichackernews.desktop"
-    }
-}
-
 private data object DesktopExternalLinkOpener : ExternalLinkOpener {
     override fun open(request: ExternalLinkRequest): Boolean =
         ExternalLinkPolicy.openCandidates(request.url).any { candidate ->
@@ -383,29 +295,5 @@ private data object DesktopClipboardService : ClipboardService {
 private data object DesktopShareService : ShareService {
     override fun share(text: String, title: String?) {
         DesktopClipboardService.copy(title ?: "Shared from Harmonic", text)
-    }
-}
-
-private data object DesktopConnectivity : ConnectivityService {
-    override fun isOnline(): Boolean = runCatching {
-        java.net.NetworkInterface.getNetworkInterfaces().asSequence().any { network ->
-            network.isUp && !network.isLoopback && !network.isVirtual
-        }
-    }.getOrDefault(true)
-
-    override fun isUnmetered(): Boolean = true
-}
-
-private data object DesktopSystemAppearance {
-    fun isDark(): Boolean {
-        if (!System.getProperty("os.name").lowercase().contains("mac")) return false
-        return runCatching {
-            ProcessBuilder("defaults", "read", "-g", "AppleInterfaceStyle")
-                .redirectErrorStream(true)
-                .start()
-                .inputStream
-                .bufferedReader()
-                .use { it.readText().trim().equals("Dark", ignoreCase = true) }
-        }.getOrDefault(false)
     }
 }

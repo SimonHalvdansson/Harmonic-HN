@@ -112,6 +112,7 @@ class AppearanceRuntime(
     private val scheduleStore: NighttimeScheduleStore,
     private val launchState: AppLaunchStateStore,
     settingsChanges: Flow<Unit>,
+    appearanceChanges: Flow<Unit>,
     private val currentMinutesFromMidnight: () -> Int,
     private val systemDark: () -> Boolean,
 ) {
@@ -124,6 +125,9 @@ class AppearanceRuntime(
         send(selection())
         launch {
             settingsChanges.collect { send(selection()) }
+        }
+        launch {
+            appearanceChanges.collect { send(selection()) }
         }
         launch {
             manualRefreshes.collect { send(selection()) }

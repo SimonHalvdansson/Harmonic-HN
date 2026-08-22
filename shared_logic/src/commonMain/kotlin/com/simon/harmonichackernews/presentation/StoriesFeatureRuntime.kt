@@ -584,10 +584,11 @@ class StoriesFeatureRuntime(
     }
 
     fun loadVisibleStories(lastVisibleIndex: Int? = null) {
-        val target = lastVisibleIndex?.let {
-            min(
-                max(it + VISIBLE_LOAD_AHEAD, initialLoadCount()),
-                activeStories.lastIndex,
+        val target = lastVisibleIndex?.let { lastVisible ->
+            StoryPaginationPolicy.scrolledLoadTargetIndex(
+                storyCount = activeStories.size,
+                lastVisibleIndex = lastVisible,
+                initialLoadCount = initialLoadCount(),
             )
         } ?: StoryPaginationPolicy.visibleLoadTargetIndex(
             storyCount = activeStories.size,
@@ -1376,7 +1377,6 @@ class StoriesFeatureRuntime(
         const val FILTER_STORIES = 0
         const val FILTER_BOTH = 1
         const val FILTER_COMMENTS = 2
-        const val VISIBLE_LOAD_AHEAD = 10
         const val SELECTION_INTERVAL_MILLIS = 500L
     }
 }

@@ -25,6 +25,14 @@ class StoryPaginationSessionTest {
     }
 
     @Test
+    fun scrolledTargetPreloadsSeventeenStoriesPastTheViewport() {
+        assertEquals(-1, StoryPaginationPolicy.scrolledLoadTargetIndex(0, 10))
+        assertEquals(19, StoryPaginationPolicy.scrolledLoadTargetIndex(100, 0))
+        assertEquals(29, StoryPaginationPolicy.scrolledLoadTargetIndex(100, 12))
+        assertEquals(24, StoryPaginationPolicy.scrolledLoadTargetIndex(25, 20))
+    }
+
+    @Test
     fun pagePlanTracksOnlyUnloadedStoriesAndRejectsStaleResults() {
         val session = StoryPaginationSession(pageSize = 2)
         val stories = listOf(story(1, loaded = true), story(2), story(3), story(4))

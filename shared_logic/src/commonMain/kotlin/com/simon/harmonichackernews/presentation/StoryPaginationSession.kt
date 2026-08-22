@@ -13,6 +13,7 @@ data class StoryPageLoadPlan(
 object StoryPaginationPolicy {
     const val DEFAULT_PAGE_SIZE = 30
     const val DEFAULT_INITIAL_LOAD_COUNT = 20
+    const val DEFAULT_VISIBLE_LOAD_AHEAD = 17
 
     fun isEnabled(userEnabled: Boolean, storyType: StoryType?): Boolean =
         userEnabled || storyType?.isScrapedFrontpage == true
@@ -29,6 +30,19 @@ object StoryPaginationPolicy {
         if (storyCount <= 0) return -1
         val requestedCount = if (paginationEnabled) visibleStoryCount else initialLoadCount
         return minOf(requestedCount, storyCount) - 1
+    }
+
+    fun scrolledLoadTargetIndex(
+        storyCount: Int,
+        lastVisibleIndex: Int,
+        initialLoadCount: Int = DEFAULT_INITIAL_LOAD_COUNT,
+        loadAhead: Int = DEFAULT_VISIBLE_LOAD_AHEAD,
+    ): Int {
+        if (storyCount <= 0) return -1
+        return maxOf(
+            initialLoadCount - 1,
+            lastVisibleIndex.coerceAtLeast(0) + loadAhead,
+        ).coerceAtMost(storyCount - 1)
     }
 }
 

@@ -40,6 +40,7 @@ kotlin {
         }
         getByName("desktopMain").dependencies {
             implementation(libs.ktor.client.cio)
+            implementation(libs.jna.platform)
         }
     }
 }

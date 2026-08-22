@@ -74,8 +74,10 @@ fun main() {
     System.setProperty("apple.awt.application.name", "Harmonic")
     val desktopAppIcon = loadDesktopAppIcon()
     installTaskbarIcon(desktopAppIcon)
+    val metadata = DesktopRuntimeMetadata.load()
     val bootstrap = DesktopHarmonicAppBootstrap.production(
-        userAgent = "Harmonic-HN-Desktop",
+        userAgent = "Harmonic-HN-Desktop/${metadata.versionName}",
+        metadata = metadata,
     )
     try {
         application {
@@ -116,6 +118,9 @@ fun main() {
                 )
                 val palette = remember(selection) {
                     HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
+                }
+                LaunchedEffect(window, selection.dark) {
+                    DesktopWindowAppearance.apply(window, selection.dark)
                 }
                 LaunchedEffect(bootstrap.app.launchState) {
                     when (

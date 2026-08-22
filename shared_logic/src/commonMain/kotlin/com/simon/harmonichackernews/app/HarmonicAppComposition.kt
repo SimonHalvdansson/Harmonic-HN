@@ -72,6 +72,7 @@ class HarmonicAppComposition(
         scheduleStore = NighttimeScheduleStore(host.appDataStore),
         launchState = launchState,
         settingsChanges = host.settingsChanges,
+        appearanceChanges = host.appearanceChanges,
         currentMinutesFromMidnight = host.currentMinutesFromMidnight,
         systemDark = host.systemDark,
     )

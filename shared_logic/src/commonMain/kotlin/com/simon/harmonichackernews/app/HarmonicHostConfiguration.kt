@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.Clock
 
 /**
@@ -24,6 +25,7 @@ class HarmonicHostConfiguration(
     val appDataStore: KeyValueStore,
     val previewCacheStore: KeyValueStore,
     val settingsChanges: Flow<Unit>,
+    val appearanceChanges: Flow<Unit> = emptyFlow(),
     val currentMinutesFromMidnight: () -> Int,
     val systemDark: () -> Boolean,
     val storyCacheRepository: StoryCacheRepository,
@@ -53,6 +55,7 @@ class HarmonicHostConfiguration(
             appDataStore = appDataStore,
             previewCacheStore = previewCacheStore,
             settingsChanges = settingsChanges,
+            appearanceChanges = emptyFlow(),
             currentMinutesFromMidnight = currentMinutesFromMidnight,
             systemDark = systemDark,
             showCommentsUpButtonByDefault = showCommentsUpButtonByDefault,

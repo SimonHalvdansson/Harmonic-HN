@@ -1,6 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.WriteProperties
 import org.gradle.language.jvm.tasks.ProcessResources
+
+val desktopVersionName = providers.gradleProperty("harmonic.desktop.versionName").get()
+val desktopVersionCode = providers.gradleProperty("harmonic.desktop.versionCode").get()
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -27,11 +32,25 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(compose.desktop.currentOs)
+            implementation(libs.jna.platform)
+        }
+        getByName("desktopTest").dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
 
+val generateDesktopMetadata = tasks.register<WriteProperties>("generateDesktopMetadata") {
+    destinationFile = layout.buildDirectory
+        .file("generated/desktopMetadata/harmonic-desktop.properties")
+        .get()
+        .asFile
+    property("versionName", desktopVersionName)
+    property("versionCode", desktopVersionCode)
+}
+
 tasks.named<ProcessResources>("desktopProcessResources") {
+    from(generateDesktopMetadata)
     from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
         rename { "harmonic-app-icon.png" }
     }
@@ -43,13 +62,23 @@ tasks.named<ProcessResources>("desktopProcessResources") {
     }
 }
 
+tasks.withType<JavaExec>().configureEach {
+    if (name == "run") {
+        systemProperty("harmonic.desktop.debug", "true")
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "com.simon.harmonichackernews.desktop.DesktopAppMainKt"
+        // Compose 1.12.0-rc01's ProGuard runner dereferences Gradle 9.7's nullable output stream.
+        // Keep release packaging functional until the plugin is compatible; packaging still uses
+        // the release runtime and excludes debug-only UI through runtime metadata below.
+        buildTypes.release.proguard.isEnabled.set(false)
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Harmonic"
-            packageVersion = "1.0.0"
+            packageVersion = desktopVersionName
             description = "A desktop Hacker News client powered by Harmonic's shared Kotlin app"
             vendor = "Simon Halvdansson"
             macOS {
