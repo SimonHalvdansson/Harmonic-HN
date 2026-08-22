@@ -13,16 +13,21 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +49,17 @@ fun SharedCommentSearchScreen(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    // Keep selection/composition state local to the field. On desktop, feeding the asynchronously
+    // published String back into the String overload can reset the cursor to the start between
+    // closely spaced key events, making input such as "ab" appear as "ba".
+    var fieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = searchTerm,
+                selection = TextRange(searchTerm.length),
+            ),
+        )
+    }
     LaunchedEffect(requestFocus) {
         if (requestFocus) {
             focusRequester.requestFocus()
@@ -66,8 +82,11 @@ fun SharedCommentSearchScreen(
             textAlign = TextAlign.Center,
         )
         OutlinedTextField(
-            value = searchTerm,
-            onValueChange = onSearchTermChanged,
+            value = fieldValue,
+            onValueChange = { value ->
+                fieldValue = value
+                onSearchTermChanged(value.text)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Harmonic's macOS-specific icon from the canonical store artwork.
+"""Generate Harmonic's platform-specific desktop icons from the store artwork.
 
 The geometry follows https://icon.msgbyte.com/: 8% outer padding, a rounded
 square whose radius is 22% of its side, a soft shadow, and a subtle border.
@@ -31,12 +31,30 @@ ICNS_VARIANTS = (
     (b"ic09", 512),
     (b"ic10", 1024),
 )
+ICO_VARIANTS = (
+    (16, 16),
+    (20, 20),
+    (24, 24),
+    (32, 32),
+    (40, 40),
+    (48, 48),
+    (64, 64),
+    (128, 128),
+    (256, 256),
+)
 
 
-def generate(source_path: Path, output_path: Path) -> None:
+def generate(
+    source_path: Path,
+    output_path: Path,
+    *,
+    margin_fraction: float = 0.08,
+    shadow_offset_fraction: float = 0.02,
+    shadow_blur_fraction: float = 0.06,
+) -> None:
     scale = SUPERSAMPLING
     canvas_size = CANVAS_SIZE * scale
-    margin = round(0.08 * CANVAS_SIZE) * scale
+    margin = round(margin_fraction * CANVAS_SIZE) * scale
     artwork_size = canvas_size - (2 * margin)
     corner_radius = round(0.22 * (artwork_size / scale)) * scale
 
@@ -51,7 +69,7 @@ def generate(source_path: Path, output_path: Path) -> None:
     )
 
     shadow_mask = Image.new("L", (canvas_size, canvas_size), 0)
-    shadow_offset_y = round(0.02 * CANVAS_SIZE) * scale
+    shadow_offset_y = round(shadow_offset_fraction * CANVAS_SIZE) * scale
     ImageDraw.Draw(shadow_mask).rounded_rectangle(
         (
             margin,
@@ -63,7 +81,7 @@ def generate(source_path: Path, output_path: Path) -> None:
         fill=round(255 * 0.18),
     )
     shadow_mask = shadow_mask.filter(
-        ImageFilter.GaussianBlur(radius=0.06 * CANVAS_SIZE * scale),
+        ImageFilter.GaussianBlur(radius=shadow_blur_fraction * CANVAS_SIZE * scale),
     )
 
     output = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
@@ -104,15 +122,33 @@ def generate_icns(png_path: Path, output_path: Path) -> None:
     output_path.write_bytes(b"icns" + struct.pack(">I", len(body) + 8) + body)
 
 
+def generate_ico(png_path: Path, output_path: Path) -> None:
+    source = Image.open(png_path).convert("RGBA")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    source.save(output_path, format="ICO", sizes=ICO_VARIANTS)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--icns", type=Path)
+    parser.add_argument("--windows", type=Path)
+    parser.add_argument("--ico", type=Path)
     args = parser.parse_args()
     generate(args.source, args.output)
     if args.icns is not None:
         generate_icns(args.output, args.icns)
+    if args.windows is not None:
+        generate(
+            args.source,
+            args.windows,
+            margin_fraction=0.03,
+            shadow_offset_fraction=0.006,
+            shadow_blur_fraction=0.012,
+        )
+    if args.ico is not None:
+        generate_ico(args.windows or args.output, args.ico)
 
 
 if __name__ == "__main__":

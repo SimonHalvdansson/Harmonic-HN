@@ -405,10 +405,15 @@ class StoriesComposeController private constructor(
             target.story,
             showWebsite,
         )
-        // Comments cover the Stories pane, so keep its preview exactly as it was for Back. Opening
-        // the website retains the existing behavior: close the preview unless both panes remain
-        // visible side by side.
-        if (showWebsite && !remainsVisibleBesideDestination) {
+        // In a single-pane layout Comments replace Stories, so retain the preview state for Back.
+        // In a split layout the Stories pane remains mounted beside Comments; dismiss its modal
+        // preview so it cannot stay stranded over the list after navigation.
+        val shouldDismiss = if (showWebsite) {
+            !remainsVisibleBesideDestination
+        } else {
+            remainsVisibleBesideDestination
+        }
+        if (shouldDismiss) {
             interactionStore.requestDismissStoryPreview()
             syncInteractionState()
         }

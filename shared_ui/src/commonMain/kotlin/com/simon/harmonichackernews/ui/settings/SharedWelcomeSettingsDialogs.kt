@@ -145,7 +145,7 @@ fun SharedWelcomeSettingsDialog(
                 }
                 item {
                     Text(
-                        text = if (styleChooser) "Style" else "Welcome to Harmonic for Hacker News",
+                        text = if (styleChooser) "Style" else "Welcome to Harmonic",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = if (styleChooser) 0.dp else 12.dp),

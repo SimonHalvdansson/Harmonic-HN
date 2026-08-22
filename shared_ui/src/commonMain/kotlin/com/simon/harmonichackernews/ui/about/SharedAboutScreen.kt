@@ -60,7 +60,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 const val DefaultAboutBody =
-    "Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 " +
+    "Harmonic is developed by me, Simon Halvdansson, although since 2023 " +
         "the app is open source.\n\nThe name 'Harmonic' comes from me choosing to study " +
         "harmonic analysis at around the time of Harmonic's inception. I guess you could say " +
         "something about 'waves' and 'news' but that's the rationale. Since then, I've finished " +

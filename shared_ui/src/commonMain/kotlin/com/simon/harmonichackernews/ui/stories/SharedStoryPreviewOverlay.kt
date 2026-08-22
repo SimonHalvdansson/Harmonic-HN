@@ -1,4 +1,6 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+)
 
 package com.simon.harmonichackernews.ui.stories
 
@@ -44,6 +46,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -56,6 +60,8 @@ private const val TransformDurationMillis = 280
 private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
+private const val DismissFallbackDelayMillis = 460L
+private const val ScrollWheelGestureIdleMillis = 180L
 
 internal fun storyPreviewPagerSettleTarget(
     isScrollInProgress: Boolean,
@@ -67,11 +73,23 @@ internal fun storyPreviewPagerSettleTarget(
         abs(currentPageOffsetFraction) > PagerSettledOffsetTolerance
 }
 
+internal fun storyPreviewScrollWheelTarget(
+    currentPage: Int,
+    pageCount: Int,
+    scrollDeltaY: Float,
+): Int? {
+    if (pageCount <= 0 || currentPage !in 0..<pageCount) return null
+    if (!scrollDeltaY.isFinite() || scrollDeltaY == 0f) return null
+    val target = currentPage + if (scrollDeltaY > 0f) 1 else -1
+    return target.coerceIn(0, pageCount - 1).takeIf { it != currentPage }
+}
+
 /** Shared pager, list synchronization, container transform, and predictive-back presentation. */
 @Composable
 fun SharedStoryPreviewOverlay(
     controller: StoriesComposeController,
     tablet: Boolean,
+    pageOnScrollWheel: Boolean = false,
     cardContent: @Composable (
         story: com.simon.harmonichackernews.presentation.StoryListItemSnapshot,
         page: Int,
@@ -86,6 +104,8 @@ fun SharedStoryPreviewOverlay(
         pageCount = { state.stories.size },
     )
     val pagerSettlingScope = rememberCoroutineScope()
+    var scrollWheelGestureReady by remember(state) { mutableStateOf(true) }
+    var scrollWheelResetJob by remember(state) { mutableStateOf<Job?>(null) }
     val transformProgress = remember(state) { Animatable(0f) }
     val predictiveProgressAnimation = remember(state) { Animatable(0f) }
     var overlayActive by remember(state) { mutableStateOf(false) }
@@ -218,6 +238,20 @@ fun SharedStoryPreviewOverlay(
         drawOverlayShadows = false
         withFrameNanos { }
         controller.completeStoryPreviewDismiss()
+    }
+    // A navigation or resize can invalidate a transition layer after the dialog has opened. A
+    // dismiss must never remain pending forever in that state: pending dismissals disable paging
+    // and ignore subsequent dismiss requests, effectively trapping the user behind the overlay.
+    LaunchedEffect(dismissRequest) {
+        if (dismissRequest == 0) return@LaunchedEffect
+        delay(DismissFallbackDelayMillis)
+        if (
+            controller.storyPreviewDismissRequest == dismissRequest &&
+            !closingStarted
+        ) {
+            controller.setStoryPreviewSourceCovered(false)
+            controller.completeStoryPreviewDismiss()
+        }
     }
     LaunchedEffect(controller.storyPreviewPredictiveBackProgress, predictiveSettleRequest) {
         if (predictiveSettleRequest == null) {
@@ -437,7 +471,38 @@ fun SharedStoryPreviewOverlay(
     ) {
         VerticalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (pageOnScrollWheel) {
+                        Modifier.storyPreviewScrollWheelPaging { scrollDeltaY ->
+                            scrollWheelResetJob?.cancel()
+                            scrollWheelResetJob = pagerSettlingScope.launch {
+                                delay(ScrollWheelGestureIdleMillis)
+                                while (pagerState.isScrollInProgress) delay(16L)
+                                scrollWheelGestureReady = true
+                            }
+                            if (
+                                !scrollWheelGestureReady ||
+                                progress < 0.999f ||
+                                dismissRequest != 0
+                            ) {
+                                return@storyPreviewScrollWheelPaging
+                            }
+                            val target = storyPreviewScrollWheelTarget(
+                                currentPage = pagerState.currentPage,
+                                pageCount = state.stories.size,
+                                scrollDeltaY = scrollDeltaY,
+                            ) ?: return@storyPreviewScrollWheelPaging
+                            scrollWheelGestureReady = false
+                            pagerSettlingScope.launch {
+                                pagerState.animateScrollToPage(target)
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
             beyondViewportPageCount = 2,
             userScrollEnabled = progress >= 0.999f && dismissRequest == 0,
             key = { page -> "${state.stories[page].id}:$page" },

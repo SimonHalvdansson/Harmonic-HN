@@ -139,7 +139,7 @@ internal fun IosSettingsDetail(
             onOpenLicenses = { onNavigate(SettingsSection.Licenses, true) },
             onOpenPrivacy = { scene.links.open(app.metadata.privacyUrl) },
             showNavigation = singlePane,
-            aboutBody = "Harmonic for Hacker News is an open-source Hacker News client. " +
+            aboutBody = "Harmonic is an open-source Hacker News client. " +
                 "This iOS host uses the same Kotlin Multiplatform application logic and " +
                 "Compose screens as the Android app, with iOS-native storage, links, and " +
                 "keyboard/window behavior.",

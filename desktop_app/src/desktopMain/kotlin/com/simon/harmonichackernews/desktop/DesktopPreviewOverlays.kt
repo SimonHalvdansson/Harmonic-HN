@@ -29,6 +29,7 @@ internal fun DesktopStoryPreviewOverlay(
     SharedStoryPreviewOverlay(
         controller = controller,
         tablet = true,
+        pageOnScrollWheel = true,
     ) { story, page, cardColor, modifier ->
         val previewResource = controller.previewResources[story.id]
             ?.takeIf { it.pageUrl == story.url }

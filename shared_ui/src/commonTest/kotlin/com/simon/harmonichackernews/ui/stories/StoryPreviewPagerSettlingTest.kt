@@ -57,4 +57,18 @@ class StoryPreviewPagerSettlingTest {
             ),
         )
     }
+
+    @Test
+    fun scrollWheelMovesExactlyOnePageInItsDirection() {
+        assertEquals(5, storyPreviewScrollWheelTarget(4, pageCount = 10, scrollDeltaY = 1f))
+        assertEquals(3, storyPreviewScrollWheelTarget(4, pageCount = 10, scrollDeltaY = -1f))
+        assertEquals(5, storyPreviewScrollWheelTarget(4, pageCount = 10, scrollDeltaY = 120f))
+    }
+
+    @Test
+    fun scrollWheelDoesNotMovePastPagerEdges() {
+        assertNull(storyPreviewScrollWheelTarget(0, pageCount = 10, scrollDeltaY = -1f))
+        assertNull(storyPreviewScrollWheelTarget(9, pageCount = 10, scrollDeltaY = 1f))
+        assertNull(storyPreviewScrollWheelTarget(4, pageCount = 10, scrollDeltaY = 0f))
+    }
 }

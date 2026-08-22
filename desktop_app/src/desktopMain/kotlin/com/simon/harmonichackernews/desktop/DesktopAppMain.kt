@@ -16,12 +16,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.KeyShortcut
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import androidx.compose.ui.window.MenuBar
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -87,7 +86,7 @@ fun main() {
             var editorBackRequestVersion by remember { mutableIntStateOf(0) }
             Window(
                 onCloseRequest = ::exitApplication,
-                title = "Harmonic for Hacker News",
+                title = "Harmonic",
                 icon = windowIcon,
                 state = WindowState(width = 1180.dp, height = 840.dp),
                 onKeyEvent = { event ->
@@ -104,25 +103,14 @@ fun main() {
                             bootstrap.scene.navigation.openSettings(null)
                             true
                         }
+                        event.key == Key.W && (event.isMetaPressed || event.isCtrlPressed) -> {
+                            exitApplication()
+                            true
+                        }
                         else -> false
                     }
                 },
             ) {
-                MenuBar {
-                    Menu("Harmonic") {
-                        Item(
-                            text = "Settings…",
-                            shortcut = KeyShortcut(Key.Comma, meta = true),
-                            onClick = { bootstrap.scene.navigation.openSettings(null) },
-                        )
-                        Separator()
-                        Item(
-                            text = "Close",
-                            shortcut = KeyShortcut(Key.W, meta = true),
-                            onClick = ::exitApplication,
-                        )
-                    }
-                }
                 val selection by bootstrap.app.appearance.selections.collectAsState(
                     initial = bootstrap.app.appearance.selection(),
                 )
@@ -167,10 +155,11 @@ fun main() {
 }
 
 private fun loadDesktopAppIcon(): BufferedImage? = runCatching {
-    val resourceName = if (System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
-        "harmonic-app-icon-macos.png"
-    } else {
-        "harmonic-app-icon.png"
+    val osName = System.getProperty("os.name")
+    val resourceName = when {
+        osName.startsWith("Mac", ignoreCase = true) -> "harmonic-app-icon-macos.png"
+        osName.startsWith("Windows", ignoreCase = true) -> "harmonic-app-icon-windows.png"
+        else -> "harmonic-app-icon.png"
     }
     Thread.currentThread().contextClassLoader
         .getResourceAsStream(resourceName)
@@ -208,9 +197,9 @@ private fun handleDesktopBack(
         commentsController?.isCommentActionOverlayShowing() == true ->
             commentsController.requestDismissCommentActions()
         commentsController?.searchDialogVisible == true -> commentsController.dismissCommentSearch()
-        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
+        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.searching == true -> storiesController.finishSearchBack()
         else -> return false
     }
@@ -256,7 +245,12 @@ private fun DesktopAppContent(
                     paneProportion = 0.4f,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = {
-                        DesktopStoriesContent(app, scene, onStoriesControllerChanged)
+                        DesktopStoriesContent(
+                            app,
+                            scene,
+                            isSplitLayout = true,
+                            onControllerChanged = onStoriesControllerChanged,
+                        )
                     },
                     emptyDetail = { EmptyCommentsScreen() },
                     comments = { request ->
@@ -278,7 +272,12 @@ private fun DesktopAppContent(
                     predictiveBackActive = false,
                     showStoriesPane = true,
                     stories = {
-                        DesktopStoriesContent(app, scene, onStoriesControllerChanged)
+                        DesktopStoriesContent(
+                            app,
+                            scene,
+                            isSplitLayout = false,
+                            onControllerChanged = onStoriesControllerChanged,
+                        )
                     },
                     comments = { request ->
                         DesktopCommentsContent(
@@ -328,9 +327,11 @@ private fun DesktopAppContent(
 private fun DesktopStoriesContent(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
+    isSplitLayout: Boolean,
     onControllerChanged: (StoriesComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val currentSplitLayout by rememberUpdatedState(isSplitLayout)
     val defaultStoryHeightPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val store = remember(app, scene, scope) {
         app.createStoriesStore(
@@ -359,7 +360,7 @@ private fun DesktopStoriesContent(
             }
 
             override fun onStoryPreviewVisibilityChanged(showing: Boolean) = Unit
-            override fun isSplitLayout(): Boolean = false
+            override fun isSplitLayout(): Boolean = currentSplitLayout
         }
         created = StoriesComposeController.create(
             defaultStoryHeightPx = defaultStoryHeightPx,

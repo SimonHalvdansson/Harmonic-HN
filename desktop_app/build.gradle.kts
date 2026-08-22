@@ -38,6 +38,9 @@ tasks.named<ProcessResources>("desktopProcessResources") {
     from(project.file("icons/harmonic-macos.png")) {
         rename { "harmonic-app-icon-macos.png" }
     }
+    from(project.file("icons/harmonic-windows.png")) {
+        rename { "harmonic-app-icon-windows.png" }
+    }
 }
 
 compose.desktop {
