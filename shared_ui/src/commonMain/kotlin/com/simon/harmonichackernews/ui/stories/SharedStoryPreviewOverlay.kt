@@ -306,10 +306,25 @@ fun SharedStoryPreviewOverlay(
     val predictiveProgress = predictiveProgressAnimation.value
     val predictiveEased = 1f - (1f - predictiveProgress) * (1f - predictiveProgress)
     val backDirection = if (controller.storyPreviewPredictiveBackEdge == 1) -1f else 1f
+    val backScale = 1f - 0.1f * predictiveEased
+    val backPivotFractionX = if (backDirection > 0f) 0f else 1f
     val backTranslationX = with(density) { PredictiveBackTranslationXDp.dp.toPx() } *
         predictiveEased * backDirection
     val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } *
         predictiveEased
+    fun transformTargetBounds(bounds: Rect?): Rect? {
+        val container = targetBounds ?: return bounds
+        return bounds?.let {
+            storyPreviewPredictiveBackBounds(
+                bounds = it,
+                container = container,
+                scale = backScale,
+                translationX = backTranslationX,
+                translationY = backTranslationY,
+                pivotFractionX = backPivotFractionX,
+            )
+        }
+    }
     val sharedTransition = StoryPreviewSharedTransitionState(
         progress = progress,
         active = overlayActive,
@@ -326,17 +341,21 @@ fun SharedStoryPreviewOverlay(
                 StoryPreviewSourceElement.Comments -> sourceCommentsSnapshot
             }
         },
-        targetContainer = targetBounds,
-        targetCommentsButton = targetCommentsButtonBounds,
+        // The live card is already transformed by predictive back when a committed gesture starts
+        // the shared-element dismissal. Use that same geometry for the overlay's progress-one
+        // frame so handing drawing from the live card to the overlay cannot jump back to rest.
+        targetContainer = transformTargetBounds(targetBounds),
+        targetScale = backScale,
+        targetCommentsButton = transformTargetBounds(targetCommentsButtonBounds),
         rootOffset = rootOffset,
         targetBounds = { element ->
-            when (element) {
+            transformTargetBounds(when (element) {
                 StoryPreviewSharedElement.Image -> targetImageBounds
                 StoryPreviewSharedElement.Title -> targetTitleBounds
                 StoryPreviewSharedElement.Summary -> targetSummaryBounds
                 StoryPreviewSharedElement.Meta -> targetMetaBounds
                 StoryPreviewSharedElement.Supplementary -> targetSupplementaryBounds
-            }
+            })
         },
         targetSnapshot = { element ->
             when (element) {
@@ -451,13 +470,12 @@ fun SharedStoryPreviewOverlay(
                     .then(
                         if (currentPage && predictiveEased > 0f) {
                             Modifier.graphicsLayer {
-                                val backScale = 1f - 0.1f * predictiveEased
                                 scaleX = backScale
                                 scaleY = backScale
                                 translationX = backTranslationX
                                 translationY = backTranslationY
                                 transformOrigin = TransformOrigin(
-                                    if (backDirection > 0f) 0f else 1f,
+                                    backPivotFractionX,
                                     0.5f,
                                 )
                             }
@@ -496,6 +514,28 @@ fun SharedStoryPreviewOverlay(
             color = Color(state.cardColors[pagerState.currentPage]),
         )
     }
+}
+
+internal fun storyPreviewPredictiveBackBounds(
+    bounds: Rect,
+    container: Rect,
+    scale: Float,
+    translationX: Float,
+    translationY: Float,
+    pivotFractionX: Float,
+): Rect {
+    val pivotX = container.left + container.width * pivotFractionX
+    val pivotY = container.center.y
+    fun transformX(value: Float): Float =
+        pivotX + (value - pivotX) * scale + translationX
+    fun transformY(value: Float): Float =
+        pivotY + (value - pivotY) * scale + translationY
+    return Rect(
+        left = transformX(bounds.left),
+        top = transformY(bounds.top),
+        right = transformX(bounds.right),
+        bottom = transformY(bounds.bottom),
+    )
 }
 
 @Composable

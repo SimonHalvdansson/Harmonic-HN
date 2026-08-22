@@ -82,6 +82,7 @@ internal data class StoryPreviewSharedTransitionState(
     val source: StoryPreviewSourceGeometry?,
     val sourceSnapshot: (StoryPreviewSourceElement) -> ImageBitmap?,
     val targetContainer: Rect?,
+    val targetScale: Float,
     val targetCommentsButton: Rect?,
     val rootOffset: Offset,
     val targetBounds: (StoryPreviewSharedElement) -> Rect?,
@@ -210,11 +211,11 @@ internal fun StoryPreviewTransitionOverlay(
     val container = lerp(sourceContainer, targetContainer, progress)
     val density = LocalDensity.current
     val sourceRadiusPx = with(density) { 8.dp.toPx() }
-    val targetRadiusPx = with(density) { 28.dp.toPx() }
+    val targetRadiusPx = with(density) { 28.dp.toPx() } * transition.targetScale
     val containerRadiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress)
     val containerRadius = with(density) { containerRadiusPx.toDp() }
     val elevation = if (transition.drawOverlayShadows) {
-        lerp(source.containerElevationDp, 8f, progress).dp
+        lerp(source.containerElevationDp, 8f * transition.targetScale, progress).dp
     } else {
         0.dp
     }
@@ -261,7 +262,7 @@ internal fun StoryPreviewTransitionOverlay(
                     // covering it with the real button color keeps the pill chroma stable.
                     .graphicsLayer(alpha = commentsShadowProgress)
                     .shadow(
-                        elevation = 1.dp,
+                        elevation = transition.targetScale.dp,
                         shape = commentsButtonShape,
                         clip = false,
                     )
