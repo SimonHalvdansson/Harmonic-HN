@@ -87,7 +87,7 @@ fun AiSummarySettingsScreen(
                     onDismiss = onDismiss,
                     onSaved = { localRefresh++ },
                 )
-                AiSummarySettingsDialog.Model -> AiModelSelectorDialog(onDismiss = onDismiss)
+                AiSummarySettingsDialog.Model -> SharedAiModelSelectorRoute(onDismiss = onDismiss)
                 AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
                     setting = AiSummaryTextSetting.SYSTEM_PROMPT,
                     title = "System prompt",

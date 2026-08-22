@@ -74,7 +74,6 @@ fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
 @Composable
 fun SharedAiModelSelectorRoute(
     onDismiss: () -> Unit,
-    providerIcon: @Composable (String) -> Unit,
 ) {
     val app = LocalHarmonicUiDependencies.current
     val repository = app.aiSummarySettings
@@ -86,6 +85,12 @@ fun SharedAiModelSelectorRoute(
         catalogRepository = app.network.aiModelCatalogRepository,
         onSave = repository::setModelForCurrentProvider,
         onDismiss = onDismiss,
-        providerIcon = providerIcon,
+        providerIcon = { providerSlug ->
+            SharedAiModelProviderIcon(
+                providerSlug = providerSlug,
+                repository = app.network.openRouterProviderIconRepository,
+                userAgent = app.network.userAgent,
+            )
+        },
     )
 }

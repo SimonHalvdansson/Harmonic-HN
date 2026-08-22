@@ -40,6 +40,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -251,6 +252,25 @@ fun HeaderActions(
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
     var archiveExpanded by remember { mutableStateOf(false) }
+    val dismissMenus = {
+        shareExpanded = false
+        moreExpanded = false
+        sortExpanded = false
+        archiveExpanded = false
+    }
+    val menuVisible = shareExpanded || moreExpanded
+    // The desktop window receives an unconsumed Escape after Compose dismisses a dropdown. Keep
+    // the host-facing flag synchronized after composition so that same key cannot also navigate
+    // away from the story.
+    LaunchedEffect(menuVisible) {
+        controller.updateHeaderMenuVisibility(menuVisible)
+    }
+    LaunchedEffect(controller.headerMenuDismissRequestVersion) {
+        if (controller.headerMenuDismissRequestVersion > 0) dismissMenus()
+    }
+    DisposableEffect(controller) {
+        onDispose { controller.updateHeaderMenuVisibility(false) }
+    }
     val upvoted = controller.isUpvoted(story.id, story.isComment)
     val favorited = controller.isFavorited(story.id)
     val bookmarked = remember(contentVersion, story.id) {
@@ -340,11 +360,7 @@ fun HeaderActions(
                 settings = settings,
                 bookmarksEnabled = bookmarksEnabled,
                 contentVersion = contentVersion,
-                onDismiss = {
-                    moreExpanded = false
-                    sortExpanded = false
-                    archiveExpanded = false
-                },
+                onDismiss = dismissMenus,
                 onSortExpanded = { sortExpanded = true },
                 onArchiveExpanded = { archiveExpanded = true },
                 onSubmenuBack = {

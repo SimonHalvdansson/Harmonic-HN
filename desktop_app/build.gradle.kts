@@ -1,11 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.language.jvm.tasks.ProcessResources
 
-val desktopVersionName = providers.gradleProperty("harmonic.desktop.versionName").get()
-val desktopVersionCode = providers.gradleProperty("harmonic.desktop.versionCode").get()
+val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
+val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -62,11 +63,30 @@ tasks.named<ProcessResources>("desktopProcessResources") {
     }
 }
 
-tasks.withType<JavaExec>().configureEach {
-    if (name == "run") {
-        systemProperty("harmonic.desktop.debug", "true")
-    }
+val desktopProjectJars = files(
+    layout.buildDirectory.file("libs/desktop_app-desktop.jar"),
+    project(":shared_ui").layout.buildDirectory.file("libs/shared_ui-desktop.jar"),
+    project(":shared_logic").layout.buildDirectory.file("libs/shared_logic-desktop.jar"),
+    project(":shared_resources").layout.buildDirectory.file("libs/shared_resources-desktop.jar"),
+).builtBy(
+    ":desktop_app:desktopJar",
+    ":shared_ui:desktopJar",
+    ":shared_logic:desktopJar",
+    ":shared_resources:desktopJar",
+)
+// The Compose run task normally launches directly from build/libs. Other Gradle builds can
+// replace those jars while the desktop JVM is still running, making later class loads fail.
+// Launch from a private snapshot so tests and Android builds cannot invalidate the open app.
+val desktopRunClasspathDirectory = layout.buildDirectory.dir("desktopRunClasspath")
+val prepareDesktopRunClasspath = tasks.register<Sync>("prepareDesktopRunClasspath") {
+    from(desktopProjectJars)
+    into(desktopRunClasspathDirectory)
 }
+val stableDesktopProjectJars = files(
+    desktopRunClasspathDirectory.map { directory ->
+        directory.asFileTree.matching { include("*.jar") }
+    },
+).builtBy(prepareDesktopRunClasspath)
 
 compose.desktop {
     application {
@@ -96,5 +116,15 @@ compose.desktop {
                 )
             }
         }
+    }
+}
+
+afterEvaluate {
+    tasks.named<JavaExec>("run") {
+        val mutableProjectClasspath = classpath
+        classpath = mutableProjectClasspath
+            .minus(desktopProjectJars)
+            .plus(stableDesktopProjectJars)
+        systemProperty("harmonic.desktop.debug", "true")
     }
 }

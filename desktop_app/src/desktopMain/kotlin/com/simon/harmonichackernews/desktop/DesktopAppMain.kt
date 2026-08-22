@@ -197,6 +197,8 @@ private fun handleDesktopBack(
         navigation.editorRequest != null -> onEditorBackRequested()
         navigation.submissionsRequest != null -> scene.navigation.closeSubmissions()
         navigation.settingsRequest != null -> scene.navigation.closeSettings()
+        commentsController?.isHeaderMenuShowing() == true ->
+            commentsController.requestDismissHeaderMenu()
         commentsController?.isLinkPreviewOverlayShowing() == true ->
             commentsController.requestDismissLinkPreview()
         commentsController?.isCommentActionOverlayShowing() == true ->

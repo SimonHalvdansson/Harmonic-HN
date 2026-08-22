@@ -17,8 +17,8 @@ android {
         applicationId = "com.simon.harmonichackernews"
         minSdk = 26
         targetSdk = 37
-        versionCode = 80
-        versionName = "3.1.2"
+        versionCode = providers.gradleProperty("harmonic.versionCode").get().toInteger()
+        versionName = providers.gradleProperty("harmonic.versionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "false"
 

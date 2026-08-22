@@ -103,6 +103,10 @@ class CommentsComposeController private constructor(
         private set
     var headerPreviewSuppressed by mutableStateOf(false)
         private set
+    var headerMenuVisible by mutableStateOf(false)
+        private set
+    var headerMenuDismissRequestVersion by mutableIntStateOf(0)
+        private set
     var webViewFullscreen by mutableStateOf(false)
         private set
     var isScrolledToTop by mutableStateOf(true)
@@ -231,6 +235,16 @@ class CommentsComposeController private constructor(
 
     fun updateHeaderPreviewSuppressed(suppressed: Boolean) {
         headerPreviewSuppressed = suppressed
+    }
+
+    fun updateHeaderMenuVisibility(visible: Boolean) {
+        headerMenuVisible = visible
+    }
+
+    fun isHeaderMenuShowing(): Boolean = headerMenuVisible
+
+    fun requestDismissHeaderMenu() {
+        if (headerMenuVisible) headerMenuDismissRequestVersion++
     }
 
     fun refreshContent() {

@@ -428,10 +428,7 @@ private fun DesktopAiSettings(
                     onDismiss = dismiss,
                     onSaved = { refresh++ },
                 )
-                AiSummarySettingsDialog.Model -> SharedAiModelSelectorRoute(
-                    onDismiss = dismiss,
-                    providerIcon = { Text(it) },
-                )
+                AiSummarySettingsDialog.Model -> SharedAiModelSelectorRoute(onDismiss = dismiss)
                 AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
                     setting = AiSummaryTextSetting.SYSTEM_PROMPT,
                     title = "System prompt",
