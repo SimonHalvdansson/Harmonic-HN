@@ -160,7 +160,8 @@ internal fun CommentsScreen(
                 onCommentSelected = controller::selectSearchResult,
             )
         },
-        actionOverlay = { settings -> CommentActionOverlay(controller, settings) },
+        // Android hosts the action overlay above the pane-level status-bar protection.
+        actionOverlay = {},
     )
 }
 

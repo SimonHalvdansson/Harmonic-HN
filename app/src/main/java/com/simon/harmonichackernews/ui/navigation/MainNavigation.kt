@@ -63,6 +63,7 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.HarmonicSceneViewModel
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoriesCoordinator
+import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
@@ -995,10 +996,11 @@ private fun MainNavigation(
                     },
                     commentsPredictiveModifier = activeBackAnimation?.exitModifier ?: Modifier,
                     stories = {
-                        StoriesPane(controller)
-                        StatusBarProtection(
-                            color = paneStatusBarColor,
+                        StoriesPane(
+                            controller = controller,
+                            statusBarColor = paneStatusBarColor,
                             statusBarHeight = statusBarHeight,
+                            drawStatusBarProtection = true,
                         )
                     },
                     comments = { request ->
@@ -1322,6 +1324,11 @@ private fun CommentsPane(
                                 .padding(start = 16.dp, top = 4.dp)
                                 .zIndex(101f),
                         )
+                    }
+                    commentsController.displaySettings?.let { settings ->
+                        Box(Modifier.fillMaxSize().zIndex(102f)) {
+                            CommentActionOverlay(commentsController, settings)
+                        }
                     }
                 }
             }
