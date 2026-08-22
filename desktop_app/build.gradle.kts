@@ -17,7 +17,7 @@ plugins {
 kotlin {
     jvm("desktop") {
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
+            jvmTarget = JvmTarget.JVM_17
         }
     }
 
@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.coil.network.ktor3)
             implementation(compose.desktop.currentOs)
             implementation(libs.jna.platform)
+            implementation(libs.swt.win32)
         }
         getByName("desktopTest").dependencies {
             implementation(kotlin("test"))

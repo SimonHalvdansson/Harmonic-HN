@@ -41,6 +41,7 @@ import com.simon.harmonichackernews.app.StoriesFeatureHost
 import com.simon.harmonichackernews.app.createStoriesStore
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
@@ -70,6 +71,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import java.awt.Taskbar
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
+import kotlinx.coroutines.delay
 
 fun main() {
     System.setProperty("apple.awt.application.name", "Harmonic")
@@ -209,6 +211,9 @@ private fun handleDesktopBack(
         commentsController?.isCommentActionOverlayShowing() == true ->
             commentsController.requestDismissCommentActions()
         commentsController?.searchDialogVisible == true -> commentsController.dismissCommentSearch()
+        storiesController?.isHeaderMenuShowing() == true ->
+            storiesController.requestDismissHeaderMenu()
+        commentsController?.isWebsiteVisible() == true -> commentsController.requestExpandSheet()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
         navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
@@ -230,6 +235,45 @@ private fun DesktopAppContent(
     onCommentsControllerChanged: (CommentsComposeController?) -> Unit,
 ) {
     val navigation by scene.navigation.state.collectAsState()
+    val storyDestinationForeground = navigation.currentDestination == MainDestination.STORY
+    var destinationTransitionSettled by remember {
+        mutableStateOf(storyDestinationForeground)
+    }
+    LaunchedEffect(storyDestinationForeground) {
+        if (!storyDestinationForeground) {
+            destinationTransitionSettled = false
+        } else if (!destinationTransitionSettled) {
+            delay(DesktopDestinationTransitionDurationMillis)
+            destinationTransitionSettled = true
+        }
+    }
+    val composeOverlayVisible = navigation.welcomeDialogVisible ||
+        navigation.changelogDialogVisible ||
+        navigation.cacheStoriesDialogVisible ||
+        navigation.loginDialogVisible ||
+        navigation.captchaRequest != null ||
+        navigation.userRequest != null ||
+        navigation.failureRequest != null ||
+        storiesController?.isHeaderMenuShowing() == true ||
+        storiesController?.frontDatePickerRequest != null ||
+        storiesController?.isStoryPreviewShowing() == true ||
+        commentsController?.isHeaderMenuShowing() == true ||
+        commentsController?.isLinkPreviewOverlayShowing() == true ||
+        commentsController?.isCommentActionOverlayShowing() == true ||
+        commentsController?.searchDialogVisible == true
+    var overlayTransitionSettled by remember { mutableStateOf(!composeOverlayVisible) }
+    LaunchedEffect(composeOverlayVisible) {
+        if (composeOverlayVisible) {
+            overlayTransitionSettled = false
+        } else if (!overlayTransitionSettled) {
+            delay(DesktopOverlayExitDurationMillis)
+            overlayTransitionSettled = true
+        }
+    }
+    val webViewForegroundAllowed = storyDestinationForeground &&
+        destinationTransitionSettled &&
+        !composeOverlayVisible &&
+        overlayTransitionSettled
     val transitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val mainDirective = remember(adaptiveInfo) {
@@ -271,6 +315,7 @@ private fun DesktopAppContent(
                             scene = scene,
                             request = request,
                             showNavigation = false,
+                            webViewForegroundAllowed = webViewForegroundAllowed,
                             onClose = scene.navigation::detailRemovedFromBackStack,
                             onControllerChanged = onCommentsControllerChanged,
                         )
@@ -297,6 +342,7 @@ private fun DesktopAppContent(
                             scene = scene,
                             request = request,
                             showNavigation = true,
+                            webViewForegroundAllowed = webViewForegroundAllowed,
                             onClose = scene.navigation::detailRemovedFromBackStack,
                             onControllerChanged = onCommentsControllerChanged,
                         )
@@ -335,6 +381,9 @@ private fun DesktopAppContent(
     )
 }
 
+private const val DesktopDestinationTransitionDurationMillis = 450L
+private const val DesktopOverlayExitDurationMillis = 160L
+
 @Composable
 private fun DesktopStoriesContent(
     app: HarmonicAppComposition,
@@ -343,6 +392,10 @@ private fun DesktopStoriesContent(
     onControllerChanged: (StoriesComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val preloadCoordinator = remember(app, scope) {
+        DesktopCommentsPreloadCoordinator(app, scope)
+    }
+    val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
     val currentSplitLayout by rememberUpdatedState(isSplitLayout)
     val defaultStoryHeightPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val store = remember(app, scene, scope) {
@@ -401,7 +454,18 @@ private fun DesktopStoriesContent(
             onControllerChanged(null)
             store.onStop()
             store.close()
+            preloadCoordinator.dispose()
         }
+    }
+    LaunchedEffect(
+        preloadCoordinator,
+        appSettings.comments.preloadCommentsFromStories,
+        appSettings.reading.useAlgoliaApi,
+    ) {
+        preloadCoordinator.setEnabled(
+            appSettings.comments.preloadCommentsFromStories &&
+                appSettings.reading.useAlgoliaApi,
+        )
     }
     LaunchedEffect(state, controller) {
         val lastUpdatedText = state.lastUpdatedMillis?.let { millis ->
@@ -460,6 +524,7 @@ private fun DesktopStoriesContent(
             compactSelectedText = false,
             pullToRefreshEnabled = false,
             showRefreshMenuItem = true,
+            onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
         if (controller.isStoryPreviewShowing()) {
             DesktopStoryPreviewOverlay(app, controller)

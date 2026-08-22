@@ -33,6 +33,7 @@ class StoredUserSettingsTest {
         assertFalse(settings.comments.showUpButton)
         assertTrue(settings.comments.animateChanges)
         assertTrue(settings.comments.smoothScroll)
+        assertFalse(settings.comments.preloadCommentsFromStories)
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
         assertEquals(18, settings.reading.readerModeFontSize)
@@ -82,6 +83,25 @@ class StoredUserSettingsTest {
 
         assertTrue(hostDefault.comments.showUpButton)
         assertFalse(storedChoice.comments.showUpButton)
+    }
+
+    @Test
+    fun commentsPreloadDefaultIsHostSpecificAndStoredChoiceWins() {
+        val desktopDefault = StoredUserSettings(
+            store = TestKeyValueStore(),
+            changes = emptyFlow(),
+            preloadCommentsFromStoriesByDefault = true,
+        )
+        val storedChoice = StoredUserSettings(
+            store = TestKeyValueStore(
+                mapOf(UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES to false),
+            ),
+            changes = emptyFlow(),
+            preloadCommentsFromStoriesByDefault = true,
+        )
+
+        assertTrue(desktopDefault.comments.preloadCommentsFromStories)
+        assertFalse(storedChoice.comments.preloadCommentsFromStories)
     }
 
     @Test

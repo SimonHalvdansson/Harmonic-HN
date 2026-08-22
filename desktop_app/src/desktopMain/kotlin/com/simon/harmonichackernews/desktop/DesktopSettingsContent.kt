@@ -169,23 +169,10 @@ private fun DesktopWebLinksSettings(
     val reading = settings.reading
 
     SharedWebLinksSettingsScreen(
-        state = presenter.state(reading.readerFont.label, settings).copy(
-            integratedWebView = false,
-            externalBrowser = true,
-        ),
+        state = presenter.state(reading.readerFont.label, settings),
         showNavigation = showNavigation,
         onBack = onBack,
-        onBooleanChanged = { setting, value ->
-            when (setting) {
-                WebLinksBooleanSetting.IntegratedWebView -> scene.userMessages.show(
-                    "Desktop opens articles in your system browser",
-                )
-                WebLinksBooleanSetting.ExternalBrowser -> scene.userMessages.show(
-                    "The system browser is required on desktop",
-                )
-                else -> presenter.setBoolean(setting, value)
-            }
-        },
+        onBooleanChanged = presenter::setBoolean,
         onReaderFontSizeChanged = presenter::setReaderFontSize,
         onDialogRequested = { requested ->
             if (

@@ -351,6 +351,28 @@ class CommentsPresenter(
         val topLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
         threadLoadJob = scope.launch {
+            val preloaded = if (action.useAlgolia) {
+                commentThreadRepository.takePreloadedAlgolia(
+                    storyId,
+                    topLevelCommentIds,
+                    action.filteredUsers,
+                )
+            } else {
+                null
+            }
+            preloaded?.let { prepared ->
+                if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
+                    action = action,
+                    requestId = requestId,
+                    parsed = prepared.parsed,
+                    networkCompleted = true,
+                    responseToCache = null,
+                    restoreScroll = action.restoreScrollFromCache,
+                    broadcastStoryUpdate = false,
+                )
+                return@launch
+            }
+            val alreadyAppliedResponse = action.previousResponse
             action.previousResponse?.let { cachedResponse ->
                 runCatching {
                     commentThreadRepository.parseAlgolia(
@@ -379,8 +401,8 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
-                    if (action.previousResponse.isNullOrEmpty() ||
-                        action.previousResponse != result.response
+                    if (alreadyAppliedResponse.isNullOrEmpty() ||
+                        alreadyAppliedResponse != result.response
                     ) {
                         applyAlgoliaThread(
                             action = action,
@@ -389,7 +411,7 @@ class CommentsPresenter(
                             networkCompleted = true,
                             responseToCache = result.response,
                             restoreScroll = false,
-                            broadcastStoryUpdate = action.previousResponse == null,
+                            broadcastStoryUpdate = alreadyAppliedResponse == null,
                         )
                     } else {
                         publish(loaded = true, refreshing = false, failure = null)

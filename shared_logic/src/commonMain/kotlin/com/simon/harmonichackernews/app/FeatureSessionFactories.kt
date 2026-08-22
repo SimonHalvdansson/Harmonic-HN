@@ -195,7 +195,11 @@ fun HarmonicAppComposition.createCommentsStore(
     val presenter = CommentsPresenter(
         featureScope,
         host.sessionState,
-        CommentThreadRepository(network.algoliaRepository, network.hackerNewsRepository),
+        CommentThreadRepository(
+            network.algoliaRepository,
+            network.hackerNewsRepository,
+            preloads = commentsPreloads,
+        ),
         network.pollOptionsRepository,
         actions,
         hackerNewsUser,

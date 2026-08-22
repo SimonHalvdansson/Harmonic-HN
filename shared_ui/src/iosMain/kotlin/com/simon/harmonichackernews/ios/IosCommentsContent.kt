@@ -360,7 +360,7 @@ private fun IosCommentsHeader(
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
 ) {
     val colors = HarmonicTheme.colors
-    val tintBase = colors.surfaceContainerHigh.toArgb()
+    val tintBase = colors.storyCardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

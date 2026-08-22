@@ -19,6 +19,7 @@ fun SharedStoriesRoute(
     compactSelectedText: Boolean,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
+    onVisibleStoriesChanged: (List<com.simon.harmonichackernews.presentation.StoryListItemSnapshot>) -> Unit = {},
 ) {
     val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     SharedStoriesScreen(
@@ -41,5 +42,6 @@ fun SharedStoriesRoute(
         compactSelectedText = compactSelectedText,
         pullToRefreshEnabled = pullToRefreshEnabled,
         showRefreshMenuItem = showRefreshMenuItem,
+        onVisibleStoriesChanged = onVisibleStoriesChanged,
     )
 }

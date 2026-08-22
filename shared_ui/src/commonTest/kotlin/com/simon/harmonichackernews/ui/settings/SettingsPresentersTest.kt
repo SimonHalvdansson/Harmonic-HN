@@ -40,6 +40,7 @@ class SettingsPresentersTest {
         val fixture = fixture()
         fixture.comments.setBoolean(CommentsBooleanSetting.Scrollbar, false)
         fixture.comments.setBoolean(CommentsBooleanSetting.ShowUpButton, true)
+        fixture.comments.setBoolean(CommentsBooleanSetting.PreloadCommentsFromStories, true)
         fixture.comments.setSorting(CommentSortingPreference.NEWEST_FIRST.storedValue)
         fixture.comments.setProvider(CommentsProvider.OFFICIAL.storedValue)
         fixture.webLinks.setLinkPreview(LinkPreviewType.GITHUB_REPOSITORY, false)
@@ -52,6 +53,7 @@ class SettingsPresentersTest {
 
         assertFalse(comments.showScrollbar)
         assertTrue(comments.showUpButton)
+        assertTrue(comments.preloadCommentsFromStories)
         assertEquals(CommentSortingPreference.NEWEST_FIRST, comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, comments.provider)
         assertFalse(LinkPreviewType.GITHUB_REPOSITORY in webLinks.enabledLinkPreviews)

@@ -16,7 +16,18 @@ class CommentThreadRepository(
     private val algoliaRepository: AlgoliaRepository,
     private val hackerNewsRepository: HackerNewsRepository,
     private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
+    private val preloads: CommentsPreloadRepository? = null,
 ) {
+    suspend fun takePreloadedAlgolia(
+        storyId: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): PreloadedCommentsThread? = preloads?.takeOrAwait(
+        storyId,
+        topLevelCommentIds,
+        filteredUsers,
+    )
+
     suspend fun load(
         storyId: Int,
         useAlgolia: Boolean,

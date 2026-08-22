@@ -34,6 +34,7 @@ data class CommentsSettingsUiState(
     val headerPreviewImage: Boolean,
     val collapseParent: Boolean,
     val collapseTopLevel: Boolean,
+    val preloadCommentsFromStories: Boolean,
     val swapTap: Boolean,
     val sorting: CommentSortingPreference,
     val provider: CommentsProvider,
@@ -55,6 +56,7 @@ enum class CommentsBooleanSetting {
     HeaderPreviewImage,
     CollapseParent,
     CollapseTopLevel,
+    PreloadCommentsFromStories,
     SwapTap,
     NavigationButtons,
     SmoothScroll,
@@ -191,6 +193,15 @@ fun SharedCommentsSettingsScreen(
                 BooleanRow("Hide text of collapsed comments", Res.drawable.ic_comment, state.collapseParent, CommentsBooleanSetting.CollapseParent, onBooleanChanged)
                 SettingsDivider()
                 BooleanRow("Auto-collapse top level comments", Res.drawable.ic_minimize, state.collapseTopLevel, CommentsBooleanSetting.CollapseTopLevel, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow(
+                    "Preload comments from stories screen",
+                    Res.drawable.ic_database,
+                    state.preloadCommentsFromStories,
+                    CommentsBooleanSetting.PreloadCommentsFromStories,
+                    onBooleanChanged,
+                    summary = "Loads and prepares visible discussions in the background. Uses more battery and may affect performance.",
+                )
                 SettingsDivider()
                 SegmentedSetting(
                     title = "Comment tap action",

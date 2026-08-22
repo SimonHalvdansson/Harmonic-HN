@@ -40,6 +40,7 @@ enum class CommentBooleanPreference {
     SHOW_UP_BUTTON,
     COLLAPSE_PARENT,
     COLLAPSE_TOP_LEVEL,
+    PRELOAD_COMMENTS_FROM_STORIES,
     SWAP_LONG_PRESS_TAP,
     SHOW_NAVIGATION_BUTTONS,
     SMOOTH_SCROLL,
@@ -77,12 +78,14 @@ class AppSettingsRepository(
         changes: Flow<Unit>,
         theme: () -> String? = { null },
         showCommentsUpButtonByDefault: Boolean = false,
+        preloadCommentsFromStoriesByDefault: Boolean = false,
     ) : this(
         reader = StoredUserSettings(
             store,
             changes,
             theme,
             showCommentsUpButtonByDefault,
+            preloadCommentsFromStoriesByDefault,
         ),
         mutator = StoredSettingsMutator(store),
     )

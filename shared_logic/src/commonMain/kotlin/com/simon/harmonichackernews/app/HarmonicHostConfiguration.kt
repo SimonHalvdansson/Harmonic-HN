@@ -30,6 +30,7 @@ class HarmonicHostConfiguration(
     val systemDark: () -> Boolean,
     val storyCacheRepository: StoryCacheRepository,
     val showCommentsUpButtonByDefault: Boolean = false,
+    val preloadCommentsFromStoriesByDefault: Boolean = false,
     val savedItemsRepository: SavedItemsRepository? = null,
     val widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),
     val widgetRuntimeStore: KeyValueStore = InMemoryKeyValueStore(),
@@ -46,6 +47,7 @@ class HarmonicHostConfiguration(
             systemDark: () -> Boolean,
             settingsChanges: Flow<Unit>,
             showCommentsUpButtonByDefault: Boolean = false,
+            preloadCommentsFromStoriesByDefault: Boolean = false,
             settingsStore: KeyValueStore = InMemoryKeyValueStore(),
             appDataStore: KeyValueStore = InMemoryKeyValueStore(),
             previewCacheStore: KeyValueStore = InMemoryKeyValueStore(),
@@ -59,6 +61,7 @@ class HarmonicHostConfiguration(
             currentMinutesFromMidnight = currentMinutesFromMidnight,
             systemDark = systemDark,
             showCommentsUpButtonByDefault = showCommentsUpButtonByDefault,
+            preloadCommentsFromStoriesByDefault = preloadCommentsFromStoriesByDefault,
             storyCacheRepository = StoryCacheRepository(
                 InMemoryStoryCacheFileStore(),
                 InMemoryStoryCacheMetadataStore(),

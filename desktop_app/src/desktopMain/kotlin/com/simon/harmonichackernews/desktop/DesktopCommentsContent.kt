@@ -43,6 +43,7 @@ import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
@@ -70,7 +71,9 @@ private class DesktopCommentsHost(
     val store: CommentsStore,
     val controller: CommentsComposeController,
     var restoringStoredProgress: Boolean,
-)
+) {
+    var webViewSession: DesktopCommentsWebViewSession? = null
+}
 
 @Composable
 internal fun DesktopCommentsContent(
@@ -78,6 +81,7 @@ internal fun DesktopCommentsContent(
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
     showNavigation: Boolean,
+    webViewForegroundAllowed: Boolean,
     onClose: () -> Unit,
     onControllerChanged: (CommentsComposeController?) -> Unit,
 ) {
@@ -95,7 +99,7 @@ internal fun DesktopCommentsContent(
         )
         store.start(
             initialStory = request.destination.toStory(),
-            showWebsite = false,
+            showWebsite = request.destination.showWebsite,
             scrollToCommentId = request.route.scrollToCommentId,
             restoring = restoring,
             restoredSorting = null,
@@ -111,7 +115,7 @@ internal fun DesktopCommentsContent(
                 controller.scrollToSearchResult(commentId)
             }
             override fun collapseSheetForWebsite() {
-                controller.story.url?.let { scene.links.open(it) }
+                controller.requestCollapseSheet()
             }
             override fun onSheetProgressChanged(expandedFraction: Float) = Unit
             override fun onSheetSettled(expanded: Boolean) = Unit
@@ -122,7 +126,7 @@ internal fun DesktopCommentsContent(
         controller = CommentsComposeController.create(
             shouldSmoothScroll = { store.state.value.settings?.smoothScroll ?: true },
             story = initialState,
-            showWebsite = false,
+            showWebsite = request.destination.showWebsite,
             accountUser = store.state.value.accountUser,
             savedItemState = store.savedItemState,
             listener = CommentsFeatureListener(store, callbacks),
@@ -146,15 +150,12 @@ internal fun DesktopCommentsContent(
                 adBlockActive = false,
                 readerModeAvailable = false,
                 readerModeEnabled = false,
+                showSheetControls = false,
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = 0,
             ),
-        )?.let { state ->
-            // The desktop host intentionally opens articles in the system browser until an
-            // embeddable KMP browser backend is available.
-            host.controller.updateContent(state.copy(integratedWebView = false))
-        }
+        )?.let(host.controller::updateContent)
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
@@ -212,7 +213,7 @@ internal fun DesktopCommentsContent(
 
     val showFloatingUpButton = showNavigation &&
         host.controller.displaySettings?.showUpButton == true
-    SharedCommentsHazeHost {
+    val comments: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
             if (showNavigation && !showFloatingUpButton) {
                 SharedHarmonicTopAppBar(
@@ -267,6 +268,36 @@ internal fun DesktopCommentsContent(
             }
         }
     }
+    val storyUrl = remember(
+        host.controller.story.url,
+        featureState.settings?.reading?.archiveRedirectDomains,
+    ) {
+        WebContentPolicy.resolveUrl(
+            host.controller.story.url,
+            featureState.settings?.reading?.archiveRedirectDomains.orEmpty(),
+        )?.loadUrl
+    }
+    SharedCommentsHazeHost {
+        if (host.controller.integratedWebView && storyUrl != null) {
+            val appearance = app.appearance.selection()
+            DesktopCommentsWebViewScaffold(
+                controller = host.controller,
+                initialUrl = storyUrl,
+                dark = appearance.dark,
+                matchTheme = featureState.settings?.reading?.matchWebViewTheme == true,
+                nativeSurfaceAllowed = webViewForegroundAllowed,
+                onSessionChanged = { host.webViewSession = it },
+                onOpenExternal = { scene.links.open(it, preferInApp = false) },
+                comments = comments,
+            )
+        } else {
+            DisposableEffect(host) {
+                host.webViewSession = null
+                onDispose { }
+            }
+            comments()
+        }
+    }
 }
 
 private fun handleDesktopCommentsPlatformEffect(
@@ -291,19 +322,30 @@ private fun handleDesktopCommentsPlatformEffect(
         CommentsPlatformEffect.ReloadLinkPreviews -> Unit
         CommentsPlatformEffect.Summarize -> host.store.startSummary(null)
         is CommentsPlatformEffect.OpenStory -> scene.navigation.openStory(effect.destination)
-        is CommentsPlatformEffect.OpenExternalLink -> scene.links.openExternal(
-            ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
-        )
+        is CommentsPlatformEffect.OpenExternalLink -> {
+            if (
+                effect.preferInApp && host.controller.integratedWebView &&
+                effect.url == host.controller.story.url && host.webViewSession != null
+            ) {
+                host.controller.requestWebsite()
+            } else {
+                scene.links.openExternal(
+                    ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
+                )
+            }
+        }
         CommentsPlatformEffect.ShowSearch -> host.controller.showCommentSearch()
         CommentsPlatformEffect.DisableAdBlock ->
             scene.userMessages.show("Ad blocking applies to the Android embedded browser")
-        CommentsPlatformEffect.ReloadWebsite,
+        CommentsPlatformEffect.ReloadWebsite -> host.webViewSession?.reload()
         CommentsPlatformEffect.OpenWebsiteInBrowser ->
-            host.controller.story.url?.let { scene.links.open(it, preferInApp = false) }
-        CommentsPlatformEffect.ExpandSheet -> Unit
+            host.webViewSession?.currentUrl()?.let {
+                scene.links.open(it, preferInApp = false)
+            }
+        CommentsPlatformEffect.ExpandSheet -> host.controller.requestExpandSheet()
         CommentsPlatformEffect.ToggleReaderMode ->
             scene.userMessages.show("Reader mode requires an embedded desktop browser")
-        CommentsPlatformEffect.ToggleDarkMode -> Unit
+        CommentsPlatformEffect.ToggleDarkMode -> host.webViewSession?.toggleInversion()
     }
 }
 
@@ -315,7 +357,7 @@ private fun DesktopCommentsHeader(
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
 ) {
     val colors = HarmonicTheme.colors
-    val tintBase = colors.surfaceContainerHigh.toArgb()
+    val tintBase = colors.storyCardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

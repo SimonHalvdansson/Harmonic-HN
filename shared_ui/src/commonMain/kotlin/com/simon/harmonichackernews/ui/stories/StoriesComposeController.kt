@@ -135,6 +135,10 @@ class StoriesComposeController private constructor(
     val contentInsetStartPx: Int get() = screenState.contentInsetStartPx
     var contentVersion by mutableIntStateOf(0)
         private set
+    var headerMenuVisible by mutableStateOf(false)
+        private set
+    var headerMenuDismissRequestVersion by mutableIntStateOf(0)
+        private set
 
     private val interactionStore = StoriesInteractionStore(defaultStoryHeightPx)
     private var interactionState by mutableStateOf(interactionStore.state)
@@ -216,6 +220,16 @@ class StoriesComposeController private constructor(
     fun updateSearchDraft(value: String) {
         interactionStore.updateSearchDraft(value)
         syncInteractionState()
+    }
+
+    fun updateHeaderMenuVisibility(visible: Boolean) {
+        headerMenuVisible = visible
+    }
+
+    fun isHeaderMenuShowing(): Boolean = headerMenuVisible
+
+    fun requestDismissHeaderMenu() {
+        if (headerMenuVisible) headerMenuDismissRequestVersion++
     }
 
     fun cacheStories(storyCount: Int) {

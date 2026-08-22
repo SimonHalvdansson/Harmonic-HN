@@ -146,6 +146,7 @@ class CommentsSettingsPresenter(
             headerPreviewImage = comments.headerPreviewImageEnabled,
             collapseParent = comments.collapseParent,
             collapseTopLevel = comments.collapseTopLevel,
+            preloadCommentsFromStories = comments.preloadCommentsFromStories,
             swapTap = comments.swapLongPressTap,
             sorting = comments.sortingPreference,
             provider = settings.reading.commentsProvider,
@@ -368,6 +369,8 @@ private val CommentsBooleanSetting.preference: CommentBooleanPreference
         CommentsBooleanSetting.HeaderPreviewImage -> CommentBooleanPreference.HEADER_PREVIEW_IMAGE
         CommentsBooleanSetting.CollapseParent -> CommentBooleanPreference.COLLAPSE_PARENT
         CommentsBooleanSetting.CollapseTopLevel -> CommentBooleanPreference.COLLAPSE_TOP_LEVEL
+        CommentsBooleanSetting.PreloadCommentsFromStories ->
+            CommentBooleanPreference.PRELOAD_COMMENTS_FROM_STORIES
         CommentsBooleanSetting.SwapTap -> CommentBooleanPreference.SWAP_LONG_PRESS_TAP
         CommentsBooleanSetting.NavigationButtons -> CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS
         CommentsBooleanSetting.SmoothScroll -> CommentBooleanPreference.SMOOTH_SCROLL

@@ -75,6 +75,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
@@ -156,6 +157,7 @@ fun SharedStoriesScreen(
     compactSelectedText: Boolean,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
+    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
@@ -224,6 +226,7 @@ fun SharedStoriesScreen(
                 compactSelectedText = compactSelectedText,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
+                onVisibleStoriesChanged = onVisibleStoriesChanged,
             )
         },
         searchLayer = {
@@ -241,6 +244,7 @@ fun SharedStoriesScreen(
                 compactSelectedText = compactSelectedText,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
+                onVisibleStoriesChanged = {},
             )
         },
         overlay = {
@@ -359,6 +363,7 @@ private fun StoriesList(
     compactSelectedText: Boolean,
     pullToRefreshEnabled: Boolean,
     showRefreshMenuItem: Boolean,
+    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val visibleCount = (
@@ -396,6 +401,16 @@ private fun StoriesList(
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
             .distinctUntilChanged()
             .collect { last -> controller.listener.onVisibleStoryRange(last.coerceAtLeast(0)) }
+    }
+
+    LaunchedEffect(listState, stories, visibleCount, onVisibleStoriesChanged) {
+        snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo.mapNotNull { item ->
+                item.index.takeIf { it in 0 until visibleCount }?.let(stories::getOrNull)
+            }
+        }
+            .distinctUntilChanged()
+            .collect(onVisibleStoriesChanged)
     }
 
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
@@ -865,6 +880,19 @@ private fun MainHeader(
 ) {
     var typesExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
+    val menuVisible = typesExpanded || moreExpanded
+    LaunchedEffect(menuVisible) {
+        controller.updateHeaderMenuVisibility(menuVisible)
+    }
+    LaunchedEffect(controller.headerMenuDismissRequestVersion) {
+        if (controller.headerMenuDismissRequestVersion > 0) {
+            typesExpanded = false
+            moreExpanded = false
+        }
+    }
+    DisposableEffect(controller) {
+        onDispose { controller.updateHeaderMenuVisibility(false) }
+    }
     val settings = controller.displaySettings ?: return
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
     val density = LocalDensity.current

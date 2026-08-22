@@ -33,6 +33,7 @@ data class CommentsScreenState(
     val integratedWebView: Boolean = false,
     val readerModeAvailable: Boolean = false,
     val readerModeEnabled: Boolean = false,
+    val showSheetControls: Boolean = true,
     val currentSorting: String = "Default",
     val topInsetPx: Int = 0,
     val contentInsetLeftPx: Int = 0,
@@ -84,6 +85,7 @@ class CommentsComposeController private constructor(
     val integratedWebView: Boolean get() = screenState.integratedWebView
     val readerModeAvailable: Boolean get() = screenState.readerModeAvailable
     val readerModeEnabled: Boolean get() = screenState.readerModeEnabled
+    val showSheetControls: Boolean get() = screenState.showSheetControls
     val currentSorting: String get() = screenState.currentSorting
     val storyVoteLoading: Boolean get() = screenState.storyVoteLoading
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading

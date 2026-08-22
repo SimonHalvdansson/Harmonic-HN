@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.CommentsPreloadRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
@@ -238,6 +239,68 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun preparedAlgoliaThreadOpensWithoutASecondNetworkRequest() = runTest {
+        val response = """
+            {
+              "id": 42,
+              "title": "Prepared comments",
+              "points": 10,
+              "author": "simon",
+              "type": "story",
+              "children": [
+                {"id": 7, "parent_id": 42, "author": "alice", "text": "Ready"}
+              ]
+            }
+        """.trimIndent()
+        val source = FakeAlgoliaRepository(response)
+        val parser = AlgoliaCommentsParser(
+            parsingDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        val preloads = CommentsPreloadRepository(
+            algolia = source,
+            parser = parser,
+            nowMillis = { 100L },
+        )
+        preloads.preload(42, listOf(7))
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = source,
+                hackerNewsRepository = UnusedHackerNewsRepository,
+                algoliaCommentsParser = parser,
+                preloads = preloads,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val story = Story("Loading", 42, false, false).also { it.kids = intArrayOf(7) }
+        val effect = async { presenter.effects.first() }
+        runCurrent()
+
+        presenter.dispatch(
+            CommentsAction.LoadThread(
+                story = story,
+                useAlgolia = true,
+                filteredUsers = emptySet(),
+                sorting = "default",
+                collapseTopLevel = false,
+                previousResponse = null,
+                restoreScrollFromCache = false,
+            ),
+        )
+        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+
+        assertEquals(1, source.itemRequests)
+        assertEquals("Prepared comments", story.title)
+        assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.comment.id })
+        assertTrue(applied.networkCompleted)
+        assertEquals(null, applied.responseToCache)
+        assertFalse(applied.broadcastStoryUpdate)
+    }
+
+    @Test
     fun knownPollOptionsAreLoadedAndAppliedInCommonPresentation() = runTest {
         val repository = CommentThreadRepository(
             algoliaRepository = FakeAlgoliaRepository("{}"),
@@ -363,12 +426,17 @@ class CommentsPresenterTest {
     private class FakeAlgoliaRepository(
         private val response: String,
     ) : AlgoliaRepository {
+        var itemRequests = 0
+
         override suspend fun getSubmissions(userName: String, limit: Int): List<Story> =
             error("Not used")
 
         override suspend fun search(url: String): List<Story> = error("Not used")
 
-        override suspend fun getItemJson(id: Int): String = response
+        override suspend fun getItemJson(id: Int): String {
+            itemRequests++
+            return response
+        }
     }
 
     private object UnusedHackerNewsRepository : HackerNewsRepository {

@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.cache.SharedStoryCacheService
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.cache.StoryCacheUseCase
 import com.simon.harmonichackernews.network.HackerNewsUserService
+import com.simon.harmonichackernews.network.CommentsPreloadRepository
 import com.simon.harmonichackernews.network.NetworkGraph
 import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.network.WidgetConfigurationService
@@ -81,6 +82,7 @@ class HarmonicAppComposition(
         changes = host.settingsChanges,
         theme = { appearance.selection().theme },
         showCommentsUpButtonByDefault = host.showCommentsUpButtonByDefault,
+        preloadCommentsFromStoriesByDefault = host.preloadCommentsFromStoriesByDefault,
     )
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser
@@ -112,6 +114,11 @@ class HarmonicAppComposition(
     val storyCache = SharedStoryCacheService(
         repository = host.storyCacheRepository,
         articleSnapshots = ArticleSnapshotService(network.httpClient, host.articleSnapshotStore),
+        nowMillis = nowMillis,
+    )
+    val commentsPreloads = CommentsPreloadRepository(
+        algolia = network.algoliaRepository,
+        storeResponse = storyCache::cacheStory,
         nowMillis = nowMillis,
     )
     val pdfDownloads = PdfDownloadService(network.httpClient, host.pdfDownloadStore, nowMillis)

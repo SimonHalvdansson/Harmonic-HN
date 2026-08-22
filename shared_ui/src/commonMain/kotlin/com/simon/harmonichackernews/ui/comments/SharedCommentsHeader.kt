@@ -165,7 +165,7 @@ fun SharedCommentsHeader(
                 .background(visibleHeaderBackground),
         ) {
             Spacer(Modifier.height(topSpacer))
-            if (controller.integratedWebView) {
+            if (controller.integratedWebView && controller.showSheetControls) {
                 SharedCommentsSheetControls(
                     readerModeAvailable = controller.readerModeAvailable,
                     readerModeEnabled = controller.readerModeEnabled,
