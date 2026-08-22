@@ -26,6 +26,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -119,8 +120,12 @@ fun main() {
                 val palette = remember(selection) {
                     HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
                 }
-                LaunchedEffect(window, selection.dark) {
-                    DesktopWindowAppearance.apply(window, selection.dark)
+                LaunchedEffect(window, selection.dark, palette.colors.background) {
+                    DesktopWindowAppearance.apply(
+                        window = window,
+                        dark = selection.dark,
+                        backgroundArgb = palette.colors.background.toArgb(),
+                    )
                 }
                 LaunchedEffect(bootstrap.app.launchState) {
                     when (
