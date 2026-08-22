@@ -274,7 +274,9 @@ class StoryPreviewResourceRuntime(
     }
 
     private fun update(state: StoryPreviewResourceState) {
-        mutableStates.value = mutableStates.value + (state.storyId to state)
+        val currentStates = mutableStates.value
+        if (currentStates[state.storyId] == state) return
+        mutableStates.value = currentStates + (state.storyId to state)
     }
 
     private fun StoryPreviewResourceRequest.covers(

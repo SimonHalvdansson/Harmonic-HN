@@ -507,10 +507,6 @@ fun SharedStoryPreviewOverlay(
             userScrollEnabled = progress >= 0.999f && dismissRequest == 0,
             key = { page -> "${state.stories[page].id}:$page" },
         ) { page ->
-            val pageOffset = abs(
-                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction,
-            )
-            val pageAlpha = (1f - ((pageOffset - 0.75f) / 0.25f)).coerceIn(0f, 1f)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -519,7 +515,13 @@ fun SharedStoryPreviewOverlay(
                         horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
                         vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
                     )
-                    .graphicsLayer(alpha = pageAlpha),
+                    .graphicsLayer {
+                        val pageOffset = abs(
+                            (pagerState.currentPage - page) +
+                                pagerState.currentPageOffsetFraction,
+                        )
+                        alpha = (1f - ((pageOffset - 0.75f) / 0.25f)).coerceIn(0f, 1f)
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 val currentPage = page == pagerState.currentPage
@@ -571,7 +573,7 @@ fun SharedStoryPreviewOverlay(
                         cardContent(
                             state.stories[page],
                             page,
-                            Color(state.cardColors[page]),
+                            Color(state.cardBackgrounds[page].value),
                             cardModifier,
                         )
                     }
@@ -579,7 +581,7 @@ fun SharedStoryPreviewOverlay(
                     cardContent(
                         state.stories[page],
                         page,
-                        Color(state.cardColors[page]),
+                        Color(state.cardBackgrounds[page].value),
                         cardModifier,
                     )
                 }
@@ -587,7 +589,7 @@ fun SharedStoryPreviewOverlay(
         }
         StoryPreviewTransitionOverlay(
             transition = sharedTransition,
-            color = Color(state.cardColors[pagerState.currentPage]),
+            color = Color(state.cardBackgrounds[pagerState.currentPage].value),
         )
     }
 }

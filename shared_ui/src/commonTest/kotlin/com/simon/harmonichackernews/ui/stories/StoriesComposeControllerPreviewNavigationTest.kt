@@ -53,6 +53,22 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertEquals(0, controller.storyPreviewDismissRequest)
     }
 
+    @Test
+    fun pagingUpdatesOnlyRowLocalAlphaStatesAndCanResetThem() {
+        val controller = controller(destinationRemainsBesideStories = false)
+
+        controller.onStoryPreviewPagePosition(lowerPage = 0, upperPage = 1, offset = 0.25f)
+
+        assertEquals(0.25f, controller.storyPagingAlphaState(1).floatValue)
+        assertEquals(0.75f, controller.storyPagingAlphaState(2).floatValue)
+        assertEquals(emptyMap(), controller.storyPagingAlphas)
+
+        controller.clearStoryPagingAlphas()
+
+        assertEquals(1f, controller.storyPagingAlphaState(1).floatValue)
+        assertEquals(1f, controller.storyPagingAlphaState(2).floatValue)
+    }
+
     private fun controller(destinationRemainsBesideStories: Boolean): StoriesComposeController =
         StoriesComposeController.create(
             defaultStoryHeightPx = 100,
@@ -65,8 +81,12 @@ class StoriesComposeControllerPreviewNavigationTest {
                         story = StorySnapshot(id = 1, title = "Story"),
                         presentation = StoryPresentationSnapshot(loaded = true),
                     ),
+                    StoryListItemSnapshot(
+                        story = StorySnapshot(id = 2, title = "Next story"),
+                        presentation = StoryPresentationSnapshot(loaded = true),
+                    ),
                 ),
-                cardColors = intArrayOf(0),
+                cardColors = intArrayOf(0, 0),
                 openedStoryId = 1,
             )
         }
