@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
+import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.content.SharedNetworkImage
 
 /** Shared Coil loading, palette extraction and interaction for the comments header image. */
@@ -65,6 +66,9 @@ fun SharedHeaderPreviewImage(
                     onClick = onClick,
                     onLongClick = { onLongClick(bounds, sourceContentLayer, imageAspectRatio) },
                 )
+                .onSecondaryClick {
+                    onLongClick(bounds, sourceContentLayer, imageAspectRatio)
+                }
                 .captureSharedTransformSourceContent { sourceContentLayer = it },
             contentScale = ContentScale.Crop,
             tintBaseColorArgb = tintBaseColorArgb,

@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 data class CommentsPresenterState(
     val thread: PortableCommentThreadState = PortableCommentThreadState(),
+    val savedItemRevision: Long = 0L,
     val lastLoadedMillis: Long = 0L,
     val loaded: Boolean = false,
     val refreshing: Boolean = false,
@@ -217,7 +218,10 @@ class CommentsPresenter(
             is CommentsAction.SetStoryFavoriteLoading -> publish(storyFavoriteLoading = action.loading)
             is CommentsAction.RequestCommentActions ->
                 mutableEffects.tryEmit(CommentsEffect.ShowCommentActions(action.comment))
-            is CommentsAction.ToggleBookmark -> savedItemActions.toggleBookmark(action.itemId)
+            is CommentsAction.ToggleBookmark -> {
+                savedItemActions.toggleBookmark(action.itemId)
+                publish(savedItemRevision = state.value.savedItemRevision + 1L)
+            }
             is CommentsAction.ToggleStoryVote -> performSavedItemAction(
                 request = CommentsSavedItemRequest.StoryVote(action.itemId),
                 kind = SavedItemActionKind.VOTE,
@@ -542,6 +546,7 @@ class CommentsPresenter(
 
     private fun publish(
         thread: PortableCommentThreadState = state.value.thread,
+        savedItemRevision: Long = state.value.savedItemRevision,
         lastLoadedMillis: Long = state.value.lastLoadedMillis,
         loaded: Boolean = state.value.loaded,
         refreshing: Boolean = state.value.refreshing,
@@ -565,6 +570,7 @@ class CommentsPresenter(
         sessionState.storyFavoriteLoading = storyFavoriteLoading
         mutableState.value = CommentsPresenterState(
             thread = thread,
+            savedItemRevision = savedItemRevision,
             lastLoadedMillis = lastLoadedMillis,
             loaded = loaded,
             refreshing = refreshing,

@@ -1,9 +1,9 @@
 package com.simon.harmonichackernews.desktop
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -11,7 +11,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
@@ -23,7 +26,8 @@ import com.simon.harmonichackernews.presentation.EditorPresentationCopy
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
-import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
+import com.simon.harmonichackernews.ui.common.SharedHazeHost
+import com.simon.harmonichackernews.ui.common.SharedTranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.SharedEditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
@@ -71,21 +75,26 @@ internal fun DesktopSubmissionsContent(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
-    ) {
-        SharedHarmonicTopAppBar(
-            title = "Submissions",
-            onBack = scene.navigation::closeSubmissions,
-        )
-        Box(Modifier.weight(1f)) {
+    SharedHazeHost {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(HarmonicTheme.colors.background),
+        ) {
             SharedSubmissionsRoute(
                 controller = controller,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
+                pullToRefreshEnabled = false,
+                reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
+            )
+            SharedTranslucentBackButton(
+                onClick = scene.navigation::closeSubmissions,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 8.dp)
+                    .zIndex(101f),
             )
         }
     }

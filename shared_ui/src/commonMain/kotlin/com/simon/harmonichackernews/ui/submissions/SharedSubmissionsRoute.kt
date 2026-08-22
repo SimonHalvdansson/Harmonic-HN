@@ -22,6 +22,7 @@ fun SharedSubmissionsRoute(
     tintStore: StoryResourceTintStore,
     includeStatusBarInset: Boolean = true,
     reserveBackButtonSpace: Boolean = false,
+    pullToRefreshEnabled: Boolean = true,
     onOpenLink: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -42,6 +43,7 @@ fun SharedSubmissionsRoute(
         previewResources = previewResources,
         includeStatusBarInset = includeStatusBarInset,
         reserveBackButtonSpace = reserveBackButtonSpace,
+        pullToRefreshEnabled = pullToRefreshEnabled,
         storyItemModel = { story, settings ->
             rememberSubmissionStoryItemUiModel(
                 story = story,

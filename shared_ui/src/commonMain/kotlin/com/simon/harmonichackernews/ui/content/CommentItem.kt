@@ -78,6 +78,7 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.ui.comments.CommentActionSourceGeometry
 import com.simon.harmonichackernews.ui.comments.captureCommentActionSourceContent
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
+import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
@@ -648,6 +649,7 @@ private fun SharedCommentSurface(
                         onClick = onClick,
                         onLongClick = onLongClick,
                     )
+                    .onSecondaryClick { onLongClick() }
                     .then(sourceCaptureModifier),
                 content = {
                     Box(
@@ -854,6 +856,7 @@ private fun ReferenceRow(
                     onClick = onClick,
                     onLongClick = { onLongClick(bounds, sourceContentLayer) },
                 )
+                .onSecondaryClick { onLongClick(bounds, sourceContentLayer) }
                 .captureSharedTransformSourceContent { sourceContentLayer = it }
                 .padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,

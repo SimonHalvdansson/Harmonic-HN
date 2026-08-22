@@ -145,6 +145,7 @@ import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.SharedLazyContentList
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
+import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -362,6 +363,7 @@ private fun HeaderReferenceRow(
                     onClick = { platform.openLink(link.url) },
                     onLongClick = { onLongClick(link, bounds, sourceContentLayer) },
                 )
+                .onSecondaryClick { onLongClick(link, bounds, sourceContentLayer) }
                 .captureSharedTransformSourceContent { sourceContentLayer = it }
                 .padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,

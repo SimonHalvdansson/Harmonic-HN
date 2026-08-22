@@ -7,6 +7,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -50,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -184,6 +186,7 @@ fun SharedReferenceCardContent(
         imageUrl: String?,
         loading: Boolean,
         expanded: Boolean,
+        shape: Shape,
         imageRatio: Float,
         onImageRatio: (Float) -> Unit,
         onClick: () -> Unit,
@@ -211,6 +214,22 @@ fun SharedReferenceCardContent(
     val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
     var imageExpanded by remember(url, imageUrl) { mutableStateOf(false) }
     var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }
+    val imageTopCornerRadius by animateDpAsState(
+        targetValue = if (imageExpanded) 28.dp else 8.dp,
+        animationSpec = tween(ReferenceImageDurationMillis, easing = FastOutSlowInEasing),
+        label = "reference image top corners",
+    )
+    val imageBottomCornerRadius by animateDpAsState(
+        targetValue = if (imageExpanded) 0.dp else 8.dp,
+        animationSpec = tween(ReferenceImageDurationMillis, easing = FastOutSlowInEasing),
+        label = "reference image bottom corners",
+    )
+    val imageShape = RoundedCornerShape(
+        topStart = imageTopCornerRadius,
+        topEnd = imageTopCornerRadius,
+        bottomStart = imageBottomCornerRadius,
+        bottomEnd = imageBottomCornerRadius,
+    )
     val retryable = summary.error?.let(::isRetryableReferenceError) == true
     val offlineMessage = stringResource(Res.string.link_summary_offline_message)
     val genericErrorMessage = stringResource(Res.string.link_summary_error_message)
@@ -243,6 +262,7 @@ fun SharedReferenceCardContent(
                         imageUrl,
                         false,
                         true,
+                        imageShape,
                         imageRatio,
                         { imageRatio = it },
                         { imageExpanded = false },
@@ -266,6 +286,7 @@ fun SharedReferenceCardContent(
                             imageUrl,
                             summary.loading,
                             false,
+                            imageShape,
                             imageRatio,
                             { imageRatio = it },
                             { if (imageUrl != null) imageExpanded = true },

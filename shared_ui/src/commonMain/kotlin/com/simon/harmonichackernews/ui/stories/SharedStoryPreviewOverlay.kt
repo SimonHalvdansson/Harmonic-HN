@@ -61,7 +61,7 @@ private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
 private const val DismissFallbackDelayMillis = 460L
-private const val ScrollWheelGestureIdleMillis = 180L
+private const val ScrollWheelGestureIdleMillis = 100L
 
 internal fun storyPreviewPagerSettleTarget(
     isScrollInProgress: Boolean,

@@ -154,6 +154,8 @@ fun SharedStoriesScreen(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    pullToRefreshEnabled: Boolean = true,
+    showRefreshMenuItem: Boolean = false,
 ) {
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
@@ -220,6 +222,8 @@ fun SharedStoriesScreen(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                pullToRefreshEnabled = pullToRefreshEnabled,
+                showRefreshMenuItem = showRefreshMenuItem,
             )
         },
         searchLayer = {
@@ -235,6 +239,8 @@ fun SharedStoriesScreen(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                pullToRefreshEnabled = pullToRefreshEnabled,
+                showRefreshMenuItem = showRefreshMenuItem,
             )
         },
         overlay = {
@@ -351,6 +357,8 @@ private fun StoriesList(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    pullToRefreshEnabled: Boolean,
+    showRefreshMenuItem: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val visibleCount = (
@@ -390,11 +398,7 @@ private fun StoriesList(
             .collect { last -> controller.listener.onVisibleStoryRange(last.coerceAtLeast(0)) }
     }
 
-    PullToRefreshBox(
-        isRefreshing = controller.refreshing && !searchMode,
-        onRefresh = controller.listener::onRefresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
+    val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
         Box(Modifier.fillMaxSize()) {
             SharedLazyContentList(
                 items = stories,
@@ -602,6 +606,7 @@ private fun StoriesList(
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                showRefreshMenuItem = showRefreshMenuItem,
                 showFailureStatus = !centerFailure,
                 modifier = Modifier
                     .zIndex(1f)
@@ -622,6 +627,20 @@ private fun StoriesList(
                 }
             }
         }
+    }
+
+    if (pullToRefreshEnabled) {
+        PullToRefreshBox(
+            isRefreshing = controller.refreshing && !searchMode,
+            onRefresh = controller.listener::onRefresh,
+            modifier = modifier.fillMaxSize(),
+            content = content,
+        )
+    } else {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            content = content,
+        )
     }
 }
 
@@ -649,6 +668,7 @@ private fun StoriesHeader(
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    showRefreshMenuItem: Boolean,
     showFailureStatus: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -688,6 +708,7 @@ private fun StoriesHeader(
                 controller = controller,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
+                showRefreshMenuItem = showRefreshMenuItem,
                 modifier = Modifier.padding(start = sideStart, end = sideEnd),
             )
         }
@@ -839,6 +860,7 @@ private fun MainHeader(
     controller: StoriesComposeController,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
+    showRefreshMenuItem: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var typesExpanded by remember { mutableStateOf(false) }
@@ -941,7 +963,12 @@ private fun MainHeader(
                     )
                 }
             }
-            StoriesMoreMenu(controller, moreExpanded) { moreExpanded = false }
+            StoriesMoreMenu(
+                controller = controller,
+                expanded = moreExpanded,
+                showRefreshItem = showRefreshMenuItem,
+                dismiss = { moreExpanded = false },
+            )
         }
     }
 }
@@ -1008,6 +1035,7 @@ private fun SearchHeader(
 private fun StoriesMoreMenu(
     controller: StoriesComposeController,
     expanded: Boolean,
+    showRefreshItem: Boolean,
     dismiss: () -> Unit,
 ) {
     HarmonicDropdownMenu(
@@ -1015,6 +1043,15 @@ private fun StoriesMoreMenu(
         onDismiss = dismiss,
         modifier = Modifier.width(196.dp),
     ) {
+        if (showRefreshItem) {
+            DropdownMenuItem(
+                text = { HarmonicMenuText("Refresh") },
+                onClick = {
+                    dismiss()
+                    controller.listener.onRefresh()
+                },
+            )
+        }
         if (controller.loggedIn) {
             MoreItem("Profile", StoriesMenuAction.PROFILE, controller, dismiss)
             MoreItem("Submit", StoriesMenuAction.SUBMIT, controller, dismiss)

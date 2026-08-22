@@ -10,6 +10,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -211,6 +212,7 @@ fun SharedSubmissionsScreen(
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean = true,
     reserveBackButtonSpace: Boolean = false,
+    pullToRefreshEnabled: Boolean = true,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -248,14 +250,11 @@ fun SharedSubmissionsScreen(
         controller.consumeScrollRestoreRequest(request)
     }
 
-    PullToRefreshBox(
-        isRefreshing = controller.refreshing,
-        onRefresh = controller.listener::onRefresh,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
-            .sharedHazeSource(hazeState),
-    ) {
+    val modifier = Modifier
+        .fillMaxSize()
+        .background(HarmonicTheme.colors.background)
+        .sharedHazeSource(hazeState)
+    val content: @Composable BoxScope.() -> Unit = {
         SubmissionsList(
             userName = controller.userName,
             submissions = controller.submissions,
@@ -283,6 +282,20 @@ fun SharedSubmissionsScreen(
                     .size(42.dp),
             )
         }
+    }
+
+    if (pullToRefreshEnabled) {
+        PullToRefreshBox(
+            isRefreshing = controller.refreshing,
+            onRefresh = controller.listener::onRefresh,
+            modifier = modifier,
+            content = content,
+        )
+    } else {
+        Box(
+            modifier = modifier,
+            content = content,
+        )
     }
 }
 
@@ -800,24 +813,25 @@ private fun LoadMoreButton(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp)
+            .height(56.dp),
         contentAlignment = Alignment.Center,
     ) {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier.height(56.dp),
-            enabled = !loading,
-        ) {
-            Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
-            Text(
-                text = "Load more",
-                modifier = Modifier.padding(start = 8.dp),
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-            )
-        }
         if (loading) {
             HarmonicLoadingIndicator(modifier = Modifier.size(32.dp))
+        } else {
+            OutlinedButton(
+                onClick = onClick,
+                modifier = Modifier.height(56.dp),
+            ) {
+                Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
+                Text(
+                    text = "Load more",
+                    modifier = Modifier.padding(start = 8.dp),
+                    fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }

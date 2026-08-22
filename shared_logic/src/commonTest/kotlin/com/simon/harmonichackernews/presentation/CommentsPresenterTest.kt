@@ -35,6 +35,32 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun bookmarkTogglePublishesSavedItemStateChange() = runTest {
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val initialState = presenter.state.value
+
+        presenter.dispatch(CommentsAction.ToggleBookmark(42))
+
+        assertTrue(presenter.savedItemState.isBookmarked(42))
+        assertEquals(initialState.savedItemRevision + 1L, presenter.state.value.savedItemRevision)
+
+        presenter.dispatch(CommentsAction.ToggleBookmark(42))
+
+        assertFalse(presenter.savedItemState.isBookmarked(42))
+        assertEquals(initialState.savedItemRevision + 2L, presenter.state.value.savedItemRevision)
+    }
+
+    @Test
     fun scrollPositionIntentUpdatesSessionWithoutPublishingCommentsState() = runTest {
         val session = CommentsSessionState()
         val story = Story("Shared", 42, true, false)

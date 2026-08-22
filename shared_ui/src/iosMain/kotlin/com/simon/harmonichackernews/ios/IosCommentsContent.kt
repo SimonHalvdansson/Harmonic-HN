@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -534,14 +533,14 @@ private fun IosReferencePreview(
         favicon = favicon,
         offline = runtimeState.offline,
         textStyle = TextStyle.Default,
-        referenceImage = { imageUrl, loading, expanded, ratio, onRatio, onClick, modifier ->
+        referenceImage = { imageUrl, loading, expanded, shape, ratio, onRatio, onClick, modifier ->
             Box(
                 modifier = modifier
                     .then(
                         if (expanded) Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(0.45f, 3f))
                         else Modifier.size(104.dp),
                     )
-                    .clip(RoundedCornerShape(if (expanded) 28.dp else 8.dp))
+                    .clip(shape)
                     .background(HarmonicTheme.colors.surfaceContainerHighest)
                     .clickable(enabled = imageUrl != null, onClick = onClick),
             ) {

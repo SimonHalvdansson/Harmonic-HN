@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
@@ -104,11 +104,12 @@ private fun ReferencePreviewCard(
         favicon = favicon,
         offline = runtimeState.offline,
         textStyle = linkPreviewTextStyle,
-        referenceImage = { imageUrl, loading, expanded, ratio, onRatio, onClick, modifier ->
+        referenceImage = { imageUrl, loading, expanded, shape, ratio, onRatio, onClick, modifier ->
             ReferencePreviewImage(
                 imageUrl = imageUrl,
                 loading = loading,
                 expanded = expanded,
+                shape = shape,
                 imageRatio = ratio,
                 onImageRatio = onRatio,
                 onClick = onClick,
@@ -127,6 +128,7 @@ private fun ReferencePreviewImage(
     imageUrl: String?,
     loading: Boolean,
     expanded: Boolean,
+    shape: Shape,
     imageRatio: Float,
     onImageRatio: (Float) -> Unit,
     onClick: () -> Unit,
@@ -134,11 +136,6 @@ private fun ReferencePreviewImage(
 ) {
     val context = LocalContext.current
     val appComposition = LocalHarmonicUiDependencies.current
-    val shape = if (expanded) {
-        RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    } else {
-        RoundedCornerShape(8.dp)
-    }
     Box(
         modifier = modifier
             .then(

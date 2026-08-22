@@ -453,6 +453,8 @@ private fun DesktopStoriesContent(
             filterColors = filterColors,
             extraCompactSelectedText = false,
             compactSelectedText = false,
+            pullToRefreshEnabled = false,
+            showRefreshMenuItem = true,
         )
         if (controller.isStoryPreviewShowing()) {
             DesktopStoryPreviewOverlay(app, controller)

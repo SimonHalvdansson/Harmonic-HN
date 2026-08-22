@@ -1,11 +1,11 @@
 package com.simon.harmonichackernews.ios
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
@@ -16,7 +16,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
@@ -28,7 +31,8 @@ import com.simon.harmonichackernews.presentation.EditorPresentationCopy
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
-import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
+import com.simon.harmonichackernews.ui.common.SharedHazeHost
+import com.simon.harmonichackernews.ui.common.SharedTranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.SharedEditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
@@ -76,27 +80,31 @@ internal fun IosSubmissionsContent(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+    SharedHazeHost {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(HarmonicTheme.colors.background)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(
+                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                    ),
                 ),
-            ),
-    ) {
-        SharedHarmonicTopAppBar(
-            title = "Submissions",
-            onBack = scene.navigation::closeSubmissions,
-        )
-        Box(Modifier.weight(1f)) {
+        ) {
             SharedSubmissionsRoute(
                 controller = controller,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
                 includeStatusBarInset = false,
+                reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
+            )
+            SharedTranslucentBackButton(
+                onClick = scene.navigation::closeSubmissions,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 4.dp)
+                    .zIndex(101f),
             )
         }
     }

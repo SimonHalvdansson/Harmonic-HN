@@ -133,6 +133,7 @@ fun SharedCommentsScreen(
     controller: CommentsComposeController,
     listModifier: Modifier,
     reserveUpButtonInset: Boolean,
+    pullToRefreshEnabled: Boolean = true,
     animateComments: Boolean,
     showScrollbar: Boolean,
     smoothScroll: Boolean,
@@ -396,7 +397,7 @@ fun SharedCommentsScreen(
             }
         }
 
-        if (controller.integratedWebView) {
+        if (controller.integratedWebView || !pullToRefreshEnabled) {
             list()
         } else {
             PullToRefreshBox(

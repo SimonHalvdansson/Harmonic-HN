@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.resources.web_preview
+import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import com.simon.harmonichackernews.ui.stories.captureStoryPreviewSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -710,6 +711,9 @@ private fun StoryMainContent(
                 onClick = { onLinkClick?.invoke() },
                 onLongClick = { onLinkLongClick?.invoke() },
             )
+            .onSecondaryClick(enabled = onLinkLongClick != null) {
+                onLinkLongClick?.invoke()
+            }
             .padding(start = 5.dp, top = 10.dp, end = 4.dp, bottom = 10.dp),
         verticalAlignment = Alignment.Top,
     ) {
