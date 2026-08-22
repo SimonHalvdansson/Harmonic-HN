@@ -32,6 +32,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.currentSharedHazeState
+import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import androidx.compose.material3.Icon
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
@@ -208,10 +210,12 @@ fun SharedSubmissionsScreen(
     controller: SubmissionsComposeController,
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean = true,
+    reserveBackButtonSpace: Boolean = false,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val hazeState = currentSharedHazeState()
 
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -249,7 +253,8 @@ fun SharedSubmissionsScreen(
         onRefresh = controller.listener::onRefresh,
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
+            .background(HarmonicTheme.colors.background)
+            .sharedHazeSource(hazeState),
     ) {
         SubmissionsList(
             userName = controller.userName,
@@ -266,6 +271,7 @@ fun SharedSubmissionsScreen(
             listener = controller.listener,
             previewResources = previewResources,
             includeStatusBarInset = includeStatusBarInset,
+            reserveBackButtonSpace = reserveBackButtonSpace,
             storyItemModel = storyItemModel,
             onOpenLink = onOpenLink,
         )
@@ -296,6 +302,7 @@ private fun SubmissionsList(
     listener: SubmissionsComposeController.Listener,
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean,
+    reserveBackButtonSpace: Boolean,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
     onOpenLink: (String) -> Unit,
 ) {
@@ -315,6 +322,7 @@ private fun SubmissionsList(
                 compact = displaySettings.compactHeader,
                 sideMargin = sideMargin,
                 includeStatusBarInset = includeStatusBarInset,
+                reserveBackButtonSpace = reserveBackButtonSpace,
                 onFilterSelected = listener::onFilterSelected,
             )
         }
@@ -432,6 +440,7 @@ private fun SubmissionsHeader(
     compact: Boolean,
     sideMargin: androidx.compose.ui.unit.Dp,
     includeStatusBarInset: Boolean,
+    reserveBackButtonSpace: Boolean,
     onFilterSelected: (SubmissionFilter) -> Unit,
 ) {
     Column(
@@ -453,7 +462,13 @@ private fun SubmissionsHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    top = if (compact) 27.75.dp else 47.75.dp,
+                    top = if (reserveBackButtonSpace) {
+                        64.dp
+                    } else if (compact) {
+                        27.75.dp
+                    } else {
+                        47.75.dp
+                    },
                     bottom = if (compact) 8.dp else 16.dp,
                 )
                 .semantics {

@@ -1075,7 +1075,10 @@ private fun MainNavigation(
                         DisposableEffect(coordinator) {
                             onDispose(coordinator::close)
                         }
-                        SubmissionsScreen(coordinator.composeController)
+                        SubmissionsScreen(
+                            controller = coordinator.composeController,
+                            onBack = controller::closeSubmissions,
+                        )
                     }
                 }
             }
