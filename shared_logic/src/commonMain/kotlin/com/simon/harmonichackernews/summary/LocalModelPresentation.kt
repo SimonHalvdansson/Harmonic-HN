@@ -141,19 +141,19 @@ object LocalModelPresentationPolicy {
                 input.runtimeStatus.state == LocalRuntimeInstallState.DOWNLOADING &&
                 input.runtimeStatus.totalBytes > 0L
             ) {
-                "Installing runtime · ${localModelProgressPercent(
-                    input.runtimeStatus.downloadedBytes,
-                    input.runtimeStatus.totalBytes,
-                )}%"
+                "${formatDecimalBytes(input.runtimeStatus.downloadedBytes)} of " +
+                    "${formatDecimalBytes(input.runtimeStatus.totalBytes)} · installing " +
+                    runtimeLabel(input.model.runtime)
             } else {
                 "Preparing local AI runtime…"
             }
         }
         input.transferStatus.state == LocalModelTransferState.DOWNLOADING ->
-            "${localModelProgressPercent(
-                input.transferStatus.receivedBytes,
-                input.model.sizeBytes,
-            )}% downloaded"
+            "${formatDecimalBytes(input.transferStatus.receivedBytes)} of " +
+                "${formatDecimalBytes(input.model.sizeBytes)} · ${localModelProgressPercent(
+                    input.transferStatus.receivedBytes,
+                    input.model.sizeBytes,
+                )}%"
         input.transferStatus.state == LocalModelTransferState.WAITING ->
             "Waiting for a network connection…"
         input.transferStatus.state == LocalModelTransferState.PARTIALLY_DOWNLOADED ->
@@ -166,6 +166,16 @@ object LocalModelPresentationPolicy {
         else -> "Not downloaded"
     }
 
-    private fun progressFraction(receivedBytes: Long, expectedBytes: Long): Float =
-        localModelProgressPercent(receivedBytes, expectedBytes) / 100f
+    private fun progressFraction(receivedBytes: Long, expectedBytes: Long): Float {
+        if (expectedBytes <= 0L) return 0f
+        return (receivedBytes.toDouble() / expectedBytes.toDouble())
+            .coerceIn(0.0, 1.0)
+            .toFloat()
+    }
+
+    private fun runtimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
+        LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
+        LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
+    }
 }

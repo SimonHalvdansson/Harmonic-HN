@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -367,10 +368,15 @@ private fun LocalModelCard(
         }
 
         val progress = presentation.progress
+        val animatedProgress by animateFloatAsState(
+            targetValue = progress ?: 0f,
+            animationSpec = tween(LocalModelProgressAnimationDurationMillis),
+            label = "local model download progress",
+        )
         AnimatedVisibility(visible = progress != null || showIndeterminateProgress) {
             if (progress != null) {
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 42.dp, top = 5.dp, end = 6.dp),
@@ -472,3 +478,5 @@ private fun LocalModelRuntime.displayLabel(): String = when (this) {
     LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
     LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
 }
+
+private const val LocalModelProgressAnimationDurationMillis = 500

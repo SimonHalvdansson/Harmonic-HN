@@ -56,7 +56,7 @@ class LocalModelPresentationTest {
 
         assertEquals(LocalModelPresentationAction.CANCEL_DOWNLOAD, result.action)
         assertEquals(0.25f, result.progress)
-        assertTrue(result.summary.endsWith("Installing runtime · 25%"))
+        assertTrue(result.summary.endsWith("25 B of 100 B · installing LiteRT-LM"))
     }
 
     @Test
@@ -76,6 +76,12 @@ class LocalModelPresentationTest {
 
         assertEquals(LocalModelPresentationAction.CANCEL_DOWNLOAD, downloading.action)
         assertEquals(0.5f, downloading.progress)
+        assertTrue(
+            downloading.summary.endsWith(
+                "${formatDecimalBytes(model.sizeBytes / 2)} of " +
+                    "${formatDecimalBytes(model.sizeBytes)} · 50%",
+            ),
+        )
         assertTrue(partial.summary.endsWith("1.5 MB downloaded · tap to resume"))
     }
 

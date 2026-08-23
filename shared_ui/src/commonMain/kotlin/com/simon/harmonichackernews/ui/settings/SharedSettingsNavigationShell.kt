@@ -49,6 +49,8 @@ import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 
 private data object SharedSettingsListDestination : NavKey
 
+private data object SharedSettingsTwoPaneDetailDestination : NavKey
+
 private data class SharedSettingsDetailDestination(val section: SettingsSection) : NavKey
 
 data class SettingsPredictiveBackOverlay(
@@ -114,10 +116,14 @@ fun SharedSettingsNavigationShell(
     val navigationState by navigation.state.collectAsState()
     val showDetailNavigation = !isTwoPane
     val selectedSection = navigationState.selectedSection
-    val backStack = remember(navigationState.detailStack) {
+    val backStack = remember(navigationState.detailStack, isTwoPane) {
         buildList<NavKey> {
             add(SharedSettingsListDestination)
-            navigationState.detailStack.forEach { add(SharedSettingsDetailDestination(it)) }
+            if (isTwoPane) {
+                add(SharedSettingsTwoPaneDetailDestination)
+            } else {
+                navigationState.detailStack.forEach { add(SharedSettingsDetailDestination(it)) }
+            }
         }
     }
     val detailPaneTransition = updateTransition(selectedSection, label = "Settings detail pane")
@@ -154,16 +160,11 @@ fun SharedSettingsNavigationShell(
         ) {
             renderList(selectedSection, !showDetailNavigation, onBackFromSettings, ::navigateTo)
         }
-        entry<SharedSettingsDetailDestination>(
+        entry<SharedSettingsTwoPaneDetailDestination>(
             metadata = ListDetailSceneStrategy.detailPane(),
-        ) { destination ->
-            if (showDetailNavigation || !animateDetailChanges) {
-                renderDetail(
-                    destination.section,
-                    showDetailNavigation,
-                    ::navigateBack,
-                    ::navigateTo,
-                )
+        ) {
+            if (!animateDetailChanges) {
+                renderDetail(selectedSection, false, ::navigateBack, ::navigateTo)
             } else {
                 detailPaneTransition.AnimatedContent(
                     transitionSpec = { paneDetailSwitchTransition() },
@@ -171,6 +172,11 @@ fun SharedSettingsNavigationShell(
                     renderDetail(section, false, ::navigateBack, ::navigateTo)
                 }
             }
+        }
+        entry<SharedSettingsDetailDestination>(
+            metadata = ListDetailSceneStrategy.detailPane(),
+        ) { destination ->
+            renderDetail(destination.section, true, ::navigateBack, ::navigateTo)
         }
     }
     val entries = rememberDecoratedNavEntries(
