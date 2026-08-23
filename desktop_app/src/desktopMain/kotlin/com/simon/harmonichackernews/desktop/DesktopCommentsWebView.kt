@@ -87,10 +87,20 @@ internal data class DesktopBrowserSnapshot(
     val canGoForward: Boolean,
 )
 
+internal interface DesktopBrowserHost {
+    fun loadUrl(url: String)
+    fun navigateBack()
+    fun navigateForward()
+    fun reload(fallbackUrl: String)
+    fun setBrowserVisible(visible: Boolean)
+    fun evaluateJavaScript(script: String)
+    fun disposeBrowser()
+}
+
 internal class DesktopCommentsWebViewSession(
     private val initialUrl: String,
 ) {
-    private var browserHost: SwtEdgeBrowserCanvas? = null
+    private var browserHost: DesktopBrowserHost? = null
 
     var currentPageUrl by mutableStateOf(initialUrl)
         private set
@@ -107,17 +117,17 @@ internal class DesktopCommentsWebViewSession(
     var manualInversion by mutableStateOf(false)
         private set
 
-    fun attach(browserHost: SwtEdgeBrowserCanvas) {
+    fun attach(browserHost: DesktopBrowserHost) {
         this.browserHost = browserHost
         browserHost.loadUrl(currentPageUrl)
     }
 
-    fun detach(browserHost: SwtEdgeBrowserCanvas) {
+    fun detach(browserHost: DesktopBrowserHost) {
         if (this.browserHost === browserHost) this.browserHost = null
     }
 
     fun updateFromBrowser(
-        browserHost: SwtEdgeBrowserCanvas,
+        browserHost: DesktopBrowserHost,
         snapshot: DesktopBrowserSnapshot,
     ) {
         if (this.browserHost !== browserHost) return
@@ -153,8 +163,8 @@ internal class DesktopCommentsWebViewSession(
 }
 
 /**
- * Hosts SWT's native Browser widget in the existing AWT window. On Windows, SWT.EDGE uses the
- * installed Microsoft Edge WebView2 runtime without replacing Harmonic's Compose window host.
+ * Hosts a platform browser in the existing Compose/AWT window: Edge WebView2 through SWT on
+ * Windows and an AppKit WKWebView child surface on macOS.
  */
 @Composable
 internal fun DesktopCommentsWebViewScaffold(
@@ -213,7 +223,7 @@ internal fun DesktopCommentsWebViewScaffold(
                 .background(MaterialTheme.colorScheme.background),
         ) {
             if (browserStarted) {
-                SwtEdgeBrowserSurface(
+                DesktopEmbeddedBrowserSurface(
                     session = session,
                     visible = showWebsite && nativeSurfaceAllowed,
                     dark = dark,
@@ -233,17 +243,38 @@ internal fun DesktopCommentsWebViewScaffold(
 }
 
 @Composable
+private fun DesktopEmbeddedBrowserSurface(
+    session: DesktopCommentsWebViewSession,
+    visible: Boolean,
+    dark: Boolean,
+    matchTheme: Boolean,
+) {
+    when (desktopEmbeddedBrowserBackend()) {
+        DesktopEmbeddedBrowserBackend.WINDOWS_EDGE -> SwtEdgeBrowserSurface(
+            session = session,
+            visible = visible,
+            dark = dark,
+            matchTheme = matchTheme,
+        )
+        DesktopEmbeddedBrowserBackend.MAC_WEBKIT -> MacWkWebViewSurface(
+            session = session,
+            visible = visible,
+            dark = dark,
+            matchTheme = matchTheme,
+        )
+        DesktopEmbeddedBrowserBackend.UNSUPPORTED -> DesktopWebViewError(
+            "The integrated desktop WebView is not available on this platform",
+        )
+    }
+}
+
+@Composable
 private fun SwtEdgeBrowserSurface(
     session: DesktopCommentsWebViewSession,
     visible: Boolean,
     dark: Boolean,
     matchTheme: Boolean,
 ) {
-    if (!isWindowsDesktop()) {
-        DesktopWebViewError("The integrated desktop WebView is currently available on Windows")
-        return
-    }
-
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val browserCanvas = remember(session) {
         SwtEdgeBrowserCanvas(
@@ -275,7 +306,7 @@ private fun SwtEdgeBrowserSurface(
     }
 
     val error = errorMessage
-    val nativeSurfaceVisible = visible && error == null && session.hasLoadedContent
+    val nativeSurfaceVisible = visible && error == null
     Box(Modifier.fillMaxSize()) {
         SwingPanel(
             factory = { browserCanvas },
@@ -284,25 +315,56 @@ private fun SwtEdgeBrowserSurface(
         )
         if (visible && error != null) {
             DesktopWebViewError(error)
-        } else if (visible && !session.hasLoadedContent) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background,
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    HarmonicLoadingIndicator(modifier = Modifier.size(48.dp))
-                    Text(
-                        text = "Loading article…",
-                        modifier = Modifier.padding(top = 12.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
+        }
+    }
+}
+
+@Composable
+private fun MacWkWebViewSurface(
+    session: DesktopCommentsWebViewSession,
+    visible: Boolean,
+    dark: Boolean,
+    matchTheme: Boolean,
+) {
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val browserCanvas = remember(session) {
+        MacWkWebViewCanvas(
+            onStateChanged = session::updateFromBrowser,
+            onError = { error ->
+                errorMessage = error.message ?: "The macOS WebView could not be started"
+            },
+        )
+    }
+
+    DisposableEffect(browserCanvas, session) {
+        session.attach(browserCanvas)
+        onDispose {
+            session.detach(browserCanvas)
+            browserCanvas.disposeBrowser()
+        }
+    }
+
+    val invertPage = (dark && matchTheme) xor session.manualInversion
+    LaunchedEffect(session.isLoading, invertPage, browserCanvas) {
+        if (!session.isLoading) {
+            val filter = if (invertPage) "invert(1) hue-rotate(180deg)" else "none"
+            session.evaluateJavaScript(
+                "document.documentElement.style.filter='$filter';" +
+                    "document.documentElement.style.backgroundColor='transparent';",
+            )
+        }
+    }
+
+    val error = errorMessage
+    val browserVisible = visible && error == null
+    Box(Modifier.fillMaxSize()) {
+        SwingPanel(
+            factory = { browserCanvas },
+            update = { canvas -> canvas.setBrowserVisible(browserVisible) },
+            modifier = if (browserVisible) Modifier.fillMaxSize() else Modifier.size(0.dp),
+        )
+        if (visible && error != null) {
+            DesktopWebViewError(error)
         }
     }
 }
@@ -322,8 +384,21 @@ private fun DesktopWebViewError(message: String) {
     }
 }
 
-private fun isWindowsDesktop(): Boolean =
-    System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+internal enum class DesktopEmbeddedBrowserBackend {
+    WINDOWS_EDGE,
+    MAC_WEBKIT,
+    UNSUPPORTED,
+}
+
+internal fun desktopEmbeddedBrowserBackend(
+    osName: String = System.getProperty("os.name").orEmpty(),
+): DesktopEmbeddedBrowserBackend = when {
+    osName.startsWith("Windows", ignoreCase = true) ->
+        DesktopEmbeddedBrowserBackend.WINDOWS_EDGE
+    osName.startsWith("Mac", ignoreCase = true) ->
+        DesktopEmbeddedBrowserBackend.MAC_WEBKIT
+    else -> DesktopEmbeddedBrowserBackend.UNSUPPORTED
+}
 
 private fun isTransientBrowserUrl(url: String): Boolean =
     url.isBlank() || url.equals("about:blank", ignoreCase = true)
@@ -386,9 +461,9 @@ private object DesktopSwtDisplayHost {
 }
 
 internal class SwtEdgeBrowserCanvas(
-    private val onStateChanged: (SwtEdgeBrowserCanvas, DesktopBrowserSnapshot) -> Unit,
+    private val onStateChanged: (DesktopBrowserHost, DesktopBrowserSnapshot) -> Unit,
     private val onError: (Throwable) -> Unit,
-) : Canvas() {
+) : Canvas(), DesktopBrowserHost {
     private val started = AtomicBoolean(false)
     private val disposed = AtomicBoolean(false)
     private val stateLock = Any()
@@ -431,17 +506,17 @@ internal class SwtEdgeBrowserCanvas(
         super.removeNotify()
     }
 
-    fun loadUrl(url: String) = withBrowser { it.setUrl(url) }
+    override fun loadUrl(url: String) = withBrowser { it.setUrl(url) }
 
-    fun navigateBack() = withBrowser { if (it.isBackEnabled) it.back() }
+    override fun navigateBack() = withBrowser { if (it.isBackEnabled) it.back() }
 
-    fun navigateForward() = withBrowser { if (it.isForwardEnabled) it.forward() }
+    override fun navigateForward() = withBrowser { if (it.isForwardEnabled) it.forward() }
 
-    fun reload(fallbackUrl: String) = withBrowser { current ->
+    override fun reload(fallbackUrl: String) = withBrowser { current ->
         if (isTransientBrowserUrl(current.url)) current.setUrl(fallbackUrl) else current.refresh()
     }
 
-    fun setBrowserVisible(visible: Boolean) {
+    override fun setBrowserVisible(visible: Boolean) {
         browserVisible = visible
         isVisible = visible
         val targetDisplay = display ?: return
@@ -453,9 +528,9 @@ internal class SwtEdgeBrowserCanvas(
         }
     }
 
-    fun evaluateJavaScript(script: String) = withBrowser { it.execute(script) }
+    override fun evaluateJavaScript(script: String) = withBrowser { it.execute(script) }
 
-    fun disposeBrowser() {
+    override fun disposeBrowser() {
         if (!disposed.compareAndSet(false, true)) return
         synchronized(stateLock) { pendingActions.clear() }
         val currentDisplay = display ?: return

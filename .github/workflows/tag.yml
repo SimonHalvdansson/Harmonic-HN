@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  android:
     runs-on: ubuntu-latest
     env:
       BUNDLETOOL_VERSION: '1.18.3'
@@ -93,11 +93,72 @@ jobs:
           unzip -p "$RELEASE_LLM_APKS" universal.apk > "$RELEASE_LLM_APK"
           unzip -t "$RELEASE_LLM_APK" 'lib/*/liblocal-llama.so'
           "$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs "$RELEASE_LLM_APK"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-android
+          path: |
+            app/build/outputs/apk/fossRelease/app-release.apk
+            app/build/outputs/apk/playRelease/app-release-llm.apk
+          if-no-files-found: error
+
+  desktop:
+    name: Desktop ${{ matrix.artifact_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            task: packageReleaseDmg
+            artifact_name: macos-dmg-arm64
+            artifact_path: desktop_app/build/compose/binaries/**/*.dmg
+          - os: windows-2025
+            task: packageReleaseMsi
+            artifact_name: windows-msi-x64
+            artifact_path: desktop_app/build/compose/binaries/**/*.msi
+          - os: ubuntu-24.04
+            task: packageReleaseDeb
+            artifact_name: linux-deb-x64
+            artifact_path: desktop_app/build/compose/binaries/**/*.deb
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Add WiX Toolset to PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $wix = Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset v3.*\bin" -Directory |
+            Select-Object -First 1
+          if (-not $wix) {
+            throw "WiX Toolset 3.x is required to build the MSI"
+          }
+          $wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Build desktop package
+        run: ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+
+  release:
+    needs:
+      - android
+      - desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-artifacts
+          merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: |
-            app/build/outputs/apk/fossRelease/app-release.apk
-            app/build/outputs/apk/playRelease/app-release-llm.apk
+          files: release-artifacts/**/*
           draft: false
           prerelease: false

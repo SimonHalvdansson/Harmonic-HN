@@ -8,6 +8,16 @@ import java.util.Properties
 
 val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
 val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
+val desktopOsName = System.getProperty("os.name").orEmpty().lowercase()
+val isMacDesktopBuild = desktopOsName.contains("mac")
+val macDesktopCompilerArguments = if (isMacDesktopBuild) {
+    listOf(
+        "-DCMAKE_C_COMPILER=/usr/bin/clang",
+        "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
+    )
+} else {
+    emptyList()
+}
 
 val cmakeExecutable = providers.provider {
     providers.gradleProperty("harmonic.cmakeExecutable").orNull
@@ -105,15 +115,21 @@ val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
     val build = desktopLocalAiBuild.get().asFile.absolutePath
     val output = desktopLocalAiOutput.get().asFile.absolutePath
     commandLine(
-        cmakeExecutable.get(),
-        "-S", source,
-        "-B", build,
-        "-DCMAKE_BUILD_TYPE=Release",
-        "-DHARMONIC_BUILD_DESKTOP=ON",
-        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$output",
-        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$output",
-        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$output",
-        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=$output",
+        buildList {
+            add(cmakeExecutable.get())
+            addAll(listOf("-S", source, "-B", build))
+            addAll(macDesktopCompilerArguments)
+            addAll(
+                listOf(
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DHARMONIC_BUILD_DESKTOP=ON",
+                    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$output",
+                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$output",
+                    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$output",
+                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=$output",
+                ),
+            )
+        },
     )
 }
 
@@ -136,10 +152,43 @@ val stageDesktopLocalAi = tasks.register<Sync>("stageDesktopLocalAi") {
     into(desktopLocalAiResources.map { it.dir("native") })
 }
 
+val macWebViewSource = layout.projectDirectory.file("native/macos/HarmonicWebView.m")
+val macWebViewOutput = layout.buildDirectory.file("macWebView/libharmonic-mac-webview.dylib")
+val macWebViewResources = layout.buildDirectory.dir("generated/macWebViewResources")
+val buildMacWebView = if (isMacDesktopBuild) {
+    val outputFile = macWebViewOutput.get().asFile
+    tasks.register<Exec>("buildMacWebView") {
+        inputs.file(macWebViewSource)
+        outputs.file(outputFile)
+        doFirst { outputFile.parentFile.mkdirs() }
+        commandLine(
+            "/usr/bin/clang",
+            "-fobjc-arc",
+            "-fblocks",
+            "-O2",
+            "-dynamiclib",
+            "-mmacosx-version-min=11.0",
+            macWebViewSource.asFile.absolutePath,
+            "-framework", "AppKit",
+            "-framework", "WebKit",
+            "-o", outputFile.absolutePath,
+        )
+    }
+} else {
+    null
+}
+val stageMacWebView = tasks.register<Sync>("stageMacWebView") {
+    buildMacWebView?.let { nativeBuild -> dependsOn(nativeBuild) }
+    if (isMacDesktopBuild) from(macWebViewOutput)
+    into(macWebViewResources.map { it.dir("native") })
+}
+
 tasks.named<ProcessResources>("desktopProcessResources") {
     dependsOn(stageDesktopLocalAi)
+    dependsOn(stageMacWebView)
     from(generateDesktopMetadata)
     from(desktopLocalAiResources)
+    from(macWebViewResources)
     from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
         rename { "harmonic-app-icon.png" }
     }
@@ -179,6 +228,18 @@ val stableDesktopProjectJars = files(
 compose.desktop {
     application {
         mainClass = "com.simon.harmonichackernews.desktop.DesktopAppMainKt"
+        if (isMacDesktopBuild) {
+            // These must be present before AWT initializes. They give development runs Harmonic's
+            // menu-bar/display name where the JBR supports it, but only a packaged .app has a true
+            // macOS bundle identity instead of the underlying java launcher.
+            jvmArgs += listOf(
+                "-Xdock:name=Harmonic",
+                "-Dapple.awt.application.name=Harmonic",
+                "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+                "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
+                "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
+            )
+        }
         // Compose 1.12.0-rc01's ProGuard runner dereferences Gradle 9.7's nullable output stream.
         // Keep release packaging functional until the plugin is compatible; packaging still uses
         // the release runtime and excludes debug-only UI through runtime metadata below.

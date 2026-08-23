@@ -5,6 +5,22 @@ import kotlin.test.assertEquals
 
 class DesktopCommentsWebViewTest {
     @Test
+    fun desktopBrowserBackendsStayPlatformSpecific() {
+        assertEquals(
+            DesktopEmbeddedBrowserBackend.WINDOWS_EDGE,
+            desktopEmbeddedBrowserBackend("Windows 11"),
+        )
+        assertEquals(
+            DesktopEmbeddedBrowserBackend.MAC_WEBKIT,
+            desktopEmbeddedBrowserBackend("Mac OS X"),
+        )
+        assertEquals(
+            DesktopEmbeddedBrowserBackend.UNSUPPORTED,
+            desktopEmbeddedBrowserBackend("Linux"),
+        )
+    }
+
+    @Test
     fun commentsUseHackerNewsStoryTitleBeforeArticleLoads() {
         assertEquals(
             "The Hacker News title",
