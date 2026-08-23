@@ -10,7 +10,7 @@ object SearchRelevanceUtils {
             return
         }
 
-        val scoredStories = stories.mapIndexedTo(mutableListOf()) { index, story ->
+        val scoredStories = stories.mapIndexedTo(ArrayList(stories.size)) { index, story ->
             ScoredStory(
                 story = story,
                 relevanceScore = score(story, normalizedQuery),

@@ -15,7 +15,12 @@ data class SettingsNavigationState(
         get() = detailStack.size > if (twoPane) 1 else 0
 
     val routes: List<String>
-        get() = listOf(SettingsNavigationStore.LIST_ROUTE) + detailStack.map { it.route }
+        get() {
+            val routes = ArrayList<String>(detailStack.size + 1)
+            routes += SettingsNavigationStore.LIST_ROUTE
+            detailStack.forEach { section -> routes += section.route }
+            return routes
+        }
 }
 
 /** Portable list/detail navigation, restoration, and two-pane default policy. */

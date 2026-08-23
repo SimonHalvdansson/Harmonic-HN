@@ -30,10 +30,13 @@ fun SharedHarmonicAppRoot(
     editorPredictiveModifier: Modifier = Modifier,
     linkPreview: (@Composable () -> Unit)? = null,
 ) {
-    val destinations = navigation.destinationStack.map { it.destination }
     val current = navigation.currentDestination
-    val settingsVisible = MainDestination.SETTINGS in destinations
-    val submissionsVisible = MainDestination.SUBMISSIONS in destinations
+    val settingsVisible = navigation.destinationStack.any {
+        it.destination == MainDestination.SETTINGS
+    }
+    val submissionsVisible = navigation.destinationStack.any {
+        it.destination == MainDestination.SUBMISSIONS
+    }
     SharedMainDestinationLayers(
         state = MainDestinationLayerState(
             settingsVisible = settingsVisible,

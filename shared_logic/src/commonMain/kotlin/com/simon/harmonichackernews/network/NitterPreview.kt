@@ -5,6 +5,9 @@ import com.simon.harmonichackernews.serialization.JsonObject
 import com.simon.harmonichackernews.serialization.JsonStringCodec
 
 object NitterPreview {
+    private val statusPathPattern =
+        Regex("^/(?:[A-Za-z0-9_]{1,15}/status/\\d+|i/web/status/\\d+)(?:/[^/]*)*$")
+
     /** DOM extraction program shared by WebView, WKWebView, and desktop browser adapters. */
     val extractionScript: String = """
         (function() {
@@ -83,9 +86,7 @@ object NitterPreview {
             .removePrefix("mobile.")
         if (host != "twitter.com" && host != "x.com") return false
         val path = "/" + parsed.pathSegments.filter(String::isNotEmpty).joinToString("/")
-        return path.matches(
-            "^/(?:[A-Za-z0-9_]{1,15}/status/\\d+|i/web/status/\\d+)(?:/[^/]*)*$".toRegex(),
-        )
+        return statusPathPattern.matches(path)
     }
 
     fun convertUrl(url: String): String {

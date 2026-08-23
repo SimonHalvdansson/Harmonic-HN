@@ -1117,6 +1117,9 @@ private fun MainNavigation(
                                     controller::closeEditor,
                                 )
                             }
+                            DisposableEffect(coordinator) {
+                                onDispose(coordinator::close)
+                            }
                             SideEffect {
                                 coordinator.attachController(editorController)
                             }

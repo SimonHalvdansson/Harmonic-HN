@@ -43,4 +43,22 @@ class SettingsNavigationStoreTest {
             assertFalse(navigation.state.value.canNavigateBackWithinSettings)
         }
     }
+
+    @Test
+    fun savedRoutesStartAtTheListAndPreserveDetailOrder() {
+        val navigation = SettingsNavigationStore(twoPane = false)
+        assertEquals(listOf(SettingsNavigationStore.LIST_ROUTE), navigation.savedRoutes())
+
+        navigation.navigateTo(SettingsSection.Appearance)
+        navigation.navigateTo(SettingsSection.Comments, preserveCurrentDetail = true)
+
+        assertEquals(
+            listOf(
+                SettingsNavigationStore.LIST_ROUTE,
+                SettingsSection.Appearance.route,
+                SettingsSection.Comments.route,
+            ),
+            navigation.savedRoutes(),
+        )
+    }
 }

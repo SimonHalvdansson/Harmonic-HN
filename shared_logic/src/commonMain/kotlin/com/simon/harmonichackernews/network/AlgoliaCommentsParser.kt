@@ -97,12 +97,12 @@ class AlgoliaCommentsParser(
             throw ApiDecodingException("Invalid Algolia comments JSON", error)
         }
 
-        val normalizedFilteredUsers = filteredUsers
-            .asSequence()
-            .map { user -> user.trim() }
-            .filter { user -> user.isNotEmpty() }
-            .map { user -> user.lowercase() }
-            .toSet()
+        val normalizedFilteredUsers = buildSet(filteredUsers.size) {
+            for (user in filteredUsers) {
+                val trimmed = user.trim()
+                if (trimmed.isNotEmpty()) add(trimmed.lowercase())
+            }
+        }
         val topLevelComments = payload.children.mapNotNull { child ->
             parseComment(child, depth = 0, normalizedFilteredUsers)
         }.toMutableList()

@@ -157,15 +157,15 @@ class StorySearchController(
     companion object {
         const val ALGOLIA_HITS_INCREMENT: Int = 200
 
-        val sortLabels: Array<String> = arrayOf("Relevance", "Newest")
-        val dateRangeLabels: Array<String> =
-            arrayOf("All time", "Past day", "Past week", "Past month", "Past year")
+        val sortLabels: List<String> = listOf("Relevance", "Newest")
+        val dateRangeLabels: List<String> =
+            listOf("All time", "Past day", "Past week", "Past month", "Past year")
         private val SEARCH_DATE_RANGE_DAYS = intArrayOf(0, 1, 7, 30, 365)
-        val minimumPointsLabels: Array<String> =
-            arrayOf("Any points", "5+ points", "25+ points", "100+ points")
+        val minimumPointsLabels: List<String> =
+            listOf("Any points", "5+ points", "25+ points", "100+ points")
         private val SEARCH_MINIMUM_POINTS = intArrayOf(0, 5, 25, 100)
-        val minimumCommentsLabels: Array<String> =
-            arrayOf("Any comments", "5+ comments", "25+ comments", "100+ comments")
+        val minimumCommentsLabels: List<String> =
+            listOf("Any comments", "5+ comments", "25+ comments", "100+ comments")
         private val SEARCH_MINIMUM_COMMENTS = intArrayOf(0, 5, 25, 100)
     }
 }

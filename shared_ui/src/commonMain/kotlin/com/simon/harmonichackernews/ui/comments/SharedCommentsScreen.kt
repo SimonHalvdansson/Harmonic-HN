@@ -95,14 +95,19 @@ private suspend fun LazyListState.animateToCommentNavigationTarget(
     // Estimate the pixel distance from the currently composed rows and animate that distance with
     // a duration scaled in the same 50-item steps as the old RecyclerView implementation. The
     // final snap handles variable-height comment rows and the header exactly.
-    val averageItemSize = layoutInfo.visibleItemsInfo
-        .asSequence()
-        .filter { it.index > 0 && it.size > 0 }
-        .map { it.size }
-        .average()
-        .toFloat()
-        .takeIf { it > 0f }
-        ?: 1f
+    var totalVisibleCommentSize = 0L
+    var visibleCommentCount = 0
+    for (item in layoutInfo.visibleItemsInfo) {
+        if (item.index > 0 && item.size > 0) {
+            totalVisibleCommentSize += item.size
+            visibleCommentCount++
+        }
+    }
+    val averageItemSize = if (visibleCommentCount == 0) {
+        1f
+    } else {
+        (totalVisibleCommentSize.toDouble() / visibleCommentCount).toFloat()
+    }
     val estimatedDistance =
         (index - firstVisibleItemIndex) * averageItemSize -
             firstVisibleItemScrollOffset - scrollOffset
