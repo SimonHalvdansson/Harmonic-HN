@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-enum class DataSettingsDialogState { IMPORT, RESET, LINKS }
+enum class DataSettingsDialogState { IMPORT, RESET, LINKS, AI_MODELS }
 
 data class DataSettingsRuntimeState(
     val snapshot: DataSettingsSnapshot,
@@ -90,6 +90,14 @@ class DataSettingsRuntime(
         service.clearTintCache()
         emitMessage(PresentationCopy.TINT_CACHE_CLEARED)
         refresh()
+    }
+
+    fun clearAiModels() {
+        publish(dialog = null)
+        scope.launch {
+            emitMessage(service.clearAiModels())
+            refresh()
+        }
     }
 
     fun resetSettings() {

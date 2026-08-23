@@ -79,7 +79,18 @@ fun SharedMainNavigationScene(
             storyRequest?.let { add(SharedCommentsDestination(it)) }
         }
     }
+    var animatedStorySerial by remember { mutableIntStateOf(-1) }
     LaunchedEffect(storyRequest?.serial) {
+        val previousRequest = (backStack.lastOrNull() as? SharedCommentsDestination)?.request
+        animatedStorySerial = if (
+            storyRequest != null &&
+            previousRequest != null &&
+            previousRequest.serial != storyRequest.serial
+        ) {
+            storyRequest.serial
+        } else {
+            -1
+        }
         if (storyRequest == null) {
             if (backStack.lastOrNull() is SharedCommentsDestination) backStack.removeLastOrNull()
         } else if (backStack.lastOrNull() is SharedCommentsDestination) {
@@ -96,7 +107,18 @@ fun SharedMainNavigationScene(
         ) { stories() }
         entry<SharedCommentsDestination>(
             metadata = ListDetailSceneStrategy.detailPane(),
-        ) { comments(it.request) }
+        ) { destination ->
+            if (!isTwoPane) {
+                comments(destination.request)
+            } else {
+                PaneDetailSwitchIn(
+                    contentKey = destination.request.serial,
+                    animate = animatedStorySerial == destination.request.serial,
+                ) {
+                    comments(destination.request)
+                }
+            }
+        }
     }
     val entries = rememberDecoratedNavEntries(
         backStack = backStack,

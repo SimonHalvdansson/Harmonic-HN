@@ -149,6 +149,7 @@ class HarmonicAppComposition(
         storyCache = storyCache,
         previewResources = previewResources,
         storyResourceTints = storyResourceTints,
+        localModels = localModels,
     )
 
     /** Creates navigation, retained screen state, and transient messages for one host scene. */

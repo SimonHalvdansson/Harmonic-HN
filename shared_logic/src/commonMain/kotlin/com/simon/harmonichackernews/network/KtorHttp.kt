@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
+import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse as KtorResponse
@@ -177,6 +178,37 @@ class KtorHttpClient(
             response,
             HttpResponseBody(response.bodyAsChannel(), response.headers),
         )
+    }
+
+    /**
+     * Keeps the Ktor response scoped while [block] consumes its channel. Unlike [execute], this
+     * bypasses Ktor's saved-body path and therefore does not buffer large downloads in memory.
+     */
+    suspend fun <T> executeStreaming(
+        request: HttpRequest,
+        block: suspend (HttpResponse) -> T,
+    ): T = client.prepareRequest(request.url.toString()) {
+        method = request.method
+        timeout {
+            requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+            socketTimeoutMillis = readTimeoutMillis
+            connectTimeoutMillis = minOf(readTimeoutMillis, DEFAULT_CONNECT_TIMEOUT_MILLIS)
+        }
+        request.headers.forEach { (name, value) -> header(name, value) }
+        request.body?.let { body ->
+            body.mediaType?.let { contentType(ContentType.parse(it.toString())) }
+            setBody(body.bytes)
+        }
+    }.execute { response ->
+        val wrapped = HttpResponse(
+            response,
+            HttpResponseBody(response.bodyAsChannel(), response.headers),
+        )
+        try {
+            block(wrapped)
+        } finally {
+            wrapped.close()
+        }
     }
 
     fun newBuilder(): Builder = Builder(client, readTimeoutMillis)

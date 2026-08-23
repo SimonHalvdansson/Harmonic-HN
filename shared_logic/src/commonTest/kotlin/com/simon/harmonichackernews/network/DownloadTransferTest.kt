@@ -105,6 +105,42 @@ class DownloadTransferTest {
     }
 
     @Test
+    fun scopedClientStreamsInsideResponseLifetime() = runTest {
+        val response = FakeTransferResponse(
+            statusCode = 200,
+            body = ByteArrayTransferBody(byteArrayOf(4, 5, 6)),
+            contentLength = 3,
+        )
+        var streamed = false
+        val client = object : TransferClient, ScopedTransferClient {
+            override suspend fun open(request: TransferRequest): TransferResponse =
+                error("The buffered response path must not be used")
+
+            override suspend fun <T> withResponse(
+                request: TransferRequest,
+                block: suspend (TransferResponse) -> T,
+            ): T {
+                streamed = true
+                return block(response)
+            }
+        }
+        val sink = RecordingSink()
+
+        val receipt = HttpTransferEngine(client).transfer(
+            request = TransferRequest("https://example.com/model.gguf"),
+            sink = sink,
+            options = TransferOptions(
+                maxTotalBytes = 3,
+                expectedTotalBytes = 3,
+            ),
+        )
+
+        assertTrue(streamed)
+        assertEquals(3L, receipt.responseBytes)
+        assertEquals(listOf<Byte>(4, 5, 6), sink.bytes)
+    }
+
+    @Test
     fun cachePolicyExpiresOversizedOldAndStaleTemporaryFiles() {
         val policy = DownloadCachePolicy(
             maxFileBytes = 100,

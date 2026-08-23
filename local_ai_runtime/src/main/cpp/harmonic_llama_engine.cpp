@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -389,6 +390,36 @@ extern "C" harmonic_llama_next_result harmonic_llama_next(
 
 extern "C" const char * harmonic_llama_last_error(const harmonic_llama_engine * engine) {
     return engine == nullptr ? "GGUF inference engine is unavailable" : engine->last_error.c_str();
+}
+
+extern "C" int harmonic_llama_next_utf8(
+        harmonic_llama_engine * engine,
+        char * buffer,
+        int capacity) {
+    if (buffer == nullptr || capacity <= 0) {
+        if (engine != nullptr) {
+            set_error(engine, "Invalid GGUF output buffer");
+        }
+        return -1;
+    }
+    buffer[0] = '\0';
+    const char * utf8_piece = nullptr;
+    size_t utf8_length = 0;
+    const harmonic_llama_next_result result = harmonic_llama_next(
+            engine, &utf8_piece, &utf8_length);
+    if (result == HARMONIC_LLAMA_NEXT_END) {
+        return 0;
+    }
+    if (result == HARMONIC_LLAMA_NEXT_ERROR) {
+        return -1;
+    }
+    if (utf8_length >= static_cast<size_t>(capacity)) {
+        set_error(engine, "GGUF output piece exceeded the desktop bridge buffer");
+        return -1;
+    }
+    std::memcpy(buffer, utf8_piece, utf8_length);
+    buffer[utf8_length] = '\0';
+    return static_cast<int>(utf8_length);
 }
 
 extern "C" void harmonic_llama_close(harmonic_llama_engine * engine) {

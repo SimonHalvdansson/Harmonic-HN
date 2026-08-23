@@ -107,6 +107,7 @@ fun DataSettingsScreen(
             history = dataSnapshot.historyCount,
             postCache = dataSnapshot.postCacheCount,
             tintCache = dataSnapshot.tintCacheCount,
+            aiModelsBytes = dataSnapshot.aiModelBytes,
         ),
         loggedIn = dataSnapshot.loggedIn,
         showNavigation = showNavigation,
@@ -124,6 +125,8 @@ fun DataSettingsScreen(
                 DataSettingsAction.ClearHistory -> runtime.clearHistory()
                 DataSettingsAction.ClearPostCache -> runtime.clearPostCache()
                 DataSettingsAction.ClearTintCache -> runtime.clearTintCache()
+                DataSettingsAction.ClearAiModels ->
+                    runtime.showDialog(DataSettingsDialogState.AI_MODELS)
                 DataSettingsAction.OpenLinksSettings ->
                     runtime.showDialog(DataSettingsDialogState.LINKS)
                 DataSettingsAction.ResetSettings ->
@@ -163,6 +166,11 @@ fun DataSettingsScreen(
                 "Go to \"Open by default\" → \"Add link\" in the linked app settings page.",
             neutralLabel = "Go to settings",
             onNeutral = runtime::openAppLinkSettings,
+            onDismiss = { runtime.showDialog(null) },
+        )
+
+        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
+            onClear = runtime::clearAiModels,
             onDismiss = { runtime.showDialog(null) },
         )
         null -> Unit

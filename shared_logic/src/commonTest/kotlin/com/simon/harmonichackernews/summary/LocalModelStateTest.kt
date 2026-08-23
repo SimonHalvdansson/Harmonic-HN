@@ -93,6 +93,22 @@ class LocalModelStateTest {
         assertEquals("1.5 kB", formatDecimalBytes(1_500))
         assertEquals("1.5 MB", formatDecimalBytes(1_500_000))
         assertEquals("1.50 GB", formatDecimalBytes(1_500_000_000))
+        assertEquals("0 B", formatDecimalBytes(0))
+    }
+
+    @Test
+    fun hostCanExplainThatLiteRtIsUnavailableForAPlatformSpecificReason() {
+        val liteRt = downloadable.copy(runtime = LocalModelRuntime.LITERT_LM)
+        val capabilities = LocalModelDeviceCapabilities(
+            supportsDownloadableModels = true,
+            supportsLiteRtModels = false,
+            liteRtUnsupportedReason = LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE,
+        )
+
+        assertEquals(
+            LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE,
+            capabilities.unsupportedReason(liteRt),
+        )
     }
 
     private fun stateStore(preferences: TestKeyValueStore = TestKeyValueStore()) =

@@ -11,7 +11,7 @@ object LocalSummaryGenerationPolicy {
 
     fun configuration(modelId: String): LocalSummaryGenerationConfig =
         LocalSummaryGenerationConfig(
-            responsePrefix = if (modelId == LocalModelCatalog.MODEL_QWEN_08B) "- " else "",
+            responsePrefix = if (modelId in BULLET_PREFIX_MODELS) "- " else "",
             maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
         )
 
@@ -29,4 +29,11 @@ object LocalSummaryGenerationPolicy {
         }
         return trimmed
     }
+
+    private val BULLET_PREFIX_MODELS = setOf(
+        LocalModelCatalog.MODEL_BONSAI_17B,
+        LocalModelCatalog.MODEL_BONSAI_4B,
+        LocalModelCatalog.MODEL_BONSAI_8B,
+        LocalModelCatalog.MODEL_QWEN_08B,
+    )
 }

@@ -11,14 +11,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.painterResource as androidPainterResource
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
-import com.simon.harmonichackernews.summary.LocalModelCatalog
-import com.simon.harmonichackernews.summary.LocalModelBrand
-import com.simon.harmonichackernews.summary.LocalModelPresentationAction
-import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 
@@ -40,7 +34,7 @@ fun AiSummarySettingsScreen(
     }
     val availabilityState by settingsRuntime.state.collectAsState()
 
-    LaunchedEffect(settingsRuntime) {
+    LaunchedEffect(settingsRuntime, localModelState, localRefresh) {
         settingsRuntime.resolve()
     }
     DisposableEffect(settingsRuntime) {
@@ -51,6 +45,7 @@ fun AiSummarySettingsScreen(
         repository = repository,
         modelDefaults = appComposition.aiModelDefaults,
         localSummarizationSupported = availabilityState.supported,
+        localAvailabilityResolved = availabilityState.availabilityResolved,
         localConfigurationReady = availabilityState.configurationReady,
         localModeAvailable = availabilityState.available,
         showNavigation = showNavigation,
@@ -63,11 +58,15 @@ fun AiSummarySettingsScreen(
             )
         },
         localModelsContent = {
-            LocalModelsPanel(
+            SharedLocalModelsRoute(
                 nanoAvailabilityResolved = availabilityState.availabilityResolved,
                 nanoAvailable = availabilityState.nanoAvailable,
                 localModels = localModels,
-                onRefresh = { localRefresh++ },
+                managerState = localModelState,
+                onChanged = { localRefresh++ },
+                onMessage = { message ->
+                    appComposition.userMessages.show(message, UserMessageDuration.LONG)
+                },
             )
         },
         dialogContent = { dialog, onDismiss ->
@@ -103,60 +102,6 @@ fun AiSummarySettingsScreen(
                     onSaved = { localRefresh++ },
                 )
             }
-        },
-    )
-}
-
-@Composable
-private fun LocalModelsPanel(
-    nanoAvailabilityResolved: Boolean,
-    nanoAvailable: Boolean,
-    localModels: LocalModelService,
-    onRefresh: () -> Unit,
-) {
-    val userMessages = LocalHarmonicUiDependencies.current.userMessages
-    val rows = LocalModelCatalog.models.map { definition ->
-        LocalModelRowUiState(
-            model = definition,
-            presentation = localModels.presentation(
-                model = definition,
-                nanoAvailabilityResolved = nanoAvailabilityResolved,
-                nanoAvailable = nanoAvailable,
-            ),
-        )
-    }
-
-    SharedLocalModelsPanel(
-        models = rows,
-        modelIconPainter = { definition ->
-            androidPainterResource(
-                when (definition.brand) {
-                    LocalModelBrand.GOOGLE -> R.drawable.model_logo_google
-                    LocalModelBrand.PRISM -> R.drawable.model_logo_prism
-                    LocalModelBrand.QWEN -> R.drawable.model_logo_qwen
-                    LocalModelBrand.NVIDIA -> R.drawable.model_logo_nvidia
-                    LocalModelBrand.MISTRAL -> R.drawable.model_logo_mistral
-                    LocalModelBrand.LIQUID -> R.drawable.model_logo_liquid
-                },
-            )
-        },
-        onModelSelected = { modelId ->
-            localModels.select(modelId)
-            onRefresh()
-        },
-        onAction = { modelId, action ->
-            when (action) {
-                LocalModelPresentationAction.CANCEL_DOWNLOAD -> localModels.cancel(modelId)
-                LocalModelPresentationAction.DELETE_MODEL ->
-                    localModels.remove(modelId)
-                LocalModelPresentationAction.DOWNLOAD_MODEL -> {
-                    val error = localModels.requestRuntimeAndModelDownload(modelId)
-                    if (!error.isNullOrBlank()) {
-                        userMessages.show(error, UserMessageDuration.LONG)
-                    }
-                }
-            }
-            onRefresh()
         },
     )
 }

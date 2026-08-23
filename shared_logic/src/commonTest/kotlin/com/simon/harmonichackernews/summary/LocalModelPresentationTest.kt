@@ -11,12 +11,17 @@ class LocalModelPresentationTest {
 
     @Test
     fun nanoStaysDisabledUntilAvailabilityIsResolved() {
+        assertEquals("Gemini Nano", LocalModelCatalog.models.first().displayName)
         val unresolved = presentNano(resolved = false, available = false)
+        val unavailable = presentNano(resolved = true, available = false)
         val available = presentNano(resolved = true, available = true)
 
         assertEquals("Checking availability…", unresolved.summary)
         assertFalse(unresolved.enabled)
         assertFalse(unresolved.selectable)
+        assertEquals("Not available", unavailable.summary)
+        assertFalse(unavailable.enabled)
+        assertFalse(unavailable.selectable)
         assertEquals("Available · system managed", available.summary)
         assertTrue(available.enabled)
         assertTrue(available.selectable)

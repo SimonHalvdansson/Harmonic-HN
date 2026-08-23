@@ -46,6 +46,7 @@ import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
 import com.simon.harmonichackernews.ui.settings.AppearanceRouteLabels
 import com.simon.harmonichackernews.ui.settings.AppearanceSettingsDialog
+import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.DataSettingsAction
 import com.simon.harmonichackernews.ui.settings.DebugEnvironmentUiState
 import com.simon.harmonichackernews.ui.settings.DebugSettingsDialog
@@ -56,6 +57,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsPlatformEffect
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SharedAiModelSelectorRoute
 import com.simon.harmonichackernews.ui.settings.SharedAiSummarySettingsRoute
+import com.simon.harmonichackernews.ui.settings.SharedManagedLocalModelPanel
 import com.simon.harmonichackernews.ui.settings.SharedAppearanceSettingsRoute
 import com.simon.harmonichackernews.ui.settings.SharedCommentsSettingsRoute
 import com.simon.harmonichackernews.ui.settings.SharedDataSettingsRoute
@@ -378,23 +380,46 @@ private fun IosAiSettings(
     onBack: () -> Unit,
 ) {
     var refresh by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val settingsRuntime = remember(app, scope) {
+        app.createLocalSummarySettingsRuntime(scope)
+    }
+    val availabilityState by settingsRuntime.state.collectAsState()
+
+    LaunchedEffect(settingsRuntime, refresh) {
+        settingsRuntime.resolve()
+    }
+    DisposableEffect(settingsRuntime) {
+        onDispose(settingsRuntime::dispose)
+    }
+
     SharedAiSummarySettingsRoute(
         repository = app.aiSummarySettings,
         modelDefaults = app.aiModelDefaults,
-        localSummarizationSupported = false,
-        localConfigurationReady = false,
-        localModeAvailable = false,
+        localSummarizationSupported = availabilityState.supported,
+        localAvailabilityResolved = availabilityState.availabilityResolved,
+        localConfigurationReady = availabilityState.configurationReady,
+        localModeAvailable = availabilityState.available,
         showNavigation = showNavigation,
         contentVersion = refresh,
         onBack = onBack,
         onLocalModeUnavailable = {
             scene.userMessages.show(
-                "Local summarization is not bundled in the iOS app",
+                availabilityState.failure
+                    ?: "Apple Intelligence summarization is unavailable on this device",
                 UserMessageDuration.LONG,
             )
         },
         localModelsContent = {
-            Text("Local model downloads are currently Android-only. Cloud summaries work on iOS.")
+            SharedManagedLocalModelPanel(
+                title = "Apple Intelligence",
+                status = when {
+                    !availabilityState.availabilityResolved -> "Checking availability…"
+                    availabilityState.available -> "Available · system managed"
+                    else -> availabilityState.failure ?: "Not available"
+                },
+                available = availabilityState.available,
+            )
         },
         dialogContent = { dialog, dismiss ->
             when (dialog) {
@@ -476,6 +501,7 @@ private fun IosDataSettings(
             state.snapshot.historyCount,
             state.snapshot.postCacheCount,
             state.snapshot.tintCacheCount,
+            state.snapshot.aiModelBytes,
         ),
         loggedIn = state.snapshot.loggedIn,
         showNavigation = showNavigation,
@@ -490,6 +516,8 @@ private fun IosDataSettings(
                 DataSettingsAction.ClearHistory -> runtime.clearHistory()
                 DataSettingsAction.ClearPostCache -> runtime.clearPostCache()
                 DataSettingsAction.ClearTintCache -> runtime.clearTintCache()
+                DataSettingsAction.ClearAiModels ->
+                    runtime.showDialog(DataSettingsDialogState.AI_MODELS)
                 DataSettingsAction.OpenLinksSettings -> runtime.showDialog(DataSettingsDialogState.LINKS)
                 DataSettingsAction.ResetSettings -> runtime.showDialog(DataSettingsDialogState.RESET)
             }
@@ -514,6 +542,10 @@ private fun IosDataSettings(
         )
         DataSettingsDialogState.LINKS -> MessageActionDialog(
             message = "iOS link handling is configured in your operating system and browser.",
+            onDismiss = { runtime.showDialog(null) },
+        )
+        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
+            onClear = runtime::clearAiModels,
             onDismiss = { runtime.showDialog(null) },
         )
         null -> Unit

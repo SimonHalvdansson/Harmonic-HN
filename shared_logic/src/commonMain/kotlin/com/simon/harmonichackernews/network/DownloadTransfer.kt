@@ -69,9 +69,17 @@ fun interface TransferClient {
     suspend fun open(request: TransferRequest): TransferResponse
 }
 
+/** Optional scoped response path used by clients that can stream without saving the body. */
+interface ScopedTransferClient {
+    suspend fun <T> withResponse(
+        request: TransferRequest,
+        block: suspend (TransferResponse) -> T,
+    ): T
+}
+
 class KtorTransferClient(
     private val client: KtorHttpClient,
-) : TransferClient {
+) : TransferClient, ScopedTransferClient {
     override suspend fun open(request: TransferRequest): TransferResponse {
         val requestBuilder = HttpRequest.Builder().url(request.url)
         request.headers.forEach { (name, value) -> requestBuilder.header(name, value) }
@@ -91,6 +99,32 @@ class KtorTransferClient(
             override fun close() = response.close()
         }
     }
+
+    override suspend fun <T> withResponse(
+        request: TransferRequest,
+        block: suspend (TransferResponse) -> T,
+    ): T {
+        val requestBuilder = HttpRequest.Builder().url(request.url)
+        request.headers.forEach { (name, value) -> requestBuilder.header(name, value) }
+        return client.executeStreaming(requestBuilder.build()) { response ->
+            block(response.asTransferResponse())
+        }
+    }
+
+    private fun HttpResponse.asTransferResponse(): TransferResponse =
+        object : TransferResponse {
+            override val statusCode: Int get() = code
+            override val statusMessage: String get() = message
+            override val contentLength: Long get() = this@asTransferResponse.body.contentLength()
+            override val contentType: HttpMediaType? get() =
+                this@asTransferResponse.body.contentType()
+            override val body: TransferBody = object : TransferBody {
+                override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+                    this@asTransferResponse.body.readAvailable(buffer, offset, length)
+            }
+
+            override fun close() = this@asTransferResponse.close()
+        }
 }
 
 data class TransferOptions(
@@ -157,11 +191,40 @@ class HttpTransferEngine(
         sinkForResponse: suspend (TransferResponseInfo) -> DownloadSink,
         optionsForResponse: (TransferResponseInfo) -> TransferOptions,
         onProgress: suspend (TransferProgress) -> Unit = {},
+    ): TransferReceipt = if (client is ScopedTransferClient) {
+        client.withResponse(request) { response ->
+            consumeResponse(
+                response = response,
+                request = request,
+                sinkForResponse = sinkForResponse,
+                optionsForResponse = optionsForResponse,
+                onProgress = onProgress,
+            )
+        }
+    } else {
+        val response = client.open(request)
+        try {
+            consumeResponse(
+                response = response,
+                request = request,
+                sinkForResponse = sinkForResponse,
+                optionsForResponse = optionsForResponse,
+                onProgress = onProgress,
+            )
+        } finally {
+            response.close()
+        }
+    }
+
+    private suspend fun consumeResponse(
+        response: TransferResponse,
+        request: TransferRequest,
+        sinkForResponse: suspend (TransferResponseInfo) -> DownloadSink,
+        optionsForResponse: (TransferResponseInfo) -> TransferOptions,
+        onProgress: suspend (TransferProgress) -> Unit,
     ): TransferReceipt {
-        var response: TransferResponse? = null
         var sink: DownloadSink? = null
         try {
-            response = client.open(request)
             val responseInfo = TransferResponseInfo(
                 statusCode = response.statusCode,
                 statusMessage = response.statusMessage,
@@ -224,8 +287,6 @@ class HttpTransferEngine(
             sink?.abort()
             throw error as? DownloadTransferException
                 ?: DownloadTransferException(error.message ?: "Transfer failed", error)
-        } finally {
-            response?.close()
         }
     }
 

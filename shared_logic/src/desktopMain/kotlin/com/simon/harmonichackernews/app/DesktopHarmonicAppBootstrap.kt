@@ -14,10 +14,12 @@ import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.platform.PlatformTimeFormatter
 import com.simon.harmonichackernews.platform.ShareService
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.StoredHistoryStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.DesktopFileKeyValueStore
+import com.simon.harmonichackernews.summary.DesktopLocalAiEnvironment
 import io.ktor.client.engine.cio.CIO
 import java.awt.Desktop
 import java.awt.Toolkit
@@ -50,6 +52,7 @@ class DesktopHarmonicAppBootstrap(
     userAgent: String,
     platform: AppPlatformDependencies,
     host: HarmonicHostConfiguration,
+    private val closePlatformServices: () -> Unit = {},
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var closed = false
@@ -70,6 +73,7 @@ class DesktopHarmonicAppBootstrap(
         if (closed) return
         closed = true
         scene.close()
+        closePlatformServices()
         network.close()
         scope.cancel()
     }
@@ -93,6 +97,14 @@ class DesktopHarmonicAppBootstrap(
                 paths.cacheDirectory.resolve("file-access.properties"),
             )
             val credentials = desktopCredentialStore()
+            val localAi = DesktopLocalAiEnvironment.create(
+                preferences = settings,
+                modelsRoot = paths.filesDirectory.resolve(
+                    StorageKeyPolicy.LOCAL_MODELS_DIRECTORY,
+                ),
+                cacheRoot = paths.cacheDirectory,
+                userAgent = userAgent,
+            )
             val persistentStorage = HarmonicPersistentStorageFactory.create(
                 roots = HarmonicStorageRoots(
                     files = KotlinPath(paths.filesDirectory.toString()),
@@ -115,24 +127,32 @@ class DesktopHarmonicAppBootstrap(
                 systemDark = DesktopSystemAppearance::isDark,
                 showCommentsUpButtonByDefault = true,
                 preloadCommentsFromStoriesByDefault = true,
+                localModels = localAi.models,
                 storyCacheRepository = persistentStorage.storyCacheRepository,
                 articleSnapshotStore = persistentStorage.articleSnapshotStore,
                 pdfDownloadStore = persistentStorage.pdfDownloadStore,
             )
-            return DesktopHarmonicAppBootstrap(
-                userAgent = userAgent,
-                platform = AppPlatformDependencies(
-                    credentials = credentials,
-                    accounts = CredentialBackedHackerNewsAccountRepository(credentials),
-                    history = history,
-                    externalLinks = DesktopExternalLinkOpener,
-                    sharing = DesktopShareService,
-                    clipboard = DesktopClipboardService,
-                    connectivity = DesktopConnectivity,
-                    timeFormatting = DesktopTimeFormatter(),
-                ),
-                host = host,
-            )
+            return try {
+                DesktopHarmonicAppBootstrap(
+                    userAgent = userAgent,
+                    platform = AppPlatformDependencies(
+                        credentials = credentials,
+                        accounts = CredentialBackedHackerNewsAccountRepository(credentials),
+                        history = history,
+                        externalLinks = DesktopExternalLinkOpener,
+                        sharing = DesktopShareService,
+                        clipboard = DesktopClipboardService,
+                        connectivity = DesktopConnectivity,
+                        timeFormatting = DesktopTimeFormatter(),
+                        localSummary = localAi.summary,
+                    ),
+                    host = host,
+                    closePlatformServices = localAi::close,
+                )
+            } catch (error: Throwable) {
+                localAi.close()
+                throw error
+            }
         }
 
         /** Creates an operational but side-effect-free host with unsupported native facilities. */

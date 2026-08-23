@@ -81,7 +81,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             timeFormatting: services.timeFormatting,
             appearance: services.appearance,
             replyNotifications: nil,
-            localSummary: nil
+            localSummary: nil,
+            nativeLocalSummary: services.localSummary
         )
         let harmonic = IosHarmonicApplication(bindings: bindings, runtime: runtime)
         let root = HarmonicRootViewController(

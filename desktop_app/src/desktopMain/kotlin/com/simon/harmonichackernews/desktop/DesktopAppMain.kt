@@ -561,7 +561,6 @@ private fun DesktopSettingsShell(
             tabletPaneHorizontalPadding = if (isTwoPane) 24.dp else 0.dp,
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
-            animateDetailChanges = false,
             renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
                 SettingsListScreen(
                     selectedSection = selectedSection,

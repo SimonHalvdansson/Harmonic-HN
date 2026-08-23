@@ -82,6 +82,7 @@ fun SharedAiSummarySettingsRoute(
     repository: AiSummarySettingsRepository,
     modelDefaults: AiModelDefaultsUseCase,
     localSummarizationSupported: Boolean,
+    localAvailabilityResolved: Boolean,
     localConfigurationReady: Boolean,
     localModeAvailable: Boolean,
     showNavigation: Boolean,
@@ -97,9 +98,20 @@ fun SharedAiSummarySettingsRoute(
     val persistedSettings by repository.updates.collectAsState(initial = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
 
-    LaunchedEffect(modelDefaults, localSummarizationSupported, localModeAvailable) {
+    LaunchedEffect(modelDefaults) {
         modelDefaults.ensureInitialDefault()
-        if (!localSummarizationSupported || !localModeAvailable) repository.forceCloudMode()
+    }
+    LaunchedEffect(
+        localAvailabilityResolved,
+        localSummarizationSupported,
+        localModeAvailable,
+    ) {
+        if (
+            localAvailabilityResolved &&
+            (!localSummarizationSupported || !localModeAvailable)
+        ) {
+            repository.forceCloudMode()
+        }
     }
 
     val configurationComplete =

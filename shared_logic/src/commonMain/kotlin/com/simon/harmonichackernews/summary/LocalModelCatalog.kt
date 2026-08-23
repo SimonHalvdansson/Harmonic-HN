@@ -45,7 +45,7 @@ object LocalModelCatalog {
     val models: List<LocalModelDefinition> = listOf(
         LocalModelDefinition(
             MODEL_GEMINI_NANO,
-            "Gemini Nano (experimental)",
+            "Gemini Nano",
             "System managed",
             "",
             LocalModelBrand.GOOGLE,

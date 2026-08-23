@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.desktop
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +28,8 @@ import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_edit
+import com.simon.harmonichackernews.resources.ic_hard_drive
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
@@ -36,6 +39,7 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
+import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.ui.about.SharedAboutScreen
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -46,12 +50,15 @@ import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
 import com.simon.harmonichackernews.ui.settings.AppearanceRouteLabels
 import com.simon.harmonichackernews.ui.settings.AppearanceSettingsDialog
+import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.DataSettingsAction
 import com.simon.harmonichackernews.ui.settings.DebugEnvironmentUiState
 import com.simon.harmonichackernews.ui.settings.DebugSettingsDialog
 import com.simon.harmonichackernews.ui.settings.ItemsDialog
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
+import com.simon.harmonichackernews.ui.settings.SettingRow
 import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
+import com.simon.harmonichackernews.ui.settings.SettingsDivider
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformEffect
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SharedAiModelSelectorRoute
@@ -67,6 +74,7 @@ import com.simon.harmonichackernews.ui.settings.SharedNighttimeRangeDialog
 import com.simon.harmonichackernews.ui.settings.SharedPaletteTintDialog
 import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsSettingsDialog
 import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsDebugScreen
+import com.simon.harmonichackernews.ui.settings.SharedLocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.SharedStoriesSettingsRoute
 import com.simon.harmonichackernews.ui.settings.SharedThemeSelectionDialog
 import com.simon.harmonichackernews.ui.settings.SharedThreadDepthIndicatorsDialog
@@ -81,6 +89,7 @@ import com.simon.harmonichackernews.ui.settings.faviconProviderPainter
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
+import java.awt.Desktop
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -380,23 +389,78 @@ private fun DesktopAiSettings(
     onBack: () -> Unit,
 ) {
     var refresh by remember { mutableIntStateOf(0) }
+    val localModels = checkNotNull(app.localModels) {
+        "Desktop local-model service was not installed"
+    }
+    val localModelState by localModels.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    val settingsRuntime = remember(app, scope) {
+        app.createLocalSummarySettingsRuntime(scope)
+    }
+    val availabilityState by settingsRuntime.state.collectAsState()
+
+    LaunchedEffect(settingsRuntime, localModelState, refresh) {
+        settingsRuntime.resolve()
+    }
+    DisposableEffect(settingsRuntime) {
+        onDispose(settingsRuntime::dispose)
+    }
+
     SharedAiSummarySettingsRoute(
         repository = app.aiSummarySettings,
         modelDefaults = app.aiModelDefaults,
-        localSummarizationSupported = false,
-        localConfigurationReady = false,
-        localModeAvailable = false,
+        localSummarizationSupported = availabilityState.supported,
+        localAvailabilityResolved = availabilityState.availabilityResolved,
+        localConfigurationReady = availabilityState.configurationReady,
+        localModeAvailable = availabilityState.available,
         showNavigation = showNavigation,
-        contentVersion = refresh,
+        contentVersion = refresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,
         onLocalModeUnavailable = {
             scene.userMessages.show(
-                "Local summarization is not bundled in the desktop app",
+                availabilityState.failure
+                    ?: "Local summarization is unavailable in this desktop build",
                 UserMessageDuration.LONG,
             )
         },
         localModelsContent = {
-            Text("Local model downloads are currently Android-only. Cloud summaries work on desktop.")
+            val showMessage: (String) -> Unit = { message ->
+                scene.userMessages.show(message, UserMessageDuration.LONG)
+            }
+            Column {
+                SharedLocalModelsRoute(
+                    localModels = localModels,
+                    managerState = localModelState,
+                    nanoAvailabilityResolved = true,
+                    nanoAvailable = false,
+                    models = localModels.catalog.filter {
+                        it.runtime == LocalModelRuntime.LLAMA_CPP
+                    },
+                    onChanged = { refresh++ },
+                    onMessage = showMessage,
+                )
+                DesktopModelStorageRows(
+                    directoryPath = checkNotNull(localModels.storageDirectoryPath),
+                    onOpen = { path ->
+                        openModelFolder(path)?.let(showMessage)
+                    },
+                    onChoose = { currentPath ->
+                        chooseModelFolder(currentPath)?.let { selected ->
+                            val previousPath = localModels.storageDirectoryPath
+                            localModels.changeStorageDirectory(selected.absolutePath)
+                                ?.let(showMessage)
+                                ?: run {
+                                    refresh++
+                                    if (previousPath != selected.absolutePath) {
+                                        showMessage(
+                                            "Model folder changed. Existing model files were not moved.",
+                                        )
+                                    }
+                                }
+                        }
+                    },
+                )
+            }
         },
         dialogContent = { dialog, dismiss ->
             when (dialog) {
@@ -433,6 +497,55 @@ private fun DesktopAiSettings(
             }
         },
     )
+}
+
+@Composable
+private fun DesktopModelStorageRows(
+    directoryPath: String,
+    onOpen: (String) -> Unit,
+    onChoose: (String) -> Unit,
+) {
+    SettingsDivider()
+    SettingRow(
+        title = "Open model folder",
+        summary = directoryPath,
+        summaryFontSizeSp = 12f,
+        summaryLineHeightSp = 16f,
+        summaryMaxLines = 2,
+        icon = Res.drawable.ic_hard_drive,
+        onClick = { onOpen(directoryPath) },
+    )
+    SettingsDivider()
+    SettingRow(
+        title = "Change model folder",
+        summary = "Choose where models are stored. Existing files are not moved.",
+        icon = Res.drawable.ic_edit,
+        onClick = { onChoose(directoryPath) },
+    )
+}
+
+private fun chooseModelFolder(currentPath: String): File? {
+    val chooser = JFileChooser(File(currentPath)).apply {
+        dialogTitle = "Choose Harmonic model folder"
+        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        isAcceptAllFileFilterUsed = false
+        selectedFile = File(currentPath)
+    }
+    val result = chooser.showOpenDialog(null)
+    return chooser.selectedFile.takeIf { result == JFileChooser.APPROVE_OPTION }
+}
+
+private fun openModelFolder(path: String): String? = runCatching {
+    val directory = File(path).absoluteFile
+    check(directory.isDirectory || directory.mkdirs()) { "Could not create the model folder." }
+    check(Desktop.isDesktopSupported()) { "Opening folders is not supported on this desktop." }
+    val desktop = Desktop.getDesktop()
+    check(desktop.isSupported(Desktop.Action.OPEN)) {
+        "Opening folders is not supported on this desktop."
+    }
+    desktop.open(directory)
+}.exceptionOrNull()?.let { error ->
+    error.message?.takeIf(String::isNotBlank) ?: "Could not open the model folder."
 }
 
 @Composable
@@ -482,6 +595,7 @@ private fun DesktopDataSettings(
             state.snapshot.historyCount,
             state.snapshot.postCacheCount,
             state.snapshot.tintCacheCount,
+            state.snapshot.aiModelBytes,
         ),
         loggedIn = state.snapshot.loggedIn,
         showNavigation = showNavigation,
@@ -496,6 +610,8 @@ private fun DesktopDataSettings(
                 DataSettingsAction.ClearHistory -> runtime.clearHistory()
                 DataSettingsAction.ClearPostCache -> runtime.clearPostCache()
                 DataSettingsAction.ClearTintCache -> runtime.clearTintCache()
+                DataSettingsAction.ClearAiModels ->
+                    runtime.showDialog(DataSettingsDialogState.AI_MODELS)
                 DataSettingsAction.OpenLinksSettings -> runtime.showDialog(DataSettingsDialogState.LINKS)
                 DataSettingsAction.ResetSettings -> runtime.showDialog(DataSettingsDialogState.RESET)
             }
@@ -520,6 +636,10 @@ private fun DesktopDataSettings(
         )
         DataSettingsDialogState.LINKS -> MessageActionDialog(
             message = "Desktop link handling is configured in your operating system and browser.",
+            onDismiss = { runtime.showDialog(null) },
+        )
+        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
+            onClear = runtime::clearAiModels,
             onDismiss = { runtime.showDialog(null) },
         )
         null -> Unit

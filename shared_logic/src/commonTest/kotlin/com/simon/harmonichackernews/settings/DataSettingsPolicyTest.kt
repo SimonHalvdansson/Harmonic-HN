@@ -21,7 +21,13 @@ class DataSettingsPolicyTest {
 
         val result = DataSettingsPolicy.snapshot(
             settings,
-            DataSettingsCounts(bookmarks = -1, history = 2, postCache = 3, tintCache = 4),
+            DataSettingsCounts(
+                bookmarks = -1,
+                history = 2,
+                postCache = 3,
+                tintCache = 4,
+                aiModelsBytes = -5L,
+            ),
             loggedIn = true,
         )
 
@@ -29,6 +35,7 @@ class DataSettingsPolicyTest {
         assertFalse(result.showChangelog)
         assertEquals(0, result.bookmarkCount)
         assertEquals(2, result.historyCount)
+        assertEquals(0L, result.aiModelBytes)
         assertTrue(result.loggedIn)
     }
 

@@ -23,8 +23,12 @@ class IosPlatformBindings(
     val timeFormatting: PlatformTimeFormatter,
     val appearance: IosAppearanceController,
     val replyNotifications: com.simon.harmonichackernews.network.ReplyNotificationPlatform? = null,
-    val localSummary: LocalSummaryEngine? = null,
+    localSummary: LocalSummaryEngine? = null,
+    nativeLocalSummary: IosNativeSummaryBridge? = null,
 ) {
+    val localSummary: LocalSummaryEngine? =
+        localSummary ?: nativeLocalSummary?.let(::IosNativeLocalSummaryEngine)
+
     /** Observation and mutation serialization around the host's atomic Keychain-backed storage. */
     val accounts: ObservableHackerNewsAccountRepository =
         ObservableAccountRepositoryAdapter(accountStorage)

@@ -117,7 +117,8 @@ fun localModelProgressPercent(receivedBytes: Long, expectedBytes: Long): Int {
 fun formatDecimalBytes(bytes: Long): String = when {
     bytes >= 1_000_000_000L -> formatFixed(bytes / 1_000_000_000.0, 2) + " GB"
     bytes >= 1_000_000L -> formatFixed(bytes / 1_000_000.0, 1) + " MB"
-    else -> formatFixed(bytes / 1_000.0, 1) + " kB"
+    bytes >= 1_000L -> formatFixed(bytes / 1_000.0, 1) + " kB"
+    else -> "${bytes.coerceAtLeast(0L)} B"
 }
 
 private fun formatFixed(value: Double, decimals: Int): String {

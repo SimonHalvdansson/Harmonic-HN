@@ -61,14 +61,16 @@ object LocalModelPresentationPolicy {
     fun present(input: LocalModelPresentationInput): LocalModelPresentation {
         val model = input.model
         if (model.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
-            val selectable = input.nanoAvailabilityResolved && input.nanoAvailable
+            val selectable = input.supported &&
+                input.nanoAvailabilityResolved &&
+                input.nanoAvailable
             return LocalModelPresentation(
                 summary = when {
                     !input.nanoAvailabilityResolved -> "Checking availability…"
                     input.nanoAvailable -> "Available · system managed"
                     else -> "Not available"
                 },
-                enabled = input.supported && input.nanoAvailabilityResolved,
+                enabled = selectable,
                 selectable = selectable,
                 selected = selectable && input.selected,
                 action = null,

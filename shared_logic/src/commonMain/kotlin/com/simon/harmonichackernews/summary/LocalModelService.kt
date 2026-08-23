@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /** Platform delivery boundary for optional local-inference runtimes. */
 interface LocalModelRuntimeDelivery {
@@ -25,12 +27,13 @@ interface LocalModelRuntimeDelivery {
  */
 class LocalModelService(
     preferences: KeyValueStore,
-    storage: LocalModelStorage,
+    private val storage: LocalModelStorage,
     private val transfers: LocalModelTransferScheduler,
     private val runtimeDelivery: LocalModelRuntimeDelivery,
     capabilities: LocalModelDeviceCapabilities,
     private val models: List<LocalModelDefinition> = LocalModelCatalog.models,
     selectionKey: String = SELECTED_MODEL_KEY,
+    private val storageLocation: LocalModelStorageLocation? = null,
 ) {
     private val stateStore = LocalModelStateStore(
         models = models,
@@ -63,6 +66,7 @@ class LocalModelService(
             it.state == LocalModelTransferState.DOWNLOADING ||
                 it.state == LocalModelTransferState.WAITING
         }
+    val storageDirectoryPath: String? get() = storageLocation?.directoryPath
 
     init {
         runtimeDelivery.setModelDownloadStarter(::requestModelDownload)
@@ -77,6 +81,8 @@ class LocalModelService(
             LocalModelUnsupportedReason.PLATFORM_VERSION ->
                 "Not supported by this operating-system version"
             LocalModelUnsupportedReason.PROCESS_ARCHITECTURE -> "Requires a 64-bit process"
+            LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE ->
+                "Not supported by this platform's local AI runtime"
             null -> ""
         }
 
@@ -169,6 +175,41 @@ class LocalModelService(
         lifecycle.remove(modelId, ::refresh)
     }
 
+    fun storedModelBytes(): Long = storage.storedBytes().coerceAtLeast(0L)
+
+    suspend fun clearStoredModels(): Boolean {
+        ensureTransferMonitoring()
+        models.map(LocalModelDefinition::runtime).distinct().forEach { runtime ->
+            if (runtimeDelivery.status(runtime).active) runtimeDelivery.cancel(runtime)
+        }
+        models.filter(LocalModelDefinition::downloadable).forEach { model ->
+            suspendCancellableCoroutine { continuation ->
+                transfers.cancel(model.id) {
+                    if (continuation.isActive) continuation.resume(Unit)
+                }
+            }
+        }
+        val cleared = storage.clearStoredModels()
+        if (cleared) lifecycle.clearSelection()
+        transfers.reset()
+        refresh()
+        return cleared
+    }
+
+    fun changeStorageDirectory(path: String): String? {
+        ensureTransferMonitoring()
+        if (isDownloadActive) return "Wait for the current model download to finish."
+        val location = storageLocation
+            ?: return "Choosing a model folder is not supported on this platform."
+        val error = location.changeDirectory(path)
+        if (error == null) {
+            transfers.reset()
+            selectFirstReadyOrClear()
+            refresh()
+        }
+        return error
+    }
+
     fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
         model.downloadable && isSupported(model) && isDownloaded(model) &&
             isRuntimeInstalled(model.runtime)
@@ -182,15 +223,16 @@ class LocalModelService(
         model: LocalModelDefinition,
         nanoAvailabilityResolved: Boolean,
         nanoAvailable: Boolean,
+        managerState: LocalModelManagerState = state.value,
     ): LocalModelPresentation = LocalModelPresentationPolicy.present(
         LocalModelPresentationInput(
             model = model,
             supported = isSupported(model),
             unsupportedReason = unsupportedReason(model),
-            selected = state.value.selectedModelId == model.id,
+            selected = managerState.selectedModelId == model.id,
             nanoAvailabilityResolved = nanoAvailabilityResolved,
             nanoAvailable = nanoAvailable,
-            transferStatus = state.value.statuses[model.id] ?: status(model),
+            transferStatus = managerState.statuses[model.id] ?: status(model),
             runtimeStatus = runtimeStatus(model.runtime),
             runtimeInstalled = isRuntimeInstalled(model.runtime),
         ),

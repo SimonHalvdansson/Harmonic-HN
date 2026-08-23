@@ -11,6 +11,8 @@ import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
 import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.HistoryStore
+import com.simon.harmonichackernews.summary.LocalModelService
+import com.simon.harmonichackernews.summary.formatDecimalBytes
 
 data class DataSettingsSnapshot(
     val bookmarksEnabled: Boolean,
@@ -20,6 +22,7 @@ data class DataSettingsSnapshot(
     val postCacheCount: Int,
     val tintCacheCount: Int,
     val showChangelog: Boolean,
+    val aiModelBytes: Long? = null,
 )
 
 data class DataSettingsCounts(
@@ -27,6 +30,7 @@ data class DataSettingsCounts(
     val history: Int,
     val postCache: Int,
     val tintCache: Int,
+    val aiModelsBytes: Long? = null,
 )
 
 sealed interface BookmarkExportDecision {
@@ -47,6 +51,7 @@ object DataSettingsPolicy {
         postCacheCount = counts.postCache.coerceAtLeast(0),
         tintCacheCount = counts.tintCache.coerceAtLeast(0),
         showChangelog = settings.general.showChangelog,
+        aiModelBytes = counts.aiModelsBytes?.coerceAtLeast(0L),
     )
 
     fun exportDecision(bookmarkCount: Int): BookmarkExportDecision =
@@ -77,6 +82,7 @@ class DataSettingsService(
     private val storyCache: SharedStoryCacheService,
     private val previewResources: StoryPreviewRepository,
     private val storyResourceTints: StoryResourceTintRepository,
+    private val localModels: LocalModelService?,
 ) {
     fun snapshot(): DataSettingsSnapshot = DataSettingsPolicy.snapshot(
         settings = settings.snapshot(),
@@ -85,6 +91,7 @@ class DataSettingsService(
             history = history?.size ?: 0,
             postCache = storyCache.itemCount(),
             tintCache = storyResourceTints.count(),
+            aiModelsBytes = localModels?.storedModelBytes(),
         ),
         loggedIn = accounts.load() != null,
     )
@@ -124,6 +131,17 @@ class DataSettingsService(
 
     fun clearTintCache() {
         storyResourceTints.clear()
+    }
+
+    suspend fun clearAiModels(): String {
+        val models = localModels ?: return "AI model storage is not available"
+        val bytes = models.storedModelBytes()
+        return if (models.clearStoredModels()) {
+            if (bytes > 0L) "Cleared ${formatDecimalBytes(bytes)} of AI models"
+            else "No AI models to clear"
+        } else {
+            "Could not clear AI models"
+        }
     }
 
     fun resetSettings() = settingsReset.execute()

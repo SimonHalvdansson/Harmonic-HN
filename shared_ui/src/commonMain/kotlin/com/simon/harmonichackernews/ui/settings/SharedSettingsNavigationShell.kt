@@ -9,8 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -47,6 +45,7 @@ import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 
 private data object SharedSettingsListDestination : NavKey
 
@@ -167,7 +166,7 @@ fun SharedSettingsNavigationShell(
                 )
             } else {
                 detailPaneTransition.AnimatedContent(
-                    transitionSpec = { detailOpenTransition() },
+                    transitionSpec = { paneDetailSwitchTransition() },
                 ) { section ->
                     renderDetail(section, false, ::navigateBack, ::navigateTo)
                 }
@@ -231,9 +230,6 @@ private const val ActivityTransitionDurationMillis = 450
 private const val ActivityEnterAlphaDelayMillis = 50
 private const val ActivityExitAlphaDelayMillis = 35
 private const val ActivityAlphaDurationMillis = 83
-private const val DetailTransitionDurationMillis = 300
-private const val DetailAlphaDelayMillis = 50
-private const val DetailAlphaDurationMillis = 50
 
 private fun aospFastOutExtraSlowInEasing(): Easing = PathEasing(
     Path().apply {
@@ -265,16 +261,4 @@ private fun activityPopTransition(offsetPx: Int): ContentTransform = ContentTran
         tween(ActivityAlphaDurationMillis, ActivityExitAlphaDelayMillis, LinearEasing),
     ),
     targetContentZIndex = -1f,
-)
-
-private fun detailOpenTransition(): ContentTransform = ContentTransform(
-    targetContentEnter = scaleIn(
-        tween(DetailTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-        initialScale = 0.85f,
-    ) + fadeIn(tween(DetailAlphaDurationMillis, DetailAlphaDelayMillis, LinearEasing)),
-    initialContentExit = scaleOut(
-        tween(DetailTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-        targetScale = 1.15f,
-    ) + fadeOut(tween(DetailAlphaDurationMillis, DetailAlphaDelayMillis, LinearEasing)),
-    targetContentZIndex = 1f,
 )

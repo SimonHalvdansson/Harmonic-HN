@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.DataSettingsSnapshot
+import com.simon.harmonichackernews.summary.formatDecimalBytes
 
 enum class DataSettingsAction {
     AddBookmarksToFavorites,
@@ -12,6 +13,7 @@ enum class DataSettingsAction {
     ClearHistory,
     ClearPostCache,
     ClearTintCache,
+    ClearAiModels,
     OpenLinksSettings,
     ResetSettings,
 }
@@ -90,6 +92,15 @@ fun SharedDataSettingsScreen(
                     icon = Res.drawable.ic_palette,
                     onClick = { onAction(DataSettingsAction.ClearTintCache) },
                 )
+                state.aiModelBytes?.let { bytes ->
+                    SettingsDivider()
+                    SettingRow(
+                        title = "Clear AI models (${formatDecimalBytes(bytes)})",
+                        icon = Res.drawable.ic_delete,
+                        enabled = bytes > 0L,
+                        onClick = { onAction(DataSettingsAction.ClearAiModels) },
+                    )
+                }
             }
         }
         item {
@@ -121,3 +132,20 @@ fun SharedDataSettingsScreen(
 
 fun formatBookmarkCount(count: Int): String =
     if (count == 1) "1 bookmark" else "$count bookmarks"
+
+@Composable
+fun ClearAiModelsConfirmationDialog(
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    MessageActionDialog(
+        title = "Clear downloaded AI models?",
+        message = "Downloaded and partially downloaded local AI models will be removed. " +
+            "You can download them again later.",
+        positiveLabel = "Clear",
+        negativeLabel = "Cancel",
+        onPositive = onClear,
+        onNegative = onDismiss,
+        onDismiss = onDismiss,
+    )
+}

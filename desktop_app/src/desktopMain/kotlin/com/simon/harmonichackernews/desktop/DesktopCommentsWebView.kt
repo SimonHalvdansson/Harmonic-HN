@@ -169,6 +169,7 @@ internal fun DesktopCommentsWebViewScaffold(
 ) {
     val session = remember(initialUrl) { DesktopCommentsWebViewSession(initialUrl) }
     var showWebsite by remember(controller) { mutableStateOf(controller.initialShowWebsite) }
+    var browserStarted by remember(controller) { mutableStateOf(showWebsite) }
     val currentSessionCallback by rememberUpdatedState(onSessionChanged)
 
     DisposableEffect(session) {
@@ -177,6 +178,7 @@ internal fun DesktopCommentsWebViewScaffold(
     }
 
     LaunchedEffect(controller) {
+        if (showWebsite) browserStarted = true
         val expandedFraction = if (showWebsite) 0f else 1f
         controller.updateSheet(expandedFraction, controller.topInsetPx)
         controller.listener.onSheetProgressChanged(expandedFraction)
@@ -187,6 +189,7 @@ internal fun DesktopCommentsWebViewScaffold(
     LaunchedEffect(sheetRequest) {
         val request = sheetRequest ?: return@LaunchedEffect
         showWebsite = !request.expanded
+        if (showWebsite) browserStarted = true
         val expandedFraction = if (request.expanded) 1f else 0f
         controller.updateSheet(expandedFraction, controller.topInsetPx)
         controller.listener.onSheetProgressChanged(expandedFraction)
@@ -208,12 +211,14 @@ internal fun DesktopCommentsWebViewScaffold(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            SwtEdgeBrowserSurface(
-                session = session,
-                visible = showWebsite && nativeSurfaceAllowed,
-                dark = dark,
-                matchTheme = matchTheme,
-            )
+            if (browserStarted) {
+                SwtEdgeBrowserSurface(
+                    session = session,
+                    visible = showWebsite && nativeSurfaceAllowed,
+                    dark = dark,
+                    matchTheme = matchTheme,
+                )
+            }
             Crossfade(
                 targetState = !showWebsite,
                 animationSpec = tween(140),
@@ -339,6 +344,46 @@ private const val MATERIAL_SCROLLBAR_SCRIPT =
         "border:3px solid transparent;background-clip:padding-box}';" +
         "})();"
 
+private object DesktopSwtDisplayHost {
+    private val started = AtomicBoolean(false)
+    private val stateLock = Any()
+    private val pendingActions = mutableListOf<(Display) -> Unit>()
+
+    @Volatile
+    private var display: Display? = null
+
+    fun async(action: (Display) -> Unit) {
+        val currentDisplay = synchronized(stateLock) {
+            display?.takeUnless(Display::isDisposed).also { activeDisplay ->
+                if (activeDisplay == null) pendingActions += action
+            }
+        }
+        if (currentDisplay != null) {
+            runCatching { currentDisplay.asyncExec { action(currentDisplay) } }
+            return
+        }
+        if (!started.compareAndSet(false, true)) return
+
+        Thread(
+            {
+                val localDisplay = Display()
+                val queuedActions = synchronized(stateLock) {
+                    display = localDisplay
+                    pendingActions.toList().also { pendingActions.clear() }
+                }
+                queuedActions.forEach { action -> runCatching { action(localDisplay) } }
+                while (!localDisplay.isDisposed) {
+                    if (!localDisplay.readAndDispatch()) localDisplay.sleep()
+                }
+            },
+            "Harmonic-WebView2",
+        ).apply {
+            isDaemon = true
+            start()
+        }
+    }
+}
+
 internal class SwtEdgeBrowserCanvas(
     private val onStateChanged: (SwtEdgeBrowserCanvas, DesktopBrowserSnapshot) -> Unit,
     private val onError: (Throwable) -> Unit,
@@ -413,71 +458,52 @@ internal class SwtEdgeBrowserCanvas(
         if (!disposed.compareAndSet(false, true)) return
         synchronized(stateLock) { pendingActions.clear() }
         val currentDisplay = display ?: return
+        val currentShell = shell
+        browser = null
+        shell = null
+        display = null
         runCatching {
             currentDisplay.asyncExec {
-                browser?.takeUnless(Browser::isDisposed)?.dispose()
-                shell?.takeUnless(Shell::isDisposed)?.dispose()
+                currentShell?.takeUnless(Shell::isDisposed)?.dispose()
             }
         }
     }
 
     private fun startSwtEventLoop() {
-        Thread(
-            {
-                var localDisplay: Display? = null
-                var localShell: Shell? = null
-                try {
-                    System.setProperty(
-                        "org.eclipse.swt.browser.EdgeAllowSingleSignOnUsingOSPrimaryAccount",
-                        "false",
-                    )
-                    localDisplay = Display()
-                    display = localDisplay
-                    if (disposed.get()) return@Thread
+        DesktopSwtDisplayHost.async { localDisplay ->
+            try {
+                System.setProperty(
+                    "org.eclipse.swt.browser.EdgeAllowSingleSignOnUsingOSPrimaryAccount",
+                    "false",
+                )
+                if (disposed.get()) return@async
+                display = localDisplay
 
-                    localShell = SWT_AWT.new_Shell(localDisplay, this)
-                    shell = localShell
-                    localShell.layout = FillLayout()
-                    localShell.setSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
+                val localShell = SWT_AWT.new_Shell(localDisplay, this)
+                shell = localShell
+                localShell.layout = FillLayout()
+                localShell.setSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
 
-                    val localBrowser = Browser(localShell, SWT.EDGE)
-                    installListeners(localBrowser)
-                    val queuedActions = synchronized(stateLock) {
-                        browser = localBrowser
-                        pendingActions.toList().also { pendingActions.clear() }
-                    }
-                    localShell.open()
-                    localShell.isVisible = browserVisible
-                    localShell.layout(true, true)
-                    EventQueue.invokeLater(::syncEmbeddedShellBounds)
-
-                    val edgeVersion = System.getProperty("org.eclipse.swt.browser.EdgeVersion")
-                    if (edgeVersion.isNullOrBlank()) {
-                        error("Microsoft Edge WebView2 Runtime is not available")
-                    }
-                    println("Harmonic desktop WebView: Microsoft Edge WebView2 $edgeVersion")
-                    queuedActions.forEach { action -> action(localBrowser) }
-
-                    while (!disposed.get() && !localShell.isDisposed) {
-                        if (!localDisplay.readAndDispatch()) localDisplay.sleep()
-                    }
-                } catch (error: Throwable) {
-                    EventQueue.invokeLater { onError(error) }
-                } finally {
-                    synchronized(stateLock) {
-                        browser = null
-                        pendingActions.clear()
-                    }
-                    runCatching { localShell?.takeUnless(Shell::isDisposed)?.dispose() }
-                    runCatching { localDisplay?.takeUnless(Display::isDisposed)?.dispose() }
-                    shell = null
-                    display = null
+                val localBrowser = Browser(localShell, SWT.EDGE)
+                installListeners(localBrowser)
+                val queuedActions = synchronized(stateLock) {
+                    browser = localBrowser
+                    pendingActions.toList().also { pendingActions.clear() }
                 }
-            },
-            "Harmonic-WebView2",
-        ).apply {
-            isDaemon = true
-            start()
+                localShell.open()
+                localShell.isVisible = browserVisible
+                localShell.layout(true, true)
+                EventQueue.invokeLater(::syncEmbeddedShellBounds)
+
+                val edgeVersion = System.getProperty("org.eclipse.swt.browser.EdgeVersion")
+                if (edgeVersion.isNullOrBlank()) {
+                    error("Microsoft Edge WebView2 Runtime is not available")
+                }
+                println("Harmonic desktop WebView: Microsoft Edge WebView2 $edgeVersion")
+                queuedActions.forEach { action -> action(localBrowser) }
+            } catch (error: Throwable) {
+                EventQueue.invokeLater { onError(error) }
+            }
         }
     }
 

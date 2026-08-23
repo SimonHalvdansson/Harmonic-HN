@@ -4,9 +4,45 @@ import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.language.jvm.tasks.ProcessResources
+import java.util.Properties
 
 val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
 val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
+
+val cmakeExecutable = providers.provider {
+    providers.gradleProperty("harmonic.cmakeExecutable").orNull
+        ?: providers.environmentVariable("CMAKE_EXECUTABLE").orNull
+        ?: run {
+            val executableName = if (System.getProperty("os.name").startsWith("Windows")) {
+                "cmake.exe"
+            } else {
+                "cmake"
+            }
+            System.getenv("PATH").orEmpty()
+                .split(File.pathSeparatorChar)
+                .asSequence()
+                .map { File(it, executableName) }
+                .firstOrNull(File::isFile)
+                ?.absolutePath
+                ?: run {
+                    val properties = Properties()
+                    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use {
+                        properties.load(it)
+                    }
+                    val sdk = properties.getProperty("sdk.dir")
+                        ?: System.getenv("ANDROID_SDK_ROOT")
+                        ?: System.getenv("ANDROID_HOME")
+                    sdk?.let(::File)?.resolve("cmake")
+                        ?.listFiles()
+                        ?.filter(File::isDirectory)
+                        ?.maxByOrNull(File::getName)
+                        ?.resolve("bin/$executableName")
+                        ?.takeIf(File::isFile)
+                        ?.absolutePath
+                }
+                ?: "cmake"
+        }
+}
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -51,8 +87,59 @@ val generateDesktopMetadata = tasks.register<WriteProperties>("generateDesktopMe
     property("versionCode", desktopVersionCode)
 }
 
+val desktopLocalAiSource = rootProject.layout.projectDirectory.dir("local_ai_runtime/src/main/cpp")
+val desktopLocalAiBuild = layout.buildDirectory.dir("desktopLocalAi/cmake")
+val desktopLocalAiOutput = layout.buildDirectory.dir("desktopLocalAi/output")
+val desktopLocalAiResources = layout.buildDirectory.dir("generated/desktopLocalAiResources")
+val desktopLocalAiLibrary = desktopLocalAiOutput.map {
+    it.file(System.mapLibraryName("harmonic-local-ai"))
+}
+val desktopLocalAiSources = fileTree(desktopLocalAiSource) {
+    include("**/*.c", "**/*.cc", "**/*.cpp", "**/*.h", "**/*.hpp", "**/CMakeLists.txt")
+}
+
+val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
+    inputs.files(desktopLocalAiSources)
+    outputs.file(desktopLocalAiBuild.map { it.file("CMakeCache.txt") })
+    val source = desktopLocalAiSource.asFile.absolutePath
+    val build = desktopLocalAiBuild.get().asFile.absolutePath
+    val output = desktopLocalAiOutput.get().asFile.absolutePath
+    commandLine(
+        cmakeExecutable.get(),
+        "-S", source,
+        "-B", build,
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DHARMONIC_BUILD_DESKTOP=ON",
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$output",
+        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$output",
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$output",
+        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=$output",
+    )
+}
+
+val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
+    dependsOn(configureDesktopLocalAi)
+    inputs.files(desktopLocalAiSources)
+    outputs.file(desktopLocalAiLibrary)
+    commandLine(
+        cmakeExecutable.get(),
+        "--build", desktopLocalAiBuild.get().asFile.absolutePath,
+        "--config", "Release",
+        "--target", "harmonic-local-ai",
+        "--parallel",
+    )
+}
+
+val stageDesktopLocalAi = tasks.register<Sync>("stageDesktopLocalAi") {
+    dependsOn(buildDesktopLocalAi)
+    from(desktopLocalAiLibrary)
+    into(desktopLocalAiResources.map { it.dir("native") })
+}
+
 tasks.named<ProcessResources>("desktopProcessResources") {
+    dependsOn(stageDesktopLocalAi)
     from(generateDesktopMetadata)
+    from(desktopLocalAiResources)
     from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
         rename { "harmonic-app-icon.png" }
     }

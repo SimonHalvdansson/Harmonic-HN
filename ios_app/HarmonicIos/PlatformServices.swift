@@ -4,6 +4,9 @@ import Security
 import UIKit
 import WebKit
 import HarmonicShared
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 final class IosNativeServices {
     let credentials: CredentialStore
@@ -14,6 +17,7 @@ final class IosNativeServices {
     let connectivity: ConnectivityService
     let timeFormatting: PlatformTimeFormatter
     let appearance: IosAppearanceService
+    let localSummary: IosNativeSummaryBridge
 
     init() {
         let vault = KeychainVault(service: "com.simon.harmonichackernews.ios")
@@ -25,6 +29,66 @@ final class IosNativeServices {
         connectivity = IosConnectivityService()
         timeFormatting = IosTimeFormatter()
         appearance = IosAppearanceService()
+        localSummary = IosFoundationModelsSummaryBridge()
+    }
+}
+
+final class IosFoundationModelsSummaryBridge: IosNativeSummaryBridge {
+    func canAttempt() -> Bool {
+#if canImport(FoundationModels)
+        if #available(iOS 26.0, *) { return true }
+#endif
+        return false
+    }
+
+    func isAvailable() -> Bool {
+#if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            return SystemLanguageModel.default.isAvailable
+        }
+#endif
+        return false
+    }
+
+    func availabilityMessage() -> String? {
+#if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                return nil
+            case .unavailable(let reason):
+                return "Apple Intelligence is unavailable: \(reason)"
+            @unknown default:
+                return "Apple Intelligence availability is unknown"
+            }
+        }
+#endif
+        return "Apple Intelligence summaries require iOS 26 or newer"
+    }
+
+    func summarize(
+        text: String,
+        instruction: String,
+        callback: IosNativeSummaryCallback
+    ) {
+#if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            Task {
+                do {
+                    let session = LanguageModelSession(instructions: instruction)
+                    let response = try await session.respond(to: text)
+                    callback.complete(summary: response.content, errorMessage: nil)
+                } catch {
+                    callback.complete(summary: nil, errorMessage: error.localizedDescription)
+                }
+            }
+            return
+        }
+#endif
+        callback.complete(
+            summary: nil,
+            errorMessage: "Apple Intelligence summaries require iOS 26 or newer"
+        )
     }
 }
 

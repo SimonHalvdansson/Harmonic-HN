@@ -42,6 +42,7 @@ class FileLocalModelStorage(
     private val root: Path,
     private val usableSpaceBytes: () -> Long,
     private val inferenceCacheRoot: Path? = null,
+    private val models: List<LocalModelDefinition> = LocalModelCatalog.models,
     private val fileSystem: FileSystem = SystemFileSystem,
 ) : LocalModelStorage {
     override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot {
@@ -92,6 +93,16 @@ class FileLocalModelStorage(
     override fun installedPath(model: LocalModelDefinition): String =
         LocalModelFilePolicy.completedPath(root, model).toString()
 
+    override fun storedBytes(): Long = runCatching {
+        modelDirectories().sumOf(::treeBytes) + inferenceCacheFiles().sumOf(::treeBytes)
+    }.getOrDefault(0L)
+
+    override fun clearStoredModels(): Boolean = runCatching {
+        modelDirectories().forEach(::deleteTree)
+        inferenceCacheFiles().forEach(::deleteTree)
+        true
+    }.getOrDefault(false)
+
     private fun deleteObsoleteModelFiles(model: LocalModelDefinition) {
         val directory = LocalModelFilePolicy.modelDirectory(root, model.id)
         if (fileSystem.metadataOrNull(directory)?.isDirectory != true) return
@@ -117,5 +128,40 @@ class FileLocalModelStorage(
                 fileSystem.delete(path, mustExist = false)
             }
         }
+    }
+
+    private fun modelDirectories(): List<Path> = models
+        .asSequence()
+        .filter(LocalModelDefinition::downloadable)
+        .map { LocalModelFilePolicy.modelDirectory(root, it.id) }
+        .distinct()
+        .toList()
+
+    private fun inferenceCacheFiles(): List<Path> {
+        val cacheRoot = inferenceCacheRoot ?: return emptyList()
+        if (fileSystem.metadataOrNull(cacheRoot)?.isDirectory != true) return emptyList()
+        val prefixes = models
+            .filter(LocalModelDefinition::downloadable)
+            .flatMap(LocalModelFilePolicy::inferenceCachePrefixes)
+            .distinct()
+        return fileSystem.list(cacheRoot).filter { path ->
+            fileSystem.metadataOrNull(path)?.isRegularFile == true &&
+                prefixes.any(path.name::startsWith)
+        }
+    }
+
+    private fun treeBytes(path: Path): Long {
+        val metadata = fileSystem.metadataOrNull(path) ?: return 0L
+        return when {
+            metadata.isRegularFile -> metadata.size
+            metadata.isDirectory -> fileSystem.list(path).sumOf(::treeBytes)
+            else -> 0L
+        }
+    }
+
+    private fun deleteTree(path: Path) {
+        val metadata = fileSystem.metadataOrNull(path) ?: return
+        if (metadata.isDirectory) fileSystem.list(path).forEach(::deleteTree)
+        fileSystem.delete(path, mustExist = false)
     }
 }

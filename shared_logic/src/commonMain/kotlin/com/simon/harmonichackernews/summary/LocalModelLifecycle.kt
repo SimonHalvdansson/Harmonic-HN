@@ -3,11 +3,14 @@ package com.simon.harmonichackernews.summary
 data class LocalModelDeviceCapabilities(
     val supportsDownloadableModels: Boolean,
     val supportsLiteRtModels: Boolean,
+    val liteRtUnsupportedReason: LocalModelUnsupportedReason =
+        LocalModelUnsupportedReason.PROCESS_ARCHITECTURE,
 )
 
 enum class LocalModelUnsupportedReason {
     PLATFORM_VERSION,
     PROCESS_ARCHITECTURE,
+    RUNTIME_UNAVAILABLE,
 }
 
 fun LocalModelDeviceCapabilities.unsupportedReason(
@@ -16,7 +19,7 @@ fun LocalModelDeviceCapabilities.unsupportedReason(
     !model.downloadable -> null
     !supportsDownloadableModels -> LocalModelUnsupportedReason.PLATFORM_VERSION
     model.runtime == LocalModelRuntime.LITERT_LM && !supportsLiteRtModels ->
-        LocalModelUnsupportedReason.PROCESS_ARCHITECTURE
+        liteRtUnsupportedReason
     else -> null
 }
 
@@ -37,6 +40,14 @@ interface LocalModelStorage {
     fun prepareDownload(model: LocalModelDefinition): LocalModelStoragePreparation
     fun remove(model: LocalModelDefinition, includeFinalFile: Boolean)
     fun installedPath(model: LocalModelDefinition): String
+    fun storedBytes(): Long
+    fun clearStoredModels(): Boolean
+}
+
+/** Optional host-controlled directory used for local-model files. */
+interface LocalModelStorageLocation {
+    val directoryPath: String
+    fun changeDirectory(path: String): String?
 }
 
 /** Background-transfer operations required by the portable model lifecycle. */
@@ -46,6 +57,7 @@ interface LocalModelTransferScheduler {
     fun enqueue(model: LocalModelDefinition)
     fun cancel(modelId: String, onCancelled: () -> Unit)
     fun setObserver(observer: () -> Unit) = Unit
+    fun reset() = Unit
 }
 
 sealed interface LocalModelDownloadResult {

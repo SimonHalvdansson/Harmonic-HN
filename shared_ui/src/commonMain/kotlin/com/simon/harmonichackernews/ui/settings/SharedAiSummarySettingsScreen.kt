@@ -1,7 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AiSummaryMode
@@ -32,7 +44,6 @@ fun SharedAiSummarySettingsScreen(
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
     localModelsContent: @Composable () -> Unit,
 ) {
-    val cloudMode = state.mode == AiSummaryMode.CLOUD
     SettingsPage(
         title = stringResource(Res.string.settings_section_ai_summary),
         showNavigation = showNavigation,
@@ -57,57 +68,132 @@ fun SharedAiSummarySettingsScreen(
                             AiSummaryMode.LOCAL.storedValue to "Local",
                             AiSummaryMode.CLOUD.storedValue to "Cloud",
                         ),
+                        optionIcons = mapOf(
+                            AiSummaryMode.LOCAL.storedValue to Res.drawable.ic_smartphone,
+                            AiSummaryMode.CLOUD.storedValue to Res.drawable.ic_cloud,
+                        ),
                         selected = state.mode.storedValue,
                         onSelected = { onModeSelected(AiSummaryMode.fromStored(it)) },
                     )
-                    AnimatedVisibility(visible = state.mode == AiSummaryMode.LOCAL) {
-                        localModelsContent()
+                    AnimatedContent(
+                        targetState = state.mode,
+                        modifier = Modifier.fillMaxWidth(),
+                        transitionSpec = {
+                            val direction = if (targetState == AiSummaryMode.CLOUD) 1 else -1
+                            val enter = slideInHorizontally(
+                                animationSpec = tween(
+                                    AiModeTransitionDurationMillis,
+                                    easing = FastOutSlowInEasing,
+                                ),
+                                initialOffsetX = { width ->
+                                    direction * (width / AiModeEnterOffsetDivisor).coerceAtLeast(1)
+                                },
+                            ) + fadeIn(
+                                tween(
+                                    AiModeEnterFadeDurationMillis,
+                                    delayMillis = AiModeEnterFadeDelayMillis,
+                                    easing = LinearEasing,
+                                ),
+                            )
+                            val exit = slideOutHorizontally(
+                                animationSpec = tween(
+                                    AiModeExitDurationMillis,
+                                    easing = FastOutSlowInEasing,
+                                ),
+                                targetOffsetX = { width ->
+                                    -direction * (width / AiModeExitOffsetDivisor).coerceAtLeast(1)
+                                },
+                            ) + fadeOut(
+                                tween(AiModeExitFadeDurationMillis, easing = LinearEasing),
+                            )
+                            (enter togetherWith exit).using(
+                                SizeTransform(clip = true) { _, _ ->
+                                    tween(
+                                        AiModeTransitionDurationMillis,
+                                        easing = FastOutSlowInEasing,
+                                    )
+                                },
+                            )
+                        },
+                        label = "AI summary mode content",
+                    ) { mode ->
+                        if (mode == AiSummaryMode.LOCAL) {
+                            localModelsContent()
+                        } else {
+                            CloudAiSettingsContent(
+                                state = state,
+                                showTopDivider = true,
+                                onStreamChanged = onStreamChanged,
+                                onDialogRequested = onDialogRequested,
+                            )
+                        }
                     }
-                    SettingsDivider()
+                } else {
+                    CloudAiSettingsContent(
+                        state = state,
+                        showTopDivider = false,
+                        onStreamChanged = onStreamChanged,
+                        onDialogRequested = onDialogRequested,
+                    )
                 }
-                SettingRow(
-                    title = "Base URL",
-                    summary = state.baseUrl,
-                    icon = Res.drawable.ic_link,
-                    enabled = cloudMode,
-                    onClick = { onDialogRequested(AiSummarySettingsDialog.BaseUrl) },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "API Key",
-                    summary = state.apiKeyPreview,
-                    icon = Res.drawable.ic_key,
-                    enabled = cloudMode,
-                    onClick = { onDialogRequested(AiSummarySettingsDialog.ApiKey) },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Model",
-                    summary = state.model.ifBlank { "Finding a recommended model…" },
-                    icon = Res.drawable.ic_hard_drive,
-                    enabled = cloudMode,
-                    onClick = { onDialogRequested(AiSummarySettingsDialog.Model) },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "System prompt",
-                    summary = state.systemPrompt,
-                    icon = Res.drawable.ic_subject,
-                    summaryFontSizeSp = 13f,
-                    summaryLineHeightSp = 17f,
-                    summaryMaxLines = 10,
-                    enabled = cloudMode,
-                    onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Stream responses",
-                    icon = Res.drawable.ic_stream,
-                    checked = state.streamResponses,
-                    enabled = cloudMode,
-                    onCheckedChange = onStreamChanged,
-                )
             }
         }
     }
 }
+
+@Composable
+private fun CloudAiSettingsContent(
+    state: AiSummarySettingsUiState,
+    showTopDivider: Boolean,
+    onStreamChanged: (Boolean) -> Unit,
+    onDialogRequested: (AiSummarySettingsDialog) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (showTopDivider) SettingsDivider()
+        SettingRow(
+            title = "Base URL",
+            summary = state.baseUrl,
+            icon = Res.drawable.ic_link,
+            onClick = { onDialogRequested(AiSummarySettingsDialog.BaseUrl) },
+        )
+        SettingsDivider()
+        SettingRow(
+            title = "API Key",
+            summary = state.apiKeyPreview,
+            icon = Res.drawable.ic_key,
+            onClick = { onDialogRequested(AiSummarySettingsDialog.ApiKey) },
+        )
+        SettingsDivider()
+        SettingRow(
+            title = "Model",
+            summary = state.model.ifBlank { "Finding a recommended model…" },
+            icon = Res.drawable.ic_hard_drive,
+            onClick = { onDialogRequested(AiSummarySettingsDialog.Model) },
+        )
+        SettingsDivider()
+        SettingRow(
+            title = "System prompt",
+            summary = state.systemPrompt,
+            icon = Res.drawable.ic_subject,
+            summaryFontSizeSp = 13f,
+            summaryLineHeightSp = 17f,
+            summaryMaxLines = 10,
+            onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
+        )
+        SettingsDivider()
+        SwitchSettingRow(
+            title = "Stream responses",
+            icon = Res.drawable.ic_stream,
+            checked = state.streamResponses,
+            onCheckedChange = onStreamChanged,
+        )
+    }
+}
+
+private const val AiModeTransitionDurationMillis = 240
+private const val AiModeExitDurationMillis = 170
+private const val AiModeEnterFadeDurationMillis = 175
+private const val AiModeEnterFadeDelayMillis = 25
+private const val AiModeExitFadeDurationMillis = 125
+private const val AiModeEnterOffsetDivisor = 8
+private const val AiModeExitOffsetDivisor = 10

@@ -16,11 +16,21 @@ class LocalSummaryGenerationPolicyTest {
     }
 
     @Test
-    fun otherModelsDoNotReceiveResponsePrefix() {
+    fun bonsaiGenerationStartsWithBulletPrefix() {
+        assertEquals(
+            "- ",
+            LocalSummaryGenerationPolicy.configuration(
+                LocalModelCatalog.MODEL_BONSAI_17B,
+            ).responsePrefix,
+        )
+    }
+
+    @Test
+    fun unrelatedModelsDoNotReceiveResponsePrefix() {
         assertEquals(
             "",
             LocalSummaryGenerationPolicy.configuration(
-                LocalModelCatalog.MODEL_BONSAI_17B,
+                LocalModelCatalog.MODEL_LFM_12B,
             ).responsePrefix,
         )
     }

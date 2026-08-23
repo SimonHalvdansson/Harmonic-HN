@@ -755,6 +755,7 @@ fun SegmentedSetting(
     title: String,
     summary: String? = null,
     options: List<Pair<String, String>>,
+    optionIcons: Map<String, DrawableResource> = emptyMap(),
     selected: String,
     enabled: Boolean = true,
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
@@ -825,7 +826,7 @@ fun SegmentedSetting(
                 )
                 val selectedBackground =
                     HarmonicTheme.colors.onSurface.copy(alpha = 0.9f)
-                Box(
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .height(
@@ -856,8 +857,22 @@ fun SegmentedSetting(
                             interactionSource = interactionSource,
                             onClick = { onSelected(value) },
                         ),
-                    contentAlignment = Alignment.Center,
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    optionIcons[value]?.let { icon ->
+                        Icon(
+                            painter = painterResource(icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isSelected) {
+                                HarmonicTheme.colors.background
+                            } else {
+                                HarmonicTheme.colors.drawable
+                            },
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     Text(
                         text = label,
                         color = if (isSelected) {

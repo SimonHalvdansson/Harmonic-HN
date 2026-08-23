@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.summary
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class LocalModelServiceTest {
     @Test
@@ -34,9 +37,65 @@ class LocalModelServiceTest {
         assertEquals(1, runtimeDelivery.observerRegistrations)
     }
 
+    @Test
+    fun changingStorageDirectoryRefreshesStorageAndClearsUnavailableSelection() {
+        val transfers = RecordingTransfers()
+        val location = RecordingStorageLocation("old")
+        val service = LocalModelService(
+            preferences = TestKeyValueStore(),
+            storage = LocationAwareStorage(location),
+            transfers = transfers,
+            runtimeDelivery = RecordingRuntimeDelivery(),
+            capabilities = LocalModelDeviceCapabilities(
+                supportsDownloadableModels = true,
+                supportsLiteRtModels = true,
+            ),
+            models = listOf(BuiltInModel, DownloadableModel),
+            storageLocation = location,
+        )
+
+        assertTrue(service.select(DownloadableModel.id))
+        assertEquals(DownloadableModel, service.selectedModel)
+
+        assertNull(service.changeStorageDirectory("new"))
+
+        assertEquals("new", service.storageDirectoryPath)
+        assertEquals(BuiltInModel, service.selectedModel)
+        assertEquals(1, transfers.resets)
+    }
+
+    @Test
+    fun reportsAndClearsAllStoredModelBytesThroughTheOwningService() = runTest {
+        val storage = RecordingClearStorage()
+        val transfers = RecordingTransfers()
+        val service = LocalModelService(
+            preferences = TestKeyValueStore(),
+            storage = storage,
+            transfers = transfers,
+            runtimeDelivery = RecordingRuntimeDelivery(),
+            capabilities = LocalModelDeviceCapabilities(
+                supportsDownloadableModels = true,
+                supportsLiteRtModels = true,
+            ),
+            models = listOf(BuiltInModel, DownloadableModel),
+        )
+
+        assertTrue(service.select(DownloadableModel.id))
+        assertEquals(1_500L, service.storedModelBytes())
+
+        assertTrue(service.clearStoredModels())
+
+        assertEquals(0L, service.storedModelBytes())
+        assertTrue(storage.cleared)
+        assertEquals(listOf(DownloadableModel.id), transfers.cancelled)
+        assertEquals(BuiltInModel, service.selectedModel)
+    }
+
     private class RecordingTransfers : LocalModelTransferScheduler {
         var observerRegistrations = 0
         var workReads = 0
+        var resets = 0
+        val cancelled = mutableListOf<String>()
 
         override fun work(modelId: String): LocalModelWorkSnapshot? {
             workReads += 1
@@ -47,10 +106,17 @@ class LocalModelServiceTest {
 
         override fun enqueue(model: LocalModelDefinition) = Unit
 
-        override fun cancel(modelId: String, onCancelled: () -> Unit) = onCancelled()
+        override fun cancel(modelId: String, onCancelled: () -> Unit) {
+            cancelled += modelId
+            onCancelled()
+        }
 
         override fun setObserver(observer: () -> Unit) {
             observerRegistrations += 1
+        }
+
+        override fun reset() {
+            resets += 1
         }
     }
 
@@ -87,6 +153,64 @@ class LocalModelServiceTest {
         override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) = Unit
 
         override fun installedPath(model: LocalModelDefinition) = ""
+
+        override fun storedBytes() = 0L
+
+        override fun clearStoredModels() = true
+    }
+
+    private class RecordingStorageLocation(
+        override var directoryPath: String,
+    ) : LocalModelStorageLocation {
+        override fun changeDirectory(path: String): String? {
+            directoryPath = path
+            return null
+        }
+    }
+
+    private class LocationAwareStorage(
+        private val location: RecordingStorageLocation,
+    ) : LocalModelStorage {
+        override fun snapshot(model: LocalModelDefinition) = LocalModelStorageSnapshot(
+            finalFileBytes = model.sizeBytes.takeIf {
+                model.downloadable && location.directoryPath == "old"
+            },
+        )
+
+        override fun prepareDownload(model: LocalModelDefinition) =
+            LocalModelStoragePreparation.Ready(snapshot(model))
+
+        override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) = Unit
+
+        override fun installedPath(model: LocalModelDefinition) = location.directoryPath
+
+        override fun storedBytes() = 0L
+
+        override fun clearStoredModels() = true
+    }
+
+    private class RecordingClearStorage : LocalModelStorage {
+        var bytes = 1_500L
+        var cleared = false
+
+        override fun snapshot(model: LocalModelDefinition) = LocalModelStorageSnapshot(
+            finalFileBytes = model.sizeBytes.takeIf { model.downloadable },
+        )
+
+        override fun prepareDownload(model: LocalModelDefinition) =
+            LocalModelStoragePreparation.Ready(snapshot(model))
+
+        override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) = Unit
+
+        override fun installedPath(model: LocalModelDefinition) = "model.gguf"
+
+        override fun storedBytes() = bytes
+
+        override fun clearStoredModels(): Boolean {
+            cleared = true
+            bytes = 0L
+            return true
+        }
     }
 
     private companion object {
