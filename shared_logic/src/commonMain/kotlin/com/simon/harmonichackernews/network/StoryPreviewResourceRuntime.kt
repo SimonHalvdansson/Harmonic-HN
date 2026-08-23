@@ -118,6 +118,10 @@ class StoryPreviewResourceRuntime(
 
                 if (!next.satisfies(effectiveRequest)) {
                     val loaded = service.load(effectiveRequest)
+                    if (loaded.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
+                        update(next.copy(loading = false, contentLoadFailed = true))
+                        return@launch
+                    }
                     val resolvedImageUrl = loaded.imageUrl ?: next.imageUrl
                     val imageChanged = resolvedImageUrl != next.imageUrl
                     next = next.copy(

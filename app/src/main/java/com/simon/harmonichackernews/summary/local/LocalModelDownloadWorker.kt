@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.work.Data
 import androidx.work.CoroutineWorker
@@ -41,6 +42,7 @@ class LocalModelDownloadWorker(
             return failure("Invalid model download request")
         }
 
+        ensureNotificationChannel()
         try {
             setForeground(createForegroundInfo(modelName, 0))
         } catch (error: CancellationException) {
@@ -53,7 +55,8 @@ class LocalModelDownloadWorker(
         val outputFile = LocalModelFilePolicy.completedPath(modelsRoot, modelId, fileName)
         val partialFile = LocalModelFilePolicy.partialPath(modelsRoot, modelId, fileName)
         try {
-            var lastUpdateAt = 0L
+            var lastUpdateAt = SystemClock.elapsedRealtime()
+            var lastPercent = 0
             ResumableDownloadService(
                 KtorTransferClient(applicationContext.harmonicAppComposition.network.httpClient),
             ).download(
@@ -61,13 +64,19 @@ class LocalModelDownloadWorker(
                 expectedBytes = expectedBytes,
                 destination = FileResumableDownloadDestination(outputFile, partialFile),
                 onProgress = { progress ->
-                    val now = System.currentTimeMillis()
-                    if (now - lastUpdateAt >= PROGRESS_INTERVAL_MILLIS) {
+                    val now = SystemClock.elapsedRealtime()
+                    val percent = progress.percentOf(expectedBytes)
+                    if (
+                        percent >= lastPercent + MIN_PROGRESS_PERCENT_DELTA ||
+                        now - lastUpdateAt >= PROGRESS_INTERVAL_MILLIS
+                    ) {
                         publishProgress(modelName, progress.bytesWritten, expectedBytes)
                         lastUpdateAt = now
+                        lastPercent = percent
                     }
                 },
             )
+            if (lastPercent < 100) publishProgress(modelName, expectedBytes, expectedBytes)
             return Result.success()
         } catch (error: CancellationException) {
             throw error
@@ -92,18 +101,6 @@ class LocalModelDownloadWorker(
 
     private fun createForegroundInfo(modelName: String, percent: Int): ForegroundInfo {
         val context = applicationContext
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = context.getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Local model downloads",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Progress for local AI model downloads"
-            }
-            manager?.createNotificationChannel(channel)
-        }
-
         val settingsIntent = createAiSummary(context)
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -131,6 +128,20 @@ class LocalModelDownloadWorker(
         return ForegroundInfo(notificationId, notification.build())
     }
 
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = applicationContext.getSystemService(NotificationManager::class.java)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Local model downloads",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Progress for local AI model downloads"
+            }
+            manager?.createNotificationChannel(channel)
+        }
+    }
+
     private fun failure(error: String): Result =
         Result.failure(Data.Builder().putString(KEY_ERROR, error).build())
 
@@ -144,10 +155,15 @@ class LocalModelDownloadWorker(
         const val KEY_ERROR = "error"
 
         private const val CHANNEL_ID = "local_model_download"
-        private const val PROGRESS_INTERVAL_MILLIS = 500L
+        private const val PROGRESS_INTERVAL_MILLIS = 2_000L
+        private const val MIN_PROGRESS_PERCENT_DELTA = 1
 
         private fun errorMessage(throwable: Throwable): String =
             throwable.message?.takeIf(String::isNotEmpty) ?: "Unknown download error"
     }
 
 }
+
+private fun com.simon.harmonichackernews.network.TransferProgress.percentOf(
+    expectedBytes: Long,
+): Int = min(100L, bytesWritten.coerceAtMost(expectedBytes) * 100L / expectedBytes).toInt()

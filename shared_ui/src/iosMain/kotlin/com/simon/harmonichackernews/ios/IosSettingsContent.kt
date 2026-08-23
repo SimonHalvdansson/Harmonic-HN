@@ -83,6 +83,7 @@ import com.simon.harmonichackernews.ui.settings.faviconProviderPainter
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import platform.UIKit.UIDevice
 
@@ -563,6 +564,7 @@ private fun IosDebugSettings(
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     SharedDebugSettingsRoute(
         repository = app.settings,
         environment = DebugEnvironmentUiState(
@@ -576,13 +578,17 @@ private fun IosDebugSettings(
         onBack = onBack,
         onOpenHnId = { scene.navigation.openStory(StoryDestination(it)) },
         onOpenWithoutCache = {
-            app.storyCache.remove(IosOpenWithoutCacheStoryId)
-            app.network.removeCachedStoryResponses(IosOpenWithoutCacheStoryId)
-            scene.navigation.openStory(StoryDestination(IosOpenWithoutCacheStoryId))
+            scope.launch {
+                app.storyCache.remove(IosOpenWithoutCacheStoryId)
+                app.network.removeCachedStoryResponses(IosOpenWithoutCacheStoryId)
+                scene.navigation.openStory(StoryDestination(IosOpenWithoutCacheStoryId))
+            }
         },
         onCachePost = {
-            if (DebugCachedPostFixture.seed(app.storyCache.repository, app.nowMillis())) {
-                scene.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+            scope.launch {
+                if (DebugCachedPostFixture.seed(app.storyCache::storeStory)) {
+                    scene.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+                }
             }
         },
         onOpenLink = { scene.links.open(it) },

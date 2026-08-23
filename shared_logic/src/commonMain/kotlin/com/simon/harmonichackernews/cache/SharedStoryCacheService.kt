@@ -71,7 +71,7 @@ class ArticleSnapshotService(
  * here so every platform uses the same cache behavior without process-global service locators.
  */
 class SharedStoryCacheService(
-    val repository: StoryCacheRepository,
+    private val repository: StoryCacheRepository,
     private val articleSnapshots: ArticleSnapshotService,
     private val nowMillis: () -> Long,
 ) : StoryCacheSink {
@@ -93,14 +93,17 @@ class SharedStoryCacheService(
 
     fun itemCount(): Int = repository.cachedItemIds().size
 
-    fun clear(): Int = repository.clear()
+    suspend fun clear(): Int = writeMutex.withLock { repository.clear() }
 
-    fun remove(storyId: Int) = repository.remove(storyId)
+    suspend fun remove(storyId: Int) = writeMutex.withLock { repository.remove(storyId) }
+
+    suspend fun storeStory(id: Int, payload: String): Boolean =
+        writeMutex.withLock { repository.storeStory(id, payload, nowMillis()) }
 
     override suspend fun cacheStory(id: Int, payload: String) {
-        writeMutex.withLock { repository.storeStory(id, payload, nowMillis()) }
+        storeStory(id, payload)
     }
 
     override suspend fun cacheArticle(id: Int, url: String): Boolean =
-        articleSnapshots.download(id, url, nowMillis())
+        writeMutex.withLock { articleSnapshots.download(id, url, nowMillis()) }
 }

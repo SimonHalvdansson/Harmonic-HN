@@ -6,6 +6,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 class HackerNewsAccountRepositoryTest {
     @Test
@@ -72,6 +75,22 @@ class HackerNewsAccountRepositoryTest {
 
         assertTrue(repository.clearAccount())
         assertNull(repository.accountState.value)
+    }
+
+    @Test
+    fun concurrentSuspendSavesNeverMixCredentialPairs() = runTest {
+        val repository = CredentialBackedHackerNewsAccountRepository(MemoryCredentialStore())
+
+        coroutineScope {
+            repeat(100) { index ->
+                launch(Dispatchers.Default) {
+                    repository.saveAccount(HackerNewsAccount("user-$index", "password-$index"))
+                }
+            }
+        }
+
+        val account = requireNotNull(repository.load())
+        assertEquals(account.username.substringAfter('-'), account.password.substringAfter('-'))
     }
 
     private class MemoryCredentialStore(

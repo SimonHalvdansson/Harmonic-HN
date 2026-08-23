@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.debug
 
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 
 /** A deterministic nested Algolia response for exercising cached comments without a network. */
@@ -72,8 +71,8 @@ object DebugCachedPostFixture {
         }
     """.trimIndent()
 
-    fun seed(repository: StoryCacheRepository, cachedAtMillis: Long): Boolean =
-        repository.storeStory(storyId, payload, cachedAtMillis)
+    suspend fun seed(storeStory: suspend (Int, String) -> Boolean): Boolean =
+        storeStory(storyId, payload)
 
     fun story(): Story = Story().apply {
         id = storyId

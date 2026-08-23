@@ -94,6 +94,7 @@ import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 
@@ -657,6 +658,7 @@ private fun DesktopDebugSettings(
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     SharedDebugSettingsRoute(
         repository = app.settings,
         environment = DebugEnvironmentUiState(
@@ -669,13 +671,17 @@ private fun DesktopDebugSettings(
         onBack = onBack,
         onOpenHnId = { scene.navigation.openStory(StoryDestination(it)) },
         onOpenWithoutCache = {
-            app.storyCache.remove(DesktopOpenWithoutCacheStoryId)
-            app.network.removeCachedStoryResponses(DesktopOpenWithoutCacheStoryId)
-            scene.navigation.openStory(StoryDestination(DesktopOpenWithoutCacheStoryId))
+            scope.launch {
+                app.storyCache.remove(DesktopOpenWithoutCacheStoryId)
+                app.network.removeCachedStoryResponses(DesktopOpenWithoutCacheStoryId)
+                scene.navigation.openStory(StoryDestination(DesktopOpenWithoutCacheStoryId))
+            }
         },
         onCachePost = {
-            if (DebugCachedPostFixture.seed(app.storyCache.repository, app.nowMillis())) {
-                scene.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+            scope.launch {
+                if (DebugCachedPostFixture.seed(app.storyCache::storeStory)) {
+                    scene.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+                }
             }
         },
         onOpenLink = { scene.links.open(it) },

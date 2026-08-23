@@ -11,6 +11,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        prepareUiTestStateIfNeeded()
         let services = IosNativeServices()
 #if DEBUG
         let buildType = "debug"
@@ -97,6 +98,24 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         self.services = services
         self.harmonic = harmonic
         return true
+    }
+
+    private func prepareUiTestStateIfNeeded() {
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" else {
+            return
+        }
+        if let bundleIdentifier = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
+        }
+        [
+            "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY",
+            "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES",
+            "file_access_times",
+        ].forEach { suiteName in
+            UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        }
+#endif
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

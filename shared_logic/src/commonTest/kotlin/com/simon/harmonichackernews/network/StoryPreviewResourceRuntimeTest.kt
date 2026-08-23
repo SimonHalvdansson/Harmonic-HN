@@ -128,6 +128,38 @@ class StoryPreviewResourceRuntimeTest {
     }
 
     @Test
+    fun transientContentFailureRemainsUnresolvedAndCanRetry() = runTest {
+        var attempts = 0
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(false, null, null)
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent {
+                    attempts++
+                    return if (attempts == 1) {
+                        PreviewContent(null, null, PreviewImageResult.TRANSIENT_FAILURE)
+                    } else {
+                        PreviewContent(null, null)
+                    }
+                }
+            },
+        )
+
+        assertTrue(runtime.request(request(storyId = 6, loadSummary = false)))
+        runCurrent()
+        assertTrue(runtime.stateFor(6)?.contentLoadFailed == true)
+        assertFalse(runtime.stateFor(6)?.imageUrlResolved == true)
+
+        assertTrue(runtime.request(request(storyId = 6, loadSummary = false)))
+        runCurrent()
+        assertEquals(2, attempts)
+        assertTrue(runtime.stateFor(6)?.imageUrlResolved == true)
+        assertFalse(runtime.stateFor(6)?.contentLoadFailed == true)
+    }
+
+    @Test
     fun identicalImageCompletionDoesNotRepublishTheResourceMap() = runTest {
         val imageUrl = "https://example.com/image.png"
         val runtime = StoryPreviewResourceRuntime(

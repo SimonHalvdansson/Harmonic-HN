@@ -42,9 +42,24 @@ class FileStoryCacheStore(
         val directory = directory(namespace)
         fileSystem.createDirectories(directory)
         val path = Path(directory, key)
-        fileSystem.sink(path).buffered().use { sink ->
-            sink.write(value)
-            sink.flush()
+        val temporary = Path(directory, ".$key.tmp")
+        try {
+            fileSystem.sink(temporary).buffered().use { sink ->
+                sink.write(value)
+                sink.flush()
+            }
+            try {
+                fileSystem.atomicMove(temporary, path)
+            } catch (_: UnsupportedOperationException) {
+                fileSystem.source(temporary).buffered().use { input ->
+                    fileSystem.sink(path).buffered().use { output ->
+                        input.transferTo(output)
+                        output.flush()
+                    }
+                }
+            }
+        } finally {
+            fileSystem.delete(temporary, mustExist = false)
         }
         true
     }.getOrDefault(false)
@@ -116,4 +131,23 @@ class KeyValueStoryCacheMetadataStore(
     }
 
     override fun keys(): Set<String> = store.keys()
+
+    override fun update(block: StoryCacheMetadataStore.Editor.() -> Unit) {
+        store.update {
+            val keyValueEditor = this
+            block(object : StoryCacheMetadataStore.Editor {
+                override fun putString(key: String, value: String?) {
+                    keyValueEditor.putString(key, value)
+                }
+
+                override fun remove(key: String) {
+                    keyValueEditor.remove(key)
+                }
+
+                override fun putStringSet(key: String, value: Set<String>) {
+                    keyValueEditor.putStringSet(key, value)
+                }
+            })
+        }
+    }
 }

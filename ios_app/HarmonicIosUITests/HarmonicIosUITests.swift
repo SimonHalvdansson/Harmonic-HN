@@ -6,7 +6,13 @@ final class HarmonicIosUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
+        app.launchArguments += [
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+        ]
+        app.launchEnvironment["HARMONIC_UI_TESTING"] = "1"
         app.launch()
         completeFirstRunIfNeeded()
     }
@@ -28,13 +34,11 @@ final class HarmonicIosUITests: XCTestCase {
     }
 
     private func completeFirstRunIfNeeded() {
-        if storyListHeader.waitForExistence(timeout: 2) {
-            return
-        }
         let getStarted = app.buttons["Get started"]
         if getStarted.waitForExistence(timeout: 5) {
             getStarted.tap()
         }
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 15))
     }
 
     private func edgeSwipeBack(
@@ -163,10 +167,14 @@ final class HarmonicIosUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 15))
         app.buttons["User"].tap()
-        Thread.sleep(forTimeInterval: 5)
         let submissions = app.buttons["Submissions"]
-        for _ in 0..<8 where !submissions.exists {
-            app.swipeUp()
+        if !submissions.waitForExistence(timeout: 5) {
+            for _ in 0..<8 where !submissions.exists {
+                app.swipeUp()
+                if submissions.waitForExistence(timeout: 1) {
+                    break
+                }
+            }
         }
         XCTAssertTrue(submissions.waitForExistence(timeout: 5))
         submissions.tap()

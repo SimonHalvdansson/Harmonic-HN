@@ -140,8 +140,6 @@ class StoriesCoordinator(
             is StoriesRuntimeEffect.OpenExternalLink ->
                 navigation.scene.links.openExternal(ExternalLinkRequest(effect.url))
             is StoriesRuntimeEffect.Platform -> handleStoriesPlatformEffect(effect.effect)
-            is StoriesRuntimeEffect.PreviewActionCompleted ->
-                composeController?.finishStoryPreviewAction(effect.storyId, effect.action)
             is StoriesRuntimeEffect.StoryChanged -> {
                 val changedStoryId = effect.storyId
                 if (changedStoryId == null) syncComposeState()

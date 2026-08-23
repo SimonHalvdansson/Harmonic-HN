@@ -74,6 +74,48 @@ class CommentThreadStoreTest {
     }
 
     @Test
+    fun searchOnlyPublicationReusesUnchangedThreadCollections() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.appendLoadedComments(
+            story = story(),
+            loadedComments = listOf(comment(1, -1, 0, "comment")),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+        val before = store.state.value
+
+        store.setSearchQuery("comment")
+
+        val after = store.state.value
+        assertSame(before.allComments, after.allComments)
+        assertSame(before.displayedComments, after.displayedComments)
+        assertSame(before.visibleComments, after.visibleComments)
+    }
+
+    @Test
+    fun expansionOnlyReplacesTheChangedPortableComment() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.appendLoadedComments(
+            story = story(),
+            loadedComments = listOf(
+                comment(1, -1, 0, "first"),
+                comment(2, -1, 0, "second"),
+            ),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+        val before = store.state.value
+
+        store.toggleExpanded(1)
+
+        val after = store.state.value
+        assertTrue(before.allComments[1] !== after.allComments[1])
+        assertSame(before.allComments[2], after.allComments[2])
+    }
+
+    @Test
     fun commentIndexDropsRemovedAndResetComments() {
         val store = CommentThreadStore()
         store.reset(story = story())

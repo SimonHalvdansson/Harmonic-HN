@@ -1,10 +1,14 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.AddBookmarksToFavoritesUseCase
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AddBookmarksToFavoritesDialog(
@@ -19,17 +23,24 @@ fun AddBookmarksToFavoritesDialog(
             savedItems = app.savedItems,
         )
     }
-    val items = remember(bookmarkIds.contentHashCode()) {
-        bookmarkIds.map { id ->
-            val story = Story().apply { this.id = id }
-            BookmarkFavoriteItem(
-                id = id,
-                title = if (app.storyCache.hydrateStory(story) && !story.title.isNullOrBlank()) {
-                    story.title.orEmpty()
-                } else {
-                    "Story #$id"
-                },
-            )
+    val ids = remember(bookmarkIds.contentHashCode()) { bookmarkIds.copyOf() }
+    val items by produceState(
+        initialValue = ids.map { id -> BookmarkFavoriteItem(id, "Story #$id") },
+        key1 = ids,
+        key2 = app.storyCache,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            ids.map { id ->
+                val story = Story().apply { this.id = id }
+                BookmarkFavoriteItem(
+                    id = id,
+                    title = if (app.storyCache.hydrateStory(story) && !story.title.isNullOrBlank()) {
+                        story.title.orEmpty()
+                    } else {
+                        "Story #$id"
+                    },
+                )
+            }
         }
     }
     SharedAddBookmarksToFavoritesDialog(

@@ -12,6 +12,8 @@ import com.simon.harmonichackernews.network.createAndroidLocalSummaryEngine
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.utils.AndroidAiSummaryApiKeyStore
+import com.simon.harmonichackernews.utils.AndroidConnectivityCapabilities
+import com.simon.harmonichackernews.utils.AndroidConnectivityStatus
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.utils.ShareUtils
 import com.simon.harmonichackernews.summary.LocalModelService
@@ -78,9 +80,7 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
     private val manager =
         appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     @Volatile
-    private var online = false
-    @Volatile
-    private var unmetered = false
+    private var connectivityStatus = AndroidConnectivityStatus.Offline
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             manager?.getNetworkCapabilities(network)?.let(::updateCapabilities)
@@ -99,8 +99,7 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
                 ?.takeUnless { it == network }
                 ?.let { manager.getNetworkCapabilities(it) }
             if (activeCapabilities == null) {
-                online = false
-                unmetered = false
+                connectivityStatus = AndroidConnectivityStatus.Offline
             } else {
                 updateCapabilities(activeCapabilities)
             }
@@ -118,14 +117,14 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
     }
 
     override fun isOnline(): Boolean =
-        if (callbackRegistered) online else AndroidNetworkStatus.isOnline(appContext)
+        if (callbackRegistered) connectivityStatus.online else AndroidNetworkStatus.isOnline(appContext)
 
     override fun isUnmetered(): Boolean =
-        if (callbackRegistered) unmetered else AndroidNetworkStatus.isUnmetered(appContext)
+        if (callbackRegistered) connectivityStatus.unmetered
+        else AndroidNetworkStatus.isUnmetered(appContext)
 
     private fun updateCapabilities(capabilities: NetworkCapabilities) {
-        online = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        unmetered = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        connectivityStatus = AndroidConnectivityCapabilities.evaluate(capabilities)
     }
 }
 

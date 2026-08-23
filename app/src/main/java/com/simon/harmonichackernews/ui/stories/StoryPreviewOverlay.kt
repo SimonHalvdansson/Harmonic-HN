@@ -29,7 +29,7 @@ internal fun StoryPreviewOverlay(controller: StoriesComposeController) {
         controller = controller,
         tablet = AndroidDisplay.isTablet(context.resources),
     ) { story, page, cardColor, modifier ->
-        val previewResource = controller.previewResources[story.id]
+        val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }
         val summaryState = StoryPreviewSummaryState(
             loading = previewResource?.loading == true,

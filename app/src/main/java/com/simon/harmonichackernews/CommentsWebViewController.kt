@@ -74,6 +74,7 @@ import com.simon.harmonichackernews.presentation.WebContentDriver
 import com.simon.harmonichackernews.presentation.WebContentDriverState
 import com.simon.harmonichackernews.presentation.WebContentTiming
 import com.simon.harmonichackernews.network.PdfDownloadService
+import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
@@ -88,10 +89,9 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.IOException
 import java.io.InputStream
-import java.io.RandomAccessFile
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -563,8 +563,8 @@ internal class CommentsWebViewController(
 
     private fun getReaderModeFontData(context: Context, font: String?): ReaderModeFontData? {
         val resources = ReaderModeFontResourcePolicy.resolve(font) ?: return null
-        val regularFontData = getFontBase64(context, androidFontResource(resources.regular))
-        val boldFontData = getFontBase64(context, androidFontResource(resources.bold))
+        val regularFontData = getFontBase64(context, readerModeFontAsset(resources.regular))
+        val boldFontData = getFontBase64(context, readerModeFontAsset(resources.bold))
         if (TextUtils.isEmpty(regularFontData) || TextUtils.isEmpty(boldFontData)) {
             return null
         }
@@ -572,29 +572,32 @@ internal class CommentsWebViewController(
         return ReaderModeFontData(regularFontData, boldFontData)
     }
 
-    private fun androidFontResource(resource: ReaderModeFontResource): Int = when (resource) {
-        ReaderModeFontResource.PRODUCT_SANS_REGULAR -> R.font.product_sans_regular
-        ReaderModeFontResource.PRODUCT_SANS_BOLD -> R.font.product_sans_bold
-        ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_REGULAR ->
-            R.font.google_sans_flex_rounded_regular
-        ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_BOLD ->
-            R.font.google_sans_flex_rounded_bold
-        ReaderModeFontResource.GOOGLE_SANS_REGULAR -> R.font.google_sans_regular
-        ReaderModeFontResource.GOOGLE_SANS_BOLD -> R.font.google_sans_bold
-        ReaderModeFontResource.VERDANA_REGULAR -> R.font.verdana_regular
-        ReaderModeFontResource.VERDANA_BOLD -> R.font.verdana_bold
-        ReaderModeFontResource.ROBOTO_SLAB_REGULAR -> R.font.roboto_slab_regular
-        ReaderModeFontResource.ROBOTO_SLAB_BOLD -> R.font.roboto_slab_bold
-        ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR -> R.font.google_sans_code_regular
-        ReaderModeFontResource.JETBRAINS_MONO_REGULAR -> R.font.jetbrains_mono_regular
-        ReaderModeFontResource.JETBRAINS_MONO_BOLD -> R.font.jetbrains_mono_bold
-        ReaderModeFontResource.GEORGIA_REGULAR -> R.font.georgia_regular
-        ReaderModeFontResource.GEORGIA_BOLD -> R.font.georgia_bold
+    private fun readerModeFontAsset(resource: ReaderModeFontResource): String {
+        val fileName = when (resource) {
+            ReaderModeFontResource.PRODUCT_SANS_REGULAR -> "product_sans_regular.ttf"
+            ReaderModeFontResource.PRODUCT_SANS_BOLD -> "product_sans_bold.ttf"
+            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_REGULAR ->
+                "google_sans_flex_rounded_regular.ttf"
+            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_BOLD ->
+                "google_sans_flex_rounded_bold.ttf"
+            ReaderModeFontResource.GOOGLE_SANS_REGULAR -> "google_sans_regular.ttf"
+            ReaderModeFontResource.GOOGLE_SANS_BOLD -> "google_sans_bold.ttf"
+            ReaderModeFontResource.VERDANA_REGULAR -> "verdana_regular.ttf"
+            ReaderModeFontResource.VERDANA_BOLD -> "verdana_bold.ttf"
+            ReaderModeFontResource.ROBOTO_SLAB_REGULAR -> "roboto_slab_regular.ttf"
+            ReaderModeFontResource.ROBOTO_SLAB_BOLD -> "roboto_slab_bold.ttf"
+            ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR -> "google_sans_code_regular.ttf"
+            ReaderModeFontResource.JETBRAINS_MONO_REGULAR -> "jetbrains_mono_regular.ttf"
+            ReaderModeFontResource.JETBRAINS_MONO_BOLD -> "jetbrains_mono_bold.ttf"
+            ReaderModeFontResource.GEORGIA_REGULAR -> "georgia_regular.ttf"
+            ReaderModeFontResource.GEORGIA_BOLD -> "georgia_bold.ttf"
+        }
+        return sharedFontAsset(fileName)
     }
 
-    private fun getFontBase64(context: Context, fontResource: Int): String {
+    private fun getFontBase64(context: Context, fontAsset: String): String {
         try {
-            context.getResources().openRawResource(fontResource).use { inputStream ->
+            context.assets.open(fontAsset).use { inputStream ->
                 val outputStream = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
                 var bytesRead: Int
@@ -746,6 +749,10 @@ internal class CommentsWebViewController(
     private fun beginWebViewLoad(view: WebView, url: String?) {
         if (view !== webView || coordinator.context == null || coordinator.view == null) {
             return
+        }
+
+        if (!isPdfViewerUrl(url)) {
+            revokePdfAndroidJavascriptBridge(view)
         }
 
         val loadStart = webContentSession.onLoadStarted(
@@ -1035,7 +1042,7 @@ internal class CommentsWebViewController(
             val resolvedPdfFilePath = checkNotNull(targetPdfFilePath)
             currentPdfFilePath = resolvedPdfFilePath
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
-            clearPdfAndroidJavascriptBridge()
+            revokePdfAndroidJavascriptBridge(targetWebView)
             val bridge = PdfAndroidJavascriptBridge(
                 resolvedPdfFilePath,
                 object : PdfAndroidJavascriptBridge.Callbacks {
@@ -1049,18 +1056,18 @@ internal class CommentsWebViewController(
 
             targetWebView.addJavascriptInterface(
                 bridge,
-                "PdfAndroidJavascriptBridge"
+                PDF_JAVASCRIPT_BRIDGE_NAME
             )
             targetWebView.setInitialScale(100)
             targetWebView.settings.loadWithOverviewMode = true
             targetWebView.settings.useWideViewPort = true
-        } else if (pdfAndroidJavascriptBridge != null) {
-            targetWebView.removeJavascriptInterface("PdfAndroidJavascriptBridge")
-            clearPdfAndroidJavascriptBridge()
+        } else {
+            revokePdfAndroidJavascriptBridge(targetWebView)
         }
 
         targetUrl = linkPreviewController.prepareWebViewLoad(context, targetWebView, targetUrl)
         if (targetUrl.isEmpty()) {
+            revokePdfAndroidJavascriptBridge(targetWebView)
             return
         }
         beginWebViewLoad(targetWebView, targetUrl)
@@ -1290,7 +1297,7 @@ internal class CommentsWebViewController(
             if (!rendererProcessGone) {
                 webViewToDestroy.setWebChromeClient(null)
                 webViewToDestroy.setDownloadListener(null)
-                webViewToDestroy.removeJavascriptInterface("PdfAndroidJavascriptBridge")
+                webViewToDestroy.removeJavascriptInterface(PDF_JAVASCRIPT_BRIDGE_NAME)
             }
             clearPdfAndroidJavascriptBridge()
 
@@ -1318,6 +1325,13 @@ internal class CommentsWebViewController(
         pdfAndroidJavascriptBridge?.cleanUp()
         pdfAndroidJavascriptBridge = null
     }
+
+    private fun revokePdfAndroidJavascriptBridge(view: WebView?) {
+        view?.removeJavascriptInterface(PDF_JAVASCRIPT_BRIDGE_NAME)
+        clearPdfAndroidJavascriptBridge()
+    }
+
+    private fun isPdfViewerUrl(url: String?): Boolean = isTrustedPdfViewerUrl(url, PDF_LOADER_URL)
 
     private fun restartWebView() {
         val context = coordinator.context
@@ -1359,6 +1373,7 @@ internal class CommentsWebViewController(
     }
 
     fun clearViewReferences() {
+        revokePdfAndroidJavascriptBridge(webView)
         webView = null
         webViewContainer = null
         fullscreenContainer = null
@@ -1367,7 +1382,6 @@ internal class CommentsWebViewController(
         progressIndicator = null
         customView = null
         customViewCallback = null
-        pdfAndroidJavascriptBridge = null
         currentPdfFilePath = null
         webContentDriver.publish(WebContentDriverState())
     }
@@ -1509,6 +1523,10 @@ internal class CommentsWebViewController(
         }
 
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+            if (!isPdfViewerUrl(url)) {
+                revokePdfAndroidJavascriptBridge(view)
+            }
+
             if (url.startsWith("intent://")) {
                 try {
                     val context = view.getContext()
@@ -1666,58 +1684,57 @@ internal class CommentsWebViewController(
         filePath: String,
         private val mCallback: Callbacks?
     ) {
-        private val mFile: File
-        private var mRandomAccessFile: RandomAccessFile? = null
-        private val mHandler: Handler
-
-        init {
-            mFile = File(filePath)
-            mHandler = Handler(Looper.getMainLooper())
-        }
+        private val chunkReader = PdfFileChunkReader(java.io.File(filePath))
+        private val mHandler = Handler(Looper.getMainLooper())
+        private val active = AtomicBoolean(true)
 
         @JavascriptInterface
-        fun getChunk(begin: Long, end: Long): String? {
-            try {
-                if (mRandomAccessFile == null) {
-                    mRandomAccessFile = RandomAccessFile(mFile, "r")
-                }
-                val bufferSize = (end - begin).toInt()
-                val data = ByteArray(bufferSize)
-                mRandomAccessFile!!.seek(begin)
-                mRandomAccessFile!!.read(data)
-                return Base64.encodeToString(data, Base64.DEFAULT)
+        fun getChunk(begin: Long, end: Long): String {
+            if (!active.get()) return ""
+            return try {
+                val data = chunkReader.read(begin, end) ?: return ""
+                Base64.encodeToString(data, Base64.NO_WRAP)
             } catch (e: IOException) {
-                Log.e("Exception", e.toString())
-                return ""
+                Log.e(TAG, "Unable to read PDF data", e)
+                ""
             }
         }
 
         @get:JavascriptInterface
         val size: Long
-            get() = mFile.length()
+            get() {
+                if (!active.get()) return 0L
+                return try {
+                    chunkReader.size()
+                } catch (e: IOException) {
+                    Log.e(TAG, "Unable to read PDF size", e)
+                    0L
+                }
+            }
 
         @JavascriptInterface
         fun onLoad() {
-            if (mCallback != null) {
-                mHandler.post(Runnable { mCallback.onLoad() })
-            }
+            if (!active.get() || mCallback == null) return
+            mHandler.post(Runnable {
+                if (active.get()) mCallback.onLoad()
+            })
         }
 
         @JavascriptInterface
         fun onFailure() {
-            if (mCallback != null) {
-                mHandler.post(Runnable { mCallback.onFailure() })
-            }
+            if (!active.get() || mCallback == null) return
+            mHandler.post(Runnable {
+                if (active.get()) mCallback.onFailure()
+            })
         }
 
         fun cleanUp() {
+            if (!active.compareAndSet(true, false)) return
+            mHandler.removeCallbacksAndMessages(null)
             try {
-                if (mRandomAccessFile != null) {
-                    mRandomAccessFile!!.close()
-                    mRandomAccessFile = null
-                }
+                chunkReader.close()
             } catch (e: IOException) {
-                Log.e("Exception", e.toString())
+                Log.e(TAG, "Unable to close PDF data", e)
             }
         }
 
@@ -1726,14 +1743,37 @@ internal class CommentsWebViewController(
 
             fun onLoad()
         }
+
+        private companion object {
+            const val TAG = "PdfJavascriptBridge"
+        }
     }
 
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
-        private val PDF_LOADER_URL = "file:///android_asset/${WebContentAssets.PDF_VIEWER_INDEX}"
-        private val OFFLINE_PAGE_URL = "file:///android_asset/${WebContentAssets.OFFLINE_PAGE}"
+        private const val PDF_JAVASCRIPT_BRIDGE_NAME = "PdfAndroidJavascriptBridge"
+        private const val ANDROID_ASSET_URI_PREFIX = "file:///android_asset/"
+        private val PDF_LOADER_URL = Res.getUri(sharedWebResource(WebContentAssets.PDF_VIEWER_INDEX))
+        private val OFFLINE_PAGE_URL = Res.getUri(sharedWebResource(WebContentAssets.OFFLINE_PAGE))
         private val WEB_CONTENT_URLS = WebContentPlatformUrls(PDF_LOADER_URL, OFFLINE_PAGE_URL)
-        private val READER_MODE_READABILITY_SCRIPT_ASSET = WebContentAssets.READABILITY_SCRIPT
-        private val READER_MODE_SCRIPT_ASSET = WebContentAssets.READER_MODE_SCRIPT
+        private val READER_MODE_READABILITY_SCRIPT_ASSET =
+            sharedWebAsset(WebContentAssets.READABILITY_SCRIPT)
+        private val READER_MODE_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READER_MODE_SCRIPT)
+
+        private fun sharedWebResource(path: String): String = "files/web/$path"
+
+        private fun sharedWebAsset(path: String): String =
+            sharedResourceAsset(sharedWebResource(path))
+
+        private fun sharedFontAsset(path: String): String =
+            sharedResourceAsset("font/$path")
+
+        private fun sharedResourceAsset(path: String): String {
+            val uri = Res.getUri(path)
+            check(uri.startsWith(ANDROID_ASSET_URI_PREFIX)) {
+                "Expected an Android asset URI for shared resource $path, got $uri"
+            }
+            return uri.removePrefix(ANDROID_ASSET_URI_PREFIX)
+        }
     }
 }

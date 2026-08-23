@@ -78,9 +78,14 @@ class FileResumableDownloadDestination(
         private var sink: Sink? = fileSystem.sink(partial, append = append).buffered()
         override val reference: String = partial.toString()
 
-        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) = fileOperation {
-            checkNotNull(sink) { "Download sink is closed" }
-                .write(buffer, offset, offset + length)
+        override suspend fun <T> writeSession(block: suspend () -> T): T =
+            withContext(ioDispatcher) { block() }
+
+        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) {
+            fileMutex.withLock {
+                checkNotNull(sink) { "Download sink is closed" }
+                    .write(buffer, offset, offset + length)
+            }
         }
 
         override suspend fun close() = fileOperation {

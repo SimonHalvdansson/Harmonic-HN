@@ -106,8 +106,8 @@ fun SharedStoryPreviewCard(
     val upvoted = remember(contentVersion, story.id) { controller.isUpvoted(story.id) }
     val bookmarked = remember(contentVersion, story.id) { controller.isBookmarked(story.id) }
     val favorited = remember(contentVersion, story.id) { controller.isFavorited(story.id) }
-    val voteLoading = controller.storyPreviewVoteLoadingId == story.id
-    val favoriteLoading = controller.storyPreviewFavoriteLoadingId == story.id
+    val voteLoading = controller.isStoryPreviewVoteLoading(story.id)
+    val favoriteLoading = controller.isStoryPreviewFavoriteLoading(story.id)
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
         ?: previewResource?.imageUrl?.takeIf(String::isNotBlank)
         ?: story.presentation.previewImage.url?.takeIf(String::isNotBlank)

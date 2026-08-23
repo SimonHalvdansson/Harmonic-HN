@@ -10,7 +10,12 @@ import com.simon.harmonichackernews.network.AlgoliaRepository
  * navigation scope. Replacing a navigation key creates a fresh screen session while comment
  * scroll progress remains associated with its story.
  */
-class ScreenSessionRegistry {
+class ScreenSessionRegistry(
+    private val maxRetainedCommentScrollProgresses: Int = DEFAULT_MAX_RETAINED_COMMENT_SCROLLS,
+) {
+    init {
+        require(maxRetainedCommentScrollProgresses > 0)
+    }
     /** The process-retained stories session; platform lifecycle holders only reference this state. */
     val stories = StoriesSessionState()
 
@@ -25,9 +30,7 @@ class ScreenSessionRegistry {
     fun commentsStateFor(key: Int, storyId: Int): CommentsSessionState {
         if (commentsKey != key) {
             commentsKey = key
-            val scrollProgress = commentsScrollProgresses.getOrPut(storyId) {
-                CommentsScrollProgress().apply { this.storyId = storyId }
-            }
+            val scrollProgress = commentScrollProgressFor(storyId)
             commentsState = CommentsSessionState(scrollProgress)
         }
         return commentsState
@@ -46,5 +49,22 @@ class ScreenSessionRegistry {
             )
         }
         return checkNotNull(submissionsState)
+    }
+
+    private fun commentScrollProgressFor(storyId: Int): CommentsScrollProgress {
+        commentsScrollProgresses.remove(storyId)?.let { existing ->
+            commentsScrollProgresses[storyId] = existing
+            return existing
+        }
+        while (commentsScrollProgresses.size >= maxRetainedCommentScrollProgresses) {
+            commentsScrollProgresses.remove(commentsScrollProgresses.keys.first())
+        }
+        return CommentsScrollProgress().apply { this.storyId = storyId }.also { created ->
+            commentsScrollProgresses[storyId] = created
+        }
+    }
+
+    private companion object {
+        const val DEFAULT_MAX_RETAINED_COMMENT_SCROLLS = 64
     }
 }

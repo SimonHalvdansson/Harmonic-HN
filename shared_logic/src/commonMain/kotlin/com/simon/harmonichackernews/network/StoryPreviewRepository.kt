@@ -55,6 +55,9 @@ class StoryPreviewRepository(
             ?: return PreviewContent(null, null)
         val entryId = PreviewCachePolicy.previewEntryId(storyId, normalizedUrl)
 
+        if (forceRefresh) {
+            cacheMutex.withLock { cache.invalidatePreviewImage(store, entryId) }
+        }
         if (!forceRefresh) {
             cachedContent(entryId, normalizedUrl, requireSummary)?.let { return it }
         }
@@ -71,7 +74,9 @@ class StoryPreviewRepository(
             linkSummaries.load(normalizedUrl, fallbackTitle)
         }
         cacheMutex.withLock {
-            cache.savePreviewImage(store, entryId, content.imageUrl)
+            if (content.imageResult == PreviewImageResult.CONFIRMED) {
+                cache.savePreviewImage(store, entryId, content.imageUrl)
+            }
             content.summary?.let { cache.saveLinkSummary(store, normalizedUrl, it) }
         }
         return content

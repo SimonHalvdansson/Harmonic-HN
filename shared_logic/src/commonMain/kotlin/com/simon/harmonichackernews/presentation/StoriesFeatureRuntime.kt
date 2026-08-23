@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -39,10 +40,6 @@ sealed interface StoriesRuntimeEffect {
 
     data class OpenExternalLink(val url: String) : StoriesRuntimeEffect
     data class Platform(val effect: StoriesPlatformEffect) : StoriesRuntimeEffect
-    data class PreviewActionCompleted(
-        val storyId: Int,
-        val action: StoryPreviewActionKind,
-    ) : StoriesRuntimeEffect
     data class StoryChanged(val storyId: Int? = null) : StoriesRuntimeEffect
     data object LoginRequired : StoriesRuntimeEffect
     data class UserMessage(val message: String) : StoriesRuntimeEffect
@@ -61,6 +58,11 @@ data class StoriesSettingsState(
     val displaySettings: StoryDisplaySettings,
     val version: Long = 0L,
     val fontRefreshVersion: Long = 0L,
+)
+
+data class StoriesPreviewActionState(
+    val voteLoadingIds: Set<Int> = emptySet(),
+    val favoriteLoadingIds: Set<Int> = emptySet(),
 )
 
 data class StoryPreviewDeck(
@@ -146,8 +148,8 @@ class StoriesFeatureRuntime(
     private val mutableSettingsState = MutableStateFlow(
         StoriesSettingsState(StoryDisplaySettings.from(userSettings.story)),
     )
-
     val settingsState: StateFlow<StoriesSettingsState> = mutableSettingsState.asStateFlow()
+    val previewActionState: StateFlow<StoriesPreviewActionState> = sessionState.previewActionState
 
     var availableStoryTypes: List<StoryType> = listOf(StoryType.TOP_STORIES)
         private set
@@ -782,46 +784,59 @@ class StoriesFeatureRuntime(
     }
 
     private fun toggleBookmark(story: Story) {
-        val bookmarked = savedItemActions.toggleBookmark(story.id)
-        if (!bookmarked && currentType.isBookmarks) {
-            sessionState.bookmarkStories.remove(story)
-            removeStory(story, loadReplacement = true)
-        } else {
-            changed(story)
+        val bookmarksList = currentType.isBookmarks
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val bookmarked = savedItemActions.toggleBookmarkAtomic(story.id)
+            if (!bookmarked && bookmarksList) {
+                sessionState.bookmarkStories.remove(story)
+                removeStory(story, loadReplacement = true)
+            } else {
+                changed(story)
+            }
         }
     }
 
     private fun toggleVote(story: Story) {
         val generation = presenter.storyLoadGeneration
         val expectedStore = activeStore
-        val action = savedItemActions.beginVote(
-            itemId = story.id,
-            isComment = false,
-            direction = if (savedItemActions.isUpvoted(story.id, false)) "un" else "up",
-        )
-        changed(story)
-        scope.launch {
-            when (val outcome = savedItemActions.execute(action)) {
-                is SavedItemActionOutcome.Success -> Unit
-                is SavedItemActionOutcome.Failure -> {
-                    if (isCurrentActionContext(generation, expectedStore)) changed(story)
-                    emit(
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (!sessionState.beginPreviewAction(story.id, StoryPreviewActionKind.Vote)) {
+                return@launch
+            }
+            try {
+                when (
+                    val outcome = savedItemActions.toggleVoteAndExecuteAtomic(
+                        itemId = story.id,
+                        isComment = false,
+                        onPending = { changed(story) },
+                    )
+                ) {
+                    is SavedItemActionOutcome.Success -> Unit
+                    is SavedItemActionOutcome.Failure -> {
+                        if (isCurrentActionContext(generation, expectedStore)) changed(story)
+                        emit(
+                            StoriesRuntimeEffect.SavedActionFailed(
+                                ActionFailurePresentation(
+                                    result = outcome.result,
+                                    message = "Action unsuccessful, see dialog for response",
+                                    showDetails = true,
+                                ),
+                            ),
+                        )
+                    }
+                    is SavedItemActionOutcome.Indeterminate -> emit(
                         StoriesRuntimeEffect.SavedActionFailed(
                             ActionFailurePresentation(
                                 result = outcome.result,
-                                message = "Action unsuccessful, see dialog for response",
+                                message = "Action sent, but HN confirmation was interrupted",
                                 showDetails = true,
                             ),
                         ),
                     )
                 }
+            } finally {
+                sessionState.finishPreviewAction(story.id, StoryPreviewActionKind.Vote)
             }
-            emit(
-                StoriesRuntimeEffect.PreviewActionCompleted(
-                    story.id,
-                    StoryPreviewActionKind.Vote,
-                ),
-            )
         }
     }
 
@@ -829,43 +844,59 @@ class StoriesFeatureRuntime(
         val generation = presenter.storyLoadGeneration
         val expectedStore = activeStore
         val favoritesList = currentType.isFavorites
-        val action = savedItemActions.beginFavorite(story.id)
-        val wasFavorited = action.previousPresent
         val optimisticIndex = activeStories.indexOf(story)
-        if (wasFavorited && favoritesList && optimisticIndex >= 0) {
-            removeStory(story, loadReplacement = true)
-        } else {
-            changed(story)
-        }
-        scope.launch {
-            when (val outcome = savedItemActions.execute(action)) {
-                is SavedItemActionOutcome.Success -> Unit
-                is SavedItemActionOutcome.Failure -> {
-                    if (isCurrentActionContext(generation, expectedStore)) {
-                        if (wasFavorited && favoritesList && !activeStories.contains(story)) {
-                            activeStore.insertAt(optimisticIndex.coerceAtLeast(0), story)
-                            changed()
-                        } else {
-                            changed(story)
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (!sessionState.beginPreviewAction(story.id, StoryPreviewActionKind.Favorite)) {
+                return@launch
+            }
+            var wasFavorited = false
+            try {
+                when (
+                    val outcome = savedItemActions.toggleFavoriteAndExecuteAtomic(
+                        itemId = story.id,
+                        onPending = { action ->
+                            wasFavorited = action.previousPresent
+                            if (wasFavorited && favoritesList && optimisticIndex >= 0) {
+                                removeStory(story, loadReplacement = true)
+                            } else {
+                                changed(story)
+                            }
+                        },
+                    )
+                ) {
+                    is SavedItemActionOutcome.Success -> Unit
+                    is SavedItemActionOutcome.Failure -> {
+                        if (isCurrentActionContext(generation, expectedStore)) {
+                            if (wasFavorited && favoritesList && !activeStories.contains(story)) {
+                                activeStore.insertAt(optimisticIndex.coerceAtLeast(0), story)
+                                changed()
+                            } else {
+                                changed(story)
+                            }
                         }
+                        emit(
+                            StoriesRuntimeEffect.SavedActionFailed(
+                                ActionFailurePresentation(
+                                    result = outcome.result,
+                                    message = "Action unsuccessful, see dialog for response",
+                                    showDetails = true,
+                                ),
+                            ),
+                        )
                     }
-                    emit(
+                    is SavedItemActionOutcome.Indeterminate -> emit(
                         StoriesRuntimeEffect.SavedActionFailed(
                             ActionFailurePresentation(
                                 result = outcome.result,
-                                message = "Action unsuccessful, see dialog for response",
+                                message = "Action sent, but HN confirmation was interrupted",
                                 showDetails = true,
                             ),
                         ),
                     )
                 }
+            } finally {
+                sessionState.finishPreviewAction(story.id, StoryPreviewActionKind.Favorite)
             }
-            emit(
-                StoriesRuntimeEffect.PreviewActionCompleted(
-                    story.id,
-                    StoryPreviewActionKind.Favorite,
-                ),
-            )
         }
     }
 

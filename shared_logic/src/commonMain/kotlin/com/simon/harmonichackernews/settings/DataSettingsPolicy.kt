@@ -10,7 +10,7 @@ import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
 import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
-import com.simon.harmonichackernews.platform.HistoryStore
+import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
 
@@ -78,7 +78,7 @@ class DataSettingsService(
     private val settingsReset: SettingsResetUseCase,
     private val savedItems: SavedItemsRepository,
     private val accounts: HackerNewsAccountRepository,
-    private val history: HistoryStore?,
+    private val history: ObservableHistoryStore?,
     private val storyCache: SharedStoryCacheService,
     private val previewResources: StoryPreviewRepository,
     private val storyResourceTints: StoryResourceTintRepository,
@@ -107,19 +107,19 @@ class DataSettingsService(
         .takeIf { it.isNotEmpty() }
         ?.let(SavedItemCodec::encode)
 
-    fun importBookmarks(content: String, overwrite: Boolean): BookmarkImportResult {
+    suspend fun importBookmarks(content: String, overwrite: Boolean): BookmarkImportResult {
         val result = BookmarkImportPolicy.apply(
             content = content,
             current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
             overwrite = overwrite,
         ) ?: return BookmarkImportResult.Empty
-        savedItems.saveItems(SavedItemSource.BOOKMARKS, result.items)
+        savedItems.saveItemsAtomic(SavedItemSource.BOOKMARKS, result.items)
         return BookmarkImportResult.Imported(result.importedCount, overwrite)
     }
 
-    fun clearHistory(): String? {
+    suspend fun clearHistory(): String? {
         val count = history?.size ?: 0
-        history?.clear()
+        history?.clearHistory()
         return DataSettingsPolicy.clearedItemsMessage(count, "entry", "entries")
     }
 

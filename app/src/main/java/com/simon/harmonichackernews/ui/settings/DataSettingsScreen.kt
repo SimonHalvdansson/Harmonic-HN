@@ -6,13 +6,12 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
@@ -21,6 +20,22 @@ import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.platform.PresentationCopy
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+
+internal class PendingTextExport {
+    private var content: String? = null
+
+    fun replace(value: String) {
+        content = value
+    }
+
+    fun take(): String? = content.also { content = null }
+
+    fun clear() {
+        content = null
+    }
+}
 
 @Composable
 fun DataSettingsScreen(
@@ -39,22 +54,24 @@ fun DataSettingsScreen(
         }
     }
     val runtimeState by runtime.state.collectAsState()
-    var pendingExportContent by remember { mutableStateOf<String?>(null) }
+    val pendingExport = remember { PendingTextExport() }
+    DisposableEffect(pendingExport) {
+        onDispose(pendingExport::clear)
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain"),
     ) { uri ->
-        uri?.let { outputUri ->
-            runCatching {
-                val content = pendingExportContent ?: return@runCatching
-                AndroidTextDocuments.write(
-                    context,
-                    outputUri,
-                    content,
-                )
-                pendingExportContent = null
-            }.onFailure {
-                appComposition.userMessages.show(PresentationCopy.WRITE_ERROR)
+        val content = pendingExport.take()
+        if (uri != null && content != null) {
+            scope.launch {
+                try {
+                    AndroidTextDocuments.write(context, uri, content)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    appComposition.userMessages.show(PresentationCopy.WRITE_ERROR)
+                }
             }
         }
     }
@@ -62,11 +79,15 @@ fun DataSettingsScreen(
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
-        uri?.let { inputUri ->
-            runCatching {
-                runtime.importBookmarks(AndroidTextDocuments.read(context, inputUri))
-            }.onFailure {
-                appComposition.userMessages.show(PresentationCopy.READ_ERROR)
+        if (uri != null) {
+            scope.launch {
+                try {
+                    runtime.importBookmarks(AndroidTextDocuments.read(context, uri))
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    appComposition.userMessages.show(PresentationCopy.READ_ERROR)
+                }
             }
         }
     }
@@ -75,7 +96,7 @@ fun DataSettingsScreen(
         runtime.effects.collect { effect ->
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
-                    pendingExportContent = effect.content
+                    pendingExport.replace(effect.content)
                     exportLauncher.launch(effect.filename)
                 }
                 DataSettingsRuntimeEffect.OpenImportDocument ->

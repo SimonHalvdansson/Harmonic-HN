@@ -486,7 +486,7 @@ private fun StoriesList(
                             label = "loaded story reveal",
                         )
                         val storyRevision = controller.storyRevision(story.id)
-                        val previewResource = controller.previewResources[story.id]
+                        val previewResource = controller.previewResource(story.id)
                             ?.takeIf { it.pageUrl == story.url }
                         // Palette tints are resolved against the theme's card background. Retain
                         // row-model caching normally, but rebuild when that base color changes.

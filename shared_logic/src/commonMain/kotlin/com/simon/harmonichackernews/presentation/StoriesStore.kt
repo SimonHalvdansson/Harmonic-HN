@@ -32,6 +32,8 @@ data class StoriesState(
     val mainList: PortableStoryListState = PortableStoryListState(),
     val searchList: PortableStoryListState = PortableStoryListState(),
     val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
+    val previewVoteLoadingIds: Set<Int> = emptySet(),
+    val previewFavoriteLoadingIds: Set<Int> = emptySet(),
     val displaySettings: StoryDisplaySettings? = null,
     val availableStoryTypes: List<StoryType> = listOf(StoryType.TOP_STORIES),
     val selectedTypeIndex: Int = 0,
@@ -153,6 +155,7 @@ class StoriesStore internal constructor(
             }
         }
         jobs += scope.launch { runtime.settingsState.collect { publish() } }
+        jobs += scope.launch { runtime.previewActionState.collect { publish() } }
         jobs += scope.launch { presenter.state.collect { publish() } }
         jobs += scope.launch { runtime.mainStore.state.collect { publish() } }
         jobs += scope.launch { runtime.searchStore.state.collect { publish() } }
@@ -288,10 +291,13 @@ class StoriesStore internal constructor(
         val presenterState = presenter.state.value
         val searchState = runtime.searchOptions.state.value
         val frontDate = runtime.frontPageDay
+        val previewActions = runtime.previewActionState.value
         return StoriesState(
             mainList = runtime.mainStore.state.value,
             searchList = runtime.searchStore.state.value,
             previewResources = runtime.previewResourceStates,
+            previewVoteLoadingIds = previewActions.voteLoadingIds,
+            previewFavoriteLoadingIds = previewActions.favoriteLoadingIds,
             displaySettings = runtime.settingsState.value.displaySettings,
             availableStoryTypes = runtime.availableStoryTypes,
             selectedTypeIndex = runtime.selectedStoryTypeIndex(),

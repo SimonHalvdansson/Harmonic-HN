@@ -7,7 +7,9 @@ import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.PollOptionsLoader
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,6 +123,10 @@ sealed interface CommentsEffect {
         val request: CommentsSavedItemRequest,
         val outcome: SavedItemActionOutcome,
     ) : CommentsEffect
+    data class SavedItemActionStartFailed(
+        val request: CommentsSavedItemRequest,
+        val cause: Throwable,
+    ) : CommentsEffect
 }
 
 sealed interface PollVoteOutcome {
@@ -177,8 +183,13 @@ class CommentsPresenter(
     private var pollOptionsLoadStarted = false
     private var pollOptionsLookupStarted = false
     private var pollVoteJob: Job? = null
+    private var pollVoteGeneration: Long = 0L
     private val threadLoadSession = KeyedRequestSession<Int>()
     private val savedItemActionJobs = mutableMapOf<String, Job>()
+    private val storyVotePendingIds = linkedSetOf<Int>()
+    private val storyFavoritePendingIds = linkedSetOf<Int>()
+    private val commentFavoritePendingIds = linkedSetOf<Int>()
+    private val commentVotePendingActions = linkedMapOf<Int, CommentMenuAction>()
 
     val savedItemState: SavedItemStateReader get() = savedItemActions
 
@@ -219,29 +230,29 @@ class CommentsPresenter(
             is CommentsAction.RequestCommentActions ->
                 mutableEffects.tryEmit(CommentsEffect.ShowCommentActions(action.comment))
             is CommentsAction.ToggleBookmark -> {
-                savedItemActions.toggleBookmark(action.itemId)
-                publish(savedItemRevision = state.value.savedItemRevision + 1L)
+                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    savedItemActions.toggleBookmarkAtomic(action.itemId)
+                    publish(savedItemRevision = state.value.savedItemRevision + 1L)
+                }
             }
             is CommentsAction.ToggleStoryVote -> performSavedItemAction(
                 request = CommentsSavedItemRequest.StoryVote(action.itemId),
                 kind = SavedItemActionKind.VOTE,
-            ) { savedItemActions.beginVote(
+            ) { savedItemActions.toggleVoteAndExecuteAtomic(
                     itemId = action.itemId,
                     isComment = action.isComment,
-                    direction = if (savedItemActions.isUpvoted(action.itemId, action.isComment)) {
-                        "un"
-                    } else {
-                        "up"
-                    },
                 ) }
             is CommentsAction.ToggleStoryFavorite -> performSavedItemAction(
                 request = CommentsSavedItemRequest.StoryFavorite(action.itemId),
                 kind = SavedItemActionKind.FAVORITE,
-            ) { savedItemActions.beginFavorite(action.itemId, action.isComment) }
+            ) { savedItemActions.toggleFavoriteAndExecuteAtomic(action.itemId, action.isComment) }
             is CommentsAction.ToggleCommentFavorite -> performSavedItemAction(
                 request = CommentsSavedItemRequest.CommentFavorite(action.commentId),
                 kind = SavedItemActionKind.FAVORITE,
-            ) { savedItemActions.beginFavorite(action.commentId, isComment = true) }
+            ) { savedItemActions.toggleFavoriteAndExecuteAtomic(
+                    action.commentId,
+                    isComment = true,
+                ) }
             is CommentsAction.VoteComment -> performSavedItemAction(
                 request = CommentsSavedItemRequest.CommentVote(
                     itemId = action.commentId,
@@ -249,7 +260,7 @@ class CommentsPresenter(
                     previousDownvoted = action.previousDownvoted,
                 ),
                 kind = SavedItemActionKind.VOTE,
-            ) { savedItemActions.beginVote(
+            ) { savedItemActions.updateVoteAndExecuteAtomic(
                     itemId = action.commentId,
                     isComment = true,
                     direction = action.direction,
@@ -269,21 +280,37 @@ class CommentsPresenter(
 
     private fun votePollOption(optionId: Int) {
         if (optionId <= 0 || pollVoteJob?.isActive == true) return
+        val generation = ++pollVoteGeneration
         publish(pollVoteInFlightOptionId = optionId)
         mutableEffects.tryEmit(CommentsEffect.PollVoteStarted(optionId))
-        pollVoteJob = scope.launch {
-            val result = votingService.vote(optionId.toString(), POLL_VOTE_DIRECTION)
-            val outcome = when (result) {
-                is HackerNewsActionResult.Success -> PollVoteOutcome.Success
-                else -> PollVoteOutcome.Failure(result)
+        val job = scope.launch {
+            val outcome = try {
+                val result = votingService.vote(optionId.toString(), POLL_VOTE_DIRECTION)
+                when (result) {
+                    is HackerNewsActionResult.Success -> PollVoteOutcome.Success
+                    else -> PollVoteOutcome.Failure(result)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                PollVoteOutcome.Failure(
+                    HackerNewsActionResult.Failure("Poll vote failed", error.message),
+                )
+            } finally {
+                if (pollVoteGeneration == generation) {
+                    publish(pollVoteInFlightOptionId = null)
+                }
             }
-            publish(pollVoteInFlightOptionId = null)
             mutableEffects.emit(CommentsEffect.PollVoteCompleted(optionId, outcome))
-            pollVoteJob = null
+        }
+        pollVoteJob = job
+        job.invokeOnCompletion {
+            if (pollVoteJob === job) pollVoteJob = null
         }
     }
 
     private fun cancelPollVote() {
+        pollVoteGeneration++
         pollVoteJob?.cancel()
         pollVoteJob = null
         if (state.value.pollVoteInFlightOptionId != null) {
@@ -297,51 +324,95 @@ class CommentsPresenter(
     private fun performSavedItemAction(
         request: CommentsSavedItemRequest,
         kind: SavedItemActionKind,
-        createPending: () -> PendingSavedItemAction,
+        executeAction: suspend () -> SavedItemActionOutcome,
     ) {
         val key = "$kind:${request.itemId}"
         if (savedItemActionJobs[key]?.isActive == true) return
-        val pending = createPending()
-        if (request is CommentsSavedItemRequest.StoryVote) publish(storyVoteLoading = true)
-        if (request is CommentsSavedItemRequest.StoryFavorite) publish(storyFavoriteLoading = true)
+        if (request is CommentsSavedItemRequest.StoryVote) {
+            storyVotePendingIds += request.itemId
+            publish(storyVoteLoading = true)
+        }
+        if (request is CommentsSavedItemRequest.StoryFavorite) {
+            storyFavoritePendingIds += request.itemId
+            publish(storyFavoriteLoading = true)
+        }
         if (request is CommentsSavedItemRequest.CommentFavorite) {
+            commentFavoritePendingIds.remove(request.itemId)
+            commentFavoritePendingIds += request.itemId
             publish(commentFavoriteLoadingId = request.itemId)
         }
         if (request is CommentsSavedItemRequest.CommentVote) {
+            val loadingAction = VoteDirection.fromWireValue(request.direction).commentMenuAction
+            commentVotePendingActions.remove(request.itemId)
+            commentVotePendingActions[request.itemId] = loadingAction
             publish(
                 commentVoteLoadingId = request.itemId,
-                commentVoteLoadingAction = VoteDirection.fromWireValue(request.direction)
-                    .commentMenuAction,
+                commentVoteLoadingAction = loadingAction,
             )
         }
         mutableEffects.tryEmit(CommentsEffect.SavedItemActionStarted(request))
-        savedItemActionJobs[key] = scope.launch {
-            val outcome = savedItemActions.execute(pending)
-            if (request is CommentsSavedItemRequest.StoryVote) publish(storyVoteLoading = false)
-            if (request is CommentsSavedItemRequest.StoryFavorite) {
-                publish(storyFavoriteLoading = false)
+        val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            var outcome: SavedItemActionOutcome? = null
+            var startError: Throwable? = null
+            try {
+                outcome = executeAction()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                startError = error
+            } finally {
+                finishSavedItemAction(request, outcome)
             }
-            if (request is CommentsSavedItemRequest.CommentFavorite) {
-                publish(commentFavoriteLoadingId = -1)
+            startError?.let { error ->
+                mutableEffects.emit(CommentsEffect.SavedItemActionStartFailed(request, error))
             }
-            if (request is CommentsSavedItemRequest.CommentVote) {
-                val downvoted = if (outcome is SavedItemActionOutcome.Failure) {
-                    request.previousDownvoted
-                } else {
-                    request.direction == "down"
+            outcome?.let { completed ->
+                mutableEffects.emit(CommentsEffect.SavedItemActionCompleted(request, completed))
+            }
+        }
+        savedItemActionJobs[key] = job
+        job.invokeOnCompletion {
+            if (savedItemActionJobs[key] === job) savedItemActionJobs.remove(key)
+        }
+    }
+
+    private fun finishSavedItemAction(
+        request: CommentsSavedItemRequest,
+        outcome: SavedItemActionOutcome?,
+    ) {
+        when (request) {
+            is CommentsSavedItemRequest.StoryVote -> {
+                storyVotePendingIds.remove(request.itemId)
+                publish(storyVoteLoading = storyVotePendingIds.isNotEmpty())
+            }
+            is CommentsSavedItemRequest.StoryFavorite -> {
+                storyFavoritePendingIds.remove(request.itemId)
+                publish(storyFavoriteLoading = storyFavoritePendingIds.isNotEmpty())
+            }
+            is CommentsSavedItemRequest.CommentFavorite -> {
+                commentFavoritePendingIds.remove(request.itemId)
+                publish(commentFavoriteLoadingId = commentFavoritePendingIds.lastOrNull() ?: -1)
+            }
+            is CommentsSavedItemRequest.CommentVote -> {
+                val downvoted = when (outcome) {
+                    is SavedItemActionOutcome.Success -> request.direction == "down"
+                    is SavedItemActionOutcome.Failure -> request.previousDownvoted
+                    is SavedItemActionOutcome.Indeterminate -> request.direction == "down"
+                    null -> null
                 }
+                commentVotePendingActions.remove(request.itemId)
+                val fallbackLoading = commentVotePendingActions.entries.lastOrNull()
+                val current = state.value
                 publish(
-                    commentVoteLoadingId = -1,
-                    commentVoteLoadingAction = null,
-                    downvotedCommentIds = if (downvoted) {
-                        state.value.downvotedCommentIds + request.itemId
-                    } else {
-                        state.value.downvotedCommentIds - request.itemId
+                    commentVoteLoadingId = fallbackLoading?.key ?: -1,
+                    commentVoteLoadingAction = fallbackLoading?.value,
+                    downvotedCommentIds = when (downvoted) {
+                        true -> current.downvotedCommentIds + request.itemId
+                        false -> current.downvotedCommentIds - request.itemId
+                        null -> current.downvotedCommentIds
                     },
                 )
             }
-            mutableEffects.emit(CommentsEffect.SavedItemActionCompleted(request, outcome))
-            savedItemActionJobs.remove(key)
         }
     }
 

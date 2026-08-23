@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings
 
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -65,18 +66,22 @@ class DataSettingsRuntime(
     }
 
     fun importBookmarks(content: String) {
-        when (val result = service.importBookmarks(content, state.value.overwriteBookmarksOnImport)) {
-            BookmarkImportResult.Empty -> emitMessage(PresentationCopy.IMPORT_EMPTY)
-            is BookmarkImportResult.Imported -> emitMessage(
-                PresentationCopy.importedBookmarks(result.count, result.overwroteExisting),
-            )
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            when (val result = service.importBookmarks(content, state.value.overwriteBookmarksOnImport)) {
+                BookmarkImportResult.Empty -> emitMessage(PresentationCopy.IMPORT_EMPTY)
+                is BookmarkImportResult.Imported -> emitMessage(
+                    PresentationCopy.importedBookmarks(result.count, result.overwroteExisting),
+                )
+            }
+            refresh()
         }
-        refresh()
     }
 
     fun clearHistory() {
-        service.clearHistory()?.let(::emitMessage)
-        refresh()
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            service.clearHistory()?.let(::emitMessage)
+            refresh()
+        }
     }
 
     fun clearPostCache() {

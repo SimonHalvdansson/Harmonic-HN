@@ -45,9 +45,30 @@ class PreviewContentCacheTest {
         assertTrue(store.contains(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "hash:https://example.com/article"))
     }
 
-    private fun cache(maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES) =
+    @Test
+    fun confirmedNegativeImageHitExpiresAndCanBeFetchedAgain() {
+        val store = TestKeyValueStore()
+        var now = 1_000L
+        val cache = cache(negativeImageTtlMillis = 50L, nowMillis = { now })
+
+        cache.savePreviewImage(store, "1", null)
+        assertTrue(cache.loadPreviewImage(store, "1").loaded)
+
+        now = 1_051L
+
+        assertFalse(cache.loadPreviewImage(store, "1").loaded)
+        assertFalse(store.contains(PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX + "1"))
+    }
+
+    private fun cache(
+        maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
+        negativeImageTtlMillis: Long = 6L * 60L * 60L * 1_000L,
+        nowMillis: () -> Long = { 1_000L },
+    ) =
         PreviewContentCache(
             stableHash = { "hash:$it" },
             maxDiskEntries = maxDiskEntries,
+            negativeImageTtlMillis = negativeImageTtlMillis,
+            nowMillis = nowMillis,
         )
 }

@@ -538,8 +538,6 @@ private fun IosStoriesContent(
                     StoriesPlatformEffect.OpenSubmitEditor ->
                         scene.navigation.openEditor(EditorDestination(EditorType.POST))
                 }
-                is StoriesRuntimeEffect.PreviewActionCompleted ->
-                    controller.finishStoryPreviewAction(effect.storyId, effect.action)
                 is StoriesRuntimeEffect.StoryChanged ->
                     effect.storyId?.let(controller::invalidateStory)
                 StoriesRuntimeEffect.LoginRequired -> scene.navigation.showLoginDialog()

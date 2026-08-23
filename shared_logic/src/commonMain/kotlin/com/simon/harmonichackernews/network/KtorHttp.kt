@@ -21,13 +21,11 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.charset
 import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.LineEnding
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.charsets.Charset
-import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.readLine
 import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readUTF8Line
 import kotlinx.io.readByteArray
 
 class NetworkUrl private constructor(internal val value: Url) {
@@ -159,12 +157,13 @@ class HttpRequest private constructor(
 class KtorHttpClient(
     private val client: HttpClient,
     private val readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
+    private val requestTimeoutMillis: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
 ) {
     suspend fun execute(request: HttpRequest): HttpResponse {
         val response = client.request(request.url.toString()) {
             method = request.method
             timeout {
-                requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                requestTimeoutMillis = this@KtorHttpClient.requestTimeoutMillis
                 socketTimeoutMillis = readTimeoutMillis
                 connectTimeoutMillis = minOf(readTimeoutMillis, DEFAULT_CONNECT_TIMEOUT_MILLIS)
             }
@@ -211,22 +210,33 @@ class KtorHttpClient(
         }
     }
 
-    fun newBuilder(): Builder = Builder(client, readTimeoutMillis)
+    fun newBuilder(): Builder = Builder(client, readTimeoutMillis, requestTimeoutMillis)
 
     class Builder internal constructor(
         private val client: HttpClient,
         private var readTimeoutMillis: Long,
+        private var requestTimeoutMillis: Long,
     ) {
         fun readTimeoutMillis(timeoutMillis: Long): Builder = apply {
             readTimeoutMillis = timeoutMillis
+            requestTimeoutMillis = maxOf(requestTimeoutMillis, timeoutMillis)
         }
 
-        fun build(): KtorHttpClient = KtorHttpClient(client, readTimeoutMillis)
+        fun requestTimeoutMillis(timeoutMillis: Long): Builder = apply {
+            requestTimeoutMillis = timeoutMillis
+        }
+
+        fun build(): KtorHttpClient = KtorHttpClient(
+            client = client,
+            readTimeoutMillis = readTimeoutMillis,
+            requestTimeoutMillis = requestTimeoutMillis,
+        )
     }
 
     companion object {
         const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 30_000L
         private const val DEFAULT_READ_TIMEOUT_MILLIS = 30_000L
+        private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 60_000L
     }
 }
 
@@ -258,9 +268,17 @@ class HttpResponseBody internal constructor(
 
     fun contentType(): HttpMediaType? = headers[HttpHeaders.ContentType]?.let(::HttpMediaType)
 
-    suspend fun readText(): String = channel.readRemaining().readText()
+    suspend fun readText(maxBytes: Int = DEFAULT_MAX_BUFFERED_BODY_BYTES): String =
+        readBytes(maxBytes).decodeToString()
 
-    suspend fun readBytes(): ByteArray = channel.readRemaining().readByteArray()
+    suspend fun readBytes(maxBytes: Int = DEFAULT_MAX_BUFFERED_BODY_BYTES): ByteArray {
+        require(maxBytes > 0) { "maxBytes must be positive" }
+        val declaredLength = contentLength()
+        if (declaredLength > maxBytes) throw HttpBodyLimitException(maxBytes, declaredLength)
+        val bytes = channel.readRemaining(maxBytes.toLong() + 1L).readByteArray()
+        if (bytes.size > maxBytes) throw HttpBodyLimitException(maxBytes, bytes.size.toLong())
+        return bytes
+    }
 
     suspend fun readAvailable(
         buffer: ByteArray,
@@ -268,9 +286,22 @@ class HttpResponseBody internal constructor(
         length: Int = buffer.size,
     ): Int = channel.readAvailable(buffer, offset, length)
 
-    suspend fun readUtf8Line(): String? = channel.readLine(LineEnding.Lenient)
+    @Suppress("DEPRECATION")
+    suspend fun readUtf8Line(maxChars: Int = DEFAULT_MAX_LINE_CHARS): String? {
+        require(maxChars > 0) { "maxChars must be positive" }
+        return channel.readUTF8Line(maxChars)
+    }
 
     override fun close() {
         channel.cancel()
     }
+
+    private companion object {
+        const val DEFAULT_MAX_LINE_CHARS = 64 * 1024
+    }
 }
+
+class HttpBodyLimitException(
+    val maxBytes: Int,
+    val observedBytes: Long,
+) : kotlinx.io.IOException("HTTP response exceeds the $maxBytes-byte buffered-body limit")

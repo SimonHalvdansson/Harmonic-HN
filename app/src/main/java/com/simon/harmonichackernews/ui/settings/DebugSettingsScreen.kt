@@ -3,11 +3,13 @@ package com.simon.harmonichackernews.ui.settings
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import kotlinx.coroutines.launch
 
 private const val OpenWithoutCacheStoryId = 49089500
 
@@ -18,6 +20,7 @@ fun DebugSettingsScreen(
     onOpenLinkPreviews: () -> Unit,
 ) {
     val app = LocalHarmonicUiDependencies.current
+    val scope = rememberCoroutineScope()
     SharedDebugSettingsRoute(
         repository = app.settings,
         environment = DebugEnvironmentUiState(
@@ -30,13 +33,17 @@ fun DebugSettingsScreen(
         onBack = onBack,
         onOpenHnId = { app.navigation.openStory(StoryDestination(it)) },
         onOpenWithoutCache = {
-            app.storyCache.remove(OpenWithoutCacheStoryId)
-            app.network.removeCachedStoryResponses(OpenWithoutCacheStoryId)
-            app.navigation.openStory(StoryDestination(OpenWithoutCacheStoryId))
+            scope.launch {
+                app.storyCache.remove(OpenWithoutCacheStoryId)
+                app.network.removeCachedStoryResponses(OpenWithoutCacheStoryId)
+                app.navigation.openStory(StoryDestination(OpenWithoutCacheStoryId))
+            }
         },
         onCachePost = {
-            if (DebugCachedPostFixture.seed(app.storyCache.repository, app.nowMillis())) {
-                app.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+            scope.launch {
+                if (DebugCachedPostFixture.seed(app.storyCache::storeStory)) {
+                    app.navigation.openStory(DebugCachedPostFixture.story().toDestination())
+                }
             }
         },
         onOpenLink = { app.links.open(it) },

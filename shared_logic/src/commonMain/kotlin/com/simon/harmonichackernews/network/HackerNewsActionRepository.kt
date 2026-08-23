@@ -5,6 +5,9 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.utils.HackerNewsCaptchaWebProtocol
 import com.simon.harmonichackernews.utils.HackerNewsLinks
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 
 typealias HackerNewsCredentials = HackerNewsAccount
 
@@ -42,7 +45,13 @@ enum class HackerNewsActionFailureReason {
     GENERAL,
     MISSING_CREDENTIALS,
     INVALID_CREDENTIALS,
+    /** The request was dispatched, but the client could not confirm whether HN committed it. */
+    INDETERMINATE,
 }
+
+/** Transport failed after a mutating HN request was dispatched. */
+internal class IndeterminateHackerNewsActionException(cause: Throwable) :
+    RuntimeException(cause.message, cause)
 
 sealed interface HackerNewsActionResult {
     data class Success(
@@ -241,11 +250,22 @@ class KtorHackerNewsActionRepository(
             else -> return action
         }
 
-        val verificationPage = when (val page = loadPage(cookieClient, get(itemUrl), true)) {
-            is PageResult.Result -> return page.value
+        val verificationPage = when (
+            val page = loadPageAfterMutation(cookieClient, get(itemUrl), true)
+        ) {
+            is PageResult.Result -> return HackerNewsActionResult.Failure(
+                summary = "Favorite update not confirmed",
+                detail = (page.value as? HackerNewsActionResult.Failure)?.detail,
+                reason = HackerNewsActionFailureReason.INDETERMINATE,
+            )
             is PageResult.Success -> page.body
         }
-        if (!findFavoriteLink(verificationPage, itemId, favorite).alreadyDesiredState) {
+        val favoriteConfirmed = try {
+            findFavoriteLink(verificationPage, itemId, favorite).alreadyDesiredState
+        } catch (error: Throwable) {
+            throw IndeterminateHackerNewsActionException(error)
+        }
+        if (!favoriteConfirmed) {
             return HackerNewsActionResult.Failure(
                 "Favorite update not confirmed",
                 if (favorite) {
@@ -312,22 +332,67 @@ class KtorHackerNewsActionRepository(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
-    ): HackerNewsActionResult = when (val page = loadPage(client, request, useCookies)) {
-        is PageResult.Success -> HackerNewsActionResult.Success()
-        is PageResult.Result -> page.value
+    ): HackerNewsActionResult = try {
+        when (
+            val page = loadPage(
+                client,
+                request,
+                useCookies,
+                indeterminateOnHttpFailure = true,
+            )
+        ) {
+            is PageResult.Success -> HackerNewsActionResult.Success()
+            is PageResult.Result -> page.value
+        }
+    } catch (error: IndeterminateHackerNewsActionException) {
+        throw error
+    } catch (error: CancellationException) {
+        if (!currentCoroutineContext().isActive) throw error
+        throw IndeterminateHackerNewsActionException(error)
+    } catch (error: Throwable) {
+        throw IndeterminateHackerNewsActionException(error)
+    }
+
+    private suspend fun loadPageAfterMutation(
+        client: KtorHttpClient,
+        request: HttpRequest,
+        useCookies: Boolean,
+    ): PageResult = try {
+        loadPage(
+            client,
+            request,
+            useCookies,
+            indeterminateOnHttpFailure = true,
+        )
+    } catch (error: IndeterminateHackerNewsActionException) {
+        throw error
+    } catch (error: CancellationException) {
+        if (!currentCoroutineContext().isActive) throw error
+        throw IndeterminateHackerNewsActionException(error)
+    } catch (error: Throwable) {
+        throw IndeterminateHackerNewsActionException(error)
     }
 
     private suspend fun loadPage(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
+        indeterminateOnHttpFailure: Boolean = false,
     ): PageResult {
         val response = client.execute(request)
         return try {
             val body = response.body.readText()
             if (!response.isSuccessful) {
                 PageResult.Result(
-                    HackerNewsActionResult.Failure("Unsuccessful response", response.toString()),
+                    HackerNewsActionResult.Failure(
+                        "Unsuccessful response",
+                        response.toString(),
+                        reason = if (indeterminateOnHttpFailure) {
+                            HackerNewsActionFailureReason.INDETERMINATE
+                        } else {
+                            HackerNewsActionFailureReason.GENERAL
+                        },
+                    ),
                 )
             } else {
                 classifyPage(body, useCookies)

@@ -21,7 +21,11 @@ class DebugCachedPostFixtureTest {
             metadata = InMemoryStoryCacheMetadataStore(),
         )
 
-        assertTrue(DebugCachedPostFixture.seed(repository, cachedAtMillis = 1_000L))
+        assertTrue(
+            DebugCachedPostFixture.seed { id, payload ->
+                repository.storeStory(id, payload, cachedAtMillis = 1_000L)
+            },
+        )
 
         val story = Story().apply { id = DebugCachedPostFixture.storyId }
         assertTrue(repository.hydrateStory(story))

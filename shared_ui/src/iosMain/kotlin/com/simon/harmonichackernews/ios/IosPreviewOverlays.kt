@@ -30,7 +30,7 @@ internal fun IosStoryPreviewOverlay(
         controller = controller,
         tablet = true,
     ) { story, page, cardColor, modifier ->
-        val previewResource = controller.previewResources[story.id]
+        val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }
         val faviconUrl = remember(story.id, story.url, faviconProvider) {
             story.url
@@ -61,4 +61,3 @@ internal fun IosStoryPreviewOverlay(
         )
     }
 }
-

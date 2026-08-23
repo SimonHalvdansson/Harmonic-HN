@@ -117,12 +117,26 @@ class StoriesInteractionStoreTest {
         store.updateContent(stories, emptyList(), searching = false, lastSearch = "")
         assertTrue(store.showStoryPreview(stories, listOf(1, 2, 3), 1))
 
-        store.beginStoryPreviewAction(1, StoryPreviewActionKind.Vote)
-        assertEquals(2, store.state.storyPreviewVoteLoadingId)
+        assertEquals(stories[1], store.beginStoryPreviewAction(1, StoryPreviewActionKind.Vote)?.story)
+        assertEquals(setOf(2), store.state.storyPreviewVoteLoadingIds)
+        assertNull(store.beginStoryPreviewAction(1, StoryPreviewActionKind.Vote))
         store.finishStoryPreviewAction(3, StoryPreviewActionKind.Vote)
-        assertEquals(2, store.state.storyPreviewVoteLoadingId)
+        assertEquals(setOf(2), store.state.storyPreviewVoteLoadingIds)
         store.finishStoryPreviewAction(2, StoryPreviewActionKind.Vote)
-        assertEquals(-1, store.state.storyPreviewVoteLoadingId)
+        assertTrue(store.state.storyPreviewVoteLoadingIds.isEmpty())
+
+        store.reconcileStoryPreviewActionLoading(
+            voteLoadingIds = setOf(2, 3),
+            favoriteLoadingIds = setOf(1),
+        )
+        assertEquals(setOf(2, 3), store.state.storyPreviewVoteLoadingIds)
+        assertEquals(setOf(1), store.state.storyPreviewFavoriteLoadingIds)
+        assertNull(store.beginStoryPreviewAction(1, StoryPreviewActionKind.Vote))
+        store.finishStoryPreviewAction(3, StoryPreviewActionKind.Vote)
+        assertEquals(setOf(2), store.state.storyPreviewVoteLoadingIds)
+        store.reconcileStoryPreviewActionLoading(emptySet(), emptySet())
+        assertTrue(store.state.storyPreviewVoteLoadingIds.isEmpty())
+        assertTrue(store.state.storyPreviewFavoriteLoadingIds.isEmpty())
 
         store.updateStoryItemHeight(1, 80)
         store.updateStoryItemHeight(2, 120)
@@ -132,6 +146,23 @@ class StoriesInteractionStoreTest {
 
         store.updateContent(listOf(story(3)), emptyList(), searching = false, lastSearch = "")
         assertEquals(96, store.getAdjacentStoryPagingDistance(3))
+    }
+
+    @Test
+    fun dismissingAndReopeningPreviewRetainsAuthoritativePendingActions() {
+        val store = store(defaultHeight = 96)
+        val stories = listOf(story(1), story(2))
+        store.updateContent(stories, emptyList(), searching = false, lastSearch = "")
+        assertTrue(store.showStoryPreview(stories, listOf(1, 2), 0))
+        store.beginStoryPreviewAction(0, StoryPreviewActionKind.Vote)
+
+        store.requestDismissStoryPreview()
+        assertTrue(store.completeStoryPreviewDismiss())
+        assertEquals(setOf(1), store.state.storyPreviewVoteLoadingIds)
+        assertTrue(store.showStoryPreview(stories, listOf(1, 2), 0))
+
+        assertEquals(setOf(1), store.state.storyPreviewVoteLoadingIds)
+        assertNull(store.beginStoryPreviewAction(0, StoryPreviewActionKind.Vote))
     }
 
     @Test

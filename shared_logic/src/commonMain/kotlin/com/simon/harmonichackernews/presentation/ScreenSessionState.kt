@@ -4,6 +4,9 @@ import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Platform-neutral story-screen session state.
@@ -41,6 +44,38 @@ class StoriesSessionState {
     var searchMinimumPointsIndex: Int = 0
     var searchMinimumCommentsIndex: Int = 0
     var searchOnlyClicked: Boolean = false
+
+    private val pendingPreviewVoteIds = linkedSetOf<Int>()
+    private val pendingPreviewFavoriteIds = linkedSetOf<Int>()
+    private val mutablePreviewActionState = MutableStateFlow(StoriesPreviewActionState())
+    internal val previewActionState: StateFlow<StoriesPreviewActionState> =
+        mutablePreviewActionState.asStateFlow()
+
+    internal fun beginPreviewAction(storyId: Int, action: StoryPreviewActionKind): Boolean {
+        val started = when (action) {
+            StoryPreviewActionKind.Vote -> pendingPreviewVoteIds.add(storyId)
+            StoryPreviewActionKind.Favorite -> pendingPreviewFavoriteIds.add(storyId)
+            StoryPreviewActionKind.Read, StoryPreviewActionKind.Bookmark -> true
+        }
+        if (started) publishPreviewActionState()
+        return started
+    }
+
+    internal fun finishPreviewAction(storyId: Int, action: StoryPreviewActionKind) {
+        when (action) {
+            StoryPreviewActionKind.Vote -> pendingPreviewVoteIds.remove(storyId)
+            StoryPreviewActionKind.Favorite -> pendingPreviewFavoriteIds.remove(storyId)
+            StoryPreviewActionKind.Read, StoryPreviewActionKind.Bookmark -> Unit
+        }
+        publishPreviewActionState()
+    }
+
+    private fun publishPreviewActionState() {
+        mutablePreviewActionState.value = StoriesPreviewActionState(
+            voteLoadingIds = pendingPreviewVoteIds.toSet(),
+            favoriteLoadingIds = pendingPreviewFavoriteIds.toSet(),
+        )
+    }
 }
 
 /** Canonical non-visual state for a comments session. */

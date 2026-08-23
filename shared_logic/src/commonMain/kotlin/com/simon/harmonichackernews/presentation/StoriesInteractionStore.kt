@@ -36,8 +36,8 @@ data class StoriesInteractionState(
     val storyPreviewDismissRequestVersion: Int = 0,
     val storyPreviewBackGesture: BackGesture = BackGesture(),
     val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest? = null,
-    val storyPreviewVoteLoadingId: Int = -1,
-    val storyPreviewFavoriteLoadingId: Int = -1,
+    val storyPreviewVoteLoadingIds: Set<Int> = emptySet(),
+    val storyPreviewFavoriteLoadingIds: Set<Int> = emptySet(),
     val visibleStoryPreviewId: Int = -1,
     val suppressedStoryIds: Set<Int> = emptySet(),
 ) {
@@ -239,8 +239,6 @@ class StoriesInteractionStore(
             storyPreviewDismissRequestVersion = 0,
             storyPreviewBackGesture = BackGesture(),
             storyPreviewPredictiveBackSettleRequest = null,
-            storyPreviewVoteLoadingId = -1,
-            storyPreviewFavoriteLoadingId = -1,
             visibleStoryPreviewId = -1,
             storyPagingAlphas = emptyMap(),
             suppressedStoryIds = emptySet(),
@@ -325,9 +323,19 @@ class StoriesInteractionStore(
     fun beginStoryPreviewAction(page: Int, action: StoryPreviewActionKind): StoryPreviewTarget? {
         val target = storyPreviewTarget(page) ?: return null
         state = when (action) {
-            StoryPreviewActionKind.Vote -> state.copy(storyPreviewVoteLoadingId = target.story.id)
-            StoryPreviewActionKind.Favorite ->
-                state.copy(storyPreviewFavoriteLoadingId = target.story.id)
+            StoryPreviewActionKind.Vote -> {
+                if (target.story.id in state.storyPreviewVoteLoadingIds) return null
+                state.copy(
+                    storyPreviewVoteLoadingIds = state.storyPreviewVoteLoadingIds + target.story.id,
+                )
+            }
+            StoryPreviewActionKind.Favorite -> {
+                if (target.story.id in state.storyPreviewFavoriteLoadingIds) return null
+                state.copy(
+                    storyPreviewFavoriteLoadingIds =
+                        state.storyPreviewFavoriteLoadingIds + target.story.id,
+                )
+            }
             StoryPreviewActionKind.Read, StoryPreviewActionKind.Bookmark -> state
         }
         return target
@@ -335,18 +343,28 @@ class StoriesInteractionStore(
 
     fun finishStoryPreviewAction(storyId: Int, action: StoryPreviewActionKind) {
         state = when (action) {
-            StoryPreviewActionKind.Vote -> if (state.storyPreviewVoteLoadingId == storyId) {
-                state.copy(storyPreviewVoteLoadingId = -1)
-            } else {
-                state
-            }
-            StoryPreviewActionKind.Favorite -> if (state.storyPreviewFavoriteLoadingId == storyId) {
-                state.copy(storyPreviewFavoriteLoadingId = -1)
-            } else {
-                state
-            }
+            StoryPreviewActionKind.Vote -> state.copy(
+                storyPreviewVoteLoadingIds = state.storyPreviewVoteLoadingIds - storyId,
+            )
+            StoryPreviewActionKind.Favorite -> state.copy(
+                storyPreviewFavoriteLoadingIds = state.storyPreviewFavoriteLoadingIds - storyId,
+            )
             StoryPreviewActionKind.Read, StoryPreviewActionKind.Bookmark -> state
         }
+    }
+
+    fun reconcileStoryPreviewActionLoading(
+        voteLoadingIds: Set<Int>,
+        favoriteLoadingIds: Set<Int>,
+    ) {
+        if (
+            state.storyPreviewVoteLoadingIds == voteLoadingIds &&
+            state.storyPreviewFavoriteLoadingIds == favoriteLoadingIds
+        ) return
+        state = state.copy(
+            storyPreviewVoteLoadingIds = voteLoadingIds,
+            storyPreviewFavoriteLoadingIds = favoriteLoadingIds,
+        )
     }
 
     fun clearStoryPagingAlphas() {

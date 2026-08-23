@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.io.IOException
@@ -48,7 +49,7 @@ class KtorCloudSummaryRepository(
         if (apiKey.isNotBlank()) requestBuilder.header("Authorization", "Bearer $apiKey")
         val response = client.execute(requestBuilder.get().build())
         return try {
-            val body = response.body.readText()
+            val body = response.body.readText(MAX_MODEL_CATALOG_BYTES)
             if (!response.isSuccessful) throw CloudSummaryException(
                 "Could not load models (HTTP ${response.code})",
             )
@@ -74,7 +75,7 @@ class KtorCloudSummaryRepository(
             if (!response.isSuccessful) {
                 throw CloudSummaryException("Article returned HTTP ${response.code}")
             }
-            Ksoup.parse(response.body.readText(), baseUri = url).body().text()
+            Ksoup.parse(response.body.readText(MAX_ARTICLE_BYTES), baseUri = url).body().text()
         } finally {
             response.close()
         }
@@ -122,7 +123,7 @@ class KtorCloudSummaryRepository(
         val response = client.newBuilder().readTimeoutMillis(120_000).build().execute(request)
         try {
             if (!response.isSuccessful) {
-                val errorBody = response.body.readText()
+                val errorBody = response.body.readText(MAX_ERROR_BODY_BYTES)
                 throw CloudSummaryException(
                     "API error: ${apiErrorMessage(errorBody, response.message)}",
                 )
@@ -132,10 +133,15 @@ class KtorCloudSummaryRepository(
                     emit(CloudSummaryEvent.Progress(summary))
                 }.also { emit(CloudSummaryEvent.Success(it)) }
             } else {
-                val summary = parseNonStreamingResponse(response.body.readText(), anthropic)
+                val summary = parseNonStreamingResponse(
+                    response.body.readText(MAX_SUMMARY_RESPONSE_BYTES),
+                    anthropic,
+                )
                 if (summary.isBlank()) throw CloudSummaryException("API response error")
                 emit(CloudSummaryEvent.Success(summary))
             }
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: CloudSummaryException) {
             throw error
         } catch (error: Throwable) {
@@ -172,11 +178,17 @@ class KtorCloudSummaryRepository(
                 line.startsWith("data:") -> {
                     if (eventData.isNotEmpty()) eventData.append('\n')
                     eventData.append(line.substring(5).trim())
+                    if (eventData.length > MAX_STREAM_EVENT_CHARS) {
+                        throw CloudSummaryException("Streaming event exceeded the response limit")
+                    }
                 }
 
                 !line.startsWith(":") -> {
                     if (plainResponse.isNotEmpty()) plainResponse.append('\n')
                     plainResponse.append(line)
+                    if (plainResponse.length > MAX_SUMMARY_RESPONSE_BYTES) {
+                        throw CloudSummaryException("API response exceeded the response limit")
+                    }
                 }
             }
         }
@@ -223,6 +235,9 @@ class KtorCloudSummaryRepository(
         onProgress: suspend (String) -> Unit,
     ) {
         if (chunk.isEmpty()) return
+        if (summary.length + chunk.length > MAX_SUMMARY_RESPONSE_BYTES) {
+            throw CloudSummaryException("Summary exceeded the response limit")
+        }
         summary.append(chunk)
         onProgress(summary.toString())
     }
@@ -273,6 +288,11 @@ class KtorCloudSummaryRepository(
 
     private companion object {
         const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000
+        const val MAX_MODEL_CATALOG_BYTES = 2 * 1024 * 1024
+        const val MAX_ARTICLE_BYTES = 4 * 1024 * 1024
+        const val MAX_ERROR_BODY_BYTES = 128 * 1024
+        const val MAX_SUMMARY_RESPONSE_BYTES = 2 * 1024 * 1024
+        const val MAX_STREAM_EVENT_CHARS = 256 * 1024
     }
 }
 

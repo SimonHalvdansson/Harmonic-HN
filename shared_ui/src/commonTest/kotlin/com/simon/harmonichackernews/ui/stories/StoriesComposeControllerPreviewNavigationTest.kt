@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.ui.geometry.Rect
 import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.presentation.SavedItemFilter
@@ -8,9 +9,14 @@ import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.presentation.StorySearchOption
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class StoriesComposeControllerPreviewNavigationTest {
     @Test
@@ -68,6 +74,79 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertEquals(1f, controller.storyPagingAlphaState(1).floatValue)
         assertEquals(1f, controller.storyPagingAlphaState(2).floatValue)
     }
+
+    @Test
+    fun contentReplacementPrunesGeometryForRemovedStories() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        controller.updateContent(
+            StoriesScreenState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
+        )
+        controller.updateStoryBounds(1, Rect(0f, 0f, 10f, 10f))
+
+        controller.updateContent(StoriesScreenState(mainStories = listOf(storySnapshot(2))))
+
+        assertNull(controller.sourceBoundsForStory(1))
+    }
+
+    @Test
+    fun geometryTrackingEvictsLeastRecentlyUpdatedEntries() {
+        val controller = controller(destinationRemainsBesideStories = false)
+
+        repeat(300) { index ->
+            controller.updateStoryBounds(index + 1, Rect(0f, 0f, 10f, 10f))
+        }
+
+        assertNull(controller.sourceBoundsForStory(1))
+        assertNotNull(controller.sourceBoundsForStory(300))
+    }
+
+    @Test
+    fun previewAndShellUpdatesPreserveTheUnchangedStoryListSlice() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val stories = listOf(storySnapshot(1), storySnapshot(2))
+        controller.updateContent(StoriesScreenState(mainStories = stories))
+        val retainedStories = controller.mainStories
+
+        controller.updateContent(
+            StoriesScreenState(
+                mainStories = stories,
+                refreshing = true,
+                previewResources = mapOf(
+                    1 to StoryPreviewResourceState(
+                        storyId = 1,
+                        pageUrl = "https://example.com",
+                        imageUrlResolved = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertSame(retainedStories, controller.mainStories)
+        assertEquals(true, controller.refreshing)
+        assertEquals(true, controller.previewResource(1)?.imageUrlResolved)
+    }
+
+    @Test
+    fun durableRuntimeStateClearsPreviewActionLoadingWithoutATerminalEffect() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val stories = listOf(storySnapshot(1), storySnapshot(2))
+
+        controller.onStoryPreviewAction(page = 0, action = StoryPreviewActionKind.Vote)
+        assertTrue(controller.isStoryPreviewVoteLoading(1))
+        controller.updateContent(
+            StoriesScreenState(mainStories = stories, previewVoteLoadingIds = setOf(1)),
+        )
+        controller.updateContent(
+            StoriesScreenState(mainStories = stories, previewVoteLoadingIds = emptySet()),
+        )
+
+        assertFalse(controller.isStoryPreviewVoteLoading(1))
+    }
+
+    private fun storySnapshot(id: Int) = StoryListItemSnapshot(
+        story = StorySnapshot(id = id, title = "Story $id"),
+        presentation = StoryPresentationSnapshot(loaded = true),
+    )
 
     private fun controller(destinationRemainsBesideStories: Boolean): StoriesComposeController =
         StoriesComposeController.create(

@@ -52,6 +52,26 @@ class InMemoryKeyValueStore : KeyValueStore {
     override fun putStringSet(key: String, value: Set<String>?) =
         putNullable(key, value?.toSet())
 
+    override fun update(block: KeyValueStore.Editor.() -> Unit) {
+        val staged = values.toMutableMap()
+        block(object : KeyValueStore.Editor {
+            override fun remove(key: String) {
+                staged.remove(key)
+            }
+
+            override fun putString(key: String, value: String?) = putOrRemove(staged, key, value)
+            override fun putBoolean(key: String, value: Boolean) = putOrRemove(staged, key, value)
+            override fun putInt(key: String, value: Int) = putOrRemove(staged, key, value)
+            override fun putLong(key: String, value: Long) = putOrRemove(staged, key, value.toString())
+            override fun putFloat(key: String, value: Float) = putOrRemove(staged, key, value)
+            override fun putStringSet(key: String, value: Set<String>?) =
+                putOrRemove(staged, key, value?.toSet())
+        })
+        values.clear()
+        values.putAll(staged)
+        changed()
+    }
+
     private fun putNullable(key: String, value: Any?) {
         if (value == null) values.remove(key) else values[key] = value
         changed()
@@ -64,5 +84,9 @@ class InMemoryKeyValueStore : KeyValueStore {
 
     private fun changed() {
         mutableChanges.tryEmit(Unit)
+    }
+
+    private fun putOrRemove(target: MutableMap<String, Any>, key: String, value: Any?) {
+        if (value == null) target.remove(key) else target[key] = value
     }
 }

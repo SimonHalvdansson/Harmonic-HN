@@ -34,7 +34,7 @@ class DesktopFileKeyValueStore(
         }
     }
 
-    override fun clear() = mutate { clear() }
+    override fun clear() = mutate { it.clear() }
 
     override fun contains(key: String): Boolean = synchronized(lock) { values.containsKey(key) }
 
@@ -42,7 +42,7 @@ class DesktopFileKeyValueStore(
         values.stringPropertyNames().toSet()
     }
 
-    override fun remove(key: String) = mutate { remove(key) }
+    override fun remove(key: String) = mutate { it.remove(key) }
 
     override fun getString(key: String, default: String?): String? = synchronized(lock) {
         values.getProperty(key) ?: default
@@ -88,30 +88,65 @@ class DesktopFileKeyValueStore(
 
     override fun putStringSet(key: String, value: Set<String>?) = putNullable(
         key,
-        value?.sorted()?.joinToString(",") { item ->
-            Base64.getUrlEncoder().withoutPadding().encodeToString(item.toByteArray())
-        },
+        value?.let(::encodeStringSet),
     )
 
-    private fun putNullable(key: String, value: String?) = mutate {
-        if (value == null) remove(key) else setProperty(key, value)
+    override fun update(block: KeyValueStore.Editor.() -> Unit) {
+        mutate { staged ->
+            block(object : KeyValueStore.Editor {
+                override fun remove(key: String) {
+                    staged.remove(key)
+                }
+
+                override fun putString(key: String, value: String?) {
+                    if (value == null) staged.remove(key) else staged.setProperty(key, value)
+                }
+
+                override fun putBoolean(key: String, value: Boolean) {
+                    staged.setProperty(key, value.toString())
+                }
+
+                override fun putInt(key: String, value: Int) {
+                    staged.setProperty(key, value.toString())
+                }
+
+                override fun putLong(key: String, value: Long) {
+                    staged.setProperty(key, value.toString())
+                }
+
+                override fun putFloat(key: String, value: Float) {
+                    staged.setProperty(key, value.toString())
+                }
+
+                override fun putStringSet(key: String, value: Set<String>?) {
+                    if (value == null) staged.remove(key) else staged.setProperty(key, encodeStringSet(value))
+                }
+            })
+        }
     }
 
-    private fun put(key: String, value: String) = mutate { setProperty(key, value) }
+    private fun putNullable(key: String, value: String?) = mutate { staged ->
+        if (value == null) staged.remove(key) else staged.setProperty(key, value)
+    }
 
-    private fun mutate(block: Properties.() -> Unit) {
+    private fun put(key: String, value: String) = mutate { staged -> staged.setProperty(key, value) }
+
+    private fun mutate(block: (Properties) -> Unit) {
         synchronized(lock) {
-            values.block()
-            persist()
+            val staged = Properties().apply { putAll(this@DesktopFileKeyValueStore.values) }
+            block(staged)
+            persist(staged)
+            values.clear()
+            values.putAll(staged)
         }
         mutableChanges.tryEmit(Unit)
     }
 
-    private fun persist() {
+    private fun persist(staged: Properties) {
         file.parent?.let(Files::createDirectories)
         val temporary = file.resolveSibling("${file.fileName}.tmp")
         Files.newOutputStream(temporary).use { output ->
-            values.store(output, "Harmonic desktop settings")
+            staged.store(output, "Harmonic desktop settings")
         }
         try {
             Files.move(
@@ -124,4 +159,9 @@ class DesktopFileKeyValueStore(
             Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING)
         }
     }
+
+    private fun encodeStringSet(value: Set<String>): String =
+        value.sorted().joinToString(",") { item ->
+            Base64.getUrlEncoder().withoutPadding().encodeToString(item.toByteArray())
+        }
 }

@@ -1,8 +1,10 @@
 package com.simon.harmonichackernews.network
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 
 data class DownloadMetadata(
@@ -19,6 +21,13 @@ data class StoredDownload(
 
 interface DownloadSink {
     val reference: String
+
+    /**
+     * Runs a complete sequence of writes in the sink's preferred context. Filesystem-backed sinks
+     * use this to pay for dispatcher selection once per transfer rather than once per buffer.
+     */
+    suspend fun <T> writeSession(block: suspend () -> T): T = block()
+
     suspend fun write(buffer: ByteArray, offset: Int, length: Int)
     suspend fun close()
     suspend fun abort()
@@ -248,20 +257,22 @@ class HttpTransferEngine(
             val activeSink = sinkForResponse(responseInfo)
             sink = activeSink
 
-            val buffer = ByteArray(BUFFER_SIZE_BYTES)
             var responseBytes = 0L
             var totalBytes = options.initialBytes
-            while (true) {
-                val read = response.body.read(buffer)
-                if (read == -1) break
-                if (read == 0) continue
-                responseBytes += read
-                totalBytes += read
-                if (totalBytes > options.maxTotalBytes) {
-                    throw DownloadTransferException("Response exceeds the download limit")
+            activeSink.writeSession {
+                val buffer = ByteArray(BUFFER_SIZE_BYTES)
+                while (true) {
+                    val read = response.body.read(buffer)
+                    if (read == -1) break
+                    if (read == 0) continue
+                    responseBytes += read
+                    totalBytes += read
+                    if (totalBytes > options.maxTotalBytes) {
+                        throw DownloadTransferException("Response exceeds the download limit")
+                    }
+                    activeSink.write(buffer, 0, read)
+                    onProgress(TransferProgress(totalBytes, options.expectedTotalBytes))
                 }
-                activeSink.write(buffer, 0, read)
-                onProgress(TransferProgress(totalBytes, options.expectedTotalBytes))
             }
             if (options.requireResponseBytes && responseBytes == 0L) {
                 throw DownloadTransferException("Response was empty")
@@ -281,17 +292,22 @@ class HttpTransferEngine(
                 statusCode = response.statusCode,
             )
         } catch (error: CancellationException) {
-            sink?.abort()
+            abortIgnoringFailure(sink)
             throw error
         } catch (error: Throwable) {
-            sink?.abort()
+            abortIgnoringFailure(sink)
             throw error as? DownloadTransferException
                 ?: DownloadTransferException(error.message ?: "Transfer failed", error)
         }
     }
 
+    private suspend fun abortIgnoringFailure(sink: DownloadSink?) {
+        if (sink == null) return
+        withContext(NonCancellable) { runCatching { sink.abort() } }
+    }
+
     private companion object {
-        const val BUFFER_SIZE_BYTES = 16 * 1024
+        const val BUFFER_SIZE_BYTES = 256 * 1024
     }
 }
 
@@ -380,10 +396,10 @@ class CachedDownloadService(
                 committed
             }
         } catch (error: CancellationException) {
-            storeMutex.withLock { store.remove(sink.reference) }
+            removeTemporaryIgnoringFailure(sink.reference)
             throw error
         } catch (error: Throwable) {
-            storeMutex.withLock { store.remove(sink.reference) }
+            removeTemporaryIgnoringFailure(sink.reference)
             if (error !is DownloadTransferException) {
                 throw DownloadTransferException("$cacheLabel download failed", error)
             }
@@ -393,6 +409,12 @@ class CachedDownloadService(
 
     suspend fun cleanup(nowMillis: Long) = storeMutex.withLock {
         if (store.prepare()) cleanupLocked(nowMillis, protectedReference = null)
+    }
+
+    private suspend fun removeTemporaryIgnoringFailure(reference: String) {
+        withContext(NonCancellable) {
+            runCatching { storeMutex.withLock { store.remove(reference) } }
+        }
     }
 
     private suspend fun cleanupLocked(nowMillis: Long, protectedReference: String?) {

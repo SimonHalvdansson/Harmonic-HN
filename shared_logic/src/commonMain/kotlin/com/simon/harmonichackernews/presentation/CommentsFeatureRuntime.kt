@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.data.canonicalize
+import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
 import com.simon.harmonichackernews.network.StoryPreviewResourceRuntime
@@ -90,7 +91,7 @@ class CommentsFeatureRuntime(
     private val summaryRuntime: StorySummaryRuntime? = null,
     private val hydrateCachedStory: (Story) -> Boolean = { false },
     private val loadCachedThread: (Int) -> String? = { null },
-    private val storeCachedThread: (Int, String) -> Unit = { _, _ -> },
+    private val storeCachedThread: suspend (Int, String) -> Unit = { _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
     private val storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
@@ -615,7 +616,7 @@ class CommentsFeatureRuntime(
         mutableEffects.tryEmit(CommentsRuntimeEffect.StateChanged(refreshNavigation))
     }
 
-    private fun applyPresenterEffect(effect: CommentsEffect) {
+    private suspend fun applyPresenterEffect(effect: CommentsEffect) {
         when (effect) {
             is CommentsEffect.ShowCommentActions ->
                 mutableEffects.tryEmit(CommentsRuntimeEffect.ShowCommentActions(effect.comment))
@@ -692,22 +693,47 @@ class CommentsFeatureRuntime(
                 }
             }
             is CommentsEffect.SavedItemActionStarted -> changed()
+            is CommentsEffect.SavedItemActionStartFailed -> {
+                changed()
+                mutableEffects.tryEmit(
+                    CommentsRuntimeEffect.ActionFailed(
+                        ActionFailurePresentation(
+                            result = HackerNewsActionResult.Failure(
+                                summary = "Saved-item update failed",
+                                detail = effect.cause.message,
+                            ),
+                            message = "Couldn't update saved items",
+                            showDetails = false,
+                            requestLoginIfMissing = false,
+                        ),
+                    ),
+                )
+            }
             is CommentsEffect.SavedItemActionCompleted -> {
                 changed()
-                (effect.outcome as? SavedItemActionOutcome.Failure)?.let { failure ->
+                val unsuccessful = when (val outcome = effect.outcome) {
+                    is SavedItemActionOutcome.Failure ->
+                        Triple(outcome.action, outcome.result, false)
+                    is SavedItemActionOutcome.Indeterminate ->
+                        Triple(outcome.action, outcome.result, true)
+                    is SavedItemActionOutcome.Success -> null
+                }
+                unsuccessful?.let { (action, result, indeterminate) ->
                     when (effect.request) {
                         is CommentsSavedItemRequest.CommentFavorite,
                         is CommentsSavedItemRequest.StoryFavorite,
                         -> mutableEffects.tryEmit(
                             CommentsRuntimeEffect.ActionFailed(
                                 ActionFailurePresentation(
-                                    result = failure.result,
-                                    message = if (!failure.action.previousPresent) {
+                                    result = result,
+                                    message = if (indeterminate) {
+                                        "Favorite sent, but HN confirmation was interrupted"
+                                    } else if (!action.previousPresent) {
                                         "Couldn't add favorite"
                                     } else {
                                         "Couldn't update favorite"
                                     },
-                                    showDetails = failure.action.previousPresent,
+                                    showDetails = indeterminate || action.previousPresent,
                                     requestLoginIfMissing = true,
                                 ),
                             ),
@@ -717,8 +743,12 @@ class CommentsFeatureRuntime(
                         -> mutableEffects.tryEmit(
                             CommentsRuntimeEffect.ActionFailed(
                                 ActionFailurePresentation(
-                                    result = failure.result,
-                                    message = "Vote unsuccessful, see dialog for response",
+                                    result = result,
+                                    message = if (indeterminate) {
+                                        "Vote sent, but HN confirmation was interrupted"
+                                    } else {
+                                        "Vote unsuccessful, see dialog for response"
+                                    },
                                     showDetails = true,
                                     requestLoginIfMissing = true,
                                 ),

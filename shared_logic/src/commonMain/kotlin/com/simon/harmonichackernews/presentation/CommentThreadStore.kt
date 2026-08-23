@@ -62,6 +62,7 @@ class CommentThreadStore {
 
     private val commentsById = mutableMapOf<Int, Comment>()
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
+    private val portableItemsById = mutableMapOf<Int, PortableCommentItem>()
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
@@ -77,16 +78,19 @@ class CommentThreadStore {
         displayedComments.clear()
         displayedComments.add(header)
         searchableTextById.clear()
+        portableItemsById.clear()
         publish(
             story = story,
             sorting = sorting,
             commentsByOp = false,
             searchQuery = "",
+            rebuildSearch = true,
+            rebuildVisibility = true,
         )
     }
 
     fun setStory(story: Story?) {
-        publish(story = story)
+        publish(story = story, rebuildVisibility = true)
     }
 
     fun replaceParsedComments(
@@ -125,14 +129,16 @@ class CommentThreadStore {
 
     fun setSorting(sortType: String) {
         CommentSorter.sort(allComments, sortType)
+        portableItemsById.clear()
         rebuildDisplayedComments()
-        publish(sorting = sortType)
+        publish(sorting = sortType, rebuildSearch = true, rebuildVisibility = true)
     }
 
     fun toggleExpanded(commentId: Int): Boolean {
         val comment = commentsById[commentId] ?: return false
         comment.expanded = !comment.expanded
-        publish()
+        portableItemsById.remove(commentId)
+        publish(rebuildVisibility = true)
         return comment.expanded
     }
 
@@ -144,17 +150,24 @@ class CommentThreadStore {
             val parent = commentsById[parentId] ?: break
             if (!parent.expanded) {
                 parent.expanded = true
+                portableItemsById.remove(parent.id)
                 expandedAny = true
             }
             parentId = parent.parent
         }
-        if (expandedAny) publish()
+        if (expandedAny) publish(rebuildVisibility = true)
         return expandedAny
     }
 
     fun restoreCollapsedComments(collapsedIds: Set<Int>) {
-        allComments.forEach { comment -> comment.expanded = comment.id !in collapsedIds }
-        publish()
+        allComments.forEach { comment ->
+            val expanded = comment.id !in collapsedIds
+            if (comment.expanded != expanded) {
+                comment.expanded = expanded
+                portableItemsById.remove(comment.id)
+            }
+        }
+        publish(rebuildVisibility = true)
     }
 
     fun findComment(commentId: Int): Comment? = commentsById[commentId]
@@ -163,23 +176,24 @@ class CommentThreadStore {
         val story = currentStory
         if (!CommentThreadFilter.hasCommentsByOp(story, allComments)) return false
         rebuildDisplayedComments(commentsByOp = true)
-        publish(commentsByOp = true)
+        publish(commentsByOp = true, rebuildVisibility = true)
         return true
     }
 
     fun resetCommentsByOp() {
         if (!state.value.commentsByOp) return
         rebuildDisplayedComments(commentsByOp = false)
-        publish(commentsByOp = false)
+        publish(commentsByOp = false, rebuildVisibility = true)
     }
 
     fun setSearchQuery(query: String) {
-        publish(searchQuery = query)
+        publish(searchQuery = query, rebuildSearch = true)
     }
 
     fun notifyCommentsChanged() {
+        portableItemsById.clear()
         rebuildDisplayedComments()
-        publish()
+        publish(rebuildSearch = true, rebuildVisibility = true)
     }
 
     private fun prepareAndReplace(
@@ -198,8 +212,14 @@ class CommentThreadStore {
         commentsById.clear()
         allComments.forEach { comment -> commentsById[comment.id] = comment }
         searchableTextById.keys.retainAll(allComments.mapTo(mutableSetOf(), Comment::id))
+        portableItemsById.clear()
         rebuildDisplayedComments()
-        publish(story = story, sorting = sorting)
+        publish(
+            story = story,
+            sorting = sorting,
+            rebuildSearch = true,
+            rebuildVisibility = true,
+        )
     }
 
     private fun rebuildDisplayedComments(commentsByOp: Boolean = state.value.commentsByOp) {
@@ -237,23 +257,34 @@ class CommentThreadStore {
         sorting: String = state.value.sorting,
         commentsByOp: Boolean = state.value.commentsByOp,
         searchQuery: String = state.value.searchQuery,
+        rebuildSearch: Boolean = false,
+        rebuildVisibility: Boolean = false,
     ) {
         val hasCommentsByOp = CommentThreadFilter.hasCommentsByOp(story, allComments)
         val actualCommentsByOp = commentsByOp && hasCommentsByOp
         if (actualCommentsByOp != commentsByOp) rebuildDisplayedComments(commentsByOp = false)
-        val results = searchResults(searchQuery)
-        val visible = buildVisibleComments(displayedComments)
-        val revision = state.value.revision + 1
-        currentStory = story
-        val snapshotsById = HashMap<Int, PortableCommentItem>(allComments.size)
-        val allSnapshots = ArrayList<PortableCommentItem>(allComments.size)
-        allComments.forEach { comment ->
-            val snapshot = comment.toPortableItem()
-            snapshotsById[comment.id] = snapshot
-            allSnapshots += snapshot
+        val previous = state.value
+        val resultIds = if (rebuildSearch || searchQuery != previous.searchQuery) {
+            searchResults(searchQuery).map(Comment::id)
+        } else {
+            previous.searchResultIds
         }
-        val displayedSnapshots = displayedComments.map { comment ->
-            snapshotsById.getValue(comment.id)
+        val revision = previous.revision + 1
+        currentStory = story
+        portableItemsById.keys.retainAll(commentsById.keys)
+        val allSnapshots = snapshotList(allComments, previous.allComments)
+        val displayedSnapshots = snapshotList(displayedComments, previous.displayedComments)
+        val searchSnapshots = snapshotIds(resultIds, previous.searchResults)
+        val visibleSnapshots = if (rebuildVisibility) {
+            buildVisibleComments(displayedComments).map { item ->
+                PortableVisibleComment(
+                    sourceIndex = item.sourceIndex,
+                    comment = portableItem(item.comment),
+                    hiddenReplyCount = item.hiddenReplyCount,
+                )
+            }
+        } else {
+            refreshVisibleSnapshots(previous.visibleComments)
         }
         val nextState = PortableCommentThreadState(
             story = story?.toSnapshot(),
@@ -263,19 +294,93 @@ class CommentThreadStore {
             commentsByOp = actualCommentsByOp,
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
-            searchResults = results.map { comment -> snapshotsById.getValue(comment.id) },
-            searchResultIds = results.map(Comment::id),
-            visibleComments = visible.map { item ->
-                PortableVisibleComment(
-                    sourceIndex = item.sourceIndex,
-                    comment = snapshotsById.getValue(item.comment.id),
-                    hiddenReplyCount = item.hiddenReplyCount,
-                )
-            },
+            searchResults = searchSnapshots,
+            searchResultIds = resultIds,
+            visibleComments = visibleSnapshots,
             revision = revision,
         )
         mutableState.value = nextState
     }
+
+    private fun snapshotList(
+        comments: List<Comment>,
+        previous: List<PortableCommentItem>,
+    ): List<PortableCommentItem> {
+        if (comments.size == previous.size) comments.forEachIndexed { index, comment ->
+            val item = portableItem(comment)
+            if (previous[index] !== item) {
+                return buildSnapshotList(comments, previous, index, item)
+            }
+        }
+        if (comments.size == previous.size) return previous
+        return comments.mapTo(ArrayList(comments.size), ::portableItem)
+    }
+
+    private fun snapshotIds(
+        ids: List<Int>,
+        previous: List<PortableCommentItem>,
+    ): List<PortableCommentItem> {
+        if (ids.size == previous.size) ids.forEachIndexed { index, id ->
+            val item = portableItem(commentsById.getValue(id))
+            if (previous[index] !== item) {
+                return buildSnapshotIdList(ids, previous, index, item)
+            }
+        }
+        if (ids.size == previous.size) return previous
+        return ids.mapTo(ArrayList(ids.size)) { id -> portableItem(commentsById.getValue(id)) }
+    }
+
+    private fun buildSnapshotList(
+        comments: List<Comment>,
+        previous: List<PortableCommentItem>,
+        changedIndex: Int,
+        changedItem: PortableCommentItem,
+    ): List<PortableCommentItem> = ArrayList<PortableCommentItem>(comments.size).apply {
+        addAll(previous.subList(0, changedIndex))
+        add(changedItem)
+        for (index in changedIndex + 1 until comments.size) add(portableItem(comments[index]))
+    }
+
+    private fun buildSnapshotIdList(
+        ids: List<Int>,
+        previous: List<PortableCommentItem>,
+        changedIndex: Int,
+        changedItem: PortableCommentItem,
+    ): List<PortableCommentItem> = ArrayList<PortableCommentItem>(ids.size).apply {
+        addAll(previous.subList(0, changedIndex))
+        add(changedItem)
+        for (index in changedIndex + 1 until ids.size) {
+            add(portableItem(commentsById.getValue(ids[index])))
+        }
+    }
+
+    private fun refreshVisibleSnapshots(
+        previous: List<PortableVisibleComment>,
+    ): List<PortableVisibleComment> {
+        previous.forEachIndexed { index, visible ->
+            val item = portableItem(commentsById.getValue(visible.comment.id))
+            if (item !== visible.comment) {
+                return ArrayList<PortableVisibleComment>(previous.size).apply {
+                    addAll(previous.subList(0, index))
+                    add(visible.copy(comment = item))
+                    for (remainingIndex in index + 1 until previous.size) {
+                        val remaining = previous[remainingIndex]
+                        val remainingItem = portableItem(
+                            commentsById.getValue(remaining.comment.id),
+                        )
+                        add(
+                            if (remainingItem === remaining.comment) remaining
+                            else remaining.copy(comment = remainingItem),
+                        )
+                    }
+                }
+            }
+        }
+        return previous
+    }
+
+    private fun portableItem(comment: Comment): PortableCommentItem =
+        portableItemsById.getOrPut(comment.id) { comment.toPortableItem() }
 
     private fun Comment.toPortableItem(): PortableCommentItem = PortableCommentItem(
         comment = toSnapshot(),

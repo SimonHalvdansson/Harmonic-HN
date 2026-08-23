@@ -218,9 +218,7 @@ fun HarmonicAppComposition.createCommentsStore(
         summaryRuntime = createStorySummaryRuntime(featureScope),
         hydrateCachedStory = storyCache::hydrateStory,
         loadCachedThread = storyCache::loadStoryPayload,
-        storeCachedThread = { storyId, payload ->
-            storyCache.repository.storeStory(storyId, payload, nowMillis())
-        },
+        storeCachedThread = storyCache::cacheStory,
         publishStoryUpdate = storyUpdates::publish,
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,

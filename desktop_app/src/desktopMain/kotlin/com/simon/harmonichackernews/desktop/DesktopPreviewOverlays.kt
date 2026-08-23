@@ -31,7 +31,7 @@ internal fun DesktopStoryPreviewOverlay(
         tablet = true,
         pageOnScrollWheel = true,
     ) { story, page, cardColor, modifier ->
-        val previewResource = controller.previewResources[story.id]
+        val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }
         val faviconUrl = remember(story.id, story.url, faviconProvider) {
             story.url

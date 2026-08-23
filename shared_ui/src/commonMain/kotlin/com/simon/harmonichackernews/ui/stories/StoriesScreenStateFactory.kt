@@ -65,6 +65,8 @@ object StoriesScreenStateFactory {
             mainStories = state.mainList.items,
             searchStories = state.searchList.items,
             previewResources = state.previewResources,
+            previewVoteLoadingIds = state.previewVoteLoadingIds,
+            previewFavoriteLoadingIds = state.previewFavoriteLoadingIds,
             displaySettings = state.displaySettings,
             typeLabels = state.availableStoryTypes.map { it.label },
             selectedTypeIndex = state.selectedTypeIndex,

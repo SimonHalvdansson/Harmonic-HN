@@ -69,7 +69,7 @@ class NetworkGraph(
     val aiModelCatalogRepository: AiModelCatalogRepository =
         KtorAiModelCatalogRepository(httpClient)
     val openRouterProviderIconRepository: OpenRouterProviderIconRepository =
-        KtorOpenRouterProviderIconRepository(httpClient)
+        KtorOpenRouterProviderIconRepository(httpClient, scope)
     val hackerNewsWebRepository: HackerNewsWebRepository =
         KtorHackerNewsWebRepository(transportClient)
 

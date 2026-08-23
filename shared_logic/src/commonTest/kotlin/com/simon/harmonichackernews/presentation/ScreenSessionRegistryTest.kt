@@ -3,10 +3,26 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class ScreenSessionRegistryTest {
+    @Test
+    fun pendingPreviewActionsSurviveRuntimeOwnerReplacement() {
+        val session = StoriesSessionState()
+        assertTrue(session.beginPreviewAction(42, StoryPreviewActionKind.Vote))
+        val replacementOwnerState = session.previewActionState
+
+        assertEquals(setOf(42), replacementOwnerState.value.voteLoadingIds)
+        assertFalse(session.beginPreviewAction(42, StoryPreviewActionKind.Vote))
+        session.finishPreviewAction(42, StoryPreviewActionKind.Vote)
+
+        assertTrue(replacementOwnerState.value.voteLoadingIds.isEmpty())
+    }
+
     @Test
     fun commentsSessionChangesWithNavigationKeyAndRetainsPerStoryScrollProgress() {
         val registry = ScreenSessionRegistry()
@@ -43,6 +59,18 @@ class ScreenSessionRegistryTest {
 
         assertSame(registry.stories, registry.stories)
         kotlin.test.assertEquals("kmp", registry.stories.lastSearch)
+    }
+
+    @Test
+    fun commentScrollProgressRetentionIsLruBounded() {
+        val registry = ScreenSessionRegistry(maxRetainedCommentScrollProgresses = 2)
+        val first = registry.commentsStateFor(key = 1, storyId = 1).scrollProgress
+        val second = registry.commentsStateFor(key = 2, storyId = 2).scrollProgress
+
+        assertSame(first, registry.commentsStateFor(key = 3, storyId = 1).scrollProgress)
+        registry.commentsStateFor(key = 4, storyId = 3)
+
+        assertNotSame(second, registry.commentsStateFor(key = 5, storyId = 2).scrollProgress)
     }
 
     private class FakeAlgoliaRepository : AlgoliaRepository {

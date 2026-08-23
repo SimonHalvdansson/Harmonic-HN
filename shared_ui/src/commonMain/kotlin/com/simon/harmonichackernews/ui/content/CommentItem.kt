@@ -272,25 +272,25 @@ fun CommentItem(
         (effectiveDepth > 0 || showTopLevelIndicator)
     val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
         .coerceAtLeast(0) % CommentDepthColors.size
-    val references = remember(comment.expandedAnchorText, style.collectLinks) {
-        if (style.collectLinks) CollectedReferenceLinks.parse(comment.expandedAnchorText) else null
+    val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
+    val renderModel = remember(
+        comment.id,
+        comment.expandedAnchorText,
+        style.collectLinks,
+    ) {
+        CommentRenderModelCache.get(
+            commentId = comment.id,
+            expandedHtml = comment.expandedAnchorText,
+            collectLinks = style.collectLinks,
+        )
     }
-    val contentBlocks = remember(references, comment.expandedAnchorText) {
-        references
-            ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
-            ?.contentBlocks
-            ?: listOf(CollectedReferenceLinks.ContentBlock.text(comment.expandedAnchorText))
-    }
+    val references = renderModel.references
+    val contentBlocks = renderModel.contentBlocks
     val hasInterleavedReferences = references?.hasInterleavedLinks() == true
     val firstReferenceIndex = contentBlocks.indexOfFirst { it.getLink() != null }
     val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
-    val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
-    val hiddenPreview = remember(comment.text, textCollapsed) {
-        if (textCollapsed) {
-            Ksoup.parse(comment.text.orEmpty().take(240)).text().replace('\n', ' ').take(120)
-        } else {
-            null
-        }
+    val hiddenPreview = remember(comment.id, comment.text, textCollapsed) {
+        collapsedCommentPreview(comment.id, comment.text, textCollapsed)
     }
 
     val top = if (style.cardStyle) {
@@ -887,7 +887,7 @@ fun htmlAnnotatedString(
     linkColor: Color,
     linkListener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
-    val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
+    val document = CommentHtmlDocumentCache.get(html)
     val rendered = buildAnnotatedString {
         document.body().childNodes().forEach { node ->
             appendHtmlNode(node, linkColor, linkListener)
@@ -957,7 +957,7 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
     return subSequence(start, end)
 }
 
-private fun preserveLegacyCommentParagraphSpacing(html: String): String = html
+internal fun preserveLegacyCommentParagraphSpacing(html: String): String = html
     .replace(formattedCommentParagraphStartPattern, "<br><br>")
     .replace(commentParagraphStartPattern, "<br><br>")
     .replace(commentParagraphBoundaryPattern, "</p><br><p")

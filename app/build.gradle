@@ -102,11 +102,6 @@ android {
     }
 
     sourceSets {
-        main {
-            // Web content is a cross-platform feature; Android exposes the common resource bundle
-            // through AssetManager for WebView's synchronous script/page loading APIs.
-            assets.srcDir("../shared_resources/src/commonMain/composeResources/files/web")
-        }
         debug {
             kotlin.srcDirs += "src/foss/java"
         }
@@ -195,6 +190,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 baselineProfile {

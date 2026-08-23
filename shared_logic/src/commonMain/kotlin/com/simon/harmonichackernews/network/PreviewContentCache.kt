@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.settings.KeyValueStore
+import kotlin.time.Clock
 
 data class CachedPreviewImageUrl(
     val loaded: Boolean,
@@ -19,6 +20,8 @@ class PreviewContentCache(
     private val stableHash: (String) -> String = StableHash::sha256Hex,
     private val maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
     private val maxSummaryEntries: Int = 300,
+    private val negativeImageTtlMillis: Long = PreviewCachePolicy.NEGATIVE_IMAGE_TTL_MILLIS,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val summaries = mutableMapOf<String, LinkSummary>()
     private val cacheOrders = mutableMapOf<String, List<String>>()
@@ -30,8 +33,14 @@ class PreviewContentCache(
     ): CachedPreviewImageUrl {
         if (store == null || entryId.isNullOrEmpty()) return CachedPreviewImageUrl(false, null)
         val imageUrl = store.getString(previewImageUrlKey(entryId), null)
-        val loaded = store.getBoolean(previewImageLoadedKey(entryId), false) ||
+        var loaded = store.getBoolean(previewImageLoadedKey(entryId), false) ||
             !imageUrl.isNullOrEmpty()
+        if (loaded && imageUrl.isNullOrEmpty()) {
+            val cachedAt = store.getLong(previewImageMissTimeKey(entryId), 0L)
+            val now = nowMillis()
+            loaded = cachedAt > 0L && now >= cachedAt && now - cachedAt <= negativeImageTtlMillis
+            if (!loaded) invalidatePreviewImage(store, entryId)
+        }
         if (updateCacheOrder && loaded) touch(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, entryId)
         return CachedPreviewImageUrl(loaded, imageUrl)
     }
@@ -39,17 +48,42 @@ class PreviewContentCache(
     fun savePreviewImage(store: KeyValueStore?, entryId: String?, imageUrl: String?) {
         if (store == null || entryId.isNullOrEmpty()) return
         val orderUpdate = orderUpdate(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, entryId)
-        store.putBoolean(previewImageLoadedKey(entryId), true)
-        if (imageUrl.isNullOrEmpty()) {
-            store.remove(previewImageUrlKey(entryId))
-        } else {
-            store.putString(previewImageUrlKey(entryId), imageUrl)
+        store.update {
+            putBoolean(previewImageLoadedKey(entryId), true)
+            if (imageUrl.isNullOrEmpty()) {
+                remove(previewImageUrlKey(entryId))
+                putLong(previewImageMissTimeKey(entryId), nowMillis())
+            } else {
+                putString(previewImageUrlKey(entryId), imageUrl)
+                remove(previewImageMissTimeKey(entryId))
+            }
+            orderUpdate.evicted.forEach { oldestId ->
+                remove(previewImageUrlKey(oldestId))
+                remove(previewImageLoadedKey(oldestId))
+                remove(previewImageMissTimeKey(oldestId))
+            }
+            putString(
+                PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
+                PreviewCachePolicy.encodeOrder(orderUpdate.order),
+            )
         }
-        orderUpdate.evicted.forEach { oldestId ->
-            store.remove(previewImageUrlKey(oldestId))
-            store.remove(previewImageLoadedKey(oldestId))
+        cacheOrders[PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY] = orderUpdate.order.toList()
+    }
+
+    fun invalidatePreviewImage(store: KeyValueStore?, entryId: String?) {
+        if (store == null || entryId.isNullOrEmpty()) return
+        val order = readOrder(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY)
+            .filter { it != entryId }
+        store.update {
+            remove(previewImageUrlKey(entryId))
+            remove(previewImageLoadedKey(entryId))
+            remove(previewImageMissTimeKey(entryId))
+            putString(
+                PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
+                PreviewCachePolicy.encodeOrder(order),
+            )
         }
-        writeOrder(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, orderUpdate.order)
+        cacheOrders[PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY] = order
     }
 
     fun loadLinkSummary(store: KeyValueStore?, normalizedUrl: String?): LinkSummary? {
@@ -118,6 +152,9 @@ class PreviewContentCache(
 
     private fun previewImageLoadedKey(entryId: String): String =
         PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX + entryId
+
+    private fun previewImageMissTimeKey(entryId: String): String =
+        PreviewCachePolicy.PREVIEW_IMAGE_MISS_TIME_PREFIX + entryId
 
     private fun linkSummaryKey(normalizedUrl: String): String =
         PreviewCachePolicy.LINK_SUMMARY_PREFIX + stableHash(normalizedUrl)

@@ -5,7 +5,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 
 class DownloadTransferTest {
     @Test
@@ -141,6 +145,62 @@ class DownloadTransferTest {
     }
 
     @Test
+    fun transferUsesOneSinkWriteSession() = runTest {
+        val client = TransferClient {
+            FakeTransferResponse(
+                statusCode = 200,
+                body = ByteArrayTransferBody(byteArrayOf(1, 2, 3)),
+                contentLength = 3,
+            )
+        }
+        val sink = RecordingSink()
+
+        HttpTransferEngine(client).transfer(
+            request = TransferRequest("https://example.com/file"),
+            sink = sink,
+            options = TransferOptions(maxTotalBytes = 3),
+        )
+
+        assertEquals(1, sink.writeSessions)
+    }
+
+    @Test
+    fun cancellationStillCompletesSuspendingSinkAbort() = runTest {
+        val bodyStarted = CompletableDeferred<Unit>()
+        val client = TransferClient {
+            FakeTransferResponse(
+                statusCode = 200,
+                body = object : TransferBody {
+                    override suspend fun read(
+                        buffer: ByteArray,
+                        offset: Int,
+                        length: Int,
+                    ): Int {
+                        bodyStarted.complete(Unit)
+                        awaitCancellation()
+                    }
+                },
+                contentLength = -1,
+            )
+        }
+        val sink = RecordingSink(suspendOnAbort = true)
+
+        val transfer = launch {
+            HttpTransferEngine(client).transfer(
+                request = TransferRequest("https://example.com/file"),
+                sink = sink,
+                options = TransferOptions(maxTotalBytes = 3),
+            )
+        }
+        bodyStarted.await()
+
+        transfer.cancel()
+        transfer.join()
+
+        assertTrue(sink.aborted)
+    }
+
+    @Test
     fun cachePolicyExpiresOversizedOldAndStaleTemporaryFiles() {
         val policy = DownloadCachePolicy(
             maxFileBytes = 100,
@@ -177,11 +237,19 @@ class DownloadTransferTest {
         override fun close() = Unit
     }
 
-    private class RecordingSink : DownloadSink {
+    private class RecordingSink(
+        private val suspendOnAbort: Boolean = false,
+    ) : DownloadSink {
         override val reference: String = "temporary"
         val bytes = mutableListOf<Byte>()
         var closed = false
         var aborted = false
+        var writeSessions = 0
+
+        override suspend fun <T> writeSession(block: suspend () -> T): T {
+            writeSessions++
+            return block()
+        }
 
         override suspend fun write(buffer: ByteArray, offset: Int, length: Int) {
             repeat(length) { bytes += buffer[offset + it] }
@@ -192,6 +260,7 @@ class DownloadTransferTest {
         }
 
         override suspend fun abort() {
+            if (suspendOnAbort) yield()
             aborted = true
         }
     }

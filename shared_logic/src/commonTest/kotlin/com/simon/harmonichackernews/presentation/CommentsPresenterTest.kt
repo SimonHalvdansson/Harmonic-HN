@@ -358,6 +358,84 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun failedOptimisticStartClearsLoadingAndAllowsRetry() = runTest {
+        val store = MemoryKeyValueStore(failWrites = true)
+        val actions = SavedItemActionUseCase(
+            repository = SavedItemsRepository(store),
+            nowMillis = { 0L },
+            voteRequest = { _, _ -> HackerNewsActionResult.Success() },
+            favoriteRequest = { _, _ -> HackerNewsActionResult.Success() },
+        )
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            actions,
+            UnusedVotingService,
+        )
+        val effects = async { presenter.effects.take(4).toList() }
+        runCurrent()
+
+        presenter.dispatch(CommentsAction.ToggleStoryVote(itemId = 42, isComment = false))
+        runCurrent()
+        assertFalse(presenter.state.value.storyVoteLoading)
+        store.failWrites = false
+
+        presenter.dispatch(CommentsAction.ToggleStoryVote(itemId = 42, isComment = false))
+        runCurrent()
+
+        val emitted = effects.await()
+        assertIs<CommentsEffect.SavedItemActionStartFailed>(emitted[1])
+        assertIs<CommentsEffect.SavedItemActionCompleted>(emitted[3])
+        assertTrue(actions.isUpvoted(42, false))
+        assertFalse(presenter.state.value.storyVoteLoading)
+    }
+
+    @Test
+    fun commentVotesForDifferentItemsAreNotSilentlyDropped() = runTest {
+        val firstResult = CompletableDeferred<HackerNewsActionResult>()
+        val secondResult = CompletableDeferred<HackerNewsActionResult>()
+        val actions = SavedItemActionUseCase(
+            repository = SavedItemsRepository(MemoryKeyValueStore()),
+            nowMillis = { 0L },
+            voteRequest = { itemId, _ ->
+                if (itemId == 1) firstResult.await() else secondResult.await()
+            },
+            favoriteRequest = { _, _ -> HackerNewsActionResult.Success() },
+        )
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            actions,
+            UnusedVotingService,
+        )
+
+        presenter.dispatch(CommentsAction.VoteComment(1, "up", previousDownvoted = false))
+        runCurrent()
+        presenter.dispatch(CommentsAction.VoteComment(2, "up", previousDownvoted = false))
+        runCurrent()
+
+        assertEquals(2, presenter.state.value.commentVoteLoadingId)
+        assertTrue(actions.isUpvoted(1, true))
+        assertTrue(actions.isUpvoted(2, true))
+        secondResult.complete(HackerNewsActionResult.Success())
+        runCurrent()
+        assertEquals(1, presenter.state.value.commentVoteLoadingId)
+        firstResult.complete(HackerNewsActionResult.Success())
+        runCurrent()
+        assertEquals(-1, presenter.state.value.commentVoteLoadingId)
+    }
+
+    @Test
     fun pollVoteRuntimeOwnsInFlightStateDuplicateSuppressionAndFailureOutcome() = runTest {
         val voting = RecordingVotingService()
         val session = CommentsSessionState()
@@ -420,6 +498,36 @@ class CommentsPresenterTest {
 
         assertIs<PollVoteOutcome.Success>(completed.await().outcome)
         assertEquals(listOf("9" to "up"), voting.requests)
+        assertEquals(null, presenter.state.value.pollVoteInFlightOptionId)
+    }
+
+    @Test
+    fun cancelledPollVoteCannotClearANewerVoteSpinner() = runTest {
+        val voting = RecordingVotingService()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            voting,
+        )
+
+        presenter.dispatch(CommentsAction.VotePollOption(7))
+        runCurrent()
+        presenter.dispatch(CommentsAction.CancelPollVote)
+        presenter.dispatch(CommentsAction.VotePollOption(8))
+        assertEquals(8, presenter.state.value.pollVoteInFlightOptionId)
+
+        runCurrent()
+
+        assertEquals(8, presenter.state.value.pollVoteInFlightOptionId)
+        assertEquals(listOf("7" to "up", "8" to "up"), voting.requests)
+        voting.result.complete(HackerNewsActionResult.Success())
+        runCurrent()
         assertEquals(null, presenter.state.value.pollVoteInFlightOptionId)
     }
 
@@ -490,12 +598,17 @@ class CommentsPresenterTest {
         favoriteRequest = { _, _ -> result ?: error("Not used") },
     )
 
-    private class MemoryKeyValueStore : KeyValueStore {
+    private class MemoryKeyValueStore(
+        var failWrites: Boolean = false,
+    ) : KeyValueStore {
         private val values = mutableMapOf<String, Any?>()
         override fun contains(key: String) = key in values
         override fun remove(key: String) { values.remove(key) }
         override fun getString(key: String, default: String?) = values[key] as? String ?: default
-        override fun putString(key: String, value: String?) { values[key] = value }
+        override fun putString(key: String, value: String?) {
+            if (failWrites) error("Write failed")
+            values[key] = value
+        }
         override fun getBoolean(key: String, default: Boolean) = values[key] as? Boolean ?: default
         override fun putBoolean(key: String, value: Boolean) { values[key] = value }
         override fun getInt(key: String, default: Int) = values[key] as? Int ?: default

@@ -21,12 +21,28 @@ interface StoryCacheFileStore {
 
 /** Metadata port kept separate because existing Android data lives in SharedPreferences. */
 interface StoryCacheMetadataStore {
+    interface Editor {
+        fun putString(key: String, value: String?)
+        fun remove(key: String)
+        fun putStringSet(key: String, value: Set<String>)
+    }
+
     fun getString(key: String): String?
     fun putString(key: String, value: String?)
     fun remove(key: String)
     fun getStringSet(key: String): Set<String>
     fun putStringSet(key: String, value: Set<String>)
     fun keys(): Set<String>
+
+    fun update(block: Editor.() -> Unit) {
+        val target = this
+        block(object : Editor {
+            override fun putString(key: String, value: String?) = target.putString(key, value)
+            override fun remove(key: String) = target.remove(key)
+            override fun putStringSet(key: String, value: Set<String>) =
+                target.putStringSet(key, value)
+        })
+    }
 }
 
 /** Non-persistent cache storage used by previews and hosts that have not supplied a filesystem. */
@@ -88,6 +104,29 @@ class InMemoryStoryCacheMetadataStore : StoryCacheMetadataStore {
     }
 
     override fun keys(): Set<String> = strings.keys + sets.keys
+
+    override fun update(block: StoryCacheMetadataStore.Editor.() -> Unit) {
+        val stagedStrings = strings.toMutableMap()
+        val stagedSets = sets.toMutableMap()
+        block(object : StoryCacheMetadataStore.Editor {
+            override fun putString(key: String, value: String?) {
+                if (value == null) stagedStrings.remove(key) else stagedStrings[key] = value
+            }
+
+            override fun remove(key: String) {
+                stagedStrings.remove(key)
+                stagedSets.remove(key)
+            }
+
+            override fun putStringSet(key: String, value: Set<String>) {
+                stagedSets[key] = value.toSet()
+            }
+        })
+        strings.clear()
+        strings.putAll(stagedStrings)
+        sets.clear()
+        sets.putAll(stagedSets)
+    }
 }
 
 object StoryCacheKeys {
@@ -152,8 +191,14 @@ class StoryCacheRepository(
             cachedAtMillis,
             maximumStories,
         )
-        metadata.putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
-        update.evictedStoryIds.forEach(::removeFilesAndArticleMetadata)
+        metadata.update {
+            putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
+            update.evictedStoryIds.forEach { evictedStoryId ->
+                remove(StoryCacheKeys.ARTICLE_URL + evictedStoryId)
+                remove(StoryCacheKeys.ARTICLE_CHARSET + evictedStoryId)
+            }
+        }
+        update.evictedStoryIds.forEach(::removeFiles)
         recentStoryAvailability = null
         return true
     }
@@ -229,11 +274,13 @@ class StoryCacheRepository(
 
     fun remove(storyId: Int) {
         if (storyId <= 0) return
-        metadata.putStringSet(
-            StoryCacheKeys.INDEX,
-            StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId),
-        )
-        removeFilesAndArticleMetadata(storyId)
+        val updatedIndex = StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId)
+        metadata.update {
+            putStringSet(StoryCacheKeys.INDEX, updatedIndex)
+            remove(StoryCacheKeys.ARTICLE_URL + storyId)
+            remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+        }
+        removeFiles(storyId)
         recentStoryAvailability = null
     }
 
@@ -242,14 +289,17 @@ class StoryCacheRepository(
         files.clear(StoryCacheKeys.FULL_NAMESPACE)
         files.clear(StoryCacheKeys.SUMMARY_NAMESPACE)
         files.clear(StoryCacheKeys.ARTICLE_NAMESPACE)
-        metadata.keys().forEach { key ->
+        val cacheMetadataKeys = metadata.keys().filter { key ->
             if (key == StoryCacheKeys.INDEX ||
                 key.startsWith(StoryCacheKeys.ARTICLE_URL) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_CHARSET)
             ) {
-                metadata.remove(key)
+                true
+            } else {
+                false
             }
         }
+        metadata.update { cacheMetadataKeys.forEach { key -> remove(key) } }
         recentStoryAvailability = null
         return count
     }
@@ -276,17 +326,21 @@ class StoryCacheRepository(
 
     fun recordArticleMetadata(storyId: Int, sourceUrl: String, contentType: String?) {
         if (storyId <= 0) return
-        metadata.putString(StoryCacheKeys.ARTICLE_URL + storyId, sourceUrl)
-        metadata.putString(
-            StoryCacheKeys.ARTICLE_CHARSET + storyId,
-            ArticleCacheMetadata.charsetName(contentType),
-        )
+        metadata.update {
+            putString(StoryCacheKeys.ARTICLE_URL + storyId, sourceUrl)
+            putString(
+                StoryCacheKeys.ARTICLE_CHARSET + storyId,
+                ArticleCacheMetadata.charsetName(contentType),
+            )
+        }
     }
 
     fun removeArticleMetadata(storyId: Int) {
         if (storyId <= 0) return
-        metadata.remove(StoryCacheKeys.ARTICLE_URL + storyId)
-        metadata.remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+        metadata.update {
+            remove(StoryCacheKeys.ARTICLE_URL + storyId)
+            remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+        }
     }
 
     fun removeArticle(storyId: Int) {
@@ -309,11 +363,11 @@ class StoryCacheRepository(
         return summary
     }
 
-    private fun removeFilesAndArticleMetadata(storyId: Int) {
+    private fun removeFiles(storyId: Int) {
         val storyKey = StoryCacheKeys.storyFile(storyId)
         files.remove(StoryCacheKeys.FULL_NAMESPACE, storyKey)
         files.remove(StoryCacheKeys.SUMMARY_NAMESPACE, storyKey)
-        removeArticle(storyId)
+        files.remove(StoryCacheKeys.ARTICLE_NAMESPACE, StoryCacheKeys.articleFile(storyId))
     }
 
     private companion object {

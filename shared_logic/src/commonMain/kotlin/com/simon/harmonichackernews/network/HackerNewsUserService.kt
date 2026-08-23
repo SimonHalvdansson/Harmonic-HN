@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.network
 
-import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import kotlinx.coroutines.CancellationException
 
 interface HackerNewsAuthenticatedSession {
@@ -31,7 +31,7 @@ fun interface HackerNewsFavoriteService {
 /** Owns credential/session policy while repositories own the HN wire protocol. */
 class HackerNewsUserService(
     private val session: HackerNewsAuthenticatedSession,
-    private val accounts: HackerNewsAccountRepository,
+    private val accounts: ObservableHackerNewsAccountRepository,
 ) : HackerNewsUserItemsLoader, HackerNewsVotingService, HackerNewsFavoriteService {
     suspend fun login(): HackerNewsActionResult {
         val account = readCredentials() ?: return missingCredentials()
@@ -126,6 +126,12 @@ class HackerNewsUserService(
         block: suspend () -> HackerNewsActionResult,
     ): HackerNewsActionResult = try {
         sanitize(block())
+    } catch (error: IndeterminateHackerNewsActionException) {
+        HackerNewsActionResult.Failure(
+            failureSummary,
+            error.cause?.message ?: error.message,
+            HackerNewsActionFailureReason.INDETERMINATE,
+        )
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
@@ -136,12 +142,12 @@ class HackerNewsUserService(
         return accounts.load()
     }
 
-    private fun sanitize(result: HackerNewsActionResult): HackerNewsActionResult {
+    private suspend fun sanitize(result: HackerNewsActionResult): HackerNewsActionResult {
         if (
             result is HackerNewsActionResult.Failure &&
             result.reason == HackerNewsActionFailureReason.INVALID_CREDENTIALS
         ) {
-            accounts.clear()
+            accounts.clearAccount()
         }
         return result
     }

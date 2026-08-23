@@ -151,10 +151,15 @@ class FileDownloadStore(
         private var closed = false
         override val reference: String = path.toString()
 
-        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) = fileOperation {
-            check(!closed) { "Download sink is closed" }
-            val output = sink ?: fileSystem.sink(path).buffered().also { sink = it }
-            output.write(buffer, offset, offset + length)
+        override suspend fun <T> writeSession(block: suspend () -> T): T =
+            withContext(ioDispatcher) { block() }
+
+        override suspend fun write(buffer: ByteArray, offset: Int, length: Int) {
+            fileMutex.withLock {
+                check(!closed) { "Download sink is closed" }
+                val output = sink ?: fileSystem.sink(path).buffered().also { sink = it }
+                output.write(buffer, offset, offset + length)
+            }
         }
 
         override suspend fun close() = fileOperation {
