@@ -17,6 +17,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.SwingUtilities
+import javax.swing.Timer
 
 /** A heavyweight AWT slot whose native NSView owns an actual AppKit WKWebView child. */
 internal class MacWkWebViewCanvas(
@@ -45,12 +46,20 @@ internal class MacWkWebViewCanvas(
     @Volatile
     private var lastSnapshot: DesktopBrowserSnapshot? = null
 
+    @Volatile
+    private var resizeInProgress = false
+
+    private val resizeSettleTimer = Timer(RESIZE_SETTLE_DELAY_MS) {
+        resizeInProgress = false
+        resizeBrowserNow()
+    }.apply { isRepeats = false }
+
     init {
         background = java.awt.Color.WHITE
         addComponentListener(
             object : ComponentAdapter() {
-                override fun componentResized(event: ComponentEvent?) = resizeBrowser()
-                override fun componentMoved(event: ComponentEvent?) = resizeBrowser()
+                override fun componentResized(event: ComponentEvent?) = scheduleBrowserResize()
+                override fun componentMoved(event: ComponentEvent?) = scheduleBrowserResize()
             },
         )
     }
@@ -107,6 +116,11 @@ internal class MacWkWebViewCanvas(
 
     override fun disposeBrowser() {
         if (!disposed.compareAndSet(false, true)) return
+        if (EventQueue.isDispatchThread()) {
+            resizeSettleTimer.stop()
+        } else {
+            EventQueue.invokeLater(resizeSettleTimer::stop)
+        }
         poller.shutdownNow()
         val target = synchronized(stateLock) {
             pendingActions.clear()
@@ -153,14 +167,19 @@ internal class MacWkWebViewCanvas(
             }
             native.harmonic_webview_set_visible(pointer, if (browserVisible) 1 else 0)
             queuedActions.forEach { action -> runNative(native, pointer, action) }
-            resizeBrowser()
             startPolling()
         } catch (error: Throwable) {
             reportError(error)
         }
     }
 
-    private fun resizeBrowser() {
+    private fun scheduleBrowserResize() {
+        if (disposed.get()) return
+        resizeInProgress = true
+        resizeSettleTimer.restart()
+    }
+
+    private fun resizeBrowserNow() {
         val bounds = browserBounds() ?: return
         withHost { native, pointer ->
             native.harmonic_webview_set_frame(
@@ -192,7 +211,7 @@ internal class MacWkWebViewCanvas(
     }
 
     private fun pollSnapshot() {
-        if (disposed.get()) return
+        if (disposed.get() || resizeInProgress) return
         val target = synchronized(stateLock) {
             api?.let { native -> host?.let { pointer -> native to pointer } }
         } ?: return
@@ -257,6 +276,7 @@ internal class MacWkWebViewCanvas(
     }
 
     private companion object {
+        const val RESIZE_SETTLE_DELAY_MS = 100
         const val SNAPSHOT_INTERVAL_MS = 100L
         const val TEXT_BUFFER_BYTES = 64 * 1024
     }

@@ -80,6 +80,7 @@ void *harmonic_webview_create(
             host.webView = webView;
             webView.navigationDelegate = host;
             webView.UIDelegate = host;
+            webView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
             [parent addSubview:webView];
             result = (__bridge_retained void *)host;
         }
@@ -165,7 +166,8 @@ void harmonic_webview_set_frame(
     HarmonicOnMainSync(^{
         WKWebView *webView = HarmonicHost(hostPointer).webView;
         if (webView.superview != nil) {
-            webView.frame = HarmonicFrame(webView.superview, x, top, width, height);
+            NSRect frame = HarmonicFrame(webView.superview, x, top, width, height);
+            if (!NSEqualRects(webView.frame, frame)) webView.frame = frame;
         }
     });
 }
