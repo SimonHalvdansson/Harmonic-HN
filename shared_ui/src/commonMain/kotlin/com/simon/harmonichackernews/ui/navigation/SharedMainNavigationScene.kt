@@ -61,6 +61,7 @@ fun SharedMainNavigationScene(
     stories: @Composable () -> Unit,
     emptyDetail: @Composable () -> Unit,
     comments: @Composable (MainStoryRequest) -> Unit,
+    animateDetailVisibilityChanges: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
@@ -80,16 +81,17 @@ fun SharedMainNavigationScene(
         }
     }
     var animatedStorySerial by remember { mutableIntStateOf(-1) }
+    var emptyDetailAnimationVersion by remember { mutableIntStateOf(0) }
     LaunchedEffect(storyRequest?.serial) {
         val previousRequest = (backStack.lastOrNull() as? SharedCommentsDestination)?.request
-        animatedStorySerial = if (
-            storyRequest != null &&
-            previousRequest != null &&
-            previousRequest.serial != storyRequest.serial
-        ) {
-            storyRequest.serial
-        } else {
-            -1
+        val animation = mainDetailPaneAnimation(
+            previousStorySerial = previousRequest?.serial,
+            nextStorySerial = storyRequest?.serial,
+            animateVisibilityChanges = animateDetailVisibilityChanges,
+        )
+        animatedStorySerial = animation.storySerial ?: -1
+        if (animation.animateEmptyDetail) {
+            emptyDetailAnimationVersion++
         }
         if (storyRequest == null) {
             if (backStack.lastOrNull() is SharedCommentsDestination) backStack.removeLastOrNull()
@@ -102,7 +104,15 @@ fun SharedMainNavigationScene(
     val provider = entryProvider<NavKey> {
         entry<SharedStoriesDestination>(
             metadata = ListDetailSceneStrategy.listPane(
-                detailPlaceholder = { emptyDetail() },
+                detailPlaceholder = {
+                    PaneDetailSwitchIn(
+                        contentKey = emptyDetailAnimationVersion,
+                        animate = emptyDetailAnimationVersion > 0,
+                        initialScale = 1.15f,
+                    ) {
+                        emptyDetail()
+                    }
+                },
             ),
         ) { stories() }
         entry<SharedCommentsDestination>(
@@ -139,6 +149,27 @@ fun SharedMainNavigationScene(
         popTransitionSpec = { mainPopTransition() },
         predictivePopTransitionSpec = { mainPopTransition() },
     )
+}
+
+internal data class MainDetailPaneAnimation(
+    val storySerial: Int? = null,
+    val animateEmptyDetail: Boolean = false,
+)
+
+internal fun mainDetailPaneAnimation(
+    previousStorySerial: Int?,
+    nextStorySerial: Int?,
+    animateVisibilityChanges: Boolean,
+): MainDetailPaneAnimation = when {
+    nextStorySerial != null && previousStorySerial != nextStorySerial ->
+        MainDetailPaneAnimation(
+            storySerial = nextStorySerial.takeIf {
+                previousStorySerial != null || animateVisibilityChanges
+            },
+        )
+    nextStorySerial == null && previousStorySerial != null && animateVisibilityChanges ->
+        MainDetailPaneAnimation(animateEmptyDetail = true)
+    else -> MainDetailPaneAnimation()
 }
 
 /**

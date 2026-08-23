@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -134,6 +135,9 @@ internal fun DesktopCommentsContent(
         DesktopCommentsHost(store, controller, restoring).also { createdHost = it }
     }
     val featureState by host.store.state.collectAsState()
+    val contentInsetRightPx = with(LocalDensity.current) {
+        if (showNavigation) 0 else DesktopWidePaneHorizontalPadding.roundToPx()
+    }
 
     SideEffect { onControllerChanged(host.controller) }
     DisposableEffect(host) {
@@ -143,7 +147,7 @@ internal fun DesktopCommentsContent(
             host.store.close()
         }
     }
-    LaunchedEffect(featureState, host.controller) {
+    LaunchedEffect(featureState, host.controller, contentInsetRightPx) {
         CommentsScreenStateFactory.create(
             featureState,
             CommentsPlatformPresentation(
@@ -153,7 +157,7 @@ internal fun DesktopCommentsContent(
                 showSheetControls = false,
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
-                contentInsetRightPx = 0,
+                contentInsetRightPx = contentInsetRightPx,
             ),
         )?.let(host.controller::updateContent)
     }

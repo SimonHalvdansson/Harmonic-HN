@@ -200,6 +200,7 @@ internal fun DesktopCommentsWebViewScaffold(
     Column(Modifier.fillMaxSize()) {
         DesktopWebViewToolbar(
             showWebsite = showWebsite,
+            storyTitle = controller.story.title,
             session = session,
             onShowWebsite = controller::requestCollapseSheet,
             onShowComments = controller::requestExpandSheet,
@@ -603,6 +604,7 @@ internal class SwtEdgeBrowserCanvas(
 @Composable
 private fun DesktopWebViewToolbar(
     showWebsite: Boolean,
+    storyTitle: String?,
     session: DesktopCommentsWebViewSession,
     onShowWebsite: () -> Unit,
     onShowComments: () -> Unit,
@@ -677,7 +679,12 @@ private fun DesktopWebViewToolbar(
 
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = session.pageTitle ?: session.currentPageUrl,
+                        text = desktopWebViewToolbarTitle(
+                            showWebsite = showWebsite,
+                            storyTitle = storyTitle,
+                            pageTitle = session.pageTitle,
+                            currentPageUrl = session.currentPageUrl,
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelLarge,
@@ -784,6 +791,16 @@ private fun DesktopWebViewToolbar(
             }
         }
     }
+}
+
+internal fun desktopWebViewToolbarTitle(
+    showWebsite: Boolean,
+    storyTitle: String?,
+    pageTitle: String?,
+    currentPageUrl: String,
+): String {
+    val preferredTitle = if (showWebsite) pageTitle else storyTitle
+    return preferredTitle?.takeIf(String::isNotBlank) ?: currentPageUrl
 }
 
 @Composable

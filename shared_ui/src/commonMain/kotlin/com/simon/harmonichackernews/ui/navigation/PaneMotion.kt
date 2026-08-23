@@ -48,10 +48,11 @@ internal fun paneDetailSwitchTransition(): ContentTransform = ContentTransform(
 internal fun PaneDetailSwitchIn(
     contentKey: Any,
     animate: Boolean,
+    initialScale: Float = 0.85f,
     content: @Composable () -> Unit,
 ) {
     key(contentKey) {
-        val scale = remember { Animatable(if (animate) 0.85f else 1f) }
+        val scale = remember { Animatable(if (animate) initialScale else 1f) }
         val alpha = remember { Animatable(if (animate) 0f else 1f) }
 
         LaunchedEffect(Unit) {

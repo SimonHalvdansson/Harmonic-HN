@@ -309,6 +309,7 @@ private fun DesktopAppContent(
                         )
                     },
                     emptyDetail = { EmptyCommentsScreen() },
+                    animateDetailVisibilityChanges = true,
                     comments = { request ->
                         DesktopCommentsContent(
                             app = app,
@@ -397,7 +398,11 @@ private fun DesktopStoriesContent(
     }
     val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
     val currentSplitLayout by rememberUpdatedState(isSplitLayout)
-    val defaultStoryHeightPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    val density = LocalDensity.current
+    val defaultStoryHeightPx = with(density) { 96.dp.roundToPx() }
+    val contentInsetStartPx = with(density) {
+        if (isSplitLayout) DesktopWidePaneHorizontalPadding.roundToPx() else 0
+    }
     val store = remember(app, scene, scope) {
         app.createStoriesStore(
             StoriesFeatureHost(
@@ -467,14 +472,17 @@ private fun DesktopStoriesContent(
                 appSettings.reading.useAlgoliaApi,
         )
     }
-    LaunchedEffect(state, controller) {
+    LaunchedEffect(state, controller, contentInsetStartPx) {
         val lastUpdatedText = state.lastUpdatedMillis?.let { millis ->
             PresentationCopy.lastUpdated(app.platform.timeFormatting.time(millis))
         }
         controller.updateContent(
             StoriesScreenStateFactory.create(
                 state,
-                StoriesPlatformPresentation(lastUpdatedText, contentInsetStartPx = 0),
+                StoriesPlatformPresentation(
+                    lastUpdatedText,
+                    contentInsetStartPx = contentInsetStartPx,
+                ),
             ),
         )
     }
@@ -558,7 +566,11 @@ private fun DesktopSettingsShell(
             navigation = navigation,
             directive = directive,
             isFoldable = false,
-            tabletPaneHorizontalPadding = if (isTwoPane) 24.dp else 0.dp,
+            tabletPaneHorizontalPadding = if (isTwoPane) {
+                DesktopWidePaneHorizontalPadding
+            } else {
+                0.dp
+            },
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
             renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
@@ -583,3 +595,5 @@ private fun DesktopSettingsShell(
         )
     }
 }
+
+internal val DesktopWidePaneHorizontalPadding = 24.dp
