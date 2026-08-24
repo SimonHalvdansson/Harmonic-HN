@@ -783,7 +783,12 @@ private fun StoryMainContent(
                     style = legacyTextStyle,
                 )
             }
-            if (!style.compact) {
+            StoryVisibility(
+                visible = !style.compact,
+                animate = animateChanges,
+                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+            ) {
                 StoryMeta(
                     model = model,
                     style = style,
