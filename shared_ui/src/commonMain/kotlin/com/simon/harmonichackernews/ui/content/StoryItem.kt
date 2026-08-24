@@ -90,6 +90,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import kotlin.math.roundToInt
 
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
@@ -556,6 +557,7 @@ fun StoryItem(
                 }
                 StoryContentRow(
                     commentsOnLeft = style.commentsOnLeft,
+                    animateChanges = animate,
                     comments = comments,
                 ) {
                     StoryMainContent(
@@ -599,22 +601,32 @@ fun StoryItem(
 @Composable
 private fun StoryContentRow(
     commentsOnLeft: Boolean,
+    animateChanges: Boolean,
     comments: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val commentsOnLeftProgress = if (animateChanges) {
+        val animatedProgress by animateFloatAsState(
+            targetValue = if (commentsOnLeft) 1f else 0f,
+            animationSpec = contentTween(),
+            label = "story comments alignment",
+        )
+        animatedProgress
+    } else if (commentsOnLeft) {
+        1f
+    } else {
+        0f
+    }
     Layout(
         modifier = Modifier.fillMaxWidth(),
         content = {
-            if (commentsOnLeft) comments()
             content()
-            if (!commentsOnLeft) comments()
+            comments()
         },
     ) { measurables, constraints ->
         val railWidth = 60.dp.roundToPx().coerceAtMost(constraints.maxWidth)
         val contentWidth = (constraints.maxWidth - railWidth).coerceAtLeast(0)
-        val contentIndex = if (commentsOnLeft) 1 else 0
-        val railIndex = if (commentsOnLeft) 0 else 1
-        val contentPlaceable = measurables[contentIndex].measure(
+        val contentPlaceable = measurables[0].measure(
             constraints.copy(
                 minWidth = contentWidth,
                 maxWidth = contentWidth,
@@ -622,7 +634,7 @@ private fun StoryContentRow(
             ),
         )
         val rowHeight = contentPlaceable.height
-        val railPlaceable = measurables[railIndex].measure(
+        val railPlaceable = measurables[1].measure(
             constraints.copy(
                 minWidth = railWidth,
                 maxWidth = railWidth,
@@ -632,13 +644,10 @@ private fun StoryContentRow(
         )
 
         layout(constraints.maxWidth, rowHeight) {
-            if (commentsOnLeft) {
-                railPlaceable.placeRelative(0, 0)
-                contentPlaceable.placeRelative(railWidth, 0)
-            } else {
-                contentPlaceable.placeRelative(0, 0)
-                railPlaceable.placeRelative(contentWidth, 0)
-            }
+            val contentX = (railWidth * commentsOnLeftProgress).roundToInt()
+            val railX = (contentWidth * (1f - commentsOnLeftProgress)).roundToInt()
+            contentPlaceable.placeRelative(contentX, 0)
+            railPlaceable.placeRelative(railX, 0)
         }
     }
 }
