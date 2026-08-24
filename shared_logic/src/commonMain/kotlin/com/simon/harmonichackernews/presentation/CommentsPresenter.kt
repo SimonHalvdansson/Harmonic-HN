@@ -26,6 +26,7 @@ data class CommentsPresenterState(
     val loaded: Boolean = false,
     val refreshing: Boolean = false,
     val failure: StoryLoadFailure? = null,
+    val usingOfficialApiFallback: Boolean = false,
     val showUpdate: Boolean = false,
     val storyVoteLoading: Boolean = false,
     val storyFavoriteLoading: Boolean = false,
@@ -421,6 +422,7 @@ class CommentsPresenter(
         val storyId = action.story.id
         val topLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
+        publish(usingOfficialApiFallback = false)
         threadLoadJob = scope.launch {
             val preloaded = if (action.useAlgolia) {
                 commentThreadRepository.takePreloadedAlgolia(
@@ -468,6 +470,11 @@ class CommentsPresenter(
                 useAlgolia = action.useAlgolia,
                 filteredUsers = action.filteredUsers,
                 topLevelCommentIds = topLevelCommentIds,
+                onAlgoliaFallback = {
+                    if (threadLoadSession.isCurrent(requestId, storyId)) {
+                        publish(usingOfficialApiFallback = true)
+                    }
+                },
             )
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
@@ -644,6 +651,7 @@ class CommentsPresenter(
         loaded: Boolean = state.value.loaded,
         refreshing: Boolean = state.value.refreshing,
         failure: StoryLoadFailure? = state.value.failure,
+        usingOfficialApiFallback: Boolean = state.value.usingOfficialApiFallback,
         showUpdate: Boolean = state.value.showUpdate,
         storyVoteLoading: Boolean = state.value.storyVoteLoading,
         storyFavoriteLoading: Boolean = state.value.storyFavoriteLoading,
@@ -668,6 +676,7 @@ class CommentsPresenter(
             loaded = loaded,
             refreshing = refreshing,
             failure = failure,
+            usingOfficialApiFallback = usingOfficialApiFallback,
             showUpdate = showUpdate,
             storyVoteLoading = storyVoteLoading,
             storyFavoriteLoading = storyFavoriteLoading,

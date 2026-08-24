@@ -624,9 +624,6 @@ class CommentsFeatureRuntime(
                 if (!presenter.isCurrentThreadLoad(effect.requestId, effect.storyId) ||
                     story?.id != effect.storyId
                 ) return
-                if (effect.usedOfficialFallback) {
-                    platform(CommentsPlatformEffect.ShowMessage("Algolia API failed, using official HN API"))
-                }
                 effect.responseToCache?.let { response ->
                     storeCachedThread(effect.storyId, response)
                 }

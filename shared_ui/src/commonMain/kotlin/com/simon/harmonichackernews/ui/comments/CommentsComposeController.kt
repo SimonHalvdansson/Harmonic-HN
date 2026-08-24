@@ -25,6 +25,7 @@ data class CommentsScreenState(
     val commentsRefreshInProgress: Boolean = false,
     val loadingFailed: Boolean = false,
     val loadingFailedServerError: Boolean = false,
+    val usingOfficialApiFallback: Boolean = false,
     val showUpdate: Boolean = false,
     val lastRefreshed: Long = 0L,
     val commentsByOpFilterActive: Boolean = false,
@@ -77,6 +78,7 @@ class CommentsComposeController private constructor(
     val commentsRefreshInProgress: Boolean get() = screenState.commentsRefreshInProgress
     val loadingFailed: Boolean get() = screenState.loadingFailed
     val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError
+    val usingOfficialApiFallback: Boolean get() = screenState.usingOfficialApiFallback
     val showUpdate: Boolean get() = screenState.showUpdate
     val lastRefreshed: Long get() = screenState.lastRefreshed
     val commentsByOpFilterActive: Boolean get() = screenState.commentsByOpFilterActive

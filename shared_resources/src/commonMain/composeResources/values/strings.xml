@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="common_cancel">Cancel</string>
+    <string name="comments_algolia_fallback">Algolia API down, using official HN API as fallback</string>
     <string name="settings_title">Settings</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_stories">Stories</string>

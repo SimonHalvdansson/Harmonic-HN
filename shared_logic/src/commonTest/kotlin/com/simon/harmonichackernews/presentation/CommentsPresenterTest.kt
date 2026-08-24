@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.network.CommentsPreloadRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
+import com.simon.harmonichackernews.network.HttpStatusException
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -236,6 +237,57 @@ class CommentsPresenterTest {
         assertTrue(applied.networkCompleted)
         assertEquals(response, applied.responseToCache)
         assertTrue(applied.broadcastStoryUpdate)
+    }
+
+    @Test
+    fun algoliaFallbackStateIsPublishedBeforeOfficialApiCompletes() = runTest {
+        val officialStory = CompletableDeferred<Story?>()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = object : AlgoliaRepository {
+                    override suspend fun getSubmissions(userName: String, limit: Int): List<Story> =
+                        error("Not used")
+
+                    override suspend fun search(url: String): List<Story> = error("Not used")
+
+                    override suspend fun getItemJson(id: Int): String =
+                        throw HttpStatusException(503, "Unavailable", "https://hn.algolia.com")
+                },
+                hackerNewsRepository = object : HackerNewsRepository {
+                    override suspend fun getStory(id: Int): Story? = officialStory.await()
+                    override suspend fun getComment(id: Int): Comment? = error("Not used")
+                    override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
+                },
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val story = Story("Loading", 42, false, false)
+
+        presenter.dispatch(
+            CommentsAction.LoadThread(
+                story = story,
+                useAlgolia = true,
+                filteredUsers = emptySet(),
+                sorting = "default",
+                collapseTopLevel = false,
+                previousResponse = null,
+                restoreScrollFromCache = false,
+            ),
+        )
+        runCurrent()
+
+        assertTrue(presenter.state.value.usingOfficialApiFallback)
+        assertFalse(presenter.state.value.loaded)
+
+        officialStory.complete(Story("Official", 42, false, false))
+        runCurrent()
+
+        assertTrue(presenter.state.value.usingOfficialApiFallback)
+        assertTrue(presenter.state.value.loaded)
     }
 
     @Test

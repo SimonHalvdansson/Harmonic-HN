@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -51,9 +52,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
@@ -71,6 +74,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
 private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
@@ -324,7 +328,18 @@ fun SharedCommentsScreen(
             state = listState,
             contentPadding = PaddingValues(bottom = bottomPadding),
             headerKey = "header",
-            header = headerContent,
+            header = {
+                Column {
+                    headerContent()
+                    AnimatedVisibility(
+                        visible = controller.usingOfficialApiFallback,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        AlgoliaFallbackNotice()
+                    }
+                }
+            },
         ) { _, item ->
                 val tag = item.comment.by?.lowercase()?.trim()?.let(userTags::get)
                 val suppressed = item.comment.id in controller.suppressedCommentIds
@@ -510,6 +525,36 @@ fun SharedCommentsScreen(
 
     if (controller.searchDialogVisible) searchDialog()
     actionOverlay()
+}
+
+@Composable
+private fun AlgoliaFallbackNotice() {
+    val colors = HarmonicTheme.colors
+    val containerColor = if (colors.background.luminance() > colors.onSurface.luminance()) {
+        colors.surfaceContainerHighest
+    } else {
+        colors.surfaceContainerHigh
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(Res.string.comments_algolia_fallback),
+            color = colors.textSecondary,
+            fontFamily = ProductSansFontFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 16.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(containerColor)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
 }
 
 @Composable

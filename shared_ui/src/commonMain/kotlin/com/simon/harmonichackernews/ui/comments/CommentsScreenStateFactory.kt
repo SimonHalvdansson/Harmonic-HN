@@ -32,6 +32,7 @@ object CommentsScreenStateFactory {
             loadingFailed = state.failure != null,
             loadingFailedServerError = state.failure ==
                 com.simon.harmonichackernews.presentation.StoryLoadFailure.NOT_FOUND,
+            usingOfficialApiFallback = state.usingOfficialApiFallback,
             showUpdate = state.showUpdate,
             lastRefreshed = state.lastLoadedMillis,
             commentsByOpFilterActive = thread.commentsByOp,

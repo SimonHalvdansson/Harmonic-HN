@@ -33,6 +33,7 @@ class CommentThreadRepository(
         useAlgolia: Boolean,
         filteredUsers: Set<String> = emptySet(),
         topLevelCommentIds: List<Int> = emptyList(),
+        onAlgoliaFallback: () -> Unit = {},
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
@@ -50,6 +51,7 @@ class CommentThreadRepository(
             throw error
         } catch (error: Exception) {
             if (error.shouldFallBackToOfficialApi()) {
+                onAlgoliaFallback()
                 loadFromOfficialApi(storyId, filteredUsers, usedAsFallback = true)
             } else {
                 CommentThreadLoadResult.Failure(
