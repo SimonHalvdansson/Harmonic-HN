@@ -777,6 +777,8 @@ private fun StoryMainContent(
             StoryVisibility(
                 visible = style.showSummary && model.summary.isNotBlank(),
                 animate = animateChanges,
+                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
             ) {
                 Text(
                     text = model.summary,
