@@ -35,6 +35,7 @@ object CollectedReferenceLinks {
 
         val nodesToRemove = mutableListOf<Node>()
         val collectedNodes = mutableListOf<CollectedNode>()
+        collectStandaloneAnchorRuns(nodes, collectedNodes, nodesToRemove)
         collectStandaloneLinkNodes(nodes, collectedNodes, nodesToRemove)
         collectTrailingReferenceNodes(nodes, collectedNodes, nodesToRemove)
         if (collectedNodes.isEmpty()) return Result.empty(inputHtml)
@@ -58,6 +59,7 @@ object CollectedReferenceLinks {
         nodesToRemove: MutableList<Node>,
     ) {
         nodes.forEachIndexed { index, node ->
+            if (nodesToRemove.any { it === node }) return@forEachIndexed
             if (isIgnorable(node)) return@forEachIndexed
             val parsedLinks = parseUnnumberedLinkNode(node)
             if (parsedLinks.isEmpty() || !hasStandaloneLineBoundaries(nodes, index, node)) {
@@ -67,6 +69,56 @@ object CollectedReferenceLinks {
             addNodeToRemove(nodesToRemove, node)
         }
     }
+
+    private fun collectStandaloneAnchorRuns(
+        nodes: List<Node>,
+        collectedNodes: MutableList<CollectedNode>,
+        nodesToRemove: MutableList<Node>,
+    ) {
+        var start = 0
+        while (start < nodes.size) {
+            val firstAnchor = (nodes[start] as? Element)?.takeIf(::isAnchorTag)
+            if (firstAnchor == null) {
+                start++
+                continue
+            }
+
+            val links = mutableListOf<ReferenceLink>()
+            parseUnnumberedAnchor(firstAnchor)?.let(links::add)
+            var end = start
+            var position = start + 1
+            while (position < nodes.size) {
+                val candidate = nodes[position]
+                when {
+                    candidate is Element && isAnchorTag(candidate) -> {
+                        val link = parseUnnumberedAnchor(candidate) ?: break
+                        links += link
+                        end = position
+                        position++
+                    }
+                    isInterReferenceSeparatorNode(candidate) -> position++
+                    else -> break
+                }
+            }
+
+            if (
+                links.size > 1 &&
+                hasLineBoundaryBefore(nodes, start) &&
+                hasLineBoundaryAfter(nodes, end)
+            ) {
+                collectedNodes += CollectedNode(start, nodes[start], links)
+                for (nodeIndex in start..end) addNodeToRemove(nodesToRemove, nodes[nodeIndex])
+                start = end + 1
+            } else {
+                start++
+            }
+        }
+    }
+
+    private fun isInterReferenceSeparatorNode(node: Node): Boolean =
+        node is TextNode &&
+            node.getWholeText().isNotEmpty() &&
+            node.getWholeText().all { it.isWhitespace() || it == ',' || it == ';' || it == '|' }
 
     private fun collectTrailingReferenceNodes(
         nodes: List<Node>,

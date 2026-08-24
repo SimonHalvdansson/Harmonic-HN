@@ -50,6 +50,28 @@ class CollectedReferenceLinksTest {
     }
 
     @Test
+    fun commaSeparatedTopLevelAnchorsAreCollectedAsSeparateLinks() {
+        val html =
+            "<a href=\"https:&#x2F;&#x2F;twitter.com&#x2F;cdngdev&#x2F;status&#x2F;2091909073038082139\" " +
+                "rel=\"nofollow\">https:&#x2F;&#x2F;twitter.com&#x2F;cdngdev&#x2F;status&#x2F;" +
+                "2091909073038082139</a>, <a href=\"https:&#x2F;&#x2F;xcancel.com&#x2F;cdngdev&#x2F;" +
+                "status&#x2F;2091909073038082139\" rel=\"nofollow\">https:&#x2F;&#x2F;xcancel.com&#x2F;" +
+                "cdngdev&#x2F;status&#x2F;2091909073038082139</a>"
+
+        val result = CollectedReferenceLinks.parse(html)
+
+        assertEquals(
+            listOf(
+                "https://twitter.com/cdngdev/status/2091909073038082139",
+                "https://xcancel.com/cdngdev/status/2091909073038082139",
+            ),
+            result.links.map { it.url },
+        )
+        assertEquals("", result.bodyHtml)
+        assertEquals(2, result.contentBlocks.count { it.isLink() })
+    }
+
+    @Test
     fun standaloneTopLevelAnchorStillCollectsWhenBoundedByBlocks() {
         val result = CollectedReferenceLinks.parse(
             "<p>Discussion.</p><a href=\"https://example.com/source\">Source</a><p>After.</p>",
