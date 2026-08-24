@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -273,6 +274,7 @@ fun StoryItem(
     style: StoryItemStyle,
     modifier: Modifier = Modifier,
     listItem: Boolean = false,
+    animateChanges: Boolean = !listItem,
     onLinkClick: (() -> Unit)? = null,
     onLinkLongClick: (() -> Unit)? = null,
     onCommentClick: (() -> Unit)? = null,
@@ -289,7 +291,7 @@ fun StoryItem(
         preferredFont = style.preferredFont,
         storyTextSize = style.textSize,
     )
-    val animate = !listItem
+    val animate = animateChanges
     val dimAlpha = if (animate) {
         val animatedDimAlpha by animateFloatAsState(
             targetValue = if (style.dimmed) 0.6f else 1f,
@@ -469,6 +471,16 @@ fun StoryItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(geometryModifier)
+                    .then(
+                        if (animate) {
+                            Modifier.animateContentSize(
+                                animationSpec = contentTween(),
+                                alignment = Alignment.TopStart,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     .then(cardDecorationModifier),
             ) {
                 StoryVisibility(

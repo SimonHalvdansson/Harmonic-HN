@@ -534,6 +534,7 @@ private fun StoriesList(
                             style = style,
                             modifier = itemModifier,
                             listItem = true,
+                            animateChanges = true,
                             onLinkClick = { controller.listener.onLinkClick(story) },
                             onLinkLongClick = {
                                 controller.listener.onStoryLongClick(
