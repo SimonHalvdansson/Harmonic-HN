@@ -500,7 +500,7 @@ fun SettingsCategory(
                     end = HarmonicDimens.settings_list_segment_horizontal_margin,
                     bottom = HarmonicDimens.compose_settings_category_padding_bottom,
                 ),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.textSecondary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
