@@ -1,36 +1,36 @@
 # Agent Guidelines
 
 This repository contains the Kotlin Multiplatform Harmonic for Hacker News app. Android is the
-current production host; iOS and desktop host implementations are in progress. Shared logic and UI
-have automated Kotlin tests, and Android release builds are checked by GitHub Actions.
+current production host; iOS and desktop host implementations are in progress. Core logic and
+Compose UI have automated Kotlin tests, and Android release builds are checked by GitHub Actions.
 
 General tips:
-- `app/` is the Android application shell. Portable application logic belongs in `shared_logic/`,
-  shared Compose UI belongs in `shared_ui/`, portable assets belong in `shared_resources/`, and
+- `app/` is the Android application shell. Portable application logic belongs in `core/`,
+  Compose UI belongs in `ui/`, portable assets belong in `resources/`, and
   `desktop_app/` is the production desktop application host.
 - The in-app changelog lives in `app/src/main/java/com/simon/harmonichackernews/utils/Changelog.java`.
 - Do not update the changelog unless the user explicitly asks for it.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
-- Run focused KMP tests for shared changes. `:shared_logic:desktopTest` and
-  `:shared_ui:desktopTest` execute their respective `commonTest` suites on the desktop JVM target.
+- Run focused KMP tests for portable changes. `:core:desktopTest` and
+  `:ui:desktopTest` execute their respective `commonTest` suites on the desktop JVM target.
 - When adding features or bug fixes, ensure the app compiles with the debug build check below.
 - For tiny, low-risk changes such as text copy, margins, padding, font weight, other simple XML/style tweaks, or Java/Kotlin edits that only swap an existing helper call, adjust a constant, or update straightforward local control flow, do not run `assembleDebug` or `lintDebug` unless the user asks or there is a concrete reason to suspect a compile, build, resource, or API problem. Instead, inspect the diff and mention that the build was intentionally skipped.
 - If Git reports dubious ownership because Codex is running as a sandbox user, use a per-command safe-directory override such as `git -c safe.directory=C:/Users/Simon/Documents/GitHub/Harmonic-HN status --short` instead of changing global Git config.
 
 ## Kotlin Multiplatform Boundaries
 
-- `shared_logic/` targets Android, iOS, and desktop. It owns platform-neutral models, parsing,
+- `core/` targets Android, iOS, and desktop. It owns platform-neutral models, parsing,
   filtering, formatting, repositories, state machines, settings contracts, suspend-first networking,
-  and shared filesystem implementations. Keep `commonMain` free of Android, AndroidX, Foundation,
+  and portable filesystem implementations. Keep `commonMain` free of Android, AndroidX, Foundation,
   and `java.*` APIs.
-- `shared_ui/` targets Android, iOS, and desktop and owns the shared Compose screens and navigation.
+- `ui/` targets Android, iOS, and desktop and owns the Compose screens and navigation.
   Platform source sets should contain only host-specific UI integration.
 - Put platform facilities behind the contracts in
-  `shared_logic/src/commonMain/kotlin/com/simon/harmonichackernews/platform/`; Android
+  `core/src/commonMain/kotlin/com/simon/harmonichackernews/platform/`; Android
   implementations belong in `app/src/main/java/com/simon/harmonichackernews/platform/`, while
-  Apple adapters belong in `shared_logic/src/iosMain/` until a dedicated Xcode host exists.
-- Prefer coroutines and suspend APIs for shared networking. Ktor engines, native directory choices,
+  Apple adapters belong in `core/src/iosMain/` until a dedicated Xcode host exists.
+- Prefer coroutines and suspend APIs for portable networking. Ktor engines, native directory choices,
   credential/keychain access, notifications, intents, native browser views, and background-work
   schedulers stay in platform code.
 - Use `HarmonicPersistentStorageFactory` for production story/article/PDF storage graphs. Hosts
@@ -44,12 +44,12 @@ General tips:
 - iOS must supply `IosPlatformBindings` with an atomic, Keychain-backed
   `HackerNewsAccountRepository`; do not derive account persistence from separate credential reads.
   `IosHostRuntimeBindings` must receive the native files and cache directory paths.
-- `shared_logic/src/commonTest/` and `shared_ui/src/commonTest/` are active test source sets;
-  `shared_logic/src/desktopMain/`, both modules' `iosMain/` directories, and desktop sources are not
+- `core/src/commonTest/` and `ui/src/commonTest/` are active test source sets;
+  `core/src/desktopMain/`, both modules' `iosMain/` directories, and desktop sources are not
   placeholders.
-- After changing shared logic, run `./gradlew :shared_logic:compileCommonMainKotlinMetadata` and
-  `./gradlew :shared_logic:desktopTest`. Compile affected platform adapters with
-  `:shared_logic:compileKotlinIosSimulatorArm64`, `:shared_ui:compileKotlinIosSimulatorArm64`, or
+- After changing core logic, run `./gradlew :core:compileCommonMainKotlinMetadata` and
+  `./gradlew :core:desktopTest`. Compile affected platform adapters with
+  `:core:compileKotlinIosSimulatorArm64`, `:ui:compileKotlinIosSimulatorArm64`, or
   `:desktop_app:compileKotlinDesktop` as applicable, in addition to Android verification below.
 
 ## Icon Guidelines

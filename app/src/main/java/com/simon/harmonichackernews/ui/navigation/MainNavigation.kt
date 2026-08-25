@@ -63,17 +63,17 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.HarmonicSceneViewModel
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.StoriesCoordinator
-import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
+import com.simon.harmonichackernews.ui.comments.AndroidCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
-import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
+import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
-import com.simon.harmonichackernews.ui.comments.SharedCommentsHazeHost
-import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
+import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
-import com.simon.harmonichackernews.ui.common.LoginDialog
+import com.simon.harmonichackernews.ui.common.AndroidLoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.editor.EditorComposeController
@@ -85,14 +85,14 @@ import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsShell
 import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
-import com.simon.harmonichackernews.ui.settings.UserSettingsDialog
-import com.simon.harmonichackernews.ui.settings.WelcomeSettingsDialog
+import com.simon.harmonichackernews.ui.settings.AndroidUserSettingsDialog
+import com.simon.harmonichackernews.ui.settings.AndroidWelcomeSettingsDialog
 import com.simon.harmonichackernews.ui.submissions.SubmissionsCoordinator
-import com.simon.harmonichackernews.ui.submissions.SubmissionsScreen
+import com.simon.harmonichackernews.ui.submissions.AndroidSubmissionsScreen
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
-import com.simon.harmonichackernews.ui.stories.StoriesScreen
-import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
+import com.simon.harmonichackernews.ui.stories.AndroidStoriesScreen
+import com.simon.harmonichackernews.ui.stories.AndroidStoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -919,7 +919,7 @@ private fun MainNavigation(
     }
 
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    SharedHarmonicAppRoot(
+    HarmonicAppRoot(
         navigation = navigationSnapshot,
         transitionOffsetPx = settingsTransitionOffsetPx,
         completedSettingsPredictiveBack = completedSettingsPredictiveBack,
@@ -947,14 +947,14 @@ private fun MainNavigation(
         linkPreview = controller.commentsComposeController
             ?.takeIf { it.linkPreviewOverlay != null }
             ?.let { commentsController ->
-                { CommentLinkPreviewOverlay(commentsController) }
+                { AndroidCommentLinkPreviewOverlay(commentsController) }
             },
         base = {
             if (
                 isTwoPane &&
                 (storyRequest == null || storyParentDestination == MainDestination.STORIES)
             ) {
-                SharedMainNavigationScene(
+                MainNavigationScene(
                     storyRequest = storyRequest,
                     directive = directive,
                     paneProportion = paneProportion,
@@ -980,7 +980,7 @@ private fun MainNavigation(
                     },
                 )
             } else {
-                SharedSinglePaneNavigationScene(
+                SinglePaneNavigationScene(
                     storyRequest = storyRequest,
                     lastStoryRequest = controller.lastStoryRequest,
                     completedPredictivePop = completedPredictivePop,
@@ -1077,7 +1077,7 @@ private fun MainNavigation(
                         DisposableEffect(coordinator) {
                             onDispose(coordinator::close)
                         }
-                        SubmissionsScreen(
+                        AndroidSubmissionsScreen(
                             controller = coordinator.composeController,
                             onBack = controller::closeSubmissions,
                         )
@@ -1149,7 +1149,7 @@ private fun MainNavigation(
         },
         foreground = {
             if (controller.welcomeDialogVisible) {
-            WelcomeSettingsDialog(
+            AndroidWelcomeSettingsDialog(
                 styleChooser = false,
                 onDismiss = controller::dismissWelcomeDialog,
             )
@@ -1174,7 +1174,7 @@ private fun MainNavigation(
         }
 
         if (controller.loginDialogVisible) {
-            LoginDialog(
+            AndroidLoginDialog(
                 onDismiss = controller::dismissLoginDialog,
             )
         }
@@ -1191,7 +1191,7 @@ private fun MainNavigation(
 
         controller.userRequest?.let { request ->
             key(request.serial) {
-                UserSettingsDialog(
+                AndroidUserSettingsDialog(
                     userName = request.userName,
                     onDismiss = controller::dismissUserDialog,
                     onTagChanged = controller::notifyUserTagChanged,
@@ -1239,7 +1239,7 @@ private fun StoriesPane(
 ) {
     Box(Modifier.fillMaxSize()) {
         val storiesController = controller.storiesComposeController
-        storiesController?.let { StoriesScreen(it) }
+        storiesController?.let { AndroidStoriesScreen(it) }
         if (drawStatusBarProtection) {
             StatusBarProtection(
                 color = statusBarColor,
@@ -1248,7 +1248,7 @@ private fun StoriesPane(
         }
         storiesController
             ?.takeIf { it.storyPreviewOverlay != null }
-            ?.let { StoryPreviewOverlay(it) }
+            ?.let { AndroidStoryPreviewOverlay(it) }
     }
 }
 
@@ -1294,7 +1294,7 @@ private fun CommentsPane(
         }
     }
     coordinator?.let { activeCoordinator ->
-        SharedCommentsHazeHost {
+        CommentsHazeHost {
             Box(Modifier.fillMaxSize()) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
@@ -1319,7 +1319,7 @@ private fun CommentsPane(
                         )
                     }
                     if (showFloatingUpButton) {
-                        SharedCommentsUpButton(
+                        CommentsUpButton(
                             onClick = controller::closeStory,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
@@ -1330,7 +1330,7 @@ private fun CommentsPane(
                     }
                     commentsController.displaySettings?.let { settings ->
                         Box(Modifier.fillMaxSize().zIndex(102f)) {
-                            CommentActionOverlay(commentsController, settings)
+                            AndroidCommentActionOverlay(commentsController, settings)
                         }
                     }
                 }

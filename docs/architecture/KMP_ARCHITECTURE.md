@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the Compose Multiplatform migration. New shared features should follow this model;
+Accepted for the Compose Multiplatform migration. New portable features should follow this model;
 existing features move to it one vertical slice at a time.
 
 ## Goals
@@ -11,7 +11,7 @@ existing features move to it one vertical slice at a time.
 - Give every mutable value one clear owner.
 - Let multiple scenes or windows share repositories without sharing navigation or screen state.
 - Expose immutable, observable state to Compose and native hosts.
-- Keep native facilities behind small ports and execute them only after shared code has decided what
+- Keep native facilities behind small ports and execute them only after core code has decided what
   should happen.
 
 ## Ownership
@@ -91,7 +91,7 @@ Rules:
 ## Platform boundaries
 
 `commonMain` owns domain models, repositories, feature stores, navigation policy, settings
-semantics, and shared Compose UI. Hosts own facilities whose implementation is genuinely native:
+semantics, and Compose UI. Hosts own facilities whose implementation is genuinely native:
 
 - Ktor engines and native network/cache integration;
 - encrypted credentials and Keychain/Keystore access;

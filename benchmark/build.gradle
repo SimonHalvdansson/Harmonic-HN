@@ -30,9 +30,9 @@ baselineProfile {
 }
 
 dependencies {
-    implementation(project(":shared_logic"))
-    implementation(project(":shared_resources"))
-    implementation(project(":shared_ui"))
+    implementation(project(":core"))
+    implementation(project(":resources"))
+    implementation(project(":ui"))
     implementation(libs.coil)
     implementation(libs.compose.multiplatform.ui)
     implementation(libs.kmpalette.core)

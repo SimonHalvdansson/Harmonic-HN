@@ -1,5 +1,5 @@
 import UIKit
-import HarmonicShared
+import HarmonicKit
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {

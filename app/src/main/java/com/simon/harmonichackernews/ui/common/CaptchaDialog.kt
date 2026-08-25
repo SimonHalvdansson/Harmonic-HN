@@ -101,7 +101,7 @@ fun CaptchaDialog(
         }
     }
 
-    SharedCaptchaDialogLayout(
+    CaptchaDialogLayout(
         loading = loading,
         error = error,
         onDismiss = onDismiss,
@@ -132,7 +132,7 @@ fun CaptchaDialog(
 @Composable
 private fun CaptchaDialogPreview() {
     HarmonicTheme {
-        SharedCaptchaDialogLayout(
+        CaptchaDialogLayout(
             loading = false,
             error = null,
             onDismiss = {},

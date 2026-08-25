@@ -96,7 +96,7 @@ kotlin {
 
 dependencies {
     implementation project(":app")
-    implementation project(":shared_logic")
+    implementation project(":core")
     debugLLMImplementation(libs.litertlm)
     debugLLMFastImplementation(libs.litertlm)
     playReleaseImplementation(libs.litertlm)

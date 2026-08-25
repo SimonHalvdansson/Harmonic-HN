@@ -54,14 +54,14 @@ import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
-import com.simon.harmonichackernews.ui.navigation.SharedHarmonicAppRoot
-import com.simon.harmonichackernews.ui.navigation.SharedMainNavigationScene
-import com.simon.harmonichackernews.ui.navigation.SharedSinglePaneNavigationScene
+import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
+import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
+import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
-import com.simon.harmonichackernews.ui.settings.SharedSettingsNavigationShell
+import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
-import com.simon.harmonichackernews.ui.stories.SharedStoriesRoute
+import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
@@ -282,7 +282,7 @@ private fun DesktopAppContent(
         )
     }
     val isTwoPane = mainDirective.maxHorizontalPartitions > 1
-    SharedHarmonicAppRoot(
+    HarmonicAppRoot(
         navigation = navigation,
         transitionOffsetPx = transitionOffsetPx,
         completedSettingsPredictiveBack = false,
@@ -295,7 +295,7 @@ private fun DesktopAppContent(
             },
         base = {
             if (isTwoPane) {
-                SharedMainNavigationScene(
+                MainNavigationScene(
                     storyRequest = navigation.storyRequest,
                     directive = mainDirective,
                     paneProportion = 0.4f,
@@ -323,7 +323,7 @@ private fun DesktopAppContent(
                     },
                 )
             } else {
-                SharedSinglePaneNavigationScene(
+                SinglePaneNavigationScene(
                     storyRequest = navigation.storyRequest,
                     lastStoryRequest = navigation.lastStoryRequest,
                     completedPredictivePop = false,
@@ -521,7 +521,7 @@ private fun DesktopStoriesContent(
     }
 
     Box(Modifier.fillMaxSize()) {
-        SharedStoriesRoute(
+        StoriesRoute(
             controller = controller,
             tintStore = app.storyResourceTints,
             commentText = { AnnotatedString(it) },
@@ -560,7 +560,7 @@ private fun DesktopSettingsShell(
     // the scene machinery at the breakpoint; the navigation store stays outside this key so the
     // selected section and detail stack survive both directions of the layout change.
     key(isTwoPane) {
-        SharedSettingsNavigationShell(
+        SettingsNavigationShell(
             navigation = navigation,
             directive = directive,
             isFoldable = false,

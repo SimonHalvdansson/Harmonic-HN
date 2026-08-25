@@ -7,7 +7,7 @@ on:
 
 jobs:
   verify:
-    name: Shared and host tests
+    name: KMP and host tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -18,14 +18,14 @@ jobs:
           cache: 'gradle'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-      - name: Run shared, Android host, and desktop tests
+      - name: Run KMP, Android host, and desktop tests
         run: >-
           ./gradlew
-          :shared_resources:verifyGeneratedAdblocklist
-          :shared_logic:desktopTest
-          :shared_logic:testAndroidHostTest
-          :shared_ui:desktopTest
-          :shared_ui:testAndroidHostTest
+          :resources:verifyGeneratedAdblocklist
+          :core:desktopTest
+          :core:testAndroidHostTest
+          :ui:desktopTest
+          :ui:testAndroidHostTest
           :desktop_app:desktopTest
           :app:testDebugUnitTest
           --warning-mode all
@@ -166,8 +166,8 @@ jobs:
       - name: Run iOS KMP tests
         run: >-
           ./gradlew
-          :shared_logic:iosSimulatorArm64Test
-          :shared_ui:iosSimulatorArm64Test
+          :core:iosSimulatorArm64Test
+          :ui:iosSimulatorArm64Test
           --warning-mode all
           --no-daemon
           --parallel

@@ -6,8 +6,8 @@ import androidx.compose.ui.text.TextStyle
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
-import com.simon.harmonichackernews.ui.stories.SharedStoryPreviewCard
-import com.simon.harmonichackernews.ui.stories.SharedStoryPreviewOverlay
+import com.simon.harmonichackernews.ui.stories.StoryPreviewCard
+import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSummaryState
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -26,7 +26,7 @@ internal fun DesktopStoryPreviewOverlay(
     val bookmarksEnabled = app.userSettings.general.bookmarksEnabled
     val faviconProvider = app.userSettings.story.faviconProvider
 
-    SharedStoryPreviewOverlay(
+    StoryPreviewOverlay(
         controller = controller,
         tablet = true,
         pageOnScrollWheel = true,
@@ -40,7 +40,7 @@ internal fun DesktopStoryPreviewOverlay(
                     runCatching { FaviconUrlBuilder.faviconUrl(url, faviconProvider) }.getOrNull()
                 }
         }
-        SharedStoryPreviewCard(
+        StoryPreviewCard(
             controller = controller,
             story = story,
             page = page,

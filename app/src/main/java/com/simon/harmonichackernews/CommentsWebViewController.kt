@@ -84,7 +84,7 @@ import com.simon.harmonichackernews.ui.theme.harmonicColors
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
-import com.simon.harmonichackernews.cache.SharedStoryCacheService
+import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.ByteArrayInputStream
@@ -104,7 +104,7 @@ internal class CommentsWebViewController(
     private val story: Story?,
     private val linkPreviewController: LinkPreviewController,
     webContentRuntime: WebContentRuntime,
-    private val storyCache: SharedStoryCacheService,
+    private val storyCache: StoryCacheService,
     private val pdfDownloads: PdfDownloadService,
     private val coroutineScope: CoroutineScope,
     private val callbacks: Callbacks

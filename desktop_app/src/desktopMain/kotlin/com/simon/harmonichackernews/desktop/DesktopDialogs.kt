@@ -20,12 +20,12 @@ import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
 import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
-import com.simon.harmonichackernews.ui.common.SharedLoginDialog
+import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
-import com.simon.harmonichackernews.ui.settings.SharedUserSettingsDialog
-import com.simon.harmonichackernews.ui.settings.SharedUserTagRoute
+import com.simon.harmonichackernews.ui.settings.UserSettingsDialog
+import com.simon.harmonichackernews.ui.settings.UserTagRoute
 import com.simon.harmonichackernews.ui.settings.UserDialogUiState
 import com.simon.harmonichackernews.ui.settings.UserInfoUi
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
@@ -60,7 +60,7 @@ internal fun BoxScope.DesktopAppForeground(
         )
     }
     if (navigation.loginDialogVisible) {
-        SharedLoginDialog(
+        LoginDialog(
             onDismiss = scene.navigation::dismissLoginDialog,
             workflow = app.login,
             onLoginSucceeded = {
@@ -181,7 +181,7 @@ internal fun DesktopUserProfileDialog(
             ),
         )
     }
-    SharedUserSettingsDialog(
+    UserSettingsDialog(
         requestedUserName = userName,
         state = state,
         tag = currentTag,
@@ -203,7 +203,7 @@ internal fun DesktopUserProfileDialog(
     )
 
     if (tagDialogOpen) {
-        SharedUserTagRoute(
+        UserTagRoute(
             userName = userName,
             currentTag = currentTag,
             onDismiss = { tagDialogOpen = false },

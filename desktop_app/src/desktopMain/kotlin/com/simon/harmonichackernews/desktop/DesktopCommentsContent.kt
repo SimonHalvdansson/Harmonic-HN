@@ -53,17 +53,17 @@ import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
-import com.simon.harmonichackernews.ui.comments.SharedCommentActionOverlay
-import com.simon.harmonichackernews.ui.comments.SharedCommentLinkPreviewOverlay
-import com.simon.harmonichackernews.ui.comments.SharedCommentsHeader
-import com.simon.harmonichackernews.ui.comments.SharedCommentsHazeHost
-import com.simon.harmonichackernews.ui.comments.SharedCommentsRoute
-import com.simon.harmonichackernews.ui.comments.SharedCommentsSearchDialog
-import com.simon.harmonichackernews.ui.comments.SharedCommentsUpButton
-import com.simon.harmonichackernews.ui.comments.SharedHeaderPreviewImage
-import com.simon.harmonichackernews.ui.comments.SharedLinkPreviewShimmer
-import com.simon.harmonichackernews.ui.comments.SharedReferenceCardContent
-import com.simon.harmonichackernews.ui.common.SharedHarmonicTopAppBar
+import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
+import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
+import com.simon.harmonichackernews.ui.comments.CommentsHeader
+import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.comments.CommentsRoute
+import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
+import com.simon.harmonichackernews.ui.comments.CommentsUpButton
+import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
+import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
+import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
+import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -220,7 +220,7 @@ internal fun DesktopCommentsContent(
     val comments: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
             if (showNavigation && !showFloatingUpButton) {
-                SharedHarmonicTopAppBar(
+                HarmonicTopAppBar(
                     title = "Comments",
                     onBack = onClose,
                     toolbarHeight = 56.dp,
@@ -228,7 +228,7 @@ internal fun DesktopCommentsContent(
                 )
             }
             Box(Modifier.weight(1f)) {
-                SharedCommentsRoute(
+                CommentsRoute(
                     controller = host.controller,
                     reserveUpButtonInset = showFloatingUpButton,
                     pullToRefreshEnabled = false,
@@ -236,7 +236,7 @@ internal fun DesktopCommentsContent(
                         DesktopCommentsHeader(app, scene, host.controller, settings)
                     },
                     searchDialog = { settings ->
-                        SharedCommentsSearchDialog(
+                        CommentsSearchDialog(
                             searchTerm = host.controller.searchQuery,
                             visibleComments = host.controller.searchResults,
                             settings = settings,
@@ -250,7 +250,7 @@ internal fun DesktopCommentsContent(
                         )
                     },
                     actionOverlay = { settings ->
-                        SharedCommentActionOverlay(
+                        CommentActionOverlay(
                             controller = host.controller,
                             settings = settings,
                             hasAccount = app.platform.accounts.load() != null,
@@ -261,7 +261,7 @@ internal fun DesktopCommentsContent(
                     },
                 )
                 if (showFloatingUpButton) {
-                    SharedCommentsUpButton(
+                    CommentsUpButton(
                         onClick = onClose,
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -281,7 +281,7 @@ internal fun DesktopCommentsContent(
             featureState.settings?.reading?.archiveRedirectDomains.orEmpty(),
         )?.loadUrl
     }
-    SharedCommentsHazeHost {
+    CommentsHazeHost {
         if (host.controller.integratedWebView && storyUrl != null) {
             val appearance = app.appearance.selection()
             DesktopCommentsWebViewScaffold(
@@ -393,7 +393,7 @@ private fun DesktopCommentsHeader(
         )
     }
 
-    SharedCommentsHeader(
+    CommentsHeader(
         controller = controller,
         settings = settings,
         contentVersion = controller.contentVersion,
@@ -410,7 +410,7 @@ private fun DesktopCommentsHeader(
             presentation.tint.previewImageAvailable,
         headerPreviewImage = { _, onTintLoaded ->
             val imageUrl = presentation.tint.previewImageUrl
-            SharedHeaderPreviewImage(
+            HeaderPreviewImage(
                 imageUrl = imageUrl,
                 initiallyFailed = controller.headerPreviewResource?.imageLoadFailed == true,
                 visible = settings.showHeaderPreviewImage,
@@ -458,7 +458,7 @@ internal fun DesktopCommentLinkPreview(
     scene: HarmonicSceneComposition,
     controller: CommentsComposeController,
 ) {
-    SharedCommentLinkPreviewOverlay(
+    CommentLinkPreviewOverlay(
         controller = controller,
         tablet = true,
         referenceContent = { state ->
@@ -522,7 +522,7 @@ private fun DesktopReferencePreview(
             )
         }.getOrNull()
     }
-    SharedReferenceCardContent(
+    ReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
         summary = ReferenceSummaryUiState(
@@ -548,7 +548,7 @@ private fun DesktopReferencePreview(
                     .background(HarmonicTheme.colors.surfaceContainerHighest)
                     .clickable(enabled = imageUrl != null, onClick = onClick),
             ) {
-                if (loading) SharedLinkPreviewShimmer(Modifier.fillMaxSize())
+                if (loading) LinkPreviewShimmer(Modifier.fillMaxSize())
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = null,

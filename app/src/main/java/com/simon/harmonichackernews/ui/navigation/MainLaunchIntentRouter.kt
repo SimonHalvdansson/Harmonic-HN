@@ -49,7 +49,7 @@ internal class MainLaunchIntentRouter(
         action == CoulombGasContract.ACTION_OPEN -> AppLaunchRequest.CoulombGas
         Intent.ACTION_VIEW.equals(action, ignoreCase = true) ->
             AppLaunchRequest.ViewUrl(data?.toString())
-        Intent.ACTION_SEND.equals(action, ignoreCase = true) -> AppLaunchRequest.SharedText(
+        Intent.ACTION_SEND.equals(action, ignoreCase = true) -> AppLaunchRequest.IncomingTextShare(
             getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
         )
         else -> AppLaunchRequest.Story(directStoryDestination())

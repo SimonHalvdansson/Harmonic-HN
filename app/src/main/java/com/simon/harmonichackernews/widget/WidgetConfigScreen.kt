@@ -6,7 +6,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.widget.SharedWidgetConfigScreen
+import com.simon.harmonichackernews.ui.widget.WidgetConfigScreen
 
 /** Android widget-result host for the portable configuration screen. */
 object WidgetConfigComposeHost {
@@ -25,7 +25,7 @@ object WidgetConfigComposeHost {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 HarmonicTheme {
-                    SharedWidgetConfigScreen(initialConfiguration, listener::onConfirm)
+                    WidgetConfigScreen(initialConfiguration, listener::onConfirm)
                 }
             }
         }

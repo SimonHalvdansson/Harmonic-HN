@@ -21,8 +21,8 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.about.AboutScreen
-import com.simon.harmonichackernews.ui.licenses.LicensesScreen
+import com.simon.harmonichackernews.ui.about.AndroidAboutScreen
+import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -116,7 +116,7 @@ fun SettingsShell(
 
     LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 
-    SharedSettingsNavigationShell(
+    SettingsNavigationShell(
         navigation = navigation,
         directive = directive,
         isFoldable = isFoldable,
@@ -142,47 +142,47 @@ fun SettingsShell(
         },
         renderDetail = { section, singlePane, onBack, onNavigate ->
             when (section) {
-                SettingsSection.Appearance -> AppearanceSettingsScreen(
+                SettingsSection.Appearance -> AndroidAppearanceSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onNavigate = { onNavigate(it, singlePane) },
                     onThemeChanged = onThemeChanged,
                 )
-                SettingsSection.Stories -> StoriesSettingsScreen(
+                SettingsSection.Stories -> AndroidStoriesSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.Comments -> CommentsSettingsScreen(
+                SettingsSection.Comments -> AndroidCommentsSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.WebLinks -> SharedWebLinksSettingsRoute(
+                SettingsSection.WebLinks -> WebLinksSettingsRoute(
                     repository = dependencies.settings,
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.FiltersTags -> FiltersTagsSettingsScreen(
+                SettingsSection.FiltersTags -> AndroidFiltersTagsSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.AiSummary -> AiSummarySettingsScreen(
+                SettingsSection.AiSummary -> AndroidAiSummarySettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
-                SettingsSection.Data -> DataSettingsScreen(
+                SettingsSection.Data -> AndroidDataSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onSettingsReset = onThemeChanged,
                 )
-                SettingsSection.Debug -> DebugSettingsScreen(
+                SettingsSection.Debug -> AndroidDebugSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onOpenLinkPreviews = {
                         onNavigate(SettingsSection.DebugLinkPreviews, true)
                     },
                 )
-                SettingsSection.DebugLinkPreviews -> LinkPreviewsDebugScreen(onBack)
-                SettingsSection.About -> AboutScreen(
+                SettingsSection.DebugLinkPreviews -> AndroidLinkPreviewsDebugScreen(onBack)
+                SettingsSection.About -> AndroidAboutScreen(
                     onBack = onBack,
                     onOpenGithub = { dependencies.links.open(dependencies.metadata.projectUrl) },
                     onOpenChangelog = ChangelogDialogController::show,
@@ -193,7 +193,7 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     singlePane = singlePane,
                 )
-                SettingsSection.Licenses -> LicensesScreen(
+                SettingsSection.Licenses -> AndroidLicensesScreen(
                     onBack = onBack,
                     onOpenLicense = { dependencies.links.open(it) },
                     singlePane = singlePane,

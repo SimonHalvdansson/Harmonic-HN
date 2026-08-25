@@ -147,9 +147,9 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":shared_resources"))
-    implementation(project(":shared_logic"))
-    implementation(project(":shared_ui"))
+    implementation(project(":resources"))
+    implementation(project(":core"))
+    implementation(project(":ui"))
 
     implementation(libs.bundles.androidx.lifecycle)
 

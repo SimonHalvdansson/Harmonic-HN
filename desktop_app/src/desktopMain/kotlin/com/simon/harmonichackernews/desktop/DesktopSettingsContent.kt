@@ -40,10 +40,10 @@ import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.summary.LocalModelRuntime
-import com.simon.harmonichackernews.ui.about.SharedAboutScreen
+import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.licenses.SharedLicensesScreen
+import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.settings.AddBookmarksToFavoritesDialog
 import com.simon.harmonichackernews.ui.settings.AiSummaryBaseUrlDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
@@ -61,30 +61,30 @@ import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDivider
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformEffect
 import com.simon.harmonichackernews.ui.settings.SettingsSection
-import com.simon.harmonichackernews.ui.settings.SharedAiModelSelectorRoute
-import com.simon.harmonichackernews.ui.settings.SharedAiSummarySettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedAppearanceSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedCommentsSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedDataSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedDebugSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedFaviconProviderRoute
-import com.simon.harmonichackernews.ui.settings.SharedFiltersTagsSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedFontSelectionRoute
-import com.simon.harmonichackernews.ui.settings.SharedNighttimeRangeDialog
-import com.simon.harmonichackernews.ui.settings.SharedPaletteTintDialog
-import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsSettingsDialog
-import com.simon.harmonichackernews.ui.settings.SharedLinkPreviewsDebugScreen
-import com.simon.harmonichackernews.ui.settings.SharedLocalModelsRoute
-import com.simon.harmonichackernews.ui.settings.SharedStoriesSettingsRoute
-import com.simon.harmonichackernews.ui.settings.SharedThemeSelectionDialog
-import com.simon.harmonichackernews.ui.settings.SharedThreadDepthIndicatorsDialog
-import com.simon.harmonichackernews.ui.settings.SharedWelcomeSettingsDialog
-import com.simon.harmonichackernews.ui.settings.SharedStringListEditorDialog
+import com.simon.harmonichackernews.ui.settings.AiModelSelectorRoute
+import com.simon.harmonichackernews.ui.settings.AiSummarySettingsRoute
+import com.simon.harmonichackernews.ui.settings.AppearanceSettingsRoute
+import com.simon.harmonichackernews.ui.settings.CommentsSettingsRoute
+import com.simon.harmonichackernews.ui.settings.DataSettingsRoute
+import com.simon.harmonichackernews.ui.settings.DebugSettingsRoute
+import com.simon.harmonichackernews.ui.settings.FaviconProviderRoute
+import com.simon.harmonichackernews.ui.settings.FiltersTagsSettingsRoute
+import com.simon.harmonichackernews.ui.settings.FontSelectionRoute
+import com.simon.harmonichackernews.ui.settings.NighttimeRangeDialog
+import com.simon.harmonichackernews.ui.settings.PaletteTintDialog
+import com.simon.harmonichackernews.ui.settings.LinkPreviewsSettingsDialog
+import com.simon.harmonichackernews.ui.settings.LinkPreviewsDebugScreen
+import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
+import com.simon.harmonichackernews.ui.settings.StoriesSettingsRoute
+import com.simon.harmonichackernews.ui.settings.ThemeSelectionDialog
+import com.simon.harmonichackernews.ui.settings.ThreadDepthIndicatorsDialog
+import com.simon.harmonichackernews.ui.settings.WelcomeSettingsDialog
+import com.simon.harmonichackernews.ui.settings.StringListEditorDialog
 import com.simon.harmonichackernews.ui.settings.ThemePreviewCatalog
 import com.simon.harmonichackernews.ui.settings.WebLinksBooleanSetting
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsDialog
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsPresenter
-import com.simon.harmonichackernews.ui.settings.SharedWebLinksSettingsScreen
+import com.simon.harmonichackernews.ui.settings.WebLinksSettingsScreen
 import com.simon.harmonichackernews.ui.settings.faviconProviderPainter
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -121,7 +121,7 @@ internal fun DesktopSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
         )
-        SettingsSection.FiltersTags -> SharedFiltersTagsSettingsRoute(
+        SettingsSection.FiltersTags -> FiltersTagsSettingsRoute(
             settings = app.settings,
             filters = app.contentFilters,
             userTags = app.userTags,
@@ -144,7 +144,7 @@ internal fun DesktopSettingsDetail(
             scene,
             onBack,
         )
-        SettingsSection.About -> SharedAboutScreen(
+        SettingsSection.About -> AboutScreen(
             versionLabel = app.metadata.versionLabel,
             appIcon = painterResource(Res.drawable.quanta),
             onBack = onBack,
@@ -158,7 +158,7 @@ internal fun DesktopSettingsDetail(
                 "Compose screens as the Android app, with desktop-native storage, links, and " +
                 "keyboard/window behavior.",
         )
-        SettingsSection.Licenses -> SharedLicensesScreen(
+        SettingsSection.Licenses -> LicensesScreen(
             licenses = CommonLicenseCatalog.entries,
             onBack = onBack,
             onOpenLicense = { scene.links.open(it) },
@@ -178,7 +178,7 @@ private fun DesktopWebLinksSettings(
     val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
     val reading = settings.reading
 
-    SharedWebLinksSettingsScreen(
+    WebLinksSettingsScreen(
         state = presenter.state(reading.readerFont.label, settings),
         showNavigation = showNavigation,
         onBack = onBack,
@@ -196,7 +196,7 @@ private fun DesktopWebLinksSettings(
     )
 
     if (dialog == WebLinksSettingsDialog.ArchiveDomains) {
-        SharedStringListEditorDialog(
+        StringListEditorDialog(
             title = "Redirect to archive version",
             subtitle = "Choose domains where Harmonic should redirect links to archive.is.",
             inputLabel = "Domain",
@@ -211,7 +211,7 @@ private fun DesktopWebLinksSettings(
         )
     }
     if (dialog == WebLinksSettingsDialog.LinkPreviews) {
-        SharedLinkPreviewsSettingsDialog(
+        LinkPreviewsSettingsDialog(
             enabledTypes = reading.enabledLinkPreviews,
             onEnabledChanged = presenter::setLinkPreview,
             onDismiss = { dialog = null },
@@ -230,7 +230,7 @@ private fun DesktopAppearanceSettings(
     val schedule = app.appearance.schedule
     fun themeChanged() = app.appearance.refreshSelection()
 
-    SharedAppearanceSettingsRoute(
+    AppearanceSettingsRoute(
         repository = app.settings,
         labels = AppearanceRouteLabels(
             nighttimeRange = ThemeSelectionPolicy.formatSchedule(
@@ -248,7 +248,7 @@ private fun DesktopAppearanceSettings(
                 AppearanceSettingsDialog.Theme,
                 AppearanceSettingsDialog.NighttimeTheme -> {
                     val nighttime = dialog == AppearanceSettingsDialog.NighttimeTheme
-                    SharedThemeSelectionDialog(
+                    ThemeSelectionDialog(
                         nighttime = nighttime,
                         selected = if (nighttime) {
                             presenter.snapshot.appearance.nighttimeTheme
@@ -264,7 +264,7 @@ private fun DesktopAppearanceSettings(
                         previewPalettes = { ThemePreviewCatalog.palettes(it) },
                     )
                 }
-                AppearanceSettingsDialog.NighttimeRange -> SharedNighttimeRangeDialog(
+                AppearanceSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
                     initialHours = app.appearance.schedule.toIntArray(),
                     is24Hour = app.platform.timeFormatting.uses24HourClock(),
                     onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
@@ -275,13 +275,13 @@ private fun DesktopAppearanceSettings(
                     },
                     onDismiss = dismiss,
                 )
-                AppearanceSettingsDialog.Font -> SharedFontSelectionRoute(
+                AppearanceSettingsDialog.Font -> FontSelectionRoute(
                     readerMode = false,
                     onDismiss = dismiss,
                 )
                 AppearanceSettingsDialog.Style -> {
                     val colors = HarmonicTheme.colors
-                    SharedWelcomeSettingsDialog(
+                    WelcomeSettingsDialog(
                         styleChooser = true,
                         initialExpressive = snapshot.story.cardStyle,
                         onApplyPreset = { expressive ->
@@ -308,7 +308,7 @@ private fun DesktopAppearanceSettings(
                 }
                 AppearanceSettingsDialog.PaletteTint -> {
                     val config = presenter.snapshot.story.paletteTintConfigKey
-                    SharedPaletteTintDialog(
+                    PaletteTintDialog(
                         initialMode = PaletteTintPreferences.sanitizeMode(config),
                         initialStrength = PaletteTintPreferences.strength(config),
                         initialColorfulness = PaletteTintPreferences.colorfulness(config),
@@ -332,7 +332,7 @@ private fun DesktopStoriesSettings(
     onBack: () -> Unit,
 ) {
     val story = app.settings.snapshot().story
-    SharedStoriesSettingsRoute(
+    StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
             tintFallbackArgb = HarmonicTheme.colors.surfaceContainerHigh.toArgb(),
@@ -347,7 +347,7 @@ private fun DesktopStoriesSettings(
             }
         },
         faviconDialog = { selected, _, onSelected, dismiss ->
-            SharedFaviconProviderRoute(selected, onSelected, dismiss)
+            FaviconProviderRoute(selected, onSelected, dismiss)
         },
     )
 }
@@ -358,14 +358,14 @@ private fun DesktopCommentsSettings(
     showNavigation: Boolean,
     onBack: () -> Unit,
 ) {
-    SharedCommentsSettingsRoute(
+    CommentsSettingsRoute(
         repository = app.settings,
         showNavigation = showNavigation,
         onBack = onBack,
         threadDepthDialog = { presenter, dismiss ->
             val selection = app.appearance.selection()
             val mode = presenter.state().depthMode
-            SharedThreadDepthIndicatorsDialog(
+            ThreadDepthIndicatorsDialog(
                 mode = mode,
                 indicatorColors = CommentDepthPaletteCatalog.colors(
                     mode,
@@ -407,7 +407,7 @@ private fun DesktopAiSettings(
         onDispose(settingsRuntime::dispose)
     }
 
-    SharedAiSummarySettingsRoute(
+    AiSummarySettingsRoute(
         repository = app.aiSummarySettings,
         modelDefaults = app.aiModelDefaults,
         localSummarizationSupported = availabilityState.supported,
@@ -429,7 +429,7 @@ private fun DesktopAiSettings(
                 scene.userMessages.show(message, UserMessageDuration.LONG)
             }
             Column {
-                SharedLocalModelsRoute(
+                LocalModelsRoute(
                     localModels = localModels,
                     managerState = localModelState,
                     nanoAvailabilityResolved = true,
@@ -480,7 +480,7 @@ private fun DesktopAiSettings(
                     onDismiss = dismiss,
                     onSaved = { refresh++ },
                 )
-                AiSummarySettingsDialog.Model -> SharedAiModelSelectorRoute(onDismiss = dismiss)
+                AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
                 AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
                     setting = AiSummaryTextSetting.SYSTEM_PROMPT,
                     title = "System prompt",
@@ -589,7 +589,7 @@ private fun DesktopDataSettings(
         }
     }
 
-    SharedDataSettingsRoute(
+    DataSettingsRoute(
         repository = app.settings,
         counts = DataSettingsCounts(
             state.snapshot.bookmarkCount,
@@ -659,7 +659,7 @@ private fun DesktopDebugSettings(
     onOpenLinkPreviews: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    SharedDebugSettingsRoute(
+    DebugSettingsRoute(
         repository = app.settings,
         environment = DebugEnvironmentUiState(
             appVersion = app.metadata.versionName,
@@ -713,7 +713,7 @@ private fun DesktopLinkPreviewsDebugScreen(
     val useCase = remember(app.network.linkPreviewRepository) {
         LinkPreviewUseCase(app.network.linkPreviewRepository)
     }
-    SharedLinkPreviewsDebugScreen(
+    LinkPreviewsDebugScreen(
         comments = app.userSettings.comments,
         loadPreview = useCase::load,
         onOpenLink = scene.links::open,
@@ -724,7 +724,7 @@ private fun DesktopLinkPreviewsDebugScreen(
 @Composable
 internal fun DesktopWelcomeDialog(app: HarmonicAppComposition, onDismiss: () -> Unit) {
     val colors = HarmonicTheme.colors
-    SharedWelcomeSettingsDialog(
+    WelcomeSettingsDialog(
         styleChooser = false,
         initialExpressive = app.settings.snapshot().story.cardStyle,
         onApplyPreset = { expressive ->

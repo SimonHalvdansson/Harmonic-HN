@@ -26,12 +26,12 @@ import com.simon.harmonichackernews.presentation.EditorPresentationCopy
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
-import com.simon.harmonichackernews.ui.common.SharedHazeHost
-import com.simon.harmonichackernews.ui.common.SharedTranslucentBackButton
-import com.simon.harmonichackernews.ui.editor.SharedEditorScreen
+import com.simon.harmonichackernews.ui.common.HazeHost
+import com.simon.harmonichackernews.ui.common.TranslucentBackButton
+import com.simon.harmonichackernews.ui.editor.EditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
-import com.simon.harmonichackernews.ui.submissions.SharedSubmissionsRoute
+import com.simon.harmonichackernews.ui.submissions.SubmissionsRoute
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 @Composable
@@ -75,13 +75,13 @@ internal fun DesktopSubmissionsContent(
         }
     }
 
-    SharedHazeHost {
+    HazeHost {
         Box(
             Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background),
         ) {
-            SharedSubmissionsRoute(
+            SubmissionsRoute(
                 controller = controller,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
@@ -89,7 +89,7 @@ internal fun DesktopSubmissionsContent(
                 reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
             )
-            SharedTranslucentBackButton(
+            TranslucentBackButton(
                 onClick = scene.navigation::closeSubmissions,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -153,7 +153,7 @@ internal fun DesktopEditorContent(
         }
     }
 
-    SharedEditorScreen(
+    EditorScreen(
         type = destination.type,
         parentText = destination.parentText,
         postTitle = destination.postTitle,

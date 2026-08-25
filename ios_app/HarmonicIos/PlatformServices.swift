@@ -3,7 +3,7 @@ import Network
 import Security
 import UIKit
 import WebKit
-import HarmonicShared
+import HarmonicKit
 #if canImport(FoundationModels)
 import FoundationModels
 #endif

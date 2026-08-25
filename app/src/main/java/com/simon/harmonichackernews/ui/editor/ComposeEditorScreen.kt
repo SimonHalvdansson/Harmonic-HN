@@ -24,7 +24,7 @@ internal fun ComposeEditorScreen(
     var backRequestVersion by rememberSaveable { mutableIntStateOf(0) }
     BackHandler { backRequestVersion++ }
 
-    SharedEditorScreen(
+    EditorScreen(
         type = type,
         parentText = parentText,
         postTitle = postTitle,

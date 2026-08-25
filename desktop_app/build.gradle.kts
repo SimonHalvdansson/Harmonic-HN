@@ -69,7 +69,7 @@ kotlin {
 
     sourceSets {
         getByName("desktopMain").dependencies {
-            implementation(project(":shared_ui"))
+            implementation(project(":ui"))
             implementation(libs.compose.multiplatform.runtime)
             implementation(libs.compose.multiplatform.ui)
             implementation(libs.compose.multiplatform.foundation)
@@ -202,14 +202,14 @@ tasks.named<ProcessResources>("desktopProcessResources") {
 
 val desktopProjectJars = files(
     layout.buildDirectory.file("libs/desktop_app-desktop.jar"),
-    project(":shared_ui").layout.buildDirectory.file("libs/shared_ui-desktop.jar"),
-    project(":shared_logic").layout.buildDirectory.file("libs/shared_logic-desktop.jar"),
-    project(":shared_resources").layout.buildDirectory.file("libs/shared_resources-desktop.jar"),
+    project(":ui").layout.buildDirectory.file("libs/ui-desktop.jar"),
+    project(":core").layout.buildDirectory.file("libs/core-desktop.jar"),
+    project(":resources").layout.buildDirectory.file("libs/resources-desktop.jar"),
 ).builtBy(
     ":desktop_app:desktopJar",
-    ":shared_ui:desktopJar",
-    ":shared_logic:desktopJar",
-    ":shared_resources:desktopJar",
+    ":ui:desktopJar",
+    ":core:desktopJar",
+    ":resources:desktopJar",
 )
 // The Compose run task normally launches directly from build/libs. Other Gradle builds can
 // replace those jars while the desktop JVM is still running, making later class loads fail.

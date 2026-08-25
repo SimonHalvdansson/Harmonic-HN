@@ -95,7 +95,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A90000000000000000000002 /* Build configuration list for PBXNativeTarget "HarmonicIos" */;
 			buildPhases = (
-				A60000000000000000000001 /* Build HarmonicShared */,
+				A60000000000000000000001 /* Build HarmonicKit */,
 				A30000000000000000000001 /* Frameworks */,
 				A70000000000000000000001 /* Sources */,
 				A80000000000000000000001 /* Resources */,
@@ -182,26 +182,26 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		A60000000000000000000001 /* Build HarmonicShared */ = {
+		A60000000000000000000001 /* Build HarmonicKit */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
-			dependencyFile = "$(DERIVED_FILE_DIR)/HarmonicSharedInputs.d";
+			dependencyFile = "$(DERIVED_FILE_DIR)/HarmonicKitInputs.d";
 			files = (
 			);
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/scripts/build-harmonic-shared.sh",
+				"$(SRCROOT)/scripts/build-harmonic-kit.sh",
 			);
-			name = "Build HarmonicShared";
+			name = "Build HarmonicKit";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(SRCROOT)/../shared_ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/HarmonicShared.framework/HarmonicShared",
+				"$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/HarmonicKit.framework/HarmonicKit",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
-			shellScript = "/bin/zsh \"$SRCROOT/scripts/build-harmonic-shared.sh\"\n";
+			shellScript = "/bin/zsh \"$SRCROOT/scripts/build-harmonic-kit.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -290,7 +290,7 @@
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared_ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HarmonicIos/Info.plist;
@@ -303,7 +303,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
-					HarmonicShared,
+					HarmonicKit,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.simon.harmonichackernews.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -327,7 +327,7 @@
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared_ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HarmonicIos/Info.plist;
@@ -340,7 +340,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
-					HarmonicShared,
+					HarmonicKit,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.simon.harmonichackernews.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
