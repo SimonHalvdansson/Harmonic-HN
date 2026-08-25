@@ -28,6 +28,8 @@ data class HarmonicColors(
     val drawable: Color,
     val popupMenuBackground: Color,
     val settingsSegment: Color,
+    val settingsPageBackground: Color,
+    val settingsItemBackground: Color,
     val settingsHeaderSelected: Color,
     val settingsMainToggle: Color,
     val settingsMainToggleText: Color,

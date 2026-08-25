@@ -44,7 +44,6 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 
 private data object SettingsListDestination : NavKey
@@ -195,7 +194,7 @@ fun SettingsNavigationShell(
     val transitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
 
     Box(
-        modifier = modifier.fillMaxSize().background(HarmonicTheme.colors.background),
+        modifier = modifier.fillMaxSize().background(settingsPageBackgroundColor()),
     ) {
         val previousScene = sceneState.previousScenes.lastOrNull()
         if (showDetailNavigation && predictiveBackOverlay != null && previousScene != null) {

@@ -260,7 +260,7 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .padding(start = 24.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
     ) {
         Row {

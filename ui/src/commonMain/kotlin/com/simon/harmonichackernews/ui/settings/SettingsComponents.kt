@@ -102,6 +102,12 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
+internal fun settingsPageBackgroundColor(): Color = HarmonicTheme.colors.settingsPageBackground
+
+@Composable
+internal fun settingsItemBackgroundColor(): Color = HarmonicTheme.colors.settingsItemBackground
+
+@Composable
 fun SettingsAlertDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
@@ -322,7 +328,7 @@ fun SettingsListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(settingsPageBackgroundColor())
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -389,7 +395,7 @@ private fun SettingsNavigationRow(
                 if (selected) {
                     HarmonicTheme.colors.settingsHeaderSelected
                 } else {
-                    HarmonicTheme.colors.settingsSegment
+                    settingsItemBackgroundColor()
                 },
             )
             .clickable(role = Role.Button, onClick = onClick)
@@ -437,7 +443,7 @@ fun SettingsPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(settingsPageBackgroundColor())
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -467,7 +473,7 @@ fun SettingsPage(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(HarmonicTheme.colors.background),
+                            .background(settingsPageBackgroundColor()),
                     ) {
                         preview()
                     }
@@ -601,7 +607,7 @@ fun SettingRow(
             .defaultMinSize(
                 minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .alpha(if (enabled) 1f else 0.38f)
             .then(
                 if (onClick != null) {
@@ -742,7 +748,7 @@ fun SettingsDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(HarmonicDimens.settings_list_segment_internal_gap)
-            .background(HarmonicTheme.colors.background),
+            .background(settingsPageBackgroundColor()),
     )
 }
 
@@ -764,7 +770,7 @@ fun SegmentedSetting(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
@@ -905,7 +911,7 @@ fun SliderSetting(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,

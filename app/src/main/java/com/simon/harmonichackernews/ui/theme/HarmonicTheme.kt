@@ -103,6 +103,15 @@ private fun harmonicColors(
         android.R.attr.colorBackground,
         fallbackScheme.background,
     )
+    val settingsSegment = context.colorAttribute(
+        R.attr.settingsSegmentColor,
+        fallbackScheme.surfaceContainerHigh,
+    )
+    fun resolveSettingsSurface(fallbackColor: Color): Color = when (fallbackColor) {
+        fallback.background -> background
+        fallback.settingsSegment -> settingsSegment
+        else -> fallbackColor
+    }
     val defaultTextView = AppCompatTextView(context)
     return HarmonicColors(
         background = background,
@@ -162,10 +171,9 @@ private fun harmonicColors(
             R.attr.popupMenuBackgroundColor,
             fallbackScheme.surfaceContainerHigh,
         ),
-        settingsSegment = context.colorAttribute(
-            R.attr.settingsSegmentColor,
-            fallbackScheme.surfaceContainerHigh,
-        ),
+        settingsSegment = settingsSegment,
+        settingsPageBackground = resolveSettingsSurface(fallback.settingsPageBackground),
+        settingsItemBackground = resolveSettingsSurface(fallback.settingsItemBackground),
         settingsHeaderSelected = context.colorAttribute(
             R.attr.settingsHeaderSelectedColor,
             fallbackScheme.surfaceContainerHigh,

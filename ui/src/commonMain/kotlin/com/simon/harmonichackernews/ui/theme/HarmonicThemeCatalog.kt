@@ -122,6 +122,8 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFC6E9D8),
         settingsToggleText = Color(0xFF245B46),
         settingsSegment = Color(0xFFF0EEDC),
+        settingsPageBackground = Color(0xFFF6F5EC),
+        settingsItemBackground = Color(0xFFFCFCFA),
         onSecondary = Color.White,
     )
     private val white = create(
@@ -156,6 +158,8 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFFFD5B8),
         settingsToggleText = Color(0xFF7A3100),
         settingsSegment = Color(0xFFF2EEDF),
+        settingsPageBackground = Color(0xFFF7F5ED),
+        settingsItemBackground = Color(0xFFFCFCFA),
         onPrimary = Color.White,
         onSecondary = Color.White,
         overlayButton = Color(0xFFBF5724),
@@ -214,6 +218,8 @@ object HarmonicThemeCatalog {
         settingsToggle: Color,
         settingsToggleText: Color,
         settingsSegment: Color,
+        settingsPageBackground: Color? = null,
+        settingsItemBackground: Color? = null,
         storyCardBackground: Color = surface,
         onPrimary: Color? = null,
         onSecondary: Color? = null,
@@ -269,6 +275,16 @@ object HarmonicThemeCatalog {
                 drawable = text.copy(alpha = text.alpha * 0.8f),
                 popupMenuBackground = popup,
                 settingsSegment = settingsSegment,
+                settingsPageBackground = settingsPageBackground ?: if (dark) {
+                    background
+                } else {
+                    settingsSegment
+                },
+                settingsItemBackground = settingsItemBackground ?: if (dark) {
+                    settingsSegment
+                } else {
+                    background
+                },
                 settingsHeaderSelected = settingsHeader,
                 settingsMainToggle = settingsToggle,
                 settingsMainToggleText = settingsToggleText,

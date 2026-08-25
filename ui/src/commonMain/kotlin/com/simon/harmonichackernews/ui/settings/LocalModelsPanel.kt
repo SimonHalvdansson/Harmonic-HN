@@ -142,7 +142,7 @@ fun LocalModelsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .padding(
                 start = HarmonicDimens.compose_settings_row_horizontal_padding,
                 top = 4.dp,
@@ -184,7 +184,7 @@ fun ManagedLocalModelPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsSegment)
+            .background(settingsItemBackgroundColor())
             .padding(
                 start = HarmonicDimens.compose_settings_row_horizontal_padding,
                 top = 4.dp,
