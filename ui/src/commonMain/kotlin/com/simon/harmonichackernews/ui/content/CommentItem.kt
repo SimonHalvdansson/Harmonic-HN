@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -44,6 +45,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
@@ -82,6 +84,7 @@ import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
@@ -208,6 +211,7 @@ fun CommentItem(
             markedColor = HarmonicTheme.colors.storyNormal,
             fontFamily = typography.family,
             fontSize = bodySize,
+            animateSearchMatches = false,
             onLinkClick = {},
             onLinkLongClick = { _, _, _ -> },
         )
@@ -247,6 +251,7 @@ fun CommentItem(
     flattenHierarchy: Boolean = false,
     forceExpanded: Boolean = false,
     searchTerm: String = "",
+    animateSearchMatches: Boolean = false,
     suppressedReferenceUrl: String? = null,
     captureActionSource: Boolean = false,
     showActionsOnClick: Boolean = false,
@@ -386,6 +391,7 @@ fun CommentItem(
                                 markedColor = markedColor,
                                 fontFamily = typography.family,
                                 fontSize = bodySize,
+                                animateSearchMatches = animateSearchMatches,
                                 onLinkClick = onLinkClick,
                                 onLinkLongClick = onLinkLongClick,
                             )
@@ -467,6 +473,7 @@ private fun CommentBodyText(
     markedColor: Color,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     fontSize: Float,
+    animateSearchMatches: Boolean,
     onLinkClick: (String) -> Unit,
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
@@ -484,8 +491,17 @@ private fun CommentBodyText(
     val body = remember(html, colors.link, linkListener) {
         htmlAnnotatedString(html, colors.link, linkListener)
     }
-    val displayedBody = remember(body, searchTerm, markedColor) {
-        highlightSearchMatches(body, searchTerm, markedColor)
+    val displayedBody = if (animateSearchMatches) {
+        animatedSearchMatches(
+            body = body,
+            searchTerm = searchTerm,
+            baseColor = colors.storyNormal,
+            markedColor = markedColor,
+        )
+    } else {
+        remember(body, searchTerm, markedColor) {
+            highlightSearchMatches(body, searchTerm, markedColor)
+        }
     }
     var textLayout by remember(body) { mutableStateOf<TextLayoutResult?>(null) }
     var textCoordinates by remember(body) { mutableStateOf<LayoutCoordinates?>(null) }
@@ -510,6 +526,50 @@ private fun CommentBodyText(
             style = animatedCommentTextStyle,
         )
     }
+}
+
+@Composable
+private fun animatedSearchMatches(
+    body: AnnotatedString,
+    searchTerm: String,
+    baseColor: Color,
+    markedColor: Color,
+): AnnotatedString {
+    val normalizedSearchTerm = searchTerm.trim()
+    var highlightTransition by remember(body) {
+        mutableStateOf(SearchHighlightTransition.empty(body.length))
+    }
+    val highlightProgress = remember(body) { Animatable(0f) }
+    LaunchedEffect(body, normalizedSearchTerm) {
+        val currentEmphasis = highlightTransition.interpolate(highlightProgress.value)
+        val targetEmphasis = searchMatchEmphasis(body.text, normalizedSearchTerm)
+        highlightTransition = SearchHighlightTransition(
+            from = currentEmphasis,
+            to = targetEmphasis,
+        )
+        highlightProgress.snapTo(0f)
+        if (currentEmphasis.contentEquals(targetEmphasis)) {
+            highlightProgress.snapTo(1f)
+        } else {
+            highlightProgress.animateTo(1f, contentTween())
+        }
+    }
+    val displayedBody = remember(
+        body,
+        baseColor,
+        markedColor,
+        highlightTransition,
+        highlightProgress.value,
+    ) {
+        highlightSearchMatches(
+            body = body,
+            transition = highlightTransition,
+            progress = highlightProgress.value,
+            baseColor = baseColor,
+            markedColor = markedColor,
+        )
+    }
+    return displayedBody
 }
 
 @Composable
@@ -975,6 +1035,7 @@ private fun highlightSearchMatches(
 ): AnnotatedString {
     val needle = searchTerm.trim()
     if (needle.isEmpty()) return body
+
     return buildAnnotatedString {
         append(body)
         val haystack = body.text.lowercase()
@@ -990,6 +1051,96 @@ private fun highlightSearchMatches(
         }
     }
 }
+
+private data class SearchHighlightTransition(
+    val from: FloatArray,
+    val to: FloatArray,
+) {
+    fun interpolate(progress: Float): FloatArray = FloatArray(from.size) { index ->
+        from[index] + (to[index] - from[index]) * progress
+    }
+
+    companion object {
+        fun empty(length: Int) = SearchHighlightTransition(
+            from = FloatArray(length),
+            to = FloatArray(length),
+        )
+    }
+}
+
+internal fun searchMatchEmphasis(
+    text: String,
+    searchTerm: String,
+): FloatArray {
+    val emphasis = FloatArray(text.length)
+    val needle = searchTerm.trim()
+    if (needle.isEmpty()) return emphasis
+
+    val haystack = text.lowercase()
+    val normalizedNeedle = needle.lowercase()
+    var start = haystack.indexOf(normalizedNeedle)
+    while (start >= 0) {
+        for (index in start until start + normalizedNeedle.length) {
+            emphasis[index] = 1f
+        }
+        start = haystack.indexOf(normalizedNeedle, start + normalizedNeedle.length)
+    }
+    return emphasis
+}
+
+private fun highlightSearchMatches(
+    body: AnnotatedString,
+    transition: SearchHighlightTransition,
+    progress: Float,
+    baseColor: Color,
+    markedColor: Color,
+): AnnotatedString {
+    val emphasis = transition.interpolate(progress)
+    if (emphasis.all { it <= SearchHighlightThreshold }) return body
+
+    return buildAnnotatedString {
+        append(body)
+        var index = 0
+        while (index < emphasis.size) {
+            val amount = emphasis[index]
+            if (amount <= SearchHighlightThreshold) {
+                index++
+                continue
+            }
+            val baseWeight = body.baseFontWeightAt(index)
+            val start = index
+            index++
+            while (
+                index < emphasis.size &&
+                emphasis[index] > SearchHighlightThreshold &&
+                abs(emphasis[index] - amount) <= SearchHighlightThreshold &&
+                body.baseFontWeightAt(index) == baseWeight
+            ) {
+                index++
+            }
+            val weight = (
+                baseWeight.weight +
+                    (FontWeight.Bold.weight - baseWeight.weight) * amount
+                ).roundToInt().coerceIn(1, 1000)
+            addStyle(
+                SpanStyle(
+                    color = lerp(baseColor, markedColor, amount),
+                    fontWeight = FontWeight(weight),
+                ),
+                start,
+                index,
+            )
+        }
+    }
+}
+
+private fun AnnotatedString.baseFontWeightAt(index: Int): FontWeight = spanStyles
+    .lastOrNull { range -> index >= range.start && index < range.end && range.item.fontWeight != null }
+    ?.item
+    ?.fontWeight
+    ?: FontWeight.Normal
+
+private const val SearchHighlightThreshold = 0.001f
 
 private val CommentDepthColors = listOf(
     Color(0xff5e97f6),

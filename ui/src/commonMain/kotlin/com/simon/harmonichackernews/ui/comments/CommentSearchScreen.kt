@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -105,7 +108,33 @@ fun CommentSearchScreen(
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
-            items(visibleComments, key = PortableCommentItem::id) { comment -> commentContent(comment) }
+            items(visibleComments, key = PortableCommentItem::id) { comment ->
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .animateItem(
+                            fadeInSpec = tween(
+                                durationMillis = SearchResultFadeInDurationMillis,
+                                delayMillis = SearchResultPlacementDelayMillis,
+                            ),
+                            placementSpec = tween(
+                                durationMillis = SearchResultPlacementDurationMillis,
+                                delayMillis = SearchResultPlacementDelayMillis,
+                                easing = FastOutSlowInEasing,
+                            ),
+                            fadeOutSpec = tween(
+                                durationMillis = SearchResultFadeOutDurationMillis,
+                            ),
+                        ),
+                ) {
+                    commentContent(comment)
+                }
+            }
         }
     }
 }
+
+private const val SearchResultFadeOutDurationMillis = 110
+private const val SearchResultFadeInDurationMillis = 180
+private const val SearchResultPlacementDelayMillis = 70
+private const val SearchResultPlacementDurationMillis = 230
