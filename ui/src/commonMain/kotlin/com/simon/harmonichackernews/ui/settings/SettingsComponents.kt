@@ -78,9 +78,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
+import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
@@ -116,7 +116,7 @@ fun SettingsAlertDialog(
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = false,
 ) {
-    Dialog(
+    PredictiveBackDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = properties.dismissOnBackPress,

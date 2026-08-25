@@ -35,7 +35,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -80,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorPolicy
@@ -265,7 +265,7 @@ private fun EditorMessageActionDialog(
     onNegative: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = title?.let { value ->
             {
