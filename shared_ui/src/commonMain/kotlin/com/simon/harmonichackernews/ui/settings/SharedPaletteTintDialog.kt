@@ -1,9 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -24,6 +22,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,6 +90,7 @@ fun SharedPaletteTintDialog(
     var tone by remember { mutableStateOf(PaletteTintPreferences.clampTone(initialTone)) }
     val animationScope = rememberCoroutineScope()
     var resetAnimation by remember { mutableStateOf<Job?>(null) }
+    val resetAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
 
     fun persist(
         newMode: String = mode,
@@ -227,26 +227,24 @@ fun SharedPaletteTintDialog(
                         animate(
                             initialValue = 0f,
                             targetValue = 1f,
-                            animationSpec = tween(
-                                durationMillis = 200,
-                                easing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f),
-                            ),
+                            animationSpec = resetAnimationSpec,
                         ) { progress, _ ->
+                            val boundedProgress = progress.coerceIn(0f, 1f)
                             strength = steppedPaletteValue(
                                 startStrength,
                                 PaletteTintPreferences.DEFAULT_STRENGTH,
-                                progress,
+                                boundedProgress,
                                 5,
                             )
                             colorfulness = steppedPaletteValue(
                                 startColorfulness,
                                 PaletteTintPreferences.DEFAULT_COLORFULNESS,
-                                progress,
+                                boundedProgress,
                                 5,
                             )
                             tone = (
                                 startTone +
-                                    (PaletteTintPreferences.DEFAULT_TONE - startTone) * progress
+                                    (PaletteTintPreferences.DEFAULT_TONE - startTone) * boundedProgress
                                 ).roundToInt()
                         }
                         strength = PaletteTintPreferences.DEFAULT_STRENGTH
@@ -338,7 +336,11 @@ private fun PalettePreviewCard(
             ),
         )
     }
-    val cardColor by animateColorAsState(targetValue = targetColor, label = "palette preview tint")
+    val cardColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "palette preview tint",
+    )
 
     Card(
         modifier = modifier.width(136.dp),
