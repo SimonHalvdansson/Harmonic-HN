@@ -50,7 +50,7 @@ private class PlayLocalSummaryStatus {
                 summarizer = Summarization.getClient(createOptions(context.applicationContext))
                 val status = summarizer.checkFeatureStatus().get()
                 cachedLocalFeatureStatus = status
-                resolvedAvailability(status)
+                resolvedAvailability(status, readBaseModelName(summarizer, status))
             } catch (error: InterruptedException) {
                 Thread.currentThread().interrupt()
                 LocalSummaryAvailability(
@@ -77,12 +77,32 @@ private class PlayLocalSummaryStatus {
             models.isRuntimeInstalled(selected.runtime)
     }
 
-    private fun resolvedAvailability(status: Int): LocalSummaryAvailability =
+    private fun resolvedAvailability(
+        status: Int,
+        baseModelName: String?,
+    ): LocalSummaryAvailability =
         if (isLocalFeatureUsable(status)) {
-            LocalSummaryAvailability(true, false, localFeatureStatusMessage(status))
+            LocalSummaryAvailability(
+                available = true,
+                downloadableFallbackRequired = false,
+                statusMessage = localFeatureStatusMessage(status),
+                baseModelName = baseModelName,
+            )
         } else {
             downloadableModelAvailability()
         }
+
+    private fun readBaseModelName(summarizer: Summarizer, featureStatus: Int): String? {
+        if (!isLocalFeatureUsable(featureStatus)) return null
+        return try {
+            summarizer.getBaseModelName().get().trim().takeIf(String::isNotEmpty)
+        } catch (error: InterruptedException) {
+            throw error
+        } catch (error: Throwable) {
+            Log.w(tag, "Gemini Nano model name lookup failed", unwrap(error))
+            null
+        }
+    }
 
     private fun downloadableModelAvailability(): LocalSummaryAvailability =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

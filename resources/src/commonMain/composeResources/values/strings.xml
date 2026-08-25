@@ -59,6 +59,7 @@
     <string name="ai_model_cancel">Cancel</string>
     <string name="ai_model_save">Save model</string>
     <string name="ai_model_free_badge">FREE</string>
+    <string name="ai_model_uptime_badge">%1$s 1d uptime</string>
     <plurals name="ai_model_count">
         <item quantity="one">Models (%1$d)</item>
         <item quantity="other">Models (%1$d)</item>
@@ -66,8 +67,8 @@
     <string name="ai_model_no_free">No free models are available for this provider right now</string>
     <string name="ai_model_price_label">INPUT / OUTPUT</string>
     <string name="ai_model_price_pair_format">%1$s / %2$s</string>
-    <string name="ai_model_price_per_million">per 1M tokens</string>
-    <string name="ai_model_row_price_format">%1$s / %2$s per 1M tokens</string>
+    <string name="ai_model_price_per_million">per million tok</string>
+    <string name="ai_model_row_price_format">%1$s / %2$s per 1M tok</string>
     <string name="ai_model_price_enter">Enter a model ID to resolve its price</string>
     <string name="ai_model_price_resolving">Resolving price…</string>
     <string name="ai_model_required">Enter or select a model</string>

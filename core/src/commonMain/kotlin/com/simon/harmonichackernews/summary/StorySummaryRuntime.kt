@@ -60,6 +60,7 @@ data class LocalSummaryAvailability(
     val available: Boolean,
     val downloadableFallbackRequired: Boolean,
     val statusMessage: String? = null,
+    val baseModelName: String? = null,
 )
 
 /** Adds shared article-text extraction to a platform backend that only performs local inference. */

@@ -8,6 +8,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -70,12 +72,18 @@ interface AiModelCatalogRepository {
         provider: AiSummaryProviders.Provider,
         enteredModelId: String?,
     ): AiModel
+
+    suspend fun fetchUptimeLastDay(
+        provider: AiSummaryProviders.Provider,
+        openRouterModelId: String,
+    ): Double?
 }
 
 class KtorAiModelCatalogRepository(
     private val client: KtorHttpClient,
 ) : AiModelCatalogRepository {
     private val cache = mutableMapOf<String, List<AiModel>>()
+    private val uptimeCache = mutableMapOf<String, Double?>()
     private val cacheMutex = Mutex()
 
     override suspend fun fetchModels(
@@ -142,6 +150,53 @@ class KtorAiModelCatalogRepository(
         }.getOrElse { throw AiModelCatalogException("Price data could not be read", it) }
     }
 
+    override suspend fun fetchUptimeLastDay(
+        provider: AiSummaryProviders.Provider,
+        openRouterModelId: String,
+    ): Double? {
+        val cacheKey = "${provider.id}:$openRouterModelId"
+        cacheMutex.withLock {
+            if (uptimeCache.containsKey(cacheKey)) return uptimeCache[cacheKey]
+        }
+
+        val author = openRouterModelId.substringBefore('/', "")
+        val modelName = openRouterModelId.substringAfter('/', "")
+        if (author.isEmpty() || modelName.isEmpty()) return null
+
+        val url = MODELS_URL.toNetworkUrl().newBuilder()
+            .addPathSegment(author)
+            .addPathSegment(modelName)
+            .addPathSegment("endpoints")
+            .build()
+        val body = requestBody(HttpRequest.Builder().url(url).get().build()) { code ->
+            "Uptime unavailable (HTTP $code)"
+        }
+        val uptime = runCatching {
+            val endpoints = json.parseToJsonElement(body).jsonObject["data"]
+                ?.jsonObject
+                ?.get("endpoints")
+                ?.jsonArray
+                ?: throw IllegalArgumentException("Missing endpoint data")
+            val samples = endpoints.mapNotNull { element ->
+                val endpoint = element as? JsonObject ?: return@mapNotNull null
+                if (
+                    provider.catalogProvider != null &&
+                    endpoint.string("provider_name") != provider.catalogProvider
+                ) {
+                    return@mapNotNull null
+                }
+                endpoint.double("uptime_last_1d")
+                    ?.takeIf { it in 0.0..100.0 }
+                    ?.let { EndpointUptime(endpoint.int("status"), it) }
+            }
+            val activeSamples = samples.filter { it.status == ACTIVE_ENDPOINT_STATUS }
+            (activeSamples.ifEmpty { samples }).maxOfOrNull(EndpointUptime::uptimeLastDay)
+        }.getOrElse { throw AiModelCatalogException("Uptime data could not be read", it) }
+
+        cacheMutex.withLock { uptimeCache[cacheKey] = uptime }
+        return uptime
+    }
+
     private suspend fun requestBody(
         request: HttpRequest,
         httpError: (Int) -> String,
@@ -206,11 +261,17 @@ class KtorAiModelCatalogRepository(
     }
 
     private companion object {
+        const val ACTIVE_ENDPOINT_STATUS = 0
         const val MODELS_URL = "https://openrouter.ai/api/v1/models"
         const val MODEL_URL = "https://openrouter.ai/api/v1/model"
         val json = Json { ignoreUnknownKeys = true }
     }
 }
+
+private data class EndpointUptime(
+    val status: Int,
+    val uptimeLastDay: Double,
+)
 
 object AiModelCatalogSelection {
     fun cheapestModel(models: List<AiModel>, createdAfter: Long): AiModel? =
@@ -235,6 +296,12 @@ private fun JsonObject.string(key: String): String? =
 
 private fun JsonObject.long(key: String): Long =
     (this[key] as? JsonPrimitive)?.longOrNull ?: 0L
+
+private fun JsonObject.int(key: String): Int =
+    (this[key] as? JsonPrimitive)?.intOrNull ?: 0
+
+private fun JsonObject.double(key: String): Double? =
+    (this[key] as? JsonPrimitive)?.doubleOrNull
 
 private fun JsonObject?.price(key: String): Double =
     this?.string(key)?.toDoubleOrNull() ?: Double.NaN

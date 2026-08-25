@@ -70,6 +70,7 @@ import org.jetbrains.compose.resources.painterResource
 data class LocalModelRowUiState(
     val model: LocalModelDefinition,
     val presentation: LocalModelPresentation,
+    val baseModelName: String? = null,
 )
 
 @Composable
@@ -78,6 +79,7 @@ fun LocalModelsRoute(
     managerState: LocalModelManagerState,
     nanoAvailabilityResolved: Boolean,
     nanoAvailable: Boolean,
+    nanoBaseModelName: String?,
     models: List<LocalModelDefinition> = localModels.catalog,
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
@@ -91,6 +93,9 @@ fun LocalModelsRoute(
                 nanoAvailable = nanoAvailable,
                 managerState = managerState,
             ),
+            baseModelName = nanoBaseModelName.takeIf {
+                definition.runtime == LocalModelRuntime.GEMINI_NANO
+            },
         )
     }
     LocalModelsPanel(
@@ -329,7 +334,7 @@ private fun LocalModelCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (!row.model.downloadable || !presentation.enabled) {
+                if (!presentation.enabled) {
                     Text(
                         text = presentation.summary,
                         modifier = Modifier.padding(top = 2.dp),
@@ -340,7 +345,7 @@ private fun LocalModelCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                } else {
+                } else if (row.model.downloadable) {
                     Row(
                         modifier = Modifier.padding(top = 3.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -355,6 +360,23 @@ private fun LocalModelCard(
                             text = formatDecimalBytes(row.model.sizeBytes),
                             background = MaterialTheme.colorScheme.secondaryContainer,
                             foreground = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        LocalModelTag(
+                            text = row.model.runtime.displayLabel(),
+                            background = HarmonicTheme.colors.surfaceContainerHighest,
+                            foreground = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.padding(top = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        LocalModelTag(
+                            text = row.baseModelName.orEmpty(),
+                            background = MaterialTheme.colorScheme.primaryContainer,
+                            foreground = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),
@@ -474,7 +496,7 @@ private fun LocalModelRowUiState.visibleStatus(): String? {
 }
 
 private fun LocalModelRuntime.displayLabel(): String = when (this) {
-    LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
+    LocalModelRuntime.GEMINI_NANO -> "AI Core"
     LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
     LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
 }

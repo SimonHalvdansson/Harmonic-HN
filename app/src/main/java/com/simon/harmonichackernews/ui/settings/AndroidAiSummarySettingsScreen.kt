@@ -61,6 +61,7 @@ fun AndroidAiSummarySettingsScreen(
             LocalModelsRoute(
                 nanoAvailabilityResolved = availabilityState.availabilityResolved,
                 nanoAvailable = availabilityState.nanoAvailable,
+                nanoBaseModelName = availabilityState.nanoBaseModelName,
                 localModels = localModels,
                 managerState = localModelState,
                 onChanged = { localRefresh++ },

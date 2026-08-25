@@ -1,14 +1,18 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+)
 
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,7 +54,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -67,11 +73,13 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToLong
 
 private enum class AiModelFilter { Popular, Free, Price }
 
@@ -165,6 +173,15 @@ fun AiModelSelectorDialog(
         val requestedModel = modelInput.trim()
         if (requestedModel.isEmpty()) {
             priceState = AiModelPriceState.Empty
+            return@LaunchedEffect
+        }
+        val resolvedModel = (priceState as? AiModelPriceState.Resolved)?.model
+        if (resolvedModel?.requestId == requestedModel) return@LaunchedEffect
+        val catalogModel = (catalogState as? AiModelCatalogState.Loaded)
+            ?.models
+            ?.firstOrNull { it.requestId == requestedModel }
+        if (catalogModel != null) {
+            priceState = AiModelPriceState.Resolved(catalogModel)
             return@LaunchedEffect
         }
         priceState = AiModelPriceState.Loading
@@ -278,7 +295,7 @@ fun AiModelSelectorDialog(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                AnimatedContent(targetState = catalogState, label = "model catalog") { state ->
+                Crossfade(targetState = catalogState, label = "model catalog") { state ->
                     when (state) {
                         AiModelCatalogState.Loading -> Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -318,11 +335,13 @@ fun AiModelSelectorDialog(
                             items(state.models, key = { it.openRouterId }) { model ->
                                 AiModelRow(
                                     model = model,
+                                    provider = provider,
+                                    catalogRepository = catalogRepository,
                                     selected = model.requestId == modelInput.trim(),
                                     onClick = {
+                                        priceState = AiModelPriceState.Resolved(model)
                                         modelInput = model.requestId
                                         modelError = null
-                                        priceState = AiModelPriceState.Resolved(model)
                                     },
                                     providerIcon = providerIcon,
                                 )
@@ -360,11 +379,18 @@ fun AiModelSelectorDialog(
 
 @Composable
 private fun AiModelPrice(state: AiModelPriceState) {
-    Box(
+    Column(
         modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).padding(horizontal = 28.dp),
-        contentAlignment = Alignment.CenterStart,
     ) {
-        AnimatedContent(targetState = state, label = "model price") { price ->
+        Text(
+            text = stringResource(Res.string.ai_model_price_label),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = ProductSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            letterSpacing = 0.08.sp,
+        )
+        Crossfade(targetState = state, label = "model price") { price ->
             when (price) {
                 AiModelPriceState.Empty -> Text(
                     text = "Enter a model ID to see pricing",
@@ -385,31 +411,22 @@ private fun AiModelPrice(state: AiModelPriceState) {
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 13.sp,
                 )
-                is AiModelPriceState.Resolved -> Column {
+                is AiModelPriceState.Resolved -> Row {
                     Text(
-                        text = "INPUT / OUTPUT",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "${price.model.formattedInputPrice()} / " +
+                            price.model.formattedOutputPrice(),
+                        modifier = Modifier.alignByBaseline(),
+                        color = HarmonicTheme.colors.storyNormal,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.08.sp,
+                        fontSize = 20.sp,
                     )
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = "${price.model.formattedInputPrice()} / " +
-                                price.model.formattedOutputPrice(),
-                            color = HarmonicTheme.colors.storyNormal,
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                        )
-                        Text(
-                            text = " per million tokens",
-                            modifier = Modifier.padding(start = 6.dp, bottom = 2.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                        )
-                    }
+                    Text(
+                        text = stringResource(Res.string.ai_model_price_per_million),
+                        modifier = Modifier.padding(start = 6.dp).alignByBaseline(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
                 }
             }
         }
@@ -419,12 +436,29 @@ private fun AiModelPrice(state: AiModelPriceState) {
 @Composable
 private fun AiModelRow(
     model: AiModel,
+    provider: AiSummaryProviders.Provider,
+    catalogRepository: AiModelCatalogRepository,
     selected: Boolean,
     onClick: () -> Unit,
     providerIcon: @Composable (String) -> Unit,
 ) {
+    var uptimeLastDay by remember(provider.id, model.openRouterId) {
+        mutableStateOf<Double?>(null)
+    }
+    LaunchedEffect(provider.id, model.openRouterId) {
+        uptimeLastDay = try {
+            catalogRepository.fetchUptimeLastDay(provider, model.openRouterId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
+    }
     val rowShape = RoundedCornerShape(18.dp)
     val normalContainer = HarmonicTheme.colors.surfaceContainerHigh
+    val darkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val priceChipContainer = if (darkSurface) Color(0xFF244C3B) else Color(0xFFD7EBDD)
+    val priceChipContent = if (darkSurface) Color(0xFFB8E6CD) else Color(0xFF245B46)
     val containerColor = if (selected) {
         lerp(normalContainer, MaterialTheme.colorScheme.primaryContainer, 0.04f)
     } else {
@@ -477,38 +511,70 @@ private fun AiModelRow(
                     maxLines = 1,
                     overflow = TextOverflow.MiddleEllipsis,
                 )
-                if (model.isFree) {
-                    Text(
-                        text = "FREE",
-                        modifier = Modifier
-                            .padding(top = 7.dp)
-                            .background(
-                                MaterialTheme.colorScheme.secondaryContainer,
-                                RoundedCornerShape(8.dp),
-                            )
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        lineHeight = 16.sp,
-                    )
-                } else {
-                    Text(
-                        text = stringResource(
-                            Res.string.ai_model_row_price_format,
-                            model.formattedInputPrice(),
-                            model.formattedOutputPrice(),
-                        ),
-                        modifier = Modifier.padding(top = 7.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                    )
+                FlowRow(
+                    modifier = Modifier.padding(top = 7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (model.isFree) {
+                        AiModelMetadataChip(
+                            text = stringResource(Res.string.ai_model_free_badge),
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    } else {
+                        AiModelMetadataChip(
+                            text = stringResource(
+                                Res.string.ai_model_row_price_format,
+                                model.formattedInputPrice(),
+                                model.formattedOutputPrice(),
+                            ),
+                            containerColor = priceChipContainer,
+                            contentColor = priceChipContent,
+                        )
+                    }
+                    uptimeLastDay?.let { uptime ->
+                        AiModelMetadataChip(
+                            text = stringResource(
+                                Res.string.ai_model_uptime_badge,
+                                "${formatUptime(uptime)}%",
+                            ),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(8.dp))
             SettingsRadioButton(selected = selected)
         }
+    }
+}
+
+@Composable
+private fun AiModelMetadataChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .background(containerColor, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        color = contentColor,
+        fontFamily = ProductSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp,
+        lineHeight = 15.sp,
+    )
+}
+
+private fun formatUptime(uptime: Double): String {
+    val roundedTenths = (uptime.coerceIn(0.0, 100.0) * 10.0).roundToLong()
+    return if (roundedTenths % 10L == 0L) {
+        (roundedTenths / 10L).toString()
+    } else {
+        "${roundedTenths / 10L}.${roundedTenths % 10L}"
     }
 }

@@ -434,6 +434,7 @@ private fun DesktopAiSettings(
                     managerState = localModelState,
                     nanoAvailabilityResolved = true,
                     nanoAvailable = false,
+                    nanoBaseModelName = null,
                     models = localModels.catalog.filter {
                         it.runtime == LocalModelRuntime.LLAMA_CPP
                     },

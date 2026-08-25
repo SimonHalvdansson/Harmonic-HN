@@ -14,6 +14,7 @@ data class LocalSummarySettingsState(
     val availabilityResolved: Boolean = false,
     val available: Boolean = false,
     val nanoAvailable: Boolean = false,
+    val nanoBaseModelName: String? = null,
     val configurationReady: Boolean = false,
     val failure: String? = null,
     val revision: Int = 0,
@@ -48,6 +49,7 @@ class LocalSummarySettingsRuntime(
                     availabilityResolved = true,
                     available = availability.available,
                     nanoAvailable = nanoAvailable,
+                    nanoBaseModelName = availability.baseModelName,
                     configurationReady = summary.isReady(),
                     revision = mutableState.value.revision + 1,
                 )
