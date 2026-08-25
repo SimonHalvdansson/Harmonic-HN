@@ -289,7 +289,11 @@ fun CommentsHeader(
                                     controller.pollVoteInFlightOptionId,
                                     controller.listener::onPollOption,
                                 )
-                                StorySummary(story, settings)
+                                StorySummary(
+                                    story = story,
+                                    settings = settings,
+                                    loading = controller.storySummaryLoading,
+                                )
                                 HeaderMeta(
                                     story = story,
                                     settings = settings,

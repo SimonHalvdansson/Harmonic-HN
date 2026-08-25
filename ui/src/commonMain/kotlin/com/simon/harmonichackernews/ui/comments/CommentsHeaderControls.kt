@@ -128,11 +128,17 @@ data class PollOptionUi(
 fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
+    loading: Boolean,
 ) {
+    val summary = story.summary.orEmpty()
+    val typography = rememberContentTypography(
+        preferredFont = settings.font,
+        commentTextSize = settings.preferredTextSize,
+    )
     AnimatedVisibility(
-        visible = !story.summary.isNullOrBlank(),
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
+        visible = loading || summary.isNotBlank(),
+        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
     ) {
         Column(
             Modifier
@@ -144,7 +150,7 @@ fun StorySummary(
                     painterResource(Res.drawable.ic_auto_awesome),
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(end = 4.dp)
+                        .padding(end = 7.dp)
                         .size(14.dp),
                 )
                 Text(
@@ -154,13 +160,17 @@ fun StorySummary(
                     color = HarmonicTheme.colors.storyNormal,
                 )
             }
-            Text(
-                story.summary.orEmpty(),
-                modifier = Modifier.padding(top = 4.dp),
-                color = HarmonicTheme.colors.storyNormal,
-                fontFamily = rememberContentTypography(settings.font).family,
-                fontSize = 14.sp,
-            )
+            if (summary.isNotBlank()) {
+                SummaryMarkdownText(
+                    markdown = summary,
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = HarmonicTheme.colors.storyNormal,
+                    linkColor = HarmonicTheme.colors.link,
+                    fontFamily = typography.family,
+                    fontSize = typography.commentTextSize.sp,
+                    lineHeight = (typography.commentTextSize + 2f).sp,
+                )
+            }
         }
     }
 }

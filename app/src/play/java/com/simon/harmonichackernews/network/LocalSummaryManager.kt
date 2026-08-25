@@ -120,6 +120,7 @@ private class PlayLocalSummaryStatus {
             .setInputType(SummarizerOptions.InputType.ARTICLE)
             .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
             .setLanguage(SummarizerOptions.Language.ENGLISH)
+            .setLongInputAutoTruncationEnabled(true)
             .build()
 
     internal fun isLocalFeatureUsable(status: Int): Boolean = when (status) {
@@ -184,7 +185,10 @@ internal class AndroidLocalSummaryBackend(
             val selected = models.selectedModel
             val result = if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
                 send(StorySummaryEvent.DebugInfo("Gemini Nano · load —"))
-                summarizeWithGeminiNano(content)
+                summarizeWithGeminiNano(
+                    content = content,
+                    onProgress = { trySend(StorySummaryEvent.Progress(it)) },
+                )
             } else {
                 summarizeWithDownloadedModel(
                     content = content,
@@ -231,7 +235,10 @@ internal class AndroidLocalSummaryBackend(
         )
     }
 
-    private suspend fun summarizeWithGeminiNano(content: String): String =
+    private suspend fun summarizeWithGeminiNano(
+        content: String,
+        onProgress: (String) -> Unit,
+    ): String =
         withContext(Dispatchers.IO) {
             val summarizer = Summarization.getClient(status.createOptions(appContext))
             try {
@@ -246,7 +253,13 @@ internal class AndroidLocalSummaryBackend(
                     awaitDownload(summarizer)
                 }
                 val request = SummarizationRequest.builder(content).build()
-                summarizer.runInference(request).get().summary
+                val streamedSummary = StringBuilder()
+                summarizer.runInference(request) { additionalText ->
+                    if (additionalText.isNotEmpty()) {
+                        streamedSummary.append(additionalText)
+                        onProgress(streamedSummary.toString())
+                    }
+                }.get().summary
             } finally {
                 summarizer.close()
             }
