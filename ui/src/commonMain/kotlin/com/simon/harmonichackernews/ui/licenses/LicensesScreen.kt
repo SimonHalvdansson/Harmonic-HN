@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.licenses
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -27,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -38,17 +42,37 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.app.LicenseEntry
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.library_logo_androidx
+import com.simon.harmonichackernews.resources.library_logo_coil
+import com.simon.harmonichackernews.resources.library_logo_compose_multiplatform
+import com.simon.harmonichackernews.resources.library_logo_coroutines
+import com.simon.harmonichackernews.resources.library_logo_ggml
+import com.simon.harmonichackernews.resources.library_logo_haze
+import com.simon.harmonichackernews.resources.library_logo_kmpalette
+import com.simon.harmonichackernews.resources.library_logo_kotlin
+import com.simon.harmonichackernews.resources.library_logo_ksoup
+import com.simon.harmonichackernews.resources.library_logo_ktor
+import com.simon.harmonichackernews.resources.library_logo_litert_lm
+import com.simon.harmonichackernews.resources.library_logo_llama_cpp
+import com.simon.harmonichackernews.resources.library_logo_material_components
+import com.simon.harmonichackernews.resources.library_logo_materialistic
+import com.simon.harmonichackernews.resources.library_logo_mlkit
+import com.simon.harmonichackernews.resources.library_logo_pdfjs
+import com.simon.harmonichackernews.resources.library_logo_readability
+import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.app.LicenseEntry
-import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.settings_section_licenses
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 typealias LicenseEntryUi = LicenseEntry
 
 private val LicenseCardShape = RoundedCornerShape(24.dp)
+private val LicenseIconShape = RoundedCornerShape(9.dp)
 
 @Composable
 fun LicensesScreen(
@@ -140,6 +164,7 @@ private fun LicenseHeader(platformTextStyle: TextStyle) {
         ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Spacer(modifier = Modifier.width(48.dp))
         Text(
             text = "DEPENDENCY",
             modifier = Modifier.weight(1f),
@@ -184,6 +209,8 @@ private fun LicenseRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        LicenseIcon(license)
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = license.name,
@@ -214,4 +241,43 @@ private fun LicenseRow(
             )
         }
     }
+}
+
+@Composable
+private fun LicenseIcon(license: LicenseEntryUi) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(LicenseIconShape)
+            .background(Color.White),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(licenseIconResource(license.name)),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+private fun licenseIconResource(name: String): DrawableResource = when (name) {
+    "AndroidX" -> Res.drawable.library_logo_androidx
+    "Material Components for Android" -> Res.drawable.library_logo_material_components
+    "Kotlin standard library" -> Res.drawable.library_logo_kotlin
+    "kotlinx.coroutines" -> Res.drawable.library_logo_coroutines
+    "Ktor" -> Res.drawable.library_logo_ktor
+    "Compose Multiplatform" -> Res.drawable.library_logo_compose_multiplatform
+    "Haze" -> Res.drawable.library_logo_haze
+    "Coil" -> Res.drawable.library_logo_coil
+    "Ksoup" -> Res.drawable.library_logo_ksoup
+    "KMPalette" -> Res.drawable.library_logo_kmpalette
+    "pdf.js" -> Res.drawable.library_logo_pdfjs
+    "Readability" -> Res.drawable.library_logo_readability
+    "Materialistic" -> Res.drawable.library_logo_materialistic
+    "ML Kit GenAI APIs" -> Res.drawable.library_logo_mlkit
+    "LiteRT-LM" -> Res.drawable.library_logo_litert_lm
+    "llama.cpp" -> Res.drawable.library_logo_llama_cpp
+    "ggml" -> Res.drawable.library_logo_ggml
+    else -> error("Missing library icon for $name")
 }

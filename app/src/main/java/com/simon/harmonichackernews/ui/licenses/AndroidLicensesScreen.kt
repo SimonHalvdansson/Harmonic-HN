@@ -15,7 +15,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 private val AndroidLicenses = listOf(
     LicenseEntry("AndroidX", "Google", "Apache License 2.0", "https://developer.android.com/jetpack/androidx"),
     LicenseEntry(
-        "Material Components",
+        "Material Components for Android",
         "Google",
         "Apache License 2.0",
         "https://github.com/material-components/material-components-android",
