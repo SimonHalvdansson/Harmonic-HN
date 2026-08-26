@@ -472,6 +472,7 @@ fun StoryItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(geometryModifier)
+                    .then(cardDecorationModifier)
                     .then(
                         if (animate) {
                             Modifier.animateContentSize(
@@ -481,8 +482,7 @@ fun StoryItem(
                         } else {
                             Modifier
                         },
-                    )
-                    .then(cardDecorationModifier),
+                    ),
             ) {
                 StoryVisibility(
                     visible = style.previewImageMode == "large" && hasPreview,
