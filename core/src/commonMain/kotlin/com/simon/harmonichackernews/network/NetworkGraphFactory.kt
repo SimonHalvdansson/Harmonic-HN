@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.network
 
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.cookies.HttpCookies
 import kotlinx.coroutines.CoroutineScope
 
 /** Inputs that genuinely differ between Ktor hosts. */
@@ -13,7 +12,9 @@ data class NetworkGraphEnvironment(
     val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
     val authenticatedClientProvider: AuthenticatedHttpClientProvider? = null,
     val configureTransport: HttpClientConfig<*>.() -> Unit = {},
-    val configureAuthenticated: HttpClientConfig<*>.() -> Unit = { install(HttpCookies) },
+    val configureAuthenticated: HttpClientConfig<*>.() -> Unit = {
+        installHarmonicHttpCookies()
+    },
 )
 
 /** Canonical network bootstrap used by Android, iOS and desktop. */

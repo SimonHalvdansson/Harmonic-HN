@@ -1,14 +1,20 @@
 package com.simon.harmonichackernews.ui.common
 
 import com.simon.harmonichackernews.resources.*
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,6 +51,15 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private sealed interface LoginStatus {
+    data object Idle : LoginStatus
+    data object Loading : LoginStatus
+    data class Error(val message: String) : LoginStatus
+}
+
+private const val LOGIN_STATUS_FADE_IN_MILLIS = 180
+private const val LOGIN_STATUS_FADE_OUT_MILLIS = 120
 
 @Composable
 fun LoginDialog(
@@ -227,31 +242,55 @@ fun LoginDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(Res.string.login_dialog_create_account))
                 }
-                AnimatedVisibility(visible = loading) {
-                    Row(
-                        modifier = Modifier.padding(top = HarmonicDimens.login_dialog_section_spacing),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        HarmonicLoadingIndicator(
-                            modifier = Modifier.size(HarmonicDimens.login_dialog_loading_indicator_size),
-                        )
-                        Spacer(Modifier.width(HarmonicDimens.cache_stories_value_start_spacing))
-                        Text(
-                            text = stringResource(Res.string.login_dialog_loading),
-                            color = HarmonicTheme.colors.textPrimary,
+                val status = when {
+                    loading -> LoginStatus.Loading
+                    error != null -> LoginStatus.Error(error.orEmpty())
+                    else -> LoginStatus.Idle
+                }
+                AnimatedContent(
+                    targetState = status,
+                    transitionSpec = {
+                        fadeIn(tween(LOGIN_STATUS_FADE_IN_MILLIS)) togetherWith
+                            fadeOut(tween(LOGIN_STATUS_FADE_OUT_MILLIS))
+                    },
+                ) { currentStatus ->
+                    when (currentStatus) {
+                        LoginStatus.Idle -> Unit
+                        LoginStatus.Loading -> Row(
+                            modifier = Modifier.padding(
+                                top = HarmonicDimens.login_dialog_section_spacing,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            HarmonicLoadingIndicator(
+                                modifier = Modifier.size(
+                                    HarmonicDimens.login_dialog_loading_indicator_size,
+                                ),
+                            )
+                            Spacer(
+                                Modifier.width(
+                                    HarmonicDimens.cache_stories_value_start_spacing,
+                                ),
+                            )
+                            Text(
+                                text = stringResource(Res.string.login_dialog_loading),
+                                color = HarmonicTheme.colors.textPrimary,
+                                fontFamily = ProductSansFontFamily,
+                                fontSize = 14.sp,
+                                lineHeight = 18.sp,
+                            )
+                        }
+                        is LoginStatus.Error -> Text(
+                            text = currentStatus.message,
+                            modifier = Modifier.padding(
+                                top = HarmonicDimens.login_dialog_section_spacing,
+                            ),
+                            color = MaterialTheme.colorScheme.error,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
+                            lineHeight = 18.sp,
                         )
                     }
-                }
-                error?.let { message ->
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(top = HarmonicDimens.login_dialog_section_spacing),
-                        color = MaterialTheme.colorScheme.error,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                    )
                 }
             }
         },
@@ -303,6 +342,9 @@ fun CaptchaDialogLayout(
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .heightIn(max = HarmonicDimens.captcha_dialog_max_height)
+            .fillMaxHeight(),
         title = {
             Text(
                 text = stringResource(Res.string.captcha_dialog_title),
@@ -313,11 +355,11 @@ fun CaptchaDialogLayout(
             )
         },
         text = {
-            Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(HarmonicDimens.captcha_dialog_content_height),
+                        .weight(1f),
                     contentAlignment = Alignment.Center,
                 ) {
                     webContent()
@@ -336,10 +378,12 @@ fun CaptchaDialogLayout(
                         color = MaterialTheme.colorScheme.error,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 14.sp,
+                        lineHeight = 18.sp,
                     )
                 }
             }
         },
+        scrollableContent = true,
         dismissButton = {
             SettingsDialogTextButton(onClick = onDismiss) {
                 Text(stringResource(Res.string.common_cancel))

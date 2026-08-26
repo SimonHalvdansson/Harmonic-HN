@@ -8,7 +8,6 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.cache.storage.CacheStorage
 import io.ktor.client.plugins.cache.storage.FileStorage
-import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +36,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
         override fun get(): HttpClient {
             activeClient?.let { return it }
             return synchronized(this@AndroidNetworkEnvironment) {
-                activeClient ?: createClient { install(HttpCookies) }
+                activeClient ?: createClient { installHarmonicHttpCookies() }
                     .also { activeClient = it }
             }
         }

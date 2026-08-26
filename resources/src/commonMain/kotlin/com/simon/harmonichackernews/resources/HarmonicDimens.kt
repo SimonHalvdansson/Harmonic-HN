@@ -8,9 +8,9 @@ object HarmonicDimens {
     val cache_stories_explanation_top_padding = 4.dp
     val cache_stories_slider_top_padding = 4.dp
     val cache_stories_value_start_spacing = 12.dp
-    val captcha_dialog_content_height = 430.dp
     val captcha_dialog_error_top_spacing = 12.dp
     val captcha_dialog_loading_indicator_size = 48.dp
+    val captcha_dialog_max_height = 720.dp
     val compose_comment_action_card_padding = 18.dp
     val compose_comment_action_corner_radius = 28.dp
     val compose_comment_action_max_width = 520.dp

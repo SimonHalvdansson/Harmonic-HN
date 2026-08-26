@@ -314,7 +314,7 @@ class KtorHackerNewsActionRepository(
     )
 
     private suspend fun loadLoginPage(request: HttpRequest): PageResult =
-        when (val page = loadPage(cookieClient, request, true)) {
+        when (val page = loadLoginResponse(request)) {
             is PageResult.Result -> page
             is PageResult.Success -> {
                 val document = Ksoup.parse(page.body, baseUri = HackerNewsLinks.ROOT_URL)
@@ -327,6 +327,32 @@ class KtorHackerNewsActionRepository(
                 }
             }
         }
+
+    /**
+     * HN completes a successful login POST with a 302 to the requested page. Ktor deliberately
+     * does not follow POST redirects, and following one as another POST would resend credentials
+     * to the redirect target. Follow only HN's expected submit-page redirect as a fresh GET.
+     */
+    private suspend fun loadLoginResponse(request: HttpRequest): PageResult {
+        val response = cookieClient.execute(request)
+        if (response.code !in LOGIN_GET_REDIRECT_CODES) {
+            return classifyResponse(response, useCookies = true)
+        }
+
+        val location = response.header(LOCATION_HEADER)
+        response.close()
+        val redirectUrl = request.url.resolve(location.orEmpty())?.takeIf { url ->
+            url.scheme == "https" &&
+                url.host.equals(HackerNewsLinks.HOST, ignoreCase = true) &&
+                url.encodedPath == "/$SUBMIT_PATH"
+        } ?: return PageResult.Result(
+            HackerNewsActionResult.Failure(
+                "Unexpected login redirect",
+                "HN did not redirect to its submit page.",
+            ),
+        )
+        return loadPage(cookieClient, get(redirectUrl.toString()), useCookies = true)
+    }
 
     private suspend fun executeAction(
         client: KtorHttpClient,
@@ -378,28 +404,35 @@ class KtorHackerNewsActionRepository(
         request: HttpRequest,
         useCookies: Boolean,
         indeterminateOnHttpFailure: Boolean = false,
-    ): PageResult {
-        val response = client.execute(request)
-        return try {
-            val body = response.body.readText()
-            if (!response.isSuccessful) {
-                PageResult.Result(
-                    HackerNewsActionResult.Failure(
-                        "Unsuccessful response",
-                        response.toString(),
-                        reason = if (indeterminateOnHttpFailure) {
-                            HackerNewsActionFailureReason.INDETERMINATE
-                        } else {
-                            HackerNewsActionFailureReason.GENERAL
-                        },
-                    ),
-                )
-            } else {
-                classifyPage(body, useCookies)
-            }
-        } finally {
-            response.close()
+    ): PageResult = classifyResponse(
+        response = client.execute(request),
+        useCookies = useCookies,
+        indeterminateOnHttpFailure = indeterminateOnHttpFailure,
+    )
+
+    private suspend fun classifyResponse(
+        response: HttpResponse,
+        useCookies: Boolean,
+        indeterminateOnHttpFailure: Boolean = false,
+    ): PageResult = try {
+        val body = response.body.readText()
+        if (!response.isSuccessful) {
+            PageResult.Result(
+                HackerNewsActionResult.Failure(
+                    "Unsuccessful response",
+                    response.toString(),
+                    reason = if (indeterminateOnHttpFailure) {
+                        HackerNewsActionFailureReason.INDETERMINATE
+                    } else {
+                        HackerNewsActionFailureReason.GENERAL
+                    },
+                ),
+            )
+        } else {
+            classifyPage(body, useCookies)
         }
+    } finally {
+        response.close()
     }
 
     private fun classifyPage(body: String, useCookies: Boolean): PageResult = when {
@@ -475,8 +508,10 @@ class KtorHackerNewsActionRepository(
         const val SUBMIT_PARAM_FNID = "fnid"
         const val SUBMIT_PARAM_FNOP = "fnop"
         const val DEFAULT_FNOP = "submit-page"
+        const val LOCATION_HEADER = "Location"
         const val BAD_LOGIN_TEXT = "Bad login."
         const val UNKNOWN_OR_EXPIRED_LINK_TEXT = "Unknown or expired link."
+        val LOGIN_GET_REDIRECT_CODES = setOf(301, 302, 303)
     }
 }
 

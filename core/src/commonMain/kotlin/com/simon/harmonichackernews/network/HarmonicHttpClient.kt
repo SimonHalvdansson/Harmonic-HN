@@ -4,11 +4,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
+import io.ktor.client.plugins.cookies.CookiesStorage
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
+import io.ktor.http.Url
 import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.cancel
 import kotlinx.io.readByteArray
@@ -30,6 +35,40 @@ fun createHarmonicHttpClient(
         header(HttpHeaders.UserAgent, userAgent)
     }
     configure()
+}
+
+/** Installs cookie handling with RFC 6265's default-path behavior. */
+fun HttpClientConfig<*>.installHarmonicHttpCookies() {
+    install(HttpCookies) {
+        storage = Rfc6265CookiesStorage()
+    }
+}
+
+/**
+ * Ktor 3.5.1 defaults a path-less cookie to the complete request path. RFC 6265 instead uses the
+ * request path up to its final slash, so a cookie received from `/login` must also match `/submit`.
+ */
+private class Rfc6265CookiesStorage(
+    private val delegate: CookiesStorage = AcceptAllCookiesStorage(),
+) : CookiesStorage {
+    override suspend fun get(requestUrl: Url): List<Cookie> = delegate.get(requestUrl)
+
+    override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
+        val normalizedCookie = if (cookie.path?.startsWith('/') == true) {
+            cookie
+        } else {
+            cookie.copy(path = requestUrl.defaultCookiePath())
+        }
+        delegate.addCookie(requestUrl, normalizedCookie)
+    }
+
+    override fun close() = delegate.close()
+}
+
+private fun Url.defaultCookiePath(): String {
+    val requestPath = encodedPath
+    if (!requestPath.startsWith('/') || requestPath.count { it == '/' } <= 1) return "/"
+    return requestPath.substringBeforeLast('/').ifEmpty { "/" }
 }
 
 /** Canonical buffered GET path for application repositories. */
