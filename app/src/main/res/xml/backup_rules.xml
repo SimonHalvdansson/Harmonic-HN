@@ -13,4 +13,8 @@
     <exclude
         domain="sharedpref"
         path="HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS.xml" />
+    <exclude domain="sharedpref" path="HARMONIC_ACCOUNT_KEYSTORE_VAULT.xml" />
+    <exclude
+        domain="sharedpref"
+        path="HARMONIC_AI_SUMMARY_KEYSTORE_VAULT.xml" />
 </full-backup-content>

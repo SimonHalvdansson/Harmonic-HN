@@ -2,9 +2,11 @@ package com.simon.harmonichackernews.platform
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -97,12 +99,46 @@ class ObservableAccountRepositoryAdapter(
     override val accountState: StateFlow<HackerNewsAccountState> = mutableAccountState.asStateFlow()
 
     init {
-        storageScope.launch {
-            mutationMutex.withLock {
-                if (mutableAccountState.value is HackerNewsAccountState.Loading) {
-                    publish(delegate.load()?.normalizedUsername())
-                }
-            }
+        storageScope.launch { initializeAccountState() }
+    }
+
+    private suspend fun initializeAccountState() {
+        repeat(INITIAL_LOAD_ATTEMPTS) { attempt ->
+            if (tryInitialLoad()) return
+            if (attempt < INITIAL_LOAD_ATTEMPTS - 1) delay(retryDelayMillis(attempt))
+        }
+
+        // Repeated unreadable-storage failures are no longer treated as indefinitely loading.
+        // Try to make the logout durable first, then always unblock account-state consumers.
+        repeat(RECOVERY_CLEAR_ATTEMPTS) { attempt ->
+            if (tryRecoveryClear()) return
+            if (attempt < RECOVERY_CLEAR_ATTEMPTS - 1) delay(retryDelayMillis(attempt))
+        }
+        mutationMutex.withLock {
+            if (mutableAccountState.value is HackerNewsAccountState.Loading) publish(null)
+        }
+    }
+
+    private suspend fun tryInitialLoad(): Boolean = mutationMutex.withLock {
+        if (mutableAccountState.value !is HackerNewsAccountState.Loading) return@withLock true
+        try {
+            publish(delegate.load()?.normalizedUsername())
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            false
+        }
+    }
+
+    private suspend fun tryRecoveryClear(): Boolean = mutationMutex.withLock {
+        if (mutableAccountState.value !is HackerNewsAccountState.Loading) return@withLock true
+        try {
+            delegate.clear().also { cleared -> if (cleared) publish(null) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            false
         }
     }
 
@@ -113,17 +149,34 @@ class ObservableAccountRepositoryAdapter(
 
     private fun save(account: HackerNewsAccount): Boolean {
         val normalizedAccount = account.normalizedUsername()
-        return delegate.save(normalizedAccount).also { saved ->
-            if (saved) publish(normalizedAccount) else publish(delegate.load()?.normalizedUsername())
-        }
+        return runCatching { delegate.save(normalizedAccount) }
+            .getOrDefault(false)
+            .also { saved ->
+                if (saved) {
+                    publish(normalizedAccount)
+                } else {
+                    reloadWithoutDiscardingPublishedState()
+                }
+            }
+    }
+
+    private fun reloadWithoutDiscardingPublishedState() {
+        runCatching { delegate.load()?.normalizedUsername() }
+            .onSuccess(::publish)
     }
 
     override suspend fun clearAccount(): Boolean = withContext(storageDispatcher) {
-        mutationMutex.withLock { clear() }
-    }
-
-    private fun clear(): Boolean = delegate.clear().also { cleared ->
-        if (cleared) publish(null) else publish(delegate.load()?.normalizedUsername())
+        mutationMutex.withLock {
+            runCatching { delegate.clear() }
+                .getOrDefault(false)
+                .also { cleared ->
+                    if (cleared) {
+                        publish(null)
+                    } else {
+                        reloadWithoutDiscardingPublishedState()
+                    }
+                }
+        }
     }
 
     override fun close() {
@@ -134,6 +187,14 @@ class ObservableAccountRepositoryAdapter(
         mutableAccountState.value = account
             ?.let(HackerNewsAccountState::LoggedIn)
             ?: HackerNewsAccountState.LoggedOut
+    }
+
+    private companion object {
+        const val INITIAL_LOAD_ATTEMPTS = 3
+        const val RECOVERY_CLEAR_ATTEMPTS = 3
+        const val RETRY_DELAY_MILLIS = 250L
+
+        fun retryDelayMillis(attempt: Int): Long = RETRY_DELAY_MILLIS * (attempt + 1L)
     }
 }
 

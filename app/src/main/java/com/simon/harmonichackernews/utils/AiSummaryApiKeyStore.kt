@@ -7,78 +7,86 @@ import androidx.preference.PreferenceManager
 
 class AndroidAiSummaryApiKeyStore(context: Context) {
     private val appContext = context.applicationContext
-    private var cachedHasApiKey: Boolean? = null
-    private val encryptedPreferences: SharedPreferences by lazy {
+    @Volatile
+    private var cachedApiKey: String? = null
+    private val secretStore = AndroidKeystoreSecretStore(
+        context = appContext,
+        preferencesName = KEYSTORE_VAULT_NAME,
+        preferenceKey = KEYSTORE_VAULT_API_KEY,
+        keyAlias = KEYSTORE_VAULT_KEY_ALIAS,
+    )
+    private val legacyEncryptedPreferences: SharedPreferences by lazy {
         EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(
             appContext,
-            ENCRYPTED_PREFS_NAME,
-            MASTER_KEY_ALIAS,
+            LEGACY_ENCRYPTED_PREFS_NAME,
+            LEGACY_MASTER_KEY_ALIAS,
         )
     }
 
+    @Synchronized
     fun getApiKey(): String {
-        val legacyPreferences =
-            PreferenceManager.getDefaultSharedPreferences(appContext)
-        val legacyValue = legacyPreferences.getString(PREF_API_KEY, null)
+        cachedApiKey?.let { return it }
+        val plainLegacyPreferences = PreferenceManager.getDefaultSharedPreferences(appContext)
+        val plainLegacyValue = plainLegacyPreferences.getString(PREF_API_KEY, null)
 
-        try {
-            if (encryptedPreferences.contains(PREF_API_KEY)) {
-                val encryptedValue = encryptedPreferences.getString(PREF_API_KEY, "").orEmpty()
-                removeLegacyValue(legacyPreferences)
-                cachedHasApiKey = encryptedValue.isNotEmpty()
-                return encryptedValue
+        val result = readWithLegacyMigration(
+            destination = secretStore,
+            onMigrationFailure = {
+                Log.e(TAG, "Unable to migrate the legacy AI summary API key", it)
+            },
+        ) {
+            val encryptedLegacyValue = if (legacyEncryptedPreferences.contains(PREF_API_KEY)) {
+                legacyEncryptedPreferences.getString(PREF_API_KEY, null)
+            } else {
+                null
             }
-
-            if (legacyValue != null
-                && encryptedPreferences.edit()
-                    .putString(PREF_API_KEY, legacyValue)
-                    .commit()
-            ) {
-                removeLegacyValue(legacyPreferences)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Unable to read the encrypted AI summary API key", e)
+            (encryptedLegacyValue ?: plainLegacyValue)?.encodeToByteArray()
+        }
+        if (result is MigratingSecretReadResult.Failure) {
+            // Do not delete or cache a fallback after a transient vault failure. A later read can
+            // retry the Keystore while a pre-encryption value remains usable in the meantime.
+            Log.e(TAG, "Unable to read the AI summary API key", result.error)
+            return plainLegacyValue.orEmpty()
         }
 
-        val resolvedValue = legacyValue.orEmpty()
-        cachedHasApiKey = resolvedValue.isNotEmpty()
-        return resolvedValue
+        result as MigratingSecretReadResult.Success
+        val resolved = result.value?.decodeToString().orEmpty()
+        if (result.canDeleteLegacy) removeLegacyValue(plainLegacyPreferences)
+        if (!result.shouldRetryMigration) cachedApiKey = resolved
+        return resolved
     }
 
-    fun hasApiKey(): Boolean {
-        val cachedValue = cachedHasApiKey
-        return cachedValue ?: getApiKey().isNotEmpty()
-    }
+    fun hasApiKey(): Boolean = getApiKey().isNotEmpty()
 
-    fun setApiKey(apiKey: String?): Boolean {
-        try {
-            val saved = encryptedPreferences
-                .edit()
-                .putString(PREF_API_KEY, apiKey.orEmpty())
-                .commit()
+    @Synchronized
+    fun setApiKey(apiKey: String?): Boolean = try {
+        val normalized = apiKey.orEmpty()
+        secretStore.write(normalized.encodeToByteArray()).also { saved ->
             if (saved) {
                 removeLegacyValue(PreferenceManager.getDefaultSharedPreferences(appContext))
-                cachedHasApiKey = !apiKey.isNullOrEmpty()
+                cachedApiKey = normalized
             }
-            return saved
-        } catch (e: Exception) {
-            Log.e(TAG, "Unable to save the encrypted AI summary API key", e)
-            return false
         }
+    } catch (e: Exception) {
+        Log.e(TAG, "Unable to save the AI summary API key", e)
+        false
     }
 
+    @Synchronized
     fun clearApiKey(): Boolean {
         val cleared = try {
-            encryptedPreferences
-                .edit()
-                .remove(PREF_API_KEY)
-                .commit()
+            secretStore.clear()
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to clear the encrypted AI summary API key", e)
+            Log.e(TAG, "Unable to clear the AI summary API key", e)
             false
         }
+        if (!cleared) return false
+
         removeLegacyValue(PreferenceManager.getDefaultSharedPreferences(appContext))
-        cachedHasApiKey = if (cleared) false else null
+        runCatching {
+            legacyEncryptedPreferences.edit().remove(PREF_API_KEY).commit()
+        }.onFailure { Log.w(TAG, "Unable to remove the legacy AI summary API key", it) }
+        cachedApiKey = ""
         return cleared
     }
 
@@ -91,7 +99,10 @@ class AndroidAiSummaryApiKeyStore(context: Context) {
     private companion object {
         const val PREF_API_KEY = "pref_ai_summary_api_key"
         const val TAG = "AiSummaryApiKeyStore"
-        const val ENCRYPTED_PREFS_NAME = "HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS"
-        const val MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_ai_summary_"
+        const val KEYSTORE_VAULT_NAME = "HARMONIC_AI_SUMMARY_KEYSTORE_VAULT"
+        const val KEYSTORE_VAULT_API_KEY = "api_key"
+        const val KEYSTORE_VAULT_KEY_ALIAS = "_harmonic_ai_summary_aes_gcm_v2_"
+        const val LEGACY_ENCRYPTED_PREFS_NAME = "HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS"
+        const val LEGACY_MASTER_KEY_ALIAS = "_androidx_security_master_key_harmonic_ai_summary_"
     }
 }

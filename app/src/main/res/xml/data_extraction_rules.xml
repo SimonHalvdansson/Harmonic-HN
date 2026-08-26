@@ -14,6 +14,10 @@
         <exclude
             domain="sharedpref"
             path="HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS.xml" />
+        <exclude domain="sharedpref" path="HARMONIC_ACCOUNT_KEYSTORE_VAULT.xml" />
+        <exclude
+            domain="sharedpref"
+            path="HARMONIC_AI_SUMMARY_KEYSTORE_VAULT.xml" />
     </cloud-backup>
 
     <device-transfer>
@@ -27,5 +31,9 @@
         <exclude
             domain="sharedpref"
             path="HARMONIC_AI_SUMMARY_ENCRYPTED_PREFS.xml" />
+        <exclude domain="sharedpref" path="HARMONIC_ACCOUNT_KEYSTORE_VAULT.xml" />
+        <exclude
+            domain="sharedpref"
+            path="HARMONIC_AI_SUMMARY_KEYSTORE_VAULT.xml" />
     </device-transfer>
 </data-extraction-rules>

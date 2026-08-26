@@ -10,6 +10,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
@@ -146,6 +147,88 @@ class HackerNewsAccountRepositoryTest {
         repository.close()
     }
 
+    @Test
+    fun transientInitializationFailuresRetryWithoutClearingTheAccount() = runTest {
+        val account = HackerNewsAccount("alice", "secret")
+        val storage = FailingAccountStorage(
+            account = account,
+            loadFailuresRemaining = 2,
+        )
+        val repository = ObservableAccountRepositoryAdapter(
+            storage,
+            StandardTestDispatcher(testScheduler),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(account, repository.awaitAccount())
+        assertEquals(3, storage.loadCount)
+        assertEquals(0, storage.clearCount)
+        repository.close()
+    }
+
+    @Test
+    fun persistentInitializationFailureClearsStorageAndPublishesLoggedOut() = runTest {
+        val storage = FailingAccountStorage(
+            account = HackerNewsAccount("alice", "secret"),
+            failLoad = true,
+        )
+        val repository = ObservableAccountRepositoryAdapter(
+            storage,
+            StandardTestDispatcher(testScheduler),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(HackerNewsAccountState.LoggedOut, repository.accountState.value)
+        assertNull(repository.awaitAccount())
+        assertEquals(3, storage.loadCount)
+        assertEquals(1, storage.clearCount)
+        assertNull(storage.account)
+        repository.close()
+    }
+
+    @Test
+    fun persistentClearFailureStillTerminatesInitializationAsLoggedOut() = runTest {
+        val storage = FailingAccountStorage(
+            account = HackerNewsAccount("alice", "secret"),
+            failLoad = true,
+            failClear = true,
+        )
+        val repository = ObservableAccountRepositoryAdapter(
+            storage,
+            StandardTestDispatcher(testScheduler),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(HackerNewsAccountState.LoggedOut, repository.accountState.value)
+        assertNull(repository.awaitAccount())
+        assertEquals(3, storage.loadCount)
+        assertEquals(3, storage.clearCount)
+        repository.close()
+    }
+
+    @Test
+    fun mutationFailuresPreserveTheLastPublishedAccount() = runTest {
+        val account = HackerNewsAccount("alice", "secret")
+        val storage = FailingAccountStorage(account)
+        val repository = ObservableAccountRepositoryAdapter(
+            storage,
+            StandardTestDispatcher(testScheduler),
+        )
+        runCurrent()
+        storage.failLoad = true
+        storage.failSave = true
+        storage.failClear = true
+
+        assertFalse(repository.saveAccount(HackerNewsAccount("bob", "other")))
+        assertEquals(account, repository.currentAccount)
+        assertFalse(repository.clearAccount())
+        assertEquals(account, repository.currentAccount)
+        repository.close()
+    }
+
     private class RecordingAccountStorage(
         private var account: HackerNewsAccount?,
     ) : HackerNewsAccountRepository {
@@ -163,6 +246,40 @@ class HackerNewsAccountRepositoryTest {
         }
 
         override fun clear(): Boolean {
+            account = null
+            return true
+        }
+    }
+
+    private class FailingAccountStorage(
+        var account: HackerNewsAccount? = null,
+        var failLoad: Boolean = false,
+        var failSave: Boolean = false,
+        var failClear: Boolean = false,
+        var loadFailuresRemaining: Int = 0,
+    ) : HackerNewsAccountRepository {
+        var loadCount = 0
+            private set
+        var clearCount = 0
+            private set
+
+        override fun load(): HackerNewsAccount? {
+            loadCount++
+            if (failLoad || loadFailuresRemaining-- > 0) {
+                error("Secure storage is temporarily unavailable")
+            }
+            return account
+        }
+
+        override fun save(account: HackerNewsAccount): Boolean {
+            if (failSave) error("Secure storage is temporarily unavailable")
+            this.account = account
+            return true
+        }
+
+        override fun clear(): Boolean {
+            clearCount++
+            if (failClear) error("Secure storage is temporarily unavailable")
             account = null
             return true
         }
