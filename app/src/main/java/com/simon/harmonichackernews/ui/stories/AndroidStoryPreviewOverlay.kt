@@ -1,12 +1,15 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
+import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -19,8 +22,8 @@ internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
         StoryDisplaySettings.from(dependencies.userSettings.story)
     }
     val displaySettings = controller.displaySettings ?: fallbackSettings
-    val contentVersion = controller.contentVersion
-    val hasAccount = remember(contentVersion) { dependencies.platform.accounts.load() != null }
+    val accountState by dependencies.platform.accounts.accountState.collectAsState()
+    val hasAccount = accountState.accountOrNull != null
     val userSettings = dependencies.userSettings
     val bookmarksEnabled = userSettings.general.bookmarksEnabled
     val faviconProvider = userSettings.story.faviconProvider

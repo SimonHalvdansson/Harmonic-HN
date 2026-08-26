@@ -9,7 +9,7 @@ import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
-import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
@@ -77,7 +77,7 @@ class DataSettingsService(
     private val settings: AppSettingsRepository,
     private val settingsReset: SettingsResetUseCase,
     private val savedItems: SavedItemsRepository,
-    private val accounts: HackerNewsAccountRepository,
+    private val accounts: ObservableHackerNewsAccountRepository,
     private val history: ObservableHistoryStore?,
     private val storyCache: StoryCacheService,
     private val previewResources: StoryPreviewRepository,
@@ -93,7 +93,7 @@ class DataSettingsService(
             tintCache = storyResourceTints.count(),
             aiModelsBytes = localModels?.storedModelBytes(),
         ),
-        loggedIn = accounts.load() != null,
+        loggedIn = accounts.currentAccount != null,
     )
 
     fun bookmarkCount(): Int = savedItems.loadItems(SavedItemSource.BOOKMARKS).size

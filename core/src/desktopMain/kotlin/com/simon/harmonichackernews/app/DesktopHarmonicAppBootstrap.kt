@@ -73,6 +73,7 @@ class DesktopHarmonicAppBootstrap(
         if (closed) return
         closed = true
         scene.close()
+        app.platform.accounts.close()
         closePlatformServices()
         network.close()
         scope.cancel()
@@ -137,7 +138,10 @@ class DesktopHarmonicAppBootstrap(
                     userAgent = userAgent,
                     platform = AppPlatformDependencies(
                         credentials = credentials,
-                        accounts = CredentialBackedHackerNewsAccountRepository(credentials),
+                        accounts = CredentialBackedHackerNewsAccountRepository(
+                            credentials,
+                            storageDispatcher = Dispatchers.IO,
+                        ),
                         history = history,
                         externalLinks = DesktopExternalLinkOpener,
                         sharing = DesktopShareService,
@@ -183,6 +187,7 @@ class DesktopHarmonicAppBootstrap(
                     credentials = credentials,
                     accounts = CredentialBackedHackerNewsAccountRepository(
                         credentials,
+                        storageDispatcher = Dispatchers.IO,
                     ),
                     history = StoredHistoryStore(appData),
                     externalLinks = SideEffectFreeExternalLinkOpener,

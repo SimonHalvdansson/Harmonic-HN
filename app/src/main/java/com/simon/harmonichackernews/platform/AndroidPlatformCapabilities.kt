@@ -19,42 +19,39 @@ import com.simon.harmonichackernews.utils.ShareUtils
 import com.simon.harmonichackernews.summary.LocalModelService
 import java.util.Calendar
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
 
-class AndroidCredentialStore(context: Context) : CredentialStore {
+internal class AndroidCredentialStore(
+    context: Context,
+    private val currentAccount: () -> HackerNewsAccount?,
+) : CredentialStore {
     private val appContext = context.applicationContext
     private val aiCredentials = AndroidAiSummaryApiKeyStore(appContext)
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.getApiKey()
-        CredentialIds.HACKER_NEWS_USERNAME -> AndroidHackerNewsAccountStorage.load(appContext)?.username
-        CredentialIds.HACKER_NEWS_PASSWORD -> AndroidHackerNewsAccountStorage.load(appContext)?.password
+        CredentialIds.HACKER_NEWS_USERNAME -> currentAccount()?.username
+        CredentialIds.HACKER_NEWS_PASSWORD -> currentAccount()?.password
         else -> null
     }
 
     override fun write(id: String, value: String): Boolean =
         when (id) {
             CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.setApiKey(value)
-            CredentialIds.HACKER_NEWS_USERNAME ->
-                AndroidHackerNewsAccountStorage.load(appContext)?.let { current ->
-                AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(value, current.password))
-            } ?: false
-            CredentialIds.HACKER_NEWS_PASSWORD ->
-                AndroidHackerNewsAccountStorage.load(appContext)?.let { current ->
-                AndroidHackerNewsAccountStorage.save(appContext, HackerNewsAccount(current.username, value))
-            } ?: false
+            // Account mutations must use the suspend, atomically published account repository.
+            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD -> false
             else -> false
         }
 
     override fun remove(id: String): Boolean =
         when (id) {
             CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.clearApiKey()
-            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD ->
-                AndroidHackerNewsAccountStorage.clear(appContext)
+            CredentialIds.HACKER_NEWS_USERNAME, CredentialIds.HACKER_NEWS_PASSWORD -> false
             else -> false
         }
 }
 
 /** Android only supplies the atomic encrypted vault; shared code adds observation and locking. */
-class AndroidHackerNewsAccountRepository(context: Context) : HackerNewsAccountRepository {
+internal class AndroidHackerNewsAccountRepository(context: Context) : HackerNewsAccountRepository {
     private val appContext = context.applicationContext
     override fun load(): HackerNewsAccount? = AndroidHackerNewsAccountStorage.load(appContext)
     override fun save(account: HackerNewsAccount): Boolean =
@@ -175,10 +172,11 @@ fun createAndroidPlatformDependencies(
     context: Context,
     localModels: LocalModelService,
 ): AppPlatformDependencies {
-    val credentials = AndroidCredentialStore(context)
     val accounts = ObservableAccountRepositoryAdapter(
         AndroidHackerNewsAccountRepository(context),
+        storageDispatcher = Dispatchers.IO,
     )
+    val credentials = AndroidCredentialStore(context, accounts::currentAccount)
     return AppPlatformDependencies(
         credentials = credentials,
         accounts = accounts,

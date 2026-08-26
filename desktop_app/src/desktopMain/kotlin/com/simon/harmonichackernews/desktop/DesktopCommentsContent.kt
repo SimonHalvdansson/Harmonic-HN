@@ -39,6 +39,7 @@ import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
+import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
@@ -217,6 +218,7 @@ internal fun DesktopCommentsContent(
 
     val showFloatingUpButton = showNavigation &&
         host.controller.displaySettings?.showUpButton == true
+    val accountState by app.platform.accounts.accountState.collectAsState()
     val comments: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
             if (showNavigation && !showFloatingUpButton) {
@@ -253,7 +255,7 @@ internal fun DesktopCommentsContent(
                         CommentActionOverlay(
                             controller = host.controller,
                             settings = settings,
-                            hasAccount = app.platform.accounts.load() != null,
+                            hasAccount = accountState.accountOrNull != null,
                             bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
                             textStyle = TextStyle.Default,
                             onOpenLink = { scene.links.open(it) },

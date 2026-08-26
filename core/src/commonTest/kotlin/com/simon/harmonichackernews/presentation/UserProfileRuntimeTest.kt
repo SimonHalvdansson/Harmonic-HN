@@ -2,13 +2,16 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.platform.HackerNewsAccount
-import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class UserProfileRuntimeTest {
     @Test
@@ -110,16 +113,23 @@ class UserProfileRuntimeTest {
     )
 
     private class FakeAccounts(private var account: HackerNewsAccount?) :
-        HackerNewsAccountRepository {
-        override fun load(): HackerNewsAccount? = account
-        override fun save(account: HackerNewsAccount): Boolean {
+        ObservableHackerNewsAccountRepository {
+        private val mutableState = MutableStateFlow<HackerNewsAccountState>(account.toState())
+        override val accountState: StateFlow<HackerNewsAccountState> = mutableState
+
+        override suspend fun saveAccount(account: HackerNewsAccount): Boolean {
             this.account = account
+            mutableState.value = account.toState()
             return true
         }
-        override fun clear(): Boolean {
+        override suspend fun clearAccount(): Boolean {
             account = null
+            mutableState.value = HackerNewsAccountState.LoggedOut
             return true
         }
+
+        private fun HackerNewsAccount?.toState(): HackerNewsAccountState =
+            this?.let(HackerNewsAccountState::LoggedIn) ?: HackerNewsAccountState.LoggedOut
     }
 
     private class FakeBlocks : UserProfileBlockPort {

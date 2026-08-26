@@ -196,7 +196,7 @@ class StoriesFeatureRuntime(
         get() = connectivity.isOnline()
 
     val loggedIn: Boolean
-        get() = accounts.accountState.value != null
+        get() = accounts.currentAccount != null
 
     val canClearHistory: Boolean
         get() = currentType.isHistory && historyStore.size > 0
@@ -739,7 +739,7 @@ class StoriesFeatureRuntime(
             }
             return
         }
-        val account = accounts.load()
+        val account = accounts.currentAccount
         if (action == StoriesMenuAction.ACCOUNT && account != null) {
             scope.launch {
                 accounts.clearAccount()
@@ -1155,7 +1155,7 @@ class StoriesFeatureRuntime(
         val source = currentUserItemSource()
         val cached = savedItems.loadSnapshot(source)
         if (plan.loadCachedUserItems) syncUserItemStories(cached.itemIds, cached.commentIds)
-        if (accounts.load() == null) {
+        if (accounts.currentAccount == null) {
             refreshIndicatorShowing = false
             userItemsInitialLoadInProgress = false
             if (activeStories.isEmpty()) activeStore.fail(StoryLoadFailure.GENERAL)

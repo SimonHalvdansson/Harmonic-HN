@@ -1,11 +1,13 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.AddBookmarksToFavoritesUseCase
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +19,7 @@ fun AddBookmarksToFavoritesDialog(
 ) {
     val app = LocalHarmonicUiDependencies.current
     val accounts = app.platform.accounts
+    val accountState by accounts.accountState.collectAsState()
     val addFavorites = remember(app) {
         AddBookmarksToFavoritesUseCase(
             favorites = app.hackerNewsUser,
@@ -45,10 +48,10 @@ fun AddBookmarksToFavoritesDialog(
     }
     AddBookmarksToFavoritesDialog(
         items = items,
-        prerequisiteError = if (accounts.load() == null) {
-            "Log in to Hacker News before adding favorites"
-        } else {
-            null
+        prerequisiteError = when (accountState) {
+            HackerNewsAccountState.Loading -> "Checking Hacker News login…"
+            HackerNewsAccountState.LoggedOut -> "Log in to Hacker News before adding favorites"
+            is HackerNewsAccountState.LoggedIn -> null
         },
         addFavorite = { item ->
             addFavorites.add(item.id, item.title).let { result ->

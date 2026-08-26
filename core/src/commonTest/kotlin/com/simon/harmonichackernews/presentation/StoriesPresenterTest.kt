@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.platform.HistoryStoreSnapshot
 import com.simon.harmonichackernews.platform.HackerNewsAccount
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
 import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
@@ -237,19 +238,18 @@ class StoriesPresenterTest {
     }
 
     private class MemoryAccounts : ObservableHackerNewsAccountRepository {
-        private val mutableAccount = MutableStateFlow<HackerNewsAccount?>(null)
-        override val accountState: StateFlow<HackerNewsAccount?> = mutableAccount
-        override fun load(): HackerNewsAccount? = mutableAccount.value
-        override fun save(account: HackerNewsAccount): Boolean {
-            mutableAccount.value = account
+        private val mutableAccount = MutableStateFlow<HackerNewsAccountState>(
+            HackerNewsAccountState.LoggedOut,
+        )
+        override val accountState: StateFlow<HackerNewsAccountState> = mutableAccount
+        override suspend fun saveAccount(account: HackerNewsAccount): Boolean {
+            mutableAccount.value = HackerNewsAccountState.LoggedIn(account)
             return true
         }
-        override fun clear(): Boolean {
-            mutableAccount.value = null
+        override suspend fun clearAccount(): Boolean {
+            mutableAccount.value = HackerNewsAccountState.LoggedOut
             return true
         }
-        override suspend fun saveAccount(account: HackerNewsAccount): Boolean = save(account)
-        override suspend fun clearAccount(): Boolean = clear()
     }
 
     private object AlwaysOnline : ConnectivityService {

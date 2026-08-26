@@ -6,14 +6,37 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Suspend-friendly observable account storage for platform vault implementations. */
-interface ObservableHackerNewsAccountRepository : HackerNewsAccountRepository {
-    val accountState: StateFlow<HackerNewsAccount?>
+sealed interface HackerNewsAccountState {
+    data object Loading : HackerNewsAccountState
+    data object LoggedOut : HackerNewsAccountState
+    data class LoggedIn(val account: HackerNewsAccount) : HackerNewsAccountState
+}
+
+val HackerNewsAccountState.accountOrNull: HackerNewsAccount?
+    get() = (this as? HackerNewsAccountState.LoggedIn)?.account
+
+/**
+ * Suspend-friendly observable account storage for platform vault implementations.
+ *
+ * Secure storage is never exposed through a synchronous read. UI code consumes [accountState],
+ * while operations that require credentials can suspend through [awaitAccount] until the one-time
+ * background initialization has completed.
+ */
+interface ObservableHackerNewsAccountRepository {
+    val accountState: StateFlow<HackerNewsAccountState>
+    val currentAccount: HackerNewsAccount?
+        get() = accountState.value.accountOrNull
+
+    suspend fun awaitAccount(): HackerNewsAccount? =
+        accountState.first { it !is HackerNewsAccountState.Loading }.accountOrNull
+
     suspend fun saveAccount(account: HackerNewsAccount): Boolean
     suspend fun clearAccount(): Boolean
+    fun close() = Unit
 }
 
 data class HistoryStoreSnapshot(

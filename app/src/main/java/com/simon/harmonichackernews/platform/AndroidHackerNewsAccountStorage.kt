@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.platform
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.utils.EncryptedSharedPreferencesHelper
 
@@ -11,6 +12,7 @@ internal object AndroidHackerNewsAccountStorage {
         "com.simon.harmonichackernews.KEY_UNENCRYPTED_SHARED_PREFERENCES_USERNAME"
     private const val PASSWORD_KEY =
         "com.simon.harmonichackernews.KEY_ENCRYPTED_SHARED_PREFERENCES_PASSWORD"
+    private var cachedEncryptedPreferences: SharedPreferences? = null
 
     fun load(context: Context): HackerNewsAccount? = synchronized(this) {
         val encrypted = encryptedPreferences(context) ?: return null
@@ -44,9 +46,12 @@ internal object AndroidHackerNewsAccountStorage {
         false
     }
 
-    private fun encryptedPreferences(context: Context) = runCatching {
-        EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(context)
-    }.getOrNull()
+    private fun encryptedPreferences(context: Context): SharedPreferences? {
+        cachedEncryptedPreferences?.let { return it }
+        return runCatching {
+            EncryptedSharedPreferencesHelper.getEncryptedSharedPreferences(context.applicationContext)
+        }.getOrNull()?.also { cachedEncryptedPreferences = it }
+    }
 
     private fun globalPreferences(context: Context) =
         context.applicationContext.getSharedPreferences(

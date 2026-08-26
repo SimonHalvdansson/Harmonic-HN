@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
-import com.simon.harmonichackernews.platform.HackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,7 +58,7 @@ class UserProfileRuntime(
     username: String,
     private val monthNames: List<String>,
     private val loader: UserProfileLoader,
-    private val accounts: HackerNewsAccountRepository,
+    private val accounts: ObservableHackerNewsAccountRepository,
     private val blocks: UserProfileBlockPort,
     private val notifications: UserProfileNotificationPort,
 ) {
@@ -78,7 +78,7 @@ class UserProfileRuntime(
             val profile = UserProfilePresenter.present(user, monthNames)
             mutableState.value.copy(
                 loadState = UserProfileLoadState.Loaded(profile),
-                ownProfile = matches(profile.id, accounts.load()?.username),
+                ownProfile = matches(profile.id, accounts.awaitAccount()?.username),
             )
         } catch (error: CancellationException) {
             throw error

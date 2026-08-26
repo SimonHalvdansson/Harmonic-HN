@@ -138,9 +138,7 @@ class HackerNewsUserService(
         HackerNewsActionResult.Failure(failureSummary, error.message)
     }
 
-    private fun readCredentials(): HackerNewsCredentials? {
-        return accounts.load()
-    }
+    private suspend fun readCredentials(): HackerNewsCredentials? = accounts.awaitAccount()
 
     private suspend fun sanitize(result: HackerNewsActionResult): HackerNewsActionResult {
         if (

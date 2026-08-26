@@ -122,7 +122,7 @@ class CommentsFeatureRuntime(
     private var presentationCapabilities: CommentsPresentationCapabilities? = null
 
     val accountUser: String?
-        get() = accounts?.accountState?.value?.username
+        get() = accounts?.currentAccount?.username
 
     val summaryLoading: Boolean
         get() = summaryRuntime?.state?.value?.status is StorySummaryStatus.Running

@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.platform.HackerNewsAccount
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -102,21 +103,18 @@ class HackerNewsActionDispatchClassificationTest {
     }
 
     private class MemoryAccounts : ObservableHackerNewsAccountRepository {
-        private val mutableAccount = MutableStateFlow<HackerNewsAccount?>(
-            HackerNewsAccount("tester", "secret"),
+        private val mutableAccount = MutableStateFlow<HackerNewsAccountState>(
+            HackerNewsAccountState.LoggedIn(HackerNewsAccount("tester", "secret")),
         )
-        override val accountState: StateFlow<HackerNewsAccount?> = mutableAccount
-        override fun load(): HackerNewsAccount? = mutableAccount.value
-        override fun save(account: HackerNewsAccount): Boolean {
-            mutableAccount.value = account
+        override val accountState: StateFlow<HackerNewsAccountState> = mutableAccount
+        override suspend fun saveAccount(account: HackerNewsAccount): Boolean {
+            mutableAccount.value = HackerNewsAccountState.LoggedIn(account)
             return true
         }
-        override fun clear(): Boolean {
-            mutableAccount.value = null
+        override suspend fun clearAccount(): Boolean {
+            mutableAccount.value = HackerNewsAccountState.LoggedOut
             return true
         }
-        override suspend fun saveAccount(account: HackerNewsAccount): Boolean = save(account)
-        override suspend fun clearAccount(): Boolean = clear()
     }
 
     private data object UnusedWebRepository : HackerNewsWebRepository {
