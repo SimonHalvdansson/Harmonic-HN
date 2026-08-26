@@ -926,7 +926,8 @@ private fun MainNavigation(
         completedSubmissionsPredictiveBack = completedSubmissionsPredictiveBack,
         completedEditorPredictiveBack = completedEditorPredictiveBack,
         modifier = Modifier.background(HarmonicTheme.colors.background),
-        basePredictiveModifier = activeSettingsBackAnimation?.enterModifier ?: Modifier,
+        basePredictiveModifier = (activeSettingsBackAnimation?.enterModifier ?: Modifier)
+            .then(activeSubmissionsBackAnimation?.enterModifier ?: Modifier),
         settingsPredictiveModifier = (activeSettingsBackAnimation?.exitModifier ?: Modifier)
             .then(
                 if (storyParentDestination == MainDestination.SETTINGS) {
