@@ -32,10 +32,31 @@ class PredictiveBackDialogTest {
 
         assertEquals(0.42f, heldProgress, absoluteTolerance = 0.001f)
         assertEquals(0.924f, leftEdge.scale, absoluteTolerance = 0.001f)
-        assertEquals(0.614f, leftEdge.alpha, absoluteTolerance = 0.001f)
+        assertEquals(1f, leftEdge.alpha, absoluteTolerance = 0.001f)
         assertEquals(31.0f, leftEdge.translationXDp, absoluteTolerance = 0.1f)
         assertEquals(-leftEdge.translationXDp, rightEdge.translationXDp, 0.001f)
         assertEquals(leftEdge.translationYDp, rightEdge.translationYDp, 0.001f)
+    }
+
+    @Test
+    fun committedSettleStartsFadingOnlyAfterHeldGesturePhase() {
+        val heldProgress = dialogPredictiveBackGestureProgress(1f)
+
+        assertEquals(
+            1f,
+            dialogPredictiveBackVisuals(heldProgress).alpha,
+            absoluteTolerance = 0.001f,
+        )
+        assertEquals(
+            1f,
+            dialogPredictiveBackVisuals(heldProgress - 0.01f).alpha,
+            absoluteTolerance = 0.001f,
+        )
+        assertEquals(
+            0.984f,
+            dialogPredictiveBackVisuals(heldProgress + 0.01f).alpha,
+            absoluteTolerance = 0.001f,
+        )
     }
 
     @Test

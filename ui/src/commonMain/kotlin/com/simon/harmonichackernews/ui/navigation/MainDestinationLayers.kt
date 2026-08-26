@@ -10,12 +10,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 
@@ -80,6 +82,25 @@ fun MainDestinationLayers(
 
         linkPreview?.let { content ->
             Box(Modifier.fillMaxSize().zIndex(4.5f)) { content() }
+        }
+
+        if (state.settingsCoversBase) {
+            // An opaque destination is not automatically a pointer target. Keep a stationary
+            // barrier behind Settings so taps on non-clickable areas (and transition gutters)
+            // cannot reach controls in the retained base layer.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(4.9f)
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
         }
 
         AnimatedVisibility(

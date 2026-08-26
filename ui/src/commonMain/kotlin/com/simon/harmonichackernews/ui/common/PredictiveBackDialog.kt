@@ -42,12 +42,16 @@ internal fun dialogPredictiveBackVisuals(
     swipeDirection: Float = 1f,
 ): DialogPredictiveBackVisuals {
     val visualProgress = progress.coerceIn(0f, 1f)
+    // Gesture progress is mapped entirely into the first phase. Keep the dialog fully opaque
+    // until that phase is complete so fading can only begin after a committed gesture is released.
+    val fadeProgress = ((visualProgress - DialogPredictiveBackGestureProgressFraction) /
+        (1f - DialogPredictiveBackGestureProgressFraction)).coerceIn(0f, 1f)
     // Translation peaks during the gesture and returns to the center as the committed dialog
     // finishes shrinking away. Cancellation follows the same path in reverse.
     val translationProgress = sin(visualProgress * PI).toFloat()
     return DialogPredictiveBackVisuals(
         scale = 1f - (1f - DialogPredictiveBackScale) * visualProgress,
-        alpha = 1f - (1f - DialogPredictiveBackAlpha) * visualProgress,
+        alpha = 1f - (1f - DialogPredictiveBackAlpha) * fadeProgress,
         translationXDp = DialogPredictiveBackTranslationXDp *
             translationProgress * swipeDirection.coerceIn(-1f, 1f),
         translationYDp = DialogPredictiveBackTranslationYDp * translationProgress,
@@ -62,8 +66,8 @@ internal data class DialogPredictiveBackEvent(
 /**
  * Shared dialog host for dialogs without a source element to morph back into.
  *
- * Android predictive back shrinks the dialog toward the center of the screen and fades it more
- * quickly than source-backed preview overlays. Other platforms retain their native back handling.
+ * Android predictive back translates and shrinks the dialog while the gesture is held, then fades
+ * it after the gesture commits. Other platforms retain their native back handling.
  */
 @Composable
 fun PredictiveBackDialog(
