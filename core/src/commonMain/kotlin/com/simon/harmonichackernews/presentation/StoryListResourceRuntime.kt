@@ -66,13 +66,22 @@ class StoryListResourceRuntime(
     fun stateFor(storyId: Int): StoryPreviewResourceState? = resourceRuntime.stateFor(storyId)
 
     fun request(story: Story?) {
+        val previewEnabled = settings.previewImageMode != StoryPreviewPreferences.OFF
+        if (!previewEnabled && !settings.showSummary) return
+        requestCompletePreview(story)
+    }
+
+    /** Dialog previews always include every enrichment, independently of list display settings. */
+    fun requestForDialog(story: Story?) {
+        requestCompletePreview(story)
+    }
+
+    private fun requestCompletePreview(story: Story?) {
         if (story == null || !story.loaded || story.loadingFailed || story.isComment ||
             story.url.isNullOrEmpty()
         ) {
             return
         }
-        val previewEnabled = settings.previewImageMode != StoryPreviewPreferences.OFF
-        if (!previewEnabled && !settings.showSummary) return
         val knownSummary = story.linkSummaryDescription
             ?.takeIf { story.linkSummaryLoaded }
             ?.let { LinkSummary(description = it, imageUrl = story.previewImageUrl.orEmpty()) }
@@ -80,8 +89,10 @@ class StoryListResourceRuntime(
             StoryPreviewResourceRequest(
                 storyId = story.id,
                 pageUrl = story.url.orEmpty(),
-                loadImage = previewEnabled,
-                loadSummary = settings.showSummary,
+                // Ksoup produces both values from the same document. Always retain both so a
+                // later dialog or settings change can reuse the parse without another request.
+                loadImage = true,
+                loadSummary = true,
                 knownImageUrl = story.previewImageUrl,
                 imageUrlAlreadyResolved = story.previewImageUrlLoaded,
                 knownSummary = knownSummary,

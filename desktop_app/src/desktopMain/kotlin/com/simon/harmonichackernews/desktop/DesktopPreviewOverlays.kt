@@ -50,7 +50,6 @@ internal fun DesktopStoryPreviewOverlay(
             cardColor = cardColor,
             settings = displaySettings,
             summaryState = StoryPreviewSummaryState(
-                loading = previewResource?.loading == true,
                 result = previewResource?.summary,
             ),
             previewResource = previewResource,

@@ -35,7 +35,6 @@ internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
         val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }
         val summaryState = StoryPreviewSummaryState(
-            loading = previewResource?.loading == true,
             result = previewResource?.summary,
         )
         val faviconUrl = remember(story.id, story.url, faviconProvider) {

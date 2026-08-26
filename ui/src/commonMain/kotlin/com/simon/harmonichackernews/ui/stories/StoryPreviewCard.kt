@@ -2,14 +2,18 @@ package com.simon.harmonichackernews.ui.stories
 
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,12 +50,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,8 +81,16 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 private const val TextStorySummaryMaxChars = 600
+
+internal fun shouldReserveStoryPreviewImage(
+    canLoadLinkPreview: Boolean,
+    displayedImageUrl: String?,
+    imageLoadFailed: Boolean,
+    previewResource: StoryPreviewResourceState?,
+): Boolean = canLoadLinkPreview && displayedImageUrl == null && !imageLoadFailed &&
+    previewResource?.contentLoadFailed != true && previewResource?.imageUrlResolved != true
+
 data class StoryPreviewSummaryState(
-    val loading: Boolean,
     val result: LinkSummary? = null,
 )
 
@@ -121,6 +137,8 @@ fun StoryPreviewCard(
     val displayedImageUrl = imageUrl?.takeIf { !imageLoadFailed }
     val description = if (story.isLink) {
         summaryState.result?.description?.takeIf(String::isNotBlank)
+            ?: story.presentation.linkSummaryDescription
+                ?.takeIf { story.presentation.linkSummaryLoaded && it.isNotBlank() }
     } else {
         remember(story.id, story.text) {
             story.text
@@ -130,6 +148,18 @@ fun StoryPreviewCard(
                 .orEmpty()
         }
     }
+    val canLoadLinkPreview = story.isLink && !story.url.isNullOrBlank()
+    val contentLoadFailed = previewResource?.contentLoadFailed == true
+    val imagePending = shouldReserveStoryPreviewImage(
+        canLoadLinkPreview = canLoadLinkPreview,
+        displayedImageUrl = displayedImageUrl,
+        imageLoadFailed = imageLoadFailed,
+        previewResource = previewResource,
+    )
+    val summaryResolved = previewResource?.summaryResolved == true ||
+        story.presentation.linkSummaryLoaded
+    val descriptionPending = canLoadLinkPreview && description.isNullOrBlank() &&
+        !contentLoadFailed && !summaryResolved
     val storyTitle = remember(
         story.title,
         story.presentation.pdfTitle,
@@ -171,6 +201,7 @@ fun StoryPreviewCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 720.dp)
+                .clip(RoundedCornerShape(28.dp))
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(
@@ -178,53 +209,57 @@ fun StoryPreviewCard(
                     .fillMaxWidth()
                     .clickable { controller.onStoryPreviewNavigate(page, story.isLink) },
             ) {
-                AnimatedContent(
-                    targetState = displayedImageUrl to (summaryState.loading && story.isLink),
-                    transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
-                    label = "story preview image content",
-                ) { (currentImageUrl, imageLoading) ->
-                    when {
-                        currentImageUrl != null -> StoryPreviewSharedElement(
+                AnimatedVisibility(
+                    visible = displayedImageUrl != null || imagePending,
+                    modifier = Modifier.clipToBounds(),
+                    enter = expandVertically(
+                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        expandFrom = Alignment.Top,
+                    ) + fadeIn(tween(160)),
+                    exit = shrinkVertically(
+                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        shrinkTowards = Alignment.Top,
+                    ) + fadeOut(tween(90)),
+                    label = "story preview image area",
+                ) {
+                    val currentImageUrl = displayedImageUrl
+                    if (currentImageUrl != null) {
+                        StoryPreviewSharedElement(
                             element = StoryPreviewSharedElement.Image,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f),
                         ) {
-                            NetworkImage(
-                                url = currentImageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                // The shared-element transform supplies its own source/destination
-                                // blend. A second Coil crossfade can make the first cold-load
-                                // snapshot almost transparent until the live card takes over.
-                                crossfade = false,
-                                onSuccess = {
-                                    onPreviewImageLoaded(
-                                        story.id,
-                                        story.url.orEmpty(),
-                                        currentImageUrl,
-                                    )
-                                },
+                            StoryPreviewNetworkImage(
+                                storyId = story.id,
+                                pageUrl = story.url.orEmpty(),
+                                imageUrl = currentImageUrl,
+                                initiallyLoaded = previewResource?.imageLoaded == true &&
+                                    previewResource.imageUrl == currentImageUrl,
+                                onLoaded = onPreviewImageLoaded,
                                 onError = {
                                     imageLoadFailed = true
-                                    onPreviewImageError(
-                                        story.id,
-                                        story.url.orEmpty(),
-                                        currentImageUrl,
-                                    )
+                                    onPreviewImageError(story.id, story.url.orEmpty(), currentImageUrl)
                                 },
                             )
                         }
-                        imageLoading -> StoryPreviewSharedElement(
-                            element = StoryPreviewSharedElement.Image,
+                    } else {
+                        // A speculative placeholder affects dialog layout, but is not a shared
+                        // element. If parsing confirms a miss, there is no stale image layer for
+                        // the container transform to keep drawing while this area collapses.
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(2.15f),
+                                .aspectRatio(2.15f)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 28.dp,
+                                        topEnd = 28.dp,
+                                    ),
+                                ),
                         ) {
                             StoryPreviewShimmer(Modifier.fillMaxSize())
                         }
-                        else -> Spacer(Modifier.height(0.dp))
                     }
                 }
 
@@ -257,7 +292,7 @@ fun StoryPreviewCard(
                                 AsyncImage(
                                     model = faviconUrl,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(17.dp),
                                     placeholder = tintedPainterResource(
                                         Res.drawable.ic_public,
                                         HarmonicTheme.colors.drawable,
@@ -271,16 +306,17 @@ fun StoryPreviewCard(
                                         HarmonicTheme.colors.drawable,
                                     ),
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(4.dp))
                             }
                             Text(
                                 text = meta,
                                 color = HarmonicTheme.colors.storyDisabled,
-                                fontFamily = typography.family,
+                                fontFamily = typography.storyMetaFamily,
                                 fontSize = typography.storyMetaSize.sp,
                                 lineHeight = (typography.storyMetaSize + 3f).sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
+                                style = storyPreviewMetaTextStyle,
                             )
                         }
                     }
@@ -291,24 +327,30 @@ fun StoryPreviewCard(
                 Modifier.padding(start = 20.dp, top = 7.dp, end = 20.dp, bottom = 18.dp),
             ) {
                 StoryPreviewSharedElement(StoryPreviewSharedElement.Summary) {
-                    AnimatedContent(
-                        targetState = description to (summaryState.loading && story.isLink),
-                        transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
-                        label = "story preview description content",
-                    ) { (currentDescription, descriptionLoading) ->
-                        when {
-                            !currentDescription.isNullOrBlank() -> SelectionContainer {
-                                Text(
-                                    text = currentDescription,
-                                    color = HarmonicTheme.colors.storyNormal,
-                                    fontFamily = typography.family,
-                                    fontSize = typography.commentTextSize.sp,
-                                    lineHeight = (typography.commentTextSize + 2f).sp,
-                                    style = textStyle,
-                                )
+                    StoryPreviewDescriptionVisibility(
+                        visible = !description.isNullOrBlank() || descriptionPending,
+                    ) {
+                        AnimatedContent(
+                            targetState = description,
+                            transitionSpec = {
+                                fadeIn(tween(220)).togetherWith(fadeOut(tween(150)))
+                            },
+                            label = "story preview description content",
+                        ) { currentDescription ->
+                            if (!currentDescription.isNullOrBlank()) {
+                                SelectionContainer {
+                                    Text(
+                                        text = currentDescription,
+                                        color = HarmonicTheme.colors.storyNormal,
+                                        fontFamily = typography.family,
+                                        fontSize = typography.commentTextSize.sp,
+                                        lineHeight = (typography.commentTextSize + 2f).sp,
+                                        style = textStyle,
+                                    )
+                                }
+                            } else {
+                                DescriptionShimmer()
                             }
-                            descriptionLoading -> DescriptionShimmer()
-                            else -> Spacer(Modifier.height(0.dp))
                         }
                     }
                 }
@@ -442,6 +484,71 @@ fun StoryPreviewCard(
 }
 
 @Composable
+private fun StoryPreviewDescriptionVisibility(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.clipToBounds(),
+        enter = expandVertically(
+            animationSpec = tween(180, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ) + fadeIn(tween(160)),
+        exit = shrinkVertically(
+            animationSpec = tween(180, easing = FastOutSlowInEasing),
+            shrinkTowards = Alignment.Top,
+        ) + fadeOut(tween(90)),
+        label = "story preview description area",
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun StoryPreviewNetworkImage(
+    storyId: Int,
+    pageUrl: String,
+    imageUrl: String,
+    initiallyLoaded: Boolean,
+    onLoaded: (storyId: Int, pageUrl: String, imageUrl: String) -> Unit,
+    onError: () -> Unit,
+) {
+    var loaded by remember(imageUrl) { mutableStateOf(initiallyLoaded) }
+    val imageAlpha by animateFloatAsState(
+        targetValue = if (loaded) 1f else 0f,
+        animationSpec = tween(220),
+        label = "story preview loaded image alpha",
+    )
+    Box(Modifier.fillMaxSize()) {
+        if (imageAlpha < 1f) {
+            StoryPreviewShimmer(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = 1f - imageAlpha },
+            )
+        }
+        NetworkImage(
+            url = imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = imageAlpha },
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            // The shared-element transform supplies its own source/destination blend. This local
+            // alpha starts only after Coil succeeds, so cold late arrivals fade over the shimmer
+            // without making the opening transform's captured destination translucent.
+            crossfade = false,
+            onSuccess = {
+                loaded = true
+                onLoaded(storyId, pageUrl, imageUrl)
+            },
+            onError = onError,
+        )
+    }
+}
+
+@Composable
 private fun RowScope.StoryPreviewActionIcon(
     icon: DrawableResource,
     description: String,
@@ -514,13 +621,17 @@ private fun DescriptionShimmer() {
             Modifier
                 .fillMaxWidth()
                 .height(16.dp)
-                .background(Color.Transparent, RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(8.dp)),
         )
         StoryPreviewShimmer(
             Modifier
                 .fillMaxWidth(0.58f)
                 .height(16.dp)
-                .background(Color.Transparent, RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(8.dp)),
         )
     }
 }
+
+private val storyPreviewMetaTextStyle = TextStyle(
+    textMotion = TextMotion.Static,
+)

@@ -703,7 +703,7 @@ class StoriesFeatureRuntime(
     fun previewDeck(openedStoryId: Int, tintBaseColorArgb: Int): StoryPreviewDeck? {
         val stories = previewStories(openedStoryId)
         if (stories.isEmpty()) return null
-        stories.forEach { storyResources?.request(it) }
+        stories.forEach { storyResources?.requestForDialog(it) }
         return StoryPreviewDeck(
             stories = stories.map { story ->
                 StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
