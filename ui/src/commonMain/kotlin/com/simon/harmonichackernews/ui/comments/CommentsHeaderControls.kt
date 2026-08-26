@@ -5,6 +5,8 @@ package com.simon.harmonichackernews.ui.comments
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -128,7 +130,6 @@ data class PollOptionUi(
 fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
-    loading: Boolean,
 ) {
     val summary = story.summary.orEmpty()
     val typography = rememberContentTypography(
@@ -136,13 +137,17 @@ fun StorySummary(
         commentTextSize = settings.preferredTextSize,
     )
     AnimatedVisibility(
-        visible = loading || summary.isNotBlank(),
+        visible = summary.isNotBlank(),
         enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
         exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                    alignment = Alignment.TopStart,
+                )
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

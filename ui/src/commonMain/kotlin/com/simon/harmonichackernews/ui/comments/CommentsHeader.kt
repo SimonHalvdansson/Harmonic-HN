@@ -292,7 +292,6 @@ fun CommentsHeader(
                                 StorySummary(
                                     story = story,
                                     settings = settings,
-                                    loading = controller.storySummaryLoading,
                                 )
                                 HeaderMeta(
                                     story = story,
