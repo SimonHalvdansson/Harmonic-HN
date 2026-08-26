@@ -414,6 +414,7 @@ private fun DesktopAiSettings(
         localAvailabilityResolved = availabilityState.availabilityResolved,
         localConfigurationReady = availabilityState.configurationReady,
         localModeAvailable = availabilityState.available,
+        selectedLocalModelId = localModelState.selectedModelId,
         showNavigation = showNavigation,
         contentVersion = refresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,

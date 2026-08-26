@@ -16,6 +16,18 @@ object AiSummaryPreferenceKeys {
     const val MODEL = "pref_ai_summary_model"
     const val SYSTEM_PROMPT = "pref_ai_summary_system_prompt"
     const val STREAM_RESPONSES = "pref_ai_summary_stream_responses"
+    const val AUTO_SUMMARIZE_ARTICLES = "pref_ai_summary_auto_summarize_articles"
+    const val GEMINI_NANO_SUMMARY_MODE = "pref_ai_summary_gemini_nano_summary_mode"
+}
+
+enum class GeminiNanoSummaryMode(val storedValue: String) {
+    SYSTEM_PROMPT("system_prompt"),
+    THREE_BULLETS("three_bullets");
+
+    companion object {
+        fun fromStored(value: String?): GeminiNanoSummaryMode =
+            entries.firstOrNull { it.storedValue == value } ?: THREE_BULLETS
+    }
 }
 
 enum class AiSummaryMode(val storedValue: String) {
@@ -38,6 +50,8 @@ data class AiSummarySettingsSnapshot(
     val model: String,
     val systemPrompt: String,
     val streamResponses: Boolean,
+    val autoSummarizeArticles: Boolean,
+    val geminiNanoSummaryMode: GeminiNanoSummaryMode,
 ) {
     val cloudConfigurationComplete: Boolean
         get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank() &&
@@ -84,6 +98,13 @@ class AiSummarySettingsRepository(
             CloudSummaryDefaults.SYSTEM_PROMPT,
         ) ?: CloudSummaryDefaults.SYSTEM_PROMPT,
         streamResponses = store.getBoolean(AiSummaryPreferenceKeys.STREAM_RESPONSES, true),
+        autoSummarizeArticles = store.getBoolean(
+            AiSummaryPreferenceKeys.AUTO_SUMMARIZE_ARTICLES,
+            false,
+        ),
+        geminiNanoSummaryMode = GeminiNanoSummaryMode.fromStored(
+            store.getString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE),
+        ),
     )
 
     val updates: Flow<AiSummarySettingsSnapshot> = flow {
@@ -103,6 +124,14 @@ class AiSummarySettingsRepository(
 
     fun setStreamResponses(value: Boolean) {
         store.putBoolean(AiSummaryPreferenceKeys.STREAM_RESPONSES, value)
+    }
+
+    fun setAutoSummarizeArticles(value: Boolean) {
+        store.putBoolean(AiSummaryPreferenceKeys.AUTO_SUMMARIZE_ARTICLES, value)
+    }
+
+    fun setGeminiNanoSummaryMode(value: GeminiNanoSummaryMode) {
+        store.putString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE, value.storedValue)
     }
 
     fun disableIfConfigurationIncomplete(localConfigurationReady: Boolean): Boolean {

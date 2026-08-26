@@ -18,4 +18,13 @@ object AiSummaryAvailabilityPolicy {
         localAvailable: Boolean,
         cloudApiKeyAvailable: Boolean,
     ): Boolean = explicitlyEnabled ?: (localAvailable || cloudApiKeyAvailable)
+
+    fun shouldAutomaticallySummarize(
+        automaticSummariesEnabled: Boolean,
+        requestAlreadyMade: Boolean,
+        isArticle: Boolean,
+        hasSuccessfulSummary: Boolean,
+        canProvideSummary: Boolean,
+    ): Boolean = automaticSummariesEnabled && !requestAlreadyMade && isArticle &&
+        !hasSuccessfulSummary && canProvideSummary
 }

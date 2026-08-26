@@ -54,4 +54,35 @@ class AiSummaryAvailabilityPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun automaticSummariesRequireAnUnsummarizedArticleAndReadyProvider() {
+        assertTrue(
+            AiSummaryAvailabilityPolicy.shouldAutomaticallySummarize(
+                automaticSummariesEnabled = true,
+                requestAlreadyMade = false,
+                isArticle = true,
+                hasSuccessfulSummary = false,
+                canProvideSummary = true,
+            ),
+        )
+        assertFalse(
+            AiSummaryAvailabilityPolicy.shouldAutomaticallySummarize(
+                automaticSummariesEnabled = true,
+                requestAlreadyMade = false,
+                isArticle = true,
+                hasSuccessfulSummary = true,
+                canProvideSummary = true,
+            ),
+        )
+        assertFalse(
+            AiSummaryAvailabilityPolicy.shouldAutomaticallySummarize(
+                automaticSummariesEnabled = true,
+                requestAlreadyMade = false,
+                isArticle = true,
+                hasSuccessfulSummary = false,
+                canProvideSummary = false,
+            ),
+        )
+    }
 }

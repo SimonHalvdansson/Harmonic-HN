@@ -48,6 +48,8 @@ import com.simon.harmonichackernews.summary.PlatformLocalStorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.summary.UnavailableStorySummaryBackend
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
+import com.simon.harmonichackernews.summary.LocalSummaryBehavior
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -217,7 +219,17 @@ class HarmonicAppComposition(
 
     fun createStorySummaryRuntime(scope: CoroutineScope): StorySummaryRuntime {
         val localBackend = platform.localSummary
-            ?.let(::PlatformLocalStorySummaryBackend)
+            ?.let { engine ->
+                PlatformLocalStorySummaryBackend(engine) {
+                    val settings = aiSummarySettings.snapshot()
+                    LocalSummaryBehavior(
+                        systemPrompt = settings.systemPrompt,
+                        streamResponses = settings.streamResponses,
+                        useGeminiNanoSummarizationLora =
+                            settings.geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS,
+                    )
+                }
+            }
             ?: UnavailableStorySummaryBackend("The platform has no local summary engine")
         return StorySummaryRuntime(
             scope = scope,

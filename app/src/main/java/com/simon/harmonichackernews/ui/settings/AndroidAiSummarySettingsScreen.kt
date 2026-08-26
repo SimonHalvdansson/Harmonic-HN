@@ -48,6 +48,8 @@ fun AndroidAiSummarySettingsScreen(
         localAvailabilityResolved = availabilityState.availabilityResolved,
         localConfigurationReady = availabilityState.configurationReady,
         localModeAvailable = availabilityState.available,
+        selectedLocalModelId = localModelState.selectedModelId,
+        geminiNanoAvailable = availabilityState.nanoAvailable,
         showNavigation = showNavigation,
         contentVersion = localRefresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,
@@ -62,8 +64,13 @@ fun AndroidAiSummarySettingsScreen(
                 nanoAvailabilityResolved = availabilityState.availabilityResolved,
                 nanoAvailable = availabilityState.nanoAvailable,
                 nanoBaseModelName = availabilityState.nanoBaseModelName,
+                nanoSummaryMode = repository.snapshot().geminiNanoSummaryMode,
                 localModels = localModels,
                 managerState = localModelState,
+                onNanoSummaryModeSelected = { mode ->
+                    repository.setGeminiNanoSummaryMode(mode)
+                    localRefresh++
+                },
                 onChanged = { localRefresh++ },
                 onMessage = { message ->
                     appComposition.userMessages.show(message, UserMessageDuration.LONG)

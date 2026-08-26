@@ -753,12 +753,12 @@ fun SettingsDivider() {
 }
 
 /**
- * Renders an inline segmented preference. An optional summary is kept inside the same
- * preference, between its title and controls, matching custom View preference layouts.
+ * Renders an inline segmented preference. Optional title and summary text stay inside the same
+ * preference above the controls, matching custom View preference layouts.
  */
 @Composable
 fun SegmentedSetting(
-    title: String,
+    title: String? = null,
     summary: String? = null,
     options: List<Pair<String, String>>,
     optionIcons: Map<String, DrawableResource> = emptyMap(),
@@ -767,6 +767,7 @@ fun SegmentedSetting(
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
     onSelected: (String) -> Unit,
 ) {
+    val hasHeader = !title.isNullOrBlank() || !summary.isNullOrBlank()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -777,19 +778,25 @@ fun SegmentedSetting(
                 vertical = HarmonicDimens.compose_settings_inline_control_padding,
             ),
     ) {
-        Text(
-            text = title,
-            color = HarmonicTheme.colors.textPrimary,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 16.sp,
-            lineHeight = 20.sp,
-        )
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                color = HarmonicTheme.colors.textPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+            )
+        }
         if (!summary.isNullOrBlank()) {
             Text(
                 text = summary,
-                modifier = Modifier.padding(
-                    top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
-                ),
+                modifier = if (title.isNullOrBlank()) {
+                    Modifier
+                } else {
+                    Modifier.padding(
+                        top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
+                    )
+                },
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
@@ -801,7 +808,11 @@ fun SegmentedSetting(
                 .fillMaxWidth()
                 .selectableGroup()
                 .padding(
-                    top = HarmonicDimens.compose_settings_inline_control_top_margin,
+                    top = if (hasHeader) {
+                        HarmonicDimens.compose_settings_inline_control_top_margin
+                    } else {
+                        0.dp
+                    },
                 ),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {

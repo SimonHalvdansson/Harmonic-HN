@@ -85,6 +85,8 @@ fun AiSummarySettingsRoute(
     localAvailabilityResolved: Boolean,
     localConfigurationReady: Boolean,
     localModeAvailable: Boolean,
+    selectedLocalModelId: String? = null,
+    geminiNanoAvailable: Boolean = false,
     showNavigation: Boolean,
     contentVersion: Int,
     onBack: () -> Unit,
@@ -132,6 +134,11 @@ fun AiSummarySettingsRoute(
             model = persistedSettings.model,
             systemPrompt = persistedSettings.systemPrompt,
             streamResponses = persistedSettings.streamResponses,
+            autoSummarizeArticles = persistedSettings.autoSummarizeArticles,
+            geminiNanoSelected = geminiNanoAvailable &&
+                selectedLocalModelId ==
+                com.simon.harmonichackernews.summary.LocalModelCatalog.MODEL_GEMINI_NANO,
+            geminiNanoSummaryMode = persistedSettings.geminiNanoSummaryMode,
         ),
         showNavigation = showNavigation,
         contentVersion = persistedSettings.hashCode() + contentVersion,
@@ -145,6 +152,7 @@ fun AiSummarySettingsRoute(
             }
         },
         onStreamChanged = repository::setStreamResponses,
+        onAutoSummarizeChanged = repository::setAutoSummarizeArticles,
         onDialogRequested = { dialog = it },
         localModelsContent = localModelsContent,
     )

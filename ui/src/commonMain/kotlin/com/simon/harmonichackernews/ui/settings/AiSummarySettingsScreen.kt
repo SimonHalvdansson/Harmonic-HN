@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AiSummaryMode
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 
 enum class AiSummarySettingsDialog { BaseUrl, ApiKey, Model, SystemPrompt }
 
@@ -30,6 +31,9 @@ data class AiSummarySettingsUiState(
     val model: String,
     val systemPrompt: String,
     val streamResponses: Boolean,
+    val autoSummarizeArticles: Boolean,
+    val geminiNanoSelected: Boolean,
+    val geminiNanoSummaryMode: GeminiNanoSummaryMode,
 )
 
 @Composable
@@ -41,6 +45,7 @@ fun AiSummarySettingsScreen(
     onEnabledChanged: (Boolean) -> Unit,
     onModeSelected: (AiSummaryMode) -> Unit,
     onStreamChanged: (Boolean) -> Unit,
+    onAutoSummarizeChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
     localModelsContent: @Composable () -> Unit,
 ) {
@@ -60,10 +65,9 @@ fun AiSummarySettingsScreen(
         }
 
         item {
-            SettingsCard {
+            SettingsCategory("Model") {
                 if (state.localSummarizationSupported) {
                     SegmentedSetting(
-                        title = "Summarization mode",
                         options = listOf(
                             AiSummaryMode.LOCAL.storedValue to "Local",
                             AiSummaryMode.CLOUD.storedValue to "Cloud",
@@ -118,34 +122,73 @@ fun AiSummarySettingsScreen(
                         label = "AI summary mode content",
                     ) { mode ->
                         if (mode == AiSummaryMode.LOCAL) {
-                            localModelsContent()
+                            Column(Modifier.fillMaxWidth()) {
+                                SettingsDivider()
+                                localModelsContent()
+                            }
                         } else {
-                            CloudAiSettingsContent(
+                            CloudAiModelSettingsContent(
                                 state = state,
                                 showTopDivider = true,
-                                onStreamChanged = onStreamChanged,
                                 onDialogRequested = onDialogRequested,
                             )
                         }
                     }
                 } else {
-                    CloudAiSettingsContent(
+                    CloudAiModelSettingsContent(
                         state = state,
                         showTopDivider = false,
-                        onStreamChanged = onStreamChanged,
                         onDialogRequested = onDialogRequested,
                     )
                 }
+            }
+        }
+        item {
+            SettingsCategory("Behavior") {
+                val systemPromptEnabled = !(
+                    state.mode == AiSummaryMode.LOCAL &&
+                        state.geminiNanoSelected &&
+                        state.geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS
+                    )
+                SettingRow(
+                    title = "System prompt",
+                    summary = if (systemPromptEnabled) {
+                        state.systemPrompt
+                    } else {
+                        "Not used by Gemini Nano's built-in 3-bullet summarizer"
+                    },
+                    icon = Res.drawable.ic_subject,
+                    summaryFontSizeSp = 13f,
+                    summaryLineHeightSp = 17f,
+                    summaryMaxLines = if (systemPromptEnabled) 10 else 2,
+                    enabled = systemPromptEnabled,
+                    onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Stream responses",
+                    summary = "Show each summary as it is generated",
+                    icon = Res.drawable.ic_stream,
+                    checked = state.streamResponses,
+                    onCheckedChange = onStreamChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Automatically summarize articles",
+                    summary = "Start summarizing when an article is opened",
+                    icon = Res.drawable.ic_auto_awesome,
+                    checked = state.autoSummarizeArticles,
+                    onCheckedChange = onAutoSummarizeChanged,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CloudAiSettingsContent(
+private fun CloudAiModelSettingsContent(
     state: AiSummarySettingsUiState,
     showTopDivider: Boolean,
-    onStreamChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -169,23 +212,6 @@ private fun CloudAiSettingsContent(
             summary = state.model.ifBlank { "Finding a recommended model…" },
             icon = Res.drawable.ic_hard_drive,
             onClick = { onDialogRequested(AiSummarySettingsDialog.Model) },
-        )
-        SettingsDivider()
-        SettingRow(
-            title = "System prompt",
-            summary = state.systemPrompt,
-            icon = Res.drawable.ic_subject,
-            summaryFontSizeSp = 13f,
-            summaryLineHeightSp = 17f,
-            summaryMaxLines = 10,
-            onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
-        )
-        SettingsDivider()
-        SwitchSettingRow(
-            title = "Stream responses",
-            icon = Res.drawable.ic_stream,
-            checked = state.streamResponses,
-            onCheckedChange = onStreamChanged,
         )
     }
 }

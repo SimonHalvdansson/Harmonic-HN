@@ -446,7 +446,9 @@ private class DesktopLocalSummaryEngine(
             val summary = inference.summarize(
                 model = selected,
                 modelPath = models.installedPath(selected),
-                systemInstruction = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+                systemInstruction = request.prompt
+                    ?.takeIf(String::isNotBlank)
+                    ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
                 text = content,
                 onProgress = { trySend(StorySummaryEvent.Progress(it)) },
                 onLoaded = { loadMillis ->

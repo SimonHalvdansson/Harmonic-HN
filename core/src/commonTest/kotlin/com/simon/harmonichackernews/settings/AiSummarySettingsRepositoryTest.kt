@@ -23,6 +23,8 @@ class AiSummarySettingsRepositoryTest {
         assertEquals(AiSummaryMode.CLOUD, settings.mode)
         assertEquals(AiSummaryProviders.defaultBaseUrl, settings.baseUrl)
         assertEquals(CloudSummaryDefaults.SYSTEM_PROMPT, settings.systemPrompt)
+        assertEquals(GeminiNanoSummaryMode.THREE_BULLETS, settings.geminiNanoSummaryMode)
+        assertFalse(settings.autoSummarizeArticles)
         assertFalse(settings.cloudConfigurationComplete)
         assertFalse(settings.enabled(localConfigurationReady = false))
     }
@@ -65,6 +67,24 @@ class AiSummarySettingsRepositoryTest {
         assertTrue(repository.setText(AiSummaryTextSetting.API_KEY, "secret"))
         assertEquals("secret", repository.snapshot().apiKey)
         assertNull(credentials.read("unrelated"))
+    }
+
+    @Test
+    fun localBehaviorPreferencesRoundTrip() {
+        val repository = AiSummarySettingsRepository(
+            TestKeyValueStore(),
+            TestCredentialStore(),
+            emptyFlow(),
+        )
+
+        repository.setAutoSummarizeArticles(true)
+        repository.setGeminiNanoSummaryMode(GeminiNanoSummaryMode.SYSTEM_PROMPT)
+
+        assertTrue(repository.snapshot().autoSummarizeArticles)
+        assertEquals(
+            GeminiNanoSummaryMode.SYSTEM_PROMPT,
+            repository.snapshot().geminiNanoSummaryMode,
+        )
     }
 }
 

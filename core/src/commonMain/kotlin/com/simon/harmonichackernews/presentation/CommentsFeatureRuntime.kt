@@ -120,6 +120,7 @@ class CommentsFeatureRuntime(
     private var collapseTopLevel = false
     private var hasAccount = false
     private var presentationCapabilities: CommentsPresentationCapabilities? = null
+    private var automaticSummaryRequested = false
 
     val accountUser: String?
         get() = accounts?.currentAccount?.username
@@ -157,6 +158,7 @@ class CommentsFeatureRuntime(
         restoredSorting: String? = null,
     ) {
         if (!restoring) {
+            automaticSummaryRequested = false
             sessionState.story = initialStory
             sessionState.showWebsite = showWebsite
             sessionState.scrollToCommentId = scrollToCommentId
@@ -641,6 +643,7 @@ class CommentsFeatureRuntime(
                             headerChanged = effect.headerChanged,
                         ),
                     )
+                    requestAutomaticSummaryIfEligible()
                 }
             }
             is CommentsEffect.ThreadFailed -> {
@@ -769,6 +772,27 @@ class CommentsFeatureRuntime(
             is StorySummaryStatus.Failure -> currentStory.summaryGeneratedSuccessfully = false
         }
         changed()
+    }
+
+    private fun requestAutomaticSummaryIfEligible() {
+        val currentStory = story ?: return
+        val snapshot = summarySettings?.snapshot() ?: return
+        val canProvideSummary = AiSummaryAvailabilityPolicy.canProvideSummary(
+            explicitlyEnabled = snapshot.explicitlyEnabled,
+            mode = snapshot.mode.storedValue,
+            localAvailable = localSummaryAvailable(),
+            cloudApiKeyAvailable = snapshot.apiKey.isNotBlank(),
+        )
+        if (!AiSummaryAvailabilityPolicy.shouldAutomaticallySummarize(
+                automaticSummariesEnabled = snapshot.autoSummarizeArticles,
+                requestAlreadyMade = automaticSummaryRequested,
+                isArticle = currentStory.isLink && !currentStory.url.isNullOrBlank(),
+                hasSuccessfulSummary = currentStory.summaryGeneratedSuccessfully,
+                canProvideSummary = canProvideSummary,
+            )
+        ) return
+        automaticSummaryRequested = true
+        requestSummary()
     }
 
     private val sorting: String

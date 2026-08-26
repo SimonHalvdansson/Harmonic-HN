@@ -24,14 +24,16 @@ class LocalModelInference(
 
   fun summarize(
     text: String,
+    systemInstruction: String = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
   ): String = synchronized(inferenceLock) {
-    summarizeLocked(text, progressCallback, loadCallback)
+    summarizeLocked(text, systemInstruction, progressCallback, loadCallback)
   }
 
   private fun summarizeLocked(
     text: String,
+    systemInstruction: String,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
   ): String {
@@ -54,7 +56,9 @@ class LocalModelInference(
       model = model,
       modelPath = modelPath,
       contextTokens = prepared.contextTokens,
-      systemInstruction = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+      systemInstruction = systemInstruction
+        .takeIf(String::isNotBlank)
+        ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
       text = prepared.text,
       progressCallback = progressCallback,
       loadCallback = loadCallback,

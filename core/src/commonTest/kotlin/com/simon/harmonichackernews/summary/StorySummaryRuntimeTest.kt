@@ -6,8 +6,12 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import com.simon.harmonichackernews.platform.LocalSummaryEngine
+import com.simon.harmonichackernews.platform.SummaryRequest
+import com.simon.harmonichackernews.platform.SummaryResult
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySummaryRuntimeTest {
@@ -60,6 +64,36 @@ class StorySummaryRuntimeTest {
         assertEquals("result-1", runtime.state.value.text)
         assertEquals(2, runtime.state.value.generation)
         assertTrue(runtime.state.value.complete)
+    }
+
+    @Test
+    fun localBehaviorReachesThePlatformAndCanSuppressProgress() = runTest {
+        var received: SummaryRequest? = null
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable(): Boolean = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult = SummaryResult("done")
+            override fun summarizeEvents(request: SummaryRequest) = flow {
+                received = request
+                emit(StorySummaryEvent.Progress("partial"))
+                emit(StorySummaryEvent.Success("done"))
+            }
+        }
+        val backend = PlatformLocalStorySummaryBackend(engine) {
+            LocalSummaryBehavior(
+                systemPrompt = "custom",
+                streamResponses = false,
+                useGeminiNanoSummarizationLora = false,
+            )
+        }
+        val events = mutableListOf<StorySummaryEvent>()
+
+        backend.summarize(StorySummaryInput("", "article")).collect(events::add)
+
+        val request = checkNotNull(received)
+        assertEquals("custom", request.prompt)
+        assertFalse(request.streamResponses)
+        assertFalse(request.useGeminiNanoSummarizationLora)
+        assertEquals(listOf<StorySummaryEvent>(StorySummaryEvent.Success("done")), events)
     }
 
     private fun failingBackend() = StorySummaryBackend {

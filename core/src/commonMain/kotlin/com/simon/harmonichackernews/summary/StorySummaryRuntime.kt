@@ -43,10 +43,28 @@ fun interface StorySummaryBackend {
 /** Adapts the platform inference capability to the shared streaming summary runtime. */
 class PlatformLocalStorySummaryBackend(
     private val engine: LocalSummaryEngine,
+    private val behavior: () -> LocalSummaryBehavior = { LocalSummaryBehavior() },
 ) : StorySummaryBackend {
-    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> =
-        engine.summarizeEvents(SummaryRequest(text = input.articleText.orEmpty()))
+    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
+        val current = behavior()
+        engine.summarizeEvents(
+            SummaryRequest(
+                text = input.articleText.orEmpty(),
+                prompt = current.systemPrompt,
+                streamResponses = current.streamResponses,
+                useGeminiNanoSummarizationLora = current.useGeminiNanoSummarizationLora,
+            ),
+        ).collect { event ->
+            if (current.streamResponses || event !is StorySummaryEvent.Progress) emit(event)
+        }
+    }
 }
+
+data class LocalSummaryBehavior(
+    val systemPrompt: String = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+    val streamResponses: Boolean = true,
+    val useGeminiNanoSummarizationLora: Boolean = true,
+)
 
 class UnavailableStorySummaryBackend(
     private val reason: String,

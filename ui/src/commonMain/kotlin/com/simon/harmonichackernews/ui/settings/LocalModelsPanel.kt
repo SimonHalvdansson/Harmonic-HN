@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,6 +65,7 @@ import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -82,6 +84,8 @@ fun LocalModelsRoute(
     nanoAvailable: Boolean,
     nanoBaseModelName: String?,
     models: List<LocalModelDefinition> = localModels.catalog,
+    nanoSummaryMode: GeminiNanoSummaryMode? = null,
+    onNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit = {},
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
 ) {
@@ -129,6 +133,8 @@ fun LocalModelsRoute(
             }
             onChanged()
         },
+        nanoSummaryMode = nanoSummaryMode,
+        onNanoSummaryModeSelected = onNanoSummaryModeSelected,
     )
 }
 
@@ -139,38 +145,118 @@ fun LocalModelsPanel(
     modelIconPainter: @Composable (LocalModelDefinition) -> Painter,
     onModelSelected: (String) -> Unit,
     onAction: (String, LocalModelPresentationAction) -> Unit,
+    nanoSummaryMode: GeminiNanoSummaryMode? = null,
+    onNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit = {},
 ) {
+    val nanoRow = models.firstOrNull {
+        it.model.runtime == LocalModelRuntime.GEMINI_NANO && it.presentation.enabled
+    }
+    val downloadableRows = models.filter { it.model.runtime != LocalModelRuntime.GEMINI_NANO }
+    val catalogIncludesNano = models.any { it.model.runtime == LocalModelRuntime.GEMINI_NANO }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(settingsItemBackgroundColor())
-            .padding(
-                start = HarmonicDimens.compose_settings_row_horizontal_padding,
-                top = 4.dp,
-                end = HarmonicDimens.compose_settings_row_horizontal_padding,
-                bottom = 12.dp,
-            )
             .animateContentSize(),
     ) {
-        models.forEach { row ->
-            LocalModelCard(
-                row = row,
-                iconPainter = modelIconPainter(row.model),
-                onModelSelected = onModelSelected,
-                onAction = onAction,
+        nanoRow?.let { row ->
+            LocalModelGroup(
+                label = "Recommended",
+                bottomPadding = 10.dp,
+            ) {
+                LocalModelCard(
+                    row = row,
+                    iconPainter = modelIconPainter(row.model),
+                    onModelSelected = onModelSelected,
+                    onAction = onAction,
+                    recommended = true,
+                )
+                Text(
+                    text = "Fast, private, and managed by Android. No separate model download is required.",
+                    modifier = Modifier.padding(top = 7.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                )
+            }
+            if (row.presentation.selected && nanoSummaryMode != null) {
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "Gemini Nano summarizer",
+                    summary = when (nanoSummaryMode) {
+                        GeminiNanoSummaryMode.THREE_BULLETS ->
+                            "The optimized 3-bullet summarization LoRA is recommended"
+                        GeminiNanoSummaryMode.SYSTEM_PROMPT ->
+                            "Uses the system prompt from Behavior"
+                    },
+                    options = listOf(
+                        GeminiNanoSummaryMode.THREE_BULLETS.storedValue to "3 bullets",
+                        GeminiNanoSummaryMode.SYSTEM_PROMPT.storedValue to "System prompt",
+                    ),
+                    selected = nanoSummaryMode.storedValue,
+                    onSelected = {
+                        onNanoSummaryModeSelected(GeminiNanoSummaryMode.fromStored(it))
+                    },
+                )
+            }
+        }
+        if (downloadableRows.isNotEmpty()) {
+            if (nanoRow != null) SettingsDivider()
+            LocalModelGroup(
+                label = "Downloadable models".takeIf { catalogIncludesNano },
+                bottomPadding = 12.dp,
+            ) {
+                downloadableRows.forEach { row ->
+                    LocalModelCard(
+                        row = row,
+                        iconPainter = modelIconPainter(row.model),
+                        onModelSelected = onModelSelected,
+                        onAction = onAction,
+                    )
+                }
+                Text(
+                    text = "Downloaded models offer more choice, but load more slowly and use " +
+                        "additional storage. Model weights are released after each summary.",
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalModelGroup(
+    label: String?,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = HarmonicDimens.compose_settings_row_horizontal_padding,
+                top = if (label == null) 4.dp else 10.dp,
+                end = HarmonicDimens.compose_settings_row_horizontal_padding,
+                bottom = bottomPadding,
+            ),
+    ) {
+        label?.let {
+            Text(
+                text = it,
+                modifier = Modifier.padding(start = 2.dp, bottom = 5.dp),
+                color = MaterialTheme.colorScheme.primary,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
             )
         }
-        Text(
-            text = "Models are loaded when the AI summarization button is clicked, leading to " +
-                "a noticeable delay especially on older devices. Model weights are not kept in " +
-                "memory after the summary is complete. Inference speed varies considerably by " +
-                "model and device.",
-            modifier = Modifier.padding(top = 8.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 11.sp,
-            lineHeight = 14.sp,
-        )
+        content()
     }
 }
 
@@ -254,6 +340,7 @@ private fun LocalModelCard(
     iconPainter: Painter,
     onModelSelected: (String) -> Unit,
     onAction: (String, LocalModelPresentationAction) -> Unit,
+    recommended: Boolean = false,
 ) {
     val presentation = row.presentation
     val shape = RoundedCornerShape(14.dp)
@@ -394,6 +481,13 @@ private fun LocalModelCard(
                             background = HarmonicTheme.colors.surfaceContainerHighest,
                             foreground = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (recommended) {
+                            LocalModelTag(
+                                text = "Recommended",
+                                background = MaterialTheme.colorScheme.primaryContainer,
+                                foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
                     }
                 }
             }

@@ -48,7 +48,9 @@ class IosNativeLocalSummaryEngine(
         return suspendCancellableCoroutine { continuation ->
             bridge.summarize(
                 text = content,
-                instruction = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+                instruction = request.prompt
+                    ?.takeIf(String::isNotBlank)
+                    ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
                 callback = object : IosNativeSummaryCallback {
                     override fun complete(summary: String?, errorMessage: String?) {
                         if (!continuation.isActive) return

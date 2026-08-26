@@ -87,6 +87,7 @@ haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
+mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta2"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.14.0"
 play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"
 androidx-work = "androidx.work:work-runtime:2.11.2"

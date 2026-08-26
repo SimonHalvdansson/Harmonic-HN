@@ -6,10 +6,14 @@ import android.util.Log
 import com.google.mlkit.genai.common.DownloadCallback
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.common.GenAiException
+import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.summarization.Summarization
 import com.google.mlkit.genai.summarization.SummarizationRequest
 import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
+import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.generateContentRequest
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
@@ -161,7 +165,7 @@ internal class AndroidLocalSummaryBackend(
     override suspend fun summarize(request: SummaryRequest): SummaryResult {
         var result: SummaryResult? = null
         var debugInfo: String? = null
-        summarize(StorySummaryInput(articleUrl = "", articleText = request.text)).collect { event ->
+        summarizeEvents(request).collect { event ->
             when (event) {
                 is StorySummaryEvent.DebugInfo -> debugInfo = event.value
                 is StorySummaryEvent.Progress -> Unit
@@ -173,9 +177,18 @@ internal class AndroidLocalSummaryBackend(
     }
 
     override fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> =
-        summarize(StorySummaryInput(articleUrl = "", articleText = request.text))
+        summarizeInput(
+            input = StorySummaryInput(articleUrl = "", articleText = request.text),
+            request = request,
+        )
 
-    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = channelFlow {
+    override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> =
+        summarizeInput(input, SummaryRequest(text = input.articleText.orEmpty()))
+
+    private fun summarizeInput(
+        input: StorySummaryInput,
+        request: SummaryRequest,
+    ): Flow<StorySummaryEvent> = channelFlow {
         val content = LocalSummaryPreparation.prepareManagedText(input.articleText.orEmpty())
         if (!LocalSummaryPreparation.isLongEnough(content)) {
             send(StorySummaryEvent.Failure("Article is too short for local summarization"))
@@ -185,14 +198,36 @@ internal class AndroidLocalSummaryBackend(
             val selected = models.selectedModel
             val result = if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
                 send(StorySummaryEvent.DebugInfo("Gemini Nano · load —"))
-                summarizeWithGeminiNano(
-                    content = content,
-                    onProgress = { trySend(StorySummaryEvent.Progress(it)) },
-                )
+                if (request.useGeminiNanoSummarizationLora) {
+                    summarizeWithGeminiNanoLora(
+                        content = content,
+                        onProgress = { progress ->
+                            if (request.streamResponses) {
+                                trySend(StorySummaryEvent.Progress(progress))
+                            }
+                        },
+                    )
+                } else {
+                    summarizeWithGeminiNanoPrompt(
+                        content = content,
+                        systemPrompt = request.prompt
+                            ?.takeIf(String::isNotBlank)
+                            ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+                        streamResponses = request.streamResponses,
+                        onProgress = { trySend(StorySummaryEvent.Progress(it)) },
+                    )
+                }
             } else {
                 summarizeWithDownloadedModel(
                     content = content,
-                    onProgress = { trySend(StorySummaryEvent.Progress(it)) },
+                    systemPrompt = request.prompt
+                        ?.takeIf(String::isNotBlank)
+                        ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+                    onProgress = { progress ->
+                        if (request.streamResponses) {
+                            trySend(StorySummaryEvent.Progress(progress))
+                        }
+                    },
                     onLoaded = { loadMillis ->
                         trySend(
                             StorySummaryEvent.DebugInfo(
@@ -215,6 +250,7 @@ internal class AndroidLocalSummaryBackend(
 
     private suspend fun summarizeWithDownloadedModel(
         content: String,
+        systemPrompt: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
     ): String = withContext(Dispatchers.IO) {
@@ -230,12 +266,13 @@ internal class AndroidLocalSummaryBackend(
         }
         inference.summarize(
             content,
+            systemPrompt,
             LocalModelInference.ProgressCallback(onProgress),
             LocalModelInference.LoadCallback(onLoaded),
         )
     }
 
-    private suspend fun summarizeWithGeminiNano(
+    private suspend fun summarizeWithGeminiNanoLora(
         content: String,
         onProgress: (String) -> Unit,
     ): String =
@@ -264,6 +301,59 @@ internal class AndroidLocalSummaryBackend(
                 summarizer.close()
             }
         }
+
+    private suspend fun summarizeWithGeminiNanoPrompt(
+        content: String,
+        systemPrompt: String,
+        streamResponses: Boolean,
+        onProgress: (String) -> Unit,
+    ): String = withContext(Dispatchers.IO) {
+        val generativeModel = Generation.getClient()
+        try {
+            when (val featureStatus = generativeModel.checkStatus()) {
+                FeatureStatus.UNAVAILABLE -> error(
+                    "Gemini Nano's custom prompt feature is unavailable on this device. " +
+                        "Choose the 3-bullet summarizer in AI summarization settings.",
+                )
+                FeatureStatus.DOWNLOADABLE,
+                FeatureStatus.DOWNLOADING,
+                -> generativeModel.download().collect { downloadStatus ->
+                    if (downloadStatus is DownloadStatus.DownloadFailed) throw downloadStatus.e
+                }
+                FeatureStatus.AVAILABLE -> Unit
+                else -> error("Gemini Nano prompt feature returned status $featureStatus")
+            }
+            val promptRequest = generateContentRequest(
+                TextPart("$systemPrompt\n\n## Article\n$content"),
+            ) {
+                temperature = 0.2f
+                maxOutputTokens = 256
+            }
+            if (streamResponses) {
+                val summary = StringBuilder()
+                generativeModel.generateContentStream(promptRequest).collect { response ->
+                    response.candidates.firstOrNull()?.text
+                        ?.takeIf(String::isNotEmpty)
+                        ?.let { chunk ->
+                            summary.append(chunk)
+                            onProgress(summary.toString())
+                        }
+                }
+                summary.toString().trim().takeIf(String::isNotEmpty)
+                    ?: error("Gemini Nano returned an empty summary")
+            } else {
+                generativeModel.generateContent(promptRequest)
+                    .candidates
+                    .firstOrNull()
+                    ?.text
+                    ?.trim()
+                    ?.takeIf(String::isNotEmpty)
+                    ?: error("Gemini Nano returned an empty summary")
+            }
+        } finally {
+            generativeModel.close()
+        }
+    }
 
     private suspend fun awaitDownload(summarizer: Summarizer) =
         suspendCancellableCoroutine { continuation ->
