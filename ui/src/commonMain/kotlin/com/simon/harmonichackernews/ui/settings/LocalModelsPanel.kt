@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -147,7 +148,7 @@ fun LocalModelsPanel(
                 start = HarmonicDimens.compose_settings_row_horizontal_padding,
                 top = 4.dp,
                 end = HarmonicDimens.compose_settings_row_horizontal_padding,
-                bottom = 8.dp,
+                bottom = 12.dp,
             )
             .animateContentSize(),
     ) {
@@ -256,6 +257,8 @@ private fun LocalModelCard(
 ) {
     val presentation = row.presentation
     val shape = RoundedCornerShape(14.dp)
+    val darkTheme = HarmonicTheme.colors.background.luminance() <
+        HarmonicTheme.colors.onSurface.luminance()
     val backgroundColor by animateColorAsState(
         targetValue = if (presentation.selected) {
             MaterialTheme.colorScheme.secondaryContainer
@@ -375,8 +378,16 @@ private fun LocalModelCard(
                     ) {
                         LocalModelTag(
                             text = row.baseModelName.orEmpty(),
-                            background = MaterialTheme.colorScheme.primaryContainer,
-                            foreground = MaterialTheme.colorScheme.onPrimaryContainer,
+                            background = if (darkTheme) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                HarmonicTheme.colors.settingsMainToggle
+                            },
+                            foreground = if (darkTheme) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                HarmonicTheme.colors.settingsMainToggleText
+                            },
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),
