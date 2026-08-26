@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,8 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
@@ -47,6 +50,8 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -54,9 +59,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 /**
  * Shared container-transform shell for modal previews and action cards.
@@ -89,6 +96,7 @@ fun TransformOverlay(
     preserveContentAspectRatio: Boolean = false,
     keepContentOpaqueWithSource: Boolean = false,
     consumeAllGestures: Boolean = true,
+    verticalSwipeDismissEnabled: Boolean = false,
     sourceContentLayer: GraphicsLayer? = null,
     onSourceReadyToCover: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
@@ -97,6 +105,8 @@ fun TransformOverlay(
 ) {
     val density = LocalDensity.current
     val transformProgress = remember(contentKey) { Animatable(0f) }
+    var verticalSwipeOffset by remember(contentKey) { mutableFloatStateOf(0f) }
+    var verticalSwipeSettleTarget by remember(contentKey) { mutableStateOf<Float?>(null) }
     var rootBounds by remember(contentKey) { mutableStateOf(Rect.Zero) }
     var targetBounds by remember(contentKey) { mutableStateOf<Rect?>(null) }
     var dismissalFinished by remember(contentKey) { mutableStateOf(false) }
@@ -108,6 +118,19 @@ fun TransformOverlay(
     val sourceSnapshotReady = !sourceSnapshotRequired || sourceSnapshot != null
     val targetReady = targetBounds != null && rootBounds.width > 0f && rootBounds.height > 0f &&
         sourceSnapshotReady
+    val currentDismissRequestVersion by rememberUpdatedState(dismissRequestVersion)
+    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+
+    LaunchedEffect(verticalSwipeSettleTarget) {
+        val target = verticalSwipeSettleTarget ?: return@LaunchedEffect
+        Animatable(verticalSwipeOffset).animateTo(
+            targetValue = target,
+            animationSpec = tween(220, easing = FastOutSlowInEasing),
+        ) {
+            verticalSwipeOffset = value
+        }
+        verticalSwipeSettleTarget = null
+    }
 
     LaunchedEffect(contentKey, sourceContentLayer) {
         val layer = sourceContentLayer ?: return@LaunchedEffect
@@ -149,6 +172,14 @@ fun TransformOverlay(
     }
 
     val progress = transformProgress.value.coerceIn(0f, 1f)
+    // Keep tracking the finger at full size. After release, the regular container transform
+    // unwinds this displacement while returning the preview to its captured source bounds.
+    val verticalSwipeVisualOffset = verticalSwipeOffset * progress
+    val verticalSwipeProgress = verticalSwipeDismissProgress(
+        offsetY = verticalSwipeVisualOffset,
+        viewportHeight = rootBounds.height,
+    )
+    val verticalSwipeScale = 1f - 0.06f * verticalSwipeProgress
     // A committed predictive gesture is still at full strength when the close morph starts, then
     // must unwind to identity with that morph so its source bounds are restored exactly.
     val predictiveVisualProgress = predictiveBackVisualProgress(
@@ -182,15 +213,18 @@ fun TransformOverlay(
     } else {
         localTarget
     }
-    val visualContainer = container?.transformedForPredictiveBack(
-        scale = backScale,
-        pivotFractionX = if (backDirection > 0f) 0f else 1f,
-        translation = Offset(backTranslationX, backTranslationY),
-    )
+    val visualContainer = container
+        ?.transformedForPredictiveBack(
+            scale = backScale,
+            pivotFractionX = if (backDirection > 0f) 0f else 1f,
+            translation = Offset(backTranslationX, backTranslationY),
+        )
+        ?.scaledAboutCenter(verticalSwipeScale)
+        ?.translate(0f, verticalSwipeVisualOffset)
     val sourceRadiusPx = with(density) { sourceCornerRadius.toPx() }
     val targetRadiusPx = with(density) { targetCornerRadius.toPx() }
     val containerRadiusPx = sourceRadiusPx + (targetRadiusPx - sourceRadiusPx) * progress
-    val visualRadiusPx = containerRadiusPx * backScale
+    val visualRadiusPx = containerRadiusPx * backScale * verticalSwipeScale
     val movingShape = RoundedCornerShape(with(density) { visualRadiusPx.toDp() })
     val inlineSource = sourceAnchorSize != null
     val containerRevealProgress = if (inlineSource) {
@@ -218,7 +252,8 @@ fun TransformOverlay(
     } else {
         progress
     }
-    val movingElevation = (shadowElevation.value * shadowProgress * backScale).dp
+    val movingElevation =
+        (shadowElevation.value * shadowProgress * backScale * verticalSwipeScale).dp
     val gestureBlocker = if (consumeAllGestures) Modifier.consumeModalGestures() else Modifier
     val contentMorphScaleX = if (
         scaleContentWithContainer && localTarget != null && localTarget.width > 0f &&
@@ -240,18 +275,102 @@ fun TransformOverlay(
         scaleX = contentMorphScaleX,
         scaleY = contentMorphScaleY,
     )
+    val verticalSwipeGesture = if (verticalSwipeDismissEnabled) {
+        Modifier.pointerInput(contentKey) {
+            awaitEachGesture {
+                val down = awaitFirstDown(
+                    requireUnconsumed = false,
+                    pass = PointerEventPass.Initial,
+                )
+                if (
+                    transformProgress.value < 0.99f ||
+                    currentDismissRequestVersion != 0 ||
+                    verticalSwipeSettleTarget != null
+                ) {
+                    return@awaitEachGesture
+                }
+
+                val velocityTracker = VelocityTracker()
+                velocityTracker.addPosition(down.uptimeMillis, down.position)
+                var previousPosition = down.position
+                var accumulatedDrag = Offset.Zero
+                var draggingVertically = false
+
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val delta = change.position - previousPosition
+                    previousPosition = change.position
+                    velocityTracker.addPosition(change.uptimeMillis, change.position)
+
+                    if (!change.pressed) {
+                        if (draggingVertically) change.consume()
+                        break
+                    }
+
+                    if (!draggingVertically) {
+                        accumulatedDrag += delta
+                        if (
+                            abs(accumulatedDrag.x) > viewConfiguration.touchSlop &&
+                            abs(accumulatedDrag.x) > abs(accumulatedDrag.y)
+                        ) {
+                            return@awaitEachGesture
+                        }
+                        if (
+                            abs(accumulatedDrag.y) > viewConfiguration.touchSlop &&
+                            abs(accumulatedDrag.y) > abs(accumulatedDrag.x)
+                        ) {
+                            draggingVertically = true
+                            verticalSwipeOffset = accumulatedDrag.y -
+                                viewConfiguration.touchSlop * accumulatedDrag.y.sign
+                            change.consume()
+                        }
+                    } else {
+                        verticalSwipeOffset += delta.y
+                        change.consume()
+                    }
+                }
+
+                if (!draggingVertically) return@awaitEachGesture
+
+                val velocityY = velocityTracker.calculateVelocity().y
+                val dismissDistance = min(
+                    rootBounds.height * 0.18f,
+                    120.dp.toPx(),
+                )
+                val dismissVelocity = 1000.dp.toPx()
+                if (
+                    shouldDismissVerticalSwipe(
+                        offsetY = verticalSwipeOffset,
+                        velocityY = velocityY,
+                        dismissDistancePx = dismissDistance,
+                        velocityThresholdPx = dismissVelocity,
+                    )
+                ) {
+                    currentOnDismissRequest()
+                } else {
+                    verticalSwipeSettleTarget = 0f
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .onGloballyPositioned { rootBounds = it.boundsInWindow() },
+            .onGloballyPositioned { rootBounds = it.boundsInWindow() }
+            .then(verticalSwipeGesture),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Color.Black.copy(
-                        alpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress),
+                        alpha = 0.32f * progress *
+                            (1f - 0.55f * predictiveVisualProgress) *
+                            (1f - verticalSwipeProgress),
                     ),
                 )
                 .then(gestureBlocker)
@@ -317,8 +436,8 @@ fun TransformOverlay(
                         .graphicsLayer {
                             val target = localTarget
                             val current = container
-                            scaleX = contentMorphScaleX * backScale
-                            scaleY = contentMorphScaleY * backScale
+                            scaleX = contentMorphScaleX * backScale * verticalSwipeScale
+                            scaleY = contentMorphScaleY * backScale * verticalSwipeScale
                             translationX = if (target != null && current != null) {
                                 val sharedTranslation = if (scaleContentWithContainer) {
                                     current.center.x - target.center.x
@@ -335,9 +454,9 @@ fun TransformOverlay(
                                 } else {
                                     current.top - target.top
                                 }
-                                sharedTranslation + backTranslationY
+                                sharedTranslation + backTranslationY + verticalSwipeVisualOffset
                             } else {
-                                backTranslationY
+                                backTranslationY + verticalSwipeVisualOffset
                             }
                             alpha = when {
                                 sourceBounds == null -> progress
@@ -507,6 +626,18 @@ private fun Rect.scaledAboutCenter(scale: Float): Rect = Rect(
     right = center.x + width * scale / 2f,
     bottom = center.y + height * scale / 2f,
 )
+
+internal fun verticalSwipeDismissProgress(offsetY: Float, viewportHeight: Float): Float {
+    if (viewportHeight <= 0f) return 0f
+    return (abs(offsetY) / (viewportHeight * 0.35f)).coerceIn(0f, 1f)
+}
+
+internal fun shouldDismissVerticalSwipe(
+    offsetY: Float,
+    velocityY: Float,
+    dismissDistancePx: Float,
+    velocityThresholdPx: Float,
+): Boolean = abs(offsetY) >= dismissDistancePx || abs(velocityY) >= velocityThresholdPx
 
 private fun Rect.intersectionOrNull(other: Rect): Rect? {
     val intersection = Rect(

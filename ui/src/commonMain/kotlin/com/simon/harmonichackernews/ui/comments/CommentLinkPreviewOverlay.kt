@@ -148,6 +148,7 @@ fun CommentLinkPreviewOverlay(
         preserveContentAspectRatio = imageOnly,
         keepContentOpaqueWithSource = imageOnly || referenceRowSource,
         consumeAllGestures = false,
+        verticalSwipeDismissEnabled = imageOnly,
         sourceContentLayer = sharedSourceLayer,
         onSourceReadyToCover = if (sharedSourceLayer != null) {
             controller::coverLinkPreviewSource
