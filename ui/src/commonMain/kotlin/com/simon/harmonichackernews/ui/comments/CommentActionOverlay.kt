@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
@@ -330,7 +333,6 @@ fun CommentActionOverlay(
                         }
                     }
                     .then(fallbackPresentation)
-                    .then(modalGestures)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -349,6 +351,7 @@ fun CommentActionOverlay(
                             comment = comment,
                             hasAccount = hasAccount,
                             bookmarksEnabled = bookmarksEnabled,
+                            cardColor = cardColor,
                             textStyle = textStyle,
                             onOpenLink = onOpenLink,
                         )
@@ -367,6 +370,7 @@ private fun CommentActionCardContent(
     comment: PortableCommentItem,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
+    cardColor: Color,
     textStyle: TextStyle,
     onOpenLink: (String) -> Unit,
 ) {
@@ -384,6 +388,7 @@ private fun CommentActionCardContent(
     val favoriteLoading = controller.commentActionFavoriteLoadingId == comment.id
     val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(comment.time)
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
+    val commentTextSize = settings.preferredTextSize - 1f
     val userLabel = buildString {
         append(comment.by?.takeIf(String::isNotBlank) ?: "Unknown user")
         if (comment.by == controller.story.by) append(" (OP)")
@@ -398,6 +403,7 @@ private fun CommentActionCardContent(
     val body = remember(comment.expandedAnchorText, linkColor, linkListener) {
         htmlAnnotatedString(comment.expandedAnchorText.orEmpty(), linkColor, linkListener)
     }
+    val bodyScrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
@@ -418,7 +424,7 @@ private fun CommentActionCardContent(
                     contentColor = Color.White,
                 ),
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.height(48.dp),
+                modifier = Modifier.height(40.dp),
             ) {
                 Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
                 Text(
@@ -439,17 +445,27 @@ private fun CommentActionCardContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = HarmonicDimens.compose_comment_action_text_max_height)
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 6.dp, top = 14.dp, end = 6.dp, bottom = 14.dp),
+                        .heightIn(max = HarmonicDimens.compose_comment_action_text_max_height),
                 ) {
-                    Text(
-                        text = body,
-                        color = HarmonicTheme.colors.storyNormal,
-                        fontFamily = typography.family,
-                        fontSize = settings.preferredTextSize.sp,
-                        lineHeight = (settings.preferredTextSize * 1.34f).sp,
-                        style = textStyle,
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(bodyScrollState)
+                            .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
+                    ) {
+                        Text(
+                            text = body,
+                            color = HarmonicTheme.colors.storyNormal,
+                            fontFamily = typography.family,
+                            fontSize = commentTextSize.sp,
+                            lineHeight = (commentTextSize * 1.34f).sp,
+                            style = textStyle,
+                        )
+                    }
+                    CommentActionTextScrollDecorations(
+                        state = bodyScrollState,
+                        containerColor = cardColor,
+                        modifier = Modifier.matchParentSize(),
                     )
                 }
             }
@@ -563,7 +579,7 @@ private fun CommentActionCardContent(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(48.dp),
                     ) {
                         Icon(painterResource(Res.drawable.ic_reply), contentDescription = null)
                         Text(
@@ -576,6 +592,76 @@ private fun CommentActionCardContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CommentActionTextScrollDecorations(
+    state: ScrollState,
+    containerColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val maxValue = state.maxValue
+    val viewportSize = state.viewportSize
+    if (maxValue <= 0 || viewportSize <= 0) return
+
+    val thumbColor = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.55f)
+    val density = LocalDensity.current
+    Canvas(modifier = modifier) {
+        val widthPx = with(density) { 3.dp.toPx() }
+        val endPaddingPx = with(density) { 1.dp.toPx() }
+        val verticalPaddingPx = with(density) { 8.dp.toPx() }
+        val minimumHeightPx = with(density) { 24.dp.toPx() }
+        val fadeLengthPx = with(density) {
+            HarmonicDimens.compose_comment_action_text_fade_length.toPx()
+        }.coerceAtMost(size.height / 2f)
+        val topFadeStrength = (state.value / fadeLengthPx).coerceIn(0f, 1f)
+        val bottomFadeStrength = ((maxValue - state.value) / fadeLengthPx).coerceIn(0f, 1f)
+
+        if (topFadeStrength > 0f) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        containerColor.copy(alpha = containerColor.alpha * topFadeStrength),
+                        containerColor.copy(alpha = 0f),
+                    ),
+                    startY = 0f,
+                    endY = fadeLengthPx,
+                ),
+                size = androidx.compose.ui.geometry.Size(size.width, fadeLengthPx),
+            )
+        }
+        if (bottomFadeStrength > 0f) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        containerColor.copy(alpha = 0f),
+                        containerColor.copy(alpha = containerColor.alpha * bottomFadeStrength),
+                    ),
+                    startY = size.height - fadeLengthPx,
+                    endY = size.height,
+                ),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - fadeLengthPx),
+                size = androidx.compose.ui.geometry.Size(size.width, fadeLengthPx),
+            )
+        }
+
+        val trackHeight = (size.height - verticalPaddingPx * 2f).coerceAtLeast(0f)
+        val contentHeight = viewportSize + maxValue
+        val visibleFraction = viewportSize.toFloat() / contentHeight
+        val thumbHeight = (trackHeight * visibleFraction)
+            .coerceIn(minimumHeightPx.coerceAtMost(trackHeight), trackHeight)
+        val scrollFraction = state.value.toFloat() / maxValue
+        val top = verticalPaddingPx + (trackHeight - thumbHeight) * scrollFraction
+        drawRoundRect(
+            color = thumbColor,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                size.width - widthPx - endPaddingPx,
+                top,
+            ),
+            size = androidx.compose.ui.geometry.Size(widthPx, thumbHeight),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(widthPx / 2f),
+        )
     }
 }
 
@@ -595,7 +681,6 @@ private fun RowScope.CommentActionIcon(
     ) {
         AnimatedContent(
             targetState = CommentActionVisual(icon, description, loading),
-            modifier = Modifier.fillMaxSize(),
             transitionSpec = {
                 (
                     fadeIn(

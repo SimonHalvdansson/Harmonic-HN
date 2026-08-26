@@ -17,7 +17,8 @@ object HarmonicDimens {
     val compose_comment_action_screen_padding_horizontal = 20.dp
     val compose_comment_action_screen_padding_vertical = 24.dp
     val compose_comment_action_tablet_max_width = 640.dp
-    val compose_comment_action_text_max_height = 300.dp
+    val compose_comment_action_text_fade_length = 20.dp
+    val compose_comment_action_text_max_height = 360.dp
     val compose_settings_category_padding_bottom = 4.dp
     val compose_settings_category_padding_start = 26.dp
     val compose_settings_category_padding_top = 20.dp
