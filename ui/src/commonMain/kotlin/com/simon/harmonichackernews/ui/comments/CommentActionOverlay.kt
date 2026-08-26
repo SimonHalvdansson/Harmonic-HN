@@ -7,6 +7,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -593,23 +595,51 @@ private fun RowScope.CommentActionIcon(
     ) {
         AnimatedContent(
             targetState = CommentActionVisual(icon, description, loading),
-            transitionSpec = { fadeIn(tween(150)).togetherWith(fadeOut(tween(150))) },
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                (
+                    fadeIn(
+                        tween(
+                            durationMillis = CommentActionIconSwapInDurationMillis,
+                            delayMillis = CommentActionIconSwapOutDurationMillis,
+                        ),
+                    ) + scaleIn(
+                        animationSpec = tween(
+                            durationMillis = CommentActionIconSwapInDurationMillis,
+                            delayMillis = CommentActionIconSwapOutDurationMillis,
+                        ),
+                        initialScale = CommentActionIconSwapMinScale,
+                    )
+                ).togetherWith(
+                    fadeOut(tween(CommentActionIconSwapOutDurationMillis)) + scaleOut(
+                        animationSpec = tween(CommentActionIconSwapOutDurationMillis),
+                        targetScale = CommentActionIconSwapMinScale,
+                    ),
+                )
+            },
+            contentAlignment = Alignment.Center,
             label = "comment action icon",
         ) { visual ->
             if (visual.loading) {
                 HarmonicLoadingIndicator(Modifier.size(28.dp))
             } else {
-                IconButton(onClick = onClick, enabled = enabled) {
-                    Icon(
-                        painterResource(visual.icon),
-                        contentDescription = visual.description,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
+                CommentsTooltip(visual.description) {
+                    IconButton(onClick = onClick, enabled = enabled) {
+                        Icon(
+                            painterResource(visual.icon),
+                            contentDescription = visual.description,
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private const val CommentActionIconSwapOutDurationMillis = 90
+private const val CommentActionIconSwapInDurationMillis = 150
+private const val CommentActionIconSwapMinScale = 0.72f
 
 private data class CommentActionVisual(
     val icon: DrawableResource,

@@ -255,6 +255,7 @@ private fun UserLoadedContent(
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
+                lineHeight = 18.sp,
             )
             if (notificationLoading) {
                 LinearProgressIndicator(
