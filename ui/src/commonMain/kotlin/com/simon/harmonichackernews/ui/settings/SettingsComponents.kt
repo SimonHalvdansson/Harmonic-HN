@@ -98,7 +98,7 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset),
     SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list),
     SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome),
-    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_library_books),
+    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_data_table),
     SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api),
     SettingsListEntry(SettingsSection.About, Res.drawable.ic_info),
 )
