@@ -740,13 +740,14 @@ private fun StoryMainContent(
             .onSecondaryClick(enabled = onLinkLongClick != null) {
                 onLinkLongClick?.invoke()
             }
-            .padding(start = 5.dp, top = 10.dp, end = 4.dp, bottom = 10.dp),
+            .padding(start = 5.dp, end = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Text(
             text = model.index,
             modifier = Modifier
                 .width(indexWidth)
+                .padding(vertical = 10.dp)
                 .alignBy(FirstBaseline)
                 .captureStoryPreviewElement(
                     enabled = capturePreviewSource,
@@ -764,7 +765,12 @@ private fun StoryMainContent(
         StoryTextColumn(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = titleStartPadding, end = 4.dp)
+                .padding(
+                    start = titleStartPadding,
+                    top = 10.dp,
+                    end = 4.dp,
+                    bottom = 10.dp,
+                )
                 .alignBy(FirstBaseline),
         ) {
             StoryTitleText(
@@ -842,7 +848,7 @@ private fun StoryMainContent(
             StoryPreviewImage(
                 model = model,
                 modifier = Modifier
-                    .padding(start = 4.dp)
+                    .padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
                     .size(width = 72.dp, height = 52.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .captureStoryPreviewElement(
