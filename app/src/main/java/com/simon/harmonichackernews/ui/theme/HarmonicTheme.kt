@@ -164,6 +164,10 @@ private fun harmonicColors(
             R.attr.commentDividerColor,
             fallbackScheme.outlineVariant,
         ),
+        commentCountIndicator = context.colorAttribute(
+            R.attr.commentCountIndicatorColor,
+            fallback.commentCountIndicator,
+        ),
         drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface).let { color ->
             color.copy(alpha = color.alpha * 0.8f)
         },

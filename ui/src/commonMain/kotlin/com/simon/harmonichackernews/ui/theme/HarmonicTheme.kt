@@ -25,6 +25,7 @@ data class HarmonicColors(
     val storyDisabled: Color,
     val outlineVariant: Color,
     val commentDivider: Color,
+    val commentCountIndicator: Color,
     val drawable: Color,
     val popupMenuBackground: Color,
     val settingsSegment: Color,

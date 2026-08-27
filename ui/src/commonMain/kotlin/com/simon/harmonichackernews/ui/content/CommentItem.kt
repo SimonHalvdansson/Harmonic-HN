@@ -875,7 +875,7 @@ private fun CommentMeta(
                 modifier = Modifier
                     .graphicsLayer(alpha = hiddenReplyCountAlpha)
                     .clip(RoundedCornerShape(7.dp))
-                    .background(colors.accent)
+                    .background(colors.commentCountIndicator)
                     .padding(horizontal = 5.dp, vertical = 1.dp)
                     .then(
                         if (showHiddenReplyCount) Modifier else Modifier.clearAndSetSemantics { },
