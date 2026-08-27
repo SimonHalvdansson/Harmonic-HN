@@ -57,6 +57,7 @@ class CommentsComposeController private constructor(
     private val savedItemState: SavedItemStateReader,
     initialStory: StoryListItemSnapshot,
     val initialShowWebsite: Boolean,
+    initialScrollRestorationPending: Boolean,
     accountUser: String?,
     val listener: Listener,
 ) {
@@ -114,6 +115,9 @@ class CommentsComposeController private constructor(
     var webViewFullscreen by mutableStateOf(false)
         private set
     var isScrolledToTop by mutableStateOf(true)
+        private set
+    /** Prevents pane transitions from sampling item 0 before a cached position is restored. */
+    var initialScrollRestorationPending by mutableStateOf(initialScrollRestorationPending)
         private set
     var firstVisibleCommentId: Int = 0
         private set
@@ -719,6 +723,10 @@ class CommentsComposeController private constructor(
         listener.onScrollPositionChanged(firstVisibleCommentId, firstVisibleCommentOffset)
     }
 
+    fun completeInitialScrollRestoration() {
+        initialScrollRestorationPending = false
+    }
+
     interface Listener {
         fun onToggleComment(comment: PortableCommentItem, position: Int)
         fun onScrollPositionChanged(commentId: Int, offset: Int) {}
@@ -753,6 +761,7 @@ class CommentsComposeController private constructor(
             shouldSmoothScroll: () -> Boolean,
             story: StoryListItemSnapshot,
             showWebsite: Boolean,
+            initialScrollRestorationPending: Boolean = false,
             accountUser: String?,
             savedItemState: SavedItemStateReader,
             listener: Listener,
@@ -761,6 +770,7 @@ class CommentsComposeController private constructor(
             savedItemState = savedItemState,
             initialStory = story,
             initialShowWebsite = showWebsite,
+            initialScrollRestorationPending = initialScrollRestorationPending,
             accountUser = accountUser,
             listener = listener,
         )

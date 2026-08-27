@@ -284,6 +284,7 @@ fun CommentsScreen(
             }
         }
         controller.consumeScrollToCommentRequest(request)
+        controller.completeInitialScrollRestoration()
     }
 
     val highlightedCommentId = controller.highlightedCommentId
@@ -323,6 +324,13 @@ fun CommentsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
+                // The list still lays out and restores while hidden, then appears at its saved row.
+                .graphicsLayer {
+                    alpha = if (
+                        controller.initialScrollRestorationPending &&
+                        !controller.loadingFailed
+                    ) 0f else 1f
+                }
                 .then(listModifier)
                 .commentsHazeSource(commentsHazeState),
             state = listState,

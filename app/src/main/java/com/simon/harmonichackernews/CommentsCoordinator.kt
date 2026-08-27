@@ -544,6 +544,7 @@ class CommentsCoordinator(
             },
             story = storySnapshot,
             showWebsite = showWebsite,
+            initialScrollRestorationPending = restoringStoredProgress && !showWebsite,
             accountUser = commentsStore.state.value.accountUser,
             savedItemState = commentsStore.savedItemState,
             listener = CommentsFeatureListener(commentsStore, platformCallbacks),
