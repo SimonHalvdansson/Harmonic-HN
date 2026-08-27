@@ -101,6 +101,19 @@ object WebContentPagePolicy {
         platformUrls: WebContentPlatformUrls,
     ): String = platformUrls.errorPage + "#" + WebContentPolicy.errorPageFragment(failure)
 
+    fun externalBrowserUrl(
+        currentUrl: String?,
+        storyUrl: String?,
+        platformUrls: WebContentPlatformUrls,
+    ): String? {
+        val current = currentUrl?.takeIf(String::isNotBlank)
+        return if (classify(current, platformUrls) == WebContentPageKind.ERROR_PAGE) {
+            storyUrl?.takeIf(String::isNotBlank)
+        } else {
+            current ?: storyUrl?.takeIf(String::isNotBlank)
+        }
+    }
+
     fun cachedArticleBaseUrl(
         storedSourceUrl: String?,
         failingUrl: String?,

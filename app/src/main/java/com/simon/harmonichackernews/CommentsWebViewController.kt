@@ -348,8 +348,11 @@ internal class CommentsWebViewController(
     }
 
     fun openCurrentOrStoryUrlInBrowser() {
-        val url = webView?.url?.takeIf(String::isNotBlank)
-            ?: story?.url?.takeIf(String::isNotBlank)
+        val url = WebContentPagePolicy.externalBrowserUrl(
+            currentUrl = webView?.url,
+            storyUrl = story?.url,
+            platformUrls = WEB_CONTENT_URLS,
+        )
         if (url == null) coordinator.showMessage(WebContentCopy.OPEN_URL_FAILED)
         else callbacks.openExternalLink(url)
     }

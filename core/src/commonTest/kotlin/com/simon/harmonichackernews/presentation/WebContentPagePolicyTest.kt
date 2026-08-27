@@ -79,6 +79,35 @@ class WebContentPagePolicyTest {
     }
 
     @Test
+    fun externalBrowserUsesStoryUrlForInternalErrorPage() {
+        val storyUrl = "https://story.example/article"
+
+        assertEquals(
+            storyUrl,
+            WebContentPagePolicy.externalBrowserUrl(
+                currentUrl = "${urls.errorPage}#offline",
+                storyUrl = storyUrl,
+                platformUrls = urls,
+            ),
+        )
+        assertEquals(
+            "https://navigated.example/article",
+            WebContentPagePolicy.externalBrowserUrl(
+                currentUrl = "https://navigated.example/article",
+                storyUrl = storyUrl,
+                platformUrls = urls,
+            ),
+        )
+        assertNull(
+            WebContentPagePolicy.externalBrowserUrl(
+                currentUrl = "${urls.errorPage}#generic",
+                storyUrl = null,
+                platformUrls = urls,
+            ),
+        )
+    }
+
+    @Test
     fun readerFontPairsArePortableResourceKeys() {
         assertEquals(
             ReaderModeFontResources(
