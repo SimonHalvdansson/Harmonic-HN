@@ -196,24 +196,26 @@ fun EditorScreen(
         }
 
         if (isPost) {
-            PostFields(
-                title = title,
-                onTitleChange = { title = it },
-                url = url,
-                onUrlChange = { url = it },
-                text = text,
-                onTextChange = { text = it },
-                onFieldFocusChange = { field, isFocused ->
-                    if (isFocused) {
-                        focusedPostField = field
-                    } else if (focusedPostField == field) {
-                        focusedPostField = null
-                    }
-                },
-                titleMaxLength = titleMaxLength,
-                titleTooLong = titleTooLong,
-                modifier = Modifier.weight(1f),
-            )
+            KeepImeOpenDuringFieldHandoff {
+                PostFields(
+                    title = title,
+                    onTitleChange = { title = it },
+                    url = url,
+                    onUrlChange = { url = it },
+                    text = text,
+                    onTextChange = { text = it },
+                    onFieldFocusChange = { field, isFocused ->
+                        if (isFocused) {
+                            focusedPostField = field
+                        } else if (focusedPostField == field) {
+                            focusedPostField = null
+                        }
+                    },
+                    titleMaxLength = titleMaxLength,
+                    titleTooLong = titleTooLong,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         } else {
             CommentField(
                 value = comment,
