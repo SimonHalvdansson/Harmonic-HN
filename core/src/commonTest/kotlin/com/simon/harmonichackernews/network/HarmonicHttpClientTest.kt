@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -52,6 +53,25 @@ class HarmonicHttpClientTest {
 
         advanceUntilIdle()
         assertTrue(body.isClosedForRead)
+        client.close()
+    }
+
+    @Test
+    fun streamingRequestsBypassHttpCacheBodyBuffering() = runTest {
+        var cacheControl = ""
+        val client = HttpClient(MockEngine { request ->
+            cacheControl = request.headers[HttpHeaders.CacheControl].orEmpty()
+            respond(content = "streamed", status = HttpStatusCode.OK)
+        })
+
+        val result = KtorHttpClient(client).executeStreaming(
+            HttpRequest.Builder().url("https://example.com/model.bin").build(),
+        ) { response ->
+            response.body.readText()
+        }
+
+        assertEquals("streamed", result)
+        assertTrue(cacheControl.split(',').any { it.trim() == "no-store" })
         client.close()
     }
 }

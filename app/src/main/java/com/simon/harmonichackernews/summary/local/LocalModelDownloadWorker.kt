@@ -155,7 +155,7 @@ class LocalModelDownloadWorker(
         const val KEY_ERROR = "error"
 
         private const val CHANNEL_ID = "local_model_download"
-        private const val PROGRESS_INTERVAL_MILLIS = 2_000L
+        private const val PROGRESS_INTERVAL_MILLIS = 500L
         private const val MIN_PROGRESS_PERCENT_DELTA = 1
 
         private fun errorMessage(throwable: Throwable): String =

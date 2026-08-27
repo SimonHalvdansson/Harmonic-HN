@@ -194,6 +194,9 @@ class KtorHttpClient(
             connectTimeoutMillis = minOf(readTimeoutMillis, DEFAULT_CONNECT_TIMEOUT_MILLIS)
         }
         request.headers.forEach { (name, value) -> header(name, value) }
+        // Ktor's HttpCache consumes a cacheable response into a ByteArray before handing it to
+        // the caller. Large file/model transfers must bypass that path to remain streaming.
+        header(HttpHeaders.CacheControl, "no-store")
         request.body?.let { body ->
             body.mediaType?.let { contentType(ContentType.parse(it.toString())) }
             setBody(body.bytes)
