@@ -38,12 +38,18 @@ import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -55,10 +61,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import org.jetbrains.compose.resources.painterResource
@@ -90,6 +99,12 @@ import com.simon.harmonichackernews.presentation.validate
 private enum class EditorDialog {
     Information,
     Discard,
+}
+
+private enum class PostEditorField {
+    Title,
+    Url,
+    Text,
 }
 
 @Stable
@@ -127,6 +142,7 @@ fun EditorScreen(
     var comment by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
+    var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
     var discardConfirmed by rememberSaveable { mutableStateOf(false) }
 
@@ -187,6 +203,13 @@ fun EditorScreen(
                 onUrlChange = { url = it },
                 text = text,
                 onTextChange = { text = it },
+                onFieldFocusChange = { field, isFocused ->
+                    if (isFocused) {
+                        focusedPostField = field
+                    } else if (focusedPostField == field) {
+                        focusedPostField = null
+                    }
+                },
                 titleMaxLength = titleMaxLength,
                 titleTooLong = titleTooLong,
                 modifier = Modifier.weight(1f),
@@ -201,7 +224,10 @@ fun EditorScreen(
         }
 
         ComposeEditorBottomBar(
-            enabled = canSubmit,
+            submitEnabled = canSubmit,
+            formattingEnabled = !isPost ||
+                focusedPostField == null ||
+                focusedPostField == PostEditorField.Text,
             submitting = submitting,
             onItalic = {
                 if (isPost) text = applyItalicFormatting(text)
@@ -444,6 +470,7 @@ private fun PostFields(
     onUrlChange: (TextFieldValue) -> Unit,
     text: TextFieldValue,
     onTextChange: (TextFieldValue) -> Unit,
+    onFieldFocusChange: (PostEditorField, Boolean) -> Unit,
     titleMaxLength: Int,
     titleTooLong: Boolean,
     modifier: Modifier = Modifier,
@@ -456,6 +483,7 @@ private fun PostFields(
                 .fillMaxWidth()
                 .padding(start = 16.dp, top = 8.dp, end = 16.dp)
                 .height(80.75.dp)
+                .onFocusChanged { onFieldFocusChange(PostEditorField.Title, it.isFocused) }
                 .testTag("compose_editor_title"),
             label = { Text("Title") },
             supportingText = {
@@ -486,6 +514,7 @@ private fun PostFields(
                 .fillMaxWidth()
                 .padding(start = 16.dp, top = 16.dp, end = 16.dp)
                 .height(61.25.dp)
+                .onFocusChanged { onFieldFocusChange(PostEditorField.Url, it.isFocused) }
                 .testTag("compose_editor_url"),
             label = { Text("URL") },
             textStyle = editorTextStyle,
@@ -500,6 +529,7 @@ private fun PostFields(
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                .onFocusChanged { onFieldFocusChange(PostEditorField.Text, it.isFocused) }
                 .testTag("compose_editor_text"),
             label = { Text("Text") },
             textStyle = editorTextStyle,
@@ -539,7 +569,8 @@ private fun CommentField(
 
 @Composable
 private fun ComposeEditorBottomBar(
-    enabled: Boolean,
+    submitEnabled: Boolean,
+    formattingEnabled: Boolean,
     submitting: Boolean,
     onItalic: () -> Unit,
     onCode: () -> Unit,
@@ -568,17 +599,33 @@ private fun ComposeEditorBottomBar(
                 modifier = Modifier.padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                FormattingButton(Res.drawable.ic_format_italic, "Italic", onItalic)
-                FormattingButton(Res.drawable.ic_code_blocks, "Code block", onCode)
-                FormattingButton(Res.drawable.ic_info, "Information", onInformation)
+                FormattingButton(
+                    icon = Res.drawable.ic_format_italic,
+                    description = "Italic",
+                    enabled = formattingEnabled,
+                    onClick = onItalic,
+                )
+                FormattingButton(
+                    icon = Res.drawable.ic_code_blocks,
+                    description = "Code block",
+                    enabled = formattingEnabled,
+                    onClick = onCode,
+                )
+                FormattingButton(
+                    icon = Res.drawable.ic_info,
+                    description = "Information",
+                    onClick = onInformation,
+                )
             }
         }
-        SubmitButton(
-            enabled = enabled,
-            submitting = submitting,
-            onClick = onSubmit,
-            modifier = Modifier.padding(start = 12.dp),
-        )
+        EditorTooltip("Submit") {
+            SubmitButton(
+                enabled = submitEnabled,
+                submitting = submitting,
+                onClick = onSubmit,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
     }
 }
 
@@ -586,19 +633,46 @@ private fun ComposeEditorBottomBar(
 private fun FormattingButton(
     icon: DrawableResource,
     description: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(48.dp),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = description,
-            modifier = Modifier.size(24.dp),
-            tint = HarmonicTheme.colors.drawable,
-        )
+    EditorTooltip(description) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = description,
+                modifier = Modifier.size(24.dp),
+                tint = HarmonicTheme.colors.drawable.copy(alpha = if (enabled) 1f else 0.38f),
+            )
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorTooltip(
+    description: String,
+    content: @Composable () -> Unit,
+) {
+    val tooltipState = rememberTooltipState()
+    val hapticFeedback = LocalHapticFeedback.current
+    LaunchedEffect(tooltipState.isVisible) {
+        if (tooltipState.isVisible) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = { PlainTooltip { Text(description) } },
+        state = tooltipState,
+        content = content,
+    )
 }
 
 @Composable
