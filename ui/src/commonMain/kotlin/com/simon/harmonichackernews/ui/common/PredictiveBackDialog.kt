@@ -30,6 +30,7 @@ private const val DialogPredictiveBackCancelDurationMillis = 180
 internal data class DialogPredictiveBackVisuals(
     val scale: Float,
     val alpha: Float,
+    val backgroundDimAmountFraction: Float,
     val translationXDp: Float,
     val translationYDp: Float,
 )
@@ -46,12 +47,17 @@ internal fun dialogPredictiveBackVisuals(
     // until that phase is complete so fading can only begin after a committed gesture is released.
     val fadeProgress = ((visualProgress - DialogPredictiveBackGestureProgressFraction) /
         (1f - DialogPredictiveBackGestureProgressFraction)).coerceIn(0f, 1f)
+    // Unlike the dialog itself, the background starts returning to full brightness as soon as the
+    // gesture begins and is fully undimmed at the end of the held-gesture phase.
+    val backgroundDimAmountFraction =
+        (1f - visualProgress / DialogPredictiveBackGestureProgressFraction).coerceIn(0f, 1f)
     // Translation peaks during the gesture and returns to the center as the committed dialog
     // finishes shrinking away. Cancellation follows the same path in reverse.
     val translationProgress = sin(visualProgress * PI).toFloat()
     return DialogPredictiveBackVisuals(
         scale = 1f - (1f - DialogPredictiveBackScale) * visualProgress,
         alpha = 1f - (1f - DialogPredictiveBackAlpha) * fadeProgress,
+        backgroundDimAmountFraction = backgroundDimAmountFraction,
         translationXDp = DialogPredictiveBackTranslationXDp *
             translationProgress * swipeDirection.coerceIn(-1f, 1f),
         translationYDp = DialogPredictiveBackTranslationYDp * translationProgress,
@@ -66,8 +72,9 @@ internal data class DialogPredictiveBackEvent(
 /**
  * Shared dialog host for dialogs without a source element to morph back into.
  *
- * Android predictive back translates and shrinks the dialog while the gesture is held, then fades
- * it after the gesture commits. Other platforms retain their native back handling.
+ * Android predictive back translates and shrinks the dialog while the gesture is held, brightens
+ * the background throughout the pull, then fades the dialog after the gesture commits. Other
+ * platforms retain their native back handling.
  */
 @Composable
 fun PredictiveBackDialog(
@@ -122,6 +129,7 @@ fun PredictiveBackDialog(
             progress = visualProgress.value,
             swipeDirection = swipeDirection,
         )
+        PlatformDialogBackgroundDimAmount(visuals.backgroundDimAmountFraction)
         Box(
             modifier = Modifier.graphicsLayer {
                 scaleX = visuals.scale
@@ -146,3 +154,6 @@ internal expect fun PlatformDialogPredictiveBackHandler(
     onCancelled: suspend () -> Unit,
     onCommitted: suspend () -> Unit,
 )
+
+@Composable
+internal expect fun PlatformDialogBackgroundDimAmount(fraction: Float)

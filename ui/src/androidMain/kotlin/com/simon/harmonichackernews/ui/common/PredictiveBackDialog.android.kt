@@ -3,6 +3,11 @@ package com.simon.harmonichackernews.ui.common
 import androidx.activity.BackEventCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -35,5 +40,18 @@ internal actual fun PlatformDialogPredictiveBackHandler(
         } catch (_: CancellationException) {
             withContext(NonCancellable) { onCancelled() }
         }
+    }
+}
+
+@Composable
+internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) {
+    val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
+    val restingDimAmount = remember(dialogWindow) { dialogWindow.attributes.dimAmount }
+
+    SideEffect {
+        dialogWindow.setDimAmount(restingDimAmount * fraction.coerceIn(0f, 1f))
+    }
+    DisposableEffect(dialogWindow, restingDimAmount) {
+        onDispose { dialogWindow.setDimAmount(restingDimAmount) }
     }
 }

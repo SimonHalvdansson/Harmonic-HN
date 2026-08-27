@@ -11,3 +11,6 @@ internal actual fun PlatformDialogPredictiveBackHandler(
     onCancelled: suspend () -> Unit,
     onCommitted: suspend () -> Unit,
 ) = Unit
+
+@Composable
+internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) = Unit

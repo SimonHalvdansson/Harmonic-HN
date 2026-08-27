@@ -10,6 +10,7 @@ class PredictiveBackDialogTest {
 
         assertEquals(1f, visuals.scale, absoluteTolerance = 0.001f)
         assertEquals(1f, visuals.alpha, absoluteTolerance = 0.001f)
+        assertEquals(1f, visuals.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
         assertEquals(0f, visuals.translationXDp, absoluteTolerance = 0.001f)
         assertEquals(0f, visuals.translationYDp, absoluteTolerance = 0.001f)
     }
@@ -20,6 +21,7 @@ class PredictiveBackDialogTest {
 
         assertEquals(0.82f, visuals.scale, absoluteTolerance = 0.001f)
         assertEquals(0.08f, visuals.alpha, absoluteTolerance = 0.001f)
+        assertEquals(0f, visuals.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
         assertEquals(0f, visuals.translationXDp, absoluteTolerance = 0.001f)
         assertEquals(0f, visuals.translationYDp, absoluteTolerance = 0.001f)
     }
@@ -33,9 +35,19 @@ class PredictiveBackDialogTest {
         assertEquals(0.42f, heldProgress, absoluteTolerance = 0.001f)
         assertEquals(0.924f, leftEdge.scale, absoluteTolerance = 0.001f)
         assertEquals(1f, leftEdge.alpha, absoluteTolerance = 0.001f)
+        assertEquals(0f, leftEdge.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
         assertEquals(31.0f, leftEdge.translationXDp, absoluteTolerance = 0.1f)
         assertEquals(-leftEdge.translationXDp, rightEdge.translationXDp, 0.001f)
         assertEquals(leftEdge.translationYDp, rightEdge.translationYDp, 0.001f)
+    }
+
+    @Test
+    fun heldGestureStartsBrighteningBackgroundBeforeDialogFades() {
+        val halfHeldProgress = dialogPredictiveBackGestureProgress(0.5f)
+        val visuals = dialogPredictiveBackVisuals(halfHeldProgress)
+
+        assertEquals(1f, visuals.alpha, absoluteTolerance = 0.001f)
+        assertEquals(0.25f, visuals.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
     }
 
     @Test
