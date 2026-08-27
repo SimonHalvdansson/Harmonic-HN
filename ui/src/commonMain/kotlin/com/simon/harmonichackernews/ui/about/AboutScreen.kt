@@ -1,11 +1,12 @@
 package com.simon.harmonichackernews.ui.about
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -53,6 +54,7 @@ import com.simon.harmonichackernews.resources.ic_policy
 import com.simon.harmonichackernews.resources.ic_system_update_alt
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
+import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -257,14 +259,12 @@ private fun AboutActionButton(
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
     val colors = HarmonicTheme.colors
-    Box(
+    OutlinedButton(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
             .padding(3.5.dp)
-            .clip(CircleShape)
-            .border(0.75.dp, colors.outlineVariant, CircleShape)
-            .clickable(role = Role.Button, onClick = onClick)
             .clearAndSetSemantics {
                 contentDescription = text
                 role = Role.Button
@@ -273,28 +273,32 @@ private fun AboutActionButton(
                     true
                 }
             },
-        contentAlignment = Alignment.Center,
+        shape = CircleShape,
+        border = BorderStroke(0.75.dp, colors.outlineVariant),
+        contentPadding = PaddingValues(0.dp),
     ) {
-        Image(
-            painter = icon,
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 24.dp)
-                .alpha(0.8f)
-                .size(24.dp),
-            colorFilter = ColorFilter.tint(colors.storyNormal),
-        )
-        Text(
-            text = text,
-            modifier = Modifier.align(Alignment.Center).offset(x = 12.dp, y = (-0.5).dp),
-            color = colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            style = platformTextStyle,
-        )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Image(
+                painter = icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 24.dp)
+                    .alpha(0.8f)
+                    .size(24.dp),
+                colorFilter = ColorFilter.tint(colors.storyNormal),
+            )
+            Text(
+                text = text,
+                modifier = Modifier.align(Alignment.Center).offset(x = 12.dp, y = (-0.5).dp),
+                color = colors.storyNormal,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                style = platformTextStyle,
+            )
+        }
     }
 }
 
