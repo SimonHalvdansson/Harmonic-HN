@@ -645,10 +645,20 @@ private fun StoriesList(
         }
     }
 
+    LaunchedEffect(controller.refreshing) {
+        if (!controller.refreshing) {
+            controller.finishPullToRefresh()
+        }
+    }
+
     if (pullToRefreshEnabled) {
         PullToRefreshBox(
-            isRefreshing = controller.refreshing && !searchMode,
-            onRefresh = controller.listener::onRefresh,
+            isRefreshing = controller.pullToRefreshInProgress &&
+                controller.refreshing && !searchMode,
+            onRefresh = {
+                controller.beginPullToRefresh()
+                controller.listener.onRefresh()
+            },
             modifier = modifier.fillMaxSize(),
             content = content,
         )

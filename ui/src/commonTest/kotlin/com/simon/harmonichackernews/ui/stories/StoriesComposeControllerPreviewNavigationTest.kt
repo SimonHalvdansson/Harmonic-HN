@@ -127,6 +127,23 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
+    fun pullToRefreshOwnershipIsIndependentFromGenericRefreshingState() {
+        val controller = controller(destinationRemainsBesideStories = false)
+
+        controller.updateContent(StoriesScreenState(refreshing = true))
+
+        assertTrue(controller.refreshing)
+        assertFalse(controller.pullToRefreshInProgress)
+
+        controller.beginPullToRefresh()
+        assertTrue(controller.pullToRefreshInProgress)
+
+        controller.finishPullToRefresh()
+        assertFalse(controller.pullToRefreshInProgress)
+        assertTrue(controller.refreshing)
+    }
+
+    @Test
     fun durableRuntimeStateClearsPreviewActionLoadingWithoutATerminalEffect() {
         val controller = controller(destinationRemainsBesideStories = false)
         val stories = listOf(storySnapshot(1), storySnapshot(2))

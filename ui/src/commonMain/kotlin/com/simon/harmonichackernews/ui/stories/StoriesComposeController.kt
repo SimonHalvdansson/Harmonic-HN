@@ -100,6 +100,10 @@ class StoriesComposeController private constructor(
     private var displaySettingsState by mutableStateOf<StoryDisplaySettings?>(null)
     private var shellState by mutableStateOf(StoriesScreenState().withoutContent())
 
+    /** True only while the current refresh was initiated by the pull-to-refresh gesture. */
+    var pullToRefreshInProgress by mutableStateOf(false)
+        private set
+
     val mainStories: List<StoryListItemSnapshot> get() = mainStoriesState
     val searchStories: List<StoryListItemSnapshot> get() = searchStoriesState
     val previewResources: Map<Int, StoryPreviewResourceState> get() = previewResourcesSnapshot
@@ -286,6 +290,14 @@ class StoriesComposeController private constructor(
 
     fun updateHeaderMenuVisibility(visible: Boolean) {
         headerMenuVisible = visible
+    }
+
+    fun beginPullToRefresh() {
+        pullToRefreshInProgress = true
+    }
+
+    fun finishPullToRefresh() {
+        pullToRefreshInProgress = false
     }
 
     fun isHeaderMenuShowing(): Boolean = headerMenuVisible
