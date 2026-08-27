@@ -8,8 +8,17 @@ import com.simon.harmonichackernews.serialization.JsonArray
 import com.simon.harmonichackernews.serialization.JsonObject
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import io.ktor.client.HttpClient
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodeURLPathPart
+import io.ktor.utils.io.cancel
+import io.ktor.utils.io.readAvailable
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal data class GitHubPreviewTarget(
     val type: LinkPreviewType,
@@ -328,10 +337,65 @@ private suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo
 private suspend fun HttpClient.loadSubstackPreview(url: String): LinkPreviewInfo {
     val parsed = url.toNetworkUrlOrNull()
         ?: throw LinkPreviewException("Invalid Substack article URL")
-    return RichLinkPreviewParsers.parseSubstackFeed(
-        getTextOrThrow("https://${parsed.host}/feed"),
-        url,
-    )
+    return withTimeout(SUBSTACK_REQUEST_TIMEOUT_MILLIS) {
+        coroutineScope {
+            val pageResponse = async { getTextOrThrow(url) }
+            val publicationImage = async {
+                loadSubstackPublicationImage("${parsed.scheme}://${parsed.host}/feed")
+            }
+            RichLinkPreviewParsers.parseSubstackPage(
+                pageResponse.await(),
+                url,
+                publicationImage.await(),
+            )
+        }
+    }
+}
+
+private suspend fun HttpClient.loadSubstackPublicationImage(feedUrl: String): String? = try {
+    withTimeoutOrNull(SUBSTACK_FEED_TIMEOUT_MILLIS) {
+        val feedHeader = getTextPrefixOrThrow(
+            url = feedUrl,
+            maxBytes = SUBSTACK_FEED_HEADER_MAX_BYTES,
+            stopMarkers = listOf("</image>", "<item>"),
+        )
+        RichLinkPreviewParsers.parseSubstackChannelImage(feedHeader)
+    }
+} catch (error: CancellationException) {
+    throw error
+} catch (_: Throwable) {
+    null
+}
+
+private suspend fun HttpClient.getTextPrefixOrThrow(
+    url: String,
+    maxBytes: Int,
+    stopMarkers: List<String>,
+): String = prepareGet(url).execute { response ->
+    val channel = response.bodyAsChannel()
+    try {
+        if (response.status.value !in 200..299) {
+            throw HttpStatusException(response.status.value, response.status.description, url)
+        }
+        val bytes = ByteArray(maxBytes)
+        var size = 0
+        var text = ""
+        while (size < maxBytes) {
+            val read = channel.readAvailable(
+                bytes,
+                size,
+                minOf(SUBSTACK_FEED_READ_CHUNK_BYTES, maxBytes - size),
+            )
+            if (read < 0) break
+            if (read == 0) continue
+            size += read
+            text = bytes.decodeToString(endIndex = size)
+            if (stopMarkers.any(text::contains)) break
+        }
+        text
+    } finally {
+        channel.cancel()
+    }
 }
 
 private suspend fun HttpClient.loadBlueskyPreview(url: String): LinkPreviewInfo {
@@ -397,9 +461,28 @@ private suspend fun HttpClient.loadPackagePreview(
 private fun apiPath(vararg parts: String): String =
     parts.joinToString("/") { it.encodeURLPathPart() }
 
+private const val SUBSTACK_REQUEST_TIMEOUT_MILLIS = 15_000L
+private const val SUBSTACK_FEED_TIMEOUT_MILLIS = 5_000L
+private const val SUBSTACK_FEED_HEADER_MAX_BYTES = 64 * 1024
+private const val SUBSTACK_FEED_READ_CHUNK_BYTES = 4 * 1024
+
 internal object RichLinkPreviewParsers {
     private const val MASTODON_DESCRIPTION_MAX_CHARS = 600
-    private val numericXmlEntity = Regex("&#(x[0-9A-Fa-f]+|[0-9]+);")
+    private const val SUBSTACK_DESCRIPTION_MAX_CHARS = 600
+    private val monthAbbreviations = listOf(
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    )
 
     fun parseGitHub(
         type: LinkPreviewType,
@@ -668,28 +751,44 @@ internal object RichLinkPreviewParsers {
         )
     }
 
-    fun parseSubstackFeed(response: String, url: String): LinkPreviewInfo {
-        val document = Ksoup.parseXml(response)
-        val normalizedUrl = url.substringBefore('?').removeSuffix("/")
-        val channel = document.getElementsByTag("channel").firstOrNull()
-        val item = document.getElementsByTag("item").firstOrNull { candidate ->
-            val link = candidate.getElementsByTag("link").firstOrNull()?.text()
-            link?.substringBefore('?')?.removeSuffix("/") == normalizedUrl
-        } ?: throw LinkPreviewException("This Substack post is not present in the publication feed")
+    fun parseSubstackChannelImage(response: String): String? =
+        Ksoup.parseXml(response).selectFirst("channel > image > url")?.text()
+            ?.takeIf(String::isNotBlank)
+
+    fun parseSubstackPage(
+        response: String,
+        url: String,
+        publicationImageUrl: String? = null,
+    ): LinkPreviewInfo {
+        val document = Ksoup.parse(response, baseUri = url)
+        val article = document.select("script[type=application/ld+json]")
+            .firstNotNullOfOrNull { script ->
+                runCatching { JsonObject(script.data()) }.getOrNull()
+                    ?.takeIf { it.optString("@type") == "NewsArticle" }
+            }
+        val articleTitle = (
+            article?.nullableString("headline")
+                ?: document.selectFirst("meta[property=og:title]")?.attr("content")
+            ).orEmpty().requiredPreviewTitle(LinkPreviewType.SUBSTACK_ARTICLE)
+        val publicationTitle = article?.optJSONObject("publisher")?.nullableString("name")
+            ?: article?.optJSONArray("author")?.optJSONObject(0)?.nullableString("name")
+        val headerTitle = publicationTitle ?: articleTitle
+        val published = article?.nullableString("datePublished")
+            ?: document.selectFirst("time[datetime]")?.attr("datetime")
         return LinkPreviewInfo(
-            LinkPreviewType.SUBSTACK_ARTICLE,
-            item.getElementsByTag("title").firstOrNull()?.text().rssText().orEmpty()
-                .requiredPreviewTitle(LinkPreviewType.SUBSTACK_ARTICLE),
-            item.getElementsByTag("dc:creator").firstOrNull()?.text().rssText()
-                ?: channel?.getElementsByTag("title")?.firstOrNull()?.text().rssText(),
-            item.getElementsByTag("description").firstOrNull()?.text().rssText(),
-            item.getElementsByTag("enclosure").firstOrNull()?.attr("url")
-                ?: channel?.getElementsByTag("image")?.firstOrNull()
-                    ?.getElementsByTag("url")?.firstOrNull()?.text(),
-            url,
-            details(
-                "Published" to item.getElementsByTag("pubDate").firstOrNull()?.text(),
-                "Publication" to channel?.getElementsByTag("title")?.firstOrNull()?.text().rssText(),
+            type = LinkPreviewType.SUBSTACK_ARTICLE,
+            title = headerTitle,
+            subtitle = articleTitle.takeUnless { it == headerTitle },
+            description = document.selectFirst(".available-content p, .dt-post-body p")?.text()
+                ?.let { HtmlTextUtils.normalizeAndTruncatePlainText(it, SUBSTACK_DESCRIPTION_MAX_CHARS) }
+                ?.takeIf(String::isNotBlank)
+                ?: document.selectFirst("meta[property=og:description]")?.attr("content"),
+            imageUrl = publicationImageUrl,
+            url = url,
+            details = listOfNotNull(
+                published?.compactPublishedDate()?.let { compactDate ->
+                    LinkPreviewDetail("Published", published, compactDate)
+                },
             ),
         )
     }
@@ -922,41 +1021,26 @@ internal object RichLinkPreviewParsers {
         takeIf(String::isNotBlank) ?: throw LinkPreviewException("${type.title} data not found")
 
     private fun String.dateOnly(): String = take(10)
+    private fun String.compactPublishedDate(): String? {
+        Regex("^(\\d{4})-(\\d{2})-(\\d{2})").find(trim())?.let { match ->
+            val year = match.groupValues[1].toIntOrNull() ?: return@let
+            val month = match.groupValues[2].toIntOrNull()?.takeIf { it in 1..12 } ?: return@let
+            val day = match.groupValues[3].toIntOrNull()?.takeIf { it in 1..31 } ?: return@let
+            return "${monthAbbreviations[month - 1]} $day, $year"
+        }
+        val parts = trim().split(Regex("\\s+"))
+        val monthIndex = parts.indexOfFirst { value ->
+            monthAbbreviations.any { it.equals(value, ignoreCase = true) }
+        }
+        if (monthIndex <= 0 || monthIndex >= parts.lastIndex) return null
+        val month = monthAbbreviations.first { it.equals(parts[monthIndex], ignoreCase = true) }
+        val day = parts[monthIndex - 1].trim(',').toIntOrNull()?.takeIf { it in 1..31 } ?: return null
+        val year = parts[monthIndex + 1].trim(',').toIntOrNull()?.takeIf { it in 1000..9999 } ?: return null
+        return "$month $day, $year"
+    }
     private fun String.titleCase(): String = humanize().replaceFirstChar(Char::uppercase)
     private fun String.humanize(): String = replace('_', ' ')
     private fun String.shortHost(): String? = toNetworkUrlOrNull()?.host?.removePrefix("www.")
-
-    private fun String?.rssText(): String? = this
-        ?.let { value ->
-            numericXmlEntity.replace(value) { match ->
-                val encoded = match.groupValues[1]
-                val codePoint = if (encoded.startsWith('x')) {
-                    encoded.drop(1).toIntOrNull(16)
-                } else {
-                    encoded.toIntOrNull()
-                }
-                codePoint?.unicodeString() ?: match.value
-            }
-        }
-        ?.replace("&quot;", "\"")
-        ?.replace("&apos;", "'")
-        ?.replace("&lt;", "<")
-        ?.replace("&gt;", ">")
-        ?.replace("&amp;", "&")
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-
-    private fun Int.unicodeString(): String? = when (this) {
-        in 0..0xFFFF -> toChar().toString()
-        in 0x10000..0x10FFFF -> {
-            val shifted = this - 0x10000
-            charArrayOf(
-                (0xD800 + shifted / 0x400).toChar(),
-                (0xDC00 + shifted % 0x400).toChar(),
-            ).concatToString()
-        }
-        else -> null
-    }
 
     private fun JsonObject.nullableString(key: String): String? =
         (opt(key) as? String)?.takeUnless(String::isBlank)

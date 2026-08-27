@@ -139,9 +139,12 @@ class RichLinkPreviewParsersTest {
                 "us123",
                 "https://earthquake.usgs.gov/earthquakes/eventpage/us123",
             ),
-            RichLinkPreviewParsers.parseSubstackFeed(
-                """<?xml version="1.0"?><rss><channel><title>Example Publication</title><item><title>RSS article</title><link>https://writer.substack.com/p/rss-article</link><description><![CDATA[Writer&#8217;s feed summary]]></description><pubDate>Tue, 18 Aug 2026 12:00:00 GMT</pubDate></item></channel></rss>""",
+            RichLinkPreviewParsers.parseSubstackPage(
+                """<html><head><meta property="og:title" content="RSS article"><meta property="og:description" content="Writer's short summary"><meta property="og:image" content="https://example.com/cover.png"><script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":"RSS article","datePublished":"2026-08-08T12:00:00Z","publisher":{"@type":"Organization","name":"Example Publication"}}</script></head><body><div class="dt-post-body"><div class="available-content"><p>Writer&#8217;s longer opening paragraph. It has a second sentence.</p><p>This should not appear.</p></div></div></body></html>""",
                 "https://writer.substack.com/p/rss-article",
+                RichLinkPreviewParsers.parseSubstackChannelImage(
+                    """<?xml version="1.0"?><rss><channel><title>Example Publication</title><image><url>https://writer.substack.com/img/substack.png</url><title>Example Publication</title><link>https://writer.substack.com</link></image>""",
+                ),
             ),
             RichLinkPreviewParsers.parseMastodon(
                 """{"content":"<p>This is <strong>the actual post</strong>.</p><p>Second paragraph &amp; link.</p>","spoiler_text":"A brief warning","account":{"display_name":"Ada","username":"ada","acct":"ada@example.social","avatar":"https://example.social/avatar.png"},"replies_count":1,"reblogs_count":2,"favourites_count":3}""",
@@ -170,10 +173,18 @@ class RichLinkPreviewParsersTest {
             ),
             results.map { it.type }.toSet(),
         )
+        val substack = results.singleType(LinkPreviewType.SUBSTACK_ARTICLE)
+        assertEquals("Example Publication", substack.title)
+        assertEquals("RSS article", substack.subtitle)
+        assertEquals("https://writer.substack.com/img/substack.png", substack.imageUrl)
         assertEquals(
-            "Writer’s feed summary",
-            results.singleType(LinkPreviewType.SUBSTACK_ARTICLE).description,
+            "Writer’s longer opening paragraph. It has a second sentence.",
+            substack.description,
         )
+        assertEquals(1, substack.details.size)
+        assertEquals("Published", substack.details.single().label)
+        assertEquals("Aug 8, 2026", substack.details.single().displayText)
+        assertTrue(substack.details.none { it.label == "Publication" })
         assertEquals(
             "Content warning: A brief warning\n\nThis is the actual post. Second paragraph & link.",
             results.singleType(LinkPreviewType.MASTODON_POST).description,

@@ -201,7 +201,7 @@ class CommentsCoordinator(
             story,
             appComposition,
             readingPreferences,
-            LinkPreviewController.Callbacks(::syncComposeState),
+            LinkPreviewController.Callbacks(commentsStore::refreshStoryPresentation),
         )
         webViewController = CommentsWebViewController(
             this,

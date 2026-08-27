@@ -100,6 +100,12 @@ class CommentsStore internal constructor(
         publish()
     }
 
+    /** Rebuilds the immutable UI snapshot after a story-scoped service mutates presentation data. */
+    fun refreshStoryPresentation() {
+        if (closed) return
+        publish()
+    }
+
     fun loadInitial(restoreScrollFromCache: Boolean) =
         runtime.loadInitial(restoreScrollFromCache).also { publish() }
 

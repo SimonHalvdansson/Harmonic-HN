@@ -5,8 +5,10 @@ import com.simon.harmonichackernews.data.HuggingFaceModelInfo
 import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -100,6 +102,28 @@ class LinkPreviewRuntimeTest {
         assertEquals(LinkPreviewType.CROSSREF_ARTICLE, story.loadedLinkPreviewType())
     }
 
+    @Test
+    fun timeoutClearsLoadingState() = runTest {
+        val repository = object : RecordingRepository() {
+            override suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
+                withTimeout(1) {
+                    delay(10)
+                    LinkPreviewInfo(type = type, title = "Too late", url = url)
+                }
+        }
+        val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))
+
+        assertTrue(runtime.load(
+            "https://doi.org/10.1000/example",
+            LinkPreviewPreferences(setOf(LinkPreviewType.CROSSREF_ARTICLE)),
+            alreadyLoaded = false,
+        ))
+        advanceUntilIdle()
+
+        assertFalse(runtime.state.value.loading)
+        assertEquals("Preview timed out", runtime.state.value.failure)
+    }
+
     private fun preferences(
         github: Boolean,
         huggingFace: Boolean = false,
@@ -110,7 +134,7 @@ class LinkPreviewRuntimeTest {
         if (openRouter) add(LinkPreviewType.OPENROUTER_MODEL)
     })
 
-    private class RecordingRepository : LinkPreviewRepository {
+    private open class RecordingRepository : LinkPreviewRepository {
         var loadedUrl: String? = null
 
         override suspend fun getGitHubInfo(url: String): RepoInfo {

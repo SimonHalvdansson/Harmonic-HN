@@ -103,6 +103,35 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun storyPresentationRefreshPublishesExternallyMutatedPreviewState() = runTest {
+        val session = CommentsSessionState()
+        val story = Story("Shared", 42, true, false)
+        session.story = story
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val store = CommentsStore(
+            backgroundScope,
+            CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L },
+        )
+
+        assertFalse(store.state.value.story!!.linkPreviewLoading)
+
+        story.linkPreviewLoading = true
+        store.refreshStoryPresentation()
+
+        assertTrue(store.state.value.story!!.linkPreviewLoading)
+    }
+
+    @Test
     fun featureRuntimeOwnsInitializationSearchAndPlatformDecisionRouting() = runTest {
         val session = CommentsSessionState()
         val presenter = CommentsPresenter(

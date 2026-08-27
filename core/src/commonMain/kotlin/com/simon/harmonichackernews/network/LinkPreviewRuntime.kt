@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,13 +46,24 @@ class LinkPreviewRuntime(
                     )
                 }
             } catch (error: CancellationException) {
-                throw error
+                if (error is TimeoutCancellationException && mutableState.value.generation == generation) {
+                    mutableState.value = LinkPreviewRuntimeState(
+                        failure = "Preview timed out",
+                        generation = generation,
+                    )
+                } else {
+                    throw error
+                }
             } catch (error: Throwable) {
                 if (mutableState.value.generation == generation) {
                     mutableState.value = LinkPreviewRuntimeState(
                         failure = error.message?.takeIf(String::isNotBlank) ?: "Preview failed",
                         generation = generation,
                     )
+                }
+            } finally {
+                if (mutableState.value.generation == generation && mutableState.value.loading) {
+                    mutableState.value = mutableState.value.copy(loading = false)
                 }
             }
         }
