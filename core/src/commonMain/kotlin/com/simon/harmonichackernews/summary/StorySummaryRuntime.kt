@@ -222,7 +222,7 @@ class StorySummaryRuntime(
 
 class CloudStorySummaryBackend(
     private val useCase: SummaryUseCase,
-    private val config: () -> CloudSummaryConfig,
+    private val config: suspend () -> CloudSummaryConfig,
 ) : StorySummaryBackend {
     override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
         val upstream = if (input.hasArticleText) {

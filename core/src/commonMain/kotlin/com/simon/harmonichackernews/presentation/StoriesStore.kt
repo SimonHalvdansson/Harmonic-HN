@@ -156,6 +156,12 @@ class StoriesStore internal constructor(
         }
         jobs += scope.launch { runtime.settingsState.collect { publish() } }
         jobs += scope.launch { runtime.previewActionState.collect { publish() } }
+        jobs += scope.launch {
+            runtime.historyState.collect {
+                runtime.syncHistoryIfChanged()
+                publish()
+            }
+        }
         jobs += scope.launch { presenter.state.collect { publish() } }
         jobs += scope.launch { runtime.mainStore.state.collect { publish() } }
         jobs += scope.launch { runtime.searchStore.state.collect { publish() } }

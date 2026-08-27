@@ -7,6 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
 
 class DataSettingsPolicyTest {
     @Test
@@ -52,7 +53,7 @@ class DataSettingsPolicyTest {
     }
 
     @Test
-    fun resetPreservesContentAndLoginWhileClearingSettingsAndAiKey() {
+    fun resetPreservesContentAndLoginWhileClearingSettingsAndAiKey() = runTest {
         val defaults = TestKeyValueStore(mapOf(UserPreferenceKeys.SHOW_POINTS to false))
         val global = TestKeyValueStore(
             mapOf(
@@ -67,7 +68,8 @@ class DataSettingsPolicyTest {
             ),
         )
 
-        SettingsResetUseCase(defaults, global, credentials).execute()
+        val aiSettings = AiSummarySettingsRepository(defaults, credentials, emptyFlow())
+        SettingsResetUseCase(defaults, global, aiSettings).execute()
 
         assertFalse(defaults.contains(UserPreferenceKeys.SHOW_POINTS))
         assertFalse(global.contains(NighttimeScheduleKeys.FROM_HOUR))

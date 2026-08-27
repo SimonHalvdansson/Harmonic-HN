@@ -61,6 +61,7 @@ internal class AndroidHackerNewsAccountRepository(context: Context) : HackerNews
 
 class AndroidHistoryStore(context: Context) : ObservableHistoryStore by StoredHistoryStore(
     AndroidKeyValueStore.global(context.applicationContext),
+    storageDispatcher = Dispatchers.IO,
 )
 
 class AndroidClipboardService(context: Context) : ClipboardService {
@@ -186,6 +187,7 @@ fun createAndroidPlatformDependencies(
         clipboard = AndroidClipboardService(context),
         connectivity = AndroidConnectivityService(context),
         timeFormatting = AndroidTimeFormatter(context),
+        credentialDispatcher = Dispatchers.IO,
         replyNotifications = AndroidReplyNotificationPlatform(context),
         localSummary = createAndroidLocalSummaryEngine(context, localModels),
     )

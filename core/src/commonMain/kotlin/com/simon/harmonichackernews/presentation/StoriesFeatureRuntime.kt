@@ -198,6 +198,8 @@ class StoriesFeatureRuntime(
     val loggedIn: Boolean
         get() = accounts.currentAccount != null
 
+    val historyState = historyStore.historyState
+
     val canClearHistory: Boolean
         get() = currentType.isHistory && historyStore.size > 0
 

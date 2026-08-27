@@ -139,7 +139,7 @@ class CommentsFeatureRuntime(
             scope.launch { repository.accountState.drop(1).collect { reconcileSettings() } }
         }
         summarySettings?.let { repository ->
-            scope.launch { repository.updates.drop(1).collect { reconcileSettings() } }
+            scope.launch { repository.updates.collect { reconcileSettings() } }
         }
         summaryRuntime?.let { runtime ->
             scope.launch { runtime.state.collect(::applySummaryState) }

@@ -124,21 +124,29 @@ object SavedItemSnapshots {
     }
 }
 
-class HistoryLedger {
+class HistoryLedger(
+    private val maximumEntries: Int = DEFAULT_MAXIMUM_ENTRIES,
+) {
     private val histories = mutableListOf<History>()
     private val historyIds = mutableSetOf<Int>()
+
+    init {
+        require(maximumEntries > 0) { "History capacity must be positive" }
+    }
 
     var changeVersion: Long = 0L
         private set
 
     val size: Int get() = histories.size
 
-    fun initialize(serialized: String?) {
+    fun initialize(serialized: String?): Boolean {
+        val decoded = decodeHistories(serialized, sorted = true)
         histories.clear()
-        histories += decodeHistories(serialized, sorted = true)
+        histories += decoded.take(maximumEntries)
         historyIds.clear()
         histories.mapTo(historyIds, History::id)
         changeVersion++
+        return decoded.size > histories.size
     }
 
     fun load(): List<History> = histories.toList()
@@ -150,6 +158,10 @@ class HistoryLedger {
     fun record(id: Int, createdAtMillis: Long): Boolean {
         if (!historyIds.add(id)) return false
         histories += History(id, createdAtMillis)
+        if (histories.size > maximumEntries) {
+            val oldestIndex = histories.indices.minBy { histories[it].created }
+            historyIds.remove(histories.removeAt(oldestIndex).id)
+        }
         changeVersion++
         return true
     }
@@ -174,6 +186,8 @@ class HistoryLedger {
     )
 
     companion object {
+        const val DEFAULT_MAXIMUM_ENTRIES = 10_000
+
         fun decodeHistories(serialized: String?, sorted: Boolean): MutableList<History> =
             SavedItemCodec.decode(serialized, sorted)
                 .mapTo(mutableListOf()) { History(it.id, it.created) }

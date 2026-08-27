@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.launch
 
 data class AiBaseUrlPreset(
     val id: String,
@@ -51,21 +53,28 @@ fun AiSummaryTextDialog(
     allowEmpty: Boolean,
     showReset: Boolean,
     asciiInput: Boolean,
-    onSave: (String) -> String?,
+    onSave: suspend (String) -> String?,
     onDismiss: () -> Unit,
 ) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
     var error by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
 
     fun save() {
+        if (saving) return
         val savedValue = if (trimValue) value.trim() else value
         if (!allowEmpty && savedValue.isEmpty()) {
             error = "Required"
             return
         }
-        error = onSave(savedValue)
-        if (error == null) onDismiss()
+        saving = true
+        scope.launch {
+            error = onSave(savedValue)
+            saving = false
+            if (error == null) onDismiss()
+        }
     }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -112,10 +121,10 @@ fun AiSummaryTextDialog(
             )
         },
         confirmButton = {
-            SettingsDialogTextButton(onClick = { save() }) { Text("Save") }
+            SettingsDialogTextButton(onClick = { save() }, enabled = !saving) { Text("Save") }
         },
         dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) { Text("Cancel") }
+            SettingsDialogTextButton(onClick = onDismiss, enabled = !saving) { Text("Cancel") }
         },
         neutralButton = if (showReset) {
             {
@@ -124,6 +133,7 @@ fun AiSummaryTextDialog(
                         error = null
                         value = defaultValue
                     },
+                    enabled = !saving,
                 ) {
                     Text("Reset")
                 }

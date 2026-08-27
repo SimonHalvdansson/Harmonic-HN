@@ -3,12 +3,20 @@ package com.simon.harmonichackernews.platform
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.data.HistoryLedger
 import com.simon.harmonichackernews.settings.KeyValueStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 sealed interface HackerNewsAccountState {
     data object Loading : HackerNewsAccountState
@@ -50,6 +58,7 @@ interface ObservableHistoryStore : HistoryStore {
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
+    fun close() = Unit
 }
 
 object StoredHistoryKeys {
@@ -63,72 +72,74 @@ object StoredHistoryKeys {
 class StoredHistoryStore(
     private val store: KeyValueStore,
     private val storageKey: String = StoredHistoryKeys.HISTORIES,
+    private val storageDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ObservableHistoryStore {
     private val ledger = HistoryLedger()
-    private var initialized = false
     private val mutationMutex = Mutex()
-    private val mutableHistoryState = MutableStateFlow(snapshotFromStorage())
+    private val initialization = CompletableDeferred<Unit>()
+    private val storageScope = CoroutineScope(SupervisorJob() + storageDispatcher)
+    private val mutableHistoryState = MutableStateFlow(HistoryStoreSnapshot())
     override val historyState: StateFlow<HistoryStoreSnapshot> = mutableHistoryState.asStateFlow()
 
-    override fun initialize() {
-        ledger.initialize(store.getString(storageKey))
-        initialized = true
-        publish()
+    init {
+        storageScope.launch { initializeFromStorage() }
     }
 
-    override fun load(): List<History> =
-        HistoryLedger.decodeHistories(store.getString(storageKey), sorted = true)
+    /** Initialization starts when the store is constructed and never blocks the caller. */
+    override fun initialize() = Unit
 
+    override fun load(): List<History> = historyState.value.histories
+
+    /** Legacy synchronous mutations are queued; shared feature code uses the suspend variants. */
     override fun record(id: Int, createdAtMillis: Long) {
-        ensureInitialized()
-        if (ledger.record(id, createdAtMillis)) persistAndPublish()
+        storageScope.launch { recordHistory(id, createdAtMillis) }
     }
 
     override fun remove(id: Int) {
-        ensureInitialized()
-        if (ledger.remove(id)) persistAndPublish()
+        storageScope.launch { removeHistory(id) }
     }
 
     override fun clear() {
-        ledger.clear()
-        initialized = true
-        persistAndPublish()
+        storageScope.launch { clearHistory() }
     }
 
-    override fun contains(id: Int): Boolean {
-        ensureInitialized()
-        return ledger.contains(id)
-    }
+    override fun contains(id: Int): Boolean = historyState.value.histories.any { it.id == id }
 
     override val size: Int
-        get() {
-            ensureInitialized()
-            return ledger.size
-        }
+        get() = historyState.value.histories.size
 
     override val changeVersion: Long
-        get() {
-            ensureInitialized()
-            return ledger.changeVersion
-        }
+        get() = historyState.value.changeVersion
 
     override suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean =
-        mutationMutex.withLock {
-            val previousVersion = changeVersion
-            record(id, createdAtMillis)
-            changeVersion != previousVersion
+        withContext(storageDispatcher) {
+            initialization.await()
+            mutationMutex.withLock {
+                ledger.record(id, createdAtMillis).also { changed ->
+                    if (changed) persistAndPublish()
+                }
+            }
         }
 
-    override suspend fun removeHistory(id: Int): Boolean = mutationMutex.withLock {
-        val previousVersion = changeVersion
-        remove(id)
-        changeVersion != previousVersion
+    override suspend fun removeHistory(id: Int): Boolean = withContext(storageDispatcher) {
+        initialization.await()
+        mutationMutex.withLock {
+            ledger.remove(id).also { changed ->
+                if (changed) persistAndPublish()
+            }
+        }
     }
 
-    override suspend fun clearHistory() = mutationMutex.withLock { clear() }
+    override suspend fun clearHistory() = withContext(storageDispatcher) {
+        initialization.await()
+        mutationMutex.withLock {
+            ledger.clear()
+            persistAndPublish()
+        }
+    }
 
-    private fun ensureInitialized() {
-        if (!initialized) initialize()
+    override fun close() {
+        storageScope.cancel()
     }
 
     private fun persistAndPublish() {
@@ -136,10 +147,21 @@ class StoredHistoryStore(
         publish()
     }
 
-    private fun snapshotFromStorage() = HistoryStoreSnapshot(
-        histories = HistoryLedger.decodeHistories(store.getString(storageKey), sorted = true),
-        changeVersion = if (initialized) ledger.changeVersion else 0L,
-    )
+    private suspend fun initializeFromStorage() {
+        try {
+            mutationMutex.withLock {
+                val trimmed = runCatching { ledger.initialize(store.getString(storageKey)) }
+                    .getOrElse {
+                        ledger.initialize(null)
+                        false
+                    }
+                if (trimmed) store.putString(storageKey, ledger.serialize())
+                publish()
+            }
+        } finally {
+            initialization.complete(Unit)
+        }
+    }
 
     private fun publish() {
         mutableHistoryState.value = HistoryStoreSnapshot(ledger.load(), ledger.changeVersion)

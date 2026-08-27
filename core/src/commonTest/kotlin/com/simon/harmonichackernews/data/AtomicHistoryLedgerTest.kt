@@ -32,4 +32,14 @@ class AtomicHistoryLedgerTest {
         assertTrue(ledger.current().histories.isEmpty())
         assertEquals("", ledger.current().serialized)
     }
+
+    @Test
+    fun historyCapacityRetainsNewestEntries() {
+        val ledger = HistoryLedger(maximumEntries = 3)
+
+        assertTrue(ledger.initialize("1q100-2q200-3q300-4q400"))
+        assertEquals(listOf(4, 3, 2), ledger.load().map(History::id))
+        assertTrue(ledger.record(5, 500))
+        assertEquals(listOf(4, 3, 5), ledger.load().map(History::id))
+    }
 }

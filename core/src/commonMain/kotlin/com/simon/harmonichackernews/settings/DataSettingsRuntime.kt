@@ -106,10 +106,12 @@ class DataSettingsRuntime(
     }
 
     fun resetSettings() {
-        service.resetSettings()
-        emitMessage(PresentationCopy.SETTINGS_RESET)
-        publish(dialog = null)
-        mutableEffects.tryEmit(DataSettingsRuntimeEffect.SettingsReset)
+        scope.launch {
+            service.resetSettings()
+            emitMessage(PresentationCopy.SETTINGS_RESET)
+            publish(dialog = null)
+            mutableEffects.tryEmit(DataSettingsRuntimeEffect.SettingsReset)
+        }
     }
 
     fun openAppLinkSettings() {

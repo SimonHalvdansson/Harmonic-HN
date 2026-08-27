@@ -119,8 +119,15 @@ fun AiSummarySettingsRoute(
     val configurationComplete =
         persistedSettings.configurationComplete(localConfigurationReady)
     val enabled = persistedSettings.enabled(localConfigurationReady)
-    LaunchedEffect(configurationComplete, enabled, localConfigurationReady) {
-        repository.disableIfConfigurationIncomplete(localConfigurationReady)
+    LaunchedEffect(
+        configurationComplete,
+        enabled,
+        localConfigurationReady,
+        persistedSettings.credentialsLoaded,
+    ) {
+        if (persistedSettings.credentialsLoaded) {
+            repository.disableIfConfigurationIncomplete(localConfigurationReady)
+        }
     }
 
     AiSummarySettingsScreen(

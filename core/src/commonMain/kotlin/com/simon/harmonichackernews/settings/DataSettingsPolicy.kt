@@ -7,8 +7,6 @@ import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.network.StoryPreviewRepository
-import com.simon.harmonichackernews.platform.CredentialIds
-import com.simon.harmonichackernews.platform.CredentialStore
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.summary.LocalModelService
@@ -144,18 +142,18 @@ class DataSettingsService(
         }
     }
 
-    fun resetSettings() = settingsReset.execute()
+    suspend fun resetSettings() = settingsReset.execute()
 }
 
 /** Resets settings while deliberately preserving user content and Hacker News login credentials. */
 class SettingsResetUseCase(
     private val defaultSettings: KeyValueStore,
     private val globalSettings: KeyValueStore,
-    private val credentials: CredentialStore,
+    private val aiSummarySettings: AiSummarySettingsRepository,
 ) {
-    fun execute() {
+    suspend fun execute() {
         defaultSettings.clear()
-        credentials.remove(CredentialIds.AI_SUMMARY_API_KEY)
+        aiSummarySettings.clearApiKey()
         globalSettings.remove(NighttimeScheduleKeys.FROM_HOUR)
         globalSettings.remove(NighttimeScheduleKeys.FROM_MINUTE)
         globalSettings.remove(NighttimeScheduleKeys.TO_HOUR)

@@ -1,7 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
@@ -25,11 +26,14 @@ fun AiSummaryTextDialog(
     onSaved: () -> Unit,
 ) {
     val repository = LocalHarmonicUiDependencies.current.aiSummarySettings
-    val initialValue = remember(setting, defaultValue) { repository.text(setting) }
+    val initialValue by produceState<String?>(null, repository, setting, defaultValue) {
+        value = repository.text(setting)
+    }
+    val loadedValue = initialValue ?: return
     AiSummaryTextDialog(
         title = title,
         hint = hint,
-        initialValue = initialValue,
+        initialValue = loadedValue,
         defaultValue = defaultValue,
         minLines = minLines,
         maxLines = maxLines,

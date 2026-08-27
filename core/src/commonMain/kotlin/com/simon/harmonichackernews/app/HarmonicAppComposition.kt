@@ -98,6 +98,7 @@ class HarmonicAppComposition(
         store = host.settingsStore,
         credentials = platform.credentials,
         changes = host.settingsChanges,
+        credentialDispatcher = platform.credentialDispatcher,
     )
     val aiModelDefaults = AiModelDefaultsUseCase(
         settings = aiSummarySettings,
@@ -106,7 +107,7 @@ class HarmonicAppComposition(
     val settingsReset = SettingsResetUseCase(
         defaultSettings = host.settingsStore,
         globalSettings = host.appDataStore,
-        credentials = platform.credentials,
+        aiSummarySettings = aiSummarySettings,
     )
     val previewResources = StoryPreviewRepository(
         coordinator = network.previewContentCoordinator,

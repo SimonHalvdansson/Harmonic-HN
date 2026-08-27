@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.network.ReplyNotificationPlatform
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 
 /**
  * Native services required by the shared application graph.
@@ -18,6 +20,7 @@ data class AppPlatformDependencies(
     val clipboard: ClipboardService,
     val connectivity: ConnectivityService,
     val timeFormatting: PlatformTimeFormatter,
+    val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val replyNotifications: ReplyNotificationPlatform? = null,
     val localSummary: LocalSummaryEngine? = null,
 )

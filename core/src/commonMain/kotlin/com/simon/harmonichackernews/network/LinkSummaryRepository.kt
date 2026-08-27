@@ -11,6 +11,9 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import io.ktor.http.URLBuilder
 import io.ktor.utils.io.readAvailable
 import kotlinx.io.IOException
@@ -67,71 +70,73 @@ interface LinkSummaryRepository {
 class KtorLinkSummaryRepository(
     private val client: HttpClient,
     private val linkPreviews: LinkPreviewRepository = KtorLinkPreviewRepository(client),
+    private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : LinkSummaryRepository {
-    override suspend fun load(pageUrl: String, fallbackTitle: String?): LinkSummary {
-        val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
-            ?: throw LinkPreviewException("This link does not use HTTP or HTTPS")
+    override suspend fun load(pageUrl: String, fallbackTitle: String?): LinkSummary =
+        withContext(parsingDispatcher) {
+            val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
+                ?: throw LinkPreviewException("This link does not use HTTP or HTTPS")
 
-        LinkSummaryParser.hackerNewsItemId(normalizedUrl)?.let { itemId ->
-            val response = fetchText(
-                "https://hacker-news.firebaseio.com/v0/item/$itemId.json",
-                "application/json",
-            )
-            return LinkSummaryParser.extractHackerNewsItem(
-                response.body,
-                normalizedUrl,
-                fallbackTitle,
-            ) ?: throw LinkPreviewException("Hacker News did not return this item")
-        }
-
-        if (LinkPreviewUrls.isWikipediaUrl(normalizedUrl)) {
-            val wikipedia = linkPreviews.getWikipediaInfo(normalizedUrl)
-            val description = LinkPreviewParsers.firstWikipediaParagraph(wikipedia.summary)
-            if (description.isEmpty()) {
-                throw LinkPreviewException("Wikipedia did not return a summary")
+            LinkSummaryParser.hackerNewsItemId(normalizedUrl)?.let { itemId ->
+                val response = fetchText(
+                    "https://hacker-news.firebaseio.com/v0/item/$itemId.json",
+                    "application/json",
+                )
+                return@withContext LinkSummaryParser.extractHackerNewsItem(
+                    response.body,
+                    normalizedUrl,
+                    fallbackTitle,
+                ) ?: throw LinkPreviewException("Hacker News did not return this item")
             }
-            return LinkSummary(
-                title = LinkSummaryParser.clean(fallbackTitle),
-                siteName = "Wikipedia",
-                language = "en",
-                contentType = "application/json",
-                description = description,
-                finalUrl = normalizedUrl,
-            )
-        }
 
-        val youtubeOEmbedUrl = LinkSummaryParser.buildYoutubeOEmbedUrl(normalizedUrl)
-        val redditOEmbedUrl = LinkSummaryParser.buildRedditOEmbedUrl(normalizedUrl)
-        val oEmbedUrl = youtubeOEmbedUrl ?: redditOEmbedUrl
-        if (oEmbedUrl != null) {
-            val response = fetchText(oEmbedUrl, "application/json")
-            return LinkSummaryParser.extractOEmbed(
-                response.body,
+            if (LinkPreviewUrls.isWikipediaUrl(normalizedUrl)) {
+                val wikipedia = linkPreviews.getWikipediaInfo(normalizedUrl)
+                val description = LinkPreviewParsers.firstWikipediaParagraph(wikipedia.summary)
+                if (description.isEmpty()) {
+                    throw LinkPreviewException("Wikipedia did not return a summary")
+                }
+                return@withContext LinkSummary(
+                    title = LinkSummaryParser.clean(fallbackTitle),
+                    siteName = "Wikipedia",
+                    language = "en",
+                    contentType = "application/json",
+                    description = description,
+                    finalUrl = normalizedUrl,
+                )
+            }
+
+            val youtubeOEmbedUrl = LinkSummaryParser.buildYoutubeOEmbedUrl(normalizedUrl)
+            val redditOEmbedUrl = LinkSummaryParser.buildRedditOEmbedUrl(normalizedUrl)
+            val oEmbedUrl = youtubeOEmbedUrl ?: redditOEmbedUrl
+            if (oEmbedUrl != null) {
+                val response = fetchText(oEmbedUrl, "application/json")
+                return@withContext LinkSummaryParser.extractOEmbed(
+                    response.body,
+                    normalizedUrl,
+                    if (youtubeOEmbedUrl != null) "YouTube" else "Reddit",
+                ) ?: throw LinkPreviewException("The provider did not return link information")
+            }
+
+            val response = fetchText(
                 normalizedUrl,
-                if (youtubeOEmbedUrl != null) "YouTube" else "Reddit",
-            ) ?: throw LinkPreviewException("The provider did not return link information")
-        }
-
-        val response = fetchText(
-            normalizedUrl,
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        )
-        if (
-            response.contentType.isNotEmpty() &&
-            !response.contentType.contains("html", ignoreCase = true) &&
-            !response.contentType.contains("xml", ignoreCase = true)
-        ) {
-            throw LinkPreviewException(
-                "This link contains ${response.contentType}, not a web page",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            )
+            if (
+                response.contentType.isNotEmpty() &&
+                !response.contentType.contains("html", ignoreCase = true) &&
+                !response.contentType.contains("xml", ignoreCase = true)
+            ) {
+                throw LinkPreviewException(
+                    "This link contains ${response.contentType}, not a web page",
+                )
+            }
+            LinkSummaryParser.extract(
+                response.body,
+                fallbackTitle,
+                response.contentType,
+                response.finalUrl,
             )
         }
-        return LinkSummaryParser.extract(
-            response.body,
-            fallbackTitle,
-            response.contentType,
-            response.finalUrl,
-        )
-    }
 
     private suspend fun fetchText(url: String, accept: String): FetchedText {
         val response = client.get(url) { header(HttpHeaders.Accept, accept) }

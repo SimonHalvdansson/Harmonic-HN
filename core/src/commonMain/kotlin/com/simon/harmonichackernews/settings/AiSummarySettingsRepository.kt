@@ -5,9 +5,18 @@ import com.simon.harmonichackernews.network.CloudSummaryConfig
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 object AiSummaryPreferenceKeys {
     const val ENABLED = "pref_ai_summary_enabled"
@@ -52,6 +61,7 @@ data class AiSummarySettingsSnapshot(
     val streamResponses: Boolean,
     val autoSummarizeArticles: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
+    val credentialsLoaded: Boolean = true,
 ) {
     val cloudConfigurationComplete: Boolean
         get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank() &&
@@ -79,7 +89,11 @@ class AiSummarySettingsRepository(
     private val store: KeyValueStore,
     private val credentials: CredentialStore,
     private val changes: Flow<Unit>,
+    private val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    private val credentialMutex = Mutex()
+    private val apiKeyState = MutableStateFlow<String?>(null)
+
     fun snapshot(): AiSummarySettingsSnapshot = AiSummarySettingsSnapshot(
         explicitlyEnabled = if (store.contains(AiSummaryPreferenceKeys.ENABLED)) {
             store.getBoolean(AiSummaryPreferenceKeys.ENABLED, false)
@@ -91,7 +105,7 @@ class AiSummarySettingsRepository(
             AiSummaryPreferenceKeys.BASE_URL,
             AiSummaryProviders.defaultBaseUrl,
         ) ?: AiSummaryProviders.defaultBaseUrl,
-        apiKey = credentials.read(CredentialIds.AI_SUMMARY_API_KEY).orEmpty(),
+        apiKey = apiKeyState.value.orEmpty(),
         model = store.getString(AiSummaryPreferenceKeys.MODEL, "").orEmpty(),
         systemPrompt = store.getString(
             AiSummaryPreferenceKeys.SYSTEM_PROMPT,
@@ -105,12 +119,22 @@ class AiSummarySettingsRepository(
         geminiNanoSummaryMode = GeminiNanoSummaryMode.fromStored(
             store.getString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE),
         ),
+        credentialsLoaded = apiKeyState.value != null,
     )
 
-    val updates: Flow<AiSummarySettingsSnapshot> = flow {
-        emit(snapshot())
-        changes.collect { emit(snapshot()) }
+    val updates: Flow<AiSummarySettingsSnapshot> = merge(
+        changes,
+        apiKeyState.filterNotNull().map { Unit },
+    ).onStart {
+        ensureApiKeyLoaded()
+    }.map {
+        snapshot()
     }.distinctUntilChanged()
+
+    suspend fun awaitSnapshot(): AiSummarySettingsSnapshot {
+        ensureApiKeyLoaded()
+        return snapshot()
+    }
 
     fun setEnabled(value: Boolean) {
         store.putBoolean(AiSummaryPreferenceKeys.ENABLED, value)
@@ -136,6 +160,7 @@ class AiSummarySettingsRepository(
 
     fun disableIfConfigurationIncomplete(localConfigurationReady: Boolean): Boolean {
         val current = snapshot()
+        if (!current.credentialsLoaded) return false
         if (current.explicitlyEnabled != true || current.configurationComplete(localConfigurationReady)) {
             return false
         }
@@ -143,13 +168,19 @@ class AiSummarySettingsRepository(
         return true
     }
 
-    fun text(setting: AiSummaryTextSetting): String = when (setting) {
-        AiSummaryTextSetting.API_KEY -> snapshot().apiKey
+    suspend fun text(setting: AiSummaryTextSetting): String = when (setting) {
+        AiSummaryTextSetting.API_KEY -> ensureApiKeyLoaded()
         AiSummaryTextSetting.SYSTEM_PROMPT -> snapshot().systemPrompt
     }
 
-    fun setText(setting: AiSummaryTextSetting, value: String): Boolean = when (setting) {
-        AiSummaryTextSetting.API_KEY -> credentials.write(CredentialIds.AI_SUMMARY_API_KEY, value)
+    suspend fun setText(setting: AiSummaryTextSetting, value: String): Boolean = when (setting) {
+        AiSummaryTextSetting.API_KEY -> withContext(credentialDispatcher) {
+            credentialMutex.withLock {
+                credentials.write(CredentialIds.AI_SUMMARY_API_KEY, value).also { saved ->
+                    if (saved) apiKeyState.value = value
+                }
+            }
+        }
         AiSummaryTextSetting.SYSTEM_PROMPT -> {
             store.putString(AiSummaryPreferenceKeys.SYSTEM_PROMPT, value)
             true
@@ -198,7 +229,15 @@ class AiSummarySettingsRepository(
 
     fun hasModelSelection(): Boolean = store.contains(AiSummaryPreferenceKeys.MODEL)
 
-    fun cloudConfig(): CloudSummaryConfig = snapshot().let { current ->
+    suspend fun clearApiKey(): Boolean = withContext(credentialDispatcher) {
+        credentialMutex.withLock {
+            credentials.remove(CredentialIds.AI_SUMMARY_API_KEY).also { removed ->
+                if (removed) apiKeyState.value = ""
+            }
+        }
+    }
+
+    suspend fun cloudConfig(): CloudSummaryConfig = awaitSnapshot().let { current ->
         CloudSummaryConfig(
             baseUrl = current.baseUrl,
             apiKey = current.apiKey,
@@ -206,5 +245,16 @@ class AiSummarySettingsRepository(
             systemPrompt = current.systemPrompt,
             streamResponses = current.streamResponses,
         )
+    }
+
+    private suspend fun ensureApiKeyLoaded(): String {
+        apiKeyState.value?.let { return it }
+        return withContext(credentialDispatcher) {
+            credentialMutex.withLock {
+                apiKeyState.value ?: runCatching {
+                    credentials.read(CredentialIds.AI_SUMMARY_API_KEY)
+                }.getOrNull().orEmpty().also { apiKeyState.value = it }
+            }
+        }
     }
 }

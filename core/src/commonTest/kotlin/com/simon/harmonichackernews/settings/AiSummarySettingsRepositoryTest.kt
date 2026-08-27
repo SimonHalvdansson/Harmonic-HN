@@ -9,6 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
 
 class AiSummarySettingsRepositoryTest {
     @Test
@@ -30,10 +31,11 @@ class AiSummarySettingsRepositoryTest {
     }
 
     @Test
-    fun incompleteExplicitConfigurationIsDisabled() {
+    fun incompleteExplicitConfigurationIsDisabled() = runTest {
         val store = TestKeyValueStore(mapOf(AiSummaryPreferenceKeys.ENABLED to true))
         val repository = AiSummarySettingsRepository(store, TestCredentialStore(), emptyFlow())
 
+        repository.awaitSnapshot()
         assertTrue(repository.disableIfConfigurationIncomplete(localConfigurationReady = false))
         assertFalse(store.getBoolean(AiSummaryPreferenceKeys.ENABLED, true))
         assertFalse(repository.disableIfConfigurationIncomplete(localConfigurationReady = false))
@@ -60,13 +62,25 @@ class AiSummarySettingsRepositoryTest {
     }
 
     @Test
-    fun secureTextUsesCredentialBoundary() {
+    fun secureTextUsesCredentialBoundary() = runTest {
         val credentials = TestCredentialStore()
         val repository = AiSummarySettingsRepository(TestKeyValueStore(), credentials, emptyFlow())
 
         assertTrue(repository.setText(AiSummaryTextSetting.API_KEY, "secret"))
         assertEquals("secret", repository.snapshot().apiKey)
         assertNull(credentials.read("unrelated"))
+    }
+
+    @Test
+    fun snapshotDoesNotSynchronouslyReadCredentials() = runTest {
+        val credentials = TestCredentialStore(
+            mapOf(com.simon.harmonichackernews.platform.CredentialIds.AI_SUMMARY_API_KEY to "secret"),
+        )
+        val repository = AiSummarySettingsRepository(TestKeyValueStore(), credentials, emptyFlow())
+
+        assertFalse(repository.snapshot().credentialsLoaded)
+        assertEquals("", repository.snapshot().apiKey)
+        assertEquals("secret", repository.awaitSnapshot().apiKey)
     }
 
     @Test
