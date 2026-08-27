@@ -73,6 +73,12 @@ typealias LicenseEntryUi = LicenseEntry
 
 private val LicenseCardShape = RoundedCornerShape(24.dp)
 private val LicenseIconShape = RoundedCornerShape(9.dp)
+private val InsetLicenseIcons = setOf(
+    "Kotlin standard library",
+    "kotlinx.coroutines",
+    "ML Kit GenAI APIs",
+    "llama.cpp",
+)
 
 @Composable
 fun LicensesScreen(
@@ -158,9 +164,9 @@ private fun LicenseHeader(platformTextStyle: TextStyle) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(
             start = 16.dp,
-            top = 10.dp,
+            top = 11.dp,
             end = 16.dp,
-            bottom = 9.dp,
+            bottom = 10.dp,
         ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -255,7 +261,9 @@ private fun LicenseIcon(license: LicenseEntryUi) {
         Image(
             painter = painterResource(licenseIconResource(license.name)),
             contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (license.name in InsetLicenseIcons) 4.dp else 0.dp),
             contentScale = ContentScale.Fit,
         )
     }
