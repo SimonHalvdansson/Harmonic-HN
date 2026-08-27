@@ -44,6 +44,7 @@ fun AiSummarySettingsScreen(
     onBack: () -> Unit,
     onEnabledChanged: (Boolean) -> Unit,
     onModeSelected: (AiSummaryMode) -> Unit,
+    onGeminiNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit,
     onStreamChanged: (Boolean) -> Unit,
     onAutoSummarizeChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
@@ -145,6 +146,26 @@ fun AiSummarySettingsScreen(
         }
         item {
             SettingsCategory("Behavior") {
+                if (state.mode == AiSummaryMode.LOCAL && state.geminiNanoSelected) {
+                    SegmentedSetting(
+                        title = "Gemini Nano summarizer",
+                        summary = when (state.geminiNanoSummaryMode) {
+                            GeminiNanoSummaryMode.THREE_BULLETS ->
+                                "Built in 3-bullet summarization LoRA"
+                            GeminiNanoSummaryMode.SYSTEM_PROMPT ->
+                                "System prompt selected below"
+                        },
+                        options = listOf(
+                            GeminiNanoSummaryMode.THREE_BULLETS.storedValue to "3 bullets",
+                            GeminiNanoSummaryMode.SYSTEM_PROMPT.storedValue to "System prompt",
+                        ),
+                        selected = state.geminiNanoSummaryMode.storedValue,
+                        onSelected = {
+                            onGeminiNanoSummaryModeSelected(GeminiNanoSummaryMode.fromStored(it))
+                        },
+                    )
+                    SettingsDivider()
+                }
                 val systemPromptEnabled = !(
                     state.mode == AiSummaryMode.LOCAL &&
                         state.geminiNanoSelected &&
@@ -167,7 +188,7 @@ fun AiSummarySettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Stream responses",
-                    summary = "Show each summary as it is generated",
+                    summary = "Show each token as it is generated",
                     icon = Res.drawable.ic_stream,
                     checked = state.streamResponses,
                     onCheckedChange = onStreamChanged,

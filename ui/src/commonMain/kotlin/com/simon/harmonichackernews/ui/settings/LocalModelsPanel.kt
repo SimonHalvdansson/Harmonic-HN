@@ -65,7 +65,6 @@ import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -84,8 +83,6 @@ fun LocalModelsRoute(
     nanoAvailable: Boolean,
     nanoBaseModelName: String?,
     models: List<LocalModelDefinition> = localModels.catalog,
-    nanoSummaryMode: GeminiNanoSummaryMode? = null,
-    onNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit = {},
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
 ) {
@@ -133,8 +130,6 @@ fun LocalModelsRoute(
             }
             onChanged()
         },
-        nanoSummaryMode = nanoSummaryMode,
-        onNanoSummaryModeSelected = onNanoSummaryModeSelected,
     )
 }
 
@@ -145,8 +140,6 @@ fun LocalModelsPanel(
     modelIconPainter: @Composable (LocalModelDefinition) -> Painter,
     onModelSelected: (String) -> Unit,
     onAction: (String, LocalModelPresentationAction) -> Unit,
-    nanoSummaryMode: GeminiNanoSummaryMode? = null,
-    onNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit = {},
 ) {
     val nanoRow = models.firstOrNull {
         it.model.runtime == LocalModelRuntime.GEMINI_NANO && it.presentation.enabled
@@ -161,7 +154,7 @@ fun LocalModelsPanel(
     ) {
         nanoRow?.let { row ->
             LocalModelGroup(
-                label = "Recommended",
+                label = "Built-in",
                 bottomPadding = 10.dp,
             ) {
                 LocalModelCard(
@@ -169,35 +162,14 @@ fun LocalModelsPanel(
                     iconPainter = modelIconPainter(row.model),
                     onModelSelected = onModelSelected,
                     onAction = onAction,
-                    recommended = true,
                 )
                 Text(
-                    text = "Fast, private, and managed by Android. No separate model download is required.",
+                    text = "System model managed by Android. No download required.",
                     modifier = Modifier.padding(top = 7.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
-                )
-            }
-            if (row.presentation.selected && nanoSummaryMode != null) {
-                SettingsDivider()
-                SegmentedSetting(
-                    title = "Gemini Nano summarizer",
-                    summary = when (nanoSummaryMode) {
-                        GeminiNanoSummaryMode.THREE_BULLETS ->
-                            "The optimized 3-bullet summarization LoRA is recommended"
-                        GeminiNanoSummaryMode.SYSTEM_PROMPT ->
-                            "Uses the system prompt from Behavior"
-                    },
-                    options = listOf(
-                        GeminiNanoSummaryMode.THREE_BULLETS.storedValue to "3 bullets",
-                        GeminiNanoSummaryMode.SYSTEM_PROMPT.storedValue to "System prompt",
-                    ),
-                    selected = nanoSummaryMode.storedValue,
-                    onSelected = {
-                        onNanoSummaryModeSelected(GeminiNanoSummaryMode.fromStored(it))
-                    },
                 )
             }
         }
@@ -216,8 +188,9 @@ fun LocalModelsPanel(
                     )
                 }
                 Text(
-                    text = "Downloaded models offer more choice, but load more slowly and use " +
-                        "additional storage. Model weights are released after each summary.",
+                    text = "Downloadable models run in separate runtimes and are not kept in " +
+                        "memory so must be loaded before each use. Generally requires a strong " +
+                        "device to run in reasonable time.",
                     modifier = Modifier.padding(top = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
@@ -340,7 +313,6 @@ private fun LocalModelCard(
     iconPainter: Painter,
     onModelSelected: (String) -> Unit,
     onAction: (String, LocalModelPresentationAction) -> Unit,
-    recommended: Boolean = false,
 ) {
     val presentation = row.presentation
     val shape = RoundedCornerShape(14.dp)
@@ -481,13 +453,6 @@ private fun LocalModelCard(
                             background = HarmonicTheme.colors.surfaceContainerHighest,
                             foreground = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (recommended) {
-                            LocalModelTag(
-                                text = "Recommended",
-                                background = MaterialTheme.colorScheme.primaryContainer,
-                                foreground = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
                     }
                 }
             }

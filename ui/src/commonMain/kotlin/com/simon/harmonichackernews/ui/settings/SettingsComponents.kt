@@ -4,8 +4,10 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -542,6 +544,20 @@ fun SettingsMainToggle(
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val backgroundColor by animateColorAsState(
+        targetValue = HarmonicTheme.colors.settingsMainToggle.copy(
+            alpha = if (enabled) 1f else SettingsMainToggleDisabledAlpha,
+        ),
+        animationSpec = tween(SettingsMainToggleColorAnimationDurationMillis),
+        label = "settings main toggle background",
+    )
+    val textColor by animateColorAsState(
+        targetValue = HarmonicTheme.colors.settingsMainToggleText.copy(
+            alpha = if (enabled) 1f else SettingsMainToggleDisabledAlpha,
+        ),
+        animationSpec = tween(SettingsMainToggleColorAnimationDurationMillis),
+        label = "settings main toggle text",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -553,8 +569,7 @@ fun SettingsMainToggle(
             )
             .height(72.dp)
             .clip(RoundedCornerShape(36.dp))
-            .alpha(if (enabled) 1f else 0.6f)
-            .background(HarmonicTheme.colors.settingsMainToggle)
+            .background(backgroundColor)
             .toggleable(
                 value = checked,
                 enabled = enabled,
@@ -567,7 +582,7 @@ fun SettingsMainToggle(
         Text(
             text = title,
             modifier = Modifier.weight(1f),
-            color = HarmonicTheme.colors.settingsMainToggleText,
+            color = textColor,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
@@ -580,6 +595,9 @@ fun SettingsMainToggle(
         )
     }
 }
+
+private const val SettingsMainToggleDisabledAlpha = 0.6f
+private const val SettingsMainToggleColorAnimationDurationMillis = 240
 
 @Composable
 fun SettingRow(

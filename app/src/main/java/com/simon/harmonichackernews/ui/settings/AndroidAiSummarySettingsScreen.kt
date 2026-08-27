@@ -64,13 +64,8 @@ fun AndroidAiSummarySettingsScreen(
                 nanoAvailabilityResolved = availabilityState.availabilityResolved,
                 nanoAvailable = availabilityState.nanoAvailable,
                 nanoBaseModelName = availabilityState.nanoBaseModelName,
-                nanoSummaryMode = repository.snapshot().geminiNanoSummaryMode,
                 localModels = localModels,
                 managerState = localModelState,
-                onNanoSummaryModeSelected = { mode ->
-                    repository.setGeminiNanoSummaryMode(mode)
-                    localRefresh++
-                },
                 onChanged = { localRefresh++ },
                 onMessage = { message ->
                     appComposition.userMessages.show(message, UserMessageDuration.LONG)

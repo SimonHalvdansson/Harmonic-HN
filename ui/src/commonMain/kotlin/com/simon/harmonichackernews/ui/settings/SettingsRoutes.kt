@@ -151,6 +151,7 @@ fun AiSummarySettingsRoute(
                 repository.setMode(selectedMode)
             }
         },
+        onGeminiNanoSummaryModeSelected = repository::setGeminiNanoSummaryMode,
         onStreamChanged = repository::setStreamResponses,
         onAutoSummarizeChanged = repository::setAutoSummarizeArticles,
         onDialogRequested = { dialog = it },
