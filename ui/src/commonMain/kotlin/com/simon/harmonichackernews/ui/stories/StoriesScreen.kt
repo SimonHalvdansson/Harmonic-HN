@@ -461,7 +461,17 @@ private fun StoriesList(
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
                             commentText = commentText,
                             modifier = Modifier
-                                .animateItem(placementSpec = null)
+                                .animateItem(
+                                    fadeInSpec = tween(
+                                        SavedListTransitionDurationMillis,
+                                        easing = StoriesEasing,
+                                    ),
+                                    placementSpec = null,
+                                    fadeOutSpec = tween(
+                                        SavedListTransitionDurationMillis,
+                                        easing = StoriesEasing,
+                                    ),
+                                )
                                 .then(itemHeightModifier),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
@@ -470,7 +480,17 @@ private fun StoriesList(
                         }
                         StoryLoadingItem(
                             modifier = Modifier
-                                .animateItem(placementSpec = null)
+                                .animateItem(
+                                    fadeInSpec = tween(
+                                        SavedListTransitionDurationMillis,
+                                        easing = StoriesEasing,
+                                    ),
+                                    placementSpec = null,
+                                    fadeOutSpec = tween(
+                                        SavedListTransitionDurationMillis,
+                                        easing = StoriesEasing,
+                                    ),
+                                )
                                 .then(itemHeightModifier),
                         )
                     } else {
@@ -521,7 +541,17 @@ private fun StoriesList(
                             untintedStoryBackground.toArgb()
                         }
                         val itemModifier = Modifier
-                            .animateItem(placementSpec = null)
+                            .animateItem(
+                                fadeInSpec = tween(
+                                    SavedListTransitionDurationMillis,
+                                    easing = StoriesEasing,
+                                ),
+                                placementSpec = null,
+                                fadeOutSpec = tween(
+                                    SavedListTransitionDurationMillis,
+                                    easing = StoriesEasing,
+                                ),
+                            )
                             .graphicsLayer {
                                 alpha = if (keepPreviewSourceVisible) {
                                     revealAlpha

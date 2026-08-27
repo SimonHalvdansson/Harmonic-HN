@@ -61,4 +61,24 @@ class StoriesPresentationTest {
             ),
         )
     }
+
+    @Test
+    fun exitingSavedEmptyStateRetainsItsApplicableMessage() {
+        assertEquals(
+            "No bookmarked comments",
+            retainedEmptySavedListText(
+                current = "No bookmarked comments",
+                next = "No bookmarks",
+                visible = false,
+            ),
+        )
+        assertEquals(
+            "No bookmarked stories",
+            retainedEmptySavedListText(
+                current = "No bookmarked comments",
+                next = "No bookmarked stories",
+                visible = true,
+            ),
+        )
+    }
 }

@@ -10,6 +10,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -89,6 +91,7 @@ data class StorySearchPresentationState(
 )
 
 private val StoriesRootEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+internal const val SavedListTransitionDurationMillis = 220
 
 internal fun resolvedStandardSearchProgress(
     searching: Boolean,
@@ -365,6 +368,14 @@ fun StoryListStatus(
     onRetry: () -> Unit,
     onShowCached: () -> Unit,
 ) {
+    var visibleEmptySavedListText by remember { mutableStateOf(state.emptySavedListText) }
+    LaunchedEffect(state.showEmptySavedList, state.emptySavedListText) {
+        visibleEmptySavedListText = retainedEmptySavedListText(
+            current = visibleEmptySavedListText,
+            next = state.emptySavedListText,
+            visible = state.showEmptySavedList,
+        )
+    }
     AnimatedVisibility(state.loading, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
         Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
             loadingIndicator()
@@ -438,11 +449,27 @@ fun StoryListStatus(
     }
     AnimatedVisibility(
         !searchMode && state.showEmptySavedList,
-        enter = fadeIn(tween(180)),
-        exit = fadeOut(tween(140)),
+        // Lazy rows keep drawing while animateItem runs its exit fade. Keep this header content at
+        // zero height until that fade completes so the header background cannot cover the rows.
+        enter = fadeIn(
+            tween(
+                durationMillis = 180,
+                delayMillis = SavedListTransitionDurationMillis,
+            ),
+        ) + expandVertically(
+            animationSpec = tween(
+                durationMillis = 1,
+                delayMillis = SavedListTransitionDurationMillis,
+            ),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(tween(140)) + shrinkVertically(
+            animationSpec = tween(durationMillis = 1),
+            shrinkTowards = Alignment.Top,
+        ),
     ) {
         EmptyState(
-            text = state.emptySavedListText,
+            text = visibleEmptySavedListText,
             icon = state.emptySavedListIcon,
             color = normalColor,
             fontFamily = fontFamily,
@@ -463,6 +490,12 @@ fun StoryListStatus(
         )
     }
 }
+
+internal fun retainedEmptySavedListText(
+    current: String,
+    next: String,
+    visible: Boolean,
+): String = if (visible) next else current
 
 @Composable
 private fun EmptyState(
