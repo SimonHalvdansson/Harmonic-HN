@@ -690,7 +690,7 @@ private enum class HeaderStatusState {
 @Composable
 fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: String?) {
     val showLoading = !controller.loadingFailed && !controller.pullToRefreshInProgress &&
-        (!controller.commentsLoaded || controller.commentsRefreshInProgress)
+        !controller.commentsLoaded && !controller.story.loaded
     val showEmpty = !controller.loadingFailed && controller.commentsLoaded &&
         controller.comments.size <= 1
     AnimatedContent(
