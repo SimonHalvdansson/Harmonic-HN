@@ -119,4 +119,40 @@ class DesktopFileKeyValueStoreTest {
             directory.toFile().deleteRecursively()
         }
     }
+
+    @Test
+    fun malformedPropertiesAreIgnoredAndCanBeReplaced() {
+        val directory = createTempDirectory("harmonic-desktop-settings-")
+        try {
+            val file = directory.resolve("settings.properties")
+            Files.writeString(file, "broken=\\uZZZZ\n")
+
+            val store = DesktopFileKeyValueStore(file)
+            assertTrue(store.keys().isEmpty())
+            store.putString("valid", "replacement")
+
+            assertEquals(
+                "replacement",
+                DesktopFileKeyValueStore(file).getString("valid"),
+            )
+        } finally {
+            directory.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun persistenceFailureKeepsSessionValues() {
+        val directory = createTempDirectory("harmonic-desktop-settings-")
+        try {
+            val blockingFile = directory.resolve("not-a-directory")
+            Files.writeString(blockingFile, "blocking")
+            val store = DesktopFileKeyValueStore(blockingFile.resolve("settings.properties"))
+
+            store.putString("session", "available")
+
+            assertEquals("available", store.getString("session"))
+        } finally {
+            directory.toFile().deleteRecursively()
+        }
+    }
 }

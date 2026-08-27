@@ -338,6 +338,7 @@ fun CaptchaDialogLayout(
     error: String?,
     onDismiss: () -> Unit,
     onContinue: () -> Unit,
+    continueEnabled: Boolean = true,
     webContent: @Composable () -> Unit,
 ) {
     SettingsAlertDialog(
@@ -390,7 +391,7 @@ fun CaptchaDialogLayout(
             }
         },
         confirmButton = {
-            SettingsDialogTextButton(onClick = onContinue) {
+            SettingsDialogTextButton(onClick = onContinue, enabled = continueEnabled) {
                 Text(stringResource(Res.string.captcha_dialog_continue))
             }
         },

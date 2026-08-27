@@ -1,10 +1,13 @@
 package com.simon.harmonichackernews.desktop
 
 import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -77,11 +80,16 @@ fun main() {
     System.setProperty("apple.awt.application.name", "Harmonic")
     val desktopAppIcon = loadDesktopAppIcon()
     installTaskbarIcon(desktopAppIcon)
-    val metadata = DesktopRuntimeMetadata.load()
-    val bootstrap = DesktopHarmonicAppBootstrap.production(
-        userAgent = "Harmonic-HN-Desktop/${metadata.versionName}",
-        metadata = metadata,
-    )
+    val bootstrap = try {
+        val metadata = DesktopRuntimeMetadata.load()
+        DesktopHarmonicAppBootstrap.production(
+            userAgent = "Harmonic-HN-Desktop/${metadata.versionName}",
+            metadata = metadata,
+        )
+    } catch (error: Exception) {
+        showDesktopStartupFailure(desktopAppIcon, error)
+        return
+    }
     try {
         application {
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
@@ -163,6 +171,32 @@ fun main() {
         }
     } finally {
         bootstrap.close()
+    }
+}
+
+private fun showDesktopStartupFailure(icon: BufferedImage?, error: Exception) {
+    System.err.println("Harmonic could not initialize its desktop storage.")
+    error.printStackTrace(System.err)
+    application {
+        val windowIcon = remember(icon) { icon?.toPainter() }
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Harmonic – Startup error",
+            icon = windowIcon,
+            state = WindowState(width = 620.dp, height = 260.dp),
+        ) {
+            MaterialTheme {
+                Surface(Modifier.fillMaxSize()) {
+                    Box(Modifier.padding(24.dp)) {
+                        Text(
+                            "Harmonic could not open its settings or data folder. " +
+                                "Check that the folder is accessible, then restart the app.\n\n" +
+                                (error.message ?: error::class.simpleName.orEmpty()),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

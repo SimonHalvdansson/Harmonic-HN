@@ -2,6 +2,8 @@
 #include <jni.h>
 
 #include <cstdint>
+#include <exception>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -10,6 +12,63 @@
 namespace {
 
 harmonic_llama_engine * engine = nullptr;
+
+void throw_java_exception(JNIEnv * env, const char * class_name, const char * message) noexcept {
+    if (env == nullptr || env->ExceptionCheck()) {
+        return;
+    }
+    jclass exception_class = env->FindClass(class_name);
+    if (exception_class != nullptr) {
+        env->ThrowNew(exception_class, message);
+        env->DeleteLocalRef(exception_class);
+    }
+}
+
+template<typename Result, typename Callback>
+Result guard_jni(JNIEnv * env, Result fallback, Callback && callback) noexcept {
+    try {
+        return callback();
+    } catch (const std::bad_alloc &) {
+        throw_java_exception(env, "java/lang/OutOfMemoryError", "Local inference ran out of memory");
+    } catch (const std::exception & error) {
+        throw_java_exception(env, "java/lang/RuntimeException", error.what());
+    } catch (...) {
+        throw_java_exception(env, "java/lang/RuntimeException", "Local inference failed unexpectedly");
+    }
+    return fallback;
+}
+
+template<typename Callback>
+void guard_jni_void(JNIEnv * env, Callback && callback) noexcept {
+    guard_jni<int>(env, 0, [&callback] {
+        callback();
+        return 1;
+    });
+}
+
+class ScopedUtfChars final {
+public:
+    ScopedUtfChars(JNIEnv * env, jstring value) : env_(env), value_(value) {
+        if (env_ != nullptr && value_ != nullptr) {
+            chars_ = env_->GetStringUTFChars(value_, nullptr);
+        }
+    }
+
+    ~ScopedUtfChars() {
+        if (chars_ != nullptr) {
+            env_->ReleaseStringUTFChars(value_, chars_);
+        }
+    }
+
+    const char * get() const {
+        return chars_;
+    }
+
+private:
+    JNIEnv * env_;
+    jstring value_;
+    const char * chars_ = nullptr;
+};
 
 void android_log_callback(harmonic_llama_log_level level, const char * text, void *) {
     int priority = ANDROID_LOG_DEBUG;
@@ -26,14 +85,25 @@ void android_log_callback(harmonic_llama_log_level level, const char * text, voi
         case HARMONIC_LLAMA_LOG_DEBUG:
             break;
     }
-    __android_log_write(priority, "LocalLlama", text);
+    __android_log_write(priority, "LocalLlama", text == nullptr ? "" : text);
 }
 
-harmonic_llama_engine * require_engine() {
+harmonic_llama_engine * require_engine(JNIEnv * env) {
     if (engine == nullptr) {
         engine = harmonic_llama_create();
     }
+    if (engine == nullptr) {
+        throw_java_exception(env, "java/lang/OutOfMemoryError", "Could not allocate local inference");
+    }
     return engine;
+}
+
+bool require_string(JNIEnv * env, jstring value, const char * name) {
+    if (value != nullptr) {
+        return true;
+    }
+    throw_java_exception(env, "java/lang/IllegalArgumentException", name);
+    return false;
 }
 
 bool decode_utf8(const char * value, size_t size, std::vector<jchar> & output) {
@@ -95,65 +165,110 @@ bool decode_utf8(const char * value, size_t size, std::vector<jchar> & output) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeInitialize(
-        JNIEnv *, jobject) {
-    harmonic_llama_backend_initialize(android_log_callback, nullptr);
-    require_engine();
+        JNIEnv * env, jobject) {
+    guard_jni_void(env, [env] {
+        harmonic_llama_backend_initialize(android_log_callback, nullptr);
+        require_engine(env);
+    });
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeLoad(
         JNIEnv * env, jobject, jstring model_path, jint context_tokens) {
-    const char * path = env->GetStringUTFChars(model_path, nullptr);
-    const int loaded = harmonic_llama_load(require_engine(), path, context_tokens);
-    env->ReleaseStringUTFChars(model_path, path);
-    return loaded ? JNI_TRUE : JNI_FALSE;
+    return guard_jni<jboolean>(env, JNI_FALSE, [env, model_path, context_tokens] {
+        if (!require_string(env, model_path, "The local model path is required")) {
+            return JNI_FALSE;
+        }
+        ScopedUtfChars path(env, model_path);
+        if (path.get() == nullptr) {
+            return JNI_FALSE;
+        }
+        harmonic_llama_engine * current_engine = require_engine(env);
+        if (current_engine == nullptr) {
+            return JNI_FALSE;
+        }
+        return harmonic_llama_load(current_engine, path.get(), context_tokens)
+                ? JNI_TRUE : JNI_FALSE;
+    });
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeStart(
         JNIEnv * env, jobject, jstring system_text, jstring user_text,
         jstring response_prefix, jint output_tokens) {
-    const char * system_chars = env->GetStringUTFChars(system_text, nullptr);
-    const char * user_chars = env->GetStringUTFChars(user_text, nullptr);
-    const char * response_prefix_chars = env->GetStringUTFChars(response_prefix, nullptr);
-    const int started = harmonic_llama_start(
-            require_engine(), system_chars, user_chars, response_prefix_chars, output_tokens);
-    env->ReleaseStringUTFChars(system_text, system_chars);
-    env->ReleaseStringUTFChars(user_text, user_chars);
-    env->ReleaseStringUTFChars(response_prefix, response_prefix_chars);
-    return started ? JNI_TRUE : JNI_FALSE;
+    return guard_jni<jboolean>(env, JNI_FALSE, [=] {
+        if (!require_string(env, system_text, "The local summary instruction is required") ||
+                !require_string(env, user_text, "The local summary input is required") ||
+                !require_string(env, response_prefix, "The local summary prefix is required")) {
+            return JNI_FALSE;
+        }
+        ScopedUtfChars system_chars(env, system_text);
+        if (system_chars.get() == nullptr) {
+            return JNI_FALSE;
+        }
+        ScopedUtfChars user_chars(env, user_text);
+        if (user_chars.get() == nullptr) {
+            return JNI_FALSE;
+        }
+        ScopedUtfChars prefix_chars(env, response_prefix);
+        if (prefix_chars.get() == nullptr) {
+            return JNI_FALSE;
+        }
+        harmonic_llama_engine * current_engine = require_engine(env);
+        if (current_engine == nullptr) {
+            return JNI_FALSE;
+        }
+        return harmonic_llama_start(
+                current_engine,
+                system_chars.get(),
+                user_chars.get(),
+                prefix_chars.get(),
+                output_tokens) ? JNI_TRUE : JNI_FALSE;
+    });
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeNextToken(
         JNIEnv * env, jobject) {
-    const char * utf8_piece = nullptr;
-    size_t utf8_length = 0;
-    const harmonic_llama_next_result result = harmonic_llama_next(
-            require_engine(), &utf8_piece, &utf8_length);
-    if (result != HARMONIC_LLAMA_NEXT_PIECE) {
-        return nullptr;
-    }
+    return guard_jni<jstring>(env, nullptr, [env] {
+        harmonic_llama_engine * current_engine = require_engine(env);
+        if (current_engine == nullptr) {
+            return static_cast<jstring>(nullptr);
+        }
+        const char * utf8_piece = nullptr;
+        size_t utf8_length = 0;
+        const harmonic_llama_next_result result = harmonic_llama_next(
+                current_engine, &utf8_piece, &utf8_length);
+        if (result != HARMONIC_LLAMA_NEXT_PIECE) {
+            return static_cast<jstring>(nullptr);
+        }
 
-    std::vector<jchar> decoded;
-    if (!decode_utf8(utf8_piece, utf8_length, decoded)) {
-        __android_log_write(ANDROID_LOG_ERROR, "LocalLlama", "Invalid UTF-8 from core engine");
-        return nullptr;
-    }
-    const jchar empty = 0;
-    return env->NewString(
-            decoded.empty() ? &empty : decoded.data(),
-            static_cast<jsize>(decoded.size()));
+        std::vector<jchar> decoded;
+        if (!decode_utf8(utf8_piece, utf8_length, decoded)) {
+            __android_log_write(ANDROID_LOG_ERROR, "LocalLlama", "Invalid UTF-8 from core engine");
+            return static_cast<jstring>(nullptr);
+        }
+        const jchar empty = 0;
+        return env->NewString(
+                decoded.empty() ? &empty : decoded.data(),
+                static_cast<jsize>(decoded.size()));
+    });
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeLastError(
         JNIEnv * env, jobject) {
-    return env->NewStringUTF(harmonic_llama_last_error(require_engine()));
+    return guard_jni<jstring>(env, nullptr, [env] {
+        return env->NewStringUTF(harmonic_llama_last_error(engine));
+    });
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeClose(
-        JNIEnv *, jobject) {
-    harmonic_llama_close(require_engine());
+        JNIEnv * env, jobject) {
+    guard_jni_void(env, [] {
+        if (engine != nullptr) {
+            harmonic_llama_close(engine);
+        }
+    });
 }

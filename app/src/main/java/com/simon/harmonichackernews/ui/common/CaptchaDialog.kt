@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.ui.common
 
 import android.annotation.SuppressLint
+import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -50,7 +52,8 @@ import com.simon.harmonichackernews.utils.HackerNewsLinks
  * Compose CAPTCHA dialog. The embedded browser is the only intentionally retained View because
  * Android does not provide a native Compose WebView.
  */
-@SuppressLint("SetJavaScriptEnabled")
+// The AndroidX detector does not recognize the Kotlin anonymous-class override below.
+@SuppressLint("SetJavaScriptEnabled", "MissingOnRenderProcessGone")
 @Composable
 fun CaptchaDialog(
     challenge: HackerNewsCaptchaChallenge,
@@ -67,37 +70,65 @@ fun CaptchaDialog(
 
     var loading by remember(challenge) { mutableStateOf(true) }
     var error by remember(challenge) { mutableStateOf<String?>(null) }
+    var rendererGone by remember(challenge) { mutableStateOf(false) }
     val webDescription = stringResource(Res.string.captcha_dialog_web_content_description)
     val incompleteError = stringResource(Res.string.captcha_dialog_complete_error)
-    val webView = remember(challenge) {
-        WebView(context).apply webView@ {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            CookieManager.getInstance().apply {
-                setAcceptCookie(true)
-                setAcceptThirdPartyCookies(this@webView, true)
-            }
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView, url: String?) {
-                    loading = false
+    val webViewError = stringResource(Res.string.captcha_dialog_webview_error)
+    val webView = remember(challenge, context, webViewError) {
+        try {
+            WebView(context).apply webView@ {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                CookieManager.getInstance().apply {
+                    setAcceptCookie(true)
+                    setAcceptThirdPartyCookies(this@webView, true)
                 }
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        loading = false
+                    }
+
+                    override fun onRenderProcessGone(
+                        view: WebView,
+                        detail: RenderProcessGoneDetail,
+                    ): Boolean {
+                        rendererGone = true
+                        loading = false
+                        error = webViewError
+                        runCatching { (view.parent as? ViewGroup)?.removeView(view) }
+                        runCatching { view.destroy() }
+                        return true
+                    }
+                }
+                loadDataWithBaseURL(
+                    HackerNewsLinks.ROOT_URL,
+                    challenge.captchaHtml,
+                    "text/html",
+                    "UTF-8",
+                    null,
+                )
             }
-            loadDataWithBaseURL(
-                HackerNewsLinks.ROOT_URL,
-                challenge.captchaHtml,
-                "text/html",
-                "UTF-8",
-                null,
-            )
+        } catch (_: RuntimeException) {
+            null
+        }
+    }
+
+    LaunchedEffect(webView, webViewError) {
+        if (webView == null) {
+            loading = false
+            error = webViewError
         }
     }
 
     DisposableEffect(webView) {
         onDispose {
-            webView.webViewClient = WebViewClient()
-            webView.stopLoading()
-            webView.removeAllViews()
-            webView.destroy()
+            webView?.let { view ->
+                if (!rendererGone) {
+                    runCatching { view.stopLoading() }
+                    runCatching { view.removeAllViews() }
+                    runCatching { view.destroy() }
+                }
+            }
         }
     }
 
@@ -106,24 +137,32 @@ fun CaptchaDialog(
         error = error,
         onDismiss = onDismiss,
         onContinue = {
-            error = null
-            webView.evaluateJavascript(HackerNewsCaptchaWebProtocol.RESPONSE_SCRIPT) { value ->
-                val response = HackerNewsCaptchaWebProtocol.decodeResponse(value)
-                if (response.isEmpty()) {
-                    error = incompleteError
-                } else {
-                    onCaptchaResponse(response)
+            val currentWebView = webView?.takeUnless { rendererGone }
+            if (currentWebView == null) {
+                error = webViewError
+            } else {
+                error = null
+                currentWebView.evaluateJavascript(HackerNewsCaptchaWebProtocol.RESPONSE_SCRIPT) { value ->
+                    val response = HackerNewsCaptchaWebProtocol.decodeResponse(value)
+                    if (response.isEmpty()) {
+                        error = incompleteError
+                    } else {
+                        onCaptchaResponse(response)
+                    }
                 }
             }
         },
+        continueEnabled = webView != null && !rendererGone,
         webContent = {
-            AndroidView(
-                factory = { webView },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (loading) 0f else 1f)
-                    .semantics { contentDescription = webDescription },
-            )
+            if (webView != null && !rendererGone) {
+                AndroidView(
+                    factory = { webView },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (loading) 0f else 1f)
+                        .semantics { contentDescription = webDescription },
+                )
+            }
         },
     )
 }

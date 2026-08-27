@@ -1,9 +1,11 @@
 #include "harmonic_llama_engine.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <new>
 #include <string>
 #include <thread>
 #include <vector>
@@ -18,6 +20,7 @@ constexpr int kContextHeadroom = 8;
 harmonic_llama_log_callback host_log_callback = nullptr;
 void * host_log_user_data = nullptr;
 std::once_flag backend_initialization;
+std::atomic<bool> backend_ready{false};
 
 harmonic_llama_log_level host_log_level(ggml_log_level level) {
     switch (level) {
@@ -34,7 +37,11 @@ harmonic_llama_log_level host_log_level(ggml_log_level level) {
 
 void llama_log_callback(ggml_log_level level, const char * text, void *) {
     if (host_log_callback != nullptr) {
-        host_log_callback(host_log_level(level), text, host_log_user_data);
+        try {
+            host_log_callback(host_log_level(level), text, host_log_user_data);
+        } catch (...) {
+            // Logging must never unwind through the C callback boundary.
+        }
     }
 }
 
@@ -109,19 +116,42 @@ struct harmonic_llama_engine {
     std::string pending_utf8;
     std::string last_piece;
     std::string last_error;
+    const char * fallback_error = nullptr;
 };
 
 namespace {
 
-void log_error(const std::string & message) {
-    if (host_log_callback != nullptr) {
-        host_log_callback(HARMONIC_LLAMA_LOG_ERROR, message.c_str(), host_log_user_data);
+void log_error(const char * message) noexcept {
+    if (host_log_callback != nullptr && message != nullptr) {
+        try {
+            host_log_callback(HARMONIC_LLAMA_LOG_ERROR, message, host_log_user_data);
+        } catch (...) {
+            // Logging must never unwind through the C callback boundary.
+        }
     }
 }
 
-void set_error(harmonic_llama_engine * engine, const std::string & message) {
-    engine->last_error = message;
+void set_error(harmonic_llama_engine * engine, const char * message) noexcept {
+    if (engine == nullptr) {
+        log_error(message);
+        return;
+    }
+    engine->fallback_error = message;
+    try {
+        engine->last_error = message;
+    } catch (...) {
+        engine->last_error.clear();
+    }
     log_error(message);
+}
+
+void clear_error(harmonic_llama_engine * engine) noexcept {
+    engine->last_error.clear();
+    engine->fallback_error = nullptr;
+}
+
+void set_unexpected_error(harmonic_llama_engine * engine, const char * operation) noexcept {
+    set_error(engine, operation);
 }
 
 void release_model(harmonic_llama_engine * engine) {
@@ -231,66 +261,110 @@ std::string token_to_piece(harmonic_llama_engine * engine, llama_token token) {
 extern "C" void harmonic_llama_backend_initialize(
         harmonic_llama_log_callback callback,
         void * user_data) {
-    std::call_once(backend_initialization, [callback, user_data] {
-        host_log_callback = callback;
-        host_log_user_data = user_data;
-        llama_log_set(llama_log_callback, nullptr);
-        llama_backend_init();
-    });
+    try {
+        std::call_once(backend_initialization, [callback, user_data] {
+            host_log_callback = callback;
+            host_log_user_data = user_data;
+            llama_log_set(llama_log_callback, nullptr);
+            llama_backend_init();
+            backend_ready.store(true, std::memory_order_release);
+        });
+    } catch (...) {
+        log_error("Could not initialize the local inference backend");
+    }
 }
 
 extern "C" harmonic_llama_engine * harmonic_llama_create(void) {
-    return new harmonic_llama_engine();
+    try {
+        return new (std::nothrow) harmonic_llama_engine();
+    } catch (...) {
+        log_error("Could not allocate the local inference engine");
+        return nullptr;
+    }
 }
 
 extern "C" void harmonic_llama_destroy(harmonic_llama_engine * engine) {
     if (engine == nullptr) {
         return;
     }
-    release_model(engine);
-    delete engine;
+    try {
+        release_model(engine);
+        delete engine;
+    } catch (...) {
+        log_error("Could not cleanly destroy the local inference engine");
+    }
 }
 
 extern "C" int harmonic_llama_load(
         harmonic_llama_engine * engine,
         const char * model_path,
         int context_tokens) {
-    if (engine == nullptr || model_path == nullptr || context_tokens <= 0) {
-        return 0;
-    }
-    release_model(engine);
-    engine->last_error.clear();
-
-    llama_model_params model_params = llama_model_default_params();
-    engine->model = llama_model_load_from_file(model_path, model_params);
-    if (engine->model == nullptr) {
-        set_error(engine, "Could not load the GGUF model");
-        return 0;
-    }
-
-    llama_context_params context_params = llama_context_default_params();
-    context_params.n_ctx = static_cast<uint32_t>(context_tokens);
-    context_params.n_batch = kBatchSize;
-    context_params.n_ubatch = kBatchSize;
-    const int threads = inference_threads();
-    context_params.n_threads = threads;
-    context_params.n_threads_batch = threads;
-    engine->context = llama_init_from_model(engine->model, context_params);
-    if (engine->context == nullptr) {
-        set_error(engine, "Could not allocate the GGUF model context");
+    try {
+        if (engine == nullptr || model_path == nullptr || context_tokens <= 0) {
+            return 0;
+        }
+        if (!backend_ready.load(std::memory_order_acquire)) {
+            set_error(engine, "The local inference backend is unavailable");
+            return 0;
+        }
         release_model(engine);
+        clear_error(engine);
+
+        llama_model_params model_params = llama_model_default_params();
+        engine->model = llama_model_load_from_file(model_path, model_params);
+        if (engine->model == nullptr) {
+            set_error(engine, "Could not load the GGUF model");
+            return 0;
+        }
+
+        llama_context_params context_params = llama_context_default_params();
+        context_params.n_ctx = static_cast<uint32_t>(context_tokens);
+        context_params.n_batch = kBatchSize;
+        context_params.n_ubatch = kBatchSize;
+        const int threads = inference_threads();
+        context_params.n_threads = threads;
+        context_params.n_threads_batch = threads;
+        engine->context = llama_init_from_model(engine->model, context_params);
+        if (engine->context == nullptr) {
+            set_error(engine, "Could not allocate the GGUF model context");
+            release_model(engine);
+            return 0;
+        }
+
+        engine->vocab = llama_model_get_vocab(engine->model);
+        llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+        engine->sampler = llama_sampler_chain_init(sampler_params);
+        if (engine->sampler == nullptr) {
+            set_error(engine, "Could not allocate the GGUF sampler");
+            release_model(engine);
+            return 0;
+        }
+        const auto add_sampler = [engine](llama_sampler * sampler) {
+            if (sampler == nullptr) {
+                return false;
+            }
+            llama_sampler_chain_add(engine->sampler, sampler);
+            return true;
+        };
+        if (!add_sampler(llama_sampler_init_top_k(20)) ||
+                !add_sampler(llama_sampler_init_top_p(0.9f, 1)) ||
+                !add_sampler(llama_sampler_init_temp(0.3f)) ||
+                !add_sampler(llama_sampler_init_dist(LLAMA_DEFAULT_SEED))) {
+            set_error(engine, "Could not allocate the GGUF sampler");
+            release_model(engine);
+            return 0;
+        }
+        engine->context_size = context_tokens;
+        return 1;
+    } catch (const std::bad_alloc &) {
+        release_model(engine);
+        set_error(engine, "Not enough memory to load the local model");
+        return 0;
+    } catch (...) {
+        release_model(engine);
+        set_unexpected_error(engine, "Local model loading failed unexpectedly");
         return 0;
     }
-
-    engine->vocab = llama_model_get_vocab(engine->model);
-    llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
-    engine->sampler = llama_sampler_chain_init(sampler_params);
-    llama_sampler_chain_add(engine->sampler, llama_sampler_init_top_k(20));
-    llama_sampler_chain_add(engine->sampler, llama_sampler_init_top_p(0.9f, 1));
-    llama_sampler_chain_add(engine->sampler, llama_sampler_init_temp(0.3f));
-    llama_sampler_chain_add(engine->sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
-    engine->context_size = context_tokens;
-    return 1;
 }
 
 extern "C" int harmonic_llama_start(
@@ -299,97 +373,124 @@ extern "C" int harmonic_llama_start(
         const char * user_prompt,
         const char * response_prefix,
         int output_tokens) {
-    if (engine == nullptr || engine->model == nullptr || engine->context == nullptr) {
-        if (engine != nullptr) {
-            set_error(engine, "No GGUF model is loaded");
+    try {
+        if (engine == nullptr || engine->model == nullptr || engine->context == nullptr ||
+                engine->sampler == nullptr) {
+            if (engine != nullptr) {
+                set_error(engine, "No GGUF model is loaded");
+            }
+            return 0;
         }
-        return 0;
-    }
-    if (system_prompt == nullptr || user_prompt == nullptr || response_prefix == nullptr ||
-            output_tokens <= 0) {
-        set_error(engine, "Invalid GGUF generation request");
-        return 0;
-    }
-    engine->last_error.clear();
-    std::string prompt = apply_chat_template(engine, system_prompt, user_prompt);
-    prompt += response_prefix;
+        if (system_prompt == nullptr || user_prompt == nullptr || response_prefix == nullptr ||
+                output_tokens <= 0) {
+            set_error(engine, "Invalid GGUF generation request");
+            return 0;
+        }
+        clear_error(engine);
+        std::string prompt = apply_chat_template(engine, system_prompt, user_prompt);
+        prompt += response_prefix;
 
-    std::vector<llama_token> tokens = tokenize(engine, prompt);
-    if (tokens.empty()) {
-        set_error(engine, "Could not tokenize the summary input");
+        std::vector<llama_token> tokens = tokenize(engine, prompt);
+        if (tokens.empty()) {
+            set_error(engine, "Could not tokenize the summary input");
+            return 0;
+        }
+        if (static_cast<int>(tokens.size()) + output_tokens + kContextHeadroom >
+                engine->context_size) {
+            set_error(engine, "The summary input is too long for this model context");
+            return 0;
+        }
+        llama_memory_clear(llama_get_memory(engine->context), true);
+        llama_sampler_reset(engine->sampler);
+        if (!decode_prompt(engine, tokens)) {
+            return 0;
+        }
+        engine->generated_tokens = 0;
+        engine->max_generated_tokens = output_tokens;
+        engine->pending_utf8.clear();
+        engine->last_piece.clear();
+        return 1;
+    } catch (const std::bad_alloc &) {
+        set_error(engine, "Not enough memory to start local summarization");
+        return 0;
+    } catch (...) {
+        set_unexpected_error(engine, "Local summarization failed to start");
         return 0;
     }
-    if (static_cast<int>(tokens.size()) + output_tokens + kContextHeadroom >
-            engine->context_size) {
-        set_error(engine, "The summary input is too long for this model context");
-        return 0;
-    }
-    llama_memory_clear(llama_get_memory(engine->context), true);
-    llama_sampler_reset(engine->sampler);
-    if (!decode_prompt(engine, tokens)) {
-        return 0;
-    }
-    engine->generated_tokens = 0;
-    engine->max_generated_tokens = output_tokens;
-    engine->pending_utf8.clear();
-    engine->last_piece.clear();
-    return 1;
 }
 
 extern "C" harmonic_llama_next_result harmonic_llama_next(
         harmonic_llama_engine * engine,
         const char ** utf8_piece,
         size_t * utf8_length) {
-    if (engine == nullptr || utf8_piece == nullptr || utf8_length == nullptr ||
-            engine->context == nullptr || engine->sampler == nullptr) {
-        if (engine != nullptr) {
-            set_error(engine, "No GGUF generation is active");
-        }
-        return HARMONIC_LLAMA_NEXT_ERROR;
+    if (utf8_piece != nullptr) {
+        *utf8_piece = nullptr;
     }
-    *utf8_piece = nullptr;
-    *utf8_length = 0;
-
-    while (engine->generated_tokens < engine->max_generated_tokens) {
-        llama_token token = llama_sampler_sample(engine->sampler, engine->context, -1);
-        if (llama_vocab_is_eog(engine->vocab, token)) {
-            if (!engine->pending_utf8.empty()) {
-                set_error(engine, "GGUF model ended with incomplete UTF-8");
-                return HARMONIC_LLAMA_NEXT_ERROR;
+    if (utf8_length != nullptr) {
+        *utf8_length = 0;
+    }
+    try {
+        if (engine == nullptr || utf8_piece == nullptr || utf8_length == nullptr ||
+                engine->context == nullptr || engine->sampler == nullptr) {
+            if (engine != nullptr) {
+                set_error(engine, "No GGUF generation is active");
             }
-            return HARMONIC_LLAMA_NEXT_END;
-        }
-        llama_batch batch = llama_batch_get_one(&token, 1);
-        if (llama_decode(engine->context, batch) != 0) {
-            set_error(engine, "GGUF generation failed");
             return HARMONIC_LLAMA_NEXT_ERROR;
         }
-        engine->generated_tokens++;
-        engine->pending_utf8 += token_to_piece(engine, token);
-        switch (validate_utf8(engine->pending_utf8)) {
-            case Utf8Status::INCOMPLETE:
-                continue;
-            case Utf8Status::INVALID:
-                set_error(engine, "GGUF model produced invalid UTF-8");
-                return HARMONIC_LLAMA_NEXT_ERROR;
-            case Utf8Status::VALID:
-                engine->last_piece = engine->pending_utf8;
-                engine->pending_utf8.clear();
-                *utf8_piece = engine->last_piece.data();
-                *utf8_length = engine->last_piece.size();
-                return HARMONIC_LLAMA_NEXT_PIECE;
-        }
-    }
 
-    if (!engine->pending_utf8.empty()) {
-        set_error(engine, "GGUF model ended with incomplete UTF-8");
+        while (engine->generated_tokens < engine->max_generated_tokens) {
+            llama_token token = llama_sampler_sample(engine->sampler, engine->context, -1);
+            if (llama_vocab_is_eog(engine->vocab, token)) {
+                if (!engine->pending_utf8.empty()) {
+                    set_error(engine, "GGUF model ended with incomplete UTF-8");
+                    return HARMONIC_LLAMA_NEXT_ERROR;
+                }
+                return HARMONIC_LLAMA_NEXT_END;
+            }
+            llama_batch batch = llama_batch_get_one(&token, 1);
+            if (llama_decode(engine->context, batch) != 0) {
+                set_error(engine, "GGUF generation failed");
+                return HARMONIC_LLAMA_NEXT_ERROR;
+            }
+            engine->generated_tokens++;
+            engine->pending_utf8 += token_to_piece(engine, token);
+            switch (validate_utf8(engine->pending_utf8)) {
+                case Utf8Status::INCOMPLETE:
+                    continue;
+                case Utf8Status::INVALID:
+                    set_error(engine, "GGUF model produced invalid UTF-8");
+                    return HARMONIC_LLAMA_NEXT_ERROR;
+                case Utf8Status::VALID:
+                    engine->last_piece = engine->pending_utf8;
+                    engine->pending_utf8.clear();
+                    *utf8_piece = engine->last_piece.data();
+                    *utf8_length = engine->last_piece.size();
+                    return HARMONIC_LLAMA_NEXT_PIECE;
+            }
+        }
+
+        if (!engine->pending_utf8.empty()) {
+            set_error(engine, "GGUF model ended with incomplete UTF-8");
+            return HARMONIC_LLAMA_NEXT_ERROR;
+        }
+        return HARMONIC_LLAMA_NEXT_END;
+    } catch (const std::bad_alloc &) {
+        set_error(engine, "Not enough memory to continue local summarization");
+        return HARMONIC_LLAMA_NEXT_ERROR;
+    } catch (...) {
+        set_unexpected_error(engine, "Local summarization failed unexpectedly");
         return HARMONIC_LLAMA_NEXT_ERROR;
     }
-    return HARMONIC_LLAMA_NEXT_END;
 }
 
 extern "C" const char * harmonic_llama_last_error(const harmonic_llama_engine * engine) {
-    return engine == nullptr ? "GGUF inference engine is unavailable" : engine->last_error.c_str();
+    if (engine == nullptr) {
+        return "GGUF inference engine is unavailable";
+    }
+    if (!engine->last_error.empty()) {
+        return engine->last_error.c_str();
+    }
+    return engine->fallback_error == nullptr ? "" : engine->fallback_error;
 }
 
 extern "C" int harmonic_llama_next_utf8(
@@ -424,6 +525,10 @@ extern "C" int harmonic_llama_next_utf8(
 
 extern "C" void harmonic_llama_close(harmonic_llama_engine * engine) {
     if (engine != nullptr) {
-        release_model(engine);
+        try {
+            release_model(engine);
+        } catch (...) {
+            set_unexpected_error(engine, "Could not cleanly close the local inference engine");
+        }
     }
 }

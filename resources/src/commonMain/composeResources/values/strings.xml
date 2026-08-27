@@ -37,6 +37,7 @@
     <string name="captcha_dialog_continue">Continue</string>
     <string name="captcha_dialog_complete_error">Complete the captcha before continuing.</string>
     <string name="captcha_dialog_web_content_description">Hacker News CAPTCHA</string>
+    <string name="captcha_dialog_webview_error">The CAPTCHA browser is unavailable. Check Android System WebView and try again.</string>
     <string name="link_summary_open_short">Open</string>
     <string name="link_summary_retry">Try again</string>
     <string name="link_summary_retrying">Trying…</string>

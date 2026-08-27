@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
@@ -320,6 +321,34 @@ class ReaderModeAvailabilityCadence {
 
 /** Cross-platform preload, redirect, cache-fallback, and error-page policy. */
 object WebContentPolicy {
+    fun validatedHttpUrl(url: String?): String? {
+        val candidate = url?.trim()?.takeIf(String::isNotEmpty) ?: return null
+        if (
+            !candidate.startsWith("http://", ignoreCase = true) &&
+            !candidate.startsWith("https://", ignoreCase = true)
+        ) {
+            return null
+        }
+        val authority = candidate.substringAfter("://")
+            .substringBefore('/')
+            .substringBefore('?')
+            .substringBefore('#')
+        if (authority.isBlank()) return null
+        val parsed = try {
+            candidate.toNetworkUrlOrNull()
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (
+            parsed.host.isBlank() ||
+            (!parsed.scheme.equals("http", ignoreCase = true) &&
+                !parsed.scheme.equals("https", ignoreCase = true))
+        ) {
+            return null
+        }
+        return parsed.toString()
+    }
+
     fun shouldPreload(
         mode: String?,
         minimumBatteryPercent: Int,

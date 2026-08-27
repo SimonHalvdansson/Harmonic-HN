@@ -46,6 +46,7 @@ import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
@@ -134,7 +135,7 @@ internal fun IosCommentsContent(
         IosCommentsHost(
             store = store,
             controller = controller,
-            webView = initialState.url?.takeIf(String::isNotBlank)?.let(::IosCommentsWebView),
+            webView = WebContentPolicy.validatedHttpUrl(initialState.url)?.let(::IosCommentsWebView),
             restoringStoredProgress = restoring,
         ).also { createdHost = it }
     }

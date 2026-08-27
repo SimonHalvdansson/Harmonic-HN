@@ -1090,8 +1090,16 @@ internal class CommentsWebViewController(
             if (webViewContainer == null) {
                 return null
             }
-            val createdWebView = WebView(checkNotNull(webViewContainer).context).apply {
-                id = R.id.comments_webview
+            val createdWebView = try {
+                WebView(checkNotNull(webViewContainer).context).apply {
+                    id = R.id.comments_webview
+                }
+            } catch (exception: RuntimeException) {
+                Log.e("MY_APP_TAG", "The embedded browser is unavailable", exception)
+                coordinator.showMessage(
+                    "Embedded browser unavailable. Check Android System WebView and try again",
+                )
+                return null
             }
             webView = createdWebView
             attachWebView(createdWebView)
@@ -1460,6 +1468,8 @@ internal class CommentsWebViewController(
         }
     }
 
+    // The AndroidX detector does not recognize this Kotlin override further below.
+    @SuppressLint("MissingOnRenderProcessGone")
     private inner class MyWebViewClient : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)

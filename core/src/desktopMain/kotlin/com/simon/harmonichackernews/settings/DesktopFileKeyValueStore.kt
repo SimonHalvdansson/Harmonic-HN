@@ -23,13 +23,19 @@ class DesktopFileKeyValueStore(
     private val lock = Any()
     private val values = Properties()
     private val mutableChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 32)
+    private var persistenceFailureReported = false
 
     val changes: SharedFlow<Unit> = mutableChanges.asSharedFlow()
 
     init {
         synchronized(lock) {
-            if (Files.isRegularFile(file)) {
-                Files.newInputStream(file).use(values::load)
+            try {
+                if (Files.isRegularFile(file)) {
+                    Files.newInputStream(file).use(values::load)
+                }
+            } catch (error: Exception) {
+                values.clear()
+                reportPersistenceFailure("load", error)
             }
         }
     }
@@ -135,7 +141,7 @@ class DesktopFileKeyValueStore(
         synchronized(lock) {
             val staged = Properties().apply { putAll(this@DesktopFileKeyValueStore.values) }
             block(staged)
-            persist(staged)
+            persistSafely(staged)
             values.clear()
             values.putAll(staged)
         }
@@ -145,19 +151,47 @@ class DesktopFileKeyValueStore(
     private fun persist(staged: Properties) {
         file.parent?.let(Files::createDirectories)
         val temporary = file.resolveSibling("${file.fileName}.tmp")
-        Files.newOutputStream(temporary).use { output ->
-            staged.store(output, "Harmonic desktop settings")
-        }
+        var moved = false
         try {
-            Files.move(
-                temporary,
-                file,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
-            )
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING)
+            Files.newOutputStream(temporary).use { output ->
+                staged.store(output, "Harmonic desktop settings")
+            }
+            try {
+                Files.move(
+                    temporary,
+                    file,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING)
+            }
+            moved = true
+        } finally {
+            if (!moved) {
+                try {
+                    Files.deleteIfExists(temporary)
+                } catch (_: Exception) {
+                    // Preserve the original persistence failure.
+                }
+            }
         }
+    }
+
+    private fun persistSafely(staged: Properties) {
+        try {
+            persist(staged)
+            persistenceFailureReported = false
+        } catch (error: Exception) {
+            reportPersistenceFailure("save", error)
+        }
+    }
+
+    private fun reportPersistenceFailure(operation: String, error: Exception) {
+        if (persistenceFailureReported) return
+        persistenceFailureReported = true
+        System.err.println("Harmonic could not $operation desktop settings at $file; using session values.")
+        error.printStackTrace(System.err)
     }
 
     private fun encodeStringSet(value: Set<String>): String =

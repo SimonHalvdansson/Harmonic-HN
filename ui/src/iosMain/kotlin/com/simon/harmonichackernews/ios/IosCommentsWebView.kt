@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -45,7 +46,7 @@ import platform.WebKit.WKWebViewConfiguration
 /** iOS-native browser retained for the lifetime of one comments destination. */
 @OptIn(ExperimentalForeignApi::class)
 internal class IosCommentsWebView(initialUrl: String) {
-    private val initialUrl = initialUrl
+    private val initialUrl = WebContentPolicy.validatedHttpUrl(initialUrl)
     private var loadedUrl: String? = null
     private var inverted = false
 
@@ -66,20 +67,30 @@ internal class IosCommentsWebView(initialUrl: String) {
     }
 
     fun ensureLoaded() {
-        if (loadedUrl == null) load(initialUrl)
+        if (loadedUrl == null) initialUrl?.let(::load)
     }
 
-    fun load(url: String) {
-        val nativeUrl = NSURL(string = url)
-        loadedUrl = url
-        view.loadRequest(NSMutableURLRequest.requestWithURL(URL = nativeUrl))
+    fun load(url: String): Boolean {
+        val safeUrl = WebContentPolicy.validatedHttpUrl(url) ?: return false
+        val nativeUrl = try {
+            NSURL(string = safeUrl)
+        } catch (_: Exception) {
+            return false
+        }
+        return try {
+            view.loadRequest(NSMutableURLRequest.requestWithURL(URL = nativeUrl))
+            loadedUrl = safeUrl
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun reload() {
         if (loadedUrl == null) ensureLoaded() else view.reload()
     }
 
-    fun currentUrl(): String = view.URL?.absoluteString ?: loadedUrl ?: initialUrl
+    fun currentUrl(): String? = view.URL?.absoluteString ?: loadedUrl ?: initialUrl
 
     fun canGoBack(): Boolean = view.canGoBack
 

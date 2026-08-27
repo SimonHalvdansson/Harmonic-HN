@@ -315,7 +315,11 @@ private data object DesktopExternalLinkOpener : ExternalLinkOpener {
 
 private data object DesktopClipboardService : ClipboardService {
     override fun copy(label: String, text: String) {
-        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+        try {
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+        } catch (error: Exception) {
+            System.err.println("Harmonic could not access the desktop clipboard: ${error.message}")
+        }
     }
 }
 
