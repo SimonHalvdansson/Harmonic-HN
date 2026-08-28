@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -544,13 +543,9 @@ private fun IosReferencePreview(
         favicon = favicon,
         offline = runtimeState.offline,
         textStyle = TextStyle.Default,
-        referenceImage = { imageUrl, loading, expanded, shape, ratio, onRatio, onClick, modifier ->
+        referenceImage = { imageUrl, loading, _, shape, _, onRatio, onClick, modifier ->
             Box(
                 modifier = modifier
-                    .then(
-                        if (expanded) Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(0.45f, 3f))
-                        else Modifier.size(104.dp),
-                    )
                     .clip(shape)
                     .background(HarmonicTheme.colors.surfaceContainerHighest)
                     .clickable(enabled = imageUrl != null, onClick = onClick),
@@ -560,7 +555,7 @@ private fun IosReferencePreview(
                     model = imageUrl,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
+                    contentScale = ContentScale.Crop,
                     onSuccess = { success ->
                         val size = success.painter.intrinsicSize
                         if (size.width > 0f && size.height > 0f) onRatio(size.width / size.height)

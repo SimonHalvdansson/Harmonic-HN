@@ -1,9 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.resources.*
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.animateBounds
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -12,9 +11,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +49,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -68,11 +68,24 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 private const val ReferenceContentDurationMillis = 240
+private const val ReferenceContentFadeOutDurationMillis = 80
+private const val ReferenceContentFadeInDurationMillis =
+    ReferenceContentDurationMillis - ReferenceContentFadeOutDurationMillis
 private const val ReferenceImageDurationMillis = 360
+private const val ReferenceImageMetadataFadeOutDurationMillis = 100
+private const val ReferenceImageMetadataFadeInDurationMillis = 140
+private const val ReferenceImageCollapsedSizeDp = 104
+private const val ReferenceImageStandardMarginDp = 20
+private const val ReferenceImageCollapsedGapDp = 16
+private const val ReferenceImageExpandedGapDp = 18
 
 @Composable
 fun CommentLinkPreviewOverlay(
@@ -173,6 +186,13 @@ data class ReferenceSummaryUiState(
     val retrying: Boolean = false,
 )
 
+private data class ReferenceSummaryContentState(
+    val loading: Boolean,
+    val showFallback: Boolean,
+    val result: LinkSummary?,
+    val error: String?,
+)
+
 @Composable
 fun ReferenceCardContent(
     url: String,
@@ -196,11 +216,39 @@ fun ReferenceCardContent(
     onOpen: () -> Unit,
     onRetry: () -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val typography = rememberContentTypography(
         preferredFont = preferredFont,
         commentTextSize = commentTextSize,
     )
-    val result = summary.result
+    val requestedSummaryContent = ReferenceSummaryContentState(
+        loading = summary.loading,
+        showFallback = summary.showFallback,
+        result = summary.result,
+        error = summary.error,
+    )
+    var summaryContent by remember(url) { mutableStateOf(requestedSummaryContent) }
+    val summaryContentAlpha = remember(url) { Animatable(1f) }
+    LaunchedEffect(requestedSummaryContent) {
+        if (requestedSummaryContent == summaryContent) return@LaunchedEffect
+        summaryContentAlpha.animateTo(
+            0f,
+            tween(
+                ReferenceContentFadeOutDurationMillis,
+                easing = FastOutSlowInEasing,
+            ),
+        )
+        summaryContent = requestedSummaryContent
+        summaryContentAlpha.animateTo(
+            1f,
+            tween(
+                ReferenceContentFadeInDurationMillis,
+                easing = FastOutSlowInEasing,
+            ),
+        )
+    }
+
+    val result = summaryContent.result
     val title = firstNotBlank(result?.title, fallbackTitle, url)
     val description = result?.description?.takeIf(String::isNotBlank)
     val domain = if (
@@ -214,6 +262,8 @@ fun ReferenceCardContent(
     }
     val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
     var imageExpanded by remember(url, imageUrl) { mutableStateOf(false) }
+    var imageBoundsAnimating by remember(url, imageUrl) { mutableStateOf(false) }
+    val metadataAlpha = remember(url, imageUrl) { Animatable(1f) }
     var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }
     val imageTopCornerRadius by animateDpAsState(
         targetValue = if (imageExpanded) 28.dp else 8.dp,
@@ -231,152 +281,285 @@ fun ReferenceCardContent(
         bottomStart = imageBottomCornerRadius,
         bottomEnd = imageBottomCornerRadius,
     )
-    val retryable = summary.error?.let(::isRetryableReferenceError) == true
+    val retryable = summaryContent.error?.let(::isRetryableReferenceError) == true
     val offlineMessage = stringResource(Res.string.link_summary_offline_message)
     val genericErrorMessage = stringResource(Res.string.link_summary_error_message)
-    val errorMessage = summary.error?.let {
+    val errorMessage = summaryContent.error?.let {
         referenceErrorMessage(offline, it, offlineMessage, genericErrorMessage)
     }
-    val showImage = (summary.loading && !summary.showFallback) || imageUrl != null
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 720.dp)
-            .verticalScroll(rememberScrollState())
-            .animateContentSize(tween(ReferenceContentDurationMillis, easing = FastOutSlowInEasing)),
-    ) {
-        AnimatedContent(
-            targetState = imageExpanded && imageUrl != null,
-            transitionSpec = {
-                (fadeIn(tween(140)) togetherWith fadeOut(tween(70))).using(
-                    SizeTransform(clip = false) { _, _ ->
-                        tween(ReferenceImageDurationMillis, easing = FastOutSlowInEasing)
-                    },
+    val showImage = (summaryContent.loading && !summaryContent.showFallback) || imageUrl != null
+    val onImageClick = {
+        if (imageUrl != null && !imageBoundsAnimating) {
+            val expanded = !imageExpanded
+            coroutineScope.launch {
+                metadataAlpha.animateTo(
+                    0f,
+                    tween(
+                        ReferenceImageMetadataFadeOutDurationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
                 )
-            },
-            label = "reference image expansion",
-        ) { expanded ->
-            if (expanded) {
-                Column {
-                    referenceImage(
-                        imageUrl,
-                        false,
-                        true,
-                        imageShape,
-                        imageRatio,
-                        { imageRatio = it },
-                        { imageExpanded = false },
-                        Modifier,
+                imageBoundsAnimating = true
+                imageExpanded = expanded
+                delay(
+                    (ReferenceImageDurationMillis - ReferenceImageMetadataFadeInDurationMillis)
+                        .toLong(),
+                )
+                metadataAlpha.animateTo(
+                    1f,
+                    tween(
+                        ReferenceImageMetadataFadeInDurationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+                imageBoundsAnimating = false
+            }
+        }
+    }
+
+    LookaheadScope {
+        val rootBoundsTransform = BoundsTransform { _, _ ->
+            tween(
+                durationMillis = if (imageBoundsAnimating) {
+                    ReferenceImageDurationMillis
+                } else {
+                    ReferenceContentDurationMillis
+                },
+                easing = FastOutSlowInEasing,
+            )
+        }
+        val headerBoundsTransform = BoundsTransform { _, _ ->
+            tween(
+                durationMillis = if (imageBoundsAnimating) {
+                    ReferenceImageDurationMillis
+                } else {
+                    ReferenceContentDurationMillis
+                },
+                easing = FastOutSlowInEasing,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 720.dp)
+                .animateBounds(
+                    lookaheadScope = this@LookaheadScope,
+                    boundsTransform = rootBoundsTransform,
+                )
+                .verticalScroll(rememberScrollState()),
+        ) {
+            ReferenceImageHeader(
+                showImage = showImage,
+                imageUrl = imageUrl,
+                loading = summaryContent.loading,
+                expanded = imageExpanded,
+                imageShape = imageShape,
+                imageRatio = imageRatio,
+                metadataAlpha = metadataAlpha.value,
+                summaryContentAlpha = summaryContentAlpha.value,
+                domain = domain,
+                favicon = favicon,
+                title = title,
+                metadataLoading = summaryContent.loading && !summaryContent.showFallback,
+                fontFamily = typography.family,
+                metaSize = typography.storyMetaSize,
+                titleSize = typography.storyTitleSize + 0.5f,
+                lookaheadScope = this@LookaheadScope,
+                boundsTransform = headerBoundsTransform,
+                referenceImage = referenceImage,
+                onImageRatio = { imageRatio = it },
+                onImageClick = onImageClick,
+            )
+
+            Column(
+                modifier = Modifier
+                    .animateBounds(
+                        lookaheadScope = this@LookaheadScope,
+                        boundsTransform = headerBoundsTransform,
                     )
-                    ReferenceMetadata(
-                        domain = domain,
-                        favicon = favicon,
-                        title = title,
-                        loading = false,
-                        fontFamily = typography.family,
-                        metaSize = typography.storyMetaSize,
-                        titleSize = typography.storyTitleSize + 0.5f,
-                        modifier = Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp),
-                    )
-                }
-            } else {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                    if (showImage) {
-                        referenceImage(
-                            imageUrl,
-                            summary.loading,
-                            false,
-                            imageShape,
-                            imageRatio,
-                            { imageRatio = it },
-                            { if (imageUrl != null) imageExpanded = true },
-                            Modifier.padding(start = 20.dp, top = 20.dp, end = 16.dp),
+                    .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 18.dp),
+            ) {
+                Box(Modifier.graphicsLayer { alpha = summaryContentAlpha.value }) {
+                    when {
+                        !description.isNullOrBlank() -> SelectionContainer {
+                            Text(
+                                text = description,
+                                color = HarmonicTheme.colors.storyNormal,
+                                fontFamily = typography.family,
+                                fontSize = typography.commentTextSize.sp,
+                                lineHeight = (typography.commentTextSize + 2f).sp,
+                                style = textStyle,
+                            )
+                        }
+                        summaryContent.loading && !summaryContent.showFallback ->
+                            ReferenceDescriptionShimmer()
+                        summaryContent.error != null -> ReferenceErrorContent(
+                            offline = offline,
+                            message = errorMessage.orEmpty(),
+                            retryVisible = offline || retryable,
+                            retrying = summary.retrying,
+                            fontFamily = typography.family,
+                            errorTextSize = typography.commentTextSize - 1f,
+                            onRetry = onRetry,
                         )
+                        else -> Spacer(Modifier.height(0.dp))
                     }
-                    ReferenceMetadata(
-                        domain = domain,
-                        favicon = favicon,
-                        title = title,
-                        loading = summary.loading && !summary.showFallback,
-                        fontFamily = typography.family,
-                        metaSize = typography.storyMetaSize,
-                        titleSize = typography.storyTitleSize + 0.5f,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(
-                                start = if (showImage) 0.dp else 20.dp,
-                                top = 20.dp,
-                                end = 20.dp,
-                            ),
+                }
+
+                ElevatedButton(
+                    onClick = onOpen,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 18.dp)
+                        .height(52.dp),
+                    colors = ButtonDefaults.elevatedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        contentColor = HarmonicTheme.colors.storyNormal,
+                    ),
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_link),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(Res.string.link_summary_open_short),
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
         }
+    }
+}
 
-        Column(
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 18.dp),
-        ) {
-            AnimatedContent(
-                targetState = Triple(description, summary.loading, summary.error),
-                transitionSpec = {
-                    (fadeIn(tween(ReferenceContentDurationMillis)) togetherWith
-                        fadeOut(tween(ReferenceContentDurationMillis))).using(
-                        SizeTransform(clip = false) { _, _ ->
-                            tween(ReferenceContentDurationMillis, easing = FastOutSlowInEasing)
-                        },
+@Composable
+private fun ReferenceImageHeader(
+    showImage: Boolean,
+    imageUrl: String?,
+    loading: Boolean,
+    expanded: Boolean,
+    imageShape: Shape,
+    imageRatio: Float,
+    metadataAlpha: Float,
+    summaryContentAlpha: Float,
+    domain: String,
+    favicon: String?,
+    title: String,
+    metadataLoading: Boolean,
+    fontFamily: FontFamily,
+    metaSize: Float,
+    titleSize: Float,
+    lookaheadScope: LookaheadScope,
+    boundsTransform: BoundsTransform,
+    referenceImage: @Composable (
+        imageUrl: String?,
+        loading: Boolean,
+        expanded: Boolean,
+        shape: Shape,
+        imageRatio: Float,
+        onImageRatio: (Float) -> Unit,
+        onClick: () -> Unit,
+        modifier: Modifier,
+    ) -> Unit,
+    onImageRatio: (Float) -> Unit,
+    onImageClick: () -> Unit,
+) {
+    Layout(
+        modifier = Modifier.fillMaxWidth(),
+        content = {
+            if (showImage) {
+                Box(
+                    modifier = Modifier.animateBounds(
+                        lookaheadScope = lookaheadScope,
+                        boundsTransform = boundsTransform,
+                    ),
+                ) {
+                    referenceImage(
+                        imageUrl,
+                        loading,
+                        expanded,
+                        imageShape,
+                        imageRatio,
+                        onImageRatio,
+                        onImageClick,
+                        Modifier.fillMaxSize(),
                     )
-                },
-                label = "reference summary state",
-            ) { (currentDescription, loading, error) ->
-                when {
-                    !currentDescription.isNullOrBlank() -> SelectionContainer {
-                        Text(
-                            text = currentDescription,
-                            color = HarmonicTheme.colors.storyNormal,
-                            fontFamily = typography.family,
-                            fontSize = typography.commentTextSize.sp,
-                            lineHeight = (typography.commentTextSize + 2f).sp,
-                            style = textStyle,
-                        )
-                    }
-                    loading && !summary.showFallback -> ReferenceDescriptionShimmer()
-                    error != null -> ReferenceErrorContent(
-                        offline = offline,
-                        message = errorMessage.orEmpty(),
-                        retryVisible = offline || retryable,
-                        retrying = summary.retrying,
-                        fontFamily = typography.family,
-                        errorTextSize = typography.commentTextSize - 1f,
-                        onRetry = onRetry,
-                    )
-                    else -> Spacer(Modifier.height(0.dp))
                 }
             }
-
-            ElevatedButton(
-                onClick = onOpen,
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 18.dp)
-                    .height(52.dp),
-                colors = ButtonDefaults.elevatedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    contentColor = HarmonicTheme.colors.storyNormal,
-                ),
+                    .animateBounds(
+                        lookaheadScope = lookaheadScope,
+                        boundsTransform = boundsTransform,
+                    )
+                    .graphicsLayer { alpha = metadataAlpha },
             ) {
-                Icon(
-                    painterResource(Res.drawable.ic_link),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(Res.string.link_summary_open_short),
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
+                ReferenceMetadata(
+                    domain = domain,
+                    favicon = favicon,
+                    title = title,
+                    loading = metadataLoading,
+                    contentAlpha = summaryContentAlpha,
+                    fontFamily = fontFamily,
+                    metaSize = metaSize,
+                    titleSize = titleSize,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
+        },
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val standardMargin = ReferenceImageStandardMarginDp.dp.roundToPx()
+        val imageMeasurable = measurables.firstOrNull().takeIf { showImage }
+        val metadataMeasurable = measurables.last()
+        val imageSize = ReferenceImageCollapsedSizeDp.dp.roundToPx()
+        val imageHeight = if (expanded) {
+            (width / imageRatio.coerceIn(0.45f, 3f)).roundToInt().coerceAtLeast(1)
+        } else {
+            imageSize
+        }
+        val imageWidth = if (expanded) width else imageSize
+        val imagePlaceable = imageMeasurable?.measure(
+            androidx.compose.ui.unit.Constraints.fixed(imageWidth, imageHeight),
+        )
+        val metadataWidth = when {
+            !showImage || expanded -> (width - standardMargin * 2).coerceAtLeast(1)
+            else -> (width - standardMargin * 2 - imageSize -
+                ReferenceImageCollapsedGapDp.dp.roundToPx()).coerceAtLeast(1)
+        }
+        val metadataPlaceable = metadataMeasurable.measure(
+            androidx.compose.ui.unit.Constraints(
+                minWidth = metadataWidth,
+                maxWidth = metadataWidth,
+                minHeight = 0,
+                maxHeight = constraints.maxHeight,
+            ),
+        )
+        val imageTop = if (expanded) 0 else standardMargin
+        val metadataTop = when {
+            expanded -> imageHeight + ReferenceImageExpandedGapDp.dp.roundToPx()
+            else -> standardMargin
+        }
+        val targetHeight = when {
+            expanded -> metadataTop + metadataPlaceable.height
+            showImage -> standardMargin + max(imageHeight, metadataPlaceable.height)
+            else -> standardMargin + metadataPlaceable.height
+        }
+        layout(width, targetHeight.coerceIn(constraints.minHeight, constraints.maxHeight)) {
+            imagePlaceable?.placeRelative(
+                x = if (expanded) 0 else standardMargin,
+                y = imageTop,
+            )
+            metadataPlaceable.placeRelative(
+                x = when {
+                    expanded || !showImage -> standardMargin
+                    else -> standardMargin + imageSize +
+                        ReferenceImageCollapsedGapDp.dp.roundToPx()
+                },
+                y = metadataTop,
+            )
         }
     }
 }
@@ -387,6 +570,7 @@ private fun ReferenceMetadata(
     favicon: String?,
     title: String,
     loading: Boolean,
+    contentAlpha: Float,
     fontFamily: FontFamily,
     metaSize: Float,
     titleSize: Float,
@@ -411,25 +595,27 @@ private fun ReferenceMetadata(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (loading) {
-            Column(
-                modifier = Modifier.padding(top = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                LinkPreviewShimmer(Modifier.fillMaxWidth().height(18.dp).clip(RoundedCornerShape(6.dp)))
-                LinkPreviewShimmer(Modifier.width(140.dp).height(18.dp).clip(RoundedCornerShape(6.dp)))
-            }
-        } else {
-            SelectionContainer {
-                Text(
-                    text = title,
-                    modifier = Modifier.padding(top = 5.dp),
-                    color = HarmonicTheme.colors.storyNormal,
-                    fontFamily = fontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = titleSize.sp,
-                    lineHeight = (titleSize + 3f).sp,
-                )
+        Box(Modifier.graphicsLayer { alpha = contentAlpha }) {
+            if (loading) {
+                Column(
+                    modifier = Modifier.padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    LinkPreviewShimmer(Modifier.fillMaxWidth().height(18.dp).clip(RoundedCornerShape(6.dp)))
+                    LinkPreviewShimmer(Modifier.width(140.dp).height(18.dp).clip(RoundedCornerShape(6.dp)))
+                }
+            } else {
+                SelectionContainer {
+                    Text(
+                        text = title,
+                        modifier = Modifier.padding(top = 5.dp),
+                        color = HarmonicTheme.colors.storyNormal,
+                        fontFamily = fontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = titleSize.sp,
+                        lineHeight = (titleSize + 3f).sp,
+                    )
+                }
             }
         }
     }

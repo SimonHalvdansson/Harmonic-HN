@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -104,13 +103,12 @@ private fun ReferencePreviewCard(
         favicon = favicon,
         offline = runtimeState.offline,
         textStyle = linkPreviewTextStyle,
-        referenceImage = { imageUrl, loading, expanded, shape, ratio, onRatio, onClick, modifier ->
+        referenceImage = { imageUrl, loading, expanded, shape, _, onRatio, onClick, modifier ->
             ReferencePreviewImage(
                 imageUrl = imageUrl,
                 loading = loading,
                 expanded = expanded,
                 shape = shape,
-                imageRatio = ratio,
                 onImageRatio = onRatio,
                 onClick = onClick,
                 modifier = modifier,
@@ -129,7 +127,6 @@ private fun ReferencePreviewImage(
     loading: Boolean,
     expanded: Boolean,
     shape: Shape,
-    imageRatio: Float,
     onImageRatio: (Float) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -138,15 +135,6 @@ private fun ReferencePreviewImage(
     val appComposition = LocalHarmonicUiDependencies.current
     Box(
         modifier = modifier
-            .then(
-                if (expanded) {
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(imageRatio.coerceIn(0.45f, 3f))
-                } else {
-                    Modifier.size(104.dp)
-                },
-            )
             .clip(shape)
             .background(HarmonicTheme.colors.surfaceContainerHighest)
             .clickable(enabled = imageUrl != null, onClick = onClick),
@@ -167,7 +155,7 @@ private fun ReferencePreviewImage(
                     },
                 ),
                 modifier = Modifier.fillMaxSize(),
-                contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
+                contentScale = ContentScale.Crop,
                 onSuccess = { success ->
                     val image = success.result.image
                     if (image.width > 0 && image.height > 0) {
