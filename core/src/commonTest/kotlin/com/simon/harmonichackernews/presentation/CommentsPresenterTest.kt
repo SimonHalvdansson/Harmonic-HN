@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.TestCredentialStore
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
+import com.simon.harmonichackernews.summary.SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
 import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
@@ -90,6 +91,76 @@ class CommentsPresenterTest {
         val story = Story().apply {
             id = 1
             url = "https://example.com/article"
+            isLink = true
+        }
+        runtime.initialize(story, false, -1, "Default", restoring = false)
+        val effects = mutableListOf<CommentsRuntimeEffect>()
+        backgroundScope.launch { runtime.effects.collect(effects::add) }
+        runCurrent()
+
+        runtime.startSummary(null)
+        runCurrent()
+
+        assertTrue(runtime.summaryLoading)
+        assertEquals(null, story.summary)
+        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+
+        runtime.startSummary("text extracted from the loaded WebView")
+        runCurrent()
+
+        assertFalse(runtime.summaryLoading)
+        assertEquals(2, attempts)
+        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+    }
+
+    @Test
+    fun localHttp401ExtractionFailureRequestsPageTextOnlyOnce() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val settings = AiSummarySettingsRepository(
+            TestKeyValueStore(
+                mapOf(
+                    AiSummaryPreferenceKeys.ENABLED to true,
+                    AiSummaryPreferenceKeys.MODE to AiSummaryMode.LOCAL.storedValue,
+                ),
+            ),
+            TestCredentialStore(),
+            flowOf(),
+        )
+        var attempts = 0
+        val unauthorizedBackend = StorySummaryBackend {
+            flow {
+                attempts++
+                emit(StorySummaryEvent.Failure(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED))
+            }
+        }
+        val runtime = CommentsFeatureRuntime(
+            scope = backgroundScope,
+            sessionState = session,
+            presenter = presenter,
+            summarySettings = settings,
+            localSummaryAvailable = { true },
+            summaryRuntime = StorySummaryRuntime(
+                backgroundScope,
+                unauthorizedBackend,
+                unauthorizedBackend,
+            ),
+            canLoadArticleTextOnDemand = true,
+            nowMillis = { 0L },
+        )
+        val story = Story().apply {
+            id = 1
+            url = "https://example.com/requires-browser"
             isLink = true
         }
         runtime.initialize(story, false, -1, "Default", restoring = false)

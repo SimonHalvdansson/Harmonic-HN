@@ -39,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -71,6 +72,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
+import com.simon.harmonichackernews.summary.GEMINI_NANO_POLICY_BLOCKED_MESSAGE
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
@@ -139,6 +141,8 @@ fun StorySummary(
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
 ) {
     val summary = story.summary.orEmpty()
+    val policyBlocked = !story.summaryGeneratedSuccessfully &&
+        summary == GEMINI_NANO_POLICY_BLOCKED_MESSAGE
     val typography = rememberContentTypography(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
@@ -176,7 +180,30 @@ fun StorySummary(
                     color = HarmonicTheme.colors.storyNormal,
                 )
             }
-            if (summary.isNotBlank()) {
+            if (policyBlocked) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_block),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(18.dp),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text = summary,
+                        color = MaterialTheme.colorScheme.error,
+                        fontFamily = typography.family,
+                        fontSize = typography.commentTextSize.sp,
+                        lineHeight = (typography.commentTextSize + 2f).sp,
+                    )
+                }
+            } else if (summary.isNotBlank()) {
                 SelectionContainer {
                     SummaryMarkdownText(
                         markdown = summary,

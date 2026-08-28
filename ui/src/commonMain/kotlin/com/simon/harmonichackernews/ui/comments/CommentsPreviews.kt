@@ -287,6 +287,7 @@ private fun HeaderStoryTextBlock(
 ) {
     val platform = LocalCommentsPreviewPlatform.current
     val colors = HarmonicTheme.colors
+    val hapticFeedback = LocalHapticFeedback.current
     val linkStyles = remember(colors.link) {
         TextLinkStyles(
             style = SpanStyle(colors.link, textDecoration = TextDecoration.Underline),
@@ -318,6 +319,7 @@ private fun HeaderStoryTextBlock(
                     layoutResult = { textLayout },
                     coordinates = { textCoordinates },
                     linkGestureState = linkGestureState,
+                    hapticFeedback = hapticFeedback,
                     onLongPress = onLinkLongClick,
                 ),
             color = colors.storyNormal,

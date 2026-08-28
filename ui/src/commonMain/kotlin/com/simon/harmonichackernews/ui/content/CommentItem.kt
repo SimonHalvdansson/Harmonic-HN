@@ -54,6 +54,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -480,6 +481,7 @@ private fun CommentBodyText(
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
+    val hapticFeedback = LocalHapticFeedback.current
     val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
     val linkListener = remember(linkGestureState, onLinkClick) {
         LinkInteractionListener { annotation ->
@@ -519,6 +521,7 @@ private fun CommentBodyText(
                     layoutResult = { textLayout },
                     coordinates = { textCoordinates },
                     linkGestureState = linkGestureState,
+                    hapticFeedback = hapticFeedback,
                     onLongPress = onLinkLongClick,
                 ),
             onTextLayout = { textLayout = it },

@@ -22,6 +22,9 @@ enum class StorySummaryMode {
 }
 
 const val LOCAL_SUMMARY_ARTICLE_TOO_SHORT = "Article is too short for local summarization"
+const val SUMMARY_ARTICLE_HTTP_UNAUTHORIZED =
+    "Extraction failed: Article returned HTTP 401"
+const val GEMINI_NANO_POLICY_BLOCKED_MESSAGE = "Blocked by Gemini Nano policy check."
 
 data class StorySummaryInput(
     val articleUrl: String,
@@ -210,11 +213,18 @@ class StorySummaryRuntime(
     }
 
     private fun fail(mode: StorySummaryMode, detail: String) {
+        val policyBlocked = mode == StorySummaryMode.LOCAL &&
+            detail.contains("ErrorCode 11", ignoreCase = true) &&
+            detail.contains("policy check", ignoreCase = true)
         val prefix = when (mode) {
             StorySummaryMode.CLOUD -> "Failed to generate summary"
             StorySummaryMode.LOCAL -> "Failed to generate local summary"
         }
-        val message = "$prefix: $detail"
+        val message = if (policyBlocked) {
+            GEMINI_NANO_POLICY_BLOCKED_MESSAGE
+        } else {
+            "$prefix: $detail"
+        }
         mutableState.value = mutableState.value.copy(
             text = message,
             status = StorySummaryStatus.Failure(message),

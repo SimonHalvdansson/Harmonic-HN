@@ -5,6 +5,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -35,8 +37,9 @@ fun Modifier.detectAnnotatedLinkLongPress(
     layoutResult: () -> TextLayoutResult?,
     coordinates: () -> LayoutCoordinates?,
     linkGestureState: AnnotatedLinkGestureState,
+    hapticFeedback: HapticFeedback,
     onLongPress: (url: String, label: String, bounds: Rect) -> Unit,
-): Modifier = pointerInput(text, linkGestureState, onLongPress) {
+): Modifier = pointerInput(text, linkGestureState, hapticFeedback, onLongPress) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         linkGestureState.beginGesture()
@@ -49,6 +52,7 @@ fun Modifier.detectAnnotatedLinkLongPress(
         ) ?: return@awaitEachGesture
         longPress.consume()
         linkGestureState.markLongPress()
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         onLongPress(linkAtPress.url, linkAtPress.label, linkAtPress.bounds)
         do {
             val event = awaitPointerEvent(PointerEventPass.Initial)

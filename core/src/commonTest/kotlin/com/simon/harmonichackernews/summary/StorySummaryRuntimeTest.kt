@@ -47,6 +47,28 @@ class StorySummaryRuntimeTest {
     }
 
     @Test
+    fun geminiNanoPolicyFailuresUseConcisePresentation() = runTest {
+        val backend = StorySummaryBackend {
+            flow {
+                emit(
+                    StorySummaryEvent.Failure(
+                        "Local summarization failed: [ErrorCode 11] Generated response " +
+                            "doesn't pass certain policy check. Please try a different input.",
+                    ),
+                )
+            }
+        }
+        val runtime = StorySummaryRuntime(this, failingBackend(), backend)
+
+        runtime.start(StorySummaryMode.LOCAL, StorySummaryInput("https://example.com"))
+        advanceUntilIdle()
+
+        val failure = assertIs<StorySummaryStatus.Failure>(runtime.state.value.status)
+        assertEquals(GEMINI_NANO_POLICY_BLOCKED_MESSAGE, failure.message)
+        assertEquals(GEMINI_NANO_POLICY_BLOCKED_MESSAGE, runtime.state.value.text)
+    }
+
+    @Test
     fun aNewRequestSupersedesThePreviousGeneration() = runTest {
         var invocation = 0
         val backend = StorySummaryBackend {

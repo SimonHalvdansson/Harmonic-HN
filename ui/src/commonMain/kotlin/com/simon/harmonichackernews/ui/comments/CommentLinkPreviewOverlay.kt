@@ -460,17 +460,19 @@ private fun ReferenceErrorContent(
             .padding(top = 8.dp, bottom = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            painterResource(Res.drawable.ic_cloud_off),
-            contentDescription = null,
-            modifier = Modifier.size(44.dp),
-            tint = HarmonicTheme.colors.drawable,
-        )
+        if (offline) {
+            Icon(
+                painterResource(Res.drawable.ic_cloud_off),
+                contentDescription = null,
+                modifier = Modifier.size(44.dp),
+                tint = HarmonicTheme.colors.drawable,
+            )
+        }
         Text(
             text = stringResource(
                 if (offline) Res.string.link_summary_offline_title else Res.string.link_summary_error_title,
             ),
-            modifier = Modifier.padding(top = 12.dp),
+            modifier = Modifier.padding(top = if (offline) 12.dp else 0.dp),
             color = HarmonicTheme.colors.storyNormal,
             fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,

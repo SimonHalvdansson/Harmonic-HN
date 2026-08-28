@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
+import com.simon.harmonichackernews.summary.SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
@@ -783,7 +784,8 @@ class CommentsFeatureRuntime(
         val failure = state.status as? StorySummaryStatus.Failure
         if (canLoadArticleTextOnDemand && !summaryPageTextRetryAttempted &&
             summarySettings?.snapshot()?.mode == AiSummaryMode.LOCAL &&
-            failure?.message?.endsWith(LOCAL_SUMMARY_ARTICLE_TOO_SHORT) == true
+            (failure?.message?.endsWith(LOCAL_SUMMARY_ARTICLE_TOO_SHORT) == true ||
+                failure?.message?.endsWith(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED) == true)
         ) {
             summaryPageTextRetryAttempted = true
             summaryPageTextRetryPending = true
