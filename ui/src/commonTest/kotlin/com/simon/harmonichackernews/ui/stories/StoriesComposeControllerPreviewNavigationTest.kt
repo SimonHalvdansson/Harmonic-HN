@@ -30,13 +30,13 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
-    fun commentsNavigationDismissesPreviewWhenStoriesRemainVisible() {
+    fun commentsNavigationKeepsPreviewOpenWhenStoriesRemainVisible() {
         val controller = controller(destinationRemainsBesideStories = true)
 
         controller.onStoryPreviewNavigate(page = 0, showWebsite = false)
 
         assertNotNull(controller.storyPreviewOverlay)
-        assertEquals(1, controller.storyPreviewDismissRequest)
+        assertEquals(0, controller.storyPreviewDismissRequest)
     }
 
     @Test
