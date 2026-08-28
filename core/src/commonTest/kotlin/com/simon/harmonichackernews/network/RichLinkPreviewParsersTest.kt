@@ -238,6 +238,18 @@ class RichLinkPreviewParsersTest {
         assertTrue(results.all { it.title.isNotBlank() && it.details.isNotEmpty() })
     }
 
+    @Test
+    fun wikipediaParserKeepsTheCanonicalArticleTitle() {
+        val result = requireNotNull(
+            LinkPreviewParsers.parseWikipedia(
+                """{"query":{"pages":{"123":{"title":"Kotlin (programming language)","extract":"<p>Kotlin is a programming language.</p>"}}}}""",
+            ),
+        )
+
+        assertEquals("Kotlin (programming language)", result.title)
+        assertTrue(result.summary.orEmpty().contains("Kotlin is a programming language"))
+    }
+
     private fun List<LinkPreviewInfo>.singleType(type: LinkPreviewType): LinkPreviewInfo =
         single { it.type == type }
 }

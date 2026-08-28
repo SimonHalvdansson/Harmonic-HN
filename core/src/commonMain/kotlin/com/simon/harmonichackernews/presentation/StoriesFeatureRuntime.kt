@@ -370,13 +370,13 @@ class StoriesFeatureRuntime(
         )
     }
 
-    fun requestStoryCache(storyCount: Int) {
+    fun requestStoryCache(storyCount: Int, downloadWebViewContents: Boolean) {
         userSettings.setStoriesToCache(storyCount)
         val cache = userSettings.cache
         startStoryCache(
             StoryCacheRequest(
                 storyCount = cache.storiesToCache,
-                cacheArticleSnapshots = cache.cacheArticleSnapshots,
+                cacheArticleSnapshots = downloadWebViewContents,
             ),
         )
     }

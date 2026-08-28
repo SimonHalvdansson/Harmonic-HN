@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
@@ -62,6 +64,7 @@ private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
 private const val DismissFallbackDelayMillis = 460L
 private const val ScrollWheelGestureIdleMillis = 100L
+private const val PreviewPagerSnapPositionalThreshold = 0.25f
 
 internal fun storyPreviewPagerSettleTarget(
     isScrollInProgress: Boolean,
@@ -103,6 +106,14 @@ fun StoryPreviewOverlay(
         initialPage = state.initialPage,
         pageCount = { state.stories.size },
     )
+    val pagerFlingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        // Keep the pager's own velocity/settling strategy as the single source of truth. A quarter
+        // page is enough for a deliberate drag, while shorter releases return immediately unless
+        // the built-in fling velocity commits them.
+        snapPositionalThreshold = PreviewPagerSnapPositionalThreshold,
+    )
+    val currentStory = state.stories[pagerState.currentPage]
     val pagerSettlingScope = rememberCoroutineScope()
     var scrollWheelGestureReady by remember(state) { mutableStateOf(true) }
     var scrollWheelResetJob by remember(state) { mutableStateOf<Job?>(null) }
@@ -115,18 +126,32 @@ fun StoryPreviewOverlay(
     var openingCompleted by remember(state) { mutableStateOf(false) }
     var closingStarted by remember(state) { mutableStateOf(false) }
     var rootOffset by remember(state) { mutableStateOf(Offset.Zero) }
-    var targetBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetImageBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetTitleBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetSummaryBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetMetaBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetSupplementaryBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetCommentsButtonBounds by remember(state) { mutableStateOf<Rect?>(null) }
-    var targetImageLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
-    var targetTitleLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
-    var targetSummaryLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
-    var targetMetaLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
-    var targetSupplementaryLayer by remember(state) { mutableStateOf<GraphicsLayer?>(null) }
+    var targetBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetImageBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetTitleBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetSummaryBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetMetaBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetSupplementaryBounds by remember(state, currentStory.id) {
+        mutableStateOf<Rect?>(null)
+    }
+    var targetCommentsButtonBounds by remember(state, currentStory.id) {
+        mutableStateOf<Rect?>(null)
+    }
+    var targetImageLayer by remember(state, currentStory.id) {
+        mutableStateOf<GraphicsLayer?>(null)
+    }
+    var targetTitleLayer by remember(state, currentStory.id) {
+        mutableStateOf<GraphicsLayer?>(null)
+    }
+    var targetSummaryLayer by remember(state, currentStory.id) {
+        mutableStateOf<GraphicsLayer?>(null)
+    }
+    var targetMetaLayer by remember(state, currentStory.id) {
+        mutableStateOf<GraphicsLayer?>(null)
+    }
+    var targetSupplementaryLayer by remember(state, currentStory.id) {
+        mutableStateOf<GraphicsLayer?>(null)
+    }
     val dismissRequest = controller.storyPreviewDismissRequest
     val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
         predictiveBackProgress = controller.storyPreviewPredictiveBackProgress,
@@ -143,7 +168,6 @@ fun StoryPreviewOverlay(
     val targetMetaCapture = rememberLayerSnapshot(targetMetaLayer, snapshotRefreshKey)
     val targetSupplementaryCapture =
         rememberLayerSnapshot(targetSupplementaryLayer, snapshotRefreshKey)
-    val currentStory = state.stories[pagerState.currentPage]
     val sourceGeometry = controller.sourceGeometryForStory(currentStory.id)
     val sourceImageCapture = rememberLayerSnapshot(sourceGeometry?.imageLayer, snapshotRefreshKey)
     val sourceTitleCapture = rememberLayerSnapshot(sourceGeometry?.titleLayer, snapshotRefreshKey)
@@ -471,6 +495,7 @@ fun StoryPreviewOverlay(
     ) {
         VerticalPager(
             state = pagerState,
+            flingBehavior = pagerFlingBehavior,
             modifier = Modifier
                 .fillMaxSize()
                 .then(

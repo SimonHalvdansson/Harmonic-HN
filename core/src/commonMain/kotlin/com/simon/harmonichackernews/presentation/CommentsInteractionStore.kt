@@ -257,10 +257,12 @@ class CommentsInteractionStore(
     }
 
     fun requestDismissCommentActions() {
-        if (state.commentAction != null) {
+        if (
+            state.commentAction != null &&
+            state.commentActionDismissRequestVersion == 0
+        ) {
             state = state.copy(
-                commentActionDismissRequestVersion =
-                    state.commentActionDismissRequestVersion + 1,
+                commentActionDismissRequestVersion = ++requestSerial,
             )
         }
     }

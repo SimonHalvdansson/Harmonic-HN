@@ -54,7 +54,7 @@ import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.DataSettingsAction
 import com.simon.harmonichackernews.ui.settings.DebugEnvironmentUiState
 import com.simon.harmonichackernews.ui.settings.DebugSettingsDialog
-import com.simon.harmonichackernews.ui.settings.ItemsDialog
+import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.SettingRow
 import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
@@ -622,11 +622,9 @@ private fun DesktopDataSettings(
     )
 
     when (state.dialog) {
-        DataSettingsDialogState.IMPORT -> ItemsDialog(
-            title = "Import bookmarks",
-            options = listOf("Overwrite current bookmarks", "Add to current bookmarks"),
+        DataSettingsDialogState.IMPORT -> ImportBookmarksDialog(
             onDismiss = { runtime.showDialog(null) },
-            onSelected = { runtime.requestImport(overwrite = it == 0) },
+            onImport = runtime::requestImport,
         )
         DataSettingsDialogState.RESET -> MessageActionDialog(
             title = "Reset all settings?",
@@ -642,6 +640,7 @@ private fun DesktopDataSettings(
             onDismiss = { runtime.showDialog(null) },
         )
         DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
+            modelNames = state.snapshot.aiModelNames,
             onClear = runtime::clearAiModels,
             onDismiss = { runtime.showDialog(null) },
         )

@@ -325,6 +325,8 @@ fun CommentsScreen(
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
                 // The list still lays out and restores while hidden, then appears at its saved row.
+                // Ordinary and cache-bypassed opens remain visible so their existing header
+                // shimmer can transition directly into the loaded story.
                 .graphicsLayer {
                     alpha = if (
                         controller.initialScrollRestorationPending &&

@@ -21,9 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,8 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_check
+import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
+import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -137,15 +136,17 @@ fun ThreadDepthIndicatorsDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle("Thread depth indicators") },
+        edgeToEdgeContent = true,
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp),
                 contentPadding = PaddingValues(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 8.dp),
                     ) {
                         repeat(CommentDepthPaletteCatalog.colorCount) { index ->
                             val color = indicatorColors.getOrNull(index) ?: Color.Transparent
@@ -180,27 +181,26 @@ fun ThreadDepthIndicatorsDialog(
 
                 items(modes, key = { it }) { option ->
                     val selected = CommentDepthPreferences.sanitizeMode(mode) == option
-                    OutlinedButton(
-                        onClick = { onModeSelected(option) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (selected) {
-                                HarmonicTheme.colors.settingsHeaderSelected
-                            } else {
-                                Color.Transparent
-                            },
-                            contentColor = HarmonicTheme.colors.textPrimary,
-                        ),
-                    ) {
-                        if (selected) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_check),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .selectable(
+                                selected = selected,
+                                role = Role.RadioButton,
+                                onClick = { onModeSelected(option) },
                             )
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        Text(CommentDepthPreferences.modeLabel(option))
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsRadioButton(selected = selected)
+                        Text(
+                            text = CommentDepthPreferences.modeLabel(option),
+                            modifier = Modifier.padding(start = 4.dp),
+                            color = HarmonicTheme.colors.textPrimary,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 16.sp,
+                        )
                     }
                 }
             }
@@ -208,4 +208,107 @@ fun ThreadDepthIndicatorsDialog(
         confirmButton = {},
         showButtons = false,
     )
+}
+
+@Composable
+fun CommentsProviderDialog(
+    selected: CommentsProvider,
+    onProviderSelected: (CommentsProvider) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val providers = listOf(CommentsProvider.OFFICIAL, CommentsProvider.ALGOLIA)
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { SettingsDialogTitle("Comments provider") },
+        edgeToEdgeContent = true,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .selectableGroup(),
+            ) {
+                providers.forEach { provider ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 76.dp)
+                            .selectable(
+                                selected = provider == selected,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    onProviderSelected(provider)
+                                    onDismiss()
+                                },
+                            )
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ProviderBrandMark(provider)
+                        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+                            Text(
+                                text = provider.label,
+                                color = HarmonicTheme.colors.storyNormal,
+                                fontFamily = ProductSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                lineHeight = 20.sp,
+                            )
+                            Text(
+                                text = if (provider == CommentsProvider.OFFICIAL) {
+                                    "Direct from news.ycombinator.com"
+                                } else {
+                                    "Fast threaded results from Algolia's HN search API"
+                                },
+                                color = HarmonicTheme.colors.storyDisabled,
+                                fontFamily = ProductSansFontFamily,
+                                fontSize = 12.sp,
+                                lineHeight = 15.sp,
+                            )
+                        }
+                        SettingsRadioButton(
+                            selected = provider == selected,
+                            modifier = Modifier.padding(start = 12.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        showButtons = false,
+    )
+}
+
+@Composable
+private fun ProviderBrandMark(provider: CommentsProvider) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .background(
+                if (provider == CommentsProvider.OFFICIAL) {
+                    Color(0xFFFF6600)
+                } else {
+                    Color(0xFF003DFF)
+                },
+                androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (provider == CommentsProvider.OFFICIAL) {
+            Text(
+                text = "Y",
+                color = Color.White,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 21.sp,
+            )
+        } else {
+            Icon(
+                painter = painterResource(Res.drawable.ic_search),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(21.dp),
+            )
+        }
+    }
 }

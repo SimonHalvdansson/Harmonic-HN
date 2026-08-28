@@ -275,9 +275,9 @@ class MainNavigationController internal constructor(
         navigationState.dismissCacheStoriesDialog()
     }
 
-    internal fun confirmCacheStories(storyCount: Int) {
+    internal fun confirmCacheStories(storyCount: Int, downloadWebViewContents: Boolean) {
         navigationState.dismissCacheStoriesDialog()
-        storiesComposeController?.cacheStories(storyCount)
+        storiesComposeController?.cacheStories(storyCount, downloadWebViewContents)
     }
 
     fun showLoginDialog() {
@@ -1170,6 +1170,7 @@ private fun MainNavigation(
             CacheStoriesDialog(
                 initialStoryCount = uiDependencies.userSettings
                     .cache.storiesToCache,
+                integratedWebView = uiDependencies.userSettings.reading.integratedWebView,
                 onDismiss = controller::dismissCacheStoriesDialog,
                 onConfirm = controller::confirmCacheStories,
             )

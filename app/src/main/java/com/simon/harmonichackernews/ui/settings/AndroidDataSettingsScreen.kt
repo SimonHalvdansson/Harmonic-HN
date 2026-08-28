@@ -158,16 +158,9 @@ fun AndroidDataSettingsScreen(
     )
 
     when (runtimeState.dialog) {
-        DataSettingsDialogState.IMPORT -> ItemsDialog(
-            title = "Import bookmarks",
-            options = listOf(
-                "Overwrite current bookmarks",
-                "Add to current bookmarks",
-            ),
+        DataSettingsDialogState.IMPORT -> ImportBookmarksDialog(
             onDismiss = { runtime.showDialog(null) },
-            onSelected = { selectedIndex ->
-                runtime.requestImport(overwrite = selectedIndex == 0)
-            },
+            onImport = runtime::requestImport,
         )
 
         DataSettingsDialogState.RESET -> MessageActionDialog(
@@ -191,6 +184,7 @@ fun AndroidDataSettingsScreen(
         )
 
         DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
+            modelNames = dataSnapshot.aiModelNames,
             onClear = runtime::clearAiModels,
             onDismiss = { runtime.showDialog(null) },
         )

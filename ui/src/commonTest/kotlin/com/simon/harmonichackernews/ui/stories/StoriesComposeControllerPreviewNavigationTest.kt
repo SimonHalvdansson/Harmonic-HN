@@ -127,6 +127,62 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
+    fun terminalPreviewFailureIsRememberedAsAnImageMissForTheSession() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val stories = listOf(storySnapshot(1), storySnapshot(2))
+
+        controller.updateContent(
+            StoriesScreenState(
+                mainStories = stories,
+                previewResources = mapOf(
+                    1 to StoryPreviewResourceState(
+                        storyId = 1,
+                        pageUrl = "https://example.com/large-page",
+                        contentLoadFailed = true,
+                    ),
+                ),
+            ),
+        )
+        assertTrue(controller.isStoryPreviewImageKnownAbsent(1))
+
+        // Retrying summary metadata may put the resource back in a loading state, but it must not
+        // reintroduce image space after this dialog already observed the miss.
+        controller.updateContent(
+            StoriesScreenState(
+                mainStories = stories,
+                previewResources = mapOf(
+                    1 to StoryPreviewResourceState(
+                        storyId = 1,
+                        pageUrl = "https://example.com/large-page",
+                        loading = true,
+                    ),
+                ),
+            ),
+        )
+        assertTrue(controller.isStoryPreviewImageKnownAbsent(1))
+    }
+
+    @Test
+    fun inFlightPreviewIsNotPrematurelyRememberedAsAnImageMiss() {
+        val controller = controller(destinationRemainsBesideStories = false)
+
+        controller.updateContent(
+            StoriesScreenState(
+                mainStories = listOf(storySnapshot(1)),
+                previewResources = mapOf(
+                    1 to StoryPreviewResourceState(
+                        storyId = 1,
+                        pageUrl = "https://example.com/article",
+                        loading = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(controller.isStoryPreviewImageKnownAbsent(1))
+    }
+
+    @Test
     fun pullToRefreshOwnershipIsIndependentFromGenericRefreshingState() {
         val controller = controller(destinationRemainsBesideStories = false)
 
@@ -219,6 +275,17 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertFalse(controller.isStoryPreviewVoteLoading(1))
     }
 
+    @Test
+    fun readActionUpdatesThePreviewStateImmediately() {
+        val controller = controller(destinationRemainsBesideStories = false)
+
+        assertFalse(controller.isStoryPreviewRead(1, initialValue = false))
+        controller.onStoryPreviewAction(page = 0, action = StoryPreviewActionKind.Read)
+        assertTrue(controller.isStoryPreviewRead(1, initialValue = false))
+        controller.onStoryPreviewAction(page = 0, action = StoryPreviewActionKind.Read)
+        assertFalse(controller.isStoryPreviewRead(1, initialValue = true))
+    }
+
     private fun storySnapshot(id: Int) = StoryListItemSnapshot(
         story = StorySnapshot(id = id, title = "Story $id"),
         presentation = StoryPresentationSnapshot(loaded = true),
@@ -275,7 +342,10 @@ class StoriesComposeControllerPreviewNavigationTest {
         override fun onPickFrontDate() = Unit
         override fun onFrontDateSelected(day: Long) = Unit
         override fun onMoreAction(action: StoriesMenuAction) = Unit
-        override fun onCacheStoriesConfirmed(storyCount: Int) = Unit
+        override fun onCacheStoriesConfirmed(
+            storyCount: Int,
+            downloadWebViewContents: Boolean,
+        ) = Unit
         override fun onLinkClick(story: StoryListItemSnapshot) = Unit
         override fun onCommentClick(story: StoryListItemSnapshot) = Unit
         override fun onCommentStoryClick(story: StoryListItemSnapshot) = Unit

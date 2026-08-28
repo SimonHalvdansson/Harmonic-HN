@@ -1,11 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -101,42 +109,83 @@ fun AddBookmarksToFavoritesDialog(
         finished = true
     }
 
-    if (finished) {
-        BookmarkFavoriteResultsDialog(results = results, onDismiss = onDismiss)
-    } else {
-        SettingsAlertDialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(dismissOnClickOutside = false),
-            title = { SettingsDialogTitle("Adding bookmarks to HN favorites") },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    BookmarkTransferAnimation()
-                    Text(
-                        text = if (items.isEmpty()) {
-                            "No bookmarks to add"
-                        } else {
-                            "Adding bookmark ${currentIndex + 1} of ${items.size}"
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = HarmonicTheme.colors.storyDisabled,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    val progressTarget = if (items.isEmpty()) 0f else currentIndex.toFloat() / items.size
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressTarget,
+        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        label = "bookmark favorite progress",
+    )
+
+    SettingsAlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.animateContentSize(
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+        ),
+        properties = DialogProperties(dismissOnClickOutside = finished),
+        title = {
+            AnimatedContent(
+                targetState = finished,
+                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                label = "bookmark favorite title",
+            ) { done ->
+                SettingsDialogTitle(
+                    if (done) "Finished" else "Adding bookmarks to HN favorites",
+                )
+            }
+        },
+        text = {
+            AnimatedContent(
+                targetState = finished,
+                modifier = Modifier.fillMaxWidth(),
+                transitionSpec = {
+                    (fadeIn(tween(200)) togetherWith fadeOut(tween(120))).using(
+                        SizeTransform(
+                            clip = false,
+                            sizeAnimationSpec = { _, _ ->
+                                tween(280, easing = FastOutSlowInEasing)
+                            },
+                        ),
                     )
-                    LinearProgressIndicator(
-                        progress = {
-                            if (items.isEmpty()) 0f else currentIndex.toFloat() / items.size
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    )
+                },
+                label = "bookmark favorite content",
+            ) { done ->
+                if (done) {
+                    BookmarkFavoriteResults(results)
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        BookmarkTransferAnimation()
+                        Text(
+                            text = if (items.isEmpty()) {
+                                "No bookmarks to add"
+                            } else {
+                                "Adding bookmark ${currentIndex + 1} of ${items.size}"
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = HarmonicTheme.colors.storyDisabled,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        )
+                    }
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
+            }
+        },
+        confirmButton = {
+            if (finished) {
+                SettingsDialogTextButton(onClick = onDismiss) { Text("Done") }
+            }
+        },
+        dismissButton = {
+            if (!finished) {
                 SettingsDialogTextButton(onClick = onDismiss) { Text("Cancel") }
-            },
-        )
-    }
+            }
+        },
+    )
 }
 
 @Composable
@@ -215,15 +264,10 @@ private fun TransferTarget(icon: DrawableResource, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun BookmarkFavoriteResultsDialog(
+private fun BookmarkFavoriteResults(
     results: List<BookmarkFavoriteResult>,
-    onDismiss: () -> Unit,
 ) {
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle("Finished") },
-        text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
                 itemsIndexed(results, key = { _, result -> result.id }) { index, result ->
                     Row(
                         modifier = Modifier
@@ -250,6 +294,7 @@ private fun BookmarkFavoriteResultsDialog(
                                 color = HarmonicTheme.colors.storyNormal,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 15.sp,
+                                lineHeight = 19.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -259,6 +304,7 @@ private fun BookmarkFavoriteResultsDialog(
                                 color = HarmonicTheme.colors.storyDisabled,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 13.sp,
+                                lineHeight = 17.sp,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -271,10 +317,5 @@ private fun BookmarkFavoriteResultsDialog(
                         )
                     }
                 }
-            }
-        },
-        confirmButton = {
-            SettingsDialogTextButton(onClick = onDismiss) { Text("Done") }
-        },
-    )
+    }
 }

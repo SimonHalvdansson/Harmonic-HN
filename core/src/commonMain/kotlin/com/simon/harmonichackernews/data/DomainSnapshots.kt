@@ -223,7 +223,10 @@ data class ArxivInfoSnapshot(
     val pDFURL: String get() = "https://arxiv.org/pdf/$arxivID.pdf"
 }
 
-@Serializable data class WikipediaInfoSnapshot(val summary: String?)
+@Serializable data class WikipediaInfoSnapshot(
+    val summary: String?,
+    val title: String? = null,
+)
 
 @Serializable
 data class NitterInfoSnapshot(
@@ -400,7 +403,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
             it.secondaryCategories.toList(), it.publishedDate,
         )
     },
-    wikiInfo = wikiInfo?.let { WikipediaInfoSnapshot(it.summary) },
+    wikiInfo = wikiInfo?.let { WikipediaInfoSnapshot(it.summary, it.title) },
     nitterInfo = nitterInfo?.let {
         NitterInfoSnapshot(
             it.text, it.userName, it.userTag, it.date, it.replyCount, it.reposts, it.likes,

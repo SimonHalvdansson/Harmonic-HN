@@ -71,4 +71,5 @@ class StoryPreviewPagerSettlingTest {
         assertNull(storyPreviewScrollWheelTarget(9, pageCount = 10, scrollDeltaY = 1f))
         assertNull(storyPreviewScrollWheelTarget(4, pageCount = 10, scrollDeltaY = 0f))
     }
+
 }

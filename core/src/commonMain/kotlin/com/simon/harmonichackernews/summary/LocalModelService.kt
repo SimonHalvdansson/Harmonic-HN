@@ -179,6 +179,17 @@ class LocalModelService(
 
     fun storedModelBytes(): Long = storage.storedBytes().coerceAtLeast(0L)
 
+    /** Downloaded or partial model files that would be removed by [clearStoredModels]. */
+    fun storedModelNames(): List<String> = models
+        .asSequence()
+        .filter(LocalModelDefinition::downloadable)
+        .filter { model ->
+            val snapshot = storage.snapshot(model)
+            (snapshot.finalFileBytes ?: 0L) > 0L || snapshot.partialFileBytes > 0L
+        }
+        .map(LocalModelDefinition::displayName)
+        .toList()
+
     suspend fun clearStoredModels(): Boolean {
         ensureTransferMonitoring()
         models.map(LocalModelDefinition::runtime).distinct().forEach { runtime ->

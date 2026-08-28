@@ -1,9 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_action_work_off
 import com.simon.harmonichackernews.resources.ic_delete
@@ -73,41 +83,67 @@ fun FiltersTagsSettingsScreen(
         }
         item {
             SettingsCategory("Tagged users") {
-                if (state.tags.isEmpty()) {
-                    SettingRow(
-                        title = "No user with tags",
-                        icon = null,
-                        enabled = false,
-                        onClick = {},
-                    )
-                } else {
-                    state.tags.forEachIndexed { index, entry ->
-                        SettingRow(
-                            title = if (entry.tag.isBlank()) {
-                                entry.username
-                            } else {
-                                "${entry.username} (${entry.tag})"
-                            },
-                            icon = Res.drawable.ic_person,
-                            onClick = { onProfileRequested(entry.username) },
-                            trailing = {
-                                Row {
-                                    IconButton(onClick = { onTagEditRequested(entry.username) }) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.ic_edit),
-                                            contentDescription = "Edit tag",
-                                        )
-                                    }
-                                    IconButton(onClick = { onTagDeleteRequested(entry.username) }) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.ic_delete),
-                                            contentDescription = "Delete tag",
-                                        )
-                                    }
-                                }
-                            },
+                AnimatedContent(
+                    targetState = state.tags,
+                    modifier = Modifier.fillMaxWidth(),
+                    transitionSpec = {
+                        (
+                            fadeIn(tween(180, easing = FastOutSlowInEasing)) togetherWith
+                                fadeOut(tween(120))
+                        ).using(
+                            SizeTransform(
+                                clip = false,
+                                sizeAnimationSpec = { _, _ ->
+                                    tween(240, easing = FastOutSlowInEasing)
+                                },
+                            ),
                         )
-                        if (index != state.tags.lastIndex) SettingsDivider()
+                    },
+                    contentKey = { tags -> tags.joinToString { "${it.username}:${it.tag}" } },
+                    label = "tagged users",
+                ) { tags ->
+                    Column(Modifier.fillMaxWidth()) {
+                        if (tags.isEmpty()) {
+                            SettingRow(
+                                title = "No user with tags",
+                                icon = null,
+                                enabled = false,
+                                onClick = {},
+                            )
+                        } else {
+                            tags.forEachIndexed { index, entry ->
+                                SettingRow(
+                                    title = if (entry.tag.isBlank()) {
+                                        entry.username
+                                    } else {
+                                        "${entry.username} (${entry.tag})"
+                                    },
+                                    icon = Res.drawable.ic_person,
+                                    onClick = { onProfileRequested(entry.username) },
+                                    trailing = {
+                                        Row {
+                                            IconButton(
+                                                onClick = { onTagEditRequested(entry.username) },
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.ic_edit),
+                                                    contentDescription = "Edit tag",
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { onTagDeleteRequested(entry.username) },
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.ic_delete),
+                                                    contentDescription = "Delete tag",
+                                                )
+                                            }
+                                        }
+                                    },
+                                )
+                                if (index != tags.lastIndex) SettingsDivider()
+                            }
+                        }
                     }
                 }
             }

@@ -11,7 +11,6 @@ import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -173,8 +172,7 @@ fun StoriesScreen(
         var refreshStarted = false
         try {
             tapToUpdateExitClock.snapTo(0f)
-            // The main stories are omitted below while this clock runs, letting every keyed row
-            // finish its animateItem fade-out before the refresh request reaches the store.
+            // Fade the existing list as one stable layer before the refresh reaches the store.
             tapToUpdateExitClock.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
@@ -182,12 +180,18 @@ fun StoriesScreen(
                     easing = StoriesEasing,
                 ),
             )
-            mainState.scrollToItem(0)
+            // Keep the list anchored until its rows have faded, then let the header return with
+            // normal scroll motion. Removing the rows first makes LazyListState jump to zero and
+            // causes the collapsed header to pop fully open in one frame.
+            mainState.animateScrollToItem(0)
             controller.completeTapToUpdateExit()
             refreshStarted = true
             snapshotFlow { controller.tapToUpdateExitInProgress }.first { inProgress ->
                 !inProgress
             }
+            // Let the empty/loading publication commit before releasing the fully faded layer.
+            // Otherwise the controller flag can expose the retained rows for one frame.
+            withFrameNanos { }
         } finally {
             if (!refreshStarted) controller.cancelTapToUpdateExit()
             tapToUpdateExitClock.snapTo(0f)
@@ -262,13 +266,12 @@ fun StoriesScreen(
             StoriesList(
                 controller = controller,
                 settings = settings,
-                stories = if (controller.tapToUpdateExitInProgress) {
-                    emptyList()
-                } else {
-                    controller.mainStories
-                },
+                stories = controller.mainStories,
                 listState = mainState,
                 searchMode = false,
+                // The animation clock, rather than the controller hand-off flag, owns visibility.
+                // This keeps the old rows hidden until the loading frame has been committed.
+                tapToUpdateExitProgress = tapToUpdateExitClock.value,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
@@ -287,6 +290,7 @@ fun StoriesScreen(
                 stories = controller.searchStories,
                 listState = searchState,
                 searchMode = true,
+                tapToUpdateExitProgress = 0f,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
@@ -317,7 +321,6 @@ fun StoriesScreen(
                         val alreadyAtTop = mainState.firstVisibleItemIndex == 0 &&
                             mainState.firstVisibleItemScrollOffset == 0
                         if (alreadyAtTop) {
-                            controller.beginPullToRefresh()
                             controller.refresh()
                         } else {
                             controller.beginTapToUpdateExit()
@@ -410,6 +413,7 @@ private fun StoriesList(
     stories: List<StoryListItemSnapshot>,
     listState: LazyListState,
     searchMode: Boolean,
+    tapToUpdateExitProgress: Float,
     storyItemModelCacheKey: Int,
     storyItemModel: (
         StoryListItemSnapshot,
@@ -437,6 +441,8 @@ private fun StoriesList(
         (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
+    val tapToUpdateExitOffsetPx = with(density) { 8.dp.toPx() }
+    val clampedTapToUpdateExitProgress = tapToUpdateExitProgress.coerceIn(0f, 1f)
     val pullToRefreshState = rememberPullToRefreshState()
     val pullIndicatorTopInset = with(density) {
         WindowInsets.safeDrawing.getTop(density).toDp()
@@ -486,7 +492,12 @@ private fun StoriesList(
                 state = listState,
                 key = { story -> story.id },
                 contentType = { story -> if (story.isComment) "comment" else "story" },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = 1f - clampedTapToUpdateExitProgress
+                        translationY = -tapToUpdateExitOffsetPx * clampedTapToUpdateExitProgress
+                    },
                 contentPadding = PaddingValues(
                     start = startInset + safeStart,
                     top = headerHeight,
@@ -532,10 +543,17 @@ private fun StoriesList(
                                         easing = StoriesEasing,
                                     ),
                                     placementSpec = null,
-                                    fadeOutSpec = tween(
-                                        SavedListTransitionDurationMillis,
-                                        easing = StoriesEasing,
-                                    ),
+                                    // The parent list already fades for Tap to update. A second
+                                    // row exit would become visible after the loading state clears
+                                    // the data, briefly resurrecting the old rows.
+                                    fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                        null
+                                    } else {
+                                        tween(
+                                            SavedListTransitionDurationMillis,
+                                            easing = StoriesEasing,
+                                        )
+                                    },
                                 )
                                 .then(itemHeightModifier),
                         )
@@ -551,10 +569,14 @@ private fun StoriesList(
                                         easing = StoriesEasing,
                                     ),
                                     placementSpec = null,
-                                    fadeOutSpec = tween(
-                                        SavedListTransitionDurationMillis,
-                                        easing = StoriesEasing,
-                                    ),
+                                    fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                        null
+                                    } else {
+                                        tween(
+                                            SavedListTransitionDurationMillis,
+                                            easing = StoriesEasing,
+                                        )
+                                    },
                                 )
                                 .then(itemHeightModifier),
                         )
@@ -612,10 +634,14 @@ private fun StoriesList(
                                     easing = StoriesEasing,
                                 ),
                                 placementSpec = null,
-                                fadeOutSpec = tween(
-                                    SavedListTransitionDurationMillis,
-                                    easing = StoriesEasing,
-                                ),
+                                fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                    null
+                                } else {
+                                    tween(
+                                        SavedListTransitionDurationMillis,
+                                        easing = StoriesEasing,
+                                    )
+                                },
                             )
                             .graphicsLayer {
                                 alpha = if (keepPreviewSourceVisible) {
@@ -813,14 +839,10 @@ private fun StoriesHeader(
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val compact = controller.displaySettings?.compactHeader == true
     val topSpacing = if (compact) 20.dp else 40.dp
-    val bottomSpacing = if (!searchMode && controller.lastUpdatedText != null) {
-        if (compact) 4.dp else 8.dp
-    } else if (compact) {
-        10.dp
-    } else {
-        26.dp
-    }
+    val bottomSpacing = if (compact) 4.dp else 8.dp
 
+    // Each optional section owns its transition. A second size animation on the whole header
+    // clips the loading indicator while growing, which reads as a curtain reveal.
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -828,8 +850,7 @@ private fun StoriesHeader(
             .padding(
                 top = topInset + topSpacing,
                 bottom = bottomSpacing,
-            )
-            .animateContentSize(tween(220, easing = StoriesEasing)),
+            ),
     ) {
         val sideStart = 16.dp + startInset + safeStart
         val sideEnd = 16.dp + safeEnd
@@ -896,18 +917,30 @@ private fun StoriesHeader(
             }
         }
 
-        controller.lastUpdatedText?.takeIf { !searchMode }?.let { value ->
-            Text(
-                text = value,
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = sideStart, top = 4.dp, end = sideEnd),
-                textAlign = TextAlign.Center,
-            )
+        AnimatedContent(
+            targetState = controller.lastUpdatedText.takeIf { !searchMode },
+            transitionSpec = {
+                fadeIn(tween(160, easing = StoriesEasing)) togetherWith
+                    fadeOut(tween(120, easing = StoriesEasing))
+            },
+            label = "last updated header",
+        ) {
+            value ->
+            if (value == null) {
+                Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
+            } else {
+                Text(
+                    text = value,
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = sideStart, top = 4.dp, end = sideEnd),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         AnimatedVisibility(

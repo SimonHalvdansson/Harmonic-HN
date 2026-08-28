@@ -460,11 +460,15 @@ object LinkPreviewParsers {
         val json = JsonObject(response)
         val pages = json.getJSONObject("query").getJSONObject("pages")
         val pageKey = pages.keys().asSequence().firstOrNull() ?: return null
-        val summary = pages.getJSONObject(pageKey).optString("extract")
+        val page = pages.getJSONObject(pageKey)
+        val summary = page.optString("extract")
         if (summary.isEmpty()) return null
         val document = sanitizeWikipediaHtml(summary)
         if (!document.body().hasText()) return null
-        return WikipediaInfo().apply { this.summary = document.body().html() }
+        return WikipediaInfo().apply {
+            this.title = page.optString("title").takeIf(String::isNotBlank)
+            this.summary = document.body().html()
+        }
     }
 
     fun firstWikipediaParagraph(summaryHtml: String?): String {

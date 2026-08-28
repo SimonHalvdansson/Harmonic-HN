@@ -997,6 +997,7 @@ fun SingleChoiceDialog(
                     .fillMaxWidth()
                     .heightIn(max = 480.dp)
                     .selectableGroup(),
+                contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(options, key = { it.first }) { option ->
                     Row(

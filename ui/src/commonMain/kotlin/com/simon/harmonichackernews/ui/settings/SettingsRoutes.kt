@@ -383,12 +383,10 @@ fun CommentsSettingsRoute(
             { dialog = null },
             presenter::setSorting,
         )
-        CommentsSettingsDialog.Provider -> SettingsChoiceDialog(
-            "Comments provider",
-            CommentsProvider.entries.map { it.storedValue to it.label },
-            state.provider.storedValue,
-            { dialog = null },
-            presenter::setProvider,
+        CommentsSettingsDialog.Provider -> CommentsProviderDialog(
+            selected = state.provider,
+            onProviderSelected = { presenter.setProvider(it.storedValue) },
+            onDismiss = { dialog = null },
         )
         CommentsSettingsDialog.VolumeNavigation -> SettingsChoiceDialog(
             "Volume buttons for navigation",

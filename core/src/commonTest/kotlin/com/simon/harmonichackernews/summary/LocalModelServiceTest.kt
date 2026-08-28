@@ -130,6 +130,7 @@ class LocalModelServiceTest {
 
         assertTrue(service.select(DownloadableModel.id))
         assertEquals(1_500L, service.storedModelBytes())
+        assertEquals(listOf(DownloadableModel.displayName), service.storedModelNames())
 
         assertTrue(service.clearStoredModels())
 
@@ -137,6 +138,27 @@ class LocalModelServiceTest {
         assertTrue(storage.cleared)
         assertEquals(listOf(DownloadableModel.id), transfers.cancelled)
         assertEquals(BuiltInModel, service.selectedModel)
+    }
+
+    @Test
+    fun storedModelNamesIncludesPartialDownloads() {
+        val service = LocalModelService(
+            preferences = TestKeyValueStore(),
+            storage = object : LocalModelStorage by EmptyStorage {
+                override fun snapshot(model: LocalModelDefinition) = LocalModelStorageSnapshot(
+                    partialFileBytes = 400L.takeIf { model.downloadable } ?: 0L,
+                )
+            },
+            transfers = RecordingTransfers(),
+            runtimeDelivery = RecordingRuntimeDelivery(),
+            capabilities = LocalModelDeviceCapabilities(
+                supportsDownloadableModels = true,
+                supportsLiteRtModels = true,
+            ),
+            models = listOf(BuiltInModel, DownloadableModel),
+        )
+
+        assertEquals(listOf(DownloadableModel.displayName), service.storedModelNames())
     }
 
     private class RecordingTransfers : LocalModelTransferScheduler {

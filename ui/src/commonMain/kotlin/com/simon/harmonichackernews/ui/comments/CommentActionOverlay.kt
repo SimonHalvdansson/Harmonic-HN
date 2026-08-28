@@ -81,6 +81,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -189,6 +190,18 @@ fun CommentActionOverlay(
         withFrameNanos { }
         controller.completeCommentActionDismiss()
     }
+    LaunchedEffect(dismissRequest) {
+        if (dismissRequest == 0) return@LaunchedEffect
+        delay(CommentActionDismissFallbackDelayMillis)
+        if (
+            !closingStarted &&
+            controller.commentActionDismissRequest == dismissRequest
+        ) {
+            closingStarted = true
+            controller.setCommentActionSourceCovered(false)
+            controller.completeCommentActionDismiss()
+        }
+    }
 
     val progress = transformProgress.value
     val predictiveVisualProgress = predictiveBackVisualProgress(
@@ -275,6 +288,7 @@ fun CommentActionOverlay(
                 )
                 .then(modalGestures)
                 .clickable(
+                    enabled = dismissRequest == 0,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = controller::requestDismissCommentActions,
@@ -413,8 +427,7 @@ private fun CommentActionCardContent(
         CommentActionTarget(CommentActionTargetElement.User) {
             Button(
                 onClick = {
-                    controller.requestDismissCommentActions()
-                    controller.listener.onCommentAction(
+                    controller.dismissCommentActionsThen(
                         comment,
                         CommentMenuAction.USER,
                     )
@@ -567,8 +580,7 @@ private fun CommentActionCardContent(
                     Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = {
-                            controller.requestDismissCommentActions()
-                            controller.listener.onCommentAction(
+                            controller.dismissCommentActionsThen(
                                 comment,
                                 CommentMenuAction.REPLY,
                             )
@@ -725,6 +737,7 @@ private fun RowScope.CommentActionIcon(
 private const val CommentActionIconSwapOutDurationMillis = 90
 private const val CommentActionIconSwapInDurationMillis = 150
 private const val CommentActionIconSwapMinScale = 0.72f
+private const val CommentActionDismissFallbackDelayMillis = 460L
 
 private data class CommentActionVisual(
     val icon: DrawableResource,

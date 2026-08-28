@@ -4,7 +4,7 @@ import androidx.compose.ui.unit.dp
 
 /** Fixed layout tokens shared by every Compose target. */
 object HarmonicDimens {
-    val cache_stories_explanation_bottom_padding = 16.dp
+    val cache_stories_explanation_bottom_padding = 4.dp
     val cache_stories_explanation_top_padding = 4.dp
     val cache_stories_slider_top_padding = 4.dp
     val cache_stories_value_start_spacing = 12.dp

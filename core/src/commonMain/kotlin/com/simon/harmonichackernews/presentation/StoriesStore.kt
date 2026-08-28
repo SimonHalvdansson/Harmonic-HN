@@ -92,7 +92,10 @@ sealed interface StoriesIntent {
     data class ShiftFrontDate(val days: Int) : StoriesIntent
     data class SelectFrontDate(val day: Long) : StoriesIntent
     data class More(val action: StoriesMenuAction) : StoriesIntent
-    data class CacheStories(val storyCount: Int) : StoriesIntent
+    data class CacheStories(
+        val storyCount: Int,
+        val downloadWebViewContents: Boolean,
+    ) : StoriesIntent
     data class OpenLink(val storyId: Int) : StoriesIntent
     data class OpenComments(val storyId: Int) : StoriesIntent
     data class OpenCommentStory(val storyId: Int) : StoriesIntent
@@ -232,7 +235,10 @@ class StoriesStore internal constructor(
             is StoriesIntent.ShiftFrontDate -> runtime.shiftFrontPageDay(intent.days)
             is StoriesIntent.SelectFrontDate -> runtime.selectFrontPageDay(intent.day)
             is StoriesIntent.More -> runtime.menu(intent.action)
-            is StoriesIntent.CacheStories -> runtime.requestStoryCache(intent.storyCount)
+            is StoriesIntent.CacheStories -> runtime.requestStoryCache(
+                intent.storyCount,
+                intent.downloadWebViewContents,
+            )
             is StoriesIntent.OpenLink -> withActiveStory(intent.storyId, runtime::selectStoryLink)
             is StoriesIntent.OpenComments ->
                 withActiveStory(intent.storyId, runtime::selectStoryComments)

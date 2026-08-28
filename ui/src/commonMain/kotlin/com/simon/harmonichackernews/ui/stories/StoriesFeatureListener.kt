@@ -46,8 +46,8 @@ class StoriesFeatureListener(
         store.accept(StoriesIntent.SelectFrontDate(day))
     override fun onMoreAction(action: StoriesMenuAction) =
         store.accept(StoriesIntent.More(action))
-    override fun onCacheStoriesConfirmed(storyCount: Int) =
-        store.accept(StoriesIntent.CacheStories(storyCount))
+    override fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean) =
+        store.accept(StoriesIntent.CacheStories(storyCount, downloadWebViewContents))
     override fun onLinkClick(story: StoryListItemSnapshot) =
         store.accept(StoriesIntent.OpenLink(story.id))
     override fun onCommentClick(story: StoryListItemSnapshot) =

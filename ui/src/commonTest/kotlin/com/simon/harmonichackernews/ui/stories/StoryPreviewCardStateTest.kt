@@ -35,6 +35,19 @@ class StoryPreviewCardStateTest {
     }
 
     @Test
+    fun sessionRememberedImageMissDoesNotReserveSpaceAgain() {
+        assertFalse(
+            shouldReserveStoryPreviewImage(
+                canLoadLinkPreview = true,
+                displayedImageUrl = null,
+                imageLoadFailed = false,
+                previewResource = null,
+                imageKnownAbsent = true,
+            ),
+        )
+    }
+
+    @Test
     fun contentOrDrawableFailureDoesNotLeaveAnInfinitePlaceholder() {
         assertFalse(
             shouldReserveStoryPreviewImage(

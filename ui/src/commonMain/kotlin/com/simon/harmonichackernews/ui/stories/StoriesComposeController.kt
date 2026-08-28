@@ -97,6 +97,7 @@ class StoriesComposeController private constructor(
     private var searchStoriesState by mutableStateOf<List<StoryListItemSnapshot>>(emptyList())
     private var previewResourcesSnapshot: Map<Int, StoryPreviewResourceState> = emptyMap()
     private val previewResourceStates = mutableMapOf<Int, MutableState<StoryPreviewResourceState?>>()
+    private val previewImageKnownAbsentIds = mutableSetOf<Int>()
     private var displaySettingsState by mutableStateOf<StoryDisplaySettings?>(null)
     private var shellState by mutableStateOf(StoriesScreenState().withoutContent())
 
@@ -178,6 +179,7 @@ class StoriesComposeController private constructor(
     private val storyBounds = mutableMapOf<Int, Rect>()
     private val storyPreviewSourceGeometries = mutableMapOf<Int, StoryPreviewSourceGeometry>()
     private val storyRevisions = mutableMapOf<Int, MutableIntState>()
+    private val storyPreviewReadStates = mutableMapOf<Int, MutableState<Boolean>>()
     private val storyPagingAlphaStates = mutableMapOf<Int, MutableFloatState>()
     private var pagingLowerStoryId = -1
     private var pagingUpperStoryId = -1
@@ -299,13 +301,28 @@ class StoriesComposeController private constructor(
         next: Map<Int, StoryPreviewResourceState>,
         currentStoryIds: Set<Int>?,
     ) {
+        next.forEach { (storyId, resource) ->
+            val terminalImageMiss = resource.imageUrl.isNullOrBlank() &&
+                !resource.loading &&
+                (resource.imageUrlResolved || resource.summaryResolved ||
+                    resource.contentLoadFailed)
+            if (terminalImageMiss) {
+                previewImageKnownAbsentIds += storyId
+            }
+        }
         previewResourceStates.forEach { (storyId, state) ->
             val resource = next[storyId]
             if (state.value != resource) state.value = resource
         }
-        if (currentStoryIds != null) previewResourceStates.keys.retainAll(currentStoryIds)
+        if (currentStoryIds != null) {
+            previewResourceStates.keys.retainAll(currentStoryIds)
+            previewImageKnownAbsentIds.retainAll(currentStoryIds)
+        }
         previewResourcesSnapshot = next
     }
+
+    fun isStoryPreviewImageKnownAbsent(storyId: Int): Boolean =
+        storyId in previewImageKnownAbsentIds
 
     fun invalidateStory(storyId: Int) {
         val revision = storyRevisions.getOrPut(storyId) { mutableIntStateOf(0) }
@@ -368,9 +385,10 @@ class StoriesComposeController private constructor(
         if (headerMenuVisible) headerMenuDismissRequestVersion++
     }
 
-    fun cacheStories(storyCount: Int) {
+    fun cacheStories(storyCount: Int, downloadWebViewContents: Boolean) {
         listener.onCacheStoriesConfirmed(
             StoryCachePreferences.sanitizeCount(storyCount),
+            downloadWebViewContents,
         )
     }
 
@@ -479,6 +497,10 @@ class StoriesComposeController private constructor(
             )
         ) return
         resetStoryPagingAlphaStates()
+        storyPreviewReadStates.clear()
+        stories.forEach { story ->
+            storyPreviewReadStates[story.id] = mutableStateOf(story.clicked)
+        }
         sourceCoveredByStoryPreviewTransition = false
         requestStopStoryPreviewScroll()
         syncInteractionState()
@@ -628,6 +650,12 @@ class StoriesComposeController private constructor(
     fun onStoryPreviewAction(page: Int, action: StoryPreviewActionKind) {
         val kind = action
         val target = interactionStore.beginStoryPreviewAction(page, kind) ?: return
+        if (action == StoryPreviewActionKind.Read) {
+            val readState = storyPreviewReadStates.getOrPut(target.story.id) {
+                mutableStateOf(target.story.clicked)
+            }
+            readState.value = !readState.value
+        }
         syncInteractionState()
         listener.onStoryPreviewAction(target.story, action)
         if (action == StoryPreviewActionKind.Read || action == StoryPreviewActionKind.Bookmark) {
@@ -684,6 +712,9 @@ class StoriesComposeController private constructor(
 
     fun isBookmarked(storyId: Int): Boolean = savedItemState.isBookmarked(storyId)
 
+    fun isStoryPreviewRead(storyId: Int, initialValue: Boolean): Boolean =
+        storyPreviewReadStates.getOrPut(storyId) { mutableStateOf(initialValue) }.value
+
     fun isFavorited(storyId: Int): Boolean = savedItemState.isFavorited(storyId)
 
     fun isUpvoted(storyId: Int): Boolean =
@@ -712,7 +743,7 @@ class StoriesComposeController private constructor(
         fun onPickFrontDate()
         fun onFrontDateSelected(day: Long)
         fun onMoreAction(action: StoriesMenuAction)
-        fun onCacheStoriesConfirmed(storyCount: Int)
+        fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean)
         fun onLinkClick(story: StoryListItemSnapshot)
         fun onCommentClick(story: StoryListItemSnapshot)
         fun onCommentStoryClick(story: StoryListItemSnapshot)

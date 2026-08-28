@@ -49,10 +49,11 @@ internal fun BoxScope.IosAppForeground(
     if (navigation.cacheStoriesDialogVisible) {
         CacheStoriesDialog(
             initialStoryCount = app.userSettings.cache.storiesToCache,
+            integratedWebView = app.userSettings.reading.integratedWebView,
             onDismiss = scene.navigation::dismissCacheStoriesDialog,
-            onConfirm = { count ->
+            onConfirm = { count, downloadWebViewContents ->
                 scene.navigation.dismissCacheStoriesDialog()
-                storiesController?.cacheStories(count)
+                storiesController?.cacheStories(count, downloadWebViewContents)
                     ?: scene.userMessages.show("Return to the stories screen to cache posts")
             },
         )

@@ -9,7 +9,7 @@ import com.simon.harmonichackernews.resources.ic_cached
 import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_invert_colors
-import com.simon.harmonichackernews.resources.ic_link
+import com.simon.harmonichackernews.resources.ic_preview
 import com.simon.harmonichackernews.resources.ic_open_in_browser
 import com.simon.harmonichackernews.resources.ic_shuffle
 import com.simon.harmonichackernews.resources.ic_web_asset
@@ -199,7 +199,7 @@ fun WebLinksSettingsScreen(
                 SettingRow(
                     title = "Link previews",
                     summary = "${state.enabledLinkPreviews.size} of ${LinkPreviewType.entries.size} enabled",
-                    icon = Res.drawable.ic_link,
+                    icon = Res.drawable.ic_preview,
                     onClick = { onDialogRequested(WebLinksSettingsDialog.LinkPreviews) },
                 )
             }

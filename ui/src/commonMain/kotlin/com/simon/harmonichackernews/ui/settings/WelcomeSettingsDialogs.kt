@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -69,13 +70,32 @@ fun NighttimeRangeDialog(
         is24Hour = is24Hour,
     )
     var choosingTo by remember { mutableStateOf(false) }
+    val timePickerColors = TimePickerDefaults.colors(
+        MaterialTheme.colorScheme.surfaceContainerHighest,
+        MaterialTheme.colorScheme.onPrimary,
+        MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+        MaterialTheme.colorScheme.outline,
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.surface,
+        MaterialTheme.colorScheme.onSecondaryContainer,
+        MaterialTheme.colorScheme.onSurfaceVariant,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+        MaterialTheme.colorScheme.onPrimary,
+        MaterialTheme.colorScheme.onSurface,
+    )
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle(if (choosingTo) "To:" else "From:") },
         text = {
             AnimatedContent(targetState = choosingTo, label = "nighttime time picker") { to ->
-                TimePicker(state = if (to) toState else fromState)
+                TimePicker(
+                    state = if (to) toState else fromState,
+                    colors = timePickerColors,
+                )
             }
         },
         confirmButton = {

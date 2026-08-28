@@ -63,12 +63,17 @@ fun LinkPreviewsSettingsDialog(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 540.dp),
                 contentPadding = PaddingValues(bottom = 10.dp),
             ) {
-                LinkPreviewGroup.entries.forEach { group ->
+                LinkPreviewGroup.entries.forEachIndexed { groupIndex, group ->
                     val types = LinkPreviewType.entries.filter { it.group == group }
                     item(key = "header-${group.name}") {
                         Text(
                             text = group.label.uppercase(),
-                            modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 6.dp),
+                            modifier = Modifier.padding(
+                                start = 24.dp,
+                                top = if (groupIndex == 0) 6.dp else 12.dp,
+                                end = 24.dp,
+                                bottom = 4.dp,
+                            ),
                             color = MaterialTheme.colorScheme.primary,
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,
@@ -120,13 +125,13 @@ private fun LinkPreviewToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 68.dp)
+            .defaultMinSize(minHeight = 60.dp)
             .toggleable(
                 value = checked,
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
-            .padding(horizontal = 24.dp, vertical = 7.dp),
+            .padding(horizontal = 24.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

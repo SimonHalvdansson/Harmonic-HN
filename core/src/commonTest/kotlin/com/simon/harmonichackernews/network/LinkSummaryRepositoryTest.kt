@@ -39,6 +39,28 @@ class LinkSummaryRepositoryTest {
         client.close()
     }
 
+    @Test
+    fun largeHtmlUsesItsBoundedMetadataPrefix() = runTest {
+        val html = buildString {
+            append("<html><head><title>Large but previewable</title>")
+            append("<meta name=\"description\" content=\"Useful metadata near the start.\">")
+            append("</head><body>")
+            repeat(2 * 1024 * 1024) { append('x') }
+        }
+        val client = HttpClient(MockEngine {
+            respond(
+                content = html,
+                headers = headersOf(HttpHeaders.ContentType, "text/html; charset=utf-8"),
+            )
+        })
+
+        val result = KtorLinkSummaryRepository(client).load("https://example.com/large")
+
+        assertEquals("Large but previewable", result.title)
+        assertEquals("Useful metadata near the start.", result.description)
+        client.close()
+    }
+
     private class RecordingDispatcher(
         private val delegate: CoroutineDispatcher,
     ) : CoroutineDispatcher() {

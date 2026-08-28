@@ -15,9 +15,10 @@
     <string name="settings_section_about">About</string>
     <string name="settings_section_licenses">Third-party licenses</string>
     <string name="cache_stories_title">Cache stories</string>
-    <string name="cache_stories_action">Cache</string>
-    <string name="cache_stories_explanation">Downloads top Hacker News stories for offline reading. When the built-in web view is enabled, linked articles are cached too. Larger batches use more data, time, and storage.</string>
+    <string name="cache_stories_action">Start</string>
+    <string name="cache_stories_explanation">Downloads stories on the current screen for offline reading. Accessible only when offline.</string>
     <string name="cache_stories_count_label">Stories to download</string>
+    <string name="cache_stories_webview_contents">Download website content</string>
     <string name="cache_stories_slider_content_description">Number of stories to download</string>
     <string name="login_dialog_title">Log in to Hacker News</string>
     <string name="login_dialog_username">Username</string>

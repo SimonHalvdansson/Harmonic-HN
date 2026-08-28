@@ -1001,7 +1001,7 @@ class CommentsCoordinator(
             if (composeController!!.isLinkPreviewOverlayShowing()) {
                 composeController!!.completeLinkPreviewDismiss()
             }
-            composeController!!.completeCommentActionDismiss()
+            composeController!!.completeCommentActionDismiss(dispatchPendingAction = false)
         }
         if (originalStatusBarColorCaptured && getActivity() != null) {
             requireActivity().getWindow().setStatusBarColor(originalStatusBarColor)
@@ -1106,7 +1106,14 @@ class CommentsCoordinator(
                 commentsStore.state.value.settings?.let(::applyPlatformSettingsState)
                 if (effect.restoreScroll && restoringStoredProgress &&
                     scrollProgress.storyId == story?.id
-                ) restoreScrollProgress()
+                ) {
+                    restoreScrollProgress()
+                } else if (restoringStoredProgress) {
+                    // A cache-bypassing load deliberately does not restore saved progress. Leaving
+                    // the pending flag set here keeps the already-loaded Compose list transparent.
+                    restoringStoredProgress = false
+                    composeController?.completeInitialScrollRestoration()
+                }
                 completeCommentsLoad(effect.headerChanged)
             }
             is CommentsRuntimeEffect.Diagnostic ->

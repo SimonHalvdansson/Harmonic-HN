@@ -137,6 +137,8 @@ class CommentsComposeController private constructor(
     private var pendingCommentActionSourceGeometry:
         Pair<Int, CommentActionSourceGeometry>? = null
     private var commentActionSourceGeometry: CommentActionSourceGeometry? = null
+    private var pendingCommentActionAfterDismiss:
+        Pair<PortableCommentItem, CommentMenuAction>? = null
     private var sourceCoveredByCommentActionTransition by mutableStateOf(false)
     private var linkPreviewSourceBounds by
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
@@ -426,6 +428,15 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
+    fun dismissCommentActionsThen(
+        comment: PortableCommentItem,
+        action: CommentMenuAction,
+    ) {
+        if (commentActionOverlay == null || pendingCommentActionAfterDismiss != null) return
+        pendingCommentActionAfterDismiss = comment to action
+        requestDismissCommentActions()
+    }
+
     fun updateCommentActionPredictiveBack(progress: Float, edge: Int, touchY: Float) {
         interactionStore.updateCommentActionPredictiveBack(progress, edge, touchY)
         syncInteractionState()
@@ -444,13 +455,20 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
-    fun completeCommentActionDismiss() {
+    fun completeCommentActionDismiss(dispatchPendingAction: Boolean = true) {
         if (!interactionStore.completeCommentActionDismiss()) return
+        val pendingAction = pendingCommentActionAfterDismiss
+        pendingCommentActionAfterDismiss = null
         commentActionSourceBounds = null
         commentActionSourceGeometry = null
         sourceCoveredByCommentActionTransition = false
         syncInteractionState()
         listener.onCommentActionOverlayVisibilityChanged(false)
+        if (dispatchPendingAction) {
+            pendingAction?.let { (comment, action) ->
+                listener.onCommentAction(comment, action)
+            }
+        }
     }
 
     fun updateCommentActionSourceGeometry(

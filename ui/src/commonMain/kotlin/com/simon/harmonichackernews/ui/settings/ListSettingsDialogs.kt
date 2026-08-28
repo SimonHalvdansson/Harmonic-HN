@@ -2,6 +2,9 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -145,6 +148,7 @@ fun PreloadWebViewDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle("Preload websites") },
+        edgeToEdgeContent = true,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -155,6 +159,7 @@ fun PreloadWebViewDialog(
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 24.dp),
                 )
                 Column(modifier = Modifier.padding(top = 12.dp).selectableGroup()) {
                     options.forEach { value ->
@@ -166,7 +171,8 @@ fun PreloadWebViewDialog(
                                     selected = mode == value,
                                     role = Role.RadioButton,
                                     onClick = { modeValue = value.storedValue },
-                                ),
+                                )
+                                .padding(horizontal = 24.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SettingsRadioButton(selected = mode == value)
@@ -183,7 +189,7 @@ fun PreloadWebViewDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .alpha(if (enabled) 1f else 0.5f)
-                        .padding(top = 8.dp),
+                        .padding(start = 24.dp, top = 8.dp, end = 24.dp),
                 ) {
                     Text(
                         text = "Minimum battery: " +
@@ -269,6 +275,9 @@ fun StringListEditorDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = true),
+        modifier = Modifier.animateContentSize(
+            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+        ),
         title = { SettingsDialogTitle(title) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -342,7 +351,14 @@ fun StringListEditorDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .defaultMinSize(minHeight = 44.dp)
-                                    .animateItem(),
+                                    .animateItem(
+                                        fadeInSpec = tween(160),
+                                        placementSpec = tween(
+                                            durationMillis = 220,
+                                            easing = FastOutSlowInEasing,
+                                        ),
+                                        fadeOutSpec = tween(140),
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(

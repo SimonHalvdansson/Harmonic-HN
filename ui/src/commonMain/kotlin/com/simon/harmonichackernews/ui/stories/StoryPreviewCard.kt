@@ -14,6 +14,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,8 +89,10 @@ internal fun shouldReserveStoryPreviewImage(
     displayedImageUrl: String?,
     imageLoadFailed: Boolean,
     previewResource: StoryPreviewResourceState?,
+    imageKnownAbsent: Boolean = false,
 ): Boolean = canLoadLinkPreview && displayedImageUrl == null && !imageLoadFailed &&
-    previewResource?.contentLoadFailed != true && previewResource?.imageUrlResolved != true
+    !imageKnownAbsent && previewResource?.contentLoadFailed != true &&
+    previewResource?.imageUrlResolved != true
 
 data class StoryPreviewSummaryState(
     val result: LinkSummary? = null,
@@ -122,6 +126,7 @@ fun StoryPreviewCard(
     val upvoted = remember(contentVersion, story.id) { controller.isUpvoted(story.id) }
     val bookmarked = remember(contentVersion, story.id) { controller.isBookmarked(story.id) }
     val favorited = remember(contentVersion, story.id) { controller.isFavorited(story.id) }
+    val read = controller.isStoryPreviewRead(story.id, story.clicked)
     val voteLoading = controller.isStoryPreviewVoteLoading(story.id)
     val favoriteLoading = controller.isStoryPreviewFavoriteLoading(story.id)
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
@@ -155,6 +160,7 @@ fun StoryPreviewCard(
         displayedImageUrl = displayedImageUrl,
         imageLoadFailed = imageLoadFailed,
         previewResource = previewResource,
+        imageKnownAbsent = controller.isStoryPreviewImageKnownAbsent(story.id),
     )
     val summaryResolved = previewResource?.summaryResolved == true ||
         story.presentation.linkSummaryLoaded
@@ -386,12 +392,12 @@ fun StoryPreviewCard(
                                 }
                             }
                             StoryPreviewActionIcon(
-                                icon = if (story.clicked) {
+                                icon = if (read) {
                                     Res.drawable.ic_visibility_off
                                 } else {
                                     Res.drawable.ic_visibility
                                 },
-                                description = if (story.clicked) {
+                                description = if (read) {
                                     "Mark as unread"
                                 } else {
                                     "Mark as read"
@@ -563,7 +569,28 @@ private fun RowScope.StoryPreviewActionIcon(
     ) {
         AnimatedContent(
             targetState = StoryPreviewActionVisual(icon, description, loading),
-            transitionSpec = { fadeIn(tween(150)).togetherWith(fadeOut(tween(150))) },
+            transitionSpec = {
+                (
+                    fadeIn(
+                        tween(
+                            durationMillis = StoryPreviewActionIconSwapInDurationMillis,
+                            delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
+                        ),
+                    ) + scaleIn(
+                        animationSpec = tween(
+                            durationMillis = StoryPreviewActionIconSwapInDurationMillis,
+                            delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
+                        ),
+                        initialScale = StoryPreviewActionIconSwapMinScale,
+                    )
+                ).togetherWith(
+                    fadeOut(tween(StoryPreviewActionIconSwapOutDurationMillis)) + scaleOut(
+                        animationSpec = tween(StoryPreviewActionIconSwapOutDurationMillis),
+                        targetScale = StoryPreviewActionIconSwapMinScale,
+                    ),
+                )
+            },
+            contentAlignment = Alignment.Center,
             label = "story preview action",
         ) { visual ->
             if (visual.loading) {
@@ -580,6 +607,10 @@ private fun RowScope.StoryPreviewActionIcon(
         }
     }
 }
+
+private const val StoryPreviewActionIconSwapOutDurationMillis = 90
+private const val StoryPreviewActionIconSwapInDurationMillis = 150
+private const val StoryPreviewActionIconSwapMinScale = 0.72f
 
 private data class StoryPreviewActionVisual(
     val icon: DrawableResource,

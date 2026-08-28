@@ -21,6 +21,7 @@ data class DataSettingsSnapshot(
     val tintCacheCount: Int,
     val showChangelog: Boolean,
     val aiModelBytes: Long? = null,
+    val aiModelNames: List<String> = emptyList(),
 )
 
 data class DataSettingsCounts(
@@ -29,6 +30,7 @@ data class DataSettingsCounts(
     val postCache: Int,
     val tintCache: Int,
     val aiModelsBytes: Long? = null,
+    val aiModelNames: List<String> = emptyList(),
 )
 
 sealed interface BookmarkExportDecision {
@@ -50,6 +52,7 @@ object DataSettingsPolicy {
         tintCacheCount = counts.tintCache.coerceAtLeast(0),
         showChangelog = settings.general.showChangelog,
         aiModelBytes = counts.aiModelsBytes?.coerceAtLeast(0L),
+        aiModelNames = counts.aiModelNames,
     )
 
     fun exportDecision(bookmarkCount: Int): BookmarkExportDecision =
@@ -90,6 +93,7 @@ class DataSettingsService(
             postCache = storyCache.itemCount(),
             tintCache = storyResourceTints.count(),
             aiModelsBytes = localModels?.storedModelBytes(),
+            aiModelNames = localModels?.storedModelNames().orEmpty(),
         ),
         loggedIn = accounts.currentAccount != null,
     )

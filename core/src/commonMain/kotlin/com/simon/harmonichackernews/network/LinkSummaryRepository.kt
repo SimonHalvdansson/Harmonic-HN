@@ -12,6 +12,7 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.ktor.http.URLBuilder
@@ -96,7 +97,8 @@ class KtorLinkSummaryRepository(
                     throw LinkPreviewException("Wikipedia did not return a summary")
                 }
                 return@withContext LinkSummary(
-                    title = LinkSummaryParser.clean(fallbackTitle),
+                    title = LinkSummaryParser.clean(wikipedia.title)
+                        .ifEmpty { LinkSummaryParser.clean(fallbackTitle) },
                     siteName = "Wikipedia",
                     language = "en",
                     contentType = "application/json",
@@ -143,12 +145,8 @@ class KtorLinkSummaryRepository(
         if (response.status.value !in 200..299) {
             throw LinkPreviewException("The page returned HTTP ${response.status.value}")
         }
-        val declaredLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-        if (declaredLength != null && declaredLength > MAX_RESPONSE_BYTES) {
-            throw LinkPreviewException("The page is too large to preview")
-        }
         val channel = response.bodyAsChannel()
-        val bytes = ByteArray(MAX_RESPONSE_BYTES + 1)
+        val bytes = ByteArray(MAX_RESPONSE_BYTES)
         var size = 0
         while (size < bytes.size) {
             val read = channel.readAvailable(bytes, size, bytes.size - size)
@@ -156,8 +154,11 @@ class KtorLinkSummaryRepository(
             if (read == 0) continue
             size += read
         }
-        if (size > MAX_RESPONSE_BYTES) {
-            throw LinkPreviewException("The page is too large to preview")
+        // Metadata normally lives in the document head. A bounded prefix is enough to produce a
+        // useful preview and avoids rejecting otherwise valid pages solely because their body is
+        // large. Stop the response as soon as the parsing budget is full.
+        if (size == bytes.size) {
+            channel.cancel(CancellationException("Link preview prefix is complete"))
         }
         return FetchedText(
             body = bytes.decodeToString(0, size),
