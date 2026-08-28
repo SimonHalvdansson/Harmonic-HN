@@ -549,8 +549,9 @@ private fun IosStoriesContent(
                             effect.presentation.failureDetail,
                             null,
                         )
+                    } else {
+                        scene.userMessages.show(effect.presentation.message)
                     }
-                    scene.userMessages.show(effect.presentation.message)
                 }
             }
         }

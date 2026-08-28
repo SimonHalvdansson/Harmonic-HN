@@ -32,7 +32,9 @@ class StoriesFeatureListener(
     override fun onSearchOption(kind: StorySearchOption, index: Int) =
         store.accept(StoriesIntent.SelectSearchOption(kind, index))
     override fun onToggleOnlyClicked() = store.accept(StoriesIntent.ToggleOnlyClicked)
-    override fun onRefresh() = store.accept(StoriesIntent.Refresh)
+    override fun onRefresh(showMainLoadingIndicator: Boolean) = store.accept(
+        StoriesIntent.Refresh(showMainLoadingIndicator),
+    )
     override fun onShowCached() = store.accept(StoriesIntent.ShowCached)
     override fun onLoadMore() = store.accept(StoriesIntent.LoadMore)
     override fun onSavedFilterSelected(filter: SavedItemFilter) =

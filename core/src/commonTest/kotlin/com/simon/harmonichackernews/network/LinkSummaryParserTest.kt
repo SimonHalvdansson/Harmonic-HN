@@ -3,8 +3,26 @@ package com.simon.harmonichackernews.network
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class LinkSummaryParserTest {
+    @Test
+    fun distinguishesHackerNewsPostsFromCommentsForReferenceTitles() {
+        val story = LinkSummaryParser.extractHackerNewsItem(
+            json = """{"type":"story","title":"The post title","by":"pg"}""",
+            pageUrl = "https://news.ycombinator.com/item?id=1",
+            fallbackTitle = null,
+        )!!
+        val comment = LinkSummaryParser.extractHackerNewsItem(
+            json = """{"type":"comment","text":"A reply","by":"pg"}""",
+            pageUrl = "https://news.ycombinator.com/item?id=2",
+            fallbackTitle = null,
+        )!!
+
+        assertTrue(LinkSummaryParser.isHackerNewsStory(story))
+        assertFalse(LinkSummaryParser.isHackerNewsStory(comment))
+    }
+
     @Test
     fun indexedMetadataPreservesSelectorPriorityAndFirstDocumentValue() {
         val summary = LinkSummaryParser.extract(

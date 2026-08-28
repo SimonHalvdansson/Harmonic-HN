@@ -13,7 +13,9 @@ class StoryCacheRepositoryTest {
         val metadata = FakeMetadata()
         val repository = StoryCacheRepository(files, metadata)
 
+        assertFalse(repository.hasStoryPayload(42))
         assertTrue(repository.storeStory(42, storyJson(42, "Portable cache"), 1_000))
+        assertTrue(repository.hasStoryPayload(42))
         assertTrue(files.contains(StoryCacheKeys.FULL_NAMESPACE, "42.json"))
         assertTrue(files.contains(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json"))
         assertEquals(setOf(42), StoryCacheIndex.storyIds(metadata.getStringSet(StoryCacheKeys.INDEX)))
@@ -50,6 +52,8 @@ class StoryCacheRepositoryTest {
 
         repository.storeStory(2, storyJson(2, "Second"), 200)
 
+        assertFalse(repository.hasStoryPayload(1))
+        assertTrue(repository.hasStoryPayload(2))
         assertNull(repository.loadStoryPayload(1))
         assertFalse(files.contains(StoryCacheKeys.SUMMARY_NAMESPACE, "1.json"))
         assertFalse(files.contains(StoryCacheKeys.ARTICLE_NAMESPACE, "1.html"))

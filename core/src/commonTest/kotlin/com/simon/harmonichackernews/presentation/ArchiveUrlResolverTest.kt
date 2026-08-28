@@ -25,6 +25,10 @@ class ArchiveUrlResolverTest {
             "https://archive.today/newest/https%3A%2F%2Fexample.com%2Fa%20b%3Fx%3D1%26y%3D2",
             resolver.resolve(ArchiveProvider.TODAY, "https://example.com/a b?x=1&y=2"),
         )
+        assertEquals(
+            "https://archive.ph/newest/https%3A%2F%2Fexample.com%2Fa%20b%3Fx%3D1%26y%3D2",
+            resolver.resolve(ArchiveProvider.PH, "https://example.com/a b?x=1&y=2"),
+        )
     }
 
     @Test

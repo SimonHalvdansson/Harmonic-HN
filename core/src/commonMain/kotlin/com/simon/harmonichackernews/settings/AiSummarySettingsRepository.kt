@@ -158,7 +158,11 @@ class AiSummarySettingsRepository(
         store.putString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE, value.storedValue)
     }
 
-    fun disableIfConfigurationIncomplete(localConfigurationReady: Boolean): Boolean {
+    fun disableIfConfigurationIncomplete(
+        localConfigurationReady: Boolean,
+        configurationResolved: Boolean = true,
+    ): Boolean {
+        if (!configurationResolved) return false
         val current = snapshot()
         if (!current.credentialsLoaded) return false
         if (current.explicitlyEnabled != true || current.configurationComplete(localConfigurationReady)) {

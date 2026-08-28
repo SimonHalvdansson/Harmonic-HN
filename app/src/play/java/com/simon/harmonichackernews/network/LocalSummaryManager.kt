@@ -16,8 +16,11 @@ import com.google.mlkit.genai.prompt.TextPart
 import com.google.mlkit.genai.prompt.generateContentRequest
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelService
+import com.simon.harmonichackernews.summary.LocalModelTransferState
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
+import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
 import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryInput
@@ -41,10 +44,13 @@ private class PlayLocalSummaryStatus {
 
     @Volatile
     private var cachedLocalFeatureStatus: Int = Int.MIN_VALUE
+    @Volatile
+    private var cachedAvailability: LocalSummaryAvailability? = null
 
     fun canAttemptLocalSummarization(): Boolean = true
 
     suspend fun checkLocalSummaryAvailability(context: Context?): LocalSummaryAvailability {
+        cachedAvailability?.let { return it }
         if (context == null) {
             return LocalSummaryAvailability(false, false, "Local AI context is unavailable")
         }
@@ -69,7 +75,7 @@ private class PlayLocalSummaryStatus {
             } finally {
                 summarizer?.close()
             }
-        }
+        }.also { cachedAvailability = it }
     }
 
     fun isLocalSummaryReady(models: LocalModelService): Boolean {
@@ -77,8 +83,11 @@ private class PlayLocalSummaryStatus {
         if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
             return isLocalFeatureUsable(cachedLocalFeatureStatus)
         }
-        return models.isSupported(selected) && models.isDownloaded(selected) &&
-            models.isRuntimeInstalled(selected.runtime)
+        val cachedModels = models.cachedState.value
+        return models.isSupported(selected) &&
+            cachedModels.statuses[selected.id]?.state == LocalModelTransferState.DOWNLOADED &&
+            cachedModels.runtimeStatuses[selected.runtime]?.state ==
+                LocalRuntimeInstallState.INSTALLED
     }
 
     private fun resolvedAvailability(
@@ -191,7 +200,7 @@ internal class AndroidLocalSummaryBackend(
     ): Flow<StorySummaryEvent> = channelFlow {
         val content = LocalSummaryPreparation.prepareManagedText(input.articleText.orEmpty())
         if (!LocalSummaryPreparation.isLongEnough(content)) {
-            send(StorySummaryEvent.Failure("Article is too short for local summarization"))
+            send(StorySummaryEvent.Failure(LOCAL_SUMMARY_ARTICLE_TOO_SHORT))
             return@channelFlow
         }
         try {

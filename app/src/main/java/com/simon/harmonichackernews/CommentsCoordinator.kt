@@ -87,6 +87,7 @@ class CommentsCoordinator(
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
+            canLoadArticleTextOnDemand = true,
         ),
     )
     private var webViewHost: CommentsWebViewHost?
@@ -543,6 +544,7 @@ class CommentsCoordinator(
                 commentsStore.state.value.settings?.smoothScroll ?: true
             },
             story = storySnapshot,
+            initialThreadCached = commentsStore.state.value.initialThreadCached,
             showWebsite = showWebsite,
             initialScrollRestorationPending = restoringStoredProgress && !showWebsite,
             accountUser = commentsStore.state.value.accountUser,
@@ -1111,7 +1113,19 @@ class CommentsCoordinator(
                 Log.w(TAG, effect.message, effect.cause)
             is CommentsRuntimeEffect.ActionFailed ->
                 showActionFailure(effect.presentation)
+            CommentsRuntimeEffect.RequestSummaryPageTextRetry ->
+                retryComposeSummaryWithWebView()
         }
+    }
+
+    private fun retryComposeSummaryWithWebView() {
+        val controller = webViewController ?: run {
+            commentsStore.startSummary(null)
+            return
+        }
+        controller.requestSummary(
+            CommentsWebViewController.PageTextCallback(commentsStore::startSummary),
+        )
     }
 
     private fun showActionFailure(
@@ -1124,8 +1138,9 @@ class CommentsCoordinator(
                 presentation.failureDetail,
                 null,
             )
+        } else {
+            navigation.showMessage(presentation.message)
         }
-        navigation.showMessage(presentation.message)
     }
 
     internal fun showMessage(

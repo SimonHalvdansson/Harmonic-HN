@@ -118,6 +118,7 @@ data class CommentsFeatureHost(
     val sessionState: CommentsSessionState,
     val platform: CommentsPlatformDependencies,
     val userSettings: UserSettings,
+    val canLoadArticleTextOnDemand: Boolean = false,
 )
 
 /**
@@ -216,7 +217,9 @@ fun HarmonicAppComposition.createCommentsStore(
         summarySettings = aiSummarySettings,
         localSummaryAvailable = { localSummaryCanAttempt },
         summaryRuntime = createStorySummaryRuntime(featureScope),
+        canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         hydrateCachedStory = storyCache::hydrateStory,
+        isThreadCached = storyCache::hasStoryPayload,
         loadCachedThread = storyCache::loadStoryPayload,
         storeCachedThread = storyCache::cacheStory,
         publishStoryUpdate = storyUpdates::publish,

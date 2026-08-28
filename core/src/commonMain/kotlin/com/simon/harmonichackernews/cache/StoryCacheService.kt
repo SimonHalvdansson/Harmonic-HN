@@ -87,6 +87,8 @@ class StoryCacheService(
 
     fun loadStoryPayload(storyId: Int): String? = repository.loadStoryPayload(storyId)
 
+    fun hasStoryPayload(storyId: Int): Boolean = repository.hasStoryPayload(storyId)
+
     fun loadArticle(storyId: Int): String? = repository.loadArticle(storyId, nowMillis())
 
     fun articleUrl(storyId: Int): String? = repository.articleUrl(storyId)

@@ -11,6 +11,31 @@ import kotlin.test.assertTrue
 
 class CommentThreadStoreTest {
     @Test
+    fun delayedPlaceholderCommentsCanBeHiddenWithoutRemovingTheirReplies() {
+        val store = CommentThreadStore()
+        store.reset(story = story())
+        store.appendLoadedComments(
+            story = story(),
+            loadedComments = listOf(
+                comment(1, -1, 0, "[delayed]").also { it.expanded = true },
+                comment(2, 1, 1, "visible reply"),
+                comment(3, -1, 0, "Not [delayed]"),
+            ),
+            sorting = "Default",
+            collapseTopLevel = false,
+        )
+
+        store.setHideDelayedComments(true)
+
+        assertEquals(listOf(2, 3), store.state.value.displayedComments.drop(1).map { it.id })
+        assertEquals(listOf(2, 3), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(2, 3), store.state.value.searchResults.map { it.id })
+
+        store.setHideDelayedComments(false)
+        assertEquals(listOf(1, 2, 3), store.state.value.displayedComments.drop(1).map { it.id })
+    }
+
+    @Test
     fun collapsedThreadsHideDescendantsUntilTheirParentsExpand() {
         val store = CommentThreadStore()
         store.reset(story = story())

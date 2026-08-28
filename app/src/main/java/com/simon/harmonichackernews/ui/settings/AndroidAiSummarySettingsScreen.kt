@@ -26,7 +26,9 @@ fun AndroidAiSummarySettingsScreen(
     val localModels = checkNotNull(appComposition.localModels) {
         "Android local-model service was not installed"
     }
-    val localModelState by localModels.state.collectAsState()
+    // The application preloads this cache off the main thread. Reading it here must not scan
+    // model files or query dynamic-feature state while the settings navigation is animating.
+    val localModelState by localModels.cachedState.collectAsState()
     var localRefresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val settingsRuntime = remember(appComposition, scope) {

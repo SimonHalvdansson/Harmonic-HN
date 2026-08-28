@@ -96,6 +96,8 @@ class StoredSettingsMutator(
                     UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON
                 CommentBooleanPreference.COLLAPSE_PARENT -> UserPreferenceKeys.COLLAPSE_PARENT
                 CommentBooleanPreference.COLLAPSE_TOP_LEVEL -> UserPreferenceKeys.COLLAPSE_TOP_LEVEL
+                CommentBooleanPreference.HIDE_DELAYED_COMMENTS ->
+                    UserPreferenceKeys.HIDE_DELAYED_COMMENTS
                 CommentBooleanPreference.PRELOAD_COMMENTS_FROM_STORIES ->
                     UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES
                 CommentBooleanPreference.SWAP_LONG_PRESS_TAP -> UserPreferenceKeys.COMMENTS_SWAP_LONG

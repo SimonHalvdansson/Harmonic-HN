@@ -319,6 +319,10 @@ object LinkSummaryParser {
         return candidate?.takeIf(::isPositiveInteger)
     }
 
+    fun isHackerNewsStory(summary: LinkSummary): Boolean =
+        summary.contentType == HACKER_NEWS_ITEM_CONTENT_TYPE &&
+            summary.siteName == HACKER_NEWS_STORY_SITE_NAME
+
     fun extractHackerNewsItem(
         json: String?,
         pageUrl: String,

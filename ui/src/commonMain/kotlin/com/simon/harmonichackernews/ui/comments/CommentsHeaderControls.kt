@@ -5,6 +5,7 @@ package com.simon.harmonichackernews.ui.comments
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -12,8 +13,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +78,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
@@ -130,6 +136,7 @@ data class PollOptionUi(
 fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
+    containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
 ) {
     val summary = story.summary.orEmpty()
     val typography = rememberContentTypography(
@@ -144,11 +151,15 @@ fun StorySummary(
         Column(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .animateContentSize(
                     animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                     alignment = Alignment.TopStart,
                 )
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .clip(RoundedCornerShape(14.dp))
+                .background(containerColor)
+                .border(1.dp, HarmonicTheme.colors.commentDivider, RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -166,15 +177,17 @@ fun StorySummary(
                 )
             }
             if (summary.isNotBlank()) {
-                SummaryMarkdownText(
-                    markdown = summary,
-                    modifier = Modifier.padding(top = 4.dp),
-                    color = HarmonicTheme.colors.storyNormal,
-                    linkColor = HarmonicTheme.colors.link,
-                    fontFamily = typography.family,
-                    fontSize = typography.commentTextSize.sp,
-                    lineHeight = (typography.commentTextSize + 2f).sp,
-                )
+                SelectionContainer {
+                    SummaryMarkdownText(
+                        markdown = summary,
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = HarmonicTheme.colors.storyNormal,
+                        linkColor = HarmonicTheme.colors.link,
+                        fontFamily = typography.family,
+                        fontSize = typography.commentTextSize.sp,
+                        lineHeight = (typography.commentTextSize + 2f).sp,
+                    )
+                }
             }
         }
     }
@@ -270,8 +283,15 @@ fun HeaderActions(
     val dismissMenus = {
         shareExpanded = false
         moreExpanded = false
-        sortExpanded = false
-        archiveExpanded = false
+    }
+    LaunchedEffect(moreExpanded) {
+        if (!moreExpanded) {
+            // Keep the submenu composed through DropdownMenu's exit animation. Resetting it in the
+            // same frame briefly reveals the parent menu behind the fading popup.
+            delay(500)
+            sortExpanded = false
+            archiveExpanded = false
+        }
     }
     val menuVisible = shareExpanded || moreExpanded
     // The desktop window receives an unconsumed Escape after Compose dismisses a dropdown. Keep
@@ -356,7 +376,11 @@ fun HeaderActions(
         ) {
             CommentsTooltip("More options") {
                 IconButton(
-                    onClick = { moreExpanded = true },
+                    onClick = {
+                        sortExpanded = false
+                        archiveExpanded = false
+                        moreExpanded = true
+                    },
                     modifier = Modifier.size(CommentsHeaderActionButtonSize),
                 ) {
                     Icon(
@@ -508,135 +532,182 @@ private fun MoreMenu(
     val bookmarked = remember(contentVersion, story.id) {
         controller.isBookmarked(story.id)
     }
-    HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
-        if (sortExpanded || archiveExpanded) {
-            DropdownMenuItem(
-                text = {
-                    CommentsMenuText(
-                        if (sortExpanded) "Sort comments" else "View on archive",
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                onClick = onSubmenuBack,
-            )
-            HorizontalDivider(color = HarmonicTheme.colors.commentDivider)
-        }
-
-        if (sortExpanded) {
-            val options = stringArrayResource(Res.array.comment_sorting)
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = {
-                        CommentsMenuText(
-                            if (option == controller.currentSorting) "✓ $option" else option,
-                        )
-                    },
-                    onClick = {
-                        onDismiss()
-                        controller.listener.onSortComments(option)
+    val page = when {
+        sortExpanded -> MoreMenuPage.Sort
+        archiveExpanded -> MoreMenuPage.Archive
+        else -> MoreMenuPage.Root
+    }
+    HarmonicDropdownMenu(
+        expanded = expanded,
+        onDismiss = onDismiss,
+        // Parent and submenu labels used to change the popup width mid-animation, shifting both
+        // popup edges diagonally. A stable width keeps the anchor and transform origin fixed.
+        modifier = Modifier.width(248.dp),
+    ) {
+        AnimatedContent(
+            targetState = page,
+            modifier = Modifier.fillMaxWidth(),
+            transitionSpec = {
+                val forward = initialState == MoreMenuPage.Root && targetState != MoreMenuPage.Root
+                val direction = if (forward) 1 else -1
+                val duration = if (forward) 220 else 190
+                val fadeThroughDelay = if (forward) 80 else 70
+                val enter = slideInHorizontally(
+                    animationSpec = tween(duration, easing = FastOutSlowInEasing),
+                    initialOffsetX = { width -> direction * (width / 7).coerceAtLeast(1) },
+                ) + fadeIn(
+                    tween(
+                        durationMillis = duration - fadeThroughDelay,
+                        delayMillis = fadeThroughDelay,
+                    ),
+                )
+                val exit = slideOutHorizontally(
+                    animationSpec = tween(duration - 40, easing = FastOutSlowInEasing),
+                    targetOffsetX = { width -> -direction * (width / 7).coerceAtLeast(1) },
+                ) + fadeOut(tween(fadeThroughDelay))
+                (enter togetherWith exit).using(
+                    SizeTransform(clip = true) { _, _ ->
+                        tween(duration, easing = FastOutSlowInEasing)
                     },
                 )
-            }
-            return@HarmonicDropdownMenu
-        }
+            },
+            label = "comments more submenu",
+        ) { visiblePage ->
+            Column(Modifier.fillMaxWidth()) {
+                when (visiblePage) {
+                    MoreMenuPage.Sort -> {
+                        SubmenuHeader("Sort comments", onSubmenuBack)
+                        val options = stringArrayResource(Res.array.comment_sorting)
+                        options.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    CommentsMenuText(
+                                        if (option == controller.currentSorting) "✓ $option" else option,
+                                    )
+                                },
+                                onClick = {
+                                    onDismiss()
+                                    controller.listener.onSortComments(option)
+                                },
+                            )
+                        }
+                    }
 
-        if (archiveExpanded) {
-            @Composable fun archive(label: String, action: CommentsMoreAction) {
-                DropdownMenuItem(
-                    text = { CommentsMenuText(label) },
-                    onClick = {
-                        onDismiss()
-                        controller.listener.onMoreAction(action)
-                    },
-                )
-            }
-            archive("archive.org", CommentsMoreAction.ARCHIVE_ORG)
-            archive("archive.is", CommentsMoreAction.ARCHIVE_IS)
-            archive("archive.today", CommentsMoreAction.ARCHIVE_TODAY)
-            return@HarmonicDropdownMenu
-        }
+                    MoreMenuPage.Archive -> {
+                        SubmenuHeader("View on archive", onSubmenuBack)
+                        @Composable fun archive(label: String, action: CommentsMoreAction) {
+                            DropdownMenuItem(
+                                text = { CommentsMenuText(label) },
+                                onClick = {
+                                    onDismiss()
+                                    controller.listener.onMoreAction(action)
+                                },
+                            )
+                        }
+                        archive("archive.org", CommentsMoreAction.ARCHIVE_ORG)
+                        archive("archive.is", CommentsMoreAction.ARCHIVE_IS)
+                        archive("archive.today", CommentsMoreAction.ARCHIVE_TODAY)
+                        archive("archive.ph", CommentsMoreAction.ARCHIVE_PH)
+                    }
 
-        @Composable fun action(label: String, icon: DrawableResource, id: CommentsMoreAction) {
-            DropdownMenuItem(
-                text = { CommentsMenuText(label) },
-                leadingIcon = {
-                    Icon(
-                        painterResource(icon),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                onClick = {
-                    onDismiss()
-                    controller.listener.onMoreAction(id)
-                },
-            )
-        }
-        if (settings.hasAccountDetails) action("Refresh", Res.drawable.ic_refresh, CommentsMoreAction.REFRESH)
-        if (story.isComment && story.parentId > 0) action("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT)
-        if (story.isComment && story.commentMasterId > 0) action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
-        if (settings.hasAccountDetails && bookmarksEnabled) {
-            action(
-                if (bookmarked) "Remove bookmark" else "Bookmark",
-                if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
-                CommentsMoreAction.TOGGLE_BOOKMARK,
-            )
-        }
-        if (commentsCount > 1) action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
-        if (commentsCount > 2) {
-            DropdownMenuItem(
-                text = { CommentsMenuText("Sort comments") },
-                leadingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.ic_filter_list),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                trailingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.ic_chevron_right),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                onClick = onSortExpanded,
-            )
-        }
-        if (!controller.commentsByOpFilterActive && controller.hasCommentsByOp) {
-            action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
-        }
-        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsMoreAction.OPEN_BROWSER)
-        if (controller.adBlockActive) {
-            action("Disable AdBlock", Res.drawable.ic_block, CommentsMoreAction.DISABLE_AD_BLOCK)
-        }
-        if (story.isLink) {
-            DropdownMenuItem(
-                text = { CommentsMenuText("View on archive") },
-                leadingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.ic_history),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                trailingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.ic_chevron_right),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                },
-                onClick = onArchiveExpanded,
-            )
+                    MoreMenuPage.Root -> {
+                        @Composable fun action(
+                            label: String,
+                            icon: DrawableResource,
+                            id: CommentsMoreAction,
+                        ) {
+                            DropdownMenuItem(
+                                text = { CommentsMenuText(label) },
+                                leadingIcon = {
+                                    Icon(
+                                        painterResource(icon),
+                                        contentDescription = null,
+                                        tint = HarmonicTheme.colors.drawable,
+                                    )
+                                },
+                                onClick = {
+                                    onDismiss()
+                                    controller.listener.onMoreAction(id)
+                                },
+                            )
+                        }
+                        if (settings.hasAccountDetails) {
+                            action("Refresh", Res.drawable.ic_refresh, CommentsMoreAction.REFRESH)
+                        }
+                        if (story.isComment && story.parentId > 0) {
+                            action("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT)
+                        }
+                        if (story.isComment && story.commentMasterId > 0) {
+                            action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
+                        }
+                        if (settings.hasAccountDetails && bookmarksEnabled) {
+                            action(
+                                if (bookmarked) "Remove bookmark" else "Bookmark",
+                                if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
+                                CommentsMoreAction.TOGGLE_BOOKMARK,
+                            )
+                        }
+                        if (commentsCount > 1) {
+                            action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
+                        }
+                        if (commentsCount > 2) {
+                            SubmenuEntry("Sort comments", Res.drawable.ic_filter_list, onSortExpanded)
+                        }
+                        if (!controller.commentsByOpFilterActive && controller.hasCommentsByOp) {
+                            action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
+                        }
+                        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsMoreAction.OPEN_BROWSER)
+                        if (controller.adBlockActive) {
+                            action("Disable AdBlock", Res.drawable.ic_block, CommentsMoreAction.DISABLE_AD_BLOCK)
+                        }
+                        if (story.isLink) {
+                            SubmenuEntry("View on archive", Res.drawable.ic_history, onArchiveExpanded)
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+private enum class MoreMenuPage { Root, Sort, Archive }
+
+@Composable
+private fun SubmenuHeader(title: String, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { CommentsMenuText(title) },
+        leadingIcon = {
+            Icon(
+                painterResource(Res.drawable.ic_arrow_back),
+                contentDescription = null,
+                tint = HarmonicTheme.colors.drawable,
+            )
+        },
+        onClick = onClick,
+    )
+    HorizontalDivider(color = HarmonicTheme.colors.commentDivider)
+}
+
+@Composable
+private fun SubmenuEntry(title: String, icon: DrawableResource, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { CommentsMenuText(title) },
+        leadingIcon = {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = HarmonicTheme.colors.drawable,
+            )
+        },
+        trailingIcon = {
+            Icon(
+                painterResource(Res.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = HarmonicTheme.colors.drawable,
+            )
+        },
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -687,10 +758,22 @@ private enum class HeaderStatusState {
     None,
 }
 
+internal fun shouldShowCommentsHeaderLoading(
+    loadingFailed: Boolean,
+    pullToRefreshInProgress: Boolean,
+    commentsLoaded: Boolean,
+    initialThreadCached: Boolean,
+): Boolean = !loadingFailed && !pullToRefreshInProgress &&
+    !commentsLoaded && !initialThreadCached
+
 @Composable
 fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: String?) {
-    val showLoading = !controller.loadingFailed && !controller.pullToRefreshInProgress &&
-        !controller.commentsLoaded && !controller.story.loaded
+    val showLoading = shouldShowCommentsHeaderLoading(
+        loadingFailed = controller.loadingFailed,
+        pullToRefreshInProgress = controller.pullToRefreshInProgress,
+        commentsLoaded = controller.commentsLoaded,
+        initialThreadCached = controller.initialThreadCached,
+    )
     val showEmpty = !controller.loadingFailed && controller.commentsLoaded &&
         controller.comments.size <= 1
     AnimatedContent(

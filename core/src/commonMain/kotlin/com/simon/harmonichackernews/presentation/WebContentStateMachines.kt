@@ -131,6 +131,7 @@ object WebContentTiming {
     const val READER_AVAILABILITY_RECHECK_DELAY_MILLIS: Long = 2_500
     const val LOAD_TIMEOUT_MILLIS: Long = 45_000
     const val SUMMARY_LOAD_TIMEOUT_MILLIS: Long = 30_000
+    const val SUMMARY_PAGE_TEXT_SETTLE_MILLIS: Long = VISIBLE_LOAD_GRACE_MILLIS
 }
 
 /** User-facing web-content copy kept identical across platform shells. */

@@ -21,6 +21,8 @@ enum class StorySummaryMode {
     LOCAL,
 }
 
+const val LOCAL_SUMMARY_ARTICLE_TOO_SHORT = "Article is too short for local summarization"
+
 data class StorySummaryInput(
     val articleUrl: String,
     val articleText: String? = null,

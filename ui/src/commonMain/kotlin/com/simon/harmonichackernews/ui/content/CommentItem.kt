@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -74,6 +75,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
@@ -83,7 +85,6 @@ import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceConten
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
-import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -398,7 +399,8 @@ fun CommentItem(
                         } else {
                             ReferenceRow(
                                 marker = link.markerLabel.orEmpty(),
-                                label = ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                                label = rememberReferenceLinkLabel(link),
+                                faviconUrl = rememberReferenceLinkFaviconUrl(link),
                                 modifier = when {
                                     hasInterleavedReferences -> Modifier.padding(bottom = 2.dp)
                                     index == firstReferenceIndex -> Modifier.padding(top = 5.dp)
@@ -893,6 +895,7 @@ private fun CommentMeta(
 private fun ReferenceRow(
     marker: String,
     label: String,
+    faviconUrl: String? = null,
     modifier: Modifier = Modifier,
     suppressed: Boolean = false,
     onClick: () -> Unit,
@@ -921,12 +924,28 @@ private fun ReferenceRow(
                 .padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_public),
-                contentDescription = null,
-                tint = colors.drawable,
-                modifier = Modifier.padding(end = 8.dp).size(17.dp),
-            )
+            val faviconFallback = painterResource(Res.drawable.ic_public)
+            if (faviconUrl == null) {
+                Icon(
+                    painter = faviconFallback,
+                    contentDescription = null,
+                    tint = colors.drawable,
+                    modifier = Modifier.padding(end = 8.dp).size(17.dp),
+                )
+            } else {
+                AsyncImage(
+                    model = faviconUrl,
+                    contentDescription = null,
+                    placeholder = faviconFallback,
+                    error = faviconFallback,
+                    fallback = faviconFallback,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(17.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                )
+            }
             if (marker.isNotBlank()) {
                 Text(marker, modifier = Modifier.padding(end = 8.dp), color = colors.storyDisabled, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }

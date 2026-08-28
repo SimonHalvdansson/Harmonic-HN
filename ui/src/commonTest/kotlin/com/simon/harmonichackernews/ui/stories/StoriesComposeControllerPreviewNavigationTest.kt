@@ -144,6 +144,65 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
+    fun completedUserRefreshRequestsAnExactScrollToTop() {
+        val listener = TestListener(destinationRemainsBesideStories = false)
+        val controller = controller(
+            destinationRemainsBesideStories = false,
+            listener = listener,
+        )
+
+        controller.refresh()
+        assertEquals(listOf(false), listener.refreshLoadingModes)
+        controller.updateContent(StoriesScreenState(refreshing = true))
+        assertEquals(0, controller.scrollToTopRequestVersion)
+
+        controller.updateContent(
+            StoriesScreenState(
+                mainStories = listOf(storySnapshot(2), storySnapshot(1)),
+                refreshing = false,
+            ),
+        )
+        assertEquals(1, controller.scrollToTopRequestVersion)
+
+        controller.refresh()
+        controller.updateContent(StoriesScreenState(refreshing = true))
+        controller.updateContent(StoriesScreenState(refreshing = false))
+        assertEquals(2, controller.scrollToTopRequestVersion)
+    }
+
+    @Test
+    fun tapToUpdateDefersClearingRefreshUntilExitAnimationCompletes() {
+        val listener = TestListener(destinationRemainsBesideStories = false)
+        val controller = controller(
+            destinationRemainsBesideStories = false,
+            listener = listener,
+        )
+        controller.updateContent(
+            StoriesScreenState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
+        )
+
+        controller.beginTapToUpdateExit()
+
+        assertTrue(controller.tapToUpdateExitInProgress)
+        assertTrue(listener.refreshLoadingModes.isEmpty())
+
+        controller.completeTapToUpdateExit()
+
+        assertEquals(listOf(true), listener.refreshLoadingModes)
+        controller.updateContent(StoriesScreenState(loading = true, mainStories = emptyList()))
+        assertFalse(controller.tapToUpdateExitInProgress)
+        assertEquals(0, controller.scrollToTopRequestVersion)
+
+        controller.updateContent(
+            StoriesScreenState(
+                loading = false,
+                mainStories = listOf(storySnapshot(3), storySnapshot(4)),
+            ),
+        )
+        assertEquals(1, controller.scrollToTopRequestVersion)
+    }
+
+    @Test
     fun durableRuntimeStateClearsPreviewActionLoadingWithoutATerminalEffect() {
         val controller = controller(destinationRemainsBesideStories = false)
         val stories = listOf(storySnapshot(1), storySnapshot(2))
@@ -165,11 +224,14 @@ class StoriesComposeControllerPreviewNavigationTest {
         presentation = StoryPresentationSnapshot(loaded = true),
     )
 
-    private fun controller(destinationRemainsBesideStories: Boolean): StoriesComposeController =
+    private fun controller(
+        destinationRemainsBesideStories: Boolean,
+        listener: TestListener = TestListener(destinationRemainsBesideStories),
+    ): StoriesComposeController =
         StoriesComposeController.create(
             defaultStoryHeightPx = 100,
             savedItemState = EmptySavedItemState,
-            listener = TestListener(destinationRemainsBesideStories),
+            listener = listener,
         ).also { controller ->
             controller.showStoryPreview(
                 stories = listOf(
@@ -196,13 +258,16 @@ class StoriesComposeControllerPreviewNavigationTest {
     private class TestListener(
         private val destinationRemainsBesideStories: Boolean,
     ) : StoriesComposeController.Listener {
+        val refreshLoadingModes = mutableListOf<Boolean>()
         override fun onTypeSelected(index: Int) = Unit
         override fun onOpenSearch() = Unit
         override fun onCloseSearch() = Unit
         override fun onSearch(query: String) = Unit
         override fun onSearchOption(kind: StorySearchOption, index: Int) = Unit
         override fun onToggleOnlyClicked() = Unit
-        override fun onRefresh() = Unit
+        override fun onRefresh(showMainLoadingIndicator: Boolean) {
+            refreshLoadingModes += showMainLoadingIndicator
+        }
         override fun onShowCached() = Unit
         override fun onLoadMore() = Unit
         override fun onSavedFilterSelected(filter: SavedItemFilter) = Unit

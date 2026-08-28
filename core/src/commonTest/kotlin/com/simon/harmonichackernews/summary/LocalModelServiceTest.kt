@@ -38,6 +38,54 @@ class LocalModelServiceTest {
     }
 
     @Test
+    fun preloadFillsCacheWithoutRegisteringPlatformObservers() {
+        val transfers = RecordingTransfers()
+        val runtimeDelivery = RecordingRuntimeDelivery()
+        val service = LocalModelService(
+            preferences = TestKeyValueStore(),
+            storage = EmptyStorage,
+            transfers = transfers,
+            runtimeDelivery = runtimeDelivery,
+            capabilities = LocalModelDeviceCapabilities(
+                supportsDownloadableModels = true,
+                supportsLiteRtModels = true,
+            ),
+            models = listOf(BuiltInModel, DownloadableModel),
+        )
+
+        assertTrue(service.cachedState.value.statuses.isEmpty())
+        assertEquals(0, transfers.workReads)
+
+        service.preload()
+
+        assertEquals(2, service.cachedState.value.statuses.size)
+        assertEquals(2, service.cachedState.value.runtimeStatuses.size)
+        assertEquals(2, transfers.workReads)
+        assertEquals(2, runtimeDelivery.statusReads)
+        assertEquals(0, transfers.observerRegistrations)
+        assertEquals(0, runtimeDelivery.observerRegistrations)
+
+        service.catalog.forEach { model ->
+            service.presentation(
+                model = model,
+                nanoAvailabilityResolved = true,
+                nanoAvailable = false,
+                managerState = service.cachedState.value,
+            )
+        }
+        assertEquals(2, transfers.workReads)
+        assertEquals(2, runtimeDelivery.statusReads)
+
+        transfers.invokeObserverOnRegistration = true
+        runtimeDelivery.invokeObserverOnRegistration = true
+        service.startMonitoring()
+
+        assertEquals(2, transfers.workReads)
+        assertEquals(1, transfers.observerRegistrations)
+        assertEquals(1, runtimeDelivery.observerRegistrations)
+    }
+
+    @Test
     fun changingStorageDirectoryRefreshesStorageAndClearsUnavailableSelection() {
         val transfers = RecordingTransfers()
         val location = RecordingStorageLocation("old")
@@ -95,6 +143,7 @@ class LocalModelServiceTest {
         var observerRegistrations = 0
         var workReads = 0
         var resets = 0
+        var invokeObserverOnRegistration = false
         val cancelled = mutableListOf<String>()
 
         override fun work(modelId: String): LocalModelWorkSnapshot? {
@@ -113,6 +162,7 @@ class LocalModelServiceTest {
 
         override fun setObserver(observer: () -> Unit) {
             observerRegistrations += 1
+            if (invokeObserverOnRegistration) observer()
         }
 
         override fun reset() {
@@ -122,10 +172,17 @@ class LocalModelServiceTest {
 
     private class RecordingRuntimeDelivery : LocalModelRuntimeDelivery {
         var observerRegistrations = 0
+        var statusReads = 0
+        var invokeObserverOnRegistration = false
         override val included = false
 
-        override fun status(runtime: LocalModelRuntime) =
-            LocalRuntimeInstallStatus(LocalRuntimeInstallState.NOT_INSTALLED, runtime = runtime)
+        override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
+            statusReads += 1
+            return LocalRuntimeInstallStatus(
+                LocalRuntimeInstallState.NOT_INSTALLED,
+                runtime = runtime,
+            )
+        }
 
         override fun isInstalled(runtime: LocalModelRuntime) = false
 
@@ -135,6 +192,7 @@ class LocalModelServiceTest {
 
         override fun setObserver(observer: () -> Unit) {
             observerRegistrations += 1
+            if (invokeObserverOnRegistration) observer()
         }
 
         override fun setModelDownloadStarter(starter: (String) -> String?) = Unit

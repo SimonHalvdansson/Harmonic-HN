@@ -16,7 +16,7 @@ data class FeatureDecision<Action, Effect>(
     val refreshNavigation: Boolean = false,
 )
 
-enum class ArchiveProvider { ORG, IS, TODAY }
+enum class ArchiveProvider { ORG, IS, TODAY, PH }
 
 sealed interface CommentsPlatformEffect {
     data class OpenUser(val userName: String) : CommentsPlatformEffect
@@ -148,13 +148,15 @@ object CommentsUiOrchestrator {
         CommentsMoreAction.DISABLE_AD_BLOCK -> effect(CommentsPlatformEffect.DisableAdBlock)
         CommentsMoreAction.ARCHIVE_ORG,
         CommentsMoreAction.ARCHIVE_IS,
-        CommentsMoreAction.ARCHIVE_TODAY -> FeatureDecision()
+        CommentsMoreAction.ARCHIVE_TODAY,
+        CommentsMoreAction.ARCHIVE_PH -> FeatureDecision()
     }
 
     fun archiveProvider(action: CommentsMoreAction): ArchiveProvider? = when (action) {
         CommentsMoreAction.ARCHIVE_ORG -> ArchiveProvider.ORG
         CommentsMoreAction.ARCHIVE_IS -> ArchiveProvider.IS
         CommentsMoreAction.ARCHIVE_TODAY -> ArchiveProvider.TODAY
+        CommentsMoreAction.ARCHIVE_PH -> ArchiveProvider.PH
         else -> null
     }
 

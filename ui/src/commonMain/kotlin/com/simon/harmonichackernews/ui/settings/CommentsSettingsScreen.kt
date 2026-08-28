@@ -34,6 +34,7 @@ data class CommentsSettingsUiState(
     val headerPreviewImage: Boolean,
     val collapseParent: Boolean,
     val collapseTopLevel: Boolean,
+    val hideDelayedComments: Boolean,
     val preloadCommentsFromStories: Boolean,
     val swapTap: Boolean,
     val sorting: CommentSortingPreference,
@@ -56,6 +57,7 @@ enum class CommentsBooleanSetting {
     HeaderPreviewImage,
     CollapseParent,
     CollapseTopLevel,
+    HideDelayedComments,
     PreloadCommentsFromStories,
     SwapTap,
     NavigationButtons,
@@ -193,6 +195,15 @@ fun CommentsSettingsScreen(
                 BooleanRow("Hide text of collapsed comments", Res.drawable.ic_comment, state.collapseParent, CommentsBooleanSetting.CollapseParent, onBooleanChanged)
                 SettingsDivider()
                 BooleanRow("Auto-collapse top level comments", Res.drawable.ic_minimize, state.collapseTopLevel, CommentsBooleanSetting.CollapseTopLevel, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow(
+                    "Hide delayed comments",
+                    Res.drawable.ic_visibility_off,
+                    state.hideDelayedComments,
+                    CommentsBooleanSetting.HideDelayedComments,
+                    onBooleanChanged,
+                    summary = "Hides comments whose text is exactly [delayed]",
+                )
                 SettingsDivider()
                 BooleanRow(
                     "Preload comments from stories screen",

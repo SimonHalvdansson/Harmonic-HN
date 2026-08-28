@@ -323,6 +323,7 @@ class MainNavigationController internal constructor(
 
     internal fun notifyUserTagChanged() {
         userTagChangedCallback?.run()
+        commentsComposeController?.refreshContent()
     }
 
     fun showFailureDetailDialog(

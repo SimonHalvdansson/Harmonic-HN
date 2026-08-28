@@ -42,6 +42,21 @@ class AiSummarySettingsRepositoryTest {
     }
 
     @Test
+    fun unresolvedConfigurationNeverPersistsDisabledState() = runTest {
+        val store = TestKeyValueStore(mapOf(AiSummaryPreferenceKeys.ENABLED to true))
+        val repository = AiSummarySettingsRepository(store, TestCredentialStore(), emptyFlow())
+
+        repository.awaitSnapshot()
+        assertFalse(
+            repository.disableIfConfigurationIncomplete(
+                localConfigurationReady = false,
+                configurationResolved = false,
+            ),
+        )
+        assertTrue(store.getBoolean(AiSummaryPreferenceKeys.ENABLED, false))
+    }
+
+    @Test
     fun providerChangesTranslateCompatibleModelsAndClearIncompatibleModels() {
         val store = TestKeyValueStore(
             mapOf(

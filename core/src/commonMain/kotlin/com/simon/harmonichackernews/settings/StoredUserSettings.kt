@@ -54,6 +54,7 @@ object UserPreferenceKeys {
     const val HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta"
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
     const val COLLAPSE_TOP_LEVEL = "pref_collapse_top_level"
+    const val HIDE_DELAYED_COMMENTS = "pref_hide_delayed_comments"
     const val PRELOAD_COMMENTS_FROM_STORIES = "pref_preload_comments_from_stories"
     const val COMMENT_SORTING = "pref_comment_sorting"
     const val COMMENTS_SCROLLBAR = "pref_comments_scrollbar"
@@ -177,6 +178,7 @@ class StoredUserSettings(
                 collectReferenceLinks =
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
+                hideDelayedComments = boolean(UserPreferenceKeys.HIDE_DELAYED_COMMENTS, false),
                 preloadCommentsFromStories = boolean(
                     UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES,
                     preloadCommentsFromStoriesByDefault,

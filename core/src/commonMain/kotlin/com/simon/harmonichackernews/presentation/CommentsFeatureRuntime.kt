@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
+import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
@@ -48,6 +49,7 @@ sealed interface CommentsRuntimeEffect {
     ) : CommentsRuntimeEffect
     data class Diagnostic(val message: String, val cause: Throwable? = null) : CommentsRuntimeEffect
     data class ActionFailed(val presentation: ActionFailurePresentation) : CommentsRuntimeEffect
+    data object RequestSummaryPageTextRetry : CommentsRuntimeEffect
 }
 
 data class CommentsScrollRestoration(
@@ -89,7 +91,9 @@ class CommentsFeatureRuntime(
     private val summarySettings: AiSummarySettingsRepository? = null,
     private val localSummaryAvailable: () -> Boolean = { false },
     private val summaryRuntime: StorySummaryRuntime? = null,
+    private val canLoadArticleTextOnDemand: Boolean = false,
     private val hydrateCachedStory: (Story) -> Boolean = { false },
+    private val isThreadCached: (Int) -> Boolean = { false },
     private val loadCachedThread: (Int) -> String? = { null },
     private val storeCachedThread: suspend (Int, String) -> Unit = { _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
@@ -121,12 +125,18 @@ class CommentsFeatureRuntime(
     private var hasAccount = false
     private var presentationCapabilities: CommentsPresentationCapabilities? = null
     private var automaticSummaryRequested = false
+    private var summaryPageTextRetryAttempted = false
+    private var summaryPageTextRetryPending = false
+
+    var initialThreadCached: Boolean = false
+        private set
 
     val accountUser: String?
         get() = accounts?.currentAccount?.username
 
     val summaryLoading: Boolean
-        get() = summaryRuntime?.state?.value?.status is StorySummaryStatus.Running
+        get() = summaryPageTextRetryPending ||
+            summaryRuntime?.state?.value?.status is StorySummaryStatus.Running
 
     init {
         scope.launch {
@@ -157,8 +167,11 @@ class CommentsFeatureRuntime(
         restoring: Boolean,
         restoredSorting: String? = null,
     ) {
+        initialThreadCached = !sessionState.commentsLoaded && isThreadCached(initialStory.id)
         if (!restoring) {
             automaticSummaryRequested = false
+            summaryPageTextRetryAttempted = false
+            summaryPageTextRetryPending = false
             sessionState.story = initialStory
             sessionState.showWebsite = showWebsite
             sessionState.scrollToCommentId = scrollToCommentId
@@ -228,6 +241,7 @@ class CommentsFeatureRuntime(
             filters = loadContentFilters(),
             hasAccount = accountUser != null,
         )
+        thread.setHideDelayedComments(settings.comments.hideDelayedComments)
         val aiSnapshot = summarySettings?.snapshot()
         val canProvideSummary = aiSnapshot?.let { snapshot ->
             AiSummaryAvailabilityPolicy.canProvideSummary(
@@ -505,6 +519,8 @@ class CommentsFeatureRuntime(
                 cloudApiKeyAvailable = snapshot.apiKey.isNotBlank(),
             )
         ) return
+        summaryPageTextRetryAttempted = false
+        summaryPageTextRetryPending = false
         platform(CommentsPlatformEffect.Summarize)
     }
 
@@ -514,6 +530,7 @@ class CommentsFeatureRuntime(
             AiSummaryMode.LOCAL -> StorySummaryMode.LOCAL
             AiSummaryMode.CLOUD -> StorySummaryMode.CLOUD
         }
+        summaryPageTextRetryPending = false
         summaryRuntime?.start(
             mode = mode,
             input = StorySummaryInput(
@@ -763,6 +780,21 @@ class CommentsFeatureRuntime(
     private fun applySummaryState(state: StorySummaryState) {
         if (state.generation == 0L) return
         val currentStory = story ?: return
+        val failure = state.status as? StorySummaryStatus.Failure
+        if (canLoadArticleTextOnDemand && !summaryPageTextRetryAttempted &&
+            summarySettings?.snapshot()?.mode == AiSummaryMode.LOCAL &&
+            failure?.message?.endsWith(LOCAL_SUMMARY_ARTICLE_TOO_SHORT) == true
+        ) {
+            summaryPageTextRetryAttempted = true
+            summaryPageTextRetryPending = true
+            // Keep the existing action's loading indicator visible without replacing the summary
+            // surface with a browser-status sentence while the hidden WebView is working.
+            currentStory.summary = null
+            currentStory.summaryGeneratedSuccessfully = false
+            changed()
+            mutableEffects.tryEmit(CommentsRuntimeEffect.RequestSummaryPageTextRetry)
+            return
+        }
         currentStory.summary = state.text
         when (state.status) {
             StorySummaryStatus.Idle,

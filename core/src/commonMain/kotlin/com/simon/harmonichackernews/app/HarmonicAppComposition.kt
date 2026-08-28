@@ -51,6 +51,8 @@ import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.summary.LocalSummaryBehavior
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Platform-neutral application composition shared by Android, iOS, and future hosts.
@@ -254,6 +256,14 @@ class HarmonicAppComposition(
 
     fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
         LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels)
+
+    /** Warms data needed by AI settings without making navigation pay for storage or IPC reads. */
+    suspend fun preloadAiSettings() = coroutineScope {
+        launch { localModels?.preload() }
+        launch { aiSummarySettings.awaitSnapshot() }
+        launch { localSummaryEngine?.availability() }
+        launch { aiModelDefaults.ensureInitialDefault() }
+    }
 
     /** Feature-sized platform views derived from the one application-scoped platform graph. */
     fun storiesPlatformDependencies(): StoriesPlatformDependencies = StoriesPlatformDependencies(

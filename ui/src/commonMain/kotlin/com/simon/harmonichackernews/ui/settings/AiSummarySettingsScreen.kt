@@ -59,7 +59,7 @@ fun AiSummarySettingsScreen(
         item {
             SettingsMainToggle(
                 title = "Use AI summarization",
-                checked = state.enabled && state.configurationComplete,
+                checked = state.enabled,
                 enabled = state.configurationComplete,
                 onCheckedChange = onEnabledChanged,
             )
@@ -173,15 +173,11 @@ fun AiSummarySettingsScreen(
                     )
                 SettingRow(
                     title = "System prompt",
-                    summary = if (systemPromptEnabled) {
-                        state.systemPrompt
-                    } else {
-                        "Not used by Gemini Nano's built-in 3-bullet summarizer"
-                    },
+                    summary = state.systemPrompt,
                     icon = Res.drawable.ic_subject,
                     summaryFontSizeSp = 13f,
                     summaryLineHeightSp = 17f,
-                    summaryMaxLines = if (systemPromptEnabled) 10 else 2,
+                    summaryMaxLines = 10,
                     enabled = systemPromptEnabled,
                     onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
                 )

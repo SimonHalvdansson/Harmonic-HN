@@ -37,6 +37,7 @@ class AppSettingsRepositoryTest {
         repository.setAppearanceBoolean(AppearanceBooleanPreference.COMPACT_HEADER, true)
         repository.setStoryBoolean(StoryBooleanPreference.HIDE_JOBS, true)
         repository.setDebugBoolean(DebugBooleanPreference.SHOW_AI_SUMMARY_INFO, true)
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_DELAYED_COMMENTS, true)
 
         val snapshot = repository.snapshot()
         assertTrue(snapshot.story.compactView)
@@ -44,6 +45,7 @@ class AppSettingsRepositoryTest {
         assertTrue(snapshot.story.compactHeader)
         assertTrue(snapshot.story.hideJobs)
         assertTrue(snapshot.debug.showAiSummaryDebugInfo)
+        assertTrue(snapshot.comments.hideDelayedComments)
         assertEquals(true, store.getBoolean(UserPreferenceKeys.COMPACT_VIEW, false))
     }
 }

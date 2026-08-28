@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
@@ -31,10 +32,9 @@ internal fun SummaryMarkdownText(
     fontSize: TextUnit,
     lineHeight: TextUnit,
     modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
 ) {
-    val rendered = remember(markdown, linkColor) {
-        summaryMarkdownAnnotatedString(markdown, linkColor)
-    }
     val indentPrefix = remember(markdown) { summaryMarkdownHangingIndentPrefix(markdown) }
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -48,6 +48,9 @@ internal fun SummaryMarkdownText(
             with(density) { width.toSp() }
         }
     }
+    val rendered = remember(markdown, linkColor) {
+        summaryMarkdownAnnotatedString(markdown, linkColor)
+    }
     Text(
         text = rendered,
         modifier = modifier,
@@ -58,8 +61,12 @@ internal fun SummaryMarkdownText(
         style = if (hangingIndent == null) {
             TextStyle.Default
         } else {
+            // One paragraph style applies the indent to every list paragraph without Compose's
+            // large inter-paragraph leading produced by separate ranged ParagraphStyles.
             TextStyle.Default.copy(textIndent = TextIndent(restLine = hangingIndent))
         },
+        maxLines = maxLines,
+        overflow = overflow,
     )
 }
 
@@ -68,17 +75,31 @@ internal fun summaryMarkdownAnnotatedString(
     markdown: String,
     linkColor: Color = Color.Unspecified,
 ): AnnotatedString = buildAnnotatedString {
-    val lines = compactSummaryMarkdownListSpacing(markdown.trim().lines())
-    lines.forEachIndexed { index, sourceLine ->
-        if (index > 0) append('\n')
+    val lines = compactSummaryMarkdownListSpacing(
+        markdown.stripMarkdownHtmlComments().trim().lines(),
+    )
+    var emittedLine = false
+    var inFencedCodeBlock = false
+    lines.forEach { sourceLine ->
         val line = sourceLine.trimEnd()
         val trimmedStart = line.trimStart()
+        if (trimmedStart.startsWith("```")) {
+            inFencedCodeBlock = !inFencedCodeBlock
+            return@forEach
+        }
+        if (emittedLine) append('\n')
+        emittedLine = true
+        if (inFencedCodeBlock) {
+            withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(line) }
+            return@forEach
+        }
         val bulletItem = trimmedStart.markdownBulletItemContent()
         val numberedItem = trimmedStart.markdownNumberedItemContent()
         when {
             bulletItem != null -> {
-                append("• ")
-                appendSummaryMarkdownInline(bulletItem, linkColor)
+                val task = bulletItem.markdownTaskItemContent()
+                append(task?.first ?: "• ")
+                appendSummaryMarkdownInline(task?.second ?: bulletItem, linkColor)
             }
 
             numberedItem != null -> {
@@ -96,24 +117,38 @@ internal fun summaryMarkdownAnnotatedString(
             }
 
             trimmedStart.startsWith("> ") -> {
-                append("› ")
-                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                    appendSummaryMarkdownInline(trimmedStart.drop(2), linkColor)
+                val quote = trimmedStart.drop(2)
+                val alert = quote.markdownAlertLabel()
+                if (alert != null) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(alert) }
+                } else {
+                    append("› ")
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                        appendSummaryMarkdownInline(quote, linkColor)
+                    }
                 }
             }
 
-            else -> appendSummaryMarkdownInline(line, linkColor)
+            else -> appendSummaryMarkdownInline(line.stripMarkdownHtmlTags(), linkColor)
         }
     }
 }
 
-private fun compactSummaryMarkdownListSpacing(lines: List<String>): List<String> =
-    lines.filterIndexed { index, line ->
-        if (line.isNotBlank()) return@filterIndexed true
-        val previous = lines.subList(0, index).lastOrNull(String::isNotBlank)
-        val next = lines.subList(index + 1, lines.size).firstOrNull(String::isNotBlank)
-        previous?.isMarkdownListItem() != true || next?.isMarkdownListItem() != true
+private fun compactSummaryMarkdownListSpacing(lines: List<String>): List<String> = buildList {
+    lines.forEachIndexed { index, line ->
+        if (line.isNotBlank()) {
+            add(line)
+            return@forEachIndexed
+        }
+        val previous = lastOrNull { it.isNotBlank() }
+        val next = lines.asSequence().drop(index + 1).firstOrNull { it.isNotBlank() }
+        val compactListGap = previous?.isMarkdownListItem() == true &&
+            next?.isMarkdownListItem() == true
+        val compactHeadingGap = previous?.isMarkdownHeading() == true
+        val duplicateBlankLine = lastOrNull()?.isBlank() == true
+        if (!compactListGap && !compactHeadingGap && !duplicateBlankLine) add(line)
     }
+}
 
 private fun summaryMarkdownHangingIndentPrefix(markdown: String): String? {
     val prefixes = compactSummaryMarkdownListSpacing(markdown.trim().lines())
@@ -121,9 +156,14 @@ private fun summaryMarkdownHangingIndentPrefix(markdown: String): String? {
         .map { line ->
             val trimmed = line.trimStart()
             val numberedItem = trimmed.markdownNumberedItemContent()
+            val bulletItem = trimmed.markdownBulletItemContent()
+            val taskPrefix = bulletItem?.markdownTaskItemContent()?.first
             when {
-                trimmed.markdownBulletItemContent() != null -> "• "
+                taskPrefix != null -> taskPrefix
+                bulletItem != null -> "• "
                 numberedItem != null -> "${numberedItem.first}. "
+                // Mixed prose/Markdown blocks keep their normal paragraph layout. AI summaries
+                // are list-only, so they receive one compact hanging indent across all bullets.
                 else -> return null
             }
         }
@@ -134,6 +174,10 @@ private fun String.isMarkdownListItem(): Boolean {
     val trimmed = trimStart()
     return trimmed.markdownBulletItemContent() != null ||
         trimmed.markdownNumberedItemContent() != null
+}
+
+private fun String.isMarkdownHeading(): Boolean = trimStart().let { trimmed ->
+    trimmed.startsWith('#') && trimmed.dropWhile { it == '#' }.startsWith(' ')
 }
 
 private fun String.markdownBulletItemContent(): String? = when {
@@ -147,6 +191,25 @@ private fun String.markdownNumberedItemContent(): Pair<String, String>? {
     return substring(0, delimiter) to substring(delimiter + 2)
 }
 
+private fun String.markdownTaskItemContent(): Pair<String, String>? = when {
+    startsWith("[x] ", ignoreCase = true) -> "☑ " to drop(4)
+    startsWith("[ ] ") -> "☐ " to drop(4)
+    else -> null
+}
+
+private fun String.markdownAlertLabel(): String? {
+    if (!startsWith("[!") || !endsWith(']')) return null
+    return substring(2, length - 1)
+        .lowercase()
+        .replaceFirstChar(Char::uppercase)
+}
+
+private fun String.stripMarkdownHtmlComments(): String =
+    replace(Regex("<!--[\\s\\S]*?-->"), "")
+
+private fun String.stripMarkdownHtmlTags(): String =
+    replace(Regex("</?[A-Za-z][^>]*>"), "")
+
 private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     source: String,
     linkColor: Color,
@@ -154,6 +217,11 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     var index = 0
     while (index < source.length) {
         when {
+            source[index] == '!' && index + 1 < source.length && source[index + 1] == '[' -> {
+                // Render image Markdown as its linked alt text in this compact text-only surface.
+                index++
+            }
+
             source[index] == '\\' && index + 1 < source.length &&
                 source[index + 1] in MARKDOWN_ESCAPABLE_CHARACTERS -> {
                 append(source[index + 1])

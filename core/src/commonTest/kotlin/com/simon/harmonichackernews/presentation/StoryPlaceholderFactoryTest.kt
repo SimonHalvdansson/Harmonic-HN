@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Story
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class StoryPlaceholderFactoryTest {
@@ -34,5 +35,23 @@ class StoryPlaceholderFactoryTest {
         )
 
         assertEquals(listOf(1), stories.map(Story::id))
+    }
+
+    @Test
+    fun refreshedFeedRetainsEveryDetailOfMatchingLiveStories() {
+        val retained = Story("Already loaded", 2, true, false)
+
+        val stories = StoryPlaceholderFactory.reconcile(
+            existingStories = listOf(Story("Old first", 1, true, false), retained),
+            itemIds = listOf(3, 2, 4),
+            commentIds = setOf(2),
+        )
+
+        assertEquals(listOf(3, 2, 4), stories.map(Story::id))
+        assertSame(retained, stories[1])
+        assertEquals("Already loaded", stories[1].title)
+        assertTrue(stories[1].loaded)
+        assertTrue(stories[1].isComment)
+        assertFalse(stories[0].loaded)
     }
 }

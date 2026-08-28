@@ -7,9 +7,30 @@ import com.simon.harmonichackernews.network.StoryFeedResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class StoryFeedRuntimeTest {
+    @Test
+    fun refreshReordersFeedWithoutDiscardingLoadedStoryObjects() {
+        val runtime = runtime(StoriesSessionState())
+        val store = StoryListStore()
+        val retained = Story("Loaded details", 2, true, false)
+        store.replace(listOf(Story("Old", 1, true, false), retained))
+
+        val application = runtime.applyInitial(
+            store,
+            StoryType.TOP_STORIES,
+            StoryFeedResult.ItemIds(listOf(3, 2, 4)),
+        )
+
+        assertTrue(application.applied)
+        assertEquals(listOf(3, 2, 4), store.stories.map(Story::id))
+        assertSame(retained, store.stories[1])
+        assertEquals("Loaded details", store.stories[1].title)
+        assertTrue(store.stories[1].loaded)
+    }
+
     @Test
     fun appliesAndExtendsScrapedFeedWithoutDuplicatingIds() {
         val session = StoriesSessionState()

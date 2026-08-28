@@ -207,6 +207,9 @@ class StoryCacheRepository(
         files.readText(StoryCacheKeys.FULL_NAMESPACE, StoryCacheKeys.storyFile(it))
     }
 
+    fun hasStoryPayload(storyId: Int): Boolean = storyId > 0 &&
+        storyId in StoryCacheIndex.storyIds(metadata.getStringSet(StoryCacheKeys.INDEX))
+
     fun hydrateStory(story: Story?): Boolean {
         story ?: return false
         if (story.id <= 0) return false

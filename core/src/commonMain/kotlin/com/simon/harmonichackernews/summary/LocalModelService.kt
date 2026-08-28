@@ -58,6 +58,8 @@ class LocalModelService(
             ensureTransferMonitoring()
             return mutableState.asStateFlow()
         }
+    /** Cached model state for UI entry paths that must never scan storage on the calling thread. */
+    val cachedState: StateFlow<LocalModelManagerState> = mutableState.asStateFlow()
     val catalog: List<LocalModelDefinition> get() = models
     val selectedModel: LocalModelDefinition get() = lifecycle.selectedModel
     val isIncluded: Boolean get() = runtimeDelivery.included
@@ -224,19 +226,33 @@ class LocalModelService(
         nanoAvailabilityResolved: Boolean,
         nanoAvailable: Boolean,
         managerState: LocalModelManagerState = state.value,
-    ): LocalModelPresentation = LocalModelPresentationPolicy.present(
-        LocalModelPresentationInput(
-            model = model,
-            supported = isSupported(model),
-            unsupportedReason = unsupportedReason(model),
-            selected = managerState.selectedModelId == model.id,
-            nanoAvailabilityResolved = nanoAvailabilityResolved,
-            nanoAvailable = nanoAvailable,
-            transferStatus = managerState.statuses[model.id] ?: status(model),
-            runtimeStatus = runtimeStatus(model.runtime),
-            runtimeInstalled = isRuntimeInstalled(model.runtime),
-        ),
-    )
+    ): LocalModelPresentation {
+        val runtimeStatus = managerState.runtimeStatuses[model.runtime]
+            ?: LocalRuntimeInstallStatus(
+                state = LocalRuntimeInstallState.NOT_INSTALLED,
+                runtime = model.runtime,
+            )
+        return LocalModelPresentationPolicy.present(
+            LocalModelPresentationInput(
+                model = model,
+                supported = isSupported(model),
+                unsupportedReason = unsupportedReason(model),
+                selected = managerState.selectedModelId == model.id,
+                nanoAvailabilityResolved = nanoAvailabilityResolved,
+                nanoAvailable = nanoAvailable,
+                transferStatus = managerState.statuses[model.id]
+                    ?: LocalModelTransferStatus(LocalModelTransferState.NOT_DOWNLOADED),
+                runtimeStatus = runtimeStatus,
+                runtimeInstalled = runtimeStatus.state == LocalRuntimeInstallState.INSTALLED,
+            ),
+        )
+    }
+
+    /** Fills the application-scoped model cache; call from a background dispatcher. */
+    fun preload() = refreshState()
+
+    /** Registers platform observers after [preload] so screen entry never performs the first scan. */
+    fun startMonitoring() = ensureTransferMonitoring()
 
     fun refresh() {
         ensureTransferMonitoring()
@@ -246,15 +262,22 @@ class LocalModelService(
     private fun ensureTransferMonitoring() {
         if (monitoringTransfers) return
         monitoringTransfers = true
-        transfers.setObserver(::refreshState)
-        runtimeDelivery.setObserver(::refreshState)
-        refreshState()
+        var registeringObservers = true
+        val observer = { if (!registeringObservers) refreshState() }
+        transfers.setObserver(observer)
+        runtimeDelivery.setObserver(observer)
+        registeringObservers = false
+        if (mutableState.value.statuses.size < models.size) refreshState()
     }
 
     private fun refreshState() {
         mutableState.value = LocalModelManagerState(
             selectedModelId = selectedModel.id,
             statuses = models.associate { it.id to lifecycle.status(it) },
+            runtimeStatuses = models
+                .map(LocalModelDefinition::runtime)
+                .distinct()
+                .associateWith(runtimeDelivery::status),
         )
     }
 

@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -283,6 +284,7 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 56.dp, top = 12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
             OutlinedTextField(
                 value = value,
@@ -307,10 +309,11 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
                 ),
                 keyboardActions = KeyboardActions(onGo = { openId() }),
             )
-            Spacer(Modifier.width(8.dp))
             OutlinedIconButton(
                 onClick = { openId() },
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier
+                    .padding(start = 10.dp, top = 12.dp)
+                    .size(48.dp),
             ) {
                 Icon(
                     painterResource(Res.drawable.ic_chevron_right),

@@ -157,6 +157,16 @@ class StoriesComposeController private constructor(
     val contentInsetStartPx: Int get() = shellState.contentInsetStartPx
     var contentVersion by mutableIntStateOf(0)
         private set
+    var scrollToTopRequestVersion by mutableIntStateOf(0)
+        private set
+    private var scrollToTopAfterRefresh = false
+    private var refreshInProgressObserved = false
+    var tapToUpdateExitRequestVersion by mutableIntStateOf(0)
+        private set
+    var tapToUpdateExitInProgress by mutableStateOf(false)
+        private set
+    private var tapToUpdateRefreshStarted = false
+    private var tapToUpdateCoreCleared = false
     var headerMenuVisible by mutableStateOf(false)
         private set
     var headerMenuDismissRequestVersion by mutableIntStateOf(0)
@@ -214,6 +224,11 @@ class StoriesComposeController private constructor(
         } else {
             state.copy(cacheProgressMax = 1)
         }
+        if (scrollToTopAfterRefresh && normalized.refreshing) {
+            refreshInProgressObserved = true
+        }
+        val requestedRefreshCompleted = scrollToTopAfterRefresh &&
+            refreshInProgressObserved && !normalized.refreshing
         val listsChanged = mainStoriesState != normalized.mainStories ||
             searchStoriesState != normalized.searchStories
         val interactionContentChanged = listsChanged ||
@@ -261,6 +276,23 @@ class StoriesComposeController private constructor(
         }
         if (interactionContentChanged || previewActionStateChanged) syncInteractionState()
         contentVersion++
+        if (requestedRefreshCompleted) {
+            scrollToTopAfterRefresh = false
+            refreshInProgressObserved = false
+            scrollToTopRequestVersion++
+        }
+        if (tapToUpdateRefreshStarted && normalized.mainStories.isEmpty()) {
+            tapToUpdateCoreCleared = true
+            tapToUpdateExitInProgress = false
+        }
+        if (tapToUpdateCoreCleared && !normalized.loading &&
+            (normalized.mainStories.isNotEmpty() || normalized.loadingFailed ||
+                normalized.loadingFailedServerError)
+        ) {
+            tapToUpdateRefreshStarted = false
+            tapToUpdateCoreCleared = false
+            if (normalized.mainStories.isNotEmpty()) scrollToTopRequestVersion++
+        }
     }
 
     private fun updatePreviewResources(
@@ -294,6 +326,36 @@ class StoriesComposeController private constructor(
 
     fun beginPullToRefresh() {
         pullToRefreshInProgress = true
+    }
+
+    /** Refreshes the active feed and requests an exact top anchor after its new data is applied. */
+    fun refresh() {
+        scrollToTopAfterRefresh = true
+        refreshInProgressObserved = refreshing
+        listener.onRefresh(showMainLoadingIndicator = false)
+    }
+
+    /** Starts a UI-only removal pass; the network refresh is deferred until its exit finishes. */
+    fun beginTapToUpdateExit() {
+        if (tapToUpdateExitInProgress || refreshing || loading) return
+        scrollToTopAfterRefresh = false
+        refreshInProgressObserved = false
+        tapToUpdateRefreshStarted = false
+        tapToUpdateCoreCleared = false
+        tapToUpdateExitInProgress = true
+        tapToUpdateExitRequestVersion++
+    }
+
+    fun completeTapToUpdateExit() {
+        if (!tapToUpdateExitInProgress || tapToUpdateRefreshStarted) return
+        tapToUpdateRefreshStarted = true
+        listener.onRefresh(showMainLoadingIndicator = true)
+    }
+
+    fun cancelTapToUpdateExit() {
+        if (tapToUpdateRefreshStarted) return
+        tapToUpdateExitInProgress = false
+        tapToUpdateCoreCleared = false
     }
 
     fun finishPullToRefresh() {
@@ -646,7 +708,7 @@ class StoriesComposeController private constructor(
         fun onSearch(query: String)
         fun onSearchOption(kind: StorySearchOption, index: Int)
         fun onToggleOnlyClicked()
-        fun onRefresh()
+        fun onRefresh(showMainLoadingIndicator: Boolean = false)
         fun onShowCached()
         fun onLoadMore()
         fun onSavedFilterSelected(filter: SavedItemFilter)

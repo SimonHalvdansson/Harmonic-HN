@@ -164,7 +164,8 @@ internal class CommentsWebViewController(
     private var clearWebViewHistoryOnNextFinish = false
     private val webContentLoad = webContentRuntime.load
     private val adBlocklist = webContentRuntime.adBlocklist
-    private var pendingSummaryOnDone: Runnable? = null
+    private var pendingSummaryCallback: PageTextCallback? = null
+    private var lastPageFinishedGeneration = -1
     private var customView: View? = null
     private var customViewCallback: CustomViewCallback? = null
     private var pdfAndroidJavascriptBridge: PdfAndroidJavascriptBridge? = null
@@ -763,6 +764,7 @@ internal class CommentsWebViewController(
             nowMillis = SystemClock.uptimeMillis(),
         )
         val generation = loadStart.generation
+        lastPageFinishedGeneration = -1
         applyReaderModeChange(loadStart.readerMode)
         webContentDriver.publish(url = url, loading = true, pageReady = false)
 
@@ -875,7 +877,6 @@ internal class CommentsWebViewController(
             currentProgressIndicator.setVisibility(View.GONE)
         }
 
-        completePendingSummaryIfReady(view)
     }
 
     private fun hideWebViewLoadingBackdrop() {
@@ -1196,39 +1197,45 @@ internal class CommentsWebViewController(
         })
     }
 
-    fun requestSummary(onDone: Runnable) {
+    fun requestSummary(callback: PageTextCallback) {
+        if (webView == null) initialize()
         if (webView == null || !startedLoading) {
             startedLoading = true
             loadUrl(story?.url)
         }
 
         if (webView == null) {
-            webViewHandler.post(onDone)
+            webViewHandler.post { callback.onResult(null) }
             return
         }
 
-        pendingSummaryOnDone = onDone
-        val generation = webContentSession.beginPageTextRequest()
-        webViewHandler.postDelayed(
-            Runnable { finishPendingSummary(generation, "", null) },
-            WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS
-        )
+        pendingSummaryCallback = callback
+        webContentSession.beginPageTextRequest()
 
         val currentWebView = webView
-        if (!webContentLoad.state.inProgress || (currentWebView?.progress ?: 0) >= 100) {
+        if (lastPageFinishedGeneration == webContentLoad.state.generation) {
             completePendingSummaryIfReady(currentWebView)
         }
     }
 
     private fun completePendingSummaryIfReady(targetWebView: WebView?) {
-        val onDone = pendingSummaryOnDone
-        if (onDone == null || targetWebView == null || targetWebView !== webView) {
+        val callback = pendingSummaryCallback
+        if (callback == null || targetWebView == null || targetWebView !== webView) {
             return
         }
 
         val generation = webContentSession.currentPageTextRequestGeneration()
-        webContentSession.readRequestedPageText(generation) { result ->
-            finishPendingSummary(generation, result, onDone)
+        val readStarted = webContentSession.readRequestedPageText(generation) { result ->
+            finishPendingSummary(generation, result, callback)
+        }
+        if (readStarted) {
+            // Loading the article has its own WebView lifecycle timeout. Only start the extraction
+            // timeout after onPageFinished; otherwise a slow page can lose the retry before it has
+            // produced any DOM text at all.
+            webViewHandler.postDelayed(
+                Runnable { finishPendingSummary(generation, "", null) },
+                WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS,
+            )
         }
     }
 
@@ -1241,16 +1248,15 @@ internal class CommentsWebViewController(
 
     private fun finishPendingSummary(
         generation: Int,
-        summary: String?,
-        completedCallback: Runnable?
+        pageText: String?,
+        completedCallback: PageTextCallback?
     ) {
-        val onDone = if (completedCallback != null) completedCallback else pendingSummaryOnDone
-        if (onDone == null || !webContentSession.claimPageTextRequest(generation)) {
+        val callback = completedCallback ?: pendingSummaryCallback
+        if (callback == null || !webContentSession.claimPageTextRequest(generation)) {
             return
         }
-        pendingSummaryOnDone = null
-        story?.summary = summary
-        webViewHandler.post(onDone)
+        pendingSummaryCallback = null
+        webViewHandler.post { callback.onResult(pageText) }
     }
 
     private fun getCustomErrorPageType(errorCode: Int): WebContentFailure? {
@@ -1297,7 +1303,8 @@ internal class CommentsWebViewController(
         currentPdfFilePath = null
         webContentSession.reset()
         webContentDriver.publish(WebContentDriverState())
-        pendingSummaryOnDone = null
+        pendingSummaryCallback = null
+        lastPageFinishedGeneration = -1
         webViewHandler.removeCallbacksAndMessages(null)
         linkPreviewController.cancelPendingNitterLinkPreviewRead()
         if (webView != null) {
@@ -1502,7 +1509,9 @@ internal class CommentsWebViewController(
             if (!isCurrentWebViewCallback(currentView) || currentView == null) {
                 return
             }
-            finishWebViewLoadUi(currentView, webContentLoad.state.generation, true)
+            val finishedGeneration = webContentLoad.state.generation
+            lastPageFinishedGeneration = finishedGeneration
+            finishWebViewLoadUi(currentView, finishedGeneration, true)
 
             callbacks.syncOnBackPressedCallbackEnabledState()
 
@@ -1518,7 +1527,6 @@ internal class CommentsWebViewController(
 
             linkPreviewController.onWebViewPageFinished(coordinator.context, view, url)
 
-            val finishedGeneration = webContentLoad.state.generation
             val pageEligible = !showingErrorPage &&
                 WebContentPagePolicy.isReaderEligible(url, WEB_CONTENT_URLS)
             val readerResult = webContentSession.onPageFinished(pageEligible)
@@ -1533,6 +1541,14 @@ internal class CommentsWebViewController(
                     view.post(Runnable { checkReaderModeAvailability(view, finishedGeneration) })
                 ReaderModePageDecision.None -> Unit
             }
+            webViewHandler.postDelayed(
+                Runnable {
+                    if (lastPageFinishedGeneration == finishedGeneration) {
+                        completePendingSummaryIfReady(currentView)
+                    }
+                },
+                WebContentTiming.SUMMARY_PAGE_TEXT_SETTLE_MILLIS,
+            )
         }
 
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {

@@ -74,6 +74,7 @@ enum class CommentsMoreAction {
     ARCHIVE_ORG,
     ARCHIVE_IS,
     ARCHIVE_TODAY,
+    ARCHIVE_PH,
 }
 
 enum class CommentsSheetAction {

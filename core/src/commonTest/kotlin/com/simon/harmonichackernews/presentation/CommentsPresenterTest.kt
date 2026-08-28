@@ -15,6 +15,15 @@ import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.HttpStatusException
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.settings.AiSummaryMode
+import com.simon.harmonichackernews.settings.AiSummaryPreferenceKeys
+import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
+import com.simon.harmonichackernews.settings.TestCredentialStore
+import com.simon.harmonichackernews.settings.TestKeyValueStore
+import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
+import com.simon.harmonichackernews.summary.StorySummaryBackend
+import com.simon.harmonichackernews.summary.StorySummaryEvent
+import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -22,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runCurrent
@@ -36,6 +46,72 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
+    @Test
+    fun localTooShortFailureRequestsPageTextOnlyOnce() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            session,
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository("{}"),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val settings = AiSummarySettingsRepository(
+            TestKeyValueStore(
+                mapOf(
+                    AiSummaryPreferenceKeys.ENABLED to true,
+                    AiSummaryPreferenceKeys.MODE to AiSummaryMode.LOCAL.storedValue,
+                ),
+            ),
+            TestCredentialStore(),
+            flowOf(),
+        )
+        var attempts = 0
+        val tooShortBackend = StorySummaryBackend {
+            flow {
+                attempts++
+                emit(StorySummaryEvent.Failure(LOCAL_SUMMARY_ARTICLE_TOO_SHORT))
+            }
+        }
+        val runtime = CommentsFeatureRuntime(
+            scope = backgroundScope,
+            sessionState = session,
+            presenter = presenter,
+            summarySettings = settings,
+            localSummaryAvailable = { true },
+            summaryRuntime = StorySummaryRuntime(backgroundScope, tooShortBackend, tooShortBackend),
+            canLoadArticleTextOnDemand = true,
+            nowMillis = { 0L },
+        )
+        val story = Story().apply {
+            id = 1
+            url = "https://example.com/article"
+            isLink = true
+        }
+        runtime.initialize(story, false, -1, "Default", restoring = false)
+        val effects = mutableListOf<CommentsRuntimeEffect>()
+        backgroundScope.launch { runtime.effects.collect(effects::add) }
+        runCurrent()
+
+        runtime.startSummary(null)
+        runCurrent()
+
+        assertTrue(runtime.summaryLoading)
+        assertEquals(null, story.summary)
+        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+
+        runtime.startSummary("text extracted from the loaded WebView")
+        runCurrent()
+
+        assertFalse(runtime.summaryLoading)
+        assertEquals(2, attempts)
+        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+    }
+
     @Test
     fun bookmarkTogglePublishesSavedItemStateChange() = runTest {
         val presenter = CommentsPresenter(

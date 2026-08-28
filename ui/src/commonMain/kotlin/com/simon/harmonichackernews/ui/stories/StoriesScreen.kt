@@ -72,6 +72,8 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -84,6 +86,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,6 +165,50 @@ fun StoriesScreen(
     val settings = controller.displaySettings ?: return
     val mainState = rememberLazyListState()
     val searchState = rememberLazyListState()
+    val tapToUpdateExitClock = remember { Animatable(0f) }
+
+    val tapToUpdateExitRequestVersion = controller.tapToUpdateExitRequestVersion
+    LaunchedEffect(tapToUpdateExitRequestVersion) {
+        if (tapToUpdateExitRequestVersion <= 0) return@LaunchedEffect
+        var refreshStarted = false
+        try {
+            tapToUpdateExitClock.snapTo(0f)
+            // The main stories are omitted below while this clock runs, letting every keyed row
+            // finish its animateItem fade-out before the refresh request reaches the store.
+            tapToUpdateExitClock.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = SavedListTransitionDurationMillis,
+                    easing = StoriesEasing,
+                ),
+            )
+            mainState.scrollToItem(0)
+            controller.completeTapToUpdateExit()
+            refreshStarted = true
+            snapshotFlow { controller.tapToUpdateExitInProgress }.first { inProgress ->
+                !inProgress
+            }
+        } finally {
+            if (!refreshStarted) controller.cancelTapToUpdateExit()
+            tapToUpdateExitClock.snapTo(0f)
+        }
+    }
+
+    val scrollToTopRequestVersion = controller.scrollToTopRequestVersion
+    LaunchedEffect(scrollToTopRequestVersion) {
+        if (scrollToTopRequestVersion <= 0 || controller.mainStories.isEmpty()) {
+            return@LaunchedEffect
+        }
+        // Let the refreshed keyed items settle, then override Compose's retained key anchor.
+        withFrameNanos { }
+        mainState.scrollToItem(0)
+        // Reassert on the following frame in case the replacement list's measurement pass moved
+        // the old key anchor after the first scroll request.
+        withFrameNanos { }
+        if (mainState.firstVisibleItemIndex != 0 || mainState.firstVisibleItemScrollOffset != 0) {
+            mainState.scrollToItem(0)
+        }
+    }
 
     val settleRequest = controller.predictiveBackSettleRequest
     LaunchedEffect(settleRequest?.serial) {
@@ -215,7 +262,11 @@ fun StoriesScreen(
             StoriesList(
                 controller = controller,
                 settings = settings,
-                stories = controller.mainStories,
+                stories = if (controller.tapToUpdateExitInProgress) {
+                    emptyList()
+                } else {
+                    controller.mainStories
+                },
                 listState = mainState,
                 searchMode = false,
                 storyItemModelCacheKey = storyItemModelCacheKey,
@@ -249,7 +300,8 @@ fun StoriesScreen(
         },
         overlay = {
             AnimatedVisibility(
-                visible = controller.showUpdate && !controller.searching,
+                visible = controller.showUpdate && !controller.searching &&
+                    !controller.tapToUpdateExitInProgress,
                 enter = fadeIn(tween(180, easing = StoriesEasing)),
                 exit = fadeOut(tween(140, easing = StoriesEasing)),
                 modifier = Modifier
@@ -261,7 +313,16 @@ fun StoriesScreen(
                     ),
             ) {
                 ExtendedFloatingActionButton(
-                    onClick = controller.listener::onRefresh,
+                    onClick = {
+                        val alreadyAtTop = mainState.firstVisibleItemIndex == 0 &&
+                            mainState.firstVisibleItemScrollOffset == 0
+                        if (alreadyAtTop) {
+                            controller.beginPullToRefresh()
+                            controller.refresh()
+                        } else {
+                            controller.beginTapToUpdateExit()
+                        }
+                    },
                     modifier = Modifier.widthIn(min = 189.dp),
                     containerColor = HarmonicTheme.colors.overlayButton,
                     contentColor = Color.White,
@@ -376,6 +437,10 @@ private fun StoriesList(
         (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
+    val pullToRefreshState = rememberPullToRefreshState()
+    val pullIndicatorTopInset = with(density) {
+        WindowInsets.safeDrawing.getTop(density).toDp()
+    }
     val layoutDirection = LocalLayoutDirection.current
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
     val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
@@ -685,9 +750,20 @@ private fun StoriesList(
         PullToRefreshBox(
             isRefreshing = controller.pullToRefreshInProgress &&
                 controller.refreshing && !searchMode,
+            state = pullToRefreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = pullIndicatorTopInset),
+                    isRefreshing = controller.pullToRefreshInProgress &&
+                        controller.refreshing && !searchMode,
+                    state = pullToRefreshState,
+                )
+            },
             onRefresh = {
                 controller.beginPullToRefresh()
-                controller.listener.onRefresh()
+                controller.refresh()
             },
             modifier = modifier.fillMaxSize(),
             content = content,
@@ -1117,7 +1193,7 @@ private fun StoriesMoreMenu(
                 text = { HarmonicMenuText("Refresh") },
                 onClick = {
                     dismiss()
-                    controller.listener.onRefresh()
+                    controller.refresh()
                 },
             )
         }
@@ -1198,7 +1274,7 @@ private fun HeaderStatus(
         loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
         centerFailure = centerFailure,
         showFailure = showFailure,
-        onRetry = controller.listener::onRefresh,
+        onRetry = controller::refresh,
         onShowCached = controller.listener::onShowCached,
     )
 }

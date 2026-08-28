@@ -4,10 +4,16 @@ import android.app.Application
 import android.content.Context
 import androidx.annotation.NonNull
 import androidx.work.Configuration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
 class HarmonicApplication : Application(), Configuration.Provider {
     private val localAiSupport: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
+    private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     internal val composition by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         createAndroidAppComposition(this)
     }
@@ -19,7 +25,13 @@ class HarmonicApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        composition
+        val appComposition = composition
+        preloadScope.launch {
+            appComposition.preloadAiSettings()
+            withContext(Dispatchers.Main.immediate) {
+                appComposition.localModels?.startMonitoring()
+            }
+        }
     }
 
     override val workManagerConfiguration: Configuration

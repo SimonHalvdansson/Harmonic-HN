@@ -22,6 +22,7 @@ data class CommentsScreenState(
     val visibleComments: List<PortableVisibleComment> = emptyList(),
     val displaySettings: CommentDisplaySettings? = null,
     val commentsLoaded: Boolean = false,
+    val initialThreadCached: Boolean = false,
     val commentsRefreshInProgress: Boolean = false,
     val loadingFailed: Boolean = false,
     val loadingFailedServerError: Boolean = false,
@@ -56,13 +57,18 @@ class CommentsComposeController private constructor(
     shouldSmoothScroll: () -> Boolean,
     private val savedItemState: SavedItemStateReader,
     initialStory: StoryListItemSnapshot,
+    initialThreadCached: Boolean,
     val initialShowWebsite: Boolean,
     initialScrollRestorationPending: Boolean,
     accountUser: String?,
     val listener: Listener,
 ) {
     var screenState by mutableStateOf(
-        CommentsScreenState(story = initialStory, accountUser = accountUser),
+        CommentsScreenState(
+            story = initialStory,
+            accountUser = accountUser,
+            initialThreadCached = initialThreadCached,
+        ),
     )
         private set
 
@@ -76,6 +82,7 @@ class CommentsComposeController private constructor(
     val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
     val displaySettings: CommentDisplaySettings? get() = screenState.displaySettings
     val commentsLoaded: Boolean get() = screenState.commentsLoaded
+    val initialThreadCached: Boolean get() = screenState.initialThreadCached
     val commentsRefreshInProgress: Boolean get() = screenState.commentsRefreshInProgress
     val loadingFailed: Boolean get() = screenState.loadingFailed
     val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError
@@ -760,6 +767,7 @@ class CommentsComposeController private constructor(
         fun create(
             shouldSmoothScroll: () -> Boolean,
             story: StoryListItemSnapshot,
+            initialThreadCached: Boolean = false,
             showWebsite: Boolean,
             initialScrollRestorationPending: Boolean = false,
             accountUser: String?,
@@ -769,6 +777,7 @@ class CommentsComposeController private constructor(
             shouldSmoothScroll = shouldSmoothScroll,
             savedItemState = savedItemState,
             initialStory = story,
+            initialThreadCached = initialThreadCached,
             initialShowWebsite = showWebsite,
             initialScrollRestorationPending = initialScrollRestorationPending,
             accountUser = accountUser,

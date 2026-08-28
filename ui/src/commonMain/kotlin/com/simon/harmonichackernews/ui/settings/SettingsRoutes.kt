@@ -118,15 +118,29 @@ fun AiSummarySettingsRoute(
 
     val configurationComplete =
         persistedSettings.configurationComplete(localConfigurationReady)
-    val enabled = persistedSettings.enabled(localConfigurationReady)
+    val configurationResolved = when (persistedSettings.mode) {
+        AiSummaryMode.LOCAL -> localAvailabilityResolved
+        AiSummaryMode.CLOUD -> persistedSettings.credentialsLoaded
+    }
+    // Preserve the explicitly selected state while secure credentials or local capabilities load.
+    // An unresolved dependency must never look like a persisted user choice to turn summaries off.
+    val enabled = if (configurationResolved) {
+        persistedSettings.enabled(localConfigurationReady)
+    } else {
+        persistedSettings.explicitlyEnabled == true
+    }
     LaunchedEffect(
         configurationComplete,
+        configurationResolved,
         enabled,
         localConfigurationReady,
         persistedSettings.credentialsLoaded,
     ) {
-        if (persistedSettings.credentialsLoaded) {
-            repository.disableIfConfigurationIncomplete(localConfigurationReady)
+        if (configurationResolved) {
+            repository.disableIfConfigurationIncomplete(
+                localConfigurationReady = localConfigurationReady,
+                configurationResolved = true,
+            )
         }
     }
 

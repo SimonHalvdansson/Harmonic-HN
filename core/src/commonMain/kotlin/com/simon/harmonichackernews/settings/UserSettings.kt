@@ -86,6 +86,7 @@ data class CommentPreferences(
     val highlightMetadata: Boolean,
     val collectReferenceLinks: Boolean,
     val collapseTopLevel: Boolean,
+    val hideDelayedComments: Boolean,
     val preloadCommentsFromStories: Boolean,
     val sorting: String,
     val showScrollbar: Boolean,

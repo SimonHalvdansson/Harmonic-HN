@@ -155,8 +155,9 @@ class StoriesCoordinator(
                         effect.presentation.failureDetail,
                         null,
                     )
+                } else {
+                    navigation.showMessage(effect.presentation.message)
                 }
-                navigation.showMessage(effect.presentation.message)
             }
         }
     }

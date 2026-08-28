@@ -85,7 +85,7 @@ sealed interface StoriesIntent {
     data class Search(val query: String) : StoriesIntent
     data class SelectSearchOption(val kind: StorySearchOption, val index: Int) : StoriesIntent
     data object ToggleOnlyClicked : StoriesIntent
-    data object Refresh : StoriesIntent
+    data class Refresh(val showMainLoadingIndicator: Boolean = false) : StoriesIntent
     data object ShowCached : StoriesIntent
     data object LoadMore : StoriesIntent
     data class SelectSavedFilter(val filter: SavedItemFilter) : StoriesIntent
@@ -222,7 +222,10 @@ class StoriesStore internal constructor(
             is StoriesIntent.SelectSearchOption ->
                 runtime.selectSearchOption(intent.kind, intent.index)
             StoriesIntent.ToggleOnlyClicked -> runtime.toggleOnlyClicked()
-            StoriesIntent.Refresh -> runtime.refresh(true)
+            is StoriesIntent.Refresh -> runtime.refresh(
+                showSwipeRefreshIndicator = true,
+                showMainLoadingIndicator = intent.showMainLoadingIndicator,
+            )
             StoriesIntent.ShowCached -> runtime.showCachedStories()
             StoriesIntent.LoadMore -> runtime.loadMore()
             is StoriesIntent.SelectSavedFilter -> runtime.selectSavedFilter(intent.filter)

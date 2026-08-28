@@ -36,7 +36,7 @@ class StoryFeedRuntime(
         store.setShowingCached(false)
         return when (result) {
             is StoryFeedResult.ItemIds -> {
-                val stories = placeholders(result.ids)
+                val stories = reconciledPlaceholders(store.stories, result.ids)
                 store.replace(stories)
                 StoryFeedApplication(true, loadVisibleStories = true, stories)
             }
@@ -49,7 +49,11 @@ class StoryFeedRuntime(
                     store.fail(StoryLoadFailure.GENERAL)
                     StoryFeedApplication(false, loadVisibleStories = false)
                 } else {
-                    val stories = placeholders(result.page.itemIds, result.page.commentIds.toSet())
+                    val stories = reconciledPlaceholders(
+                        existingStories = store.stories,
+                        itemIds = result.page.itemIds,
+                        commentIds = result.page.commentIds.toSet(),
+                    )
                     store.replace(
                         stories,
                         canLoadMore = !result.page.nextPageUrl.isNullOrEmpty(),
@@ -131,10 +135,12 @@ class StoryFeedRuntime(
         store.finishLoadMore(store.state.value.canLoadMore)
     }
 
-    private fun placeholders(
+    private fun reconciledPlaceholders(
+        existingStories: List<Story>,
         itemIds: List<Int>,
         commentIds: Set<Int> = emptySet(),
-    ): MutableList<Story> = StoryPlaceholderFactory.create(
+    ): MutableList<Story> = StoryPlaceholderFactory.reconcile(
+        existingStories = existingStories,
         itemIds = itemIds,
         commentIds = commentIds,
         clickedIds = clickedStoryIds(),

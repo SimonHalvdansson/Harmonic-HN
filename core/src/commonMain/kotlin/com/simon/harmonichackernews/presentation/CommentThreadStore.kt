@@ -66,6 +66,7 @@ class CommentThreadStore {
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
+    private var hideDelayedComments = false
 
     /** Source-compatible name for callers already migrated to immutable snapshots. */
     val portableState: StateFlow<PortableCommentThreadState> get() = state
@@ -132,6 +133,13 @@ class CommentThreadStore {
         portableItemsById.clear()
         rebuildDisplayedComments()
         publish(sorting = sortType, rebuildSearch = true, rebuildVisibility = true)
+    }
+
+    fun setHideDelayedComments(hide: Boolean) {
+        if (hideDelayedComments == hide) return
+        hideDelayedComments = hide
+        rebuildDisplayedComments()
+        publish(rebuildSearch = true, rebuildVisibility = true)
     }
 
     fun toggleExpanded(commentId: Int): Boolean {
@@ -225,10 +233,15 @@ class CommentThreadStore {
     private fun rebuildDisplayedComments(commentsByOp: Boolean = state.value.commentsByOp) {
         val shouldFilterByOp = commentsByOp &&
             CommentThreadFilter.hasCommentsByOp(currentStory, allComments)
-        val next = if (shouldFilterByOp) {
+        val filteredByOp = if (shouldFilterByOp) {
             CommentThreadFilter.buildCommentsByOpThreadList(currentStory, allComments)
         } else {
             allComments
+        }
+        val next = if (hideDelayedComments) {
+            filteredByOp.filterNot { it.isDelayedPlaceholder() }
+        } else {
+            filteredByOp
         }
         displayedComments.clear()
         displayedComments.addAll(next)
@@ -236,7 +249,9 @@ class CommentThreadStore {
 
     private fun searchResults(query: String): List<Comment> {
         val normalizedQuery = query.trim().lowercase()
-        val comments = allComments.drop(1)
+        val comments = allComments.drop(1).let { source ->
+            if (hideDelayedComments) source.filterNot { it.isDelayedPlaceholder() } else source
+        }
         if (normalizedQuery.isEmpty()) return comments
         return comments.filter { comment ->
             val source = comment.expandedAnchorText.orEmpty()
@@ -446,6 +461,8 @@ class CommentThreadStore {
     }
 
     private data class SearchableCommentText(val source: String, val text: String)
+
+    private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
 
     private data class MutableVisibleComment(
         val sourceIndex: Int,

@@ -34,6 +34,7 @@ data class LocalModelTransferStatus(
 data class LocalModelManagerState(
     val selectedModelId: String = LocalModelCatalog.MODEL_GEMINI_NANO,
     val statuses: Map<String, LocalModelTransferStatus> = emptyMap(),
+    val runtimeStatuses: Map<LocalModelRuntime, LocalRuntimeInstallStatus> = emptyMap(),
 )
 
 /** Owns persisted model selection and portable download-state interpretation. */

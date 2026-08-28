@@ -129,6 +129,11 @@ fun CommentsHeader(
         headerBackground,
         controller.sheetSlideOffset,
     )
+    val summaryContainerColor = if (settings.tintHeader) {
+        lerpCommentsColor(colors.surfaceContainerHigh, visibleHeaderBackground, 0.52f)
+    } else {
+        colors.surfaceContainerHigh
+    }
     LaunchedEffect(visibleHeaderBackground) {
         controller.updateStatusBarHeaderColor(visibleHeaderBackground)
         controller.listener.onHeaderColorChanged(visibleHeaderBackground.toArgb())
@@ -289,17 +294,20 @@ fun CommentsHeader(
                                     controller.pollVoteInFlightOptionId,
                                     controller.listener::onPollOption,
                                 )
-                                StorySummary(
-                                    story = story,
-                                    settings = settings,
-                                )
-                                HeaderMeta(
-                                    story = story,
-                                    settings = settings,
-                                    storyPosterTag = storyPosterTag,
-                                    textStyle = textStyle,
-                                )
                             }
+                            // Keep selectable summary text outside the article click target so a
+                            // long press starts text selection instead of opening the WebView.
+                            StorySummary(
+                                story = story,
+                                settings = settings,
+                                containerColor = summaryContainerColor,
+                            )
+                            HeaderMeta(
+                                story = story,
+                                settings = settings,
+                                storyPosterTag = storyPosterTag,
+                                textStyle = textStyle,
+                            )
                             HeaderActions(
                                 controller = controller,
                                 settings = settings,

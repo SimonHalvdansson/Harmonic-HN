@@ -40,4 +40,31 @@ object StoryPlaceholderFactory {
             shouldHideHydratedStory = shouldHideHydratedStory,
         )
     }
+
+    /**
+     * Reorders a refreshed feed while retaining the complete live objects for IDs already shown.
+     * New IDs still follow the normal cache hydration and visibility policies.
+     */
+    fun reconcile(
+        existingStories: List<Story>,
+        itemIds: List<Int>,
+        commentIds: Set<Int> = emptySet(),
+        clickedIds: Set<Int> = emptySet(),
+        hideClicked: Boolean = false,
+        hydrateCachedStory: (Story) -> Boolean = { false },
+        shouldHideHydratedStory: (Story) -> Boolean = { false },
+    ): MutableList<Story> {
+        val existingById = existingStories.associateBy(Story::id)
+        return itemIds.mapNotNullTo(mutableListOf()) { id ->
+            if (hideClicked && id in clickedIds) return@mapNotNullTo null
+            existingById[id]?.also { story ->
+                story.isComment = id in commentIds
+            } ?: Story("Loading...", id, false, id in clickedIds).also { story ->
+                story.isComment = id in commentIds
+                if (hydrateCachedStory(story) && shouldHideHydratedStory(story)) {
+                    return@mapNotNullTo null
+                }
+            }
+        }
+    }
 }

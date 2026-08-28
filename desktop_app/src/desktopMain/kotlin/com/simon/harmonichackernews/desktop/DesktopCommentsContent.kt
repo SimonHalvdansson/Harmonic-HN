@@ -128,6 +128,7 @@ internal fun DesktopCommentsContent(
         controller = CommentsComposeController.create(
             shouldSmoothScroll = { store.state.value.settings?.smoothScroll ?: true },
             story = initialState,
+            initialThreadCached = store.state.value.initialThreadCached,
             showWebsite = request.destination.showWebsite,
             accountUser = store.state.value.accountUser,
             savedItemState = store.savedItemState,
@@ -201,11 +202,14 @@ internal fun DesktopCommentsContent(
                             null,
                         )
                     }
-                    scene.userMessages.show(effect.presentation.message)
+                    if (!effect.presentation.showDetails) {
+                        scene.userMessages.show(effect.presentation.message)
+                    }
                 }
                 is CommentsRuntimeEffect.Diagnostic ->
                     effect.cause?.printStackTrace()
                 is CommentsRuntimeEffect.StateChanged -> Unit
+                CommentsRuntimeEffect.RequestSummaryPageTextRetry -> Unit
             }
         }
     }

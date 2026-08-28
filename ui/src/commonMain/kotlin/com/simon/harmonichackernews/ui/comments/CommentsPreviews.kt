@@ -143,13 +143,13 @@ import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
-import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -391,7 +391,7 @@ private fun HeaderReferenceRow(
                 )
             }
             Text(
-                ReferenceLinkRowUtils.getReferenceLinkLabel(link),
+                rememberReferenceLinkLabel(link),
                 modifier = Modifier.weight(1f),
                 color = colors.storyNormal,
                 fontFamily = typography.family,
@@ -796,11 +796,25 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
             topPadding = 5.dp,
             bottomPadding = 0.dp,
         )
-        PreviewBody(
-            text = info.description.orEmpty(),
-            maxLines = 12,
-            topPadding = 4.dp,
-        )
+        if (info.type.hasMarkdownDescription()) {
+            SummaryMarkdownText(
+                markdown = info.description.orEmpty(),
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                color = HarmonicTheme.colors.storyNormal,
+                linkColor = HarmonicTheme.colors.link,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 14.sp,
+                lineHeight = 17.sp,
+                maxLines = 12,
+                overflow = TextOverflow.Ellipsis,
+            )
+        } else {
+            PreviewBody(
+                text = info.description.orEmpty(),
+                maxLines = 12,
+                topPadding = 4.dp,
+            )
+        }
         PreviewInfoColumns(
             left = {
                 details.left.forEach { detail ->
@@ -814,6 +828,15 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
             },
         )
     }
+}
+
+private fun LinkPreviewType.hasMarkdownDescription(): Boolean = when (this) {
+    LinkPreviewType.GITHUB_ISSUE,
+    LinkPreviewType.GITHUB_PULL_REQUEST,
+    LinkPreviewType.GITHUB_RELEASE,
+    LinkPreviewType.GITHUB_DISCUSSION,
+    -> true
+    else -> false
 }
 
 @Composable

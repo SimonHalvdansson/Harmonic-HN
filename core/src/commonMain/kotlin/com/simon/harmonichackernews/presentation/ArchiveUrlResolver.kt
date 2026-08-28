@@ -15,6 +15,8 @@ class ArchiveUrlResolver(
                 articleUrl.encodeURLParameter(spaceToPlus = false)
             ArchiveProvider.TODAY -> "https://archive.today/newest/" +
                 articleUrl.encodeURLParameter(spaceToPlus = false)
+            ArchiveProvider.PH -> "https://archive.ph/newest/" +
+                articleUrl.encodeURLParameter(spaceToPlus = false)
         }
     }
 }
