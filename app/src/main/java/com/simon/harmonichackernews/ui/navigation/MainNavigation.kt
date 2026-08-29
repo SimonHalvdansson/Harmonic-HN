@@ -925,6 +925,9 @@ private fun MainNavigation(
     }
 
     val editorRequest = navigationSnapshot.editorRequest
+    var editorPredictiveBackEnabled by remember(editorRequest?.serial) {
+        mutableStateOf(false)
+    }
     val editorAnimationScope = rememberCoroutineScope()
     var activeEditorBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
@@ -936,7 +939,8 @@ private fun MainNavigation(
     }
 
     PredictiveBackHandler(
-        enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR,
+        enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR &&
+            editorPredictiveBackEnabled,
     ) { events ->
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
@@ -958,6 +962,7 @@ private fun MainNavigation(
             currentAnimation.finish()
             completedEditorPredictiveBack = true
             controller.closeEditor()
+            repeat(3) { withFrameNanos { } }
             activeEditorBackAnimation = null
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
@@ -1011,7 +1016,8 @@ private fun MainNavigation(
         completedEditorPredictiveBack = completedEditorPredictiveBack,
         modifier = Modifier.background(HarmonicTheme.colors.background),
         basePredictiveModifier = (activeSettingsBackAnimation?.enterModifier ?: Modifier)
-            .then(activeSubmissionsBackAnimation?.enterModifier ?: Modifier),
+            .then(activeSubmissionsBackAnimation?.enterModifier ?: Modifier)
+            .then(activeEditorBackAnimation?.enterModifier ?: Modifier),
         settingsPredictiveModifier = (activeSettingsBackAnimation?.exitModifier ?: Modifier)
             .then(
                 if (storyParentDestination == MainDestination.SETTINGS) {
@@ -1213,6 +1219,9 @@ private fun MainNavigation(
                                 postTitle = coordinator.postTitle,
                                 user = coordinator.user,
                                 submitting = editorController.submitting,
+                                onPredictiveBackEnabledChanged = {
+                                    editorPredictiveBackEnabled = it
+                                },
                                 onClose = controller::closeEditor,
                                 onSubmit = coordinator::submit,
                                 onOpenLink = { uiDependencies.links.open(it) },

@@ -44,8 +44,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +63,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -447,39 +455,47 @@ fun StoryPreviewCard(
                                     )
                                 }
                             }
-                            ElevatedButton(
-                                onClick = { controller.onStoryPreviewNavigate(page, false) },
+                            StoryPreviewTooltip(
+                                description = "Comments",
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(56.dp)
-                                    .padding(start = 4.dp)
-                                    .trackStoryPreviewCommentsButton()
-                                    .semantics {
-                                        contentDescription =
-                                            "Comments (${story.descendantCount})"
-                                    },
-                                colors = ButtonDefaults.elevatedButtonColors(
-                                    containerColor =
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                    contentColor = HarmonicTheme.colors.storyNormal,
-                                ),
+                                    .padding(start = 4.dp),
                             ) {
-                                Icon(
-                                    painterResource(Res.drawable.ic_comment),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    if (hasAccount) {
-                                        story.descendantCount.toString()
-                                    } else {
-                                        "Comments"
+                                ElevatedButton(
+                                    onClick = {
+                                        controller.onStoryPreviewNavigate(page, false)
                                     },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip,
-                                    fontSize = 13.sp,
-                                )
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp)
+                                        .trackStoryPreviewCommentsButton()
+                                        .semantics {
+                                            contentDescription =
+                                                "Comments (${story.descendantCount})"
+                                        },
+                                    colors = ButtonDefaults.elevatedButtonColors(
+                                        containerColor =
+                                            MaterialTheme.colorScheme.surfaceContainerLow,
+                                        contentColor = HarmonicTheme.colors.storyNormal,
+                                    ),
+                                ) {
+                                    Icon(
+                                        painterResource(Res.drawable.ic_comment),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        if (hasAccount) {
+                                            story.descendantCount.toString()
+                                        } else {
+                                            "Comments"
+                                        },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Clip,
+                                        fontSize = 13.sp,
+                                    )
+                                }
                             }
                         }
                     }
@@ -567,45 +583,72 @@ private fun RowScope.StoryPreviewActionIcon(
             .height(56.dp),
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedContent(
-            targetState = StoryPreviewActionVisual(icon, description, loading),
-            transitionSpec = {
-                (
-                    fadeIn(
-                        tween(
-                            durationMillis = StoryPreviewActionIconSwapInDurationMillis,
-                            delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
+        StoryPreviewTooltip(description) {
+            AnimatedContent(
+                targetState = StoryPreviewActionVisual(icon, description, loading),
+                transitionSpec = {
+                    (
+                        fadeIn(
+                            tween(
+                                durationMillis = StoryPreviewActionIconSwapInDurationMillis,
+                                delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
+                            ),
+                        ) + scaleIn(
+                            animationSpec = tween(
+                                durationMillis = StoryPreviewActionIconSwapInDurationMillis,
+                                delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
+                            ),
+                            initialScale = StoryPreviewActionIconSwapMinScale,
+                        )
+                    ).togetherWith(
+                        fadeOut(tween(StoryPreviewActionIconSwapOutDurationMillis)) + scaleOut(
+                            animationSpec = tween(StoryPreviewActionIconSwapOutDurationMillis),
+                            targetScale = StoryPreviewActionIconSwapMinScale,
                         ),
-                    ) + scaleIn(
-                        animationSpec = tween(
-                            durationMillis = StoryPreviewActionIconSwapInDurationMillis,
-                            delayMillis = StoryPreviewActionIconSwapOutDurationMillis,
-                        ),
-                        initialScale = StoryPreviewActionIconSwapMinScale,
                     )
-                ).togetherWith(
-                    fadeOut(tween(StoryPreviewActionIconSwapOutDurationMillis)) + scaleOut(
-                        animationSpec = tween(StoryPreviewActionIconSwapOutDurationMillis),
-                        targetScale = StoryPreviewActionIconSwapMinScale,
-                    ),
-                )
-            },
-            contentAlignment = Alignment.Center,
-            label = "story preview action",
-        ) { visual ->
-            if (visual.loading) {
-                HarmonicLoadingIndicator(Modifier.size(28.dp))
-            } else {
-                IconButton(onClick = onClick) {
-                    Icon(
-                        painterResource(visual.icon),
-                        contentDescription = visual.description,
-                        tint = HarmonicTheme.colors.drawable,
-                    )
+                },
+                contentAlignment = Alignment.Center,
+                label = "story preview action",
+            ) { visual ->
+                if (visual.loading) {
+                    HarmonicLoadingIndicator(Modifier.size(28.dp))
+                } else {
+                    IconButton(onClick = onClick) {
+                        Icon(
+                            painterResource(visual.icon),
+                            contentDescription = visual.description,
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun StoryPreviewTooltip(
+    description: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val state = rememberTooltipState()
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(state.isVisible) {
+        if (state.isVisible) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = { PlainTooltip { Text(description) } },
+        state = state,
+        modifier = modifier,
+        content = content,
+    )
 }
 
 private const val StoryPreviewActionIconSwapOutDurationMillis = 90

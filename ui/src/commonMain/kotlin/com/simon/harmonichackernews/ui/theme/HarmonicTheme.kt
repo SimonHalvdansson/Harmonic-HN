@@ -9,7 +9,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 
 @Immutable
 data class HarmonicColors(
@@ -56,13 +55,14 @@ object HarmonicTheme {
 fun HarmonicTheme(
     colors: HarmonicColors,
     colorScheme: ColorScheme,
+    darkTheme: Boolean,
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(LocalHarmonicColors provides colors) {
         MaterialTheme(colorScheme = colorScheme) {
             CompositionLocalProvider(
                 LocalRippleConfiguration provides RippleConfiguration(
-                    color = if (colorScheme.background.luminance() < 0.5f) {
+                    color = if (darkTheme) {
                         Color.White
                     } else {
                         Color.Unspecified

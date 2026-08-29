@@ -81,6 +81,7 @@ fun HarmonicTheme(
     HarmonicTheme(
         colors = colors,
         colorScheme = colorScheme,
+        darkTheme = canonical.dark,
         content = content,
     )
 }

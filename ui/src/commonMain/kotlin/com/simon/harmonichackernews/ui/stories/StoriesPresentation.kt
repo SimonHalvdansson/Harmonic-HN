@@ -496,9 +496,9 @@ fun StoryListStatus(
         EmptyState(
             text = "No stories found",
             icon = Res.drawable.ic_search,
-            color = disabledColor,
+            color = normalColor,
             fontFamily = fontFamily,
-            large = false,
+            large = true,
         )
     }
 }

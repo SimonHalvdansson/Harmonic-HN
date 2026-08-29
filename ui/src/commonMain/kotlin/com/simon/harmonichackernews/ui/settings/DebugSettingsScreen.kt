@@ -81,7 +81,7 @@ val DebugSampleContentLinks = listOf(
     ),
     DebugLink(
         "Poll",
-        Res.drawable.ic_comment,
+        Res.drawable.ic_ballot,
         "https://news.ycombinator.com/item?id=39572682",
     ),
     DebugLink(

@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -134,52 +136,85 @@ fun SettingsAlertDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            val shortEdge = minOf(maxWidth, maxHeight)
-            val longEdge = maxOf(maxWidth, maxHeight)
-            val usesTabletDialogWidth = shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f
-            val dialogMaxWidth = if (usesTabletDialogWidth) {
-                HarmonicDimens.compose_settings_dialog_tablet_max_width
-            } else {
-                HarmonicDimens.compose_settings_dialog_max_width
-            }
-            if (properties.dismissOnClickOutside) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .pointerInput(onDismissRequest) {
-                            detectTapGestures { onDismissRequest() }
-                        },
-                )
-            }
+        SettingsAlertDialogLayout(
+            onDismissRequest = onDismissRequest,
+            confirmButton = confirmButton,
+            modifier = modifier,
+            neutralButton = neutralButton,
+            dismissButton = dismissButton,
+            title = title,
+            text = text,
+            edgeToEdgeContent = edgeToEdgeContent,
+            showButtons = showButtons,
+            separateDismissButton = separateDismissButton,
+            dismissOnClickOutside = properties.dismissOnClickOutside,
+            scrollableContent = scrollableContent,
+            foreground = foreground,
+        )
+    }
+}
+
+@Composable
+private fun SettingsAlertDialogLayout(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    neutralButton: (@Composable () -> Unit)? = null,
+    dismissButton: (@Composable () -> Unit)? = null,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    edgeToEdgeContent: Boolean = false,
+    showButtons: Boolean = true,
+    separateDismissButton: Boolean = false,
+    dismissOnClickOutside: Boolean = true,
+    scrollableContent: Boolean = false,
+    foreground: (@Composable BoxScope.() -> Unit)? = null,
+) {
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        val shortEdge = minOf(maxWidth, maxHeight)
+        val longEdge = maxOf(maxWidth, maxHeight)
+        val usesTabletDialogWidth = shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f
+        val dialogMaxWidth = if (usesTabletDialogWidth) {
+            HarmonicDimens.compose_settings_dialog_tablet_max_width
+        } else {
+            HarmonicDimens.compose_settings_dialog_max_width
+        }
+        if (dismissOnClickOutside) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(
-                        horizontal = HarmonicDimens.compose_settings_dialog_horizontal_margin,
-                        vertical = HarmonicDimens.compose_settings_dialog_vertical_margin,
-                    ),
-                contentAlignment = Alignment.Center,
+                    .matchParentSize()
+                    .pointerInput(onDismissRequest) {
+                        detectTapGestures { onDismissRequest() }
+                    },
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.ime))
+                .padding(
+                    horizontal = HarmonicDimens.compose_settings_dialog_horizontal_margin,
+                    vertical = HarmonicDimens.compose_settings_dialog_vertical_margin,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                modifier = modifier
+                    .widthIn(max = dialogMaxWidth)
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) awaitPointerEvent()
+                        }
+                    },
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
             ) {
-                Surface(
-                    modifier = modifier
-                        .widthIn(
-                            max = dialogMaxWidth,
-                        )
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) awaitPointerEvent()
-                            }
-                        },
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    tonalElevation = 6.dp,
-                ) {
-                    Column {
+                Column {
                     title?.let { titleContent ->
                         Box(
                             modifier = Modifier.padding(
@@ -235,16 +270,11 @@ fun SettingsAlertDialog(
                                     horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
                                     vertical = HarmonicDimens.compose_settings_dialog_action_vertical_padding,
                                 ),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                8.dp,
-                                Alignment.End,
-                            ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             neutralButton?.invoke()
-                            if (neutralButton != null) {
-                                Spacer(Modifier.weight(1f))
-                            }
+                            if (neutralButton != null) Spacer(Modifier.weight(1f))
                             dismissButton?.invoke()
                             if (separateDismissButton && dismissButton != null) {
                                 Spacer(Modifier.weight(1f))
@@ -252,11 +282,10 @@ fun SettingsAlertDialog(
                             confirmButton()
                         }
                     }
-                    }
                 }
             }
-            foreground?.invoke(this)
         }
+        foreground?.invoke(this)
     }
 }
 

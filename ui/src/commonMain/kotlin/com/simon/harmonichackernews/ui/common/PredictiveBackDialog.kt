@@ -96,6 +96,7 @@ fun PredictiveBackDialog(
             usePlatformDefaultWidth = properties.usePlatformDefaultWidth,
         ),
     ) {
+        PlatformDialogEdgeToEdge()
         // This must live inside the Dialog composition so Android registers it with the dialog's
         // OnBackPressedDispatcherOwner instead of the activity underneath.
         PlatformDialogPredictiveBackHandler(
@@ -146,6 +147,9 @@ fun PredictiveBackDialog(
 }
 
 internal expect val platformDialogPredictiveBackSupported: Boolean
+
+@Composable
+internal expect fun PlatformDialogEdgeToEdge()
 
 @Composable
 internal expect fun PlatformDialogPredictiveBackHandler(

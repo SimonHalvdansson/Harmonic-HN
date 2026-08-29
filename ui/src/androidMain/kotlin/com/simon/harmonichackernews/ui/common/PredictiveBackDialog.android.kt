@@ -8,12 +8,19 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = true
+
+@Composable
+internal actual fun PlatformDialogEdgeToEdge() {
+    val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
+    SideEffect { WindowCompat.setDecorFitsSystemWindows(dialogWindow, false) }
+}
 
 @Composable
 internal actual fun PlatformDialogPredictiveBackHandler(

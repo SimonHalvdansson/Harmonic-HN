@@ -767,9 +767,9 @@ private fun StoryMainContent(
                 .weight(1f)
                 .padding(
                     start = titleStartPadding,
-                    top = 10.dp,
+                    top = if (hasSmallPreview) 7.dp else 10.dp,
                     end = 4.dp,
-                    bottom = 10.dp,
+                    bottom = if (hasSmallPreview) 7.dp else 10.dp,
                 )
                 .alignBy(FirstBaseline),
         ) {
@@ -848,7 +848,7 @@ private fun StoryMainContent(
             StoryPreviewImage(
                 model = model,
                 modifier = Modifier
-                    .padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
+                    .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
                     .size(width = 72.dp, height = 52.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .captureStoryPreviewElement(

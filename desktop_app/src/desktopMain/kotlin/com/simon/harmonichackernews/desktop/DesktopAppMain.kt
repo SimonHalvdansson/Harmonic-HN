@@ -153,7 +153,7 @@ fun main() {
                 ProvideHarmonicUiDependencies(
                     HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
                 ) {
-                    HarmonicTheme(palette.colors, palette.colorScheme) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                         Surface(Modifier.fillMaxSize()) {
                             DesktopAppContent(
                                 app = bootstrap.app,

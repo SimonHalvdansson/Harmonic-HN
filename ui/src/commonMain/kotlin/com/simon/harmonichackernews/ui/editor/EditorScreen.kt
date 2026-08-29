@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -125,6 +126,7 @@ fun EditorScreen(
     user: String?,
     submitting: Boolean,
     backRequestVersion: Int = 0,
+    onPredictiveBackEnabledChanged: (Boolean) -> Unit = {},
     onClose: () -> Unit,
     onSubmit: (EditorSubmission) -> Unit,
     onOpenLink: (String) -> Unit = {},
@@ -156,6 +158,9 @@ fun EditorScreen(
     val validation = submission.validate(type, titleMaxLength)
     val titleTooLong = validation.titleTooLong
     val canSubmit = validation.canSubmit
+    val predictiveBackEnabled = !canSubmit && dialog == null && !submitting
+
+    SideEffect { onPredictiveBackEnabledChanged(predictiveBackEnabled) }
 
     fun requestClose() {
         if (canSubmit) dialog = EditorDialog.Discard else onClose()

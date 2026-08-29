@@ -424,59 +424,32 @@ fun UserTagDialog(
     fun saveTag() = onSave(tag.trim())
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val textContent: @Composable () -> Unit = {
+        OutlinedTextField(
+            value = tag,
+            onValueChange = { tag = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(HarmonicDimens.compose_settings_dialog_single_line_field_height)
+                .focusRequester(focusRequester),
+            label = { Text("Tag") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { saveTag() }),
+        )
+    }
+    val dismissContent: @Composable () -> Unit = {
+        SettingsDialogTextButton(onClick = onDismiss) { Text("Cancel") }
+    }
+    val confirmContent: @Composable () -> Unit = {
+        SettingsDialogTextButton(onClick = { saveTag() }) { Text("Set") }
+    }
+
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
-        edgeToEdgeContent = true,
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = HarmonicDimens.compose_settings_dialog_content_padding)
-                    .padding(horizontal = HarmonicDimens.compose_settings_dialog_content_padding)
-                    .padding(bottom = HarmonicDimens.compose_settings_dialog_content_padding),
-            ) {
-                OutlinedTextField(
-                    value = tag,
-                    onValueChange = { tag = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(HarmonicDimens.compose_settings_dialog_single_line_field_height)
-                        .focusRequester(focusRequester),
-                    label = { Text("Tag") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { saveTag() }),
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = HarmonicDimens.compose_settings_tag_field_button_gap),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    SettingsDialogOutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .height(HarmonicDimens.compose_settings_tag_button_height)
-                            .widthIn(
-                                min = HarmonicDimens.compose_settings_tag_cancel_button_min_width,
-                            ),
-                    ) {
-                        Text("Cancel")
-                    }
-                    Spacer(Modifier.width(HarmonicDimens.compose_settings_tag_button_gap))
-                    SettingsDialogOutlinedButton(
-                        onClick = { saveTag() },
-                        modifier = Modifier
-                            .height(HarmonicDimens.compose_settings_tag_button_height)
-                            .widthIn(min = HarmonicDimens.compose_settings_tag_button_min_width),
-                    ) {
-                        Text("Set")
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        showButtons = false,
+        text = textContent,
+        dismissButton = dismissContent,
+        confirmButton = confirmContent,
     )
 }
 

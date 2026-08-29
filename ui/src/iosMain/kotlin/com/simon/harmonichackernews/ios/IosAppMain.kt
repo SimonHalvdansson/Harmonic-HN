@@ -197,7 +197,7 @@ private fun IosApp(
     ProvideHarmonicUiDependencies(
         HarmonicUiDependencies(bootstrap.app, scene),
     ) {
-        HarmonicTheme(palette.colors, palette.colorScheme) {
+        HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
             Surface(Modifier.fillMaxSize()) {
                 IosAppContent(
                     app = bootstrap.app,
