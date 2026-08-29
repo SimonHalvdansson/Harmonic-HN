@@ -175,7 +175,7 @@ fun StorySummary(
                 )
                 Text(
                     "Summary",
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
                     color = HarmonicTheme.colors.storyNormal,
                 )

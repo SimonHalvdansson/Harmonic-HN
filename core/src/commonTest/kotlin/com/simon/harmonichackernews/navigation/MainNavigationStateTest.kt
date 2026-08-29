@@ -69,6 +69,42 @@ class MainNavigationStateTest {
     }
 
     @Test
+    fun linkedStoryKeepsTheOriginalStoryAsItsImmediateBackTarget() {
+        val store = MainNavigationStore()
+        store.openStory(StoryDestination(storyId = 49_449_677))
+
+        store.openLinkedStory(StoryDestination(storyId = 49_449_650))
+
+        assertEquals(
+            listOf(MainDestination.STORIES, MainDestination.STORY, MainDestination.STORY),
+            store.destinationStack.map(MainNavigationEntry::destination),
+        )
+        assertEquals(listOf(49_449_677, 49_449_650), store.state.value.storyBackStack.map { it.storyId })
+        assertEquals(MainDestination.STORY, store.state.value.storyParentDestination)
+        assertEquals(MainDestination.STORIES, store.state.value.storyStackParentDestination)
+        assertEquals(49_449_650, store.storyRequest?.storyId)
+
+        store.detailRemovedFromBackStack()
+
+        assertEquals(MainDestination.STORY, store.currentDestination)
+        assertEquals(listOf(49_449_677), store.state.value.storyBackStack.map { it.storyId })
+        assertEquals(MainDestination.STORIES, store.state.value.storyParentDestination)
+        assertEquals(MainDestination.STORIES, store.state.value.storyStackParentDestination)
+        assertEquals(49_449_677, store.storyRequest?.storyId)
+    }
+
+    @Test
+    fun linkedStoryRetainsSettingsAsTheParentOfTheWholeStoryStack() {
+        val store = MainNavigationStore()
+        store.openSettings("debug")
+        store.openStory(StoryDestination(storyId = 1))
+        store.openLinkedStory(StoryDestination(storyId = 2))
+
+        assertEquals(MainDestination.STORY, store.state.value.storyParentDestination)
+        assertEquals(MainDestination.SETTINGS, store.state.value.storyStackParentDestination)
+    }
+
+    @Test
     fun stableRouteRestoresWithoutCarryingStoryPresentationState() {
         val route = StoryRoute(storyId = 42, showWebsite = true, scrollToCommentId = 7)
         val state = MainNavigationState(MainNavigationRestoration(storyRoute = route))

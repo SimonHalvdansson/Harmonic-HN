@@ -63,7 +63,7 @@ import com.simon.harmonichackernews.settings.UserSettings
 class CommentsCoordinator(
     private val activity: MainActivity,
     private val destination: StoryDestination,
-    sessionKey: Int,
+    internal val sessionKey: Int,
     savedInstanceState: Bundle?,
     private val navigation: MainNavigationController,
     private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
@@ -115,6 +115,8 @@ class CommentsCoordinator(
     private var appliedStatusBarProtectionEnabled = false
     private var appliedStatusBarProtectionColor = Color.TRANSPARENT
     private var composeController: CommentsComposeController? = null
+    internal val composeUiController: CommentsComposeController?
+        get() = composeController
     private var hostActive = true
 
     init {
@@ -551,7 +553,7 @@ class CommentsCoordinator(
             savedItemState = commentsStore.savedItemState,
             listener = CommentsFeatureListener(commentsStore, platformCallbacks),
         )
-        navigation.attachCommentsComposeController(composeController!!)
+        navigation.attachCommentsComposeController(this, composeController!!)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
         if (restoringSession && restoringStoredProgress) restoreScrollProgress()
@@ -646,7 +648,7 @@ class CommentsCoordinator(
                 linkPreviewController?.loadNetworkPreviews(context)
             CommentsPlatformEffect.Summarize -> requestComposeSummary()
             is CommentsPlatformEffect.OpenStory ->
-                navigation.openStory(effect.destination)
+                navigation.openLinkedStory(effect.destination)
             is CommentsPlatformEffect.OpenExternalLink -> navigation.scene.links.openExternal(
                 ExternalLinkRequest(effect.url, preferInApp = effect.preferInApp),
             )
@@ -1025,7 +1027,7 @@ class CommentsCoordinator(
             webViewController!!.onDestroyView(rootView)
         }
         if (controllerToDetach != null) {
-            navigation.detachCommentsComposeController(controllerToDetach)
+            navigation.detachCommentsComposeController(this, controllerToDetach)
         }
 
         clearViewReferences()

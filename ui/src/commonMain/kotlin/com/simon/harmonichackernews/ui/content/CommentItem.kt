@@ -257,6 +257,7 @@ fun CommentItem(
     suppressedReferenceUrl: String? = null,
     captureActionSource: Boolean = false,
     showActionsOnClick: Boolean = false,
+    enableLongClick: Boolean = true,
     onToggleExpanded: (Rect?) -> Unit,
     onShowActions: (Rect?) -> Unit,
     onActionSourceGeometryChanged: ((CommentActionSourceGeometry) -> Unit)? = null,
@@ -349,12 +350,18 @@ fun CommentItem(
                     onToggleExpanded(itemGeometry.boundsInWindowOrNull())
                 }
             },
-            onLongClick = {
-                if (showActionsOnClick) {
-                    onShowActions(itemGeometry.boundsInWindowOrNull())
-                } else {
-                    pendingActionSourceGesture = CommentActionSourceGesture.LongClick
+            onLongClick = if (enableLongClick) {
+                {
+                    if (showActionsOnClick) {
+                        onShowActions(itemGeometry.boundsInWindowOrNull())
+                    } else {
+                        pendingActionSourceGesture = CommentActionSourceGesture.LongClick
+                    }
                 }
+            } else {
+                // Keep a no-op long-click handler so a held search result is consumed as a
+                // long press instead of being reinterpreted as its normal click on release.
+                {}
             },
         ) {
             CommentMeta(
@@ -587,7 +594,7 @@ private fun CommentSurface(
     itemGeometry: CommentItemGeometry? = null,
     captureSource: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     content: @Composable () -> Unit,
 ) {
     val colors = HarmonicTheme.colors
@@ -714,7 +721,11 @@ private fun CommentSurface(
                         onClick = onClick,
                         onLongClick = onLongClick,
                     )
-                    .onSecondaryClick { onLongClick() }
+                    .then(
+                        onLongClick?.let { callback ->
+                            Modifier.onSecondaryClick { callback() }
+                        } ?: Modifier,
+                    )
                     .then(sourceCaptureModifier),
                 content = {
                     Box(

@@ -34,10 +34,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
@@ -206,6 +208,8 @@ class MainNavigationController internal constructor(
         )
     private var storiesCoordinator: StoriesCoordinator? = null
     private var commentsCoordinator: CommentsCoordinator? = null
+    private val commentsCoordinatorCache = mutableMapOf<Int, CommentsCoordinator>()
+    private val commentsCoordinatorReferences = mutableMapOf<Int, Int>()
     private var restoredCommentsState: Bundle? = savedState?.getBundle(STATE_COMMENTS_STATE)
     private var restoredCommentsRequestSerial: Int =
         savedState?.getInt(STATE_COMMENTS_REQUEST_SERIAL, -1) ?: -1
@@ -230,6 +234,18 @@ class MainNavigationController internal constructor(
         restoredCommentsState = null
         restoredCommentsRequestSerial = -1
         navigationState.openStory(destination)
+    }
+
+    fun openLinkedStory(destination: StoryDestination) {
+        if (
+            commentsCoordinator?.switchStoryViewIfMatching(
+                destination.storyId,
+                destination.showWebsite,
+            ) == true
+        ) return
+        restoredCommentsState = null
+        restoredCommentsRequestSerial = -1
+        navigationState.openLinkedStory(destination)
     }
 
     fun closeStory() {
@@ -386,7 +402,14 @@ class MainNavigationController internal constructor(
 
     fun onStop() = storiesCoordinator?.onStop()
 
-    fun onDestroy() = storiesCoordinator?.onDestroy()
+    fun onDestroy() {
+        storiesCoordinator?.onDestroy()
+        commentsCoordinatorCache.values.toSet().forEach(CommentsCoordinator::onDestroy)
+        commentsCoordinatorCache.clear()
+        commentsCoordinatorReferences.clear()
+        commentsCoordinator = null
+        commentsComposeController = null
+    }
 
     fun onConfigurationChanged(newConfig: Configuration) {
         commentsCoordinator?.onConfigurationChanged(newConfig)
@@ -406,13 +429,54 @@ class MainNavigationController internal constructor(
         if (storiesComposeController === controller) storiesComposeController = null
     }
 
+    internal fun retainCommentsCoordinator(
+        activity: MainActivity,
+        request: MainStoryRequest,
+    ): CommentsCoordinator {
+        val coordinator = commentsCoordinatorCache.getOrPut(request.serial) {
+            CommentsCoordinator(
+                activity,
+                request.destination,
+                request.serial,
+                consumeCommentsSavedState(request.serial),
+                navigation = this,
+            )
+        }
+        commentsCoordinatorReferences[request.serial] =
+            (commentsCoordinatorReferences[request.serial] ?: 0) + 1
+        return coordinator
+    }
+
     internal fun attachCommentsCoordinator(coordinator: CommentsCoordinator) {
+        if (storyRequest?.serial != coordinator.sessionKey) {
+            coordinator.setHostActive(false)
+            return
+        }
+        commentsCoordinator?.takeIf { it !== coordinator }?.setHostActive(false)
         commentsCoordinator = coordinator
+        commentsComposeController = coordinator.composeUiController
         coordinator.setHostActive(currentDestination == MainDestination.STORY)
     }
 
-    internal fun detachCommentsCoordinator(coordinator: CommentsCoordinator) {
-        if (commentsCoordinator === coordinator) commentsCoordinator = null
+    internal fun releaseCommentsCoordinator(coordinator: CommentsCoordinator) {
+        val remainingReferences =
+            ((commentsCoordinatorReferences[coordinator.sessionKey] ?: 1) - 1).coerceAtLeast(0)
+        if (remainingReferences > 0) {
+            commentsCoordinatorReferences[coordinator.sessionKey] = remainingReferences
+            return
+        }
+        commentsCoordinatorReferences.remove(coordinator.sessionKey)
+        coordinator.onStop()
+        coordinator.setHostActive(false)
+        if (navigationState.state.value.storyBackStack.any { it.serial == coordinator.sessionKey }) {
+            return
+        }
+        commentsCoordinatorCache.remove(coordinator.sessionKey, coordinator)
+        if (commentsCoordinator === coordinator) {
+            commentsCoordinator = null
+            commentsComposeController = null
+        }
+        coordinator.onDestroy()
     }
 
     internal fun updateCommentsHostDestination(destination: MainDestination) {
@@ -431,12 +495,20 @@ class MainNavigationController internal constructor(
         }
     }
 
-    fun attachCommentsComposeController(controller: CommentsComposeController) {
-        commentsComposeController = controller
+    fun attachCommentsComposeController(
+        coordinator: CommentsCoordinator,
+        controller: CommentsComposeController,
+    ) {
+        if (storyRequest?.serial == coordinator.sessionKey) commentsComposeController = controller
     }
 
-    fun detachCommentsComposeController(controller: CommentsComposeController) {
-        if (commentsComposeController === controller) commentsComposeController = null
+    fun detachCommentsComposeController(
+        coordinator: CommentsCoordinator,
+        controller: CommentsComposeController,
+    ) {
+        if (commentsCoordinator === coordinator && commentsComposeController === controller) {
+            commentsComposeController = null
+        }
     }
 
     internal fun detailRemovedFromBackStack() {
@@ -560,6 +632,7 @@ private fun MainNavigation(
     controller: MainNavigationController,
 ) {
     val navigationSnapshot by controller.navigationState.state.collectAsState()
+    val storyRequests = navigationSnapshot.storyBackStack
     val appearance = controller.scene.app.appearance
     val uiDependencies = LocalHarmonicUiDependencies.current
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -603,6 +676,7 @@ private fun MainNavigation(
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
     var completedPredictivePop by remember { mutableStateOf(false) }
+    var observedStoryDepth by remember { mutableIntStateOf(storyRequests.size) }
 
     fun popMainBackStack() {
         if (controller.currentDestination == MainDestination.STORY) {
@@ -613,11 +687,9 @@ private fun MainNavigation(
     }
 
     val storyRequest = navigationSnapshot.storyRequest
-    val storyParentDestination = navigationSnapshot.destinationStack
-        .indexOfLast { it.destination == MainDestination.STORY }
-        .let { storyIndex ->
-            navigationSnapshot.destinationStack.getOrNull(storyIndex - 1)?.destination
-        }
+    val storyParentDestination = navigationSnapshot.storyParentDestination
+    val usesTwoPaneStoryScene = isTwoPane &&
+        (storyRequest == null || storyParentDestination == MainDestination.STORIES)
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -640,12 +712,9 @@ private fun MainNavigation(
     )
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    LaunchedEffect(storyRequest?.serial) {
-        storyRequest ?: return@LaunchedEffect
-        // A completed predictive pop keeps its snap exit policy while the detail is hidden.
-        // Resetting it only when opening the next story avoids changing AnimatedVisibility's
-        // exit transition for one hidden frame, which could briefly resurrect Comments.
-        completedPredictivePop = false
+    LaunchedEffect(storyRequests.size) {
+        if (storyRequests.size > observedStoryDepth) completedPredictivePop = false
+        observedStoryDepth = storyRequests.size
     }
     LaunchedEffect(navigationSnapshot.closeRequest) {
         if (
@@ -659,6 +728,12 @@ private fun MainNavigation(
     PredictiveBackHandler(
         enabled = navigationSnapshot.currentDestination == MainDestination.STORY,
     ) { events ->
+        val storySerialAtGestureStart = controller.storyRequest?.serial
+        fun popGestureStoryIfStillCurrent() {
+            if (controller.storyRequest?.serial == storySerialAtGestureStart) {
+                controller.detailRemovedFromBackStack()
+            }
+        }
         val internalBackCoordinator = controller.getCommentsCoordinator()
             ?.takeIf(CommentsCoordinator::handlesBackInternally)
         if (internalBackCoordinator != null) {
@@ -681,7 +756,7 @@ private fun MainNavigation(
             return@PredictiveBackHandler
         }
 
-        if (isTwoPane) {
+        if (usesTwoPaneStoryScene) {
             var frozenWebViewCoordinator: CommentsCoordinator? = null
             try {
                 events.collect {
@@ -695,7 +770,7 @@ private fun MainNavigation(
                             .maintainVisibleWebViewPredictiveBackScrollFreeze()
                     }
                 }
-                popMainBackStack()
+                popGestureStoryIfStillCurrent()
             } catch (_: CancellationException) {
                 // A cancelled two-pane gesture keeps the current detail selected.
             } finally {
@@ -728,12 +803,16 @@ private fun MainNavigation(
 
             val currentAnimation = animation
             if (currentAnimation == null) {
-                popMainBackStack()
+                popGestureStoryIfStillCurrent()
                 return@PredictiveBackHandler
             }
             currentAnimation.finish()
             completedPredictivePop = true
-            popMainBackStack()
+            popGestureStoryIfStillCurrent()
+            // Keep the gesture's frozen current/previous destinations alive until the retained
+            // layer compositor observes the pop, so neither a blank frame nor a deeper destination
+            // appears during the handoff.
+            repeat(3) { withFrameNanos { } }
             activeBackAnimation = null
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
@@ -785,6 +864,10 @@ private fun MainNavigation(
             currentAnimation.finish()
             completedSettingsPredictiveBack = true
             closeSettings()
+            // Keep the completed system-back layers alive until the retained Stories layer has
+            // committed the pop. Dropping both transforms in the same composition can expose the
+            // window background for one frame, which reads as a full-screen white flash.
+            repeat(3) { withFrameNanos { } }
             activeSettingsBackAnimation = null
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
@@ -947,15 +1030,12 @@ private fun MainNavigation(
             ),
         editorPredictiveModifier = activeEditorBackAnimation?.exitModifier ?: Modifier,
         linkPreview = controller.commentsComposeController
-            ?.takeIf { it.linkPreviewOverlay != null }
+            ?.takeIf { it.linkPreviewOverlay != null && !it.searchDialogVisible }
             ?.let { commentsController ->
                 { AndroidCommentLinkPreviewOverlay(commentsController) }
             },
         base = {
-            if (
-                isTwoPane &&
-                (storyRequest == null || storyParentDestination == MainDestination.STORIES)
-            ) {
+            if (usesTwoPaneStoryScene) {
                 MainNavigationScene(
                     storyRequest = storyRequest,
                     directive = directive,
@@ -983,14 +1063,16 @@ private fun MainNavigation(
                 )
             } else {
                 SinglePaneNavigationScene(
-                    storyRequest = storyRequest,
-                    lastStoryRequest = controller.lastStoryRequest,
+                    storyRequests = storyRequests,
                     completedPredictivePop = completedPredictivePop,
                     predictiveBackActive = activeBackAnimation != null,
-                    showStoriesPane = storyRequest == null ||
-                        storyParentDestination == MainDestination.STORIES,
+                    showStoriesRoot = storyRequests.isEmpty() ||
+                        navigationSnapshot.storyStackParentDestination == MainDestination.STORIES,
+                    animateInitialStory = isTwoPane && storyRequest != null &&
+                        storyParentDestination != MainDestination.STORIES,
                     storiesPredictiveModifier = if (
-                        storyParentDestination == MainDestination.STORIES
+                        storyParentDestination == MainDestination.STORIES ||
+                        storyParentDestination == MainDestination.STORY
                     ) {
                         activeBackAnimation?.enterModifier ?: Modifier
                     } else {
@@ -1266,75 +1348,61 @@ private fun CommentsPane(
 ) {
     val activity = LocalActivity.current as MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
-    var coordinator by remember(activity, request.serial) {
-        mutableStateOf<CommentsCoordinator?>(null)
+    val activeCoordinator = remember(controller, activity, request.serial) {
+        controller.retainCommentsCoordinator(activity, request)
     }
-    DisposableEffect(controller, activity, request.serial, lifecycleOwner) {
-        val activeCoordinator = CommentsCoordinator(
-            activity,
-            request.destination,
-            request.serial,
-            controller.consumeCommentsSavedState(request.serial),
-            navigation = controller,
-        )
-        coordinator = activeCoordinator
-        controller.attachCommentsCoordinator(activeCoordinator)
+    SideEffect { controller.attachCommentsCoordinator(activeCoordinator) }
+    DisposableEffect(controller, activeCoordinator, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> activeCoordinator.onStart()
                 Lifecycle.Event.ON_RESUME -> activeCoordinator.onResume()
                 Lifecycle.Event.ON_STOP -> activeCoordinator.onStop()
-                Lifecycle.Event.ON_DESTROY -> activeCoordinator.onDestroy()
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            controller.detachCommentsCoordinator(activeCoordinator)
-            activeCoordinator.onDestroy()
-            if (coordinator === activeCoordinator) coordinator = null
+            controller.releaseCommentsCoordinator(activeCoordinator)
         }
     }
-    coordinator?.let { activeCoordinator ->
-        CommentsHazeHost {
-            Box(Modifier.fillMaxSize()) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { activeCoordinator.webViewRoot },
-                )
-                controller.commentsComposeController?.let { commentsController ->
-                    val showFloatingUpButton = showUpButton &&
-                        commentsController.displaySettings?.showUpButton == true
-                    if (!commentsController.webViewFullscreen) {
-                        CommentsScaffold(
-                            controller = commentsController,
-                            reserveUpButtonInset = showFloatingUpButton,
-                        )
-                    }
-                    val showStatusBarProtection = drawStatusBarProtection &&
-                        !(commentsController.integratedWebView &&
-                            commentsController.isScrolledToTop)
-                    if (showStatusBarProtection) {
-                        StatusBarProtection(
-                            color = statusBarColor,
-                            statusBarHeight = statusBarHeight,
-                        )
-                    }
-                    if (showFloatingUpButton) {
-                        CommentsUpButton(
-                            onClick = controller::closeStory,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .statusBarsPadding()
-                                .padding(start = 16.dp, top = 4.dp)
-                                .zIndex(101f),
-                        )
-                    }
-                    commentsController.displaySettings?.let { settings ->
-                        Box(Modifier.fillMaxSize().zIndex(102f)) {
-                            AndroidCommentActionOverlay(commentsController, settings)
-                        }
+    CommentsHazeHost {
+        Box(Modifier.fillMaxSize()) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { activeCoordinator.webViewRoot },
+            )
+            activeCoordinator.composeUiController?.let { commentsController ->
+                val showFloatingUpButton = showUpButton &&
+                    commentsController.displaySettings?.showUpButton == true
+                if (!commentsController.webViewFullscreen) {
+                    CommentsScaffold(
+                        controller = commentsController,
+                        reserveUpButtonInset = showFloatingUpButton,
+                    )
+                }
+                val showStatusBarProtection = drawStatusBarProtection &&
+                    !(commentsController.integratedWebView && commentsController.isScrolledToTop)
+                if (showStatusBarProtection) {
+                    StatusBarProtection(
+                        color = statusBarColor,
+                        statusBarHeight = statusBarHeight,
+                    )
+                }
+                if (showFloatingUpButton) {
+                    CommentsUpButton(
+                        onClick = controller::closeStory,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(start = 16.dp, top = 4.dp)
+                            .zIndex(101f),
+                    )
+                }
+                commentsController.displaySettings?.let { settings ->
+                    Box(Modifier.fillMaxSize().zIndex(102f)) {
+                        AndroidCommentActionOverlay(commentsController, settings)
                     }
                 }
             }

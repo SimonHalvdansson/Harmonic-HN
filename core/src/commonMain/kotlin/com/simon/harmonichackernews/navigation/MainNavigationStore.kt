@@ -27,7 +27,46 @@ data class MainNavigationSnapshot(
     val closeRequest: Int,
     val settingsRequestSerial: Int,
     val currentSettingsSectionRoute: String?,
-)
+) {
+    /** Consecutive story entries ending at the most recently opened story. */
+    val storyBackStack: List<MainStoryRequest>
+        get() {
+            val lastStoryIndex = destinationStack.indexOfLast { it is MainNavigationEntry.Story }
+            if (lastStoryIndex < 0) return emptyList()
+            var firstStoryIndex = lastStoryIndex
+            while (
+                firstStoryIndex > 0 &&
+                destinationStack[firstStoryIndex - 1] is MainNavigationEntry.Story
+            ) {
+                firstStoryIndex--
+            }
+            return destinationStack
+                .subList(firstStoryIndex, lastStoryIndex + 1)
+                .filterIsInstance<MainNavigationEntry.Story>()
+                .map { it.request }
+        }
+
+    val storyParentDestination: MainDestination?
+        get() = destinationStack
+            .indexOfLast { it is MainNavigationEntry.Story }
+            .let { storyIndex -> destinationStack.getOrNull(storyIndex - 1)?.destination }
+
+    /** Destination beneath the entire consecutive run of stories containing the current story. */
+    val storyStackParentDestination: MainDestination?
+        get() {
+            var firstStoryIndex = destinationStack.indexOfLast {
+                it is MainNavigationEntry.Story
+            }
+            if (firstStoryIndex < 0) return null
+            while (
+                firstStoryIndex > 0 &&
+                destinationStack[firstStoryIndex - 1] is MainNavigationEntry.Story
+            ) {
+                firstStoryIndex--
+            }
+            return destinationStack.getOrNull(firstStoryIndex - 1)?.destination
+        }
+}
 
 /** Observable navigation bridge shared by Compose, SwiftUI and desktop hosts. */
 class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRestoration()) {
@@ -60,6 +99,7 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
 
     fun openStory(destination: StoryDestination) = mutate { openStory(destination) }
     fun openStory(route: StoryRoute) = mutate { openStory(route) }
+    fun openLinkedStory(destination: StoryDestination) = mutate { openLinkedStory(destination) }
     fun requestCloseStory() = mutate { requestCloseStory() }
     fun openSettings(sectionRoute: String?) = mutate { openSettings(sectionRoute) }
     fun closeSettings() = mutate { closeSettings() }

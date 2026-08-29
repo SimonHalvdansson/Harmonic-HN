@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Platform-neutral visibility and accessibility state for the app's destination layers. */
 data class MainDestinationLayerState(
@@ -115,7 +117,13 @@ fun MainDestinationLayers(
                         Modifier
                     },
                 )
-                .then(settingsPredictiveModifier),
+                .then(
+                    if (state.settingsBehindStory) {
+                        Modifier.background(HarmonicTheme.colors.background)
+                    } else {
+                        settingsPredictiveModifier
+                    },
+                ),
             enter = layeredDestinationEnter(transitionOffsetPx),
             exit = if (completedSettingsPredictiveBack) {
                 ExitTransition.None
@@ -123,7 +131,25 @@ fun MainDestinationLayers(
                 layeredDestinationExit(transitionOffsetPx)
             },
         ) {
-            settings()
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(HarmonicTheme.colors.background),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (state.settingsBehindStory) {
+                                settingsPredictiveModifier
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    settings()
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -138,7 +164,13 @@ fun MainDestinationLayers(
                         Modifier
                     },
                 )
-                .then(submissionsPredictiveModifier),
+                .then(
+                    if (state.submissionsBehindStory) {
+                        Modifier.background(HarmonicTheme.colors.background)
+                    } else {
+                        submissionsPredictiveModifier
+                    },
+                ),
             enter = layeredDestinationEnter(transitionOffsetPx),
             exit = if (completedSubmissionsPredictiveBack) {
                 ExitTransition.None
@@ -146,7 +178,25 @@ fun MainDestinationLayers(
                 layeredDestinationExit(transitionOffsetPx)
             },
         ) {
-            submissions()
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(HarmonicTheme.colors.background),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (state.submissionsBehindStory) {
+                                submissionsPredictiveModifier
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    submissions()
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -169,7 +219,13 @@ fun MainDestinationLayers(
                 layeredDestinationExit(transitionOffsetPx)
             },
         ) {
-            editor()
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(HarmonicTheme.colors.background),
+            ) {
+                editor()
+            }
         }
 
         AnimatedVisibility(

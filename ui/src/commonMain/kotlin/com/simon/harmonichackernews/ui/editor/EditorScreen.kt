@@ -264,6 +264,7 @@ fun EditorScreen(
             message = informationMessage(isPost),
             negativeLabel = "Dismiss",
             addTitleBodySpacing = true,
+            keepImeVisible = true,
             onNegative = { dialog = null },
             onDismiss = { dialog = null },
         )
@@ -289,6 +290,7 @@ private fun EditorMessageActionDialog(
     positiveLabel: String? = null,
     negativeLabel: String? = null,
     addTitleBodySpacing: Boolean = false,
+    keepImeVisible: Boolean = false,
     onPositive: () -> Unit = {},
     onNegative: () -> Unit = {},
     onDismiss: () -> Unit,
@@ -297,6 +299,7 @@ private fun EditorMessageActionDialog(
         onDismissRequest = onDismiss,
         title = title?.let { value ->
             {
+                if (keepImeVisible) EditorInformationDialogImeBehavior()
                 Text(
                     text = value,
                     color = HarmonicTheme.colors.textPrimary,

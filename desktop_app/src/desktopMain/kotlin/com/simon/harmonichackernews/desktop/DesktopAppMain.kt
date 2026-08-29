@@ -323,7 +323,9 @@ private fun DesktopAppContent(
         completedSubmissionsPredictiveBack = false,
         completedEditorPredictiveBack = false,
         linkPreview = commentsController
-            ?.takeIf(CommentsComposeController::isLinkPreviewOverlayShowing)
+            ?.takeIf {
+                it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
+            }
             ?.let { controller ->
                 { DesktopCommentLinkPreview(app, scene, controller) }
             },
@@ -358,11 +360,11 @@ private fun DesktopAppContent(
                 )
             } else {
                 SinglePaneNavigationScene(
-                    storyRequest = navigation.storyRequest,
-                    lastStoryRequest = navigation.lastStoryRequest,
+                    storyRequests = navigation.storyBackStack,
                     completedPredictivePop = false,
                     predictiveBackActive = false,
-                    showStoriesPane = true,
+                    showStoriesRoot = navigation.storyBackStack.isEmpty() ||
+                        navigation.storyStackParentDestination == MainDestination.STORIES,
                     stories = {
                         DesktopStoriesContent(
                             app,

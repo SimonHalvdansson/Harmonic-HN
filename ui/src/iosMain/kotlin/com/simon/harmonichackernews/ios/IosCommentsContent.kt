@@ -251,6 +251,25 @@ internal fun IosCommentsContent(
                         onDismiss = host.controller::dismissCommentSearch,
                         onCommentSelected = host.controller::selectSearchResult,
                         onOpenLink = { scene.links.open(it) },
+                        onLinkLongClick = { comment, url, title, bounds ->
+                            host.controller.showReferencePreview(
+                                url = url,
+                                title = title,
+                                sourceBounds = bounds,
+                                sourceCommentId = comment.id,
+                            )
+                        },
+                        onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
+                            host.controller.showReferencePreview(
+                                link = link,
+                                sourceBounds = bounds,
+                                sourceCommentId = comment.id,
+                                sourceContentLayer = sourceContentLayer,
+                            )
+                        },
+                        foreground = {
+                            IosCommentLinkPreview(app, scene, host.controller)
+                        },
                     )
                 },
                 // iOS hosts this above the pane-level status-bar protection and up button.

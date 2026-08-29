@@ -225,6 +225,14 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
 
     fun openStory(route: StoryRoute) = openStory(route.toDestination())
 
+    /** Opens a story reached from content while retaining the current story as its back target. */
+    fun openLinkedStory(destination: StoryDestination) {
+        MainStoryRequest(++storyRequestSerial, destination).also { request ->
+            lastStoryRequest = request
+            backStack += MainNavigationEntry.Story(request)
+        }
+    }
+
     fun requestCloseStory() {
         closeRequest++
     }

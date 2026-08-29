@@ -376,7 +376,19 @@ fun StoryListStatus(
             visible = state.showEmptySavedList,
         )
     }
-    AnimatedVisibility(state.loading, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+    AnimatedVisibility(
+        visible = state.loading,
+        enter = fadeIn(tween(180)) + expandVertically(
+            animationSpec = tween(220),
+            expandFrom = Alignment.Top,
+            clip = false,
+        ),
+        exit = fadeOut(tween(140)) + shrinkVertically(
+            animationSpec = tween(180),
+            shrinkTowards = Alignment.Top,
+            clip = false,
+        ),
+    ) {
         Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
             loadingIndicator()
         }

@@ -447,6 +447,7 @@ private fun StoriesList(
     val pullIndicatorTopInset = with(density) {
         WindowInsets.safeDrawing.getTop(density).toDp()
     }
+    val pullIndicatorRestingInset = (pullIndicatorTopInset - 32.dp).coerceAtLeast(0.dp)
     val layoutDirection = LocalLayoutDirection.current
     val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
     val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
@@ -740,6 +741,8 @@ private fun StoriesList(
             StoriesHeader(
                 controller = controller,
                 searchMode = searchMode,
+                tapToUpdateExitProgress = clampedTapToUpdateExitProgress,
+                suppressLastUpdated = controller.tapToUpdateRefreshStarted,
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
                 compactSelectedText = compactSelectedText,
@@ -781,7 +784,12 @@ private fun StoriesList(
                 PullToRefreshDefaults.Indicator(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .offset(y = pullIndicatorTopInset),
+                        // Begin at the physical top edge, then approach the inset-aware refresh
+                        // position without leaving the spinner as low as the full safe inset.
+                        .offset(
+                            y = pullIndicatorRestingInset *
+                                pullToRefreshState.distanceFraction.coerceIn(0f, 1f),
+                        ),
                     isRefreshing = controller.pullToRefreshInProgress &&
                         controller.refreshing && !searchMode,
                     state = pullToRefreshState,
@@ -823,6 +831,8 @@ internal inline fun calculateStoriesHeaderCollapsePx(
 private fun StoriesHeader(
     controller: StoriesComposeController,
     searchMode: Boolean,
+    tapToUpdateExitProgress: Float,
+    suppressLastUpdated: Boolean,
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
     compactSelectedText: Boolean,
@@ -937,7 +947,15 @@ private fun StoriesHeader(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = sideStart, top = 4.dp, end = sideEnd),
+                        .padding(start = sideStart, top = 4.dp, end = sideEnd)
+                        .graphicsLayer {
+                            alpha = if (suppressLastUpdated) {
+                                0f
+                            } else {
+                                1f - tapToUpdateExitProgress
+                            }
+                            translationY = -8.dp.toPx() * tapToUpdateExitProgress
+                        },
                     textAlign = TextAlign.Center,
                 )
             }

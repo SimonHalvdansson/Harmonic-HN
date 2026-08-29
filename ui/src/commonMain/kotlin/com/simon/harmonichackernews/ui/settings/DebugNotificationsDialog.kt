@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -149,26 +151,30 @@ fun DebugNotificationsDialog(
                             .padding(top = 8.dp),
                     )
                 }
-                DebugNotificationButton(
-                    label = "Test notification",
-                    icon = Res.drawable.ic_notifications,
-                    enabled = username.isNotBlank() && !loading,
-                    onClick = { run(DebugNotificationAction.TEST) },
+                Column(
                     modifier = Modifier.padding(top = 8.dp),
-                )
-                DebugNotificationButton(
-                    label = "Activate",
-                    icon = Res.drawable.ic_notifications,
-                    enabled = username.isNotBlank() && !loading,
-                    onClick = { run(DebugNotificationAction.ENABLE) },
-                )
-                if (notificationsActive) {
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     DebugNotificationButton(
-                        label = "Turn off",
-                        icon = Res.drawable.ic_close,
-                        enabled = !loading,
-                        onClick = { run(DebugNotificationAction.DISABLE) },
+                        label = "Test notification",
+                        icon = Res.drawable.ic_notifications,
+                        enabled = username.isNotBlank() && !loading,
+                        onClick = { run(DebugNotificationAction.TEST) },
                     )
+                    DebugNotificationButton(
+                        label = "Activate",
+                        icon = Res.drawable.ic_notifications,
+                        enabled = username.isNotBlank() && !loading,
+                        onClick = { run(DebugNotificationAction.ENABLE) },
+                    )
+                    if (notificationsActive) {
+                        DebugNotificationButton(
+                            label = "Turn off",
+                            icon = Res.drawable.ic_close,
+                            enabled = !loading,
+                            onClick = { run(DebugNotificationAction.DISABLE) },
+                        )
+                    }
                 }
             }
         },
@@ -189,10 +195,10 @@ private fun DebugNotificationButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(48.dp),
         enabled = enabled,
     ) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,

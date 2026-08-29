@@ -166,7 +166,8 @@ class StoriesComposeController private constructor(
         private set
     var tapToUpdateExitInProgress by mutableStateOf(false)
         private set
-    private var tapToUpdateRefreshStarted = false
+    var tapToUpdateRefreshStarted by mutableStateOf(false)
+        private set
     private var tapToUpdateCoreCleared = false
     var headerMenuVisible by mutableStateOf(false)
         private set

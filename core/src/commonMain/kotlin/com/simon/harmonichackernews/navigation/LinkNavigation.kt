@@ -63,7 +63,7 @@ class AppLinkNavigator(
         val destination = LinkNavigationPolicy.resolve(url, preferInApp, shareable)
     ) {
         is LinkDestination.Story -> {
-            navigation.openStory(destination.destination)
+            navigation.openLinkedStory(destination.destination)
             LinkNavigationResult.Opened
         }
         is LinkDestination.External -> openExternal(destination.request)

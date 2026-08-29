@@ -40,6 +40,7 @@ import com.simon.harmonichackernews.app.createStoriesStore
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
@@ -345,7 +346,9 @@ private fun IosAppContent(
             Modifier
         },
         linkPreview = commentsController
-            ?.takeIf(CommentsComposeController::isLinkPreviewOverlayShowing)
+            ?.takeIf {
+                it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
+            }
             ?.let { controller ->
                 { IosCommentLinkPreview(app, scene, controller) }
             },
@@ -373,12 +376,12 @@ private fun IosAppContent(
                 )
             } else {
                 SinglePaneNavigationScene(
-                    storyRequest = navigation.storyRequest,
-                    lastStoryRequest = navigation.lastStoryRequest,
+                    storyRequests = navigation.storyBackStack,
                     completedPredictivePop = completedBackTarget == IosBackVisualTarget.Story,
                     predictiveBackActive = backInProgress &&
                         backVisualTarget == IosBackVisualTarget.Story,
-                    showStoriesPane = true,
+                    showStoriesRoot = navigation.storyBackStack.isEmpty() ||
+                        navigation.storyStackParentDestination == MainDestination.STORIES,
                     storiesPredictiveModifier = if (
                         backVisualTarget == IosBackVisualTarget.Story
                     ) incomingModifier else Modifier,

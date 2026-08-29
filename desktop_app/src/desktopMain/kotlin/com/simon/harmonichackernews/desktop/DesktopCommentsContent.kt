@@ -253,6 +253,25 @@ internal fun DesktopCommentsContent(
                             onDismiss = host.controller::dismissCommentSearch,
                             onCommentSelected = host.controller::selectSearchResult,
                             onOpenLink = { scene.links.open(it) },
+                            onLinkLongClick = { comment, url, title, bounds ->
+                                host.controller.showReferencePreview(
+                                    url = url,
+                                    title = title,
+                                    sourceBounds = bounds,
+                                    sourceCommentId = comment.id,
+                                )
+                            },
+                            onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
+                                host.controller.showReferencePreview(
+                                    link = link,
+                                    sourceBounds = bounds,
+                                    sourceCommentId = comment.id,
+                                    sourceContentLayer = sourceContentLayer,
+                                )
+                            },
+                            foreground = {
+                                DesktopCommentLinkPreview(app, scene, host.controller)
+                            },
                         )
                     },
                     actionOverlay = { settings ->

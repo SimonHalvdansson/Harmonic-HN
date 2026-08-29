@@ -150,6 +150,7 @@ internal fun AndroidCommentsScreen(
         },
         searchDialog = { settings ->
             AndroidCommentsSearchDialog(
+                controller = controller,
                 searchTerm = controller.searchQuery,
                 visibleComments = controller.searchResults,
                 settings = settings,

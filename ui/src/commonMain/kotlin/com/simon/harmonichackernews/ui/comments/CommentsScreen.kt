@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
@@ -67,6 +68,7 @@ import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
@@ -496,6 +498,8 @@ fun CommentsScreen(
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
+            val scrollTopShape = RoundedCornerShape(16.dp)
+            val scrollTopSurface = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
             ExtendedFloatingActionButton(
                 onClick = {
                     if (smoothScroll) {
@@ -519,15 +523,23 @@ fun CommentsScreen(
                         fontWeight = FontWeight.Bold,
                     )
                 },
-                containerColor = HarmonicTheme.colors.overlayButton,
+                modifier = Modifier
+                    .shadow(3.dp, scrollTopShape, clip = false)
+                    .commentsHazeBackground(
+                        hazeState = commentsHazeState,
+                        surfaceColor = scrollTopSurface,
+                        shape = scrollTopShape,
+                    ),
+                shape = scrollTopShape,
+                containerColor = Color.Transparent,
                 contentColor = Color.White,
                 // Keep the shadow present but constant. AnimatedVisibility owns the appearance
                 // transition, so Material's interaction elevation cannot flash it on entry.
                 elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 3.dp,
-                    pressedElevation = 3.dp,
-                    focusedElevation = 3.dp,
-                    hoveredElevation = 3.dp,
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp,
                 ),
             )
         }
@@ -690,21 +702,10 @@ private fun CommentNavigationButtons(
     Row(
         modifier = Modifier
             .shadow(6.dp, shape, clip = false)
-            .clip(shape)
-            .then(
-                if (hazeState == null) {
-                    Modifier.background(surfaceColor)
-                } else {
-                    Modifier.hazeBlur(
-                        input = HazeInput.Sources(hazeState),
-                        style = HazeBlurStyle {
-                            blurRadius(6.dp)
-                            colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
-                            noiseFactor(0f)
-                            fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
-                        },
-                    )
-                },
+            .commentsHazeBackground(
+                hazeState = hazeState,
+                surfaceColor = surfaceColor,
+                shape = shape,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -746,3 +747,23 @@ private fun CommentNavigationButtons(
         }
     }
 }
+
+private fun Modifier.commentsHazeBackground(
+    hazeState: HazeState?,
+    surfaceColor: Color,
+    shape: Shape,
+): Modifier = clip(shape).then(
+    if (hazeState == null) {
+        Modifier.background(surfaceColor)
+    } else {
+        Modifier.hazeBlur(
+            input = HazeInput.Sources(hazeState),
+            style = HazeBlurStyle {
+                blurRadius(6.dp)
+                colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
+                noiseFactor(0f)
+                fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
+            },
+        )
+    },
+)
