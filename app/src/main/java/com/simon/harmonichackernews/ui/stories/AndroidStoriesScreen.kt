@@ -186,7 +186,7 @@ private fun StoryItemFormFactorPreview() {
         StoryItem(
             model = SettingsStoryPreviewModel,
             style = StoryItemStyle(
-                previewImageMode = StoryPreviewPreferences.SMALL,
+                previewImageMode = StoryPreviewPreferences.MEDIUM,
                 borderlessLargeImage = false,
                 compact = false,
                 showSummary = true,

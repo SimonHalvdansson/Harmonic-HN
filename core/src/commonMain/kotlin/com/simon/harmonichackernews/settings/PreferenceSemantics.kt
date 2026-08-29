@@ -236,10 +236,12 @@ enum class WebViewPreloadMode(val storedValue: String, val label: String) {
 object StoryPreviewPreferences {
     const val OFF = "off"
     const val SMALL = "small"
+    const val MEDIUM = "medium"
     const val LARGE = "large"
 
     fun sanitize(mode: String?): String = when (mode) {
         OFF -> OFF
+        MEDIUM -> MEDIUM
         LARGE -> LARGE
         else -> SMALL
     }

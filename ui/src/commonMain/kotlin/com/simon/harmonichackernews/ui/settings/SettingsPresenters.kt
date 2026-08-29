@@ -42,6 +42,7 @@ class StoriesSettingsPresenter(
             previewImageMode = story.previewImageMode,
             previewOffValue = StoryPreviewPreferences.OFF,
             previewSmallValue = StoryPreviewPreferences.SMALL,
+            previewMediumValue = StoryPreviewPreferences.MEDIUM,
             previewLargeValue = StoryPreviewPreferences.LARGE,
             borderlessLargeImage = story.borderlessLargePreviewImage,
             compact = story.compactView,

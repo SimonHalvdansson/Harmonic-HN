@@ -30,6 +30,14 @@ class StoredSettingsMutatorTest {
         val mutator = StoredSettingsMutator(store)
 
         mutator.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        mutator.setStoryString(
+            StoryStringPreference.PREVIEW_IMAGE_MODE,
+            StoryPreviewPreferences.MEDIUM,
+        )
+        assertEquals(
+            StoryPreviewPreferences.MEDIUM,
+            store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE),
+        )
         mutator.setStoryString(StoryStringPreference.PREVIEW_IMAGE_MODE, "unsupported")
         mutator.setStoryTextSize(999f)
         mutator.setAdditionalFrontpages(setOf("Front", "unsupported"))

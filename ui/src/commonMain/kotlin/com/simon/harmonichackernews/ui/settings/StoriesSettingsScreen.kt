@@ -14,6 +14,7 @@ data class StoriesSettingsUiState(
     val previewImageMode: String,
     val previewOffValue: String,
     val previewSmallValue: String,
+    val previewMediumValue: String,
     val previewLargeValue: String,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
@@ -116,6 +117,7 @@ fun StoriesSettingsScreen(
                     options = listOf(
                         state.previewOffValue to "Off",
                         state.previewSmallValue to "Small",
+                        state.previewMediumValue to "Medium",
                         state.previewLargeValue to "Large",
                     ),
                     selected = state.previewImageMode,
@@ -154,7 +156,16 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Show story points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
-                BooleanRow("Compact points", Res.drawable.ic_thumb_up, state.compactPoints, StoriesBooleanSetting.CompactPoints, onBooleanChanged, enabled = !state.compact && state.showPoints)
+                BooleanRow(
+                    "Compact points",
+                    Res.drawable.ic_thumb_up,
+                    state.compactPoints,
+                    StoriesBooleanSetting.CompactPoints,
+                    onBooleanChanged,
+                    enabled = !state.compact &&
+                        state.showPoints &&
+                        state.previewImageMode != state.previewMediumValue,
+                )
                 SettingsDivider()
                 BooleanRow("Include top level domain", Res.drawable.ic_public, state.includeTopLevelDomain, StoriesBooleanSetting.IncludeTopLevelDomain, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
@@ -162,7 +173,14 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Show story indices", Res.drawable.ic_format_list_numbered, state.showIndex, StoriesBooleanSetting.ShowIndex, onBooleanChanged)
                 SettingsDivider()
-                BooleanRow("Left align comments button", Res.drawable.ic_pan_tool, state.leftAlignComments, StoriesBooleanSetting.LeftAlignComments, onBooleanChanged)
+                BooleanRow(
+                    "Left align comments button",
+                    Res.drawable.ic_pan_tool,
+                    state.leftAlignComments,
+                    StoriesBooleanSetting.LeftAlignComments,
+                    onBooleanChanged,
+                    enabled = state.previewImageMode != state.previewMediumValue,
+                )
                 SettingsDivider()
                 SettingRow(
                     title = "Highlight hot stories",

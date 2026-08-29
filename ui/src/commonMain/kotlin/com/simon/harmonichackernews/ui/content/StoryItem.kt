@@ -24,6 +24,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +64,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -72,21 +75,31 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextMotion
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_arrow_drop_up
 import com.simon.harmonichackernews.resources.ic_comment
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.resources.web_preview
+import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import com.simon.harmonichackernews.ui.stories.captureStoryPreviewSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -95,6 +108,15 @@ import kotlin.math.roundToInt
 private const val ContentAnimationDuration = 220
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
+private val MediumPreviewImageRailWidth = 128.dp
+private val MediumPreviewImageMinimumHeight = 104.dp
+private val MediumNoImageFullRailWidth = 116.dp
+private val MediumNoImagePointsRailWidth = 92.dp
+private val MediumNoImageCommentsRailWidth = 64.dp
+private val MediumNoImageIconRailWidth = 52.dp
+private val MediumPreviewImageShape = RoundedCornerShape(10.dp)
+private val StoryMetricPillShape = RoundedCornerShape(50)
+private val StoryMetricPillHeight = 26.dp
 
 /** Avoids transition state and animated layouts for immutable story-list presentation. */
 @Composable
@@ -320,6 +342,7 @@ fun StoryItem(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
+    val mediumPreview = style.previewImageMode == StoryPreviewPreferences.MEDIUM
     val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
@@ -367,6 +390,7 @@ fun StoryItem(
     val previewImageCornerRadiusPx = with(density) {
         when {
             style.previewImageMode == "small" -> 6.dp.toPx()
+            style.previewImageMode == StoryPreviewPreferences.MEDIUM -> 10.dp.toPx()
             style.previewImageMode == "large" && !style.borderlessLargeImage -> 8.dp.toPx()
             else -> 0f
         }
@@ -541,23 +565,73 @@ fun StoryItem(
                         },
                     )
                 }
-                val comments: @Composable () -> Unit = {
-                    StoryCommentRail(
-                        model = model,
-                        style = style,
-                        typography = typography,
-                        onClick = onCommentClick,
-                        animateChanges = animate,
-                        modifier = Modifier.captureStoryPreviewElement(
-                            enabled = captureSourceContent,
-                            onPositioned = { itemGeometry.commentsCoordinates = it },
-                            onLayerChanged = { itemGeometry.commentsLayer = it },
-                        ),
-                    )
+                val comments: @Composable () -> Unit = if (mediumPreview) {
+                    {
+                        StoryMediumPreviewRail(
+                            model = model,
+                            style = style,
+                            typography = typography,
+                            hasPreview = hasPreview,
+                            dimAlpha = dimAlpha,
+                            onClick = onCommentClick,
+                            onPreviewLoadFailed = {
+                                previewFailed = true
+                                onPreviewLoadFailed?.invoke()
+                            },
+                            onPreviewLoadSuccess = { onPreviewLoadSuccess?.invoke() },
+                            tintBaseColorArgb = tintBaseColorArgb,
+                            paletteTintConfigKey = style.paletteTintConfigKey,
+                            extractPreviewTint = style.tintCard &&
+                                model.previewImageTintArgb == null,
+                            onPreviewTintExtracted = { tintColor ->
+                                extractedPreviewTint = tintColor
+                                onPreviewTintExtracted?.invoke(tintColor)
+                            },
+                            capturePreviewSource = captureSourceContent,
+                            itemGeometry = itemGeometry,
+                            animateChanges = animate,
+                            modifier = Modifier.captureStoryPreviewElement(
+                                enabled = captureSourceContent,
+                                onPositioned = { itemGeometry.commentsCoordinates = it },
+                                onLayerChanged = { itemGeometry.commentsLayer = it },
+                            ),
+                        )
+                    }
+                } else {
+                    {
+                        StoryCommentRail(
+                            model = model,
+                            style = style,
+                            typography = typography,
+                            onClick = onCommentClick,
+                            animateChanges = animate,
+                            modifier = Modifier.captureStoryPreviewElement(
+                                enabled = captureSourceContent,
+                                onPositioned = { itemGeometry.commentsCoordinates = it },
+                                onLayerChanged = { itemGeometry.commentsLayer = it },
+                            ),
+                        )
+                    }
                 }
+                val targetRailWidth = when {
+                    !mediumPreview -> 60.dp
+                    hasPreview -> MediumPreviewImageRailWidth
+                    else -> mediumNoImageRailWidth(style)
+                }
+                val animatedRailWidth by animateDpAsState(
+                    targetValue = targetRailWidth,
+                    animationSpec = contentTween(),
+                    label = "story metric rail width",
+                )
                 StoryContentRow(
-                    commentsOnLeft = style.commentsOnLeft,
+                    commentsOnLeft = style.commentsOnLeft && !mediumPreview,
                     animateChanges = animate,
+                    railWidth = if (animate) animatedRailWidth else targetRailWidth,
+                    contentMinHeight = if (mediumPreview && hasPreview) {
+                        MediumPreviewImageMinimumHeight
+                    } else {
+                        0.dp
+                    },
                     comments = comments,
                 ) {
                     StoryMainContent(
@@ -602,6 +676,8 @@ fun StoryItem(
 private fun StoryContentRow(
     commentsOnLeft: Boolean,
     animateChanges: Boolean,
+    railWidth: Dp,
+    contentMinHeight: Dp,
     comments: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -624,8 +700,12 @@ private fun StoryContentRow(
             comments()
         },
     ) { measurables, constraints ->
-        val railWidth = 60.dp.roundToPx().coerceAtMost(constraints.maxWidth)
-        val contentWidth = (constraints.maxWidth - railWidth).coerceAtLeast(0)
+        val railWidthPx = railWidth.roundToPx().coerceAtMost(constraints.maxWidth)
+        val contentWidth = (constraints.maxWidth - railWidthPx).coerceAtLeast(0)
+        val minimumRowHeight = maxOf(
+            constraints.minHeight,
+            contentMinHeight.roundToPx(),
+        ).coerceAtMost(constraints.maxHeight)
         val contentPlaceable = measurables[0].measure(
             constraints.copy(
                 minWidth = contentWidth,
@@ -633,22 +713,310 @@ private fun StoryContentRow(
                 minHeight = 0,
             ),
         )
-        val rowHeight = contentPlaceable.height
+        val rowHeight = maxOf(contentPlaceable.height, minimumRowHeight)
         val railPlaceable = measurables[1].measure(
             constraints.copy(
-                minWidth = railWidth,
-                maxWidth = railWidth,
+                minWidth = railWidthPx,
+                maxWidth = railWidthPx,
                 minHeight = rowHeight,
                 maxHeight = rowHeight,
             ),
         )
 
         layout(constraints.maxWidth, rowHeight) {
-            val contentX = (railWidth * commentsOnLeftProgress).roundToInt()
+            val contentX = (railWidthPx * commentsOnLeftProgress).roundToInt()
             val railX = (contentWidth * (1f - commentsOnLeftProgress)).roundToInt()
-            contentPlaceable.placeRelative(contentX, 0)
+            val contentY = (rowHeight - contentPlaceable.height) / 2
+            contentPlaceable.placeRelative(contentX, contentY)
             railPlaceable.placeRelative(railX, 0)
         }
+    }
+}
+
+@Composable
+private fun StoryMediumPreviewRail(
+    model: StoryItemUiModel,
+    style: StoryItemStyle,
+    typography: ContentTypography,
+    hasPreview: Boolean,
+    dimAlpha: Float,
+    onClick: (() -> Unit)?,
+    onPreviewLoadFailed: () -> Unit,
+    onPreviewLoadSuccess: () -> Unit,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractPreviewTint: Boolean,
+    onPreviewTintExtracted: (Int) -> Unit,
+    capturePreviewSource: Boolean,
+    itemGeometry: StoryItemGeometry,
+    animateChanges: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val hazeState = if (hasPreview) rememberHazeState() else null
+    val showPoints = style.showPoints && !style.compact
+    val showCommentPill = style.showCommentCount
+    val showCommentText = style.showCommentCount && !style.compact
+    val railPadding = if (hasPreview) {
+        PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+    } else {
+        PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
+    }
+    val pointsDescription = "${model.points} ${if (model.points == 1) "point" else "points"}"
+    val commentsDescription =
+        "${model.commentCount} ${if (model.commentCount == 1) "comment" else "comments"}"
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(
+                enabled = onClick != null,
+                onClickLabel = "Open comments",
+            ) { onClick?.invoke() }
+            .padding(railPadding),
+        contentAlignment = if (hasPreview) Alignment.Center else Alignment.CenterEnd,
+    ) {
+        if (hasPreview && hazeState != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.dp)
+                    .clip(MediumPreviewImageShape),
+            ) {
+                StoryPreviewImage(
+                    model = model,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeSource(hazeState)
+                        .captureStoryPreviewElement(
+                            enabled = capturePreviewSource,
+                            onPositioned = { itemGeometry.smallImageCoordinates = it },
+                            onLayerChanged = { itemGeometry.smallImageLayer = it },
+                        )
+                        .graphicsLayer(alpha = dimAlpha),
+                    onLoadFailed = onPreviewLoadFailed,
+                    onLoadSuccess = onPreviewLoadSuccess,
+                    tintBaseColorArgb = tintBaseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                    extractTint = extractPreviewTint,
+                    onTintExtracted = onPreviewTintExtracted,
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StoryVisibility(
+                        visible = showPoints,
+                        animate = animateChanges,
+                        enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                        exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                    ) {
+                        StoryMetricPill(
+                            icon = Res.drawable.ic_arrow_drop_up,
+                            text = compactStoryMetric(model.points),
+                            contentDescription = pointsDescription,
+                            typography = typography,
+                            dimAlpha = dimAlpha,
+                            hazeState = hazeState,
+                            iconSize = 24.dp,
+                            iconSlotWidth = 14.dp,
+                            iconScale = 1.35f,
+                            startPadding = 2.dp,
+                            endPadding = 10.dp,
+                            iconTextSpacing = 0.dp,
+                        )
+                    }
+                    StoryVisibility(
+                        visible = showPoints && showCommentPill,
+                        animate = animateChanges,
+                        enter = expandHorizontally(contentTween()),
+                        exit = shrinkHorizontally(contentTween()),
+                    ) {
+                        Box(Modifier.width(4.dp))
+                    }
+                    StoryVisibility(
+                        visible = showCommentPill,
+                        animate = animateChanges,
+                        enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                        exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                    ) {
+                        StoryMetricPill(
+                            icon = Res.drawable.ic_comment,
+                            text = model.commentCount
+                                .takeIf { showCommentText }
+                                ?.let(::compactStoryMetric),
+                            contentDescription = if (showCommentText) {
+                                commentsDescription
+                            } else {
+                                "Comments"
+                            },
+                            typography = typography,
+                            dimAlpha = dimAlpha,
+                            hazeState = hazeState,
+                            iconSize = 12.dp,
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StoryVisibility(
+                    visible = showPoints,
+                    animate = animateChanges,
+                    enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                ) {
+                    StoryMetricPill(
+                        icon = Res.drawable.ic_arrow_drop_up,
+                        text = compactStoryMetric(model.points),
+                        contentDescription = pointsDescription,
+                        typography = typography,
+                        dimAlpha = dimAlpha,
+                        iconSize = 24.dp,
+                        iconSlotWidth = 14.dp,
+                        iconScale = 1.35f,
+                        startPadding = 2.dp,
+                        endPadding = 10.dp,
+                        iconTextSpacing = 0.dp,
+                    )
+                }
+                StoryVisibility(
+                    visible = showPoints && showCommentPill,
+                    animate = animateChanges,
+                    enter = expandHorizontally(contentTween()),
+                    exit = shrinkHorizontally(contentTween()),
+                ) {
+                    Box(Modifier.width(4.dp))
+                }
+                StoryVisibility(
+                    visible = showCommentPill,
+                    animate = animateChanges,
+                    enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                ) {
+                    StoryMetricPill(
+                        icon = Res.drawable.ic_comment,
+                        text = model.commentCount
+                            .takeIf { showCommentText }
+                            ?.let(::compactStoryMetric),
+                        contentDescription = if (showCommentText) {
+                            commentsDescription
+                        } else {
+                            "Comments"
+                        },
+                        typography = typography,
+                        dimAlpha = dimAlpha,
+                        iconSize = 12.dp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoryMetricPill(
+    icon: DrawableResource,
+    text: String?,
+    contentDescription: String,
+    typography: ContentTypography,
+    dimAlpha: Float,
+    hazeState: HazeState? = null,
+    iconSize: Dp,
+    iconSlotWidth: Dp = iconSize,
+    iconScale: Float = 1f,
+    startPadding: Dp = 5.dp,
+    endPadding: Dp = 7.dp,
+    iconTextSpacing: Dp = 2.dp,
+) {
+    val colors = HarmonicTheme.colors
+    val container = colors.surfaceContainerHighest
+    val foreground = if (dimAlpha < 1f) colors.storyDisabled else colors.storyNormal
+    val backgroundModifier = if (hazeState == null) {
+        Modifier
+            .clip(StoryMetricPillShape)
+            .background(container.copy(alpha = 0.92f))
+            .border(1.dp, colors.outlineVariant, StoryMetricPillShape)
+    } else {
+        val hazeTint = container.copy(alpha = 0.62f)
+        Modifier
+            .clip(StoryMetricPillShape)
+            .hazeBlur(
+                input = HazeInput.Sources(hazeState),
+                style = HazeBlurStyle {
+                    blurRadius(5.dp)
+                    colorEffects(listOf(HazeColorEffect.tint(hazeTint)))
+                    noiseFactor(0f)
+                    fallbackColorEffect(HazeColorEffect.tint(hazeTint))
+                },
+            )
+    }
+    Row(
+        modifier = Modifier
+            .then(backgroundModifier)
+            .height(StoryMetricPillHeight)
+            .padding(start = startPadding, end = endPadding)
+            .clearAndSetSemantics { this.contentDescription = contentDescription },
+        horizontalArrangement = Arrangement.spacedBy(if (text == null) 0.dp else iconTextSpacing),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.width(iconSlotWidth),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(iconSize)
+                    .graphicsLayer(scaleX = iconScale, scaleY = iconScale),
+                tint = foreground,
+            )
+        }
+        if (text != null) {
+            Text(
+                text = text,
+                color = foreground,
+                fontFamily = typography.storyMetaFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                maxLines = 1,
+                style = legacyTextStyle,
+            )
+        }
+    }
+}
+
+private fun mediumNoImageRailWidth(style: StoryItemStyle): Dp {
+    val showPoints = style.showPoints && !style.compact
+    val showCommentPill = style.showCommentCount
+    val showCommentText = style.showCommentCount && !style.compact
+    return when {
+        showPoints && showCommentText -> MediumNoImageFullRailWidth
+        showPoints && showCommentPill -> MediumNoImagePointsRailWidth
+        showPoints || showCommentText -> MediumNoImageCommentsRailWidth
+        showCommentPill -> MediumNoImageIconRailWidth
+        else -> 0.dp
+    }
+}
+
+private fun compactStoryMetric(value: Int): String {
+    val count = value.coerceAtLeast(0)
+    return when {
+        count >= 1_000_000 -> "${(count + 500_000) / 1_000_000}m"
+        count >= 10_000 -> "${(count + 500) / 1_000}k"
+        count >= 1_000 -> {
+            val whole = count / 1_000
+            val tenth = count % 1_000 / 100
+            if (tenth == 0) "${whole}k" else "$whole.${tenth}k"
+        }
+        else -> count.toString()
     }
 }
 
@@ -720,13 +1088,13 @@ private fun StoryMainContent(
     }
     val titleStartPadding = if (animateChanges) {
         val animatedTitleStartPadding by animateDpAsState(
-            targetValue = if (style.showIndex) 2.dp else 11.dp,
+            targetValue = if (style.showIndex) 1.dp else 11.dp,
             animationSpec = contentTween(),
             label = "story title start padding",
         )
         animatedTitleStartPadding
     } else if (style.showIndex) {
-        2.dp
+        1.dp
     } else {
         11.dp
     }
@@ -989,6 +1357,8 @@ private fun StoryMeta(
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
+    val showMetaPoints = style.showPoints &&
+        style.previewImageMode != StoryPreviewPreferences.MEDIUM
     val domainSuffix = model.domain
         .takeIf {
             model.domainWithoutTopLevel.isNotEmpty() &&
@@ -1002,13 +1372,13 @@ private fun StoryMeta(
             model.domainWithoutTopLevel,
             domainSuffix,
             model.age,
-            style.showPoints,
+            showMetaPoints,
             style.compactPoints,
             style.includeTopLevelDomain,
         ) {
             AnnotatedString(
                 buildString {
-                    if (style.showPoints) {
+                    if (showMetaPoints) {
                         if (style.compactPoints) append('+')
                         append(model.points)
                         if (!style.compactPoints) append(" points")
@@ -1043,7 +1413,7 @@ private fun StoryMeta(
         label = "story meta size",
     )
     val pointsVisibilityProgress = remember(model.points) {
-        Animatable(if (style.showPoints) 1f else 0f)
+        Animatable(if (showMetaPoints) 1f else 0f)
     }
     val plusProgress = remember(model.points) {
         Animatable(if (style.compactPoints) 1f else 0f)
@@ -1052,13 +1422,13 @@ private fun StoryMeta(
         Animatable(if (style.compactPoints) 0f else 1f)
     }
     var renderPoints by remember(model.points) {
-        mutableStateOf(style.showPoints)
+        mutableStateOf(showMetaPoints)
     }
-    LaunchedEffect(style.showPoints, animateChanges) {
+    LaunchedEffect(showMetaPoints, animateChanges) {
         if (!animateChanges) {
-            pointsVisibilityProgress.snapTo(if (style.showPoints) 1f else 0f)
-            renderPoints = style.showPoints
-        } else if (style.showPoints) {
+            pointsVisibilityProgress.snapTo(if (showMetaPoints) 1f else 0f)
+            renderPoints = showMetaPoints
+        } else if (showMetaPoints) {
             renderPoints = true
             pointsVisibilityProgress.animateTo(1f, contentTween())
         } else {
