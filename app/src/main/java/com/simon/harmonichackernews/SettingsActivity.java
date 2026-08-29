@@ -29,7 +29,6 @@ import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
 import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
-import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -182,7 +181,7 @@ public class SettingsActivity extends AppCompatActivity implements
 
         if (Utils.isTablet(getResources()) && detailPane != null) {
             isTwoPane = true;
-            boolean useEqualPaneWeights = FoldableSplitInitializer.isFoldableSplitEnabled(this);
+            boolean useEqualPaneWeights = Utils.isFoldableDevice(this);
             int listWeight = useEqualPaneWeights ? FOLDABLE_TWO_PANE_WEIGHT : TWO_PANE_LIST_WEIGHT;
             int detailWeight = useEqualPaneWeights ? FOLDABLE_TWO_PANE_WEIGHT : TWO_PANE_DETAIL_WEIGHT;
 

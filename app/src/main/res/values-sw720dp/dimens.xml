@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="single_view_side_margin">210dp</dimen>
-    <integer name="stories_pane_weight">3</integer>
+    <integer name="default_split_pane_ratio">38</integer>
     <dimen name="extra_pane_padding">64dp</dimen>
     <dimen name="settings_extra_pane_padding">50dp</dimen>
-    <dimen name="margin_between_panes">24dp</dimen>
     <dimen name="comments_header_action_padding">150dp</dimen>
 
     <dimen name="comments_header_top_padding">32dp</dimen>

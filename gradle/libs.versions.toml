@@ -20,8 +20,6 @@ androidx-security = "androidx.security:security-crypto:1.1.0"
 androidx-swiperefreshlayout = "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0"
 androidx-webkit = "androidx.webkit:webkit:1.16.0"
 androidx-activity = "androidx.activity:activity:1.13.0"
-androidx-window = "androidx.window:window:1.5.1"
-androidx-window-java = "androidx.window:window-java:1.5.1"
 androidx-startup = "androidx.startup:startup-runtime:1.2.0"
 androidx-viewpager2 = "androidx.viewpager2:viewpager2:1.1.0"
 
@@ -47,5 +45,4 @@ markwon-inline-parser = "io.noties.markwon:inline-parser:4.6.2"
 
 [bundles]
 androidx-lifecycle = ["androidx-lifecycle-viewmodel", "androidx-lifecycle-viewmodel-ktx"]
-androidx-window = ["androidx-window", "androidx-window-java"]
 okhttp = ["okhttp-core", "okhttp-urlconnection"]

@@ -12,9 +12,19 @@
         android:layout_height="match_parent"
         android:name="com.simon.harmonichackernews.StoriesFragment" />
 
-    <Space
-        android:layout_width="@dimen/margin_between_panes"
-        android:layout_height="match_parent"/>
+    <FrameLayout
+        android:id="@+id/main_split_divider"
+        android:layout_width="@dimen/split_pane_divider_width"
+        android:layout_height="match_parent">
+
+        <View
+            android:layout_width="4dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:background="@drawable/split_divider_handle"
+            android:importantForAccessibility="no" />
+
+    </FrameLayout>
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/main_fragment_comments_container"

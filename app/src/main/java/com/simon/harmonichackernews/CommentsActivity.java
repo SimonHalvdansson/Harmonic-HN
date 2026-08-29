@@ -8,31 +8,18 @@ import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 
-import androidx.activity.BackEventCompat;
-import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.gw.swipeback.SwipeBackLayout;
 import com.simon.harmonichackernews.databinding.ActivityCommentsBinding;
 import com.simon.harmonichackernews.utils.SettingsUtils;
-import com.simon.harmonichackernews.utils.SplitChangeHandler;
 import com.simon.harmonichackernews.utils.ThemeUtils;
 
-import java.lang.ref.WeakReference;
-
 public class CommentsActivity extends BaseActivity implements CommentsFragment.BottomSheetFragmentCallback {
-    public static String PREVENT_BACK = "PREVENT_BACK";
-    private static WeakReference<CommentsActivity> currentCommentsActivity =
-            new WeakReference<>(null);
     private boolean disableSwipeAtComments;
     private SwipeBackLayout swipeBackLayout;
-    private SplitChangeHandler splitChangeHandler;
     private boolean swipeBack = false;
     private CommentsFragment commentsFragment;
-    private OnBackPressedCallback embeddedSearchBackCallback;
-    private final MainActivity.SearchBackStateListener searchBackStateListener =
-            enabled -> syncEmbeddedSearchBackCallbackEnabled();
     private final Handler translucentHandler = new Handler(Looper.getMainLooper());
     private final Runnable makeTranslucentRunnable = new Runnable() {
         @Override
@@ -58,7 +45,6 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        currentCommentsActivity = new WeakReference<>(this);
 
         swipeBack = !SettingsUtils.shouldDisableCommentsSwipeBack(getApplicationContext());
 
@@ -93,12 +79,6 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
         }
 
         swipeBackLayout = binding.swipeBackLayout;
-        this.splitChangeHandler = new SplitChangeHandler(
-                this,
-                swipeBackLayout,
-                this::syncEmbeddedSearchBackCallbackEnabled);
-        setupEmbeddedSearchBackCallback(root);
-        MainActivity.addSearchBackStateListener(searchBackStateListener);
 
         swipeBackLayout.setSwipeBackListener(new SwipeBackLayout.OnSwipeBackListener() {
             @Override
@@ -120,13 +100,6 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
 
     @Override
     public void onSwitchView(boolean isAtWebView) {
-        syncEmbeddedSearchBackCallbackEnabled();
-
-        if (splitChangeHandler.isWithinSplit() && getIntent() != null) {
-            swipeBackLayout.setActive(!getIntent().getBooleanExtra(PREVENT_BACK, false));
-            return;
-        }
-
         if (isAtWebView) {
             swipeBackLayout.setActive(false);
         } else {
@@ -162,25 +135,7 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
     @Override
     protected void onDestroy() {
         translucentHandler.removeCallbacksAndMessages(null);
-        MainActivity.removeSearchBackStateListener(searchBackStateListener);
-        if (currentCommentsActivity.get() == this) {
-            currentCommentsActivity.clear();
-        }
         super.onDestroy();
-        if (splitChangeHandler != null) {
-            splitChangeHandler.teardown();
-        }
-    }
-
-    static boolean switchEmbeddedStoryViewIfMatching(int storyId, boolean showWebsite) {
-        CommentsActivity activity = currentCommentsActivity.get();
-        return activity != null
-                && !activity.isFinishing()
-                && !activity.isDestroyed()
-                && activity.splitChangeHandler != null
-                && activity.splitChangeHandler.isWithinSplit()
-                && activity.commentsFragment != null
-                && activity.commentsFragment.switchStoryViewIfMatching(storyId, showWebsite);
     }
 
     @Override
@@ -199,51 +154,5 @@ public class CommentsActivity extends BaseActivity implements CommentsFragment.B
             }
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    private void setupEmbeddedSearchBackCallback(View root) {
-        embeddedSearchBackCallback = new OnBackPressedCallback(false) {
-            @Override
-            public void handleOnBackCancelled() {
-                MainActivity.cancelActiveSearchBackProgress();
-            }
-
-            @Override
-            public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
-                MainActivity.updateActiveSearchBackProgress(backEvent.getProgress());
-            }
-
-            @Override
-            public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
-                MainActivity.startActiveSearchBackProgress(backEvent.getProgress());
-            }
-
-            @Override
-            public void handleOnBackPressed() {
-                if (MainActivity.finishActiveSearchBackProgress()) {
-                    syncEmbeddedSearchBackCallbackEnabled();
-                    return;
-                }
-
-                setEnabled(false);
-                getOnBackPressedDispatcher().onBackPressed();
-                syncEmbeddedSearchBackCallbackEnabled();
-            }
-        };
-
-        root.post(() -> {
-            if (!isDestroyed()) {
-                getOnBackPressedDispatcher().addCallback(this, embeddedSearchBackCallback);
-                syncEmbeddedSearchBackCallbackEnabled();
-            }
-        });
-    }
-
-    private void syncEmbeddedSearchBackCallbackEnabled() {
-        if (embeddedSearchBackCallback == null || splitChangeHandler == null) {
-            return;
-        }
-
-        embeddedSearchBackCallback.setEnabled(splitChangeHandler.isWithinSplit() && MainActivity.isSearchBackActive());
     }
 }

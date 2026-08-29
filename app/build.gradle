@@ -209,7 +209,6 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity)
-    implementation(libs.bundles.androidx.window)
     implementation(libs.androidx.startup)
     implementation(libs.androidx.viewpager2)
 
