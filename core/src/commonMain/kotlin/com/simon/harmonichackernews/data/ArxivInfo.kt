@@ -7,6 +7,7 @@ class ArxivInfo {
     var authors: Array<String?> = emptyArray()
     var primaryCategory: String? = null
     var arxivID: String? = null
+    var htmlUrl: String? = null
 
     var secondaryCategories: Array<String?> = emptyArray()
 

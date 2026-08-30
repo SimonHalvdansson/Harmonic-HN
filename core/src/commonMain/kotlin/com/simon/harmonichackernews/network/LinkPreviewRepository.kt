@@ -16,6 +16,10 @@ import com.simon.harmonichackernews.utils.ArxivResolver
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodeURLPathPart
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Suspend-first provider previews. Platform UI and lifecycle concerns stay outside this API. */
 interface LinkPreviewRepository {
@@ -34,14 +38,33 @@ interface LinkPreviewRepository {
 class KtorLinkPreviewRepository(
     private val client: HttpClient,
 ) : LinkPreviewRepository {
-    override suspend fun getArxivInfo(url: String): ArxivInfo {
+    override suspend fun getArxivInfo(url: String): ArxivInfo = coroutineScope {
         val arxivId = LinkPreviewUrls.arxivId(url)
             ?: throw LinkPreviewException("Invalid ArXiv URL")
         val endpoint = URLBuilder("https://export.arxiv.org/api/query").apply {
             parameters.append("id_list", arxivId)
         }.buildString()
-        return LinkPreviewParsers.parseArxiv(client.getTextOrThrow(endpoint), arxivId)
+        val htmlUrl = async {
+            try {
+                withTimeoutOrNull(ARXIV_HTML_PROBE_TIMEOUT_MILLIS) {
+                    LinkPreviewParsers.parseArxivHtmlUrl(
+                        client.getTextOrThrow("https://arxiv.org/abs/$arxivId"),
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                null
+            }
+        }
+        val info = LinkPreviewParsers.parseArxiv(client.getTextOrThrow(endpoint), arxivId)
             ?: throw LinkPreviewException("ArXiv data not found")
+        info.htmlUrl = htmlUrl.await()
+        info
+    }
+
+    private companion object {
+        const val ARXIV_HTML_PROBE_TIMEOUT_MILLIS = 10_000L
     }
 
     override suspend fun getGitHubInfo(url: String): RepoInfo {
@@ -295,6 +318,18 @@ object LinkPreviewParsers {
             this.publishedDate = publishedDate
             arxivID = arxivId
         }
+    }
+
+    fun parseArxivHtmlUrl(response: String): String? {
+        val href = Ksoup.parse(response, baseUri = "https://arxiv.org")
+            .select("a[href]")
+            .firstOrNull { link ->
+                val value = link.attr("href")
+                value.startsWith("/html/") || value.startsWith("https://arxiv.org/html/")
+            }
+            ?.attr("href")
+            ?: return null
+        return if (href.startsWith('/')) "https://arxiv.org$href" else href
     }
 
     fun parseGitHub(response: String): RepoInfo {

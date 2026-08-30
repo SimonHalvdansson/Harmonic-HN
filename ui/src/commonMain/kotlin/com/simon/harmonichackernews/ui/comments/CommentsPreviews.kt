@@ -746,23 +746,64 @@ private fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplayS
             runCatching(info::concatNames).getOrNull(),
         )
         PreviewInfoRow(Res.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
-        Button(
-            onClick = { platform.downloadPdf(info.pDFURL) },
+        val actionColors = ButtonDefaults.buttonColors(
+            containerColor = HarmonicTheme.colors.secondaryContainer,
+            contentColor = HarmonicTheme.colors.onSecondaryContainer,
+        )
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
-                .height(56.dp),
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(painterResource(Res.drawable.ic_file_download), contentDescription = null)
-            Text(
-                "Download PDF",
-                modifier = Modifier.padding(start = 8.dp),
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-            )
+            info.htmlUrl?.let { htmlUrl ->
+                Button(
+                    onClick = { platform.openLink(htmlUrl) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(
+                        topStart = 24.dp,
+                        bottomStart = 24.dp,
+                        topEnd = 8.dp,
+                        bottomEnd = 8.dp,
+                    ),
+                    colors = actionColors,
+                ) {
+                    ArxivActionLabel("HTML")
+                }
+            }
+            Button(
+                onClick = { platform.downloadPdf(info.pDFURL) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = if (info.htmlUrl != null) {
+                    RoundedCornerShape(
+                        topStart = 8.dp,
+                        bottomStart = 8.dp,
+                        topEnd = 24.dp,
+                        bottomEnd = 24.dp,
+                    )
+                } else {
+                    RoundedCornerShape(24.dp)
+                },
+                colors = actionColors,
+            ) {
+                ArxivActionLabel("PDF")
+            }
         }
     }
+}
+
+@Composable
+private fun ArxivActionLabel(text: String) {
+    Text(
+        text = text,
+        fontFamily = ProductSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+    )
 }
 
 @Composable

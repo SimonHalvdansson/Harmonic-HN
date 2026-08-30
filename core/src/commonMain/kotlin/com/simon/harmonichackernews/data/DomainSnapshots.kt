@@ -213,6 +213,7 @@ data class ArxivInfoSnapshot(
     val arxivID: String?,
     val secondaryCategories: List<String?>,
     val publishedDate: String?,
+    val htmlUrl: String? = null,
 ) {
     fun concatNames(): String = authors.joinToString(", ")
     fun formatDate(): String = publishedDate.orEmpty().take(10)
@@ -400,7 +401,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     arxivInfo = arxivInfo?.let {
         ArxivInfoSnapshot(
             it.arxivAbstract, it.authors.toList(), it.primaryCategory, it.arxivID,
-            it.secondaryCategories.toList(), it.publishedDate,
+            it.secondaryCategories.toList(), it.publishedDate, it.htmlUrl,
         )
     },
     wikiInfo = wikiInfo?.let { WikipediaInfoSnapshot(it.summary, it.title) },
