@@ -31,6 +31,7 @@
         android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
         android:resizeableActivity="true"
+        android:supportsRtl="false"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
