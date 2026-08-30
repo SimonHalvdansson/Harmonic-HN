@@ -109,6 +109,7 @@ import kotlin.math.roundToInt
 private const val ContentAnimationDuration = 220
 private const val DimmedStoryAlpha = 0.6f
 private const val StoryMetricPillDimStrength = 0.75f
+private const val ClickedNoImageMetricPillAlpha = 0.8f
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
 private val MediumPreviewImageRailWidth = 128.dp
@@ -945,6 +946,12 @@ private fun StoryMetricPill(
         dimAlpha,
         StoryMetricPillDimStrength,
     )
+    val pillAlpha = if (hazeState == null) {
+        val dimProgress = ((1f - dimAlpha) / (1f - DimmedStoryAlpha)).coerceIn(0f, 1f)
+        1f + (ClickedNoImageMetricPillAlpha - 1f) * dimProgress
+    } else {
+        1f
+    }
     val backgroundModifier = if (hazeState == null) {
         Modifier
             .clip(StoryMetricPillShape)
@@ -966,6 +973,7 @@ private fun StoryMetricPill(
     }
     Row(
         modifier = Modifier
+            .graphicsLayer(alpha = pillAlpha)
             .then(backgroundModifier)
             .height(StoryMetricPillHeight)
             .padding(start = startPadding, end = endPadding)
