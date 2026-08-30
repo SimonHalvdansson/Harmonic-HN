@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.resources.ic_open_in_browser
 import com.simon.harmonichackernews.resources.ic_shuffle
 import com.simon.harmonichackernews.resources.ic_web_asset
 import com.simon.harmonichackernews.resources.settings_section_web_links
+import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -35,15 +36,15 @@ data class WebLinksSettingsUiState(
     val enabledLinkPreviews: Set<LinkPreviewType>,
 )
 
-enum class WebLinksBooleanSetting {
-    IntegratedWebView,
-    CloseWebViewOnBack,
-    MatchWebViewTheme,
-    BlockWebViewAds,
-    ReaderModeEnabled,
-    ReaderModeDefault,
-    ExternalBrowser,
-    RedirectNitter,
+enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {
+    IntegratedWebView(ReadingBooleanPreference.INTEGRATED_WEB_VIEW),
+    CloseWebViewOnBack(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK),
+    MatchWebViewTheme(ReadingBooleanPreference.MATCH_WEB_VIEW_THEME),
+    BlockWebViewAds(ReadingBooleanPreference.BLOCK_ADS),
+    ReaderModeEnabled(ReadingBooleanPreference.READER_MODE_ENABLED),
+    ReaderModeDefault(ReadingBooleanPreference.READER_MODE_DEFAULT),
+    ExternalBrowser(ReadingBooleanPreference.EXTERNAL_BROWSER),
+    RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
 }
 
 enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews }

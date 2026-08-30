@@ -1406,23 +1406,3 @@ fun TextEntryDialog(
         },
     )
 }
-
-object SimpleMessageDialogController {
-    private var state by mutableStateOf<Pair<String, String>?>(null)
-
-    fun show(title: String, message: String) {
-        state = title to message
-    }
-
-    @Composable
-    fun Content() {
-        val current = state ?: return
-        MessageActionDialog(
-            title = current.first,
-            message = current.second,
-            negativeLabel = "Done",
-            onNegative = { state = null },
-            onDismiss = { state = null },
-        )
-    }
-}

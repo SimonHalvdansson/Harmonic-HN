@@ -20,7 +20,6 @@ class DomainSnapshotsTest {
             clicked = true
             previewImageUrl = "https://example.com/image.png"
             previewImageUrlLoaded = true
-            previewImageLoaded = true
         }
 
         val domain = story.toSnapshot()

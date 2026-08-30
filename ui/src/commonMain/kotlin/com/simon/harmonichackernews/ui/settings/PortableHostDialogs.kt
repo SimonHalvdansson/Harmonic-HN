@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.desktop
+package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -22,25 +23,20 @@ import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
-import com.simon.harmonichackernews.ui.settings.MessageActionDialog
-import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
-import com.simon.harmonichackernews.ui.settings.UserSettingsDialog
-import com.simon.harmonichackernews.ui.settings.UserTagRoute
-import com.simon.harmonichackernews.ui.settings.UserDialogUiState
-import com.simon.harmonichackernews.ui.settings.UserInfoUi
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
+import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 
 @Composable
-internal fun BoxScope.DesktopAppForeground(
+fun BoxScope.PortableAppForeground(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     navigation: MainNavigationSnapshot,
-    storiesController: com.simon.harmonichackernews.ui.stories.StoriesComposeController?,
+    storiesController: StoriesComposeController?,
+    appIcon: Painter,
+    captchaMessage: String,
 ) {
     if (navigation.welcomeDialogVisible) {
-        DesktopWelcomeDialog(app, scene.navigation::dismissWelcomeDialog)
+        PortableWelcomeDialog(app, appIcon, scene.navigation::dismissWelcomeDialog)
     }
     if (navigation.changelogDialogVisible) {
         SettingsChangelogDialog(
@@ -74,8 +70,7 @@ internal fun BoxScope.DesktopAppForeground(
             captchaDialog = { _, cancel, _ ->
                 MessageActionDialog(
                     title = "Hacker News CAPTCHA required",
-                    message = "The desktop host does not yet bundle an embedded browser engine " +
-                        "for Hacker News CAPTCHA challenges.",
+                    message = captchaMessage,
                     positiveLabel = "Close",
                     onPositive = cancel,
                     onDismiss = cancel,
@@ -88,16 +83,16 @@ internal fun BoxScope.DesktopAppForeground(
             title = "Hacker News CAPTCHA required",
             message = "Complete this browser-only challenge on the Hacker News website.",
             positiveLabel = "Close",
-            onPositive = { scene.navigation.dismissCaptchaDialog() },
-            onDismiss = { scene.navigation.dismissCaptchaDialog() },
+            onPositive = scene.navigation::dismissCaptchaDialog,
+            onDismiss = scene.navigation::dismissCaptchaDialog,
         )
     }
     navigation.userRequest?.let { request ->
-        DesktopUserProfileDialog(
+        PortableUserProfileDialog(
             app = app,
             scene = scene,
             userName = request.userName,
-            onDismiss = { scene.navigation.dismissUserDialog() },
+            onDismiss = scene.navigation::dismissUserDialog,
             onTagChanged = {},
         )
     }
@@ -113,7 +108,7 @@ internal fun BoxScope.DesktopAppForeground(
                 }
                 scene.navigation.dismissFailureDetailDialog()
             },
-            onDismiss = { scene.navigation.dismissFailureDetailDialog() },
+            onDismiss = scene.navigation::dismissFailureDetailDialog,
         )
     }
     UserMessageSnackbarHost(
@@ -123,7 +118,7 @@ internal fun BoxScope.DesktopAppForeground(
 }
 
 @Composable
-internal fun DesktopUserProfileDialog(
+fun PortableUserProfileDialog(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     userName: String,
@@ -157,10 +152,7 @@ internal fun DesktopUserProfileDialog(
                     scene.userMessages.show("Reply notifications are currently Android-only")
                 }
                 is UserProfileSessionEffect.ComposeReportEmail -> {
-                    val subject = URLEncoder.encode(
-                        "Reporting user ${effect.username}",
-                        StandardCharsets.UTF_8,
-                    )
+                    val subject = "Reporting%20user%20${effect.username}"
                     scene.links.open("mailto:hn@ycombinator.com?subject=$subject")
                 }
                 is UserProfileSessionEffect.Message -> scene.userMessages.show(effect.text)

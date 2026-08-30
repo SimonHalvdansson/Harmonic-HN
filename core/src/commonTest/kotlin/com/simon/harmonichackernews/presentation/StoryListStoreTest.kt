@@ -33,7 +33,6 @@ class StoryListStoreTest {
             title = "mutated"
             previewImageUrl = "https://example.com/mutated.png"
             previewImageUrlLoaded = true
-            previewImageLoaded = true
             kids = intArrayOf(99)
         }
         assertEquals("Story 1", state.items.first().story.title)

@@ -240,7 +240,7 @@ private fun AndroidCommentsHeader(
         val previewUrl = previewImageUrl
         HeaderPreviewImage(
             imageUrl = previewUrl,
-            initiallyFailed = previewResource?.imageLoadFailed ?: story.previewImageLoadFailed,
+            initiallyFailed = previewResource?.imageLoadFailed == true,
             visible = settings.showHeaderPreviewImage,
             suppressed = controller.headerPreviewSuppressed,
             tintBaseColorArgb = tintBaseColor,

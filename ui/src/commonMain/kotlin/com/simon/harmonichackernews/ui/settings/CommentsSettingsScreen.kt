@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
@@ -44,23 +45,23 @@ data class CommentsSettingsUiState(
     val smoothScroll: Boolean,
 )
 
-enum class CommentsBooleanSetting {
-    Border,
-    CollectLinks,
-    EmphasizeMetadata,
-    Dividers,
-    TopLevelIndicators,
-    Scrollbar,
-    AnimateChanges,
-    ShowUpButton,
-    HeaderTint,
-    HeaderPreviewImage,
-    CollapseParent,
-    CollapseTopLevel,
-    HideDelayedComments,
-    SwapTap,
-    NavigationButtons,
-    SmoothScroll,
+enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
+    Border(CommentBooleanPreference.CARD_BORDER),
+    CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
+    EmphasizeMetadata(CommentBooleanPreference.HIGHLIGHT_METADATA),
+    Dividers(CommentBooleanPreference.SHOW_DIVIDERS),
+    TopLevelIndicators(CommentBooleanPreference.TOP_LEVEL_DEPTH_INDICATOR),
+    Scrollbar(CommentBooleanPreference.SHOW_SCROLLBAR),
+    AnimateChanges(CommentBooleanPreference.ANIMATE_CHANGES),
+    ShowUpButton(CommentBooleanPreference.SHOW_UP_BUTTON),
+    HeaderTint(CommentBooleanPreference.HEADER_TINT),
+    HeaderPreviewImage(CommentBooleanPreference.HEADER_PREVIEW_IMAGE),
+    CollapseParent(CommentBooleanPreference.COLLAPSE_PARENT),
+    CollapseTopLevel(CommentBooleanPreference.COLLAPSE_TOP_LEVEL),
+    HideDelayedComments(CommentBooleanPreference.HIDE_DELAYED_COMMENTS),
+    SwapTap(CommentBooleanPreference.SWAP_LONG_PRESS_TAP),
+    NavigationButtons(CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS),
+    SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
 
 enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, ThreadDepth, Preload }

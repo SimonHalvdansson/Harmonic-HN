@@ -358,13 +358,6 @@ class CommentsFeatureRuntime(
                 tint,
             )
         }
-        StoryPreviewTintState.applyPreview(
-            currentStory,
-            sourceUrl,
-            baseColorArgb,
-            paletteConfigKey,
-            tint.tintColorArgb,
-        )
         return tint.tintColorArgb
     }
 

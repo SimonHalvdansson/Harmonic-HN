@@ -39,7 +39,7 @@ fun storyHeaderTintPresentation(
         FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
     }.getOrNull()
     val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
-    val previewFailed = previewResource?.imageLoadFailed ?: story.previewImageLoadFailed
+    val previewFailed = previewResource?.imageLoadFailed == true
     val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
     val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
         tintStore.read(
@@ -109,7 +109,7 @@ fun storyHeaderTintPresentation(
         FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
     }.getOrNull()
     val previewImageUrl = previewResource?.imageUrl ?: story.presentation.previewImage.url
-    val previewFailed = previewResource?.imageLoadFailed ?: story.presentation.previewImage.failed
+    val previewFailed = previewResource?.imageLoadFailed == true
     val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
     val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
         tintStore.read(
@@ -213,7 +213,7 @@ fun storyItemUiModel(
             faviconUrl = favicon,
             summary = story.linkSummaryDescription,
             previewImageUrl = previewUrl,
-            previewImageLoadFailed = story.previewImageLoadFailed,
+            previewImageLoadFailed = previewResource?.imageLoadFailed == true,
             faviconTintArgb = persistedFaviconTint
                 ?: story.faviconTintColor.takeIf { currentFaviconTint },
             previewImageTintArgb = persistedPreviewTint
@@ -275,7 +275,7 @@ fun storyItemUiModel(
             faviconUrl = favicon,
             summary = presentation.linkSummaryDescription,
             previewImageUrl = previewUrl,
-            previewImageLoadFailed = presentation.previewImage.failed,
+            previewImageLoadFailed = previewResource?.imageLoadFailed == true,
             faviconTintArgb = persistedFaviconTint
                 ?: faviconTint?.colorArgb?.takeIf { currentFaviconTint },
             previewImageTintArgb = persistedPreviewTint
@@ -338,8 +338,7 @@ fun rememberSubmissionStoryItemUiModel(
             summary = summary,
             faviconUrl = faviconUrl,
             previewImageUrl = previewUrl,
-            previewImageLoadFailed = currentPreviewState?.imageLoadFailed
-                ?: story.previewImageLoadFailed,
+            previewImageLoadFailed = currentPreviewState?.imageLoadFailed == true,
             faviconTintArgb = previewResources.tintFor(
                 story,
                 StoryResourceTintKind.FAVICON,

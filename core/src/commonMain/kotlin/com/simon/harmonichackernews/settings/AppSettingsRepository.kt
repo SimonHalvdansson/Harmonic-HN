@@ -6,62 +6,71 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 
 /** Typed story toggles accepted by [StoredSettingsMutator]. */
-enum class StoryBooleanPreference {
-    BORDERLESS_LARGE_IMAGE,
-    TINT_CARD_USING_PREVIEW,
-    COMPACT_VIEW,
-    SHOW_SUMMARY,
-    SHOW_THUMBNAILS,
-    SHOW_POINTS,
-    COMPACT_POINTS,
-    INCLUDE_TOP_LEVEL_DOMAIN,
-    SHOW_COMMENTS_COUNT,
-    SHOW_INDEX,
-    LEFT_ALIGN,
-    ALWAYS_OPEN_COMMENTS,
-    PAGINATION,
-    HIDE_CLICKED,
-    GRAY_OUT_CLICKED,
-    HIDE_JOBS,
+enum class StoryBooleanPreference(internal val storageKey: String) {
+    BORDERLESS_LARGE_IMAGE(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS),
+    TINT_CARD_USING_PREVIEW(UserPreferenceKeys.TINT_CARD_USING_PREVIEW),
+    COMPACT_VIEW(UserPreferenceKeys.COMPACT_VIEW),
+    SHOW_SUMMARY(UserPreferenceKeys.SHOW_STORY_SUMMARY),
+    SHOW_THUMBNAILS(UserPreferenceKeys.THUMBNAILS),
+    SHOW_POINTS(UserPreferenceKeys.SHOW_POINTS),
+    COMPACT_POINTS(UserPreferenceKeys.COMPACT_POINTS),
+    INCLUDE_TOP_LEVEL_DOMAIN(UserPreferenceKeys.INCLUDE_TOP_LEVEL_DOMAIN),
+    SHOW_COMMENTS_COUNT(UserPreferenceKeys.SHOW_COMMENTS_COUNT),
+    SHOW_INDEX(UserPreferenceKeys.SHOW_INDEX),
+    LEFT_ALIGN(UserPreferenceKeys.LEFT_ALIGN),
+    ALWAYS_OPEN_COMMENTS(UserPreferenceKeys.ALWAYS_OPEN_COMMENTS),
+    PAGINATION(UserPreferenceKeys.PAGINATION_MODE),
+    HIDE_CLICKED(UserPreferenceKeys.HIDE_CLICKED),
+    GRAY_OUT_CLICKED(UserPreferenceKeys.GRAY_OUT_CLICKED),
+    HIDE_JOBS(UserPreferenceKeys.HIDE_JOBS),
 }
 
 enum class StoryStringPreference { DISPLAY_STYLE }
 
-enum class CommentBooleanPreference {
-    CARD_BORDER,
-    COLLECT_REFERENCE_LINKS,
-    HIGHLIGHT_METADATA,
-    SHOW_DIVIDERS,
-    TOP_LEVEL_DEPTH_INDICATOR,
-    SHOW_SCROLLBAR,
-    ANIMATE_CHANGES,
-    HEADER_TINT,
-    HEADER_PREVIEW_IMAGE,
-    SHOW_UP_BUTTON,
-    COLLAPSE_PARENT,
-    COLLAPSE_TOP_LEVEL,
-    HIDE_DELAYED_COMMENTS,
-    SWAP_LONG_PRESS_TAP,
-    SHOW_NAVIGATION_BUTTONS,
-    SMOOTH_SCROLL,
+enum class CommentBooleanPreference(internal val storageKey: String) {
+    CARD_BORDER(UserPreferenceKeys.COMMENT_CARD_BORDER),
+    COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),
+    HIGHLIGHT_METADATA(UserPreferenceKeys.HIGHLIGHT_COMMENT_META),
+    SHOW_DIVIDERS(UserPreferenceKeys.COMMENT_DIVIDERS),
+    TOP_LEVEL_DEPTH_INDICATOR(UserPreferenceKeys.TOP_LEVEL_THREAD_INDICATORS),
+    SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
+    ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
+    HEADER_TINT(UserPreferenceKeys.COMMENTS_HEADER_TINT),
+    HEADER_PREVIEW_IMAGE(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE),
+    SHOW_UP_BUTTON(UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON),
+    COLLAPSE_PARENT(UserPreferenceKeys.COLLAPSE_PARENT),
+    COLLAPSE_TOP_LEVEL(UserPreferenceKeys.COLLAPSE_TOP_LEVEL),
+    HIDE_DELAYED_COMMENTS(UserPreferenceKeys.HIDE_DELAYED_COMMENTS),
+    SWAP_LONG_PRESS_TAP(UserPreferenceKeys.COMMENTS_SWAP_LONG),
+    SHOW_NAVIGATION_BUTTONS(UserPreferenceKeys.SCROLL_NAVIGATION),
+    SMOOTH_SCROLL(UserPreferenceKeys.COMMENTS_SMOOTH_SCROLL),
 }
 
-enum class ReadingBooleanPreference {
-    INTEGRATED_WEB_VIEW,
-    CLOSE_WEB_VIEW_ON_BACK,
-    MATCH_WEB_VIEW_THEME,
-    BLOCK_ADS,
-    READER_MODE_ENABLED,
-    READER_MODE_DEFAULT,
-    EXTERNAL_BROWSER,
-    REDIRECT_NITTER,
+enum class ReadingBooleanPreference(internal val storageKey: String) {
+    INTEGRATED_WEB_VIEW(UserPreferenceKeys.WEBVIEW),
+    CLOSE_WEB_VIEW_ON_BACK(UserPreferenceKeys.CLOSE_WEBVIEW_ON_BACK),
+    MATCH_WEB_VIEW_THEME(UserPreferenceKeys.WEBVIEW_MATCH_THEME),
+    BLOCK_ADS(UserPreferenceKeys.WEBVIEW_ADBLOCK),
+    READER_MODE_ENABLED(UserPreferenceKeys.READER_MODE_ENABLED),
+    READER_MODE_DEFAULT(UserPreferenceKeys.READER_MODE_DEFAULT),
+    EXTERNAL_BROWSER(UserPreferenceKeys.EXTERNAL_BROWSER),
+    REDIRECT_NITTER(UserPreferenceKeys.REDIRECT_NITTER),
 }
 
-enum class AppearanceBooleanPreference { SPECIAL_NIGHTTIME, TRANSPARENT_STATUS_BAR, COMPACT_HEADER }
+enum class AppearanceBooleanPreference(internal val storageKey: String) {
+    SPECIAL_NIGHTTIME(UserPreferenceKeys.SPECIAL_NIGHTTIME),
+    TRANSPARENT_STATUS_BAR(UserPreferenceKeys.TRANSPARENT_STATUS_BAR),
+    COMPACT_HEADER(UserPreferenceKeys.COMPACT_HEADER),
+}
 
-enum class GeneralBooleanPreference { BOOKMARKS_ENABLED, SHOW_CHANGELOG }
+enum class GeneralBooleanPreference(internal val storageKey: String) {
+    BOOKMARKS_ENABLED(UserPreferenceKeys.BOOKMARKS_ENABLED),
+    SHOW_CHANGELOG(UserPreferenceKeys.SHOW_CHANGELOG),
+}
 
-enum class DebugBooleanPreference { ALWAYS_SHOW_TAP_TO_REFRESH }
+enum class DebugBooleanPreference(internal val storageKey: String) {
+    ALWAYS_SHOW_TAP_TO_REFRESH(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH),
+}
 
 /**
  * Observable, platform-neutral settings facade.

@@ -17,7 +17,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.text.TextUtils
-import android.util.Base64
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -25,7 +24,6 @@ import android.view.View.OnTouchListener
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
-import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.URLUtil
@@ -59,11 +57,7 @@ import com.simon.harmonichackernews.presentation.WebContentPlatformUrls
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.presentation.ReaderModePageDecision
-import com.simon.harmonichackernews.presentation.ReaderModeSourceAssembler
 import com.simon.harmonichackernews.presentation.ReaderModeStateChange
-import com.simon.harmonichackernews.presentation.ReaderModeTheme
-import com.simon.harmonichackernews.presentation.ReaderModeFontResource
-import com.simon.harmonichackernews.presentation.ReaderModeFontResourcePolicy
 import com.simon.harmonichackernews.presentation.ReaderModeToggleDecision
 import com.simon.harmonichackernews.presentation.WebContentRuntime
 import com.simon.harmonichackernews.presentation.WebContentCopy
@@ -78,9 +72,6 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
-import com.simon.harmonichackernews.ui.theme.ReaderModeFontData
-import com.simon.harmonichackernews.ui.theme.ReaderModeThemeFactory
-import com.simon.harmonichackernews.ui.theme.harmonicColors
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
@@ -88,10 +79,7 @@ import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.io.InputStream
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -152,6 +140,8 @@ internal class CommentsWebViewController(
     private val webContentDriver = AndroidWebContentDriver()
     private val webContentSession = EmbeddedWebContentSession(webContentRuntime, webContentDriver)
     private val webContentController = webContentSession.controller
+    private val readerModeResources = AndroidReaderModeResources()
+    private val pdfWebViewSession = AndroidPdfWebViewSession()
     private val readerModeFeatureEnabled: Boolean get() = webContentSession.readerState.featureEnabled
     var isBlockingAds: Boolean = true
         private set
@@ -168,8 +158,6 @@ internal class CommentsWebViewController(
     private var lastPageFinishedGeneration = -1
     private var customView: View? = null
     private var customViewCallback: CustomViewCallback? = null
-    private var pdfAndroidJavascriptBridge: PdfAndroidJavascriptBridge? = null
-    private var currentPdfFilePath: String? = null
     val isReaderModeAvailable: Boolean get() = webContentSession.readerState.available
     private val readerModeEnabled: Boolean get() = webContentSession.readerState.enabled
     private var touchGestureStartScrollX = 0
@@ -178,7 +166,6 @@ internal class CommentsWebViewController(
     private var predictiveBackScrollX = 0
     private var predictiveBackScrollY = 0
     private var predictiveBackScrollFrozen = false
-    private var readerModeScript: String? = null
 
     fun bindViews(
         host: CommentsWebViewHost,
@@ -436,7 +423,7 @@ internal class CommentsWebViewController(
         val targetWebView = webView ?: return
         if (coordinator.view == null) return
 
-        val script = getReaderModeScript(context)
+        val script = readerModeResources.script(context)
         if (TextUtils.isEmpty(script)) {
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
             if (showFeedback) {
@@ -448,7 +435,7 @@ internal class CommentsWebViewController(
         val generation = webContentLoad.state.generation
         webContentController.evaluateReaderMode(
             script = script.orEmpty(),
-            theme = getReaderModeTheme(context),
+            theme = readerModeResources.theme(context, readingPreferences),
             enabled = enable,
         ) { status ->
             val callbackContext = coordinator.context
@@ -477,7 +464,7 @@ internal class CommentsWebViewController(
             return
         }
 
-        val script = getReaderModeScript(checkNotNull(context))
+        val script = readerModeResources.script(checkNotNull(context))
         if (TextUtils.isEmpty(script)) {
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
             return
@@ -543,89 +530,6 @@ internal class CommentsWebViewController(
         if (change.enabledChanged) {
             callbacks.onReaderModeChanged(change.current.enabled)
             callbacks.syncOnBackPressedCallbackEnabledState()
-        }
-    }
-
-    private fun getReaderModeScript(context: Context): String? {
-        if (readerModeScript != null) {
-            return readerModeScript
-        }
-
-        try {
-            readerModeScript = ReaderModeSourceAssembler.script(
-                readabilitySource = readAssetFile(context, READER_MODE_READABILITY_SCRIPT_ASSET),
-                readerModeSource = readAssetFile(context, READER_MODE_SCRIPT_ASSET),
-            )
-            return readerModeScript
-        } catch (e: IOException) {
-            Log.e("MY_APP_TAG", "Failed to load reader mode script", e)
-            return null
-        }
-    }
-
-    @Throws(IOException::class)
-    private fun readAssetFile(context: Context, assetPath: String): String =
-        context.assets.open(assetPath).bufferedReader(Charsets.UTF_8).use { it.readText() }
-
-    private fun getReaderModeTheme(context: Context): ReaderModeTheme {
-        val readerModeFont = readingPreferences.readerModeFont
-        return ReaderModeThemeFactory.create(
-            colors = harmonicColors(context),
-            light = ThemeUtils.isLightMode(context),
-            font = readerModeFont,
-            fontSizePx = readingPreferences.readerModeFontSize,
-            fontData = getReaderModeFontData(context, readerModeFont),
-        )
-    }
-
-    private fun getReaderModeFontData(context: Context, font: String?): ReaderModeFontData? {
-        val resources = ReaderModeFontResourcePolicy.resolve(font) ?: return null
-        val regularFontData = getFontBase64(context, readerModeFontAsset(resources.regular))
-        val boldFontData = getFontBase64(context, readerModeFontAsset(resources.bold))
-        if (TextUtils.isEmpty(regularFontData) || TextUtils.isEmpty(boldFontData)) {
-            return null
-        }
-
-        return ReaderModeFontData(regularFontData, boldFontData)
-    }
-
-    private fun readerModeFontAsset(resource: ReaderModeFontResource): String {
-        val fileName = when (resource) {
-            ReaderModeFontResource.PRODUCT_SANS_REGULAR -> "product_sans_regular.ttf"
-            ReaderModeFontResource.PRODUCT_SANS_BOLD -> "product_sans_bold.ttf"
-            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_REGULAR ->
-                "google_sans_flex_rounded_regular.ttf"
-            ReaderModeFontResource.GOOGLE_SANS_FLEX_ROUNDED_BOLD ->
-                "google_sans_flex_rounded_bold.ttf"
-            ReaderModeFontResource.GOOGLE_SANS_REGULAR -> "google_sans_regular.ttf"
-            ReaderModeFontResource.GOOGLE_SANS_BOLD -> "google_sans_bold.ttf"
-            ReaderModeFontResource.VERDANA_REGULAR -> "verdana_regular.ttf"
-            ReaderModeFontResource.VERDANA_BOLD -> "verdana_bold.ttf"
-            ReaderModeFontResource.ROBOTO_SLAB_REGULAR -> "roboto_slab_regular.ttf"
-            ReaderModeFontResource.ROBOTO_SLAB_BOLD -> "roboto_slab_bold.ttf"
-            ReaderModeFontResource.GOOGLE_SANS_CODE_REGULAR -> "google_sans_code_regular.ttf"
-            ReaderModeFontResource.JETBRAINS_MONO_REGULAR -> "jetbrains_mono_regular.ttf"
-            ReaderModeFontResource.JETBRAINS_MONO_BOLD -> "jetbrains_mono_bold.ttf"
-            ReaderModeFontResource.GEORGIA_REGULAR -> "georgia_regular.ttf"
-            ReaderModeFontResource.GEORGIA_BOLD -> "georgia_bold.ttf"
-        }
-        return sharedFontAsset(fileName)
-    }
-
-    private fun getFontBase64(context: Context, fontAsset: String): String {
-        try {
-            context.assets.open(fontAsset).use { inputStream ->
-                val outputStream = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                }
-                return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
-            }
-        } catch (e: IOException) {
-            Log.e("MY_APP_TAG", "Failed to load reader mode font", e)
-            return ""
         }
     }
 
@@ -769,7 +673,7 @@ internal class CommentsWebViewController(
         }
 
         if (!isPdfViewerUrl(url)) {
-            revokePdfAndroidJavascriptBridge(view)
+            pdfWebViewSession.revokeBridge(view)
         }
 
         val loadStart = webContentSession.onLoadStarted(
@@ -1040,7 +944,7 @@ internal class CommentsWebViewController(
         val route = WebContentPagePolicy.route(
             url = targetUrl,
             requestedPdfReference = targetPdfFilePath,
-            currentPdfReference = currentPdfFilePath,
+            currentPdfReference = pdfWebViewSession.currentFilePath,
             platformUrls = WEB_CONTENT_URLS,
         ) ?: run {
             webContentSession.finishRetry()
@@ -1052,39 +956,20 @@ internal class CommentsWebViewController(
         if (route.kind != WebContentPageKind.ERROR_PAGE) {
             webContentSession.recordRequestedUrl(targetUrl)
             if (route.kind != WebContentPageKind.PDF_VIEWER) {
-                currentPdfFilePath = null
+                pdfWebViewSession.clearCurrentFileReference()
             }
         }
         if (route.kind == WebContentPageKind.PDF_VIEWER) {
             val resolvedPdfFilePath = checkNotNull(targetPdfFilePath)
-            currentPdfFilePath = resolvedPdfFilePath
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
-            revokePdfAndroidJavascriptBridge(targetWebView)
-            val bridge = PdfAndroidJavascriptBridge(
-                resolvedPdfFilePath,
-                object : PdfAndroidJavascriptBridge.Callbacks {
-                    override fun onFailure() {
-                    }
-
-                    override fun onLoad() {
-                    }
-                })
-            pdfAndroidJavascriptBridge = bridge
-
-            targetWebView.addJavascriptInterface(
-                bridge,
-                PDF_JAVASCRIPT_BRIDGE_NAME
-            )
-            targetWebView.setInitialScale(100)
-            targetWebView.settings.loadWithOverviewMode = true
-            targetWebView.settings.useWideViewPort = true
+            pdfWebViewSession.attach(targetWebView, resolvedPdfFilePath)
         } else {
-            revokePdfAndroidJavascriptBridge(targetWebView)
+            pdfWebViewSession.revokeBridge(targetWebView)
         }
 
         targetUrl = linkPreviewController.prepareWebViewLoad(context, targetWebView, targetUrl)
         if (targetUrl.isEmpty()) {
-            revokePdfAndroidJavascriptBridge(targetWebView)
+            pdfWebViewSession.revokeBridge(targetWebView)
             return
         }
         beginWebViewLoad(targetWebView, targetUrl)
@@ -1313,7 +1198,7 @@ internal class CommentsWebViewController(
 
     private fun destroy(rendererProcessGone: Boolean) {
         cancelProgressAnimator()
-        currentPdfFilePath = null
+        pdfWebViewSession.release(webView, removeJavascriptInterface = !rendererProcessGone)
         webContentSession.reset()
         webContentDriver.publish(WebContentDriverState())
         pendingSummaryCallback = null
@@ -1328,9 +1213,7 @@ internal class CommentsWebViewController(
             if (!rendererProcessGone) {
                 webViewToDestroy.setWebChromeClient(null)
                 webViewToDestroy.setDownloadListener(null)
-                webViewToDestroy.removeJavascriptInterface(PDF_JAVASCRIPT_BRIDGE_NAME)
             }
-            clearPdfAndroidJavascriptBridge()
 
             if (webViewToDestroy.getParent() is ViewGroup) {
                 (webViewToDestroy.getParent() as ViewGroup).removeView(webViewToDestroy)
@@ -1350,16 +1233,6 @@ internal class CommentsWebViewController(
                 Log.e("MY_APP_TAG", "Failed to destroy WebView cleanly", e)
             }
         }
-    }
-
-    private fun clearPdfAndroidJavascriptBridge() {
-        pdfAndroidJavascriptBridge?.cleanUp()
-        pdfAndroidJavascriptBridge = null
-    }
-
-    private fun revokePdfAndroidJavascriptBridge(view: WebView?) {
-        view?.removeJavascriptInterface(PDF_JAVASCRIPT_BRIDGE_NAME)
-        clearPdfAndroidJavascriptBridge()
     }
 
     private fun isPdfViewerUrl(url: String?): Boolean = isTrustedPdfViewerUrl(url, PDF_LOADER_URL)
@@ -1404,7 +1277,7 @@ internal class CommentsWebViewController(
     }
 
     fun clearViewReferences() {
-        revokePdfAndroidJavascriptBridge(webView)
+        pdfWebViewSession.release(webView, removeJavascriptInterface = true)
         webView = null
         webViewContainer = null
         fullscreenContainer = null
@@ -1413,7 +1286,6 @@ internal class CommentsWebViewController(
         progressIndicator = null
         customView = null
         customViewCallback = null
-        currentPdfFilePath = null
         webContentDriver.publish(WebContentDriverState())
     }
 
@@ -1566,7 +1438,7 @@ internal class CommentsWebViewController(
 
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
             if (!isPdfViewerUrl(url)) {
-                revokePdfAndroidJavascriptBridge(view)
+                pdfWebViewSession.revokeBridge(view)
             }
 
             if (url.startsWith("intent://")) {
@@ -1722,100 +1594,12 @@ internal class CommentsWebViewController(
         }
     }
 
-    class PdfAndroidJavascriptBridge internal constructor(
-        filePath: String,
-        private val mCallback: Callbacks?
-    ) {
-        private val chunkReader = PdfFileChunkReader(java.io.File(filePath))
-        private val mHandler = Handler(Looper.getMainLooper())
-        private val active = AtomicBoolean(true)
-
-        @JavascriptInterface
-        fun getChunk(begin: Long, end: Long): String {
-            if (!active.get()) return ""
-            return try {
-                val data = chunkReader.read(begin, end) ?: return ""
-                Base64.encodeToString(data, Base64.NO_WRAP)
-            } catch (e: IOException) {
-                Log.e(TAG, "Unable to read PDF data", e)
-                ""
-            }
-        }
-
-        @get:JavascriptInterface
-        val size: Long
-            get() {
-                if (!active.get()) return 0L
-                return try {
-                    chunkReader.size()
-                } catch (e: IOException) {
-                    Log.e(TAG, "Unable to read PDF size", e)
-                    0L
-                }
-            }
-
-        @JavascriptInterface
-        fun onLoad() {
-            if (!active.get() || mCallback == null) return
-            mHandler.post(Runnable {
-                if (active.get()) mCallback.onLoad()
-            })
-        }
-
-        @JavascriptInterface
-        fun onFailure() {
-            if (!active.get() || mCallback == null) return
-            mHandler.post(Runnable {
-                if (active.get()) mCallback.onFailure()
-            })
-        }
-
-        fun cleanUp() {
-            if (!active.compareAndSet(true, false)) return
-            mHandler.removeCallbacksAndMessages(null)
-            try {
-                chunkReader.close()
-            } catch (e: IOException) {
-                Log.e(TAG, "Unable to close PDF data", e)
-            }
-        }
-
-        internal interface Callbacks {
-            fun onFailure()
-
-            fun onLoad()
-        }
-
-        private companion object {
-            const val TAG = "PdfJavascriptBridge"
-        }
-    }
-
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
-        private const val PDF_JAVASCRIPT_BRIDGE_NAME = "PdfAndroidJavascriptBridge"
-        private const val ANDROID_ASSET_URI_PREFIX = "file:///android_asset/"
         private val PDF_LOADER_URL = Res.getUri(sharedWebResource(WebContentAssets.PDF_VIEWER_INDEX))
         private val OFFLINE_PAGE_URL = Res.getUri(sharedWebResource(WebContentAssets.OFFLINE_PAGE))
         private val WEB_CONTENT_URLS = WebContentPlatformUrls(PDF_LOADER_URL, OFFLINE_PAGE_URL)
-        private val READER_MODE_READABILITY_SCRIPT_ASSET =
-            sharedWebAsset(WebContentAssets.READABILITY_SCRIPT)
-        private val READER_MODE_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READER_MODE_SCRIPT)
 
         private fun sharedWebResource(path: String): String = "files/web/$path"
-
-        private fun sharedWebAsset(path: String): String =
-            sharedResourceAsset(sharedWebResource(path))
-
-        private fun sharedFontAsset(path: String): String =
-            sharedResourceAsset("font/$path")
-
-        private fun sharedResourceAsset(path: String): String {
-            val uri = Res.getUri(path)
-            check(uri.startsWith(ANDROID_ASSET_URI_PREFIX)) {
-                "Expected an Android asset URI for shared resource $path, got $uri"
-            }
-            return uri.removePrefix(ANDROID_ASSET_URI_PREFIX)
-        }
     }
 }

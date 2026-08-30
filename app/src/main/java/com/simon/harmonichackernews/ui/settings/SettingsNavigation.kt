@@ -224,6 +224,5 @@ fun SettingsShell(
         },
     )
 
-    SimpleMessageDialogController.Content()
     ChangelogDialogController.Content()
 }

@@ -58,9 +58,8 @@ interface StoryPreviewResourceService {
 }
 
 /**
- * Owns preview-content request and cache-hydration state without mutating the shared Story model.
- * Platform shells may temporarily mirror snapshots back to legacy models while their UI adapters
- * migrate to reading [states] directly.
+ * Owns preview-content request, cache hydration, image loading, failures, and resource tints
+ * without mutating the shared Story model.
  */
 class StoryPreviewResourceRuntime(
     private val scope: CoroutineScope,

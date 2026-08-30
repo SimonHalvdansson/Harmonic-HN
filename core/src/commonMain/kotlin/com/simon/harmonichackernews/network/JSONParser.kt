@@ -233,8 +233,9 @@ object JSONParser {
                 } else {
                     summary.put(KEY_PREVIEW_IMAGE_URL, story.previewImageUrl)
                 }
-                summary.put(KEY_PREVIEW_IMAGE_LOAD_FAILED, story.previewImageLoadFailed)
             }
+            // Failure is request-local state and is no longer persisted on Story.
+            summary.remove(KEY_PREVIEW_IMAGE_LOAD_FAILED)
 
             if (story.previewImageTintColorLoaded && !story.previewImageTintSourceUrl.isNullOrEmpty()) {
                 summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, true)
@@ -349,7 +350,6 @@ object JSONParser {
     private fun copyPreviewImageSummaryFields(source: JSONObject, destination: JSONObject) {
         copyString(source, destination, KEY_PREVIEW_IMAGE_URL)
         copyBoolean(source, destination, KEY_PREVIEW_IMAGE_URL_LOADED)
-        copyBoolean(source, destination, KEY_PREVIEW_IMAGE_LOAD_FAILED)
         copyBoolean(source, destination, KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED)
         copyInt(source, destination, KEY_PREVIEW_IMAGE_TINT_COLOR)
         copyString(source, destination, KEY_PREVIEW_IMAGE_TINT_SOURCE_URL)
@@ -375,10 +375,6 @@ object JSONParser {
             story.previewImageUrl =
                 if (previewImageUrl.isEmpty()) null else previewImageUrl
             story.previewImageUrlLoaded = true
-            story.previewImageLoadFailed = item.optBoolean(
-                KEY_PREVIEW_IMAGE_LOAD_FAILED,
-                story.previewImageUrl.isNullOrEmpty()
-            )
         }
 
         if (item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)

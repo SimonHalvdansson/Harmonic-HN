@@ -40,7 +40,6 @@ object StoryPreviewTintState {
         story.previewImageTintSourceUrl = sourceUrl
         story.previewImageTintBaseColor = baseColor
         story.previewImageTintMode = storedMode(paletteTintMode)
-        story.previewImageLoadFailed = false
         return true
     }
 
@@ -54,8 +53,6 @@ object StoryPreviewTintState {
         if (story == null || sourceUrl.isNullOrEmpty()) return false
         story.faviconTintColor = tintColor
         story.faviconTintColorLoaded = true
-        story.faviconTintColorLoading = false
-        story.faviconTintColorLoadFailed = false
         story.faviconTintSourceUrl = sourceUrl
         story.faviconTintBaseColor = baseColor
         story.faviconTintMode = storedMode(paletteTintMode)

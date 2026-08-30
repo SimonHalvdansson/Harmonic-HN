@@ -5,6 +5,7 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
@@ -45,22 +46,22 @@ data class StoriesSettingsUiState(
     val faviconIcon: Painter,
 )
 
-enum class StoriesBooleanSetting {
-    BorderlessLargeImage,
-    Tint,
-    Compact,
-    ShowSummary,
-    ShowThumbnails,
-    ShowPoints,
-    CompactPoints,
-    IncludeTopLevelDomain,
-    ShowComments,
-    ShowIndex,
-    LeftAlignComments,
-    AlwaysOpenComments,
-    Pagination,
-    HideClicked,
-    GrayOutClicked,
+enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
+    BorderlessLargeImage(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE),
+    Tint(StoryBooleanPreference.TINT_CARD_USING_PREVIEW),
+    Compact(StoryBooleanPreference.COMPACT_VIEW),
+    ShowSummary(StoryBooleanPreference.SHOW_SUMMARY),
+    ShowThumbnails(StoryBooleanPreference.SHOW_THUMBNAILS),
+    ShowPoints(StoryBooleanPreference.SHOW_POINTS),
+    CompactPoints(StoryBooleanPreference.COMPACT_POINTS),
+    IncludeTopLevelDomain(StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN),
+    ShowComments(StoryBooleanPreference.SHOW_COMMENTS_COUNT),
+    ShowIndex(StoryBooleanPreference.SHOW_INDEX),
+    LeftAlignComments(StoryBooleanPreference.LEFT_ALIGN),
+    AlwaysOpenComments(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS),
+    Pagination(StoryBooleanPreference.PAGINATION),
+    HideClicked(StoryBooleanPreference.HIDE_CLICKED),
+    GrayOutClicked(StoryBooleanPreference.GRAY_OUT_CLICKED),
 }
 
 enum class StoriesStringSetting { DisplayStyle }

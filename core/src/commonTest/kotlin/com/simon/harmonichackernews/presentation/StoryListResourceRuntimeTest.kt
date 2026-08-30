@@ -6,12 +6,14 @@ import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.PreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
+import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -62,6 +64,37 @@ class StoryListResourceRuntimeTest {
         assertEquals(1, requests.size)
         assertTrue(requests.single().loadImage)
         assertTrue(requests.single().loadSummary)
+        runtime.dispose()
+    }
+
+    @Test
+    fun recordedTintLivesInResourceStateWithoutMutatingCachedStoryFields() = runTest {
+        val runtime = StoryListResourceRuntime(
+            scope = backgroundScope,
+            service = recordingService(mutableListOf()),
+            settings = settings(
+                previewImageMode = StoryPreviewMode.SMALL,
+                showSummary = false,
+            ),
+        )
+        val story = story()
+
+        runtime.request(story)
+        runCurrent()
+
+        assertTrue(
+            runtime.recordTint(
+                story = story,
+                kind = StoryResourceTintKind.PREVIEW_IMAGE,
+                sourceUrl = "https://example.com/image.png",
+                baseColorArgb = 0xff101010.toInt(),
+                paletteConfigKey = "default",
+                tintColorArgb = 0xff202020.toInt(),
+            ),
+        )
+        assertEquals(0xff202020.toInt(), runtime.stateFor(story.id)?.previewTint?.tintColorArgb)
+        assertFalse(story.previewImageTintColorLoaded)
+        assertEquals(0, story.previewImageTintColor)
         runtime.dispose()
     }
 

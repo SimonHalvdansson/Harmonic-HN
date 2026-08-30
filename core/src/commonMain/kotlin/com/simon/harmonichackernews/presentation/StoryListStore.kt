@@ -62,7 +62,6 @@ data class StoryListItemSnapshot(
     val summaryGeneratedSuccessfully: Boolean
         get() = presentation.summaryGeneratedSuccessfully
     val previewImageUrl: String? get() = presentation.previewImage.url
-    val previewImageLoadFailed: Boolean get() = presentation.previewImage.failed
     val previewImageTintColorLoaded: Boolean get() = presentation.previewTint?.loaded == true
     val previewImageTintColor: Int get() = presentation.previewTint?.colorArgb ?: 0
     val previewImageTintBaseColor: Int get() = presentation.previewTint?.baseColorArgb ?: 0

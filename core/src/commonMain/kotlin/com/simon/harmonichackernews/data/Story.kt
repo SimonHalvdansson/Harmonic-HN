@@ -24,19 +24,9 @@ class Story : LinkPreviewState {
 
     var previewImageUrlLoaded: Boolean = false
 
-    var previewImageUrlLoading: Boolean = false
-
-    var previewImageLoaded: Boolean = false
-
-    var previewImageLoading: Boolean = false
-
-    var previewImageLoadFailed: Boolean = false
-
     var linkSummaryDescription: String? = null
 
     var linkSummaryLoaded: Boolean = false
-
-    var linkSummaryLoading: Boolean = false
 
     var previewImageTintColor: Int = 0
 
@@ -51,10 +41,6 @@ class Story : LinkPreviewState {
     var faviconTintColor: Int = 0
 
     var faviconTintColorLoaded: Boolean = false
-
-    var faviconTintColorLoading: Boolean = false
-
-    var faviconTintColorLoadFailed: Boolean = false
 
     var faviconTintSourceUrl: String? = null
 

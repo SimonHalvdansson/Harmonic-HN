@@ -153,24 +153,6 @@ class StoryListResourceRuntime(
         if (!resourceRuntime.recordTint(story.id, pageUrl, kind, candidate)) return false
         val tint = tintStore.canonicalize(story.id, kind, candidate)
         if (tint != candidate) resourceRuntime.recordTint(story.id, pageUrl, kind, tint)
-
-        // Compatibility for cache codecs and screens that still read the migration-era model.
-        when (kind) {
-            StoryResourceTintKind.PREVIEW_IMAGE -> StoryPreviewTintState.applyPreview(
-                story,
-                sourceUrl,
-                baseColorArgb,
-                paletteConfigKey,
-                tintColorArgb,
-            )
-            StoryResourceTintKind.FAVICON -> StoryPreviewTintState.applyFavicon(
-                story,
-                sourceUrl,
-                baseColorArgb,
-                paletteConfigKey,
-                tintColorArgb,
-            )
-        }
         return true
     }
 
@@ -231,7 +213,7 @@ class StoryListResourceRuntime(
             settings.paletteTintMode,
         )
         val previewUrl = previewState?.imageUrl ?: story.previewImageUrl
-        val previewFailed = previewState?.imageLoadFailed ?: story.previewImageLoadFailed
+        val previewFailed = previewState?.imageLoadFailed == true
         val previewAvailable = settings.previewImageMode != StoryPreviewMode.OFF &&
             !previewUrl.isNullOrEmpty() && !previewFailed
         if (previewAvailable) return previewTint ?: baseColor

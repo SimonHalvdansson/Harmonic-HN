@@ -39,7 +39,6 @@ data class StoryPresentationSnapshot(
     val faviconTint: ResourceTintSnapshot? = null,
     val linkSummaryDescription: String? = null,
     val linkSummaryLoaded: Boolean = false,
-    val linkSummaryLoading: Boolean = false,
     val commentMaster: CommentMasterSnapshot? = null,
     val summary: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
@@ -323,15 +322,11 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     videoTitle = videoTitle,
     previewImage = ResourceLoadSnapshot(
         url = previewImageUrl,
-        loading = previewImageUrlLoading || previewImageLoading,
-        loaded = previewImageUrlLoaded && previewImageLoaded,
-        failed = previewImageLoadFailed,
+        loaded = previewImageUrlLoaded,
     ),
     favicon = ResourceLoadSnapshot(
         url = faviconTintSourceUrl,
-        loading = faviconTintColorLoading,
         loaded = faviconTintColorLoaded,
-        failed = faviconTintColorLoadFailed,
     ),
     previewTint = ResourceTintSnapshot(
         colorArgb = previewImageTintColor,
@@ -349,7 +344,6 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     linkSummaryDescription = linkSummaryDescription,
     linkSummaryLoaded = linkSummaryLoaded,
-    linkSummaryLoading = linkSummaryLoading,
     commentMaster = CommentMasterSnapshot(
         id = commentMasterId,
         title = commentMasterTitle,

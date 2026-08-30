@@ -6,8 +6,6 @@ import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettings
 import com.simon.harmonichackernews.settings.AppSettingsRepository
-import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
-import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
@@ -16,7 +14,6 @@ import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.DisplayStylePreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryStringPreference
@@ -334,69 +331,9 @@ val ContentFilterDialog.content: FilterDialogContent
         )
     }
 
-private val StoriesBooleanSetting.preference: StoryBooleanPreference
-    get() = when (this) {
-        StoriesBooleanSetting.BorderlessLargeImage -> StoryBooleanPreference.BORDERLESS_LARGE_IMAGE
-        StoriesBooleanSetting.Tint -> StoryBooleanPreference.TINT_CARD_USING_PREVIEW
-        StoriesBooleanSetting.Compact -> StoryBooleanPreference.COMPACT_VIEW
-        StoriesBooleanSetting.ShowSummary -> StoryBooleanPreference.SHOW_SUMMARY
-        StoriesBooleanSetting.ShowThumbnails -> StoryBooleanPreference.SHOW_THUMBNAILS
-        StoriesBooleanSetting.ShowPoints -> StoryBooleanPreference.SHOW_POINTS
-        StoriesBooleanSetting.CompactPoints -> StoryBooleanPreference.COMPACT_POINTS
-        StoriesBooleanSetting.IncludeTopLevelDomain -> StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN
-        StoriesBooleanSetting.ShowComments -> StoryBooleanPreference.SHOW_COMMENTS_COUNT
-        StoriesBooleanSetting.ShowIndex -> StoryBooleanPreference.SHOW_INDEX
-        StoriesBooleanSetting.LeftAlignComments -> StoryBooleanPreference.LEFT_ALIGN
-        StoriesBooleanSetting.AlwaysOpenComments -> StoryBooleanPreference.ALWAYS_OPEN_COMMENTS
-        StoriesBooleanSetting.Pagination -> StoryBooleanPreference.PAGINATION
-        StoriesBooleanSetting.HideClicked -> StoryBooleanPreference.HIDE_CLICKED
-        StoriesBooleanSetting.GrayOutClicked -> StoryBooleanPreference.GRAY_OUT_CLICKED
-    }
-
 private val StoriesStringSetting.preference: StoryStringPreference
     get() = when (this) {
         StoriesStringSetting.DisplayStyle -> StoryStringPreference.DISPLAY_STYLE
-    }
-
-private val CommentsBooleanSetting.preference: CommentBooleanPreference
-    get() = when (this) {
-        CommentsBooleanSetting.Border -> CommentBooleanPreference.CARD_BORDER
-        CommentsBooleanSetting.CollectLinks -> CommentBooleanPreference.COLLECT_REFERENCE_LINKS
-        CommentsBooleanSetting.EmphasizeMetadata -> CommentBooleanPreference.HIGHLIGHT_METADATA
-        CommentsBooleanSetting.Dividers -> CommentBooleanPreference.SHOW_DIVIDERS
-        CommentsBooleanSetting.TopLevelIndicators -> CommentBooleanPreference.TOP_LEVEL_DEPTH_INDICATOR
-        CommentsBooleanSetting.Scrollbar -> CommentBooleanPreference.SHOW_SCROLLBAR
-        CommentsBooleanSetting.AnimateChanges -> CommentBooleanPreference.ANIMATE_CHANGES
-        CommentsBooleanSetting.ShowUpButton -> CommentBooleanPreference.SHOW_UP_BUTTON
-        CommentsBooleanSetting.HeaderTint -> CommentBooleanPreference.HEADER_TINT
-        CommentsBooleanSetting.HeaderPreviewImage -> CommentBooleanPreference.HEADER_PREVIEW_IMAGE
-        CommentsBooleanSetting.CollapseParent -> CommentBooleanPreference.COLLAPSE_PARENT
-        CommentsBooleanSetting.CollapseTopLevel -> CommentBooleanPreference.COLLAPSE_TOP_LEVEL
-        CommentsBooleanSetting.HideDelayedComments ->
-            CommentBooleanPreference.HIDE_DELAYED_COMMENTS
-        CommentsBooleanSetting.SwapTap -> CommentBooleanPreference.SWAP_LONG_PRESS_TAP
-        CommentsBooleanSetting.NavigationButtons -> CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS
-        CommentsBooleanSetting.SmoothScroll -> CommentBooleanPreference.SMOOTH_SCROLL
-    }
-
-private val WebLinksBooleanSetting.preference: ReadingBooleanPreference
-    get() = when (this) {
-        WebLinksBooleanSetting.IntegratedWebView -> ReadingBooleanPreference.INTEGRATED_WEB_VIEW
-        WebLinksBooleanSetting.CloseWebViewOnBack -> ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK
-        WebLinksBooleanSetting.MatchWebViewTheme -> ReadingBooleanPreference.MATCH_WEB_VIEW_THEME
-        WebLinksBooleanSetting.BlockWebViewAds -> ReadingBooleanPreference.BLOCK_ADS
-        WebLinksBooleanSetting.ReaderModeEnabled -> ReadingBooleanPreference.READER_MODE_ENABLED
-        WebLinksBooleanSetting.ReaderModeDefault -> ReadingBooleanPreference.READER_MODE_DEFAULT
-        WebLinksBooleanSetting.ExternalBrowser -> ReadingBooleanPreference.EXTERNAL_BROWSER
-        WebLinksBooleanSetting.RedirectNitter -> ReadingBooleanPreference.REDIRECT_NITTER
-    }
-
-private val AppearanceBooleanSetting.preference: AppearanceBooleanPreference
-    get() = when (this) {
-        AppearanceBooleanSetting.SpecialNighttime -> AppearanceBooleanPreference.SPECIAL_NIGHTTIME
-        AppearanceBooleanSetting.TransparentStatusBar ->
-            AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR
-        AppearanceBooleanSetting.CompactHeader -> AppearanceBooleanPreference.COMPACT_HEADER
     }
 
 private fun hotnessLabel(value: Int): String = when (value) {

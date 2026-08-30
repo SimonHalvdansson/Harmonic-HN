@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.resources.ic_schedule
 import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
+import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 
 data class AppearanceSettingsUiState(
     val themeLabel: String,
@@ -28,7 +29,11 @@ data class AppearanceSettingsUiState(
     val compactHeader: Boolean,
 )
 
-enum class AppearanceBooleanSetting { SpecialNighttime, TransparentStatusBar, CompactHeader }
+enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
+    SpecialNighttime(AppearanceBooleanPreference.SPECIAL_NIGHTTIME),
+    TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
+    CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
+}
 enum class AppearanceSettingsDialog { Theme, NighttimeRange, NighttimeTheme, Font, Style, PaletteTint }
 
 @Composable
