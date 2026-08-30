@@ -67,6 +67,30 @@ private const val DismissFallbackDelayMillis = 460L
 private const val ScrollWheelGestureIdleMillis = 100L
 private const val PreviewPagerSnapPositionalThreshold = 0.18f
 
+internal enum class StoryPreviewOpeningDecision {
+    Animate,
+    SnapToOpen,
+}
+
+internal fun storyPreviewOpeningDecision(
+    current: StoryPreviewOpeningDecision?,
+    snapshotsReady: Boolean,
+    snapshotsUnavailable: Boolean,
+    hasTargetBounds: Boolean,
+    dismissRequested: Boolean,
+): StoryPreviewOpeningDecision? = when {
+    current != null -> current
+    dismissRequested || !hasTargetBounds -> null
+    snapshotsUnavailable -> StoryPreviewOpeningDecision.SnapToOpen
+    snapshotsReady -> StoryPreviewOpeningDecision.Animate
+    else -> null
+}
+
+internal fun storyPreviewOptionalSnapshotUnavailable(
+    layerHasContent: Boolean,
+    snapshotUnavailable: Boolean,
+): Boolean = layerHasContent && snapshotUnavailable
+
 internal fun storyPreviewPagerSettleTarget(
     isScrollInProgress: Boolean,
     currentPage: Int,
@@ -125,6 +149,9 @@ fun StoryPreviewOverlay(
     var drawOverlayShadows by remember(state) { mutableStateOf(false) }
     var openingStarted by remember(state) { mutableStateOf(false) }
     var openingCompleted by remember(state) { mutableStateOf(false) }
+    var openingDecision by remember(state) {
+        mutableStateOf<StoryPreviewOpeningDecision?>(null)
+    }
     var closingStarted by remember(state) { mutableStateOf(false) }
     var rootOffset by remember(state) { mutableStateOf(Offset.Zero) }
     var targetBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
@@ -204,6 +231,10 @@ fun StoryPreviewOverlay(
             sourceSnapshotReady(sourceGeometry.meta, sourceMetaCapture) &&
             sourceSnapshotReady(sourceGeometry.index, sourceIndexCapture) &&
             sourceSnapshotReady(sourceGeometry.comments, sourceCommentsCapture)
+    val targetImageLayerHasContent = targetImageLayer
+        ?.takeIf { it.size.width > 0 && it.size.height > 0 } != null
+    val targetSummaryLayerHasContent = targetSummaryLayer
+        ?.takeIf { it.size.width > 0 && it.size.height > 0 } != null
     val snapshotsReadyForTransition =
         sourceSnapshotsReady &&
             targetBounds != null &&
@@ -212,9 +243,9 @@ fun StoryPreviewOverlay(
             targetTitleCapture.isCurrent(snapshotRefreshKey) &&
             targetMetaCapture.isCurrent(snapshotRefreshKey) &&
             targetSupplementaryCapture.isCurrent(snapshotRefreshKey) &&
-            (targetImageLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } == null ||
+            (!targetImageLayerHasContent ||
                 targetImageCapture.isCurrent(snapshotRefreshKey)) &&
-            (targetSummaryLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } == null ||
+            (!targetSummaryLayerHasContent ||
                 targetSummaryCapture.isCurrent(snapshotRefreshKey))
     val snapshotsUnavailableForTransition = sourceGeometry == null ||
         sourceSnapshotUnavailable(sourceGeometry.image, sourceImageCapture) ||
@@ -226,27 +257,48 @@ fun StoryPreviewOverlay(
         targetTitleCapture.isUnavailable(snapshotRefreshKey) ||
         targetMetaCapture.isUnavailable(snapshotRefreshKey) ||
         targetSupplementaryCapture.isUnavailable(snapshotRefreshKey) ||
-        targetImageCapture.isUnavailable(snapshotRefreshKey) ||
-        targetSummaryCapture.isUnavailable(snapshotRefreshKey)
+        storyPreviewOptionalSnapshotUnavailable(
+            targetImageLayerHasContent,
+            targetImageCapture.isUnavailable(snapshotRefreshKey),
+        ) ||
+        storyPreviewOptionalSnapshotUnavailable(
+            targetSummaryLayerHasContent,
+            targetSummaryCapture.isUnavailable(snapshotRefreshKey),
+        )
 
+    // YouTube oEmbed commonly resolves its title and thumbnail just after the dialog is composed.
+    // Those updates replace capture layers and temporarily make the latest snapshots unready. Latch
+    // the first valid opening decision so that transient content enrichment cannot cancel an
+    // already-started container transform.
     LaunchedEffect(
         state,
         snapshotsReadyForTransition,
         snapshotsUnavailableForTransition,
         dismissRequest,
+        targetBounds,
     ) {
-        if (dismissRequest != 0 || openingStarted || targetBounds == null) {
-            return@LaunchedEffect
+        openingDecision = storyPreviewOpeningDecision(
+            current = openingDecision,
+            snapshotsReady = snapshotsReadyForTransition,
+            snapshotsUnavailable = snapshotsUnavailableForTransition,
+            hasTargetBounds = targetBounds != null,
+            dismissRequested = dismissRequest != 0,
+        )
+    }
+    LaunchedEffect(state, openingDecision, dismissRequest) {
+        if (dismissRequest != 0 || openingStarted) return@LaunchedEffect
+        when (openingDecision) {
+            null -> return@LaunchedEffect
+            StoryPreviewOpeningDecision.SnapToOpen -> {
+                openingStarted = true
+                transformProgress.snapTo(1f)
+                hideTargetContent = false
+                controller.setStoryPreviewSourceCovered(false)
+                openingCompleted = true
+                return@LaunchedEffect
+            }
+            StoryPreviewOpeningDecision.Animate -> Unit
         }
-        if (snapshotsUnavailableForTransition) {
-            openingStarted = true
-            transformProgress.snapTo(1f)
-            hideTargetContent = false
-            controller.setStoryPreviewSourceCovered(false)
-            openingCompleted = true
-            return@LaunchedEffect
-        }
-        if (!snapshotsReadyForTransition) return@LaunchedEffect
         openingStarted = true
         // First cover the still-live source with an identical progress-zero overlay. Only hide the
         // list row after that overlay has reached the screen, so there is no empty handoff frame.

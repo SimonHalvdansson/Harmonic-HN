@@ -280,12 +280,14 @@ fun StoryPreviewCard(
                 Column(
                     Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 7.dp),
                 ) {
-                    AnimatedContent(
-                        targetState = title,
-                        transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(150))) },
-                        label = "story preview title content",
-                    ) { currentTitle ->
-                        StoryPreviewSharedElement(StoryPreviewSharedElement.Title) {
+                    StoryPreviewSharedElement(StoryPreviewSharedElement.Title) {
+                        AnimatedContent(
+                            targetState = title,
+                            transitionSpec = {
+                                fadeIn(tween(220)).togetherWith(fadeOut(tween(150)))
+                            },
+                            label = "story preview title content",
+                        ) { currentTitle ->
                             StoryTitleText(
                                 text = currentTitle,
                                 badge = storyTitle.badge,
