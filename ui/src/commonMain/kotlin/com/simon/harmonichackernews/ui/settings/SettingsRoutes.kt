@@ -300,6 +300,7 @@ fun StoriesSettingsRoute(
         onBooleanChanged = { setting, value ->
             presenter.setBoolean(setting, value).forEach(onPlatformEffect)
         },
+        onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onStringChanged = presenter::setString,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onDialogRequested = { dialog = it },

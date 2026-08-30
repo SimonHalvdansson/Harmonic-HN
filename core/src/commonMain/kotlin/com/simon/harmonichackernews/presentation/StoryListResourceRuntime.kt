@@ -11,7 +11,7 @@ import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.network.StoryResourceTintState
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +66,7 @@ class StoryListResourceRuntime(
     fun stateFor(storyId: Int): StoryPreviewResourceState? = resourceRuntime.stateFor(storyId)
 
     fun request(story: Story?) {
-        val previewEnabled = settings.previewImageMode != StoryPreviewPreferences.OFF
+        val previewEnabled = settings.previewImageMode != StoryPreviewMode.OFF
         if (!previewEnabled && !settings.showSummary) return
         requestCompletePreview(story)
     }
@@ -113,7 +113,7 @@ class StoryListResourceRuntime(
         paginationVisibleCount: Int? = null,
     ) {
         if (stories.isEmpty() ||
-            settings.previewImageMode == StoryPreviewPreferences.OFF && !settings.showSummary
+            settings.previewImageMode == StoryPreviewMode.OFF && !settings.showSummary
         ) {
             return
         }
@@ -232,7 +232,7 @@ class StoryListResourceRuntime(
         )
         val previewUrl = previewState?.imageUrl ?: story.previewImageUrl
         val previewFailed = previewState?.imageLoadFailed ?: story.previewImageLoadFailed
-        val previewAvailable = settings.previewImageMode != StoryPreviewPreferences.OFF &&
+        val previewAvailable = settings.previewImageMode != StoryPreviewMode.OFF &&
             !previewUrl.isNullOrEmpty() && !previewFailed
         if (previewAvailable) return previewTint ?: baseColor
         val faviconUrl = runCatching {

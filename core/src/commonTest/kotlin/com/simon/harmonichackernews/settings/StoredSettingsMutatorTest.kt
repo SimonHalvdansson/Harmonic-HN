@@ -30,22 +30,18 @@ class StoredSettingsMutatorTest {
         val mutator = StoredSettingsMutator(store)
 
         mutator.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
-        mutator.setStoryString(
-            StoryStringPreference.PREVIEW_IMAGE_MODE,
-            StoryPreviewPreferences.MEDIUM,
-        )
+        mutator.setStoryPreviewMode(StoryPreviewMode.MEDIUM)
         assertEquals(
-            StoryPreviewPreferences.MEDIUM,
+            StoryPreviewMode.MEDIUM.storedValue,
             store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE),
         )
-        mutator.setStoryString(StoryStringPreference.PREVIEW_IMAGE_MODE, "unsupported")
         mutator.setStoryTextSize(999f)
         mutator.setAdditionalFrontpages(setOf("Front", "unsupported"))
         mutator.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, true)
         mutator.setReaderModeFontSize(999)
 
         assertFalse(store.getBoolean(UserPreferenceKeys.SHOW_POINTS, true))
-        assertEquals(StoryPreviewPreferences.SMALL, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
+        assertEquals(StoryPreviewMode.MEDIUM.storedValue, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
         assertEquals("20.5", store.getString(UserPreferenceKeys.STORY_TEXT_SIZE))
         assertEquals(setOf(AdditionalFrontpagePreferences.FRONT), store.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES))
         assertTrue(store.getBoolean(UserPreferenceKeys.READER_MODE_DEFAULT, false))
@@ -101,7 +97,7 @@ class StoredSettingsMutatorTest {
         assertEquals("algolia", store.getString(UserPreferenceKeys.COMMENTS_PROVIDER))
         assertEquals("disabled", store.getString(UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION))
         assertEquals("productsans", store.getString(UserPreferenceKeys.FONT))
-        assertEquals(StoryPreviewPreferences.OFF, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
+        assertEquals(StoryPreviewMode.OFF.storedValue, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
     }
 
     @Test

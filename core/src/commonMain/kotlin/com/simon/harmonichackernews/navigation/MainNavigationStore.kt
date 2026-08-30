@@ -75,28 +75,6 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
 
     val state: StateFlow<MainNavigationSnapshot> = mutableState.asStateFlow()
 
-    val destinationStack get() = state.value.destinationStack
-    val currentDestination get() = state.value.currentDestination
-    val storyRequest get() = state.value.storyRequest
-    val lastStoryRequest get() = state.value.lastStoryRequest
-    val settingsRequest get() = state.value.settingsRequest
-    val lastSettingsRequest get() = state.value.lastSettingsRequest
-    val welcomeDialogVisible get() = state.value.welcomeDialogVisible
-    val changelogDialogVisible get() = state.value.changelogDialogVisible
-    val cacheStoriesDialogVisible get() = state.value.cacheStoriesDialogVisible
-    val loginDialogVisible get() = state.value.loginDialogVisible
-    val captchaRequest get() = state.value.captchaRequest
-    val userRequest get() = state.value.userRequest
-    val failureRequest get() = state.value.failureRequest
-    val editorRequest get() = state.value.editorRequest
-    val lastEditorRequest get() = state.value.lastEditorRequest
-    val submissionsRequest get() = state.value.submissionsRequest
-    val lastSubmissionsRequest get() = state.value.lastSubmissionsRequest
-    val coulombGasVisible get() = state.value.coulombGasVisible
-    val closeRequest get() = state.value.closeRequest
-    val settingsRequestSerial get() = state.value.settingsRequestSerial
-    val currentSettingsSectionRoute get() = state.value.currentSettingsSectionRoute
-
     fun openStory(destination: StoryDestination) = mutate { openStory(destination) }
     fun openStory(route: StoryRoute) = mutate { openStory(route) }
     fun openLinkedStory(destination: StoryDestination) = mutate { openLinkedStory(destination) }
@@ -140,27 +118,9 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun detailRemovedFromBackStack() = mutate { detailRemovedFromBackStack() }
 
     /** Route-only lifecycle snapshot; transient story presentation data is deliberately omitted. */
-    fun restoration(): MainNavigationRestoration = state.value.let { snapshot ->
-        MainNavigationRestoration(
-            destinationStack = machine.destinationRestoration(),
-            storyRoute = snapshot.storyRequest?.route,
-            storyRequestSerial = snapshot.storyRequest?.serial ?: 0,
-            settingsOpen = snapshot.settingsRequest != null,
-            settingsRequestSerial = snapshot.settingsRequestSerial,
-            settingsSectionRoute = snapshot.currentSettingsSectionRoute,
-            welcomeDialogVisible = snapshot.welcomeDialogVisible,
-            changelogDialogVisible = snapshot.changelogDialogVisible,
-            cacheStoriesDialogVisible = snapshot.cacheStoriesDialogVisible,
-            loginDialogVisible = snapshot.loginDialogVisible,
-            userDialogUserName = snapshot.userRequest?.userName,
-            userDialogSerial = snapshot.userRequest?.serial ?: 0,
-            editorDestination = snapshot.editorRequest?.destination,
-            editorRequestSerial = snapshot.editorRequest?.serial ?: 0,
-            submissionsUserName = snapshot.submissionsRequest?.userName,
-            submissionsRequestSerial = snapshot.submissionsRequest?.serial ?: 0,
-            coulombGasVisible = snapshot.coulombGasVisible,
-        )
-    }
+    fun restoration(): MainNavigationRestoration = state.value.toRestoration(
+        destinationStack = machine.destinationRestoration(),
+    )
 
     /** Rehydrates the application-scoped store before a host starts rendering it. */
     fun restore(restored: MainNavigationRestoration) {
@@ -177,6 +137,28 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
         mutableState.value = machine.snapshot()
     }
 }
+
+private fun MainNavigationSnapshot.toRestoration(
+    destinationStack: List<MainNavigationEntryRestoration>,
+): MainNavigationRestoration = MainNavigationRestoration(
+    destinationStack = destinationStack,
+    storyRoute = storyRequest?.route,
+    storyRequestSerial = storyRequest?.serial ?: 0,
+    settingsOpen = settingsRequest != null,
+    settingsRequestSerial = settingsRequestSerial,
+    settingsSectionRoute = currentSettingsSectionRoute,
+    welcomeDialogVisible = welcomeDialogVisible,
+    changelogDialogVisible = changelogDialogVisible,
+    cacheStoriesDialogVisible = cacheStoriesDialogVisible,
+    loginDialogVisible = loginDialogVisible,
+    userDialogUserName = userRequest?.userName,
+    userDialogSerial = userRequest?.serial ?: 0,
+    editorDestination = editorRequest?.destination,
+    editorRequestSerial = editorRequest?.serial ?: 0,
+    submissionsUserName = submissionsRequest?.userName,
+    submissionsRequestSerial = submissionsRequest?.serial ?: 0,
+    coulombGasVisible = coulombGasVisible,
+)
 
 private fun MainNavigationState.snapshot() = MainNavigationSnapshot(
     destinationStack = destinationStack,

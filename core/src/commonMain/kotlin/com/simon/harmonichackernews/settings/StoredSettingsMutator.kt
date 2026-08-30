@@ -36,15 +36,15 @@ class StoredSettingsMutator(
 
     fun setStoryString(preference: StoryStringPreference, value: String) {
         when (preference) {
-            StoryStringPreference.PREVIEW_IMAGE_MODE -> store.putString(
-                UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-                StoryPreviewPreferences.sanitize(value),
-            )
             StoryStringPreference.DISPLAY_STYLE -> store.putString(
                 UserPreferenceKeys.STORY_DISPLAY_STYLE,
                 sanitizeDisplayStyle(value),
             )
         }
+    }
+
+    fun setStoryPreviewMode(value: StoryPreviewMode) {
+        store.putString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, value.storedValue)
     }
 
     fun setStoryTextSize(value: Float) {
@@ -255,7 +255,11 @@ class StoredSettingsMutator(
         )
         store.putString(
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-            if (expressive) StoryPreviewPreferences.SMALL else StoryPreviewPreferences.OFF,
+            if (expressive) {
+                StoryPreviewMode.SMALL.storedValue
+            } else {
+                StoryPreviewMode.OFF.storedValue
+            },
         )
     }
 

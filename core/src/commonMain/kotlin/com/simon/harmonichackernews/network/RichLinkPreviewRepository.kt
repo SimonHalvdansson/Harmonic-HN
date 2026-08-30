@@ -43,27 +43,7 @@ internal data class PackagePreviewTarget(
 
 /** URL classification shared by provider selection, settings fixtures and parser tests. */
 object RichLinkPreviewUrls {
-    fun type(url: String?): LinkPreviewType? {
-        if (url.isNullOrBlank()) return null
-        githubTarget(url)?.let { return it.type }
-        huggingFaceTarget(url)?.let { return it.type }
-        packageTarget(url)?.let { return it.type }
-        return when {
-            LinkPreviewUrls.isGitLabUrl(url) -> LinkPreviewType.GITLAB_PROJECT
-            LinkPreviewUrls.isOpenRouterUrl(url) -> LinkPreviewType.OPENROUTER_MODEL
-            LinkPreviewUrls.isStackExchangeUrl(url) -> LinkPreviewType.STACK_EXCHANGE
-            LinkPreviewUrls.isArxivUrl(url) -> LinkPreviewType.ARXIV
-            LinkPreviewUrls.isWikipediaUrl(url) -> LinkPreviewType.WIKIPEDIA
-            statusPageIncident(url) != null -> LinkPreviewType.STATUS_PAGE
-            crossrefDoi(url) != null -> LinkPreviewType.CROSSREF_ARTICLE
-            usgsEventId(url) != null -> LinkPreviewType.USGS_EARTHQUAKE
-            isSubstackArticle(url) -> LinkPreviewType.SUBSTACK_ARTICLE
-            mastodonStatus(url) != null -> LinkPreviewType.MASTODON_POST
-            isBlueskyPost(url) -> LinkPreviewType.BLUESKY_POST
-            isRedditPost(url) -> LinkPreviewType.REDDIT_POST
-            else -> null
-        }
-    }
+    fun type(url: String?): LinkPreviewType? = RichLinkPreviewProviders.type(url)
 
     internal fun githubTarget(url: String?): GitHubPreviewTarget? {
         val parsed = url?.toNetworkUrlOrNull() ?: return null
@@ -228,35 +208,9 @@ object RichLinkPreviewUrls {
 internal suspend fun HttpClient.loadRichLinkPreview(
     type: LinkPreviewType,
     url: String,
-): LinkPreviewInfo = when (type) {
-    LinkPreviewType.GITHUB_ISSUE,
-    LinkPreviewType.GITHUB_PULL_REQUEST,
-    LinkPreviewType.GITHUB_FILE,
-    LinkPreviewType.GITHUB_RELEASE,
-    LinkPreviewType.GITHUB_DISCUSSION,
-    -> loadGitHubPreview(type, url)
-    LinkPreviewType.HUGGING_FACE_DATASET,
-    LinkPreviewType.HUGGING_FACE_SPACE,
-    LinkPreviewType.HUGGING_FACE_PAPER,
-    LinkPreviewType.HUGGING_FACE_COLLECTION,
-    -> loadHuggingFacePreview(type, url)
-    LinkPreviewType.STATUS_PAGE -> loadStatusPagePreview(url)
-    LinkPreviewType.CROSSREF_ARTICLE -> loadCrossrefPreview(url)
-    LinkPreviewType.USGS_EARTHQUAKE -> loadUsgsPreview(url)
-    LinkPreviewType.SUBSTACK_ARTICLE -> loadSubstackPreview(url)
-    LinkPreviewType.MASTODON_POST -> loadMastodonPreview(url)
-    LinkPreviewType.BLUESKY_POST -> loadBlueskyPreview(url)
-    LinkPreviewType.REDDIT_POST -> loadOEmbedPreview(type, "https://www.reddit.com/oembed", url)
-    LinkPreviewType.NPM_PACKAGE,
-    LinkPreviewType.PYPI_PACKAGE,
-    LinkPreviewType.CRATES_PACKAGE,
-    LinkPreviewType.GO_PACKAGE,
-    LinkPreviewType.HOMEBREW_PACKAGE,
-    -> loadPackagePreview(type, url)
-    else -> throw LinkPreviewException("${type.title} uses a dedicated preview loader")
-}
+): LinkPreviewInfo = RichLinkPreviewProviders.load(this, type, url)
 
-private suspend fun HttpClient.loadGitHubPreview(
+internal suspend fun HttpClient.loadGitHubPreview(
     type: LinkPreviewType,
     url: String,
 ): LinkPreviewInfo {
@@ -276,7 +230,7 @@ private suspend fun HttpClient.loadGitHubPreview(
     return RichLinkPreviewParsers.parseGitHub(type, getTextOrThrow(endpoint), target, url)
 }
 
-private suspend fun HttpClient.loadHuggingFacePreview(
+internal suspend fun HttpClient.loadHuggingFacePreview(
     type: LinkPreviewType,
     url: String,
 ): LinkPreviewInfo {
@@ -296,7 +250,7 @@ private suspend fun HttpClient.loadHuggingFacePreview(
     return RichLinkPreviewParsers.parseHuggingFace(type, getTextOrThrow(endpoint), target, url)
 }
 
-private suspend fun HttpClient.loadStatusPagePreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadStatusPagePreview(url: String): LinkPreviewInfo {
     val (host, incident) = RichLinkPreviewUrls.statusPageIncident(url)
         ?: throw LinkPreviewException("Invalid Statuspage incident URL")
     return RichLinkPreviewParsers.parseStatusPage(
@@ -305,7 +259,7 @@ private suspend fun HttpClient.loadStatusPagePreview(url: String): LinkPreviewIn
     )
 }
 
-private suspend fun HttpClient.loadCrossrefPreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadCrossrefPreview(url: String): LinkPreviewInfo {
     val doi = RichLinkPreviewUrls.crossrefDoi(url)
         ?: throw LinkPreviewException("Invalid Crossref DOI URL")
     return RichLinkPreviewParsers.parseCrossref(
@@ -315,7 +269,7 @@ private suspend fun HttpClient.loadCrossrefPreview(url: String): LinkPreviewInfo
     )
 }
 
-private suspend fun HttpClient.loadUsgsPreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadUsgsPreview(url: String): LinkPreviewInfo {
     val eventId = RichLinkPreviewUrls.usgsEventId(url)
         ?: throw LinkPreviewException("Invalid USGS earthquake URL")
     val endpoint = URLBuilder("https://earthquake.usgs.gov/fdsnws/event/1/query").apply {
@@ -325,7 +279,7 @@ private suspend fun HttpClient.loadUsgsPreview(url: String): LinkPreviewInfo {
     return RichLinkPreviewParsers.parseUsgs(getTextOrThrow(endpoint), eventId, url)
 }
 
-private suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo {
     val (host, statusId) = RichLinkPreviewUrls.mastodonStatus(url)
         ?: throw LinkPreviewException("Invalid Mastodon post URL")
     return RichLinkPreviewParsers.parseMastodon(
@@ -334,7 +288,7 @@ private suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo
     )
 }
 
-private suspend fun HttpClient.loadSubstackPreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadSubstackPreview(url: String): LinkPreviewInfo {
     val parsed = url.toNetworkUrlOrNull()
         ?: throw LinkPreviewException("Invalid Substack article URL")
     return withTimeout(SUBSTACK_REQUEST_TIMEOUT_MILLIS) {
@@ -398,7 +352,7 @@ private suspend fun HttpClient.getTextPrefixOrThrow(
     }
 }
 
-private suspend fun HttpClient.loadBlueskyPreview(url: String): LinkPreviewInfo {
+internal suspend fun HttpClient.loadBlueskyPreview(url: String): LinkPreviewInfo {
     val parsed = url.toNetworkUrlOrNull()
         ?: throw LinkPreviewException("Invalid Bluesky post URL")
     val segments = parsed.pathSegments.filter(String::isNotEmpty)
@@ -425,7 +379,7 @@ private suspend fun HttpClient.loadBlueskyPreview(url: String): LinkPreviewInfo 
     return RichLinkPreviewParsers.parseBluesky(getTextOrThrow(threadEndpoint), url)
 }
 
-private suspend fun HttpClient.loadOEmbedPreview(
+internal suspend fun HttpClient.loadOEmbedPreview(
     type: LinkPreviewType,
     baseUrl: String,
     url: String,
@@ -434,7 +388,7 @@ private suspend fun HttpClient.loadOEmbedPreview(
     return RichLinkPreviewParsers.parseOEmbed(type, getTextOrThrow(endpoint), url)
 }
 
-private suspend fun HttpClient.loadPackagePreview(
+internal suspend fun HttpClient.loadPackagePreview(
     type: LinkPreviewType,
     url: String,
 ): LinkPreviewInfo {

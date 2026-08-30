@@ -24,7 +24,7 @@ class StoredUserSettingsTest {
         val settings = StoredUserSettings(TestKeyValueStore(), emptyFlow())
 
         assertTrue(settings.story.showPoints)
-        assertEquals("small", settings.story.previewImageMode)
+        assertEquals(StoryPreviewMode.SMALL, settings.story.previewImageMode)
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals("Top Stories", settings.story.preferredStoryType)
         assertTrue(settings.comments.showHeaderPreviewImage)
@@ -138,7 +138,7 @@ class StoredUserSettingsTest {
         assertEquals(100, settings.comments.preloadCommentsMinimumBattery)
         assertEquals(200, settings.cache.storiesToCache)
         assertEquals(FaviconPreferences.GOOGLE, settings.story.faviconProvider)
-        assertEquals("small", settings.story.previewImageMode)
+        assertEquals(StoryPreviewMode.SMALL, settings.story.previewImageMode)
         assertEquals(24, settings.reading.readerModeFontSize)
         assertEquals(listOf("example.com"), settings.reading.archiveRedirectDomains)
         assertEquals(CommentSortingPreference.DEFAULT, settings.comments.sortingPreference)

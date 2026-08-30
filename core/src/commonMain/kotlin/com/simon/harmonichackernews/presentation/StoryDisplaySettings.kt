@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.settings.StoryPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.TextPreferences
 
 data class StoryDisplaySettings(
@@ -10,7 +11,7 @@ data class StoryDisplaySettings(
     val showCommentsCount: Boolean,
     val compactView: Boolean,
     val thumbnails: Boolean,
-    val previewImageMode: String,
+    val previewImageMode: StoryPreviewMode,
     val borderlessLargePreviewImage: Boolean,
     val showSummary: Boolean,
     val storyTextSize: Float,

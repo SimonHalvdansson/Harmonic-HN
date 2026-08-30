@@ -89,7 +89,7 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.resources.web_preview
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import com.simon.harmonichackernews.ui.stories.captureStoryPreviewSourceContent
@@ -173,13 +173,13 @@ private class StoryItemGeometry {
     ): StoryPreviewSourceGeometry? {
         val containerBounds = coordinates.windowBoundsOrNull() ?: return null
         val imageCoordinates = when {
-            !hasPreview || style.previewImageMode == "off" -> null
-            style.previewImageMode == "large" -> largeImageCoordinates
+            !hasPreview || style.previewImageMode == StoryPreviewMode.OFF -> null
+            style.previewImageMode == StoryPreviewMode.LARGE -> largeImageCoordinates
             else -> smallImageCoordinates
         }
         val imageLayer = when {
-            !hasPreview || style.previewImageMode == "off" -> null
-            style.previewImageMode == "large" -> largeImageLayer
+            !hasPreview || style.previewImageMode == StoryPreviewMode.OFF -> null
+            style.previewImageMode == StoryPreviewMode.LARGE -> largeImageLayer
             else -> smallImageLayer
         }
         return StoryPreviewSourceGeometry(
@@ -257,7 +257,7 @@ data class StoryItemUiModel(
 
 @Immutable
 data class StoryItemStyle(
-    val previewImageMode: String,
+    val previewImageMode: StoryPreviewMode,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
     val showSummary: Boolean,
@@ -346,7 +346,7 @@ fun StoryItem(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
-    val mediumPreview = style.previewImageMode == StoryPreviewPreferences.MEDIUM
+    val mediumPreview = style.previewImageMode == StoryPreviewMode.MEDIUM
     val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
@@ -361,7 +361,7 @@ fun StoryItem(
         tintBaseColorArgb,
         style.paletteTintConfigKey,
     ) { mutableStateOf<Int?>(null) }
-    val previewAvailable = style.previewImageMode != "off" && hasPreview
+    val previewAvailable = style.previewImageMode != StoryPreviewMode.OFF && hasPreview
     val tint = if (previewAvailable) {
         (model.previewImageTintArgb ?: extractedPreviewTint)?.let(::Color)
     } else {
@@ -393,9 +393,10 @@ fun StoryItem(
     }
     val previewImageCornerRadiusPx = with(density) {
         when {
-            style.previewImageMode == "small" -> 6.dp.toPx()
-            style.previewImageMode == StoryPreviewPreferences.MEDIUM -> 10.dp.toPx()
-            style.previewImageMode == "large" && !style.borderlessLargeImage -> 8.dp.toPx()
+            style.previewImageMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
+            style.previewImageMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
+            style.previewImageMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
+                8.dp.toPx()
             else -> 0f
         }
     }
@@ -513,7 +514,7 @@ fun StoryItem(
                     ),
             ) {
                 StoryVisibility(
-                    visible = style.previewImageMode == "large" && hasPreview,
+                    visible = style.previewImageMode == StoryPreviewMode.LARGE && hasPreview,
                     animate = animate,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
@@ -643,7 +644,7 @@ fun StoryItem(
                         model = model,
                         style = style,
                         typography = typography,
-                        hasSmallPreview = hasPreview && style.previewImageMode == "small",
+                        hasSmallPreview = hasPreview && style.previewImageMode == StoryPreviewMode.SMALL,
                         dimAlpha = dimAlpha,
                         onLinkClick = onLinkClick,
                         onLinkLongClick = trackedLinkLongClick,
@@ -1392,7 +1393,7 @@ private fun StoryMeta(
     modifier: Modifier,
 ) {
     val showMetaPoints = style.showPoints &&
-        style.previewImageMode != StoryPreviewPreferences.MEDIUM
+        style.previewImageMode != StoryPreviewMode.MEDIUM
     val domainSuffix = model.domain
         .takeIf {
             model.domainWithoutTopLevel.isNotEmpty() &&

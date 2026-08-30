@@ -233,17 +233,15 @@ enum class WebViewPreloadMode(val storedValue: String, val label: String) {
     }
 }
 
-object StoryPreviewPreferences {
-    const val OFF = "off"
-    const val SMALL = "small"
-    const val MEDIUM = "medium"
-    const val LARGE = "large"
+enum class StoryPreviewMode(val storedValue: String) {
+    OFF("off"),
+    SMALL("small"),
+    MEDIUM("medium"),
+    LARGE("large");
 
-    fun sanitize(mode: String?): String = when (mode) {
-        OFF -> OFF
-        MEDIUM -> MEDIUM
-        LARGE -> LARGE
-        else -> SMALL
+    companion object {
+        fun fromStored(value: String?): StoryPreviewMode =
+            entries.firstOrNull { it.storedValue == value } ?: SMALL
     }
 }
 

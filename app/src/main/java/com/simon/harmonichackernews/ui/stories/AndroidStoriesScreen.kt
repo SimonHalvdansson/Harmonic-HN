@@ -152,7 +152,7 @@ import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColor
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -191,7 +191,7 @@ private fun StoryItemFormFactorPreview() {
         StoryItem(
             model = SettingsStoryPreviewModel,
             style = StoryItemStyle(
-                previewImageMode = StoryPreviewPreferences.MEDIUM,
+                previewImageMode = StoryPreviewMode.MEDIUM,
                 borderlessLargeImage = false,
                 compact = false,
                 showSummary = true,

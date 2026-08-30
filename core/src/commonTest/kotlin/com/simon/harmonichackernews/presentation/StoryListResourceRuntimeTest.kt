@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.PreviewContent
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -19,8 +19,8 @@ class StoryListResourceRuntimeTest {
     @Test
     fun eitherListEnrichmentRequestsAndRetainsBothParsedValues() = runTest {
         listOf(
-            settings(previewImageMode = StoryPreviewPreferences.SMALL, showSummary = false),
-            settings(previewImageMode = StoryPreviewPreferences.OFF, showSummary = true),
+            settings(previewImageMode = StoryPreviewMode.SMALL, showSummary = false),
+            settings(previewImageMode = StoryPreviewMode.OFF, showSummary = true),
         ).forEach { settings ->
             val requests = mutableListOf<StoryPreviewResourceRequest>()
             val runtime = StoryListResourceRuntime(
@@ -46,7 +46,7 @@ class StoryListResourceRuntimeTest {
             scope = backgroundScope,
             service = recordingService(requests),
             settings = settings(
-                previewImageMode = StoryPreviewPreferences.OFF,
+                previewImageMode = StoryPreviewMode.OFF,
                 showSummary = false,
             ),
         )
@@ -92,7 +92,7 @@ class StoryListResourceRuntimeTest {
     }
 
     private fun settings(
-        previewImageMode: String,
+        previewImageMode: StoryPreviewMode,
         showSummary: Boolean,
     ) = StoryDisplaySettings(
         showPoints = true,

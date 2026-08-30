@@ -21,7 +21,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
 import androidx.webkit.WebViewFeature
-import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.createCommentsStore
@@ -61,6 +60,15 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.simon.harmonichackernews.settings.UserSettings
 
+private class CommentsViewSession(
+    val host: CommentsWebViewHost,
+    val linkPreviewController: LinkPreviewController,
+    val webViewController: CommentsWebViewController,
+) {
+    var backPressedCallback: OnBackPressedCallback? = null
+    var composeController: CommentsComposeController? = null
+}
+
 class CommentsCoordinator(
     private val activity: MainActivity,
     private val destination: StoryDestination,
@@ -91,13 +99,20 @@ class CommentsCoordinator(
             canLoadArticleTextOnDemand = true,
         ),
     )
-    private var webViewHost: CommentsWebViewHost?
+    private var viewSession: CommentsViewSession? = null
+    private val webViewHost: CommentsWebViewHost?
+        get() = viewSession?.host
+    private val linkPreviewController: LinkPreviewController?
+        get() = viewSession?.linkPreviewController
+    private val webViewController: CommentsWebViewController?
+        get() = viewSession?.webViewController
+    private val backPressedCallback: OnBackPressedCallback?
+        get() = viewSession?.backPressedCallback
+    private val composeController: CommentsComposeController?
+        get() = viewSession?.composeController
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
     private var hostRestoration by sessionState::hostRestoration
-    private var progressIndicator: LinearProgressIndicator? = null
-    private var linkPreviewController: LinkPreviewController? = null
-    private var webViewController: CommentsWebViewController? = null
     private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
     private var topInset = 0
@@ -105,7 +120,6 @@ class CommentsCoordinator(
         get() = commentsStore.state.value.presenter.loaded
     private var appliedCommentsThemeVersion = -1L
     private var appliedCommentsSettingsVersion = -1L
-    private var backPressedCallback: OnBackPressedCallback? = null
     private var story by sessionState::story
     private var originalStatusBarColor = Color.TRANSPARENT
     private var originalStatusBarColorCaptured = false
@@ -115,7 +129,6 @@ class CommentsCoordinator(
     private var appliedStatusBarProtectionKnown = false
     private var appliedStatusBarProtectionEnabled = false
     private var appliedStatusBarProtectionColor = Color.TRANSPARENT
-    private var composeController: CommentsComposeController? = null
     internal val composeUiController: CommentsComposeController?
         get() = composeController
     private var hostActive = true
@@ -134,8 +147,7 @@ class CommentsCoordinator(
                 renderCommentsState(state)
             }
         }
-        webViewHost = CommentsWebViewHost(activity)
-        initializeView(savedInstanceState)
+        initializeView(CommentsWebViewHost(activity), savedInstanceState)
     }
 
     val webViewRoot: View
@@ -164,19 +176,17 @@ class CommentsCoordinator(
         get() = activity.getResources()
 
     val view: View?
-        get() = if (webViewHost == null || destroyed) null else webViewHost!!.root
+        get() = if (destroyed) null else viewSession?.host?.root
 
     val isAdded: Boolean
         get() = !destroyed
 
-    private fun initializeView(savedInstanceState: Bundle?) {
-        val view = this.webViewRoot
+    private fun initializeView(host: CommentsWebViewHost, savedInstanceState: Bundle?) {
+        val view = host.root
         if (savedInstanceState != null) {
             hostRestoration = restoreHostState(savedInstanceState)
         }
         val restoredSorting = hostRestoration.sorting
-        val host = webViewHost
-        checkNotNull(host) { "Comments WebView host was not created" }
         topInset = 0
 
         commentsStore.start(
@@ -203,17 +213,17 @@ class CommentsCoordinator(
         integratedWebview = featureSettings.integratedWebView
         val blockAds = readingPreferences.blockAds && !hostRestoration.adBlockDisabled
 
-        progressIndicator = host.progressIndicator
-        linkPreviewController = LinkPreviewController(
+        val progressIndicator = host.progressIndicator
+        val linkPreviewController = LinkPreviewController(
             story,
             appComposition,
             readingPreferences,
             LinkPreviewController.Callbacks(commentsStore::refreshStoryPresentation),
         )
-        webViewController = CommentsWebViewController(
+        val webViewController = CommentsWebViewController(
             this,
             story,
-            linkPreviewController!!,
+            linkPreviewController,
             appComposition.webContent.createRuntime(),
             appComposition.storyCache,
             appComposition.pdfDownloads,
@@ -234,43 +244,48 @@ class CommentsCoordinator(
                 }
 
                 override fun onReaderModeChanged(enabled: Boolean) {
-                    if (composeController != null && webViewController != null) {
-                        composeController!!.updateReaderMode(
-                            webViewController!!.isReaderModeAvailable, enabled
-                        )
-                    }
+                    val session = viewSession ?: return
+                    session.composeController?.updateReaderMode(
+                        session.webViewController.isReaderModeAvailable,
+                        enabled,
+                    )
                 }
 
                 override fun onReaderModeAvailabilityChanged(available: Boolean) {
-                    if (composeController != null && webViewController != null) {
-                        composeController!!.updateReaderMode(
-                            available, webViewController!!.isReaderModeEnabled()
-                        )
-                    }
+                    val session = viewSession ?: return
+                    session.composeController?.updateReaderMode(
+                        available,
+                        session.webViewController.isReaderModeEnabled(),
+                    )
                 }
 
                 override fun onFullscreenChanged(fullscreen: Boolean) {
-                    if (composeController != null) {
-                        composeController!!.updateWebViewFullscreen(fullscreen)
-                    }
+                    composeController?.updateWebViewFullscreen(fullscreen)
                 }
             })
-        webViewController!!.bindViews(host, progressIndicator!!)
-        webViewController!!.configure(
+        val session = CommentsViewSession(
+            host = host,
+            linkPreviewController = linkPreviewController,
+            webViewController = webViewController,
+        )
+        viewSession = session
+        webViewController.bindViews(host, progressIndicator)
+        webViewController.configure(
             showWebsite,
             integratedWebview,
             readingPreferences,
             blockAds
         )
 
-        if (story!!.id <= 0 && story!!.title == null) {
+        val initialStory = checkNotNull(story)
+        if (initialStory.id <= 0 && initialStory.title == null) {
             // Empty view for tablets
-            webViewController!!.setContainerVisibility(View.GONE)
+            webViewController.setContainerVisibility(View.GONE)
 
             return
         }
 
-        backPressedCallback = object : OnBackPressedCallback(true) {
+        val backPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackCancelled() {
                 when (commentsBackTarget()) {
                     CommentsBackTarget.LINK_PREVIEW ->
@@ -335,20 +350,20 @@ class CommentsCoordinator(
                         }
                     }
                     CommentsBackTarget.CUSTOM_WEB_CONTENT ->
-                        webViewController?.hideCustomView(true)
-                    CommentsBackTarget.READER_MODE -> webViewController?.disableReaderMode()
+                        webViewController.hideCustomView(true)
+                    CommentsBackTarget.READER_MODE -> webViewController.disableReaderMode()
                     CommentsBackTarget.CLOSE_WEBSITE -> {
                         composeController?.requestExpandSheet()
                         endCommentsPredictiveBackVisuals()
                     }
                     CommentsBackTarget.WEB_HISTORY ->
-                        webViewController?.goBackFromVisibleWebView()
+                        webViewController.goBackFromVisibleWebView()
                     CommentsBackTarget.NONE -> navigation.closeStory()
                 }
             }
         }
-
-        requireActivity().onBackPressedDispatcher.addCallback(backPressedCallback!!)
+        session.backPressedCallback = backPressedCallback
+        requireActivity().onBackPressedDispatcher.addCallback(backPressedCallback)
 
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
         // We want to watch for navigation bar height changes (tablets on Android 12L can cause
@@ -382,11 +397,9 @@ class CommentsCoordinator(
 
         syncOnBackPressedCallbackEnabledState()
 
-        progressIndicator = host.progressIndicator
-
         // The pane color was already resolved from the active theme above. Reusing it avoids two
         // cold theme/preference/resource lookups on the comments-open frame.
-        webViewController!!.setContainerBackgroundColor(commentsPaneStatusBarColor)
+        webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor)
 
         initializeComposeUi()
         scheduleWebViewInitializationAfterFirstDraw(view)
@@ -409,41 +422,34 @@ class CommentsCoordinator(
     }
 
     private fun updateCommentsPredictiveBackVisuals(progress: Float, started: Boolean) {
-        if (webViewController != null) {
-            if (started) {
-                webViewController!!.beginPredictiveBackScrollFreeze()
-            } else {
-                webViewController!!.maintainPredictiveBackScrollFreeze()
-            }
+        val session = viewSession ?: return
+        if (started) {
+            session.webViewController.beginPredictiveBackScrollFreeze()
+        } else {
+            session.webViewController.maintainPredictiveBackScrollFreeze()
         }
-        if (composeController != null) {
+        session.composeController?.let { controller ->
             if (started) {
-                composeController!!.beginPredictiveBack(progress)
+                controller.beginPredictiveBack(progress)
             } else {
-                composeController!!.updatePredictiveBack(progress)
+                controller.updatePredictiveBack(progress)
             }
-            return
         }
     }
 
     fun beginVisibleWebViewPredictiveBackScrollFreeze(): Boolean {
-        if (webViewController == null || composeController == null || !composeController!!.isWebsiteVisible()) {
-            return false
-        }
-        webViewController!!.beginPredictiveBackScrollFreeze()
+        val session = viewSession ?: return false
+        if (session.composeController?.isWebsiteVisible() != true) return false
+        session.webViewController.beginPredictiveBackScrollFreeze()
         return true
     }
 
     fun maintainVisibleWebViewPredictiveBackScrollFreeze() {
-        if (webViewController != null) {
-            webViewController!!.maintainPredictiveBackScrollFreeze()
-        }
+        viewSession?.webViewController?.maintainPredictiveBackScrollFreeze()
     }
 
     fun endVisibleWebViewPredictiveBackScrollFreeze() {
-        if (webViewController != null) {
-            webViewController!!.endPredictiveBackScrollFreeze()
-        }
+        viewSession?.webViewController?.endPredictiveBackScrollFreeze()
     }
 
     fun handlesBackInternally(): Boolean {
@@ -486,18 +492,14 @@ class CommentsCoordinator(
     }
 
     private fun endCommentsPredictiveBackVisuals() {
-        if (webViewController != null) {
-            webViewController!!.endPredictiveBackScrollFreeze()
-        }
-        if (composeController != null) {
-            composeController!!.endPredictiveBack()
-            return
-        }
+        val session = viewSession ?: return
+        session.webViewController.endPredictiveBackScrollFreeze()
+        session.composeController?.endPredictiveBack()
     }
 
     private fun initializeComposeUi() {
         val currentStory = story ?: return
-        if (webViewHost == null) return
+        val session = viewSession ?: return
         val platformCallbacks = object : CommentsFeatureListener.PlatformCallbacks {
             override fun isRestoringScroll() = restoringStoredProgress
             override fun canHandleCommentAction() = isAdded && composeController != null
@@ -540,7 +542,7 @@ class CommentsCoordinator(
 
         }
         val storySnapshot = checkNotNull(commentsStore.state.value.story)
-        composeController = CommentsComposeController.create(
+        val controller = CommentsComposeController.create(
             shouldSmoothScroll = {
                 commentsStore.state.value.settings?.smoothScroll ?: true
             },
@@ -552,7 +554,8 @@ class CommentsCoordinator(
             savedItemState = commentsStore.savedItemState,
             listener = CommentsFeatureListener(commentsStore, platformCallbacks),
         )
-        navigation.attachCommentsComposeController(this, composeController!!)
+        session.composeController = controller
+        navigation.attachCommentsComposeController(this, controller)
         restoreLinkSummaryAfterRecreation()
         syncComposeState()
         if (restoringSession && restoringStoredProgress) restoreScrollProgress()
@@ -714,7 +717,7 @@ class CommentsCoordinator(
         )
         params.setMargins(0, 0, 0, standardMargin + navbarHeight)
 
-        webViewController!!.setContainerLayoutParams(params)
+        webViewController?.setContainerLayoutParams(params)
     }
 
     private fun updateHeaderStatusBarColor(color: Int) {
@@ -795,7 +798,7 @@ class CommentsCoordinator(
     }
 
     val isBottomSheetFullyExpanded: Boolean
-        get() = composeController != null && composeController!!.isSheetExpanded()
+        get() = composeController?.isSheetExpanded() == true
 
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
         if (!isAdded || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {
@@ -803,23 +806,23 @@ class CommentsCoordinator(
         }
         if (showWebsite) {
             requestVisibleWebsiteInitialization()
-            if (composeController != null) {
-                composeController!!.requestWebsite()
+            val controller = composeController
+            if (controller != null) {
+                controller.requestWebsite()
                 return true
             }
             scrollCommentsToTopThenCollapseBottomSheet()
         } else {
-            if (composeController != null) {
-                composeController!!.requestStopScroll()
-                composeController!!.requestExpandSheet()
-            }
+            composeController?.requestStopScroll()
+            composeController?.requestExpandSheet()
         }
         return true
     }
 
     private fun scrollCommentsToTopThenCollapseBottomSheet() {
-        if (composeController != null) {
-            composeController!!.requestWebsite()
+        val controller = composeController
+        if (controller != null) {
+            controller.requestWebsite()
         } else {
             collapseBottomSheetForWebsite()
         }
@@ -827,9 +830,7 @@ class CommentsCoordinator(
 
     private fun collapseBottomSheetForWebsite() {
         requestVisibleWebsiteInitialization()
-        if (composeController != null) {
-            composeController!!.requestCollapseSheet()
-        }
+        composeController?.requestCollapseSheet()
     }
 
     private fun scheduleWebViewInitializationAfterFirstDraw(root: View) {
@@ -1005,9 +1006,10 @@ class CommentsCoordinator(
     private fun restoreScrollProgress() {
         val restoration = commentsStore.restoreScrollProgress()
         restoringStoredProgress = false
-        if (composeController != null && restoration != null) {
+        val controller = composeController
+        if (controller != null && restoration != null) {
             syncComposeState()
-            composeController!!.scrollToComment(
+            controller.scrollToComment(
                 restoration.commentId,
                 restoration.offset,
                 false
@@ -1029,15 +1031,16 @@ class CommentsCoordinator(
     fun onDestroy() {
         if (destroyed) return
         if (started) onStop()
-        val controllerToDetach = composeController
+        val session = viewSession
+        val controllerToDetach = session?.composeController
         val changingConfigurations =
             getActivity() != null && requireActivity().isChangingConfigurations()
         hostRestoration = captureHostRestoration(preserveOverlay = changingConfigurations)
-        if (composeController != null) {
-            if (composeController!!.isLinkPreviewOverlayShowing()) {
-                composeController!!.completeLinkPreviewDismiss()
+        controllerToDetach?.let { controller ->
+            if (controller.isLinkPreviewOverlayShowing()) {
+                controller.completeLinkPreviewDismiss()
             }
-            composeController!!.completeCommentActionDismiss(dispatchPendingAction = false)
+            controller.completeCommentActionDismiss(dispatchPendingAction = false)
         }
         if (originalStatusBarColorCaptured && getActivity() != null) {
             requireActivity().getWindow().setStatusBarColor(originalStatusBarColor)
@@ -1049,22 +1052,22 @@ class CommentsCoordinator(
             ViewCompat.setOnApplyWindowInsetsListener(rootView, null)
         }
 
-        if (backPressedCallback != null) {
-            backPressedCallback!!.remove()
-            backPressedCallback = null
-        }
+        session?.backPressedCallback?.remove()
 
         commentsStore.close()
-        linkPreviewController?.dispose()
+        session?.linkPreviewController?.dispose()
         coroutineScope.cancel()
-        if (webViewController != null) {
-            webViewController!!.onDestroyView(rootView)
-        }
+        session?.webViewController?.onDestroyView(rootView)
         if (controllerToDetach != null) {
             navigation.detachCommentsComposeController(this, controllerToDetach)
         }
 
-        clearViewReferences()
+        session?.webViewController?.clearViewReferences()
+        session?.linkPreviewController?.cancelPendingNitterLinkPreviewRead()
+        session?.backPressedCallback = null
+        session?.composeController = null
+        viewSession = null
+        appliedStatusBarProtectionKnown = false
         destroyed = true
     }
 
@@ -1074,7 +1077,7 @@ class CommentsCoordinator(
         if (overlay is CommentsOverlayRestoration.Image && rootView != null) {
             hostRestoration = hostRestoration.copy(overlay = null)
             rootView.post(Runnable {
-                if (composeController != null) {
+                composeController?.let { controller ->
                     val backgroundColor = if (commentsHeaderStatusBarColor != Color.TRANSPARENT)
                         commentsHeaderStatusBarColor
                     else
@@ -1082,12 +1085,13 @@ class CommentsCoordinator(
                             requireContext(),
                             ThemeUtils.getBackgroundColorResource(requireContext())
                         )
-                    composeController!!.showImagePreview(
+                    val storyTitle = story?.title
+                    controller.showImagePreview(
                         overlay.url,
-                        if (TextUtils.isEmpty(story!!.title))
+                        if (TextUtils.isEmpty(storyTitle))
                             "Story preview image"
                         else
-                            "Preview image for " + story!!.title,
+                            "Preview image for $storyTitle",
                         null,
                         backgroundColor
                     )
@@ -1101,25 +1105,8 @@ class CommentsCoordinator(
         }
         hostRestoration = hostRestoration.copy(overlay = null)
         referenceRootView.post(Runnable {
-            if (composeController != null) {
-                composeController!!.showReferencePreview(overlay.url, overlay.fallbackTitle)
-            }
+            composeController?.showReferencePreview(overlay.url, overlay.fallbackTitle)
         })
-    }
-
-    private fun clearViewReferences() {
-        webViewHost = null
-        progressIndicator = null
-        composeController = null
-        appliedStatusBarProtectionKnown = false
-        if (webViewController != null) {
-            webViewController!!.clearViewReferences()
-            webViewController = null
-        }
-        if (linkPreviewController != null) {
-            linkPreviewController!!.cancelPendingNitterLinkPreviewRead()
-            linkPreviewController = null
-        }
     }
 
     private fun loadInitialStoryAndComments(restoreScrollFromCache: Boolean) {
@@ -1224,9 +1211,7 @@ class CommentsCoordinator(
 
     @JvmOverloads
     fun navigateToNextComment(topLevelOnly: Boolean = true, scaleLongScrollSpeed: Boolean = false) {
-        if (composeController != null) {
-            composeController!!.navigateNext(topLevelOnly, scaleLongScrollSpeed)
-        }
+        composeController?.navigateNext(topLevelOnly, scaleLongScrollSpeed)
     }
 
     @JvmOverloads
@@ -1234,9 +1219,7 @@ class CommentsCoordinator(
         topLevelOnly: Boolean = true,
         scaleLongScrollSpeed: Boolean = false
     ) {
-        if (composeController != null) {
-            composeController!!.navigatePrevious(topLevelOnly, scaleLongScrollSpeed)
-        }
+        composeController?.navigatePrevious(topLevelOnly, scaleLongScrollSpeed)
     }
 
     companion object {

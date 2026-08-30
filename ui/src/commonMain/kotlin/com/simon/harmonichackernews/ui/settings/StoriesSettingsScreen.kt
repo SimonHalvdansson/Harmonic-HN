@@ -5,17 +5,14 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 
 data class StoriesSettingsUiState(
     val previewModel: StoryItemUiModel,
-    val previewImageMode: String,
-    val previewOffValue: String,
-    val previewSmallValue: String,
-    val previewMediumValue: String,
-    val previewLargeValue: String,
+    val previewImageMode: StoryPreviewMode,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
     val showSummary: Boolean,
@@ -66,7 +63,7 @@ enum class StoriesBooleanSetting {
     GrayOutClicked,
 }
 
-enum class StoriesStringSetting { PreviewImageMode, DisplayStyle }
+enum class StoriesStringSetting { DisplayStyle }
 enum class StoriesSettingsDialog { Hotness, StartingPage, AdditionalFrontpages, FaviconProvider }
 
 @Composable
@@ -75,6 +72,7 @@ fun StoriesSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onBooleanChanged: (StoriesBooleanSetting, Boolean) -> Unit,
+    onPreviewImageModeChanged: (StoryPreviewMode) -> Unit,
     onStringChanged: (StoriesStringSetting, String) -> Unit,
     onTextSizeOffsetChanged: (Int) -> Unit,
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
@@ -115,16 +113,16 @@ fun StoriesSettingsScreen(
                 SegmentedSetting(
                     title = "Preview image",
                     options = listOf(
-                        state.previewOffValue to "Off",
-                        state.previewSmallValue to "Small",
-                        state.previewMediumValue to "Medium",
-                        state.previewLargeValue to "Large",
+                        StoryPreviewMode.OFF to "Off",
+                        StoryPreviewMode.SMALL to "Small",
+                        StoryPreviewMode.MEDIUM to "Medium",
+                        StoryPreviewMode.LARGE to "Large",
                     ),
                     selected = state.previewImageMode,
-                    onSelected = { onStringChanged(StoriesStringSetting.PreviewImageMode, it) },
+                    onSelected = onPreviewImageModeChanged,
                 )
                 SettingsDivider()
-                BooleanRow("Borderless large image", Res.drawable.ic_fullscreen, state.borderlessLargeImage, StoriesBooleanSetting.BorderlessLargeImage, onBooleanChanged, enabled = state.previewImageMode == state.previewLargeValue)
+                BooleanRow("Borderless large image", Res.drawable.ic_fullscreen, state.borderlessLargeImage, StoriesBooleanSetting.BorderlessLargeImage, onBooleanChanged, enabled = state.previewImageMode == StoryPreviewMode.LARGE)
                 SettingsDivider()
                 SliderSetting(
                     title = "Text size",
@@ -164,7 +162,7 @@ fun StoriesSettingsScreen(
                     onBooleanChanged,
                     enabled = !state.compact &&
                         state.showPoints &&
-                        state.previewImageMode != state.previewMediumValue,
+                        state.previewImageMode != StoryPreviewMode.MEDIUM,
                 )
                 SettingsDivider()
                 BooleanRow("Include top level domain", Res.drawable.ic_public, state.includeTopLevelDomain, StoriesBooleanSetting.IncludeTopLevelDomain, onBooleanChanged, enabled = !state.compact)
@@ -179,7 +177,7 @@ fun StoriesSettingsScreen(
                     state.leftAlignComments,
                     StoriesBooleanSetting.LeftAlignComments,
                     onBooleanChanged,
-                    enabled = state.previewImageMode != state.previewMediumValue,
+                    enabled = state.previewImageMode != StoryPreviewMode.MEDIUM,
                 )
                 SettingsDivider()
                 SettingRow(

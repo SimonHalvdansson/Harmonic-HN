@@ -83,7 +83,8 @@ class StoriesCoordinator(
         scope = coroutineScope,
     )
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
-    private var hostActive = navigation.currentDestination == MainDestination.STORIES
+    private var hostActive =
+        navigation.navigationState.state.value.currentDestination == MainDestination.STORIES
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
 
     init {

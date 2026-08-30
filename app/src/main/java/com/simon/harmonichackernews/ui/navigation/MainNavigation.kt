@@ -138,25 +138,7 @@ class MainNavigationController internal constructor(
     savedState: Bundle? = null,
 ) {
     internal val navigationState: MainNavigationStore = scene.navigation
-    internal val currentDestination get() = navigationState.currentDestination
     private val userMessages = scene.userMessages
-    internal val storyRequest get() = navigationState.storyRequest
-    internal val lastStoryRequest get() = navigationState.lastStoryRequest
-    internal val settingsRequest get() = navigationState.settingsRequest
-    internal val lastSettingsRequest get() = navigationState.lastSettingsRequest
-    internal val welcomeDialogVisible get() = navigationState.welcomeDialogVisible
-    internal val changelogDialogVisible get() = navigationState.changelogDialogVisible
-    internal val cacheStoriesDialogVisible get() = navigationState.cacheStoriesDialogVisible
-    internal val loginDialogVisible get() = navigationState.loginDialogVisible
-    internal val captchaRequest get() = navigationState.captchaRequest
-    internal val userRequest get() = navigationState.userRequest
-    internal val failureRequest get() = navigationState.failureRequest
-    internal val editorRequest get() = navigationState.editorRequest
-    internal val lastEditorRequest get() = navigationState.lastEditorRequest
-    internal val submissionsRequest get() = navigationState.submissionsRequest
-    internal val lastSubmissionsRequest get() = navigationState.lastSubmissionsRequest
-    internal val coulombGasVisible get() = navigationState.coulombGasVisible
-    internal val closeRequest get() = navigationState.closeRequest
 
     private var captchaCallback: CaptchaResultHandler? = null
     private var userTagChangedCallback: Runnable? = null
@@ -394,7 +376,9 @@ class MainNavigationController internal constructor(
 
     fun attachStoriesCoordinator(coordinator: StoriesCoordinator) {
         storiesCoordinator = coordinator
-        coordinator.setHostActive(currentDestination == MainDestination.STORIES)
+        coordinator.setHostActive(
+            navigationState.state.value.currentDestination == MainDestination.STORIES,
+        )
     }
 
     fun onStart() = storiesCoordinator?.onStart()
@@ -453,14 +437,15 @@ class MainNavigationController internal constructor(
     }
 
     internal fun attachCommentsCoordinator(coordinator: CommentsCoordinator) {
-        if (storyRequest?.serial != coordinator.sessionKey) {
+        val navigation = navigationState.state.value
+        if (navigation.storyRequest?.serial != coordinator.sessionKey) {
             coordinator.setHostActive(false)
             return
         }
         commentsCoordinator?.takeIf { it !== coordinator }?.setHostActive(false)
         commentsCoordinator = coordinator
         commentsComposeController = coordinator.composeUiController
-        coordinator.setHostActive(currentDestination == MainDestination.STORY)
+        coordinator.setHostActive(navigation.currentDestination == MainDestination.STORY)
     }
 
     internal fun releaseCommentsCoordinator(coordinator: CommentsCoordinator) {
@@ -504,7 +489,9 @@ class MainNavigationController internal constructor(
         coordinator: CommentsCoordinator,
         controller: CommentsComposeController,
     ) {
-        if (storyRequest?.serial == coordinator.sessionKey) commentsComposeController = controller
+        if (navigationState.state.value.storyRequest?.serial == coordinator.sessionKey) {
+            commentsComposeController = controller
+        }
     }
 
     fun detachCommentsComposeController(
@@ -536,7 +523,7 @@ class MainNavigationController internal constructor(
             STATE_NAVIGATION_RESTORATION,
             MainNavigationRestorationCodec.encode(navigationState.restoration()),
         )
-        storyRequest?.let { request ->
+        navigationState.state.value.storyRequest?.let { request ->
             commentsCoordinator?.let { coordinator ->
                 val commentsState = Bundle()
                 coordinator.onSaveInstanceState(commentsState)
@@ -684,7 +671,7 @@ private fun MainNavigation(
     var observedStoryDepth by remember { mutableIntStateOf(storyRequests.size) }
 
     fun popMainBackStack() {
-        if (controller.currentDestination == MainDestination.STORY) {
+        if (controller.navigationState.state.value.currentDestination == MainDestination.STORY) {
             controller.detailRemovedFromBackStack()
         } else {
             activity.finish()
@@ -733,9 +720,9 @@ private fun MainNavigation(
     PredictiveBackHandler(
         enabled = navigationSnapshot.currentDestination == MainDestination.STORY,
     ) { events ->
-        val storySerialAtGestureStart = controller.storyRequest?.serial
+        val storySerialAtGestureStart = controller.navigationState.state.value.storyRequest?.serial
         fun popGestureStoryIfStillCurrent() {
-            if (controller.storyRequest?.serial == storySerialAtGestureStart) {
+            if (controller.navigationState.state.value.storyRequest?.serial == storySerialAtGestureStart) {
                 controller.detailRemovedFromBackStack()
             }
         }
@@ -1116,7 +1103,7 @@ private fun MainNavigation(
                 settingsRequest != null ||
                 !completedSettingsPredictiveBack
             ) {
-                controller.lastSettingsRequest?.let { request ->
+                navigationSnapshot.lastSettingsRequest?.let { request ->
                     key(request.serial) {
                         ProvideSettingsPlatformStyle(
                             style = SettingsPlatformStyle(
@@ -1156,7 +1143,7 @@ private fun MainNavigation(
         },
         submissions = {
             if (submissionsRequest != null || !completedSubmissionsPredictiveBack) {
-                controller.lastSubmissionsRequest?.let { request ->
+                navigationSnapshot.lastSubmissionsRequest?.let { request ->
                     key(request.serial) {
                         val coordinator = remember(request.serial) {
                             SubmissionsCoordinator(
@@ -1182,7 +1169,7 @@ private fun MainNavigation(
         },
         editor = {
             if (editorRequest != null || !completedEditorPredictiveBack) {
-                controller.lastEditorRequest?.let { request ->
+                navigationSnapshot.lastEditorRequest?.let { request ->
                     key(request.serial) {
                         Box(Modifier.fillMaxSize()) {
                             // The editor is a modal sibling of the story navigation. Its opaque
@@ -1246,14 +1233,14 @@ private fun MainNavigation(
             CoulombGasScreen()
         },
         foreground = {
-            if (controller.welcomeDialogVisible) {
+            if (navigationSnapshot.welcomeDialogVisible) {
             AndroidWelcomeSettingsDialog(
                 styleChooser = false,
                 onDismiss = controller::dismissWelcomeDialog,
             )
         }
 
-        if (controller.changelogDialogVisible) {
+        if (navigationSnapshot.changelogDialogVisible) {
             SettingsChangelogDialog(
                 onDismiss = controller::dismissChangelogDialog,
                 onOpenGithub = {
@@ -1262,7 +1249,7 @@ private fun MainNavigation(
             )
         }
 
-        if (controller.cacheStoriesDialogVisible) {
+        if (navigationSnapshot.cacheStoriesDialogVisible) {
             CacheStoriesDialog(
                 initialStoryCount = uiDependencies.userSettings
                     .cache.storiesToCache,
@@ -1272,13 +1259,13 @@ private fun MainNavigation(
             )
         }
 
-        if (controller.loginDialogVisible) {
+        if (navigationSnapshot.loginDialogVisible) {
             AndroidLoginDialog(
                 onDismiss = controller::dismissLoginDialog,
             )
         }
 
-        controller.captchaRequest?.let { request ->
+        navigationSnapshot.captchaRequest?.let { request ->
             key(request.serial) {
                 CaptchaDialog(
                     challenge = request.challenge,
@@ -1288,7 +1275,7 @@ private fun MainNavigation(
             }
         }
 
-        controller.userRequest?.let { request ->
+        navigationSnapshot.userRequest?.let { request ->
             key(request.serial) {
                 AndroidUserSettingsDialog(
                     userName = request.userName,
@@ -1298,7 +1285,7 @@ private fun MainNavigation(
             }
         }
 
-        controller.failureRequest?.let { request ->
+        navigationSnapshot.failureRequest?.let { request ->
             key(request.serial) {
                 FailureDetailDialog(
                     title = request.title,

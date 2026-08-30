@@ -32,7 +32,7 @@ data class StoryPreferences(
     val showCommentsCount: Boolean,
     val compactView: Boolean,
     val thumbnails: Boolean,
-    val previewImageMode: String,
+    val previewImageMode: StoryPreviewMode,
     val borderlessLargePreviewImage: Boolean,
     val showSummary: Boolean,
     val storyTextSize: Float,

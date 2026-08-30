@@ -18,7 +18,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 
 @Composable
@@ -90,7 +90,7 @@ fun AndroidWelcomeSettingsDialog(
         initialExpressive = !styleChooser ||
             storyPreferences.font != "productsans" ||
             storyPreferences.tintCardUsingPreview ||
-            storyPreferences.previewImageMode != StoryPreviewPreferences.OFF,
+            storyPreferences.previewImageMode != StoryPreviewMode.OFF,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
             if (!styleChooser) app.appearance.markWelcomeShown()

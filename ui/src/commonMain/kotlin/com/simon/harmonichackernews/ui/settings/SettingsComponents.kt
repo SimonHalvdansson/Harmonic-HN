@@ -807,15 +807,15 @@ fun SettingsDivider() {
  * preference above the controls, matching custom View preference layouts.
  */
 @Composable
-fun SegmentedSetting(
+fun <T> SegmentedSetting(
     title: String? = null,
     summary: String? = null,
-    options: List<Pair<String, String>>,
-    optionIcons: Map<String, DrawableResource> = emptyMap(),
-    selected: String,
+    options: List<Pair<T, String>>,
+    optionIcons: Map<T, DrawableResource> = emptyMap(),
+    selected: T,
     enabled: Boolean = true,
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
-    onSelected: (String) -> Unit,
+    onSelected: (T) -> Unit,
 ) {
     val hasHeader = !title.isNullOrBlank() || !summary.isNullOrBlank()
     Column(

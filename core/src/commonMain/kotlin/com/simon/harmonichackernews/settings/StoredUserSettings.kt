@@ -151,7 +151,7 @@ class StoredUserSettings(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 thumbnails = boolean(UserPreferenceKeys.THUMBNAILS, true),
                 headerPreviewImageEnabled = headerPreviewImageEnabled,
-                showHeaderPreviewImage = previewImageMode() != StoryPreviewPreferences.OFF &&
+                showHeaderPreviewImage = previewImageMode() != StoryPreviewMode.OFF &&
                     headerPreviewImageEnabled,
                 headerTintEnabled = headerTintEnabled,
                 tintHeader = tintCard && headerTintEnabled,
@@ -290,8 +290,8 @@ class StoredUserSettings(
         integer(UserPreferenceKeys.PALETTE_TINT_TONE, PaletteTintPreferences.DEFAULT_TONE),
     )
 
-    private fun previewImageMode(): String = StoryPreviewPreferences.sanitize(
-        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, StoryPreviewPreferences.SMALL),
+    private fun previewImageMode(): StoryPreviewMode = StoryPreviewMode.fromStored(
+        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, StoryPreviewMode.SMALL.storedValue),
     )
 
     private fun storyTextSize(): Float = TextPreferences.clampStoryTextSize(

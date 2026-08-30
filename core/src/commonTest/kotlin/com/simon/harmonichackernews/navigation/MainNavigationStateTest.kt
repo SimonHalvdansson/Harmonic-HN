@@ -77,20 +77,20 @@ class MainNavigationStateTest {
 
         assertEquals(
             listOf(MainDestination.STORIES, MainDestination.STORY, MainDestination.STORY),
-            store.destinationStack.map(MainNavigationEntry::destination),
+            store.state.value.destinationStack.map(MainNavigationEntry::destination),
         )
         assertEquals(listOf(49_449_677, 49_449_650), store.state.value.storyBackStack.map { it.storyId })
         assertEquals(MainDestination.STORY, store.state.value.storyParentDestination)
         assertEquals(MainDestination.STORIES, store.state.value.storyStackParentDestination)
-        assertEquals(49_449_650, store.storyRequest?.storyId)
+        assertEquals(49_449_650, store.state.value.storyRequest?.storyId)
 
         store.detailRemovedFromBackStack()
 
-        assertEquals(MainDestination.STORY, store.currentDestination)
+        assertEquals(MainDestination.STORY, store.state.value.currentDestination)
         assertEquals(listOf(49_449_677), store.state.value.storyBackStack.map { it.storyId })
         assertEquals(MainDestination.STORIES, store.state.value.storyParentDestination)
         assertEquals(MainDestination.STORIES, store.state.value.storyStackParentDestination)
-        assertEquals(49_449_677, store.storyRequest?.storyId)
+        assertEquals(49_449_677, store.state.value.storyRequest?.storyId)
     }
 
     @Test

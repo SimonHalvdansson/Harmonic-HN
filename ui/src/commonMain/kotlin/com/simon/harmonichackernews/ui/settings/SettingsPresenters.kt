@@ -18,7 +18,7 @@ import com.simon.harmonichackernews.settings.DisplayStylePreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
-import com.simon.harmonichackernews.settings.StoryPreviewPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryStringPreference
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.UserTagsRepository
@@ -40,10 +40,6 @@ class StoriesSettingsPresenter(
         return StoriesSettingsUiState(
             previewModel = previewModel,
             previewImageMode = story.previewImageMode,
-            previewOffValue = StoryPreviewPreferences.OFF,
-            previewSmallValue = StoryPreviewPreferences.SMALL,
-            previewMediumValue = StoryPreviewPreferences.MEDIUM,
-            previewLargeValue = StoryPreviewPreferences.LARGE,
             borderlessLargeImage = story.borderlessLargePreviewImage,
             compact = story.compactView,
             showSummary = story.showSummary,
@@ -98,6 +94,8 @@ class StoriesSettingsPresenter(
     fun setString(setting: StoriesStringSetting, value: String) =
         repository.setStoryString(setting.preference, value)
 
+    fun setPreviewImageMode(value: StoryPreviewMode) = repository.setStoryPreviewMode(value)
+
     fun setTextSizeOffset(offset: Int) =
         repository.setStoryTextSize(TextPreferences.storyTextSizeForOffset(offset))
 
@@ -143,7 +141,7 @@ class CommentsSettingsPresenter(
             storyTintEnabled = settings.story.tintCardUsingPreview,
             showUpButton = comments.showUpButton,
             headerTint = comments.headerTintEnabled,
-            storyPreviewEnabled = settings.story.previewImageMode != StoryPreviewPreferences.OFF,
+            storyPreviewEnabled = settings.story.previewImageMode != StoryPreviewMode.OFF,
             headerPreviewImage = comments.headerPreviewImageEnabled,
             collapseParent = comments.collapseParent,
             collapseTopLevel = comments.collapseTopLevel,
@@ -357,7 +355,6 @@ private val StoriesBooleanSetting.preference: StoryBooleanPreference
 
 private val StoriesStringSetting.preference: StoryStringPreference
     get() = when (this) {
-        StoriesStringSetting.PreviewImageMode -> StoryStringPreference.PREVIEW_IMAGE_MODE
         StoriesStringSetting.DisplayStyle -> StoryStringPreference.DISPLAY_STYLE
     }
 

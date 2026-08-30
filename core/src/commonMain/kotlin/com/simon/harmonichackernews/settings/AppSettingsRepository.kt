@@ -25,7 +25,7 @@ enum class StoryBooleanPreference {
     HIDE_JOBS,
 }
 
-enum class StoryStringPreference { PREVIEW_IMAGE_MODE, DISPLAY_STYLE }
+enum class StoryStringPreference { DISPLAY_STYLE }
 
 enum class CommentBooleanPreference {
     CARD_BORDER,
@@ -110,6 +110,8 @@ class AppSettingsRepository(
 
     fun setStoryString(preference: StoryStringPreference, value: String) =
         mutator.setStoryString(preference, value)
+
+    fun setStoryPreviewMode(value: StoryPreviewMode) = mutator.setStoryPreviewMode(value)
 
     fun setStoryTextSize(value: Float) = mutator.setStoryTextSize(value)
     fun setHotness(value: Int) = mutator.setHotness(value)

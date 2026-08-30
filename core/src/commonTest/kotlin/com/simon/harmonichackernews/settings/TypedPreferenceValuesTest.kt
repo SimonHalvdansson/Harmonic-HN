@@ -24,10 +24,10 @@ class TypedPreferenceValuesTest {
         assertEquals(WebViewPreloadMode.NEVER, WebViewPreloadMode.fromStored("unsupported"))
         assertEquals(AppFont.GOOGLE_SANS_FLEX_ROUNDED, AppFont.fromStored("unsupported"))
         assertEquals(
-            StoryPreviewPreferences.MEDIUM,
-            StoryPreviewPreferences.sanitize(StoryPreviewPreferences.MEDIUM),
+            StoryPreviewMode.MEDIUM,
+            StoryPreviewMode.fromStored(StoryPreviewMode.MEDIUM.storedValue),
         )
-        assertEquals(StoryPreviewPreferences.SMALL, StoryPreviewPreferences.sanitize("unsupported"))
+        assertEquals(StoryPreviewMode.SMALL, StoryPreviewMode.fromStored("unsupported"))
     }
 
     @Test

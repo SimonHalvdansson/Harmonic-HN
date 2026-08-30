@@ -31,24 +31,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
-import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
-import com.simon.harmonichackernews.app.createCommentsStore
 import com.simon.harmonichackernews.navigation.MainStoryRequest
-import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.accountOrNull
-import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
-import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
-import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
-import com.simon.harmonichackernews.presentation.CommentsStore
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
-import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
+import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
@@ -70,10 +63,10 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 private class DesktopCommentsHost(
-    val store: CommentsStore,
-    val controller: CommentsComposeController,
-    var restoringStoredProgress: Boolean,
+    val binding: CommentsFeatureBinding,
 ) {
+    val store get() = binding.store
+    val controller get() = binding.controller
     var webViewSession: DesktopCommentsWebViewSession? = null
 }
 
@@ -89,52 +82,14 @@ internal fun DesktopCommentsContent(
 ) {
     val scope = rememberCoroutineScope()
     val host = remember(app, scene, request.serial, scope) {
-        val sessionState = scene.sessions.commentsStateFor(request.serial, request.storyId)
-        val restoring = sessionState.initialized
-        val store = app.createCommentsStore(
-            CommentsFeatureHost(
+        DesktopCommentsHost(
+            CommentsFeatureBinding.create(
+                app = app,
+                scene = scene,
+                request = request,
                 scope = scope,
-                sessionState = sessionState,
-                platform = app.commentsPlatformDependencies(),
-                userSettings = app.userSettings,
             ),
         )
-        store.start(
-            initialStory = request.destination.toStory(),
-            showWebsite = request.destination.showWebsite,
-            scrollToCommentId = request.route.scrollToCommentId,
-            restoring = restoring,
-            restoredSorting = null,
-        )
-        lateinit var controller: CommentsComposeController
-        lateinit var createdHost: DesktopCommentsHost
-        val callbacks = object : CommentsFeatureListener.PlatformCallbacks {
-            override fun isRestoringScroll(): Boolean = createdHost.restoringStoredProgress
-            override fun canHandleCommentAction(): Boolean = true
-            override fun onCommentActionOverlayVisibilityChanged() = Unit
-            override fun onLinkPreviewOverlayVisibilityChanged() = Unit
-            override fun scrollToSearchResult(commentId: Int) {
-                controller.scrollToSearchResult(commentId)
-            }
-            override fun collapseSheetForWebsite() {
-                controller.requestCollapseSheet()
-            }
-            override fun onSheetProgressChanged(expandedFraction: Float) = Unit
-            override fun onSheetSettled(expanded: Boolean) = Unit
-            override fun onHeaderColorChanged(color: Int) = Unit
-            override fun onHeaderCoverageChanged(coverage: Float) = Unit
-        }
-        val initialState = checkNotNull(store.state.value.story)
-        controller = CommentsComposeController.create(
-            shouldSmoothScroll = { store.state.value.settings?.smoothScroll ?: true },
-            story = initialState,
-            initialThreadCached = store.state.value.initialThreadCached,
-            showWebsite = request.destination.showWebsite,
-            accountUser = store.state.value.accountUser,
-            savedItemState = store.savedItemState,
-            listener = CommentsFeatureListener(store, callbacks),
-        )
-        DesktopCommentsHost(store, controller, restoring).also { createdHost = it }
     }
     val featureState by host.store.state.collectAsState()
     val contentInsetRightPx = with(LocalDensity.current) {
@@ -145,8 +100,7 @@ internal fun DesktopCommentsContent(
     DisposableEffect(host) {
         onDispose {
             onControllerChanged(null)
-            host.store.captureCollapsedComments()
-            host.store.close()
+            host.binding.close()
         }
     }
     LaunchedEffect(featureState, host.controller, contentInsetRightPx) {
@@ -165,59 +119,19 @@ internal fun DesktopCommentsContent(
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
-            when (effect) {
-                is CommentsRuntimeEffect.Platform -> handleDesktopCommentsPlatformEffect(
-                    effect.effect,
+            host.binding.handleEffect(effect, scene) { platformEffect ->
+                handleDesktopCommentsPlatformEffect(
+                    platformEffect,
                     app,
                     scene,
                     host,
                 )
-                is CommentsRuntimeEffect.ShowCommentActions ->
-                    host.controller.showCommentActions(effect.comment)
-                is CommentsRuntimeEffect.ThreadReady -> {
-                    if (effect.restoreScroll && host.restoringStoredProgress) {
-                        host.store.restoreScrollProgress()?.let { restoration ->
-                            host.controller.scrollToComment(
-                                restoration.commentId,
-                                restoration.offset,
-                                false,
-                            )
-                        }
-                    }
-                    host.restoringStoredProgress = false
-                    when (val target = host.store.consumeCommentTarget()) {
-                        is CommentTargetResolution.Found ->
-                            host.controller.scrollToComment(target.commentId, 0, false)
-                        is CommentTargetResolution.NotFound ->
-                            scene.userMessages.show("Comment not found")
-                        CommentTargetResolution.None -> Unit
-                    }
-                }
-                is CommentsRuntimeEffect.ActionFailed -> {
-                    if (effect.presentation.requestLogin) scene.navigation.showLoginDialog()
-                    if (effect.presentation.showDetails) {
-                        scene.navigation.showFailureDetailDialog(
-                            effect.presentation.failureSummary,
-                            effect.presentation.failureDetail,
-                            null,
-                        )
-                    }
-                    if (!effect.presentation.showDetails) {
-                        scene.userMessages.show(effect.presentation.message)
-                    }
-                }
-                is CommentsRuntimeEffect.Diagnostic ->
-                    effect.cause?.printStackTrace()
-                is CommentsRuntimeEffect.StateChanged -> Unit
-                CommentsRuntimeEffect.RequestSummaryPageTextRetry -> Unit
             }
         }
     }
     LaunchedEffect(host) {
-        host.store.updatePresentationCapabilities(
-            CommentsPresentationCapabilities(showInvertAction = false, isTablet = true),
-        )
-        host.store.loadInitial(restoreScrollFromCache = host.restoringStoredProgress)
+        host.binding.updatePresentationCapabilities(isTablet = true)
+        host.binding.loadInitial()
     }
 
     val showFloatingUpButton = showNavigation &&
