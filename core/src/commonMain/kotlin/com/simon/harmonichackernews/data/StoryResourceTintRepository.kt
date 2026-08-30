@@ -96,14 +96,25 @@ class StoryResourceTintRepository(
     ) {
         val prefix = prefix(storyId, kind)
         val key = entryKey(storyId, kind)
-        val index = store.getStringSet(INDEX_KEY) + key
+        val index = store.getStringSet(INDEX_KEY).toMutableSet().apply { add(key) }
+        val evicted = mutableSetOf<String>()
+        val entries = index.iterator()
+        while (index.size > MAX_STORED_ENTRIES && entries.hasNext()) {
+            val candidate = entries.next()
+            if (candidate != key) {
+                entries.remove()
+                evicted.add(candidate)
+            }
+        }
         store.update {
+            evicted.forEach { removeEntry(it) }
             putString("$prefix.source", tint.sourceUrl)
             putInt("$prefix.base", tint.baseColorArgb)
             putString("$prefix.palette", tint.paletteConfigKey)
             putInt("$prefix.tint", tint.tintColorArgb)
             putStringSet(INDEX_KEY, index)
         }
+        invalidateReadCache(evicted)
         invalidateReadCache(storyId, kind)
         cacheRead(
             ReadKey(storyId, kind, tint.sourceUrl, tint.baseColorArgb, tint.paletteConfigKey),
@@ -114,23 +125,31 @@ class StoryResourceTintRepository(
     override fun count(): Int = store.getStringSet(INDEX_KEY).size
 
     override fun clear() {
+        // Release cached URLs and tint objects before SharedPreferences prepares its editor update.
+        readCache.clear()
         val storedKeys = store.keys().filterTo(mutableSetOf()) { key ->
             key == INDEX_KEY || key.startsWith("$PREFIX.")
         }
         if (storedKeys.isNotEmpty()) {
-            storedKeys.forEach(store::remove)
+            store.update {
+                storedKeys.forEach(::remove)
+            }
         } else {
             // Backward-compatible fallback for minimal stores that cannot enumerate keys.
-            store.getStringSet(INDEX_KEY).forEach { key ->
-                val prefix = "$PREFIX.$key"
-                store.remove("$prefix.source")
-                store.remove("$prefix.base")
-                store.remove("$prefix.palette")
-                store.remove("$prefix.tint")
+            val indexedEntries = store.getStringSet(INDEX_KEY)
+            store.update {
+                indexedEntries.forEach { removeEntry(it) }
+                remove(INDEX_KEY)
             }
-            store.remove(INDEX_KEY)
         }
-        readCache.clear()
+    }
+
+    private fun KeyValueStore.Editor.removeEntry(key: String) {
+        val prefix = "$PREFIX.$key"
+        remove("$prefix.source")
+        remove("$prefix.base")
+        remove("$prefix.palette")
+        remove("$prefix.tint")
     }
 
     private fun cacheRead(key: ReadKey, value: StoryResourceTintState?) {
@@ -153,6 +172,15 @@ class StoryResourceTintRepository(
         }
     }
 
+    private fun invalidateReadCache(entryKeys: Set<String>) {
+        if (entryKeys.isEmpty()) return
+        val entries = readCache.entries.iterator()
+        while (entries.hasNext()) {
+            val key = entries.next().key
+            if (entryKey(key.storyId, key.kind) in entryKeys) entries.remove()
+        }
+    }
+
     private fun prefix(storyId: Int, kind: StoryResourceTintKind): String =
         "$PREFIX.${entryKey(storyId, kind)}"
 
@@ -163,6 +191,7 @@ class StoryResourceTintRepository(
         const val PREFIX = "story_resource_tint"
         const val INDEX_KEY = "$PREFIX.index"
         const val MAX_READ_CACHE_ENTRIES = 512
+        const val MAX_STORED_ENTRIES = MAX_READ_CACHE_ENTRIES
 
         data class ReadKey(
             val storyId: Int,
