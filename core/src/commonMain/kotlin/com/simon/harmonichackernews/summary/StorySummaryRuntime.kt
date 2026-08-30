@@ -305,10 +305,11 @@ class StorySummaryRuntime(
         val previouslyObservedFirstOutput = current.timeToFirstOutputMillis
         val firstOutputMillis = previouslyObservedFirstOutput
             ?: elapsedMillis.takeIf { text.isNotBlank() }
-        val generationMillis = if (complete && previouslyObservedFirstOutput != null) {
-            (elapsedMillis - previouslyObservedFirstOutput).coerceAtLeast(0L)
-        } else {
-            null
+        val generationMillis = when {
+            previouslyObservedFirstOutput != null ->
+                (elapsedMillis - previouslyObservedFirstOutput).coerceAtLeast(0L)
+            !complete && firstOutputMillis != null -> 0L
+            else -> null
         }
         val estimatedTokens = estimateTokenCount(text)
         val estimatedRate = generationMillis
@@ -322,7 +323,7 @@ class StorySummaryRuntime(
                 } else {
                     null
                 },
-            totalTimeMillis = elapsedMillis.takeIf { complete },
+            totalTimeMillis = elapsedMillis,
             generationTimeMillis = generationMillis,
             outputCharacters = text.length,
             estimatedOutputTokens = estimatedTokens,

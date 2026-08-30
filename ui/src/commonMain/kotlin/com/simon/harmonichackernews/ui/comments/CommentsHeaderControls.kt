@@ -246,6 +246,7 @@ fun StorySummary(
         StorySummaryInfoDialog(
             summary = summary,
             diagnostics = diagnostics,
+            streaming = streaming,
             onDismiss = { showInfoDialog = false },
         )
     }

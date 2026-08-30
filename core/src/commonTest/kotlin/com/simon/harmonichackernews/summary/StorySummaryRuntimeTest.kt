@@ -1,13 +1,16 @@
 package com.simon.harmonichackernews.summary
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import com.simon.harmonichackernews.platform.LocalSummaryEngine
 import com.simon.harmonichackernews.platform.SummaryRequest
@@ -31,6 +34,32 @@ class StorySummaryRuntimeTest {
 
         assertEquals("complete", runtime.state.value.text)
         assertEquals("debug", runtime.state.value.debugInfo)
+        assertIs<StorySummaryStatus.Success>(runtime.state.value.status)
+    }
+
+    @Test
+    fun progressPublishesRunningTimingSnapshot() = runTest {
+        val finish = CompletableDeferred<Unit>()
+        val backend = StorySummaryBackend {
+            flow {
+                emit(StorySummaryEvent.Progress("partial"))
+                finish.await()
+                emit(StorySummaryEvent.Success("complete"))
+            }
+        }
+        val runtime = StorySummaryRuntime(this, backend, failingBackend())
+
+        runtime.start(StorySummaryMode.CLOUD, StorySummaryInput("https://example.com"))
+        runCurrent()
+
+        val running = assertNotNull(runtime.state.value.diagnostics)
+        assertIs<StorySummaryStatus.Running>(runtime.state.value.status)
+        assertNotNull(running.totalTimeMillis)
+        assertNotNull(running.timeToFirstOutputMillis)
+        assertEquals(0L, running.generationTimeMillis)
+
+        finish.complete(Unit)
+        advanceUntilIdle()
         assertIs<StorySummaryStatus.Success>(runtime.state.value.status)
     }
 
