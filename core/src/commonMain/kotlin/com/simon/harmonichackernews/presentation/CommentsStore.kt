@@ -23,6 +23,7 @@ data class CommentsState(
     val presenter: CommentsPresenterState = CommentsPresenterState(),
     val settings: CommentsSettingsState? = null,
     val summaryLoading: Boolean = false,
+    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics? = null,
     val headerPreviewResource: com.simon.harmonichackernews.network.StoryPreviewResourceState? = null,
 ) {
     val thread: PortableCommentThreadState get() = presenter.thread
@@ -197,6 +198,7 @@ class CommentsStore internal constructor(
         presenter = runtime.presenter.state.value,
         settings = runtime.settingsState.value,
         summaryLoading = runtime.summaryLoading,
+        summaryDiagnostics = runtime.summaryDiagnostics,
         headerPreviewResource = runtime.headerPreviewResource,
     )
 }

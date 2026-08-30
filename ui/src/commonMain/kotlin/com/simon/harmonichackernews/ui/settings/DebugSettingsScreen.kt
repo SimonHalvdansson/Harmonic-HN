@@ -96,11 +96,9 @@ fun DebugSettingsScreen(
     showNavigation: Boolean,
     contentVersion: Int,
     alwaysShowTapToRefresh: Boolean,
-    showAiSummaryDebugInfo: Boolean,
     environment: DebugEnvironmentUiState,
     onBack: () -> Unit,
     onAlwaysShowTapToRefreshChanged: (Boolean) -> Unit,
-    onShowAiSummaryDebugInfoChanged: (Boolean) -> Unit,
     onOpenHnId: (Int) -> Unit,
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
@@ -125,13 +123,6 @@ fun DebugSettingsScreen(
                     icon = Res.drawable.ic_refresh,
                     checked = alwaysShowTapToRefresh,
                     onCheckedChange = onAlwaysShowTapToRefreshChanged,
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Additional AI summary debug info",
-                    icon = Res.drawable.ic_info,
-                    checked = showAiSummaryDebugInfo,
-                    onCheckedChange = onShowAiSummaryDebugInfoChanged,
                 )
                 SettingsDivider()
                 DebugHnIdSetting(onOpenId = onOpenHnId)

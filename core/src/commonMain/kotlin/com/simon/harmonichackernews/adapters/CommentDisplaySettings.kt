@@ -29,6 +29,8 @@ data class CommentDisplaySettings(
     val collectReferenceLinks: Boolean,
     val hasAccountDetails: Boolean,
     val canProvideSummary: Boolean,
+    val showAdditionalSummaryInfo: Boolean,
+    val enableSummaryBoldFormatting: Boolean,
 ) {
     companion object {
         fun from(
@@ -37,6 +39,8 @@ data class CommentDisplaySettings(
             isTablet: Boolean,
             hasAccountDetails: Boolean,
             canProvideSummary: Boolean,
+            showAdditionalSummaryInfo: Boolean = false,
+            enableSummaryBoldFormatting: Boolean = true,
         ): CommentDisplaySettings = CommentDisplaySettings(
             collapseParent = preferences.collapseParent,
             showThumbnail = preferences.thumbnails,
@@ -65,6 +69,8 @@ data class CommentDisplaySettings(
             collectReferenceLinks = preferences.collectReferenceLinks,
             hasAccountDetails = hasAccountDetails,
             canProvideSummary = canProvideSummary,
+            showAdditionalSummaryInfo = showAdditionalSummaryInfo,
+            enableSummaryBoldFormatting = enableSummaryBoldFormatting,
         )
     }
 }

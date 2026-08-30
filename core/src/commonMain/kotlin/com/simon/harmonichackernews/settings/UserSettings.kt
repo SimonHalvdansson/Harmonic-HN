@@ -148,7 +148,6 @@ data class AppearancePreferences(
 
 data class DebugPreferences(
     val alwaysShowTapToRefresh: Boolean,
-    val showAiSummaryDebugInfo: Boolean,
 )
 
 data class AppSettings(

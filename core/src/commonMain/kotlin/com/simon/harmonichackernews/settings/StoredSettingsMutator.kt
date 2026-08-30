@@ -234,8 +234,6 @@ class StoredSettingsMutator(
             when (preference) {
                 DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH ->
                     UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH
-                DebugBooleanPreference.SHOW_AI_SUMMARY_INFO ->
-                    UserPreferenceKeys.DEBUG_SHOW_AI_SUMMARY_INFO
             },
             value,
         )

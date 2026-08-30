@@ -73,6 +73,7 @@ import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
 import com.simon.harmonichackernews.summary.GEMINI_NANO_POLICY_BLOCKED_MESSAGE
+import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
@@ -138,9 +139,11 @@ data class PollOptionUi(
 fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
+    diagnostics: StorySummaryDiagnostics? = null,
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
 ) {
     val summary = story.summary.orEmpty()
+    var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
         summary == GEMINI_NANO_POLICY_BLOCKED_MESSAGE
     val typography = rememberContentTypography(
@@ -165,7 +168,10 @@ fun StorySummary(
                 .border(1.dp, HarmonicTheme.colors.commentDivider, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     painterResource(Res.drawable.ic_auto_awesome),
                     contentDescription = null,
@@ -179,6 +185,20 @@ fun StorySummary(
                     fontWeight = FontWeight.Bold,
                     color = HarmonicTheme.colors.storyNormal,
                 )
+                Spacer(Modifier.weight(1f))
+                if (settings.showAdditionalSummaryInfo) {
+                    IconButton(
+                        onClick = { showInfoDialog = true },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_info),
+                            contentDescription = "AI summary info",
+                            modifier = Modifier.size(18.dp),
+                            tint = HarmonicTheme.colors.textSecondary,
+                        )
+                    }
+                }
             }
             if (policyBlocked) {
                 Row(
@@ -213,10 +233,18 @@ fun StorySummary(
                         fontFamily = typography.family,
                         fontSize = typography.commentTextSize.sp,
                         lineHeight = (typography.commentTextSize + 2f).sp,
+                        enableBoldFormatting = settings.enableSummaryBoldFormatting,
                     )
                 }
             }
         }
+    }
+    if (showInfoDialog) {
+        StorySummaryInfoDialog(
+            summary = summary,
+            diagnostics = diagnostics,
+            onDismiss = { showInfoDialog = false },
+        )
     }
 }
 

@@ -34,6 +34,7 @@ internal fun SummaryMarkdownText(
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
+    enableBoldFormatting: Boolean = true,
 ) {
     val indentPrefix = remember(markdown) { summaryMarkdownHangingIndentPrefix(markdown) }
     val textMeasurer = rememberTextMeasurer()
@@ -48,8 +49,8 @@ internal fun SummaryMarkdownText(
             with(density) { width.toSp() }
         }
     }
-    val rendered = remember(markdown, linkColor) {
-        summaryMarkdownAnnotatedString(markdown, linkColor)
+    val rendered = remember(markdown, linkColor, enableBoldFormatting) {
+        summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting)
     }
     Text(
         text = rendered,
@@ -74,6 +75,7 @@ internal fun SummaryMarkdownText(
 internal fun summaryMarkdownAnnotatedString(
     markdown: String,
     linkColor: Color = Color.Unspecified,
+    enableBoldFormatting: Boolean = true,
 ): AnnotatedString = buildAnnotatedString {
     val lines = compactSummaryMarkdownListSpacing(
         markdown.stripMarkdownHtmlComments().trim().lines(),
@@ -99,20 +101,28 @@ internal fun summaryMarkdownAnnotatedString(
             bulletItem != null -> {
                 val task = bulletItem.markdownTaskItemContent()
                 append(task?.first ?: "• ")
-                appendSummaryMarkdownInline(task?.second ?: bulletItem, linkColor)
+                appendSummaryMarkdownInline(
+                    task?.second ?: bulletItem,
+                    linkColor,
+                    enableBoldFormatting,
+                )
             }
 
             numberedItem != null -> {
                 val (number, content) = numberedItem
                 append(number)
                 append(". ")
-                appendSummaryMarkdownInline(content, linkColor)
+                appendSummaryMarkdownInline(content, linkColor, enableBoldFormatting)
             }
 
             trimmedStart.startsWith("#") -> {
                 val heading = trimmedStart.trimStart('#').trimStart()
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    appendSummaryMarkdownInline(heading, linkColor)
+                if (enableBoldFormatting) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        appendSummaryMarkdownInline(heading, linkColor, true)
+                    }
+                } else {
+                    appendSummaryMarkdownInline(heading, linkColor, false)
                 }
             }
 
@@ -120,16 +130,24 @@ internal fun summaryMarkdownAnnotatedString(
                 val quote = trimmedStart.drop(2)
                 val alert = quote.markdownAlertLabel()
                 if (alert != null) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(alert) }
+                    if (enableBoldFormatting) {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(alert) }
+                    } else {
+                        append(alert)
+                    }
                 } else {
                     append("› ")
                     withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                        appendSummaryMarkdownInline(quote, linkColor)
+                        appendSummaryMarkdownInline(quote, linkColor, enableBoldFormatting)
                     }
                 }
             }
 
-            else -> appendSummaryMarkdownInline(line.stripMarkdownHtmlTags(), linkColor)
+            else -> appendSummaryMarkdownInline(
+                line.stripMarkdownHtmlTags(),
+                linkColor,
+                enableBoldFormatting,
+            )
         }
     }
 }
@@ -213,6 +231,7 @@ private fun String.stripMarkdownHtmlTags(): String =
 private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     source: String,
     linkColor: Color,
+    enableBoldFormatting: Boolean,
 ) {
     var index = 0
     while (index < source.length) {
@@ -235,8 +254,13 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
                     append(delimiter)
                     index += 2
                 } else {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        appendSummaryMarkdownInline(source.substring(index + 2, end), linkColor)
+                    val content = source.substring(index + 2, end)
+                    if (enableBoldFormatting) {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                            appendSummaryMarkdownInline(content, linkColor, true)
+                        }
+                    } else {
+                        appendSummaryMarkdownInline(content, linkColor, false)
                     }
                     index = end + 2
                 }
@@ -269,7 +293,7 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
                         textDecoration = TextDecoration.Underline,
                     )
                     withLink(LinkAnnotation.Url(url, TextLinkStyles(linkStyle))) {
-                        appendSummaryMarkdownInline(label, linkColor)
+                        appendSummaryMarkdownInline(label, linkColor, enableBoldFormatting)
                     }
                     index = urlEnd + 1
                 }
@@ -283,7 +307,11 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
                     index++
                 } else {
                     withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                        appendSummaryMarkdownInline(source.substring(index + 1, end), linkColor)
+                        appendSummaryMarkdownInline(
+                            source.substring(index + 1, end),
+                            linkColor,
+                            enableBoldFormatting,
+                        )
                     }
                     index = end + 1
                 }

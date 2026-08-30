@@ -49,7 +49,6 @@ class StoredUserSettingsTest {
         assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
-        assertFalse(settings.debug.showAiSummaryDebugInfo)
     }
 
     @Test

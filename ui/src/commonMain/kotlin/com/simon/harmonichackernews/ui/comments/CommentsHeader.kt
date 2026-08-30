@@ -300,6 +300,7 @@ fun CommentsHeader(
                             StorySummary(
                                 story = story,
                                 settings = settings,
+                                diagnostics = controller.summaryDiagnostics,
                                 containerColor = summaryContainerColor,
                             )
                             HeaderMeta(

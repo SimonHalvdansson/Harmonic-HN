@@ -44,6 +44,7 @@ data class CommentsScreenState(
     val storyFavoriteLoading: Boolean = false,
     val pollVoteInFlightOptionId: Int? = null,
     val storySummaryLoading: Boolean = false,
+    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics? = null,
     val headerPreviewResource: StoryPreviewResourceState? = null,
     val commentFavoriteLoadingId: Int = -1,
     val commentVoteLoadingId: Int = -1,
@@ -101,6 +102,8 @@ class CommentsComposeController private constructor(
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
     val storySummaryLoading: Boolean get() = screenState.storySummaryLoading
+    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics?
+        get() = screenState.summaryDiagnostics
     val headerPreviewResource: StoryPreviewResourceState?
         get() = screenState.headerPreviewResource
     val searchQuery: String get() = screenState.searchQuery

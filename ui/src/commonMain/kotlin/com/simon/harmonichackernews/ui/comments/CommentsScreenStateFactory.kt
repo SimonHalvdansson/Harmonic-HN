@@ -51,6 +51,7 @@ object CommentsScreenStateFactory {
             storyFavoriteLoading = state.storyFavoriteLoading,
             pollVoteInFlightOptionId = state.pollVoteInFlightOptionId,
             storySummaryLoading = feature.summaryLoading,
+            summaryDiagnostics = feature.summaryDiagnostics,
             headerPreviewResource = feature.headerPreviewResource,
             commentFavoriteLoadingId = state.commentFavoriteLoadingId,
             commentVoteLoadingId = state.commentVoteLoadingId,

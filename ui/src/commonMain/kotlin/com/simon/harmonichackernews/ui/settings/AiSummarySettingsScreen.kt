@@ -32,6 +32,8 @@ data class AiSummarySettingsUiState(
     val systemPrompt: String,
     val streamResponses: Boolean,
     val autoSummarizeArticles: Boolean,
+    val enableBoldFormatting: Boolean,
+    val showAdditionalInfo: Boolean,
     val geminiNanoSelected: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
 )
@@ -47,6 +49,8 @@ fun AiSummarySettingsScreen(
     onGeminiNanoSummaryModeSelected: (GeminiNanoSummaryMode) -> Unit,
     onStreamChanged: (Boolean) -> Unit,
     onAutoSummarizeChanged: (Boolean) -> Unit,
+    onEnableBoldFormattingChanged: (Boolean) -> Unit,
+    onShowAdditionalInfoChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
     localModelsContent: @Composable () -> Unit,
 ) {
@@ -196,6 +200,20 @@ fun AiSummarySettingsScreen(
                     icon = Res.drawable.ic_auto_awesome,
                     checked = state.autoSummarizeArticles,
                     onCheckedChange = onAutoSummarizeChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Enable bold formatting",
+                    icon = Res.drawable.ic_format_bold,
+                    checked = state.enableBoldFormatting,
+                    onCheckedChange = onEnableBoldFormattingChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Show additional info",
+                    icon = Res.drawable.ic_info,
+                    checked = state.showAdditionalInfo,
+                    onCheckedChange = onShowAdditionalInfoChanged,
                 )
             }
         }

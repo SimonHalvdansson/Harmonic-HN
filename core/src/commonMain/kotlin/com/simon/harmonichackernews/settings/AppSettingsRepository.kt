@@ -62,7 +62,7 @@ enum class AppearanceBooleanPreference { SPECIAL_NIGHTTIME, TRANSPARENT_STATUS_B
 
 enum class GeneralBooleanPreference { BOOKMARKS_ENABLED, SHOW_CHANGELOG }
 
-enum class DebugBooleanPreference { ALWAYS_SHOW_TAP_TO_REFRESH, SHOW_AI_SUMMARY_INFO }
+enum class DebugBooleanPreference { ALWAYS_SHOW_TAP_TO_REFRESH }
 
 /**
  * Observable, platform-neutral settings facade.

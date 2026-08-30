@@ -139,6 +139,9 @@ class CommentsFeatureRuntime(
         get() = summaryPageTextRetryPending ||
             summaryRuntime?.state?.value?.status is StorySummaryStatus.Running
 
+    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics?
+        get() = summaryRuntime?.state?.value?.diagnostics
+
     init {
         scope.launch {
             presenter.effects.collect(::applyPresenterEffect)
@@ -259,6 +262,8 @@ class CommentsFeatureRuntime(
             isTablet = capabilities.isTablet,
             hasAccountDetails = hasAccount,
             canProvideSummary = story?.isLink == true && canProvideSummary,
+            showAdditionalSummaryInfo = aiSnapshot?.showAdditionalInfo ?: false,
+            enableSummaryBoldFormatting = aiSnapshot?.enableBoldFormatting ?: true,
         )
         val reading = settings.reading
         val next = CommentsSettingsState(

@@ -241,6 +241,7 @@ internal class AndroidLocalSummaryBackend(
                         trySend(
                             StorySummaryEvent.DebugInfo(
                                 SummaryFormatting.formatLoadInfo(selected.displayName, loadMillis),
+                                modelLoadMillis = loadMillis,
                             ),
                         )
                     },

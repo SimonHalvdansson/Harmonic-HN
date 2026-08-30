@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
 
 enum class StorySummaryMode {
     CLOUD,
@@ -35,7 +36,10 @@ data class StorySummaryInput(
 }
 
 sealed interface StorySummaryEvent {
-    data class DebugInfo(val value: String) : StorySummaryEvent
+    data class DebugInfo(
+        val value: String,
+        val modelLoadMillis: Long? = null,
+    ) : StorySummaryEvent
     data class Progress(val text: String) : StorySummaryEvent
     data class Success(val text: String) : StorySummaryEvent
     data class Failure(val message: String) : StorySummaryEvent
@@ -127,12 +131,27 @@ sealed interface StorySummaryStatus {
 data class StorySummaryState(
     val text: String? = null,
     val debugInfo: String? = null,
+    val diagnostics: StorySummaryDiagnostics? = null,
     val status: StorySummaryStatus = StorySummaryStatus.Idle,
     val generation: Long = 0,
 ) {
     val complete: Boolean
         get() = status is StorySummaryStatus.Success || status is StorySummaryStatus.Failure
 }
+
+data class StorySummaryDiagnostics(
+    val mode: StorySummaryMode,
+    val backendDetails: String? = null,
+    val modelLoadMillis: Long? = null,
+    val inputCharacters: Int = 0,
+    val timeToFirstOutputMillis: Long? = null,
+    val postLoadToFirstOutputMillis: Long? = null,
+    val totalTimeMillis: Long? = null,
+    val generationTimeMillis: Long? = null,
+    val outputCharacters: Int = 0,
+    val estimatedOutputTokens: Int = 0,
+    val estimatedTokensPerSecond: Double? = null,
+)
 
 /**
  * Platform-neutral state machine for story summarization.
@@ -158,42 +177,85 @@ class StorySummaryRuntime(
     ) {
         activeJob?.cancel()
         val generation = state.value.generation + 1
+        val startedAt = TimeSource.Monotonic.markNow()
         mutableState.value = StorySummaryState(
             text = currentText,
+            diagnostics = StorySummaryDiagnostics(
+                mode = mode,
+                inputCharacters = input.articleText?.length ?: 0,
+            ),
             status = StorySummaryStatus.Running,
             generation = generation,
         )
         activeJob = scope.launch {
             var reachedTerminalState = false
+            var modelReadyAtMillis: Long? = null
             try {
                 backend(mode).summarize(input).collect { event ->
                     if (generation != mutableState.value.generation) return@collect
                     when (event) {
-                        is StorySummaryEvent.DebugInfo -> mutableState.value =
-                            mutableState.value.copy(debugInfo = event.value)
-                        is StorySummaryEvent.Progress -> mutableState.value =
-                            mutableState.value.copy(text = event.text)
-                        is StorySummaryEvent.Success -> {
-                            reachedTerminalState = true
+                        is StorySummaryEvent.DebugInfo -> {
+                            if (event.modelLoadMillis != null) {
+                                modelReadyAtMillis = startedAt.elapsedNow().inWholeMilliseconds
+                            }
+                            mutableState.value = mutableState.value.copy(
+                                debugInfo = event.value,
+                                diagnostics = mutableState.value.diagnostics?.copy(
+                                    backendDetails = event.value,
+                                    modelLoadMillis = event.modelLoadMillis,
+                                ),
+                            )
+                        }
+                        is StorySummaryEvent.Progress -> {
+                            val elapsedMillis = startedAt.elapsedNow().inWholeMilliseconds
                             mutableState.value = mutableState.value.copy(
                                 text = event.text,
+                                diagnostics = outputDiagnostics(
+                                    current = mutableState.value.diagnostics,
+                                    text = event.text,
+                                    elapsedMillis = elapsedMillis,
+                                    complete = false,
+                                    modelReadyAtMillis = modelReadyAtMillis,
+                                ),
+                            )
+                        }
+                        is StorySummaryEvent.Success -> {
+                            reachedTerminalState = true
+                            val elapsedMillis = startedAt.elapsedNow().inWholeMilliseconds
+                            mutableState.value = mutableState.value.copy(
+                                text = event.text,
+                                diagnostics = outputDiagnostics(
+                                    current = mutableState.value.diagnostics,
+                                    text = event.text,
+                                    elapsedMillis = elapsedMillis,
+                                    complete = true,
+                                    modelReadyAtMillis = modelReadyAtMillis,
+                                ),
                                 status = StorySummaryStatus.Success,
                             )
                         }
                         is StorySummaryEvent.Failure -> {
                             reachedTerminalState = true
-                            fail(mode, event.message)
+                            fail(mode, event.message, startedAt.elapsedNow().inWholeMilliseconds)
                         }
                     }
                 }
                 if (!reachedTerminalState && generation == mutableState.value.generation) {
-                    fail(mode, "Summary provider completed without a result")
+                    fail(
+                        mode,
+                        "Summary provider completed without a result",
+                        startedAt.elapsedNow().inWholeMilliseconds,
+                    )
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 if (generation == mutableState.value.generation) {
-                    fail(mode, error.message?.takeIf(String::isNotBlank) ?: "Unknown error")
+                    fail(
+                        mode,
+                        error.message?.takeIf(String::isNotBlank) ?: "Unknown error",
+                        startedAt.elapsedNow().inWholeMilliseconds,
+                    )
                 }
             }
         }
@@ -212,7 +274,7 @@ class StorySummaryRuntime(
         StorySummaryMode.LOCAL -> localBackend
     }
 
-    private fun fail(mode: StorySummaryMode, detail: String) {
+    private fun fail(mode: StorySummaryMode, detail: String, elapsedMillis: Long) {
         val policyBlocked = mode == StorySummaryMode.LOCAL &&
             detail.contains("ErrorCode 11", ignoreCase = true) &&
             detail.contains("policy check", ignoreCase = true)
@@ -227,10 +289,53 @@ class StorySummaryRuntime(
         }
         mutableState.value = mutableState.value.copy(
             text = message,
+            diagnostics = mutableState.value.diagnostics?.copy(totalTimeMillis = elapsedMillis),
             status = StorySummaryStatus.Failure(message),
         )
     }
+
+    private fun outputDiagnostics(
+        current: StorySummaryDiagnostics?,
+        text: String,
+        elapsedMillis: Long,
+        complete: Boolean,
+        modelReadyAtMillis: Long?,
+    ): StorySummaryDiagnostics? {
+        current ?: return null
+        val previouslyObservedFirstOutput = current.timeToFirstOutputMillis
+        val firstOutputMillis = previouslyObservedFirstOutput
+            ?: elapsedMillis.takeIf { text.isNotBlank() }
+        val generationMillis = if (complete && previouslyObservedFirstOutput != null) {
+            (elapsedMillis - previouslyObservedFirstOutput).coerceAtLeast(0L)
+        } else {
+            null
+        }
+        val estimatedTokens = estimateTokenCount(text)
+        val estimatedRate = generationMillis
+            ?.takeIf { it > 0L && estimatedTokens > 0 }
+            ?.let { estimatedTokens * 1_000.0 / it }
+        return current.copy(
+            timeToFirstOutputMillis = firstOutputMillis,
+            postLoadToFirstOutputMillis = current.postLoadToFirstOutputMillis
+                ?: if (firstOutputMillis != null && modelReadyAtMillis != null) {
+                    (firstOutputMillis - modelReadyAtMillis).coerceAtLeast(0L)
+                } else {
+                    null
+                },
+            totalTimeMillis = elapsedMillis.takeIf { complete },
+            generationTimeMillis = generationMillis,
+            outputCharacters = text.length,
+            estimatedOutputTokens = estimatedTokens,
+            estimatedTokensPerSecond = estimatedRate,
+        )
+    }
 }
+
+private fun estimateTokenCount(text: String): Int =
+    if (text.isBlank()) 0 else (text.length + ESTIMATED_CHARACTERS_PER_TOKEN - 1) /
+        ESTIMATED_CHARACTERS_PER_TOKEN
+
+private const val ESTIMATED_CHARACTERS_PER_TOKEN = 4
 
 class CloudStorySummaryBackend(
     private val useCase: SummaryUseCase,

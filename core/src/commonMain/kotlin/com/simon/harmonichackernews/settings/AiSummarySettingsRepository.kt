@@ -27,6 +27,8 @@ object AiSummaryPreferenceKeys {
     const val STREAM_RESPONSES = "pref_ai_summary_stream_responses"
     const val AUTO_SUMMARIZE_ARTICLES = "pref_ai_summary_auto_summarize_articles"
     const val GEMINI_NANO_SUMMARY_MODE = "pref_ai_summary_gemini_nano_summary_mode"
+    const val ENABLE_BOLD_FORMATTING = "pref_ai_summary_enable_bold_formatting"
+    const val SHOW_ADDITIONAL_INFO = "pref_debug_show_llm_summary_info"
 }
 
 enum class GeminiNanoSummaryMode(val storedValue: String) {
@@ -61,6 +63,8 @@ data class AiSummarySettingsSnapshot(
     val streamResponses: Boolean,
     val autoSummarizeArticles: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
+    val enableBoldFormatting: Boolean,
+    val showAdditionalInfo: Boolean,
     val credentialsLoaded: Boolean = true,
 ) {
     val cloudConfigurationComplete: Boolean
@@ -119,6 +123,14 @@ class AiSummarySettingsRepository(
         geminiNanoSummaryMode = GeminiNanoSummaryMode.fromStored(
             store.getString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE),
         ),
+        enableBoldFormatting = store.getBoolean(
+            AiSummaryPreferenceKeys.ENABLE_BOLD_FORMATTING,
+            true,
+        ),
+        showAdditionalInfo = store.getBoolean(
+            AiSummaryPreferenceKeys.SHOW_ADDITIONAL_INFO,
+            false,
+        ),
         credentialsLoaded = apiKeyState.value != null,
     )
 
@@ -156,6 +168,14 @@ class AiSummarySettingsRepository(
 
     fun setGeminiNanoSummaryMode(value: GeminiNanoSummaryMode) {
         store.putString(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE, value.storedValue)
+    }
+
+    fun setEnableBoldFormatting(value: Boolean) {
+        store.putBoolean(AiSummaryPreferenceKeys.ENABLE_BOLD_FORMATTING, value)
+    }
+
+    fun setShowAdditionalInfo(value: Boolean) {
+        store.putBoolean(AiSummaryPreferenceKeys.SHOW_ADDITIONAL_INFO, value)
     }
 
     fun disableIfConfigurationIncomplete(

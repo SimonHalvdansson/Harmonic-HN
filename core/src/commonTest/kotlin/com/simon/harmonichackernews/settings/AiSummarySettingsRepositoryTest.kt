@@ -26,6 +26,8 @@ class AiSummarySettingsRepositoryTest {
         assertEquals(CloudSummaryDefaults.SYSTEM_PROMPT, settings.systemPrompt)
         assertEquals(GeminiNanoSummaryMode.THREE_BULLETS, settings.geminiNanoSummaryMode)
         assertFalse(settings.autoSummarizeArticles)
+        assertTrue(settings.enableBoldFormatting)
+        assertFalse(settings.showAdditionalInfo)
         assertFalse(settings.cloudConfigurationComplete)
         assertFalse(settings.enabled(localConfigurationReady = false))
     }
@@ -108,12 +110,16 @@ class AiSummarySettingsRepositoryTest {
 
         repository.setAutoSummarizeArticles(true)
         repository.setGeminiNanoSummaryMode(GeminiNanoSummaryMode.SYSTEM_PROMPT)
+        repository.setEnableBoldFormatting(false)
+        repository.setShowAdditionalInfo(true)
 
         assertTrue(repository.snapshot().autoSummarizeArticles)
         assertEquals(
             GeminiNanoSummaryMode.SYSTEM_PROMPT,
             repository.snapshot().geminiNanoSummaryMode,
         )
+        assertFalse(repository.snapshot().enableBoldFormatting)
+        assertTrue(repository.snapshot().showAdditionalInfo)
     }
 }
 

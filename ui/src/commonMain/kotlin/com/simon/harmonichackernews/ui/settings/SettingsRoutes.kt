@@ -156,6 +156,8 @@ fun AiSummarySettingsRoute(
             systemPrompt = persistedSettings.systemPrompt,
             streamResponses = persistedSettings.streamResponses,
             autoSummarizeArticles = persistedSettings.autoSummarizeArticles,
+            enableBoldFormatting = persistedSettings.enableBoldFormatting,
+            showAdditionalInfo = persistedSettings.showAdditionalInfo,
             geminiNanoSelected = geminiNanoAvailable &&
                 selectedLocalModelId ==
                 com.simon.harmonichackernews.summary.LocalModelCatalog.MODEL_GEMINI_NANO,
@@ -175,6 +177,8 @@ fun AiSummarySettingsRoute(
         onGeminiNanoSummaryModeSelected = repository::setGeminiNanoSummaryMode,
         onStreamChanged = repository::setStreamResponses,
         onAutoSummarizeChanged = repository::setAutoSummarizeArticles,
+        onEnableBoldFormattingChanged = repository::setEnableBoldFormatting,
+        onShowAdditionalInfoChanged = repository::setShowAdditionalInfo,
         onDialogRequested = { dialog = it },
         localModelsContent = localModelsContent,
     )
@@ -201,14 +205,10 @@ fun DebugSettingsRoute(
         showNavigation = showNavigation,
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
-        showAiSummaryDebugInfo = settings.debug.showAiSummaryDebugInfo,
         environment = environment,
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH, it)
-        },
-        onShowAiSummaryDebugInfoChanged = {
-            repository.setDebugBoolean(DebugBooleanPreference.SHOW_AI_SUMMARY_INFO, it)
         },
         onOpenHnId = onOpenHnId,
         onOpenWithoutCache = onOpenWithoutCache,

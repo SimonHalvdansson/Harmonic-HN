@@ -455,6 +455,7 @@ private class DesktopLocalSummaryEngine(
                     trySend(
                         StorySummaryEvent.DebugInfo(
                             SummaryFormatting.formatLoadInfo(selected.displayName, loadMillis),
+                            modelLoadMillis = loadMillis,
                         ),
                     )
                 },
