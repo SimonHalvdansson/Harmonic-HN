@@ -16,7 +16,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -30,7 +32,6 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_hard_drive
-import com.simon.harmonichackernews.resources.quanta
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.DataSettingsCounts
@@ -101,6 +102,12 @@ import org.jetbrains.compose.resources.painterResource
 private const val DesktopOpenWithoutCacheStoryId = 49089500
 
 @Composable
+private fun rememberDesktopAppIconPainter(): Painter = remember {
+    checkNotNull(desktopAppIconImage) { "The bundled Harmonic desktop app icon is missing" }
+        .toPainter()
+}
+
+@Composable
 internal fun DesktopSettingsDetail(
     section: SettingsSection,
     app: HarmonicAppComposition,
@@ -146,7 +153,7 @@ internal fun DesktopSettingsDetail(
         )
         SettingsSection.About -> AboutScreen(
             versionLabel = app.metadata.versionLabel,
-            appIcon = painterResource(Res.drawable.quanta),
+            appIcon = rememberDesktopAppIconPainter(),
             onBack = onBack,
             onOpenGithub = { scene.links.open(app.metadata.projectUrl) },
             onOpenChangelog = scene.navigation::showChangelogDialog,
@@ -299,7 +306,7 @@ private fun DesktopAppearanceSettings(
                         ),
                         launcherIcon = {
                             Image(
-                                painter = painterResource(Res.drawable.quanta),
+                                painter = rememberDesktopAppIconPainter(),
                                 contentDescription = null,
                                 modifier = Modifier.size(72.dp),
                             )
@@ -743,7 +750,7 @@ internal fun DesktopWelcomeDialog(app: HarmonicAppComposition, onDismiss: () -> 
         ),
         launcherIcon = {
             Image(
-                painterResource(Res.drawable.quanta),
+                rememberDesktopAppIconPainter(),
                 contentDescription = null,
                 modifier = Modifier.size(72.dp),
             )

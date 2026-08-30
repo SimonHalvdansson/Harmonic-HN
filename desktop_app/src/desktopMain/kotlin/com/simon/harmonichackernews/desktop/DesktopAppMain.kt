@@ -80,9 +80,11 @@ import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import kotlinx.coroutines.delay
 
+internal val desktopAppIconImage: BufferedImage? by lazy(::loadDesktopAppIcon)
+
 fun main() {
     System.setProperty("apple.awt.application.name", "Harmonic")
-    val desktopAppIcon = loadDesktopAppIcon()
+    val desktopAppIcon = desktopAppIconImage
     installTaskbarIcon(desktopAppIcon)
     val bootstrap = try {
         val metadata = DesktopRuntimeMetadata.load()
