@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.utils
 
-import android.R
 import android.content.Context
 import android.util.TypedValue
 import androidx.annotation.ColorInt
@@ -13,7 +12,7 @@ object StatusBarProtectionUtils {
     @ColorInt
     fun getPaneBackgroundColor(context: Context): Int {
         val typedValue = TypedValue()
-        context.theme.resolveAttribute(R.attr.colorBackground, typedValue, true)
+        context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
         if (typedValue.resourceId != 0) {
             return ContextCompat.getColor(context, typedValue.resourceId)
         }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import androidx.core.content.edit
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -97,7 +98,7 @@ internal class AndroidKeystoreSecretStore(
     )
 
     private fun restorePreferenceSnapshot(snapshot: PreferenceSnapshot) {
-        preferences.edit().apply {
+        preferences.edit {
             if (snapshot.value == null) remove(preferenceKey)
             else putString(preferenceKey, snapshot.value)
             if (snapshot.migrationMarkerPresent) {
@@ -105,7 +106,7 @@ internal class AndroidKeystoreSecretStore(
             } else {
                 remove(MIGRATION_COMPLETE_KEY)
             }
-        }.apply()
+        }
     }
 
     private fun secretKey(): SecretKey {

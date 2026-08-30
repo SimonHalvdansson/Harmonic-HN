@@ -57,7 +57,7 @@ internal class CommentsWebViewHost(context: Context) {
             com.google.android.material.R.attr.materialIconButtonOutlinedStyle
         ).apply {
             id = R.id.webview_download
-            text = "Download file"
+            text = context.getString(R.string.download_file)
             setIconResource(R.drawable.ic_file_download)
             setTextColor(
                 MaterialColors.getColor(

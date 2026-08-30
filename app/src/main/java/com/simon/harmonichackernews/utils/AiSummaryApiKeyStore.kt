@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.utils
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 
 class AndroidAiSummaryApiKeyStore(context: Context) {
@@ -84,7 +85,7 @@ class AndroidAiSummaryApiKeyStore(context: Context) {
 
         removeLegacyValue(PreferenceManager.getDefaultSharedPreferences(appContext))
         runCatching {
-            legacyEncryptedPreferences.edit().remove(PREF_API_KEY).commit()
+            legacyEncryptedPreferences.edit(commit = true) { remove(PREF_API_KEY) }
         }.onFailure { Log.w(TAG, "Unable to remove the legacy AI summary API key", it) }
         cachedApiKey = ""
         return cleared
@@ -92,7 +93,7 @@ class AndroidAiSummaryApiKeyStore(context: Context) {
 
     private fun removeLegacyValue(legacyPreferences: SharedPreferences) {
         if (legacyPreferences.contains(PREF_API_KEY)) {
-            legacyPreferences.edit().remove(PREF_API_KEY).apply()
+            legacyPreferences.edit { remove(PREF_API_KEY) }
         }
     }
 

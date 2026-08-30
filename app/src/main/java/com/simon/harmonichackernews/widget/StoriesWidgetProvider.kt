@@ -126,7 +126,10 @@ class StoriesWidgetProvider : AppWidgetProvider() {
                 formatUpdatedTime(context, appWidgetId)
             )
             if (refreshing) {
-                views.setTextViewText(R.id.widget_empty_text, "Loading stories\u2026")
+                views.setTextViewText(
+                    R.id.widget_empty_text,
+                    context.getString(R.string.widget_loading_stories),
+                )
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
@@ -148,7 +151,10 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_refresh_button, android.view.View.GONE)
             views.setViewVisibility(R.id.widget_refresh_progress, android.view.View.VISIBLE)
             views.setTextViewText(R.id.widget_updated_text, "")
-            views.setTextViewText(R.id.widget_empty_text, "Loading stories\u2026")
+            views.setTextViewText(
+                R.id.widget_empty_text,
+                context.getString(R.string.widget_loading_stories),
+            )
             appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views)
         }
 
@@ -175,7 +181,10 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             bindWidgetCommonViews(context, views, appWidgetId)
             views.setViewVisibility(R.id.widget_refresh_button, android.view.View.VISIBLE)
             views.setViewVisibility(R.id.widget_refresh_progress, android.view.View.GONE)
-            views.setTextViewText(R.id.widget_empty_text, "Couldn\u2019t load stories")
+            views.setTextViewText(
+                R.id.widget_empty_text,
+                context.getString(R.string.widget_could_not_load_stories),
+            )
             // Keep previous timestamp if any
             views.setTextViewText(
                 R.id.widget_updated_text,
@@ -230,7 +239,7 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             val feedName = widgetService(context).configuration(appWidgetId).feedName
             views.setTextViewText(
                 R.id.widget_title,
-                feedName ?: "Top stories"
+                feedName ?: context.getString(R.string.widget_top_stories)
             )
         }
 

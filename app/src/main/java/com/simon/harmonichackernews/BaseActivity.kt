@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews
 
-import android.R
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -15,7 +14,7 @@ open class BaseActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
 
-        val content = findViewById<View>(R.id.content)
+        val content = findViewById<View>(android.R.id.content)
         ViewCompat.setOnApplyWindowInsetsListener(content) { _, windowInsets ->
             navBarHeight = windowInsets
                 .getInsets(WindowInsetsCompat.Type.systemBars())

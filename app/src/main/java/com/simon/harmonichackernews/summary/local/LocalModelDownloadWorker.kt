@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.summary.local
 
-import android.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -109,7 +108,7 @@ class LocalModelDownloadWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.stat_sys_download)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Downloading $modelName")
             .setContentText("$percent% complete")
             .setOnlyAlertOnce(true)
@@ -129,17 +128,15 @@ class LocalModelDownloadWorker(
     }
 
     private fun ensureNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = applicationContext.getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Local model downloads",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Progress for local AI model downloads"
-            }
-            manager?.createNotificationChannel(channel)
+        val manager = applicationContext.getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Local model downloads",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Progress for local AI model downloads"
         }
+        manager?.createNotificationChannel(channel)
     }
 
     private fun failure(error: String): Result =

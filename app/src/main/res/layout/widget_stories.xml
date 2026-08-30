@@ -22,7 +22,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:layout_marginRight="8dp"
-            android:contentDescription="Harmonic app icon"
+            android:contentDescription="@string/widget_app_icon_content_description"
             android:src="@mipmap/ic_launcher" />
 
         <TextView
@@ -56,7 +56,7 @@
                 android:src="@drawable/ic_refresh_widget"
                 app:tint="@color/widget_title"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Refresh" />
+                android:contentDescription="@string/widget_refresh_content_description" />
 
             <ProgressBar
                 android:id="@+id/widget_refresh_progress"
@@ -86,7 +86,7 @@
         android:gravity="center"
         android:paddingTop="4dp"
         android:paddingBottom="6dp"
-        android:text="Loading stories…"
+        android:text="@string/widget_loading_stories"
         android:textColor="@color/widget_secondary_text"
         android:textSize="11sp" />
 

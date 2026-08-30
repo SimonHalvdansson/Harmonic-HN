@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
 import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
@@ -70,10 +71,8 @@ fun AndroidUserSettingsDialog(
                 is UserProfileSessionEffect.ComposeReportEmail -> {
                     val intent = Intent(
                         Intent.ACTION_SENDTO,
-                        Uri.parse(
-                            "mailto:hn@ycombinator.com?subject=" +
-                                Uri.encode("Reporting user ${effect.username}"),
-                        ),
+                        ("mailto:hn@ycombinator.com?subject=" +
+                            Uri.encode("Reporting user ${effect.username}")).toUri(),
                     )
                     if (intent.resolveActivity(context.packageManager) != null) {
                         context.startActivity(Intent.createChooser(intent, "Send report via"))

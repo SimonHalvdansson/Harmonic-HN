@@ -5,8 +5,13 @@
     android:minHeight="110dp"
     android:minResizeWidth="180dp"
     android:minResizeHeight="110dp"
+    android:maxResizeWidth="412dp"
+    android:maxResizeHeight="580dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_stories"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:previewLayout="@layout/widget_stories_preview"
     android:configure="com.simon.harmonichackernews.widget.WidgetConfigActivity" />

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.summary.local
 
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
@@ -32,7 +33,7 @@ internal fun createAndroidLocalModelService(context: Context): LocalModelService
     val modelsRoot = androidLocalModelsRoot(appContext)
     val files = FileLocalModelStorage(
         root = Path(modelsRoot.absolutePath),
-        usableSpaceBytes = { modelsRoot.usableSpace },
+        usableSpaceBytes = { immediatelyUsableSpaceBytes(modelsRoot) },
         inferenceCacheRoot = Path(appContext.cacheDir.absolutePath),
     )
     val transfers = AndroidLocalModelTransferScheduler(appContext)
@@ -47,6 +48,14 @@ internal fun createAndroidLocalModelService(context: Context): LocalModelService
         ),
     )
 }
+
+/**
+ * Reports space writable without evicting caches or reserving the model's entire size up front.
+ * Downloads are resumable and surface write failures, so this is intentionally more conservative
+ * than StorageManager.getAllocatableBytes().
+ */
+@SuppressLint("UsableSpace")
+private fun immediatelyUsableSpaceBytes(directory: File): Long = directory.usableSpace
 
 internal fun androidLocalModelsRoot(context: Context): File {
     val base = context.getExternalFilesDir(null) ?: context.filesDir

@@ -2,8 +2,8 @@ package com.simon.harmonichackernews.ui.comments
 
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -22,6 +22,8 @@ fun AndroidCommentsSearchDialog(
     onCommentSelected: (PortableCommentItem) -> Unit,
 ) {
     val links = LocalHarmonicUiDependencies.current.links
+    val windowHeight = LocalWindowInfo.current.containerSize.height
+    val maxDialogHeight = with(LocalDensity.current) { windowHeight.toDp() * 0.9f }
     PredictiveBackHandler(enabled = controller.linkPreviewOverlay != null) { events ->
         var predictiveBackStarted = false
         try {
@@ -56,7 +58,7 @@ fun AndroidCommentsSearchDialog(
         settings = settings,
         storyAuthor = storyAuthor,
         accountUser = accountUser,
-        maxDialogHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f,
+        maxDialogHeight = maxDialogHeight,
         onSearchTermChanged = onSearchTermChanged,
         onDismiss = onDismiss,
         onCommentSelected = onCommentSelected,

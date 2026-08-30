@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Harmonic</string>
+    <string name="download_file">Download file</string>
     <string name="local_ai_runtime_feature_title">Local AI runtimes</string>
+    <string name="widget_app_icon_content_description">Harmonic app icon</string>
+    <string name="widget_could_not_load_stories">Couldn’t load stories</string>
+    <string name="widget_loading_stories">Loading stories…</string>
+    <string name="widget_refresh_content_description">Refresh</string>
+    <string name="widget_top_stories">Top stories</string>
 </resources>

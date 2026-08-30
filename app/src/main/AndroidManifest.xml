@@ -71,7 +71,10 @@
 
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <intent-filter android:label="@string/app_name">
+            <!-- HN cannot host our assetlinks.json; users may still enable these links manually. -->
+            <intent-filter
+                android:autoVerify="false"
+                android:label="@string/app_name">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
@@ -82,7 +85,9 @@
                     android:pathPrefix="/item"
                     android:scheme="https" />
             </intent-filter>
-            <intent-filter android:label="@string/app_name">
+            <intent-filter
+                android:autoVerify="false"
+                android:label="@string/app_name">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />

@@ -54,7 +54,8 @@ internal object AndroidHackerNewsAccountStorage {
             .getOrDefault(false)
     }
 
-    @SuppressLint("ApplySharedPref")
+    // The KTX helper does not expose commit()'s result, which this migration cleanup must check.
+    @SuppressLint("ApplySharedPref", "UseKtx")
     fun clear(context: Context): Boolean = synchronized(this) {
         val cleared = runCatching { secretStore(context).reset() }
             .onFailure { Log.e(TAG, "Unable to clear the Hacker News account", it) }

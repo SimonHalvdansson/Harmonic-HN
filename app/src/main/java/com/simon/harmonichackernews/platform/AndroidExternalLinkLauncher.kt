@@ -9,6 +9,7 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.defaultBrowserPackageName
 import com.simon.harmonichackernews.utils.isInvalidViewHandlerPackage
@@ -20,7 +21,7 @@ object AndroidExternalLinkLauncher {
         val customTabsIntent = createCustomTabsIntent(context, request.shareable)
         val opened = ExternalLinkPolicy.openCandidates(request.url).any { candidate ->
             try {
-                customTabsIntent.launchUrl(context, Uri.parse(candidate))
+                customTabsIntent.launchUrl(context, candidate.toUri())
                 true
             } catch (_: Exception) {
                 false
@@ -62,7 +63,7 @@ object AndroidExternalLinkLauncher {
     }
 
     private fun openExternalUrl(context: Context, url: String) {
-        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        val browserIntent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         packageForExternalUrl(context, browserIntent)?.let(browserIntent::setPackage)

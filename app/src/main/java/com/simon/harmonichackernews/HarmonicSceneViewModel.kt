@@ -10,6 +10,5 @@ class HarmonicSceneViewModel(application: Application) : AndroidViewModel(applic
 
     override fun onCleared() {
         scene.close()
-        super.onCleared()
     }
 }

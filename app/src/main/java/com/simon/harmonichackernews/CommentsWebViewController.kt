@@ -42,6 +42,8 @@ import androidx.annotation.Nullable
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.google.android.material.button.MaterialButton
@@ -322,11 +324,9 @@ internal class CommentsWebViewController(
     fun goBackFromVisibleWebView() {
         val currentWebView = webView?.takeIf { it.canGoBack() } ?: return
         val currentDownloadButton = downloadButton
-        if (currentDownloadButton?.visibility == View.VISIBLE &&
-            currentWebView.visibility == View.GONE
-        ) {
-            currentWebView.visibility = View.VISIBLE
-            currentDownloadButton.visibility = View.GONE
+        if (currentDownloadButton?.isVisible == true && currentWebView.isGone) {
+            currentWebView.isGone = false
+            currentDownloadButton.isGone = true
         } else if (showingErrorPage) {
             webContentSession.showContent()
             if (currentWebView.canGoBackOrForward(-2)) {

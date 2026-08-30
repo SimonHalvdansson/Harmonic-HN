@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
@@ -16,7 +16,6 @@ import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
 internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
-    val context = LocalContext.current
     val dependencies = LocalHarmonicUiDependencies.current
     val fallbackSettings = remember(dependencies.userSettings.story) {
         StoryDisplaySettings.from(dependencies.userSettings.story)
@@ -30,7 +29,7 @@ internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
 
     StoryPreviewOverlay(
         controller = controller,
-        tablet = AndroidDisplay.isTablet(context.resources),
+        tablet = AndroidDisplay.isTablet(LocalResources.current),
     ) { story, page, cardColor, modifier ->
         val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }
