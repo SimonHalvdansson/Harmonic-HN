@@ -25,7 +25,7 @@ class AndroidKeyValueStore private constructor(
 
     override fun contains(key: String): Boolean = preferences.contains(key)
 
-    override fun keys(): Set<String> = preferences.all.keys.toSet()
+    override fun keys(): Set<String> = preferences.all.keys
 
     override fun remove(key: String) {
         preferences.edit().remove(key).apply()

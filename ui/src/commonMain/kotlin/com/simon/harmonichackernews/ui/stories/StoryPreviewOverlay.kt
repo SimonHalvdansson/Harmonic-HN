@@ -47,6 +47,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.isSnapshotCaptureSafe
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -193,6 +194,8 @@ fun StoryPreviewOverlay(
     var pendingListScroll by remember(state) { mutableFloatStateOf(0f) }
     fun sourceSnapshotReady(bounds: Rect?, capture: LayerSnapshot): Boolean =
         bounds == null || capture.isCurrent(snapshotRefreshKey)
+    fun sourceSnapshotUnavailable(bounds: Rect?, capture: LayerSnapshot): Boolean =
+        bounds != null && capture.isUnavailable(snapshotRefreshKey)
     val sourceSnapshotsReady =
         sourceGeometry != null &&
             sourceSnapshotReady(sourceGeometry.image, sourceImageCapture) &&
@@ -213,15 +216,37 @@ fun StoryPreviewOverlay(
                 targetImageCapture.isCurrent(snapshotRefreshKey)) &&
             (targetSummaryLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } == null ||
                 targetSummaryCapture.isCurrent(snapshotRefreshKey))
+    val snapshotsUnavailableForTransition = sourceGeometry == null ||
+        sourceSnapshotUnavailable(sourceGeometry.image, sourceImageCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.title, sourceTitleCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.summary, sourceSummaryCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.meta, sourceMetaCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.index, sourceIndexCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.comments, sourceCommentsCapture) ||
+        targetTitleCapture.isUnavailable(snapshotRefreshKey) ||
+        targetMetaCapture.isUnavailable(snapshotRefreshKey) ||
+        targetSupplementaryCapture.isUnavailable(snapshotRefreshKey) ||
+        targetImageCapture.isUnavailable(snapshotRefreshKey) ||
+        targetSummaryCapture.isUnavailable(snapshotRefreshKey)
 
     LaunchedEffect(
         state,
         snapshotsReadyForTransition,
+        snapshotsUnavailableForTransition,
         dismissRequest,
     ) {
-        if (!snapshotsReadyForTransition || dismissRequest != 0 || openingStarted) {
+        if (dismissRequest != 0 || openingStarted || targetBounds == null) {
             return@LaunchedEffect
         }
+        if (snapshotsUnavailableForTransition) {
+            openingStarted = true
+            transformProgress.snapTo(1f)
+            hideTargetContent = false
+            controller.setStoryPreviewSourceCovered(false)
+            openingCompleted = true
+            return@LaunchedEffect
+        }
+        if (!snapshotsReadyForTransition) return@LaunchedEffect
         openingStarted = true
         // First cover the still-live source with an identical progress-zero overlay. Only hide the
         // list row after that overlay has reached the screen, so there is no empty handoff frame.
@@ -242,9 +267,20 @@ fun StoryPreviewOverlay(
         openingCompleted = true
         overlayActive = false
     }
-    LaunchedEffect(dismissRequest, snapshotsReadyForTransition) {
+    LaunchedEffect(
+        dismissRequest,
+        snapshotsReadyForTransition,
+        snapshotsUnavailableForTransition,
+    ) {
         if (dismissRequest == 0) return@LaunchedEffect
-        if (!snapshotsReadyForTransition || closingStarted) return@LaunchedEffect
+        if (closingStarted) return@LaunchedEffect
+        if (snapshotsUnavailableForTransition) {
+            closingStarted = true
+            controller.setStoryPreviewSourceCovered(false)
+            controller.completeStoryPreviewDismiss()
+            return@LaunchedEffect
+        }
+        if (!snapshotsReadyForTransition) return@LaunchedEffect
         closingStarted = true
         // Put the overlay over the still-live dialog first, then hide the live dialog beneath it.
         overlayActive = true
@@ -653,12 +689,21 @@ private fun rememberLayerSnapshot(
         val currentLayer = layer ?: return@LaunchedEffect
         // The layer is published at composition time and recorded during draw.
         withFrameNanos { }
-        if (!currentLayer.isReleased && currentLayer.size.width > 0 && currentLayer.size.height > 0) {
-            snapshot = LayerSnapshot(
-                image = currentLayer.toImageBitmap(),
-                refreshKey = refreshKey,
-            )
+        if (!currentLayer.isSnapshotCaptureSafe()) {
+            snapshot = snapshot.copy(resolvedKey = refreshKey)
+            return@LaunchedEffect
         }
+        val image = try {
+            currentLayer.toImageBitmap()
+        } catch (_: Exception) {
+            snapshot = snapshot.copy(resolvedKey = refreshKey)
+            return@LaunchedEffect
+        }
+        snapshot = LayerSnapshot(
+            image = image,
+            refreshKey = refreshKey,
+            resolvedKey = refreshKey,
+        )
     }
     return snapshot
 }
@@ -666,6 +711,8 @@ private fun rememberLayerSnapshot(
 private data class LayerSnapshot(
     val image: ImageBitmap? = null,
     val refreshKey: Int? = null,
+    val resolvedKey: Int? = null,
 ) {
     fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
+    fun isUnavailable(key: Int): Boolean = resolvedKey == key && !isCurrent(key)
 }

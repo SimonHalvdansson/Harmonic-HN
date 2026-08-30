@@ -114,8 +114,11 @@ fun TransformOverlay(
     var sourceSnapshot by remember(contentKey, sourceContentLayer) {
         mutableStateOf<ImageBitmap?>(null)
     }
-    val sourceSnapshotRequired = sourceContentLayer != null
-    val sourceSnapshotReady = !sourceSnapshotRequired || sourceSnapshot != null
+    var sourceSnapshotResolved by remember(contentKey, sourceContentLayer) {
+        mutableStateOf(sourceContentLayer == null)
+    }
+    val sourceSnapshotRequired = sourceSnapshot != null
+    val sourceSnapshotReady = sourceSnapshotResolved
     val targetReady = targetBounds != null && rootBounds.width > 0f && rootBounds.height > 0f &&
         sourceSnapshotReady
     val currentDismissRequestVersion by rememberUpdatedState(dismissRequestVersion)
@@ -135,16 +138,21 @@ fun TransformOverlay(
     LaunchedEffect(contentKey, sourceContentLayer) {
         val layer = sourceContentLayer ?: return@LaunchedEffect
         withFrameNanos { }
-        if (!layer.isReleased && layer.size.width > 0 && layer.size.height > 0) {
-            sourceSnapshot = layer.toImageBitmap()
+        if (layer.isSnapshotCaptureSafe()) {
+            sourceSnapshot = try {
+                layer.toImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
         }
+        sourceSnapshotResolved = true
     }
 
     // A single effect owns both directions. Changing the dismiss request cancels an in-flight
     // opening animation and reverses from its current value without a blank handoff frame.
     LaunchedEffect(contentKey, targetReady, dismissRequestVersion) {
         if (!targetReady) return@LaunchedEffect
-        if (!sourceHandoffComplete && onSourceReadyToCover != null) {
+        if (!sourceHandoffComplete && sourceSnapshot != null && onSourceReadyToCover != null) {
             sourceHandoffComplete = true
             // Give the captured source a complete draw frame before suppressing the live row.
             // Some asynchronously painted children (notably favicons) otherwise leave a single

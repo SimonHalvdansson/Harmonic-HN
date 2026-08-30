@@ -31,9 +31,18 @@ class FileAccessTimeStore(
         val exact = key(reference)
         val unixPrefix = "$exact/"
         val windowsPrefix = "$exact\\"
-        store.keys()
-            .filter { it == exact || it.startsWith(unixPrefix) || it.startsWith(windowsPrefix) }
-            .forEach(store::remove)
+        val storedKeys = store.keys()
+        store.update {
+            storedKeys.forEach { storedKey ->
+                if (
+                    storedKey == exact ||
+                    storedKey.startsWith(unixPrefix) ||
+                    storedKey.startsWith(windowsPrefix)
+                ) {
+                    remove(storedKey)
+                }
+            }
+        }
     }
 
     private fun key(reference: String): String = KEY_PREFIX + reference

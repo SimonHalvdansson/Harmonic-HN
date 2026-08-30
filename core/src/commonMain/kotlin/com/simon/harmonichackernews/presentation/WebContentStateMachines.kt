@@ -149,13 +149,21 @@ object WebContentCopy {
 
 /** Shared page-text JavaScript and result decoding for every native browser adapter. */
 object WebContentPageText {
+    // This is deliberately much larger than the local summarizer's normal input while still
+    // bounding the JSON string copied from a browser renderer into the host process.
+    const val MAX_PAGE_TEXT_CHARS = 256 * 1024
+    private const val MAX_ENCODED_RESULT_CHARS = MAX_PAGE_TEXT_CHARS * 6 + 2
     const val READ_COMMAND =
-        "(function() { return document.body ? (document.body.innerText || '') : ''; })();"
+        "(function() { var text = document.body ? (document.body.innerText || '') : ''; " +
+            "return text.length > $MAX_PAGE_TEXT_CHARS ? " +
+            "text.slice(0, $MAX_PAGE_TEXT_CHARS) : text; })();"
 
     fun decode(result: String?): String {
         if (result == null || result == "null") return ""
-        return JsonStringCodec.decodeJavascriptString(result)
-            ?: result.removeSurrounding("\"")
+        if (result.length > MAX_ENCODED_RESULT_CHARS) return ""
+        return (JsonStringCodec.decodeJavascriptString(result)
+            ?: result.removeSurrounding("\""))
+            .take(MAX_PAGE_TEXT_CHARS)
     }
 }
 

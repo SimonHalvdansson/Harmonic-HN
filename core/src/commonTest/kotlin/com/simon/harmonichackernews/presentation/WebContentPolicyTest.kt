@@ -23,4 +23,30 @@ class WebContentPolicyTest {
         assertNull(WebContentPolicy.validatedHttpUrl("https://"))
         assertNull(WebContentPolicy.validatedHttpUrl("https://exa mple.com/article"))
     }
+
+    @Test
+    fun pageTextCommandCapsTheRendererResultBeforeTheNativeBridge() {
+        assertTrue(
+            WebContentPageText.READ_COMMAND.contains(
+                "text.slice(0, ${WebContentPageText.MAX_PAGE_TEXT_CHARS})",
+            ),
+        )
+    }
+
+    @Test
+    fun decodedPageTextCannotExceedTheBridgeLimit() {
+        val text = "a".repeat(WebContentPageText.MAX_PAGE_TEXT_CHARS + 1)
+
+        assertEquals(
+            WebContentPageText.MAX_PAGE_TEXT_CHARS,
+            WebContentPageText.decode("\"$text\"").length,
+        )
+    }
+
+    @Test
+    fun unexpectedlyOversizedEncodedPageTextIsRejectedBeforeJsonParsing() {
+        val encodedEscape = "\\u0061".repeat(WebContentPageText.MAX_PAGE_TEXT_CHARS + 1)
+
+        assertEquals("", WebContentPageText.decode("\"$encodedEscape\""))
+    }
 }

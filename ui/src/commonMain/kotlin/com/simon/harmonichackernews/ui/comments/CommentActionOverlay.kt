@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.common.isSnapshotCaptureSafe
 import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import androidx.compose.material3.ButtonDefaults
@@ -135,7 +136,12 @@ fun CommentActionOverlay(
         targetSupplementaryLayer,
         snapshotRefreshKey,
     )
-    val snapshotsReady = source != null &&
+    val snapshotsUnavailable = sourceCapture.isUnavailable(0) ||
+        targetUserCapture.isUnavailable(snapshotRefreshKey) ||
+        targetBodyCapture.isUnavailable(snapshotRefreshKey) ||
+        targetSupplementaryCapture.isUnavailable(snapshotRefreshKey)
+    val transitionSource = source?.takeUnless { snapshotsUnavailable }
+    val snapshotsReady = transitionSource != null &&
         sourceCapture.isCurrent(0) &&
         targetContainer != null &&
         targetUserBounds != null &&
@@ -145,11 +151,17 @@ fun CommentActionOverlay(
         targetBodyCapture.isCurrent(snapshotRefreshKey) &&
         targetSupplementaryCapture.isCurrent(snapshotRefreshKey)
 
-    LaunchedEffect(comment.id, targetContainer, snapshotsReady, dismissRequest) {
+    LaunchedEffect(
+        comment.id,
+        targetContainer,
+        snapshotsReady,
+        snapshotsUnavailable,
+        dismissRequest,
+    ) {
         if (targetContainer == null || dismissRequest != 0 || openingStarted) return@LaunchedEffect
-        if (source != null && !snapshotsReady) return@LaunchedEffect
+        if (transitionSource != null && !snapshotsReady) return@LaunchedEffect
         openingStarted = true
-        if (source != null) {
+        if (transitionSource != null) {
             // Cover the still-live row before suppression, eliminating the opening handoff flash.
             overlayActive = true
             withFrameNanos { }
@@ -158,11 +170,12 @@ fun CommentActionOverlay(
             withFrameNanos { }
         } else {
             // Restored dialogs have no source layer, but suppression must still not precede draw.
+            hideTargetContent = false
             withFrameNanos { }
             controller.setCommentActionSourceCovered(true)
         }
         transformProgress.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
-        if (source != null) {
+        if (transitionSource != null) {
             hideTargetContent = false
             drawOverlayShadows = false
             withFrameNanos { }
@@ -170,13 +183,13 @@ fun CommentActionOverlay(
         }
         openingCompleted = true
     }
-    LaunchedEffect(dismissRequest, snapshotsReady, targetContainer) {
+    LaunchedEffect(dismissRequest, snapshotsReady, snapshotsUnavailable, targetContainer) {
         if (dismissRequest == 0 || closingStarted || targetContainer == null) {
             return@LaunchedEffect
         }
-        if (source != null && !snapshotsReady) return@LaunchedEffect
+        if (transitionSource != null && !snapshotsReady) return@LaunchedEffect
         closingStarted = true
-        if (source != null) {
+        if (transitionSource != null) {
             // Put an identical progress-one overlay over the dialog before hiding live content.
             overlayActive = true
             withFrameNanos { }
@@ -220,7 +233,7 @@ fun CommentActionOverlay(
         active = overlayActive,
         hideTargetContent = hideTargetContent,
         drawOverlayShadows = drawOverlayShadows,
-        source = source,
+        source = transitionSource,
         sourceSnapshot = sourceCapture.image,
         targetContainer = targetContainer,
         predictiveBackProgress = controller.commentActionPredictiveBackProgress,
@@ -756,12 +769,21 @@ private fun rememberCommentActionLayerSnapshot(
     LaunchedEffect(layer, refreshKey) {
         val currentLayer = layer ?: return@LaunchedEffect
         withFrameNanos { }
-        if (!currentLayer.isReleased && currentLayer.size.width > 0 && currentLayer.size.height > 0) {
-            snapshot = CommentActionLayerSnapshot(
-                image = currentLayer.toImageBitmap(),
-                refreshKey = refreshKey,
-            )
+        if (!currentLayer.isSnapshotCaptureSafe()) {
+            snapshot = snapshot.copy(resolvedKey = refreshKey)
+            return@LaunchedEffect
         }
+        val image = try {
+            currentLayer.toImageBitmap()
+        } catch (_: Exception) {
+            snapshot = snapshot.copy(resolvedKey = refreshKey)
+            return@LaunchedEffect
+        }
+        snapshot = CommentActionLayerSnapshot(
+            image = image,
+            refreshKey = refreshKey,
+            resolvedKey = refreshKey,
+        )
     }
     return snapshot
 }
@@ -769,8 +791,10 @@ private fun rememberCommentActionLayerSnapshot(
 private data class CommentActionLayerSnapshot(
     val image: ImageBitmap? = null,
     val refreshKey: Int? = null,
+    val resolvedKey: Int? = null,
 ) {
     fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
+    fun isUnavailable(key: Int): Boolean = resolvedKey == key && !isCurrent(key)
 }
 
 private fun Modifier.consumeCommentActionGestures(): Modifier = pointerInput(Unit) {
