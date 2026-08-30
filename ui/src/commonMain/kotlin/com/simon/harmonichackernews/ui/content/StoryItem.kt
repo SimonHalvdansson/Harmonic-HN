@@ -710,10 +710,10 @@ private fun StoryContentRow(
             constraints.copy(
                 minWidth = contentWidth,
                 maxWidth = contentWidth,
-                minHeight = 0,
+                minHeight = minimumRowHeight,
             ),
         )
-        val rowHeight = maxOf(contentPlaceable.height, minimumRowHeight)
+        val rowHeight = contentPlaceable.height
         val railPlaceable = measurables[1].measure(
             constraints.copy(
                 minWidth = railWidthPx,
@@ -726,8 +726,7 @@ private fun StoryContentRow(
         layout(constraints.maxWidth, rowHeight) {
             val contentX = (railWidthPx * commentsOnLeftProgress).roundToInt()
             val railX = (contentWidth * (1f - commentsOnLeftProgress)).roundToInt()
-            val contentY = (rowHeight - contentPlaceable.height) / 2
-            contentPlaceable.placeRelative(contentX, contentY)
+            contentPlaceable.placeRelative(contentX, 0)
             railPlaceable.placeRelative(railX, 0)
         }
     }
@@ -943,13 +942,13 @@ private fun StoryMetricPill(
             .background(container.copy(alpha = 0.92f))
             .border(1.dp, colors.outlineVariant, StoryMetricPillShape)
     } else {
-        val hazeTint = container.copy(alpha = 0.62f)
+        val hazeTint = container.copy(alpha = 0.60f)
         Modifier
             .clip(StoryMetricPillShape)
             .hazeBlur(
                 input = HazeInput.Sources(hazeState),
                 style = HazeBlurStyle {
-                    blurRadius(5.dp)
+                    blurRadius(4.dp)
                     colorEffects(listOf(HazeColorEffect.tint(hazeTint)))
                     noiseFactor(0f)
                     fallbackColorEffect(HazeColorEffect.tint(hazeTint))
@@ -1098,7 +1097,7 @@ private fun StoryMainContent(
     } else {
         11.dp
     }
-    Row(
+    Box(
         modifier = modifier
             .combinedClickable(
                 enabled = onLinkClick != null || onLinkLongClick != null,
@@ -1109,129 +1108,134 @@ private fun StoryMainContent(
                 onLinkLongClick?.invoke()
             }
             .padding(start = 5.dp, end = 4.dp),
-        verticalAlignment = Alignment.Top,
+        contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            text = model.index,
-            modifier = Modifier
-                .width(indexWidth)
-                .padding(vertical = 10.dp)
-                .alignBy(FirstBaseline)
-                .captureStoryPreviewElement(
-                    enabled = capturePreviewSource,
-                    onPositioned = { itemGeometry.indexCoordinates = it },
-                    onLayerChanged = { itemGeometry.indexLayer = it },
-                )
-                .graphicsLayer { alpha = indexAlpha },
-            color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
-            else HarmonicTheme.colors.storyNormal,
-            fontFamily = typography.family,
-            fontSize = (titleSize - 1f).sp,
-            textAlign = TextAlign.Center,
-            style = legacyTextStyle,
-        )
-        StoryTextColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(
-                    start = titleStartPadding,
-                    top = if (hasSmallPreview) 7.dp else 10.dp,
-                    end = 4.dp,
-                    bottom = if (hasSmallPreview) 7.dp else 10.dp,
-                )
-                .alignBy(FirstBaseline),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
         ) {
-            StoryTitleText(
-                text = model.title,
-                badge = model.titleBadge,
+            Text(
+                text = model.index,
                 modifier = Modifier
+                    .width(indexWidth)
+                    .padding(vertical = 10.dp)
+                    .alignBy(FirstBaseline)
                     .captureStoryPreviewElement(
                         enabled = capturePreviewSource,
-                        onPositioned = { itemGeometry.titleCoordinates = it },
-                        onLayerChanged = { itemGeometry.titleLayer = it },
-                    ),
+                        onPositioned = { itemGeometry.indexCoordinates = it },
+                        onLayerChanged = { itemGeometry.indexLayer = it },
+                    )
+                    .graphicsLayer { alpha = indexAlpha },
                 color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
                 else HarmonicTheme.colors.storyNormal,
                 fontFamily = typography.family,
-                fontWeight = FontWeight.Bold,
-                fontSize = titleSize.sp,
+                fontSize = (titleSize - 1f).sp,
+                textAlign = TextAlign.Center,
                 style = legacyTextStyle,
             )
-            StoryVisibility(
-                visible = style.showSummary && model.summary.isNotBlank(),
-                animate = animateChanges,
-                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
-                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+            StoryTextColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = titleStartPadding,
+                        top = if (hasSmallPreview) 7.dp else 10.dp,
+                        end = 4.dp,
+                        bottom = if (hasSmallPreview) 7.dp else 10.dp,
+                    )
+                    .alignBy(FirstBaseline),
             ) {
-                Text(
-                    text = model.summary,
+                StoryTitleText(
+                    text = model.title,
+                    badge = model.titleBadge,
                     modifier = Modifier
-                        .padding(top = 3.dp)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
-                            onPositioned = { itemGeometry.summaryCoordinates = it },
-                            onLayerChanged = { itemGeometry.summaryLayer = it },
+                            onPositioned = { itemGeometry.titleCoordinates = it },
+                            onLayerChanged = { itemGeometry.titleLayer = it },
                         ),
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
+                    else HarmonicTheme.colors.storyNormal,
                     fontFamily = typography.family,
-                    fontSize = summarySize.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = titleSize.sp,
                     style = legacyTextStyle,
                 )
+                StoryVisibility(
+                    visible = style.showSummary && model.summary.isNotBlank(),
+                    animate = animateChanges,
+                    enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+                ) {
+                    Text(
+                        text = model.summary,
+                        modifier = Modifier
+                            .padding(top = 3.dp)
+                            .captureStoryPreviewElement(
+                                enabled = capturePreviewSource,
+                                onPositioned = { itemGeometry.summaryCoordinates = it },
+                                onLayerChanged = { itemGeometry.summaryLayer = it },
+                            ),
+                        color = HarmonicTheme.colors.storyDisabled,
+                        fontFamily = typography.family,
+                        fontSize = summarySize.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        style = legacyTextStyle,
+                    )
+                }
+                StoryVisibility(
+                    visible = !style.compact,
+                    animate = animateChanges,
+                    enter = fadeIn(contentTween()) + expandVertically(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+                ) {
+                    StoryMeta(
+                        model = model,
+                        style = style,
+                        typography = typography,
+                        dimAlpha = dimAlpha,
+                        tintBaseColorArgb = tintBaseColorArgb,
+                        paletteTintConfigKey = paletteTintConfigKey,
+                        extractTint = extractFaviconTint,
+                        onTintExtracted = onFaviconTintExtracted,
+                        animateChanges = animateChanges,
+                        modifier = Modifier
+                            .padding(top = 3.dp)
+                            .captureStoryPreviewElement(
+                                enabled = capturePreviewSource,
+                                onPositioned = { itemGeometry.metaCoordinates = it },
+                                onLayerChanged = { itemGeometry.metaLayer = it },
+                            ),
+                    )
+                }
             }
             StoryVisibility(
-                visible = !style.compact,
+                visible = hasSmallPreview,
                 animate = animateChanges,
-                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
-                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+                modifier = Modifier.align(Alignment.CenterVertically),
+                enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
             ) {
-                StoryMeta(
+                StoryPreviewImage(
                     model = model,
-                    style = style,
-                    typography = typography,
-                    dimAlpha = dimAlpha,
-                    tintBaseColorArgb = tintBaseColorArgb,
-                    paletteTintConfigKey = paletteTintConfigKey,
-                    extractTint = extractFaviconTint,
-                    onTintExtracted = onFaviconTintExtracted,
-                    animateChanges = animateChanges,
                     modifier = Modifier
-                        .padding(top = 3.dp)
+                        .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+                        .size(width = 72.dp, height = 52.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
-                            onPositioned = { itemGeometry.metaCoordinates = it },
-                            onLayerChanged = { itemGeometry.metaLayer = it },
-                        ),
+                            onPositioned = { itemGeometry.smallImageCoordinates = it },
+                            onLayerChanged = { itemGeometry.smallImageLayer = it },
+                        )
+                        .graphicsLayer(alpha = dimAlpha),
+                    onLoadFailed = onPreviewLoadFailed,
+                    onLoadSuccess = onPreviewLoadSuccess,
+                    tintBaseColorArgb = tintBaseColorArgb,
+                    paletteTintConfigKey = paletteTintConfigKey,
+                    extractTint = extractPreviewTint,
+                    onTintExtracted = onPreviewTintExtracted,
                 )
             }
-        }
-        StoryVisibility(
-            visible = hasSmallPreview,
-            animate = animateChanges,
-            modifier = Modifier.align(Alignment.CenterVertically),
-            enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-            exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
-        ) {
-            StoryPreviewImage(
-                model = model,
-                modifier = Modifier
-                    .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
-                    .size(width = 72.dp, height = 52.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .captureStoryPreviewElement(
-                        enabled = capturePreviewSource,
-                        onPositioned = { itemGeometry.smallImageCoordinates = it },
-                        onLayerChanged = { itemGeometry.smallImageLayer = it },
-                    )
-                    .graphicsLayer(alpha = dimAlpha),
-                onLoadFailed = onPreviewLoadFailed,
-                onLoadSuccess = onPreviewLoadSuccess,
-                tintBaseColorArgb = tintBaseColorArgb,
-                paletteTintConfigKey = paletteTintConfigKey,
-                extractTint = extractPreviewTint,
-                onTintExtracted = onPreviewTintExtracted,
-            )
         }
     }
 }
