@@ -5,9 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -34,9 +32,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.NavKey
@@ -155,13 +152,16 @@ fun MainNavigationScene(
         onBack = onBack,
     )
     val eventState = rememberNavigationEventState(SceneInfo(sceneState.currentScene))
+    val transitionOffsetPx = with(LocalDensity.current) {
+        ActivityNavigationTransitionOffset.roundToPx()
+    }
     NavDisplay(
         sceneState = sceneState,
         navigationEventState = eventState,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { mainOpenTransition() },
-        popTransitionSpec = { mainPopTransition() },
-        predictivePopTransitionSpec = { mainPopTransition() },
+        transitionSpec = { mainOpenTransition(transitionOffsetPx) },
+        popTransitionSpec = { mainPopTransition(transitionOffsetPx) },
+        predictivePopTransitionSpec = { mainPopTransition(transitionOffsetPx) },
     )
 }
 
@@ -234,15 +234,21 @@ fun SinglePaneNavigationScene(
     val predictivePreviousSerial = remember(predictiveBackActive) {
         storyRequests.dropLast(1).lastOrNull()?.serial.takeIf { predictiveBackActive }
     }
-    var paneWidth by remember { mutableIntStateOf(0) }
+    val transitionOffsetPx = with(LocalDensity.current) {
+        ActivityNavigationTransitionOffset.roundToPx()
+    }
     val storiesOffset by animateFloatAsState(
-        targetValue = if (showStoriesRoot && storyRequests.isNotEmpty()) -0.2f else 0f,
+        targetValue = if (showStoriesRoot && storyRequests.isNotEmpty()) {
+            -transitionOffsetPx.toFloat()
+        } else {
+            0f
+        },
         animationSpec = if (storyRequests.isEmpty()) {
             snap()
         } else {
             tween(
-                durationMillis = NavigationTransitionDurationMillis,
-                easing = navigationEasing(),
+                durationMillis = ActivityNavigationTransitionDurationMillis,
+                easing = activityNavigationEasing(),
             )
         },
         label = "stories navigation offset",
@@ -261,11 +267,10 @@ fun SinglePaneNavigationScene(
                         Modifier
                     },
                 )
-                .onSizeChanged { paneWidth = it.width }
                 .graphicsLayer {
                     alpha = if (showStoriesRoot) 1f else 0f
                     translationX = if (!predictiveBackActive && !completedPredictivePop) {
-                        paneWidth * storiesOffset
+                        storiesOffset
                     } else {
                         0f
                     }
@@ -296,13 +301,13 @@ fun SinglePaneNavigationScene(
                 targetValue = if (
                     retainedInStack && layer.request.serial != currentStorySerial
                 ) {
-                    -0.2f
+                    -transitionOffsetPx.toFloat()
                 } else {
                     0f
                 },
                 animationSpec = tween(
-                    durationMillis = NavigationTransitionDurationMillis,
-                    easing = navigationEasing(),
+                    durationMillis = ActivityNavigationTransitionDurationMillis,
+                    easing = activityNavigationEasing(),
                 ),
                 label = "story ${layer.request.serial} navigation offset",
             )
@@ -311,8 +316,6 @@ fun SinglePaneNavigationScene(
                 predictivePreviousSerial -> storiesPredictiveModifier
                 else -> Modifier
             }
-            val isPredictiveParent = layer.request.serial == predictivePreviousSerial
-
             LaunchedEffect(layer) {
                 snapshotFlow {
                     layer.visibility.isIdle &&
@@ -327,13 +330,6 @@ fun SinglePaneNavigationScene(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(index + 1f)
-                    .graphicsLayer {
-                        translationX = if (!predictiveBackActive && !completedPredictivePop) {
-                            paneWidth * layerOffset
-                        } else {
-                            0f
-                        }
-                    }
                     .then(
                         if (layer.request.serial == currentStorySerial) {
                             Modifier
@@ -341,32 +337,27 @@ fun SinglePaneNavigationScene(
                             Modifier.clearAndSetSemantics { }
                         },
                     ),
-                enter = commentsOpenEnter(),
-                exit = if (completedPredictivePop) {
-                    ExitTransition.None
-                } else {
-                    commentsPopExit()
-                },
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
             ) {
                 key(layer.request.serial) {
-                    // The screen applies insets internally. Keep the retained navigation layer
-                    // itself opaque edge-to-edge so a destination two levels back cannot show
-                    // through the status/navigation-bar gutters during predictive back.
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .then(
-                                if (isPredictiveParent) {
-                                    Modifier.background(HarmonicTheme.colors.background)
-                                } else {
-                                    Modifier
-                                },
-                            ),
+                    ActivityNavigationTransitionViewport(
+                        transition = transition,
+                        transitionOffsetPx = transitionOffsetPx,
+                        baseTranslationX = if (
+                            !predictiveBackActive && !completedPredictivePop
+                        ) {
+                            layerOffset
+                        } else {
+                            0f
+                        },
+                        skipExitAnimation = completedPredictivePop,
+                        modifier = Modifier.fillMaxSize(),
+                        contentModifier = predictiveModifier,
                     ) {
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .then(predictiveModifier)
                                 .background(HarmonicTheme.colors.background),
                         ) {
                             comments(layer.request)
@@ -378,37 +369,50 @@ fun SinglePaneNavigationScene(
     }
 }
 
-private fun mainOpenTransition(): ContentTransform = ContentTransform(
-    targetContentEnter = commentsOpenEnter(),
+private fun mainOpenTransition(transitionOffsetPx: Int): ContentTransform = ContentTransform(
+    targetContentEnter = commentsOpenEnter(transitionOffsetPx),
     initialContentExit = slideOutHorizontally(
-        tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
-    ) { -it / 5 },
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { -transitionOffsetPx },
     targetContentZIndex = 1f,
 )
 
-private fun commentsOpenEnter(): EnterTransition = slideInHorizontally(
-    tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
-) { it } + fadeIn(tween(NavigationFadeDurationMillis, 45, LinearEasing))
+private fun commentsOpenEnter(transitionOffsetPx: Int): EnterTransition = slideInHorizontally(
+    tween(
+        ActivityNavigationTransitionDurationMillis,
+        easing = activityNavigationEasing(),
+    ),
+) { transitionOffsetPx } + fadeIn(
+    tween(
+        ActivityNavigationFadeDurationMillis,
+        ActivityNavigationOpenFadeDelayMillis,
+        LinearEasing,
+    ),
+)
 
-private fun mainPopTransition(): ContentTransform = ContentTransform(
+private fun mainPopTransition(transitionOffsetPx: Int): ContentTransform = ContentTransform(
     targetContentEnter = slideInHorizontally(
-        tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
-    ) { -it / 5 },
-    initialContentExit = commentsPopExit(),
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { -transitionOffsetPx },
+    initialContentExit = commentsPopExit(transitionOffsetPx),
     targetContentZIndex = -1f,
 )
 
-private fun commentsPopExit(): ExitTransition = slideOutHorizontally(
-    tween(NavigationTransitionDurationMillis, easing = navigationEasing()),
-) { it } + fadeOut(tween(NavigationFadeDurationMillis, 35, LinearEasing))
-
-private fun navigationEasing(): Easing = PathEasing(
-    Path().apply {
-        moveTo(0f, 0f)
-        cubicTo(0.05f, 0f, 0.133333f, 0.06f, 0.166666f, 0.4f)
-        cubicTo(0.208333f, 0.82f, 0.25f, 1f, 1f, 1f)
-    },
+private fun commentsPopExit(transitionOffsetPx: Int): ExitTransition = slideOutHorizontally(
+    tween(
+        ActivityNavigationTransitionDurationMillis,
+        easing = activityNavigationEasing(),
+    ),
+) { transitionOffsetPx } + fadeOut(
+    tween(
+        ActivityNavigationFadeDurationMillis,
+        ActivityNavigationCloseFadeDelayMillis,
+        LinearEasing,
+    ),
 )
-
-private const val NavigationTransitionDurationMillis = 450
-private const val NavigationFadeDurationMillis = 83

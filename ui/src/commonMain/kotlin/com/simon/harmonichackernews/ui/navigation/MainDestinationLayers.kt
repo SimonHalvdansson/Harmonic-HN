@@ -1,23 +1,17 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
@@ -116,39 +110,18 @@ fun MainDestinationLayers(
                     } else {
                         Modifier
                     },
-                )
-                .then(
-                    if (state.settingsBehindStory) {
-                        Modifier.background(HarmonicTheme.colors.background)
-                    } else {
-                        settingsPredictiveModifier
-                    },
                 ),
-            enter = layeredDestinationEnter(transitionOffsetPx),
-            exit = if (completedSettingsPredictiveBack) {
-                ExitTransition.None
-            } else {
-                layeredDestinationExit(transitionOffsetPx)
-            },
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
         ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(HarmonicTheme.colors.background),
+            ActivityNavigationTransitionViewport(
+                transition = transition,
+                transitionOffsetPx = transitionOffsetPx,
+                skipExitAnimation = completedSettingsPredictiveBack,
+                modifier = Modifier.fillMaxSize(),
+                contentModifier = settingsPredictiveModifier,
             ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (state.settingsBehindStory) {
-                                settingsPredictiveModifier
-                            } else {
-                                Modifier
-                            },
-                        ),
-                ) {
-                    settings()
-                }
+                settings()
             }
         }
 
@@ -163,39 +136,18 @@ fun MainDestinationLayers(
                     } else {
                         Modifier
                     },
-                )
-                .then(
-                    if (state.submissionsBehindStory) {
-                        Modifier.background(HarmonicTheme.colors.background)
-                    } else {
-                        submissionsPredictiveModifier
-                    },
                 ),
-            enter = layeredDestinationEnter(transitionOffsetPx),
-            exit = if (completedSubmissionsPredictiveBack) {
-                ExitTransition.None
-            } else {
-                layeredDestinationExit(transitionOffsetPx)
-            },
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
         ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(HarmonicTheme.colors.background),
+            ActivityNavigationTransitionViewport(
+                transition = transition,
+                transitionOffsetPx = transitionOffsetPx,
+                skipExitAnimation = completedSubmissionsPredictiveBack,
+                modifier = Modifier.fillMaxSize(),
+                contentModifier = submissionsPredictiveModifier,
             ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (state.submissionsBehindStory) {
-                                submissionsPredictiveModifier
-                            } else {
-                                Modifier
-                            },
-                        ),
-                ) {
-                    submissions()
-                }
+                submissions()
             }
         }
 
@@ -210,19 +162,16 @@ fun MainDestinationLayers(
                     } else {
                         Modifier
                     },
-                )
-                .then(editorPredictiveModifier),
-            enter = layeredDestinationEnter(transitionOffsetPx),
-            exit = if (completedEditorPredictiveBack) {
-                ExitTransition.None
-            } else {
-                layeredDestinationExit(transitionOffsetPx)
-            },
+                ),
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
         ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(HarmonicTheme.colors.background),
+            ActivityNavigationTransitionViewport(
+                transition = transition,
+                transitionOffsetPx = transitionOffsetPx,
+                skipExitAnimation = completedEditorPredictiveBack,
+                modifier = Modifier.fillMaxSize(),
+                contentModifier = editorPredictiveModifier,
             ) {
                 editor()
             }
@@ -240,42 +189,3 @@ fun MainDestinationLayers(
         foreground()
     }
 }
-
-private fun layeredDestinationEnter(offsetPx: Int) = slideInHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    initialOffsetX = { offsetPx },
-) + fadeIn(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 50,
-        easing = LinearEasing,
-    ),
-)
-
-private fun layeredDestinationExit(offsetPx: Int) = slideOutHorizontally(
-    animationSpec = tween(
-        durationMillis = NavigationTransitionDurationMillis,
-        easing = navigationEasing(),
-    ),
-    targetOffsetX = { offsetPx },
-) + fadeOut(
-    animationSpec = tween(
-        durationMillis = NavigationFadeDurationMillis,
-        delayMillis = 35,
-        easing = LinearEasing,
-    ),
-)
-
-private fun navigationEasing(): Easing = PathEasing(
-    Path().apply {
-        moveTo(0f, 0f)
-        cubicTo(0.05f, 0f, 0.133333f, 0.06f, 0.166666f, 0.4f)
-        cubicTo(0.208333f, 0.82f, 0.25f, 1f, 1f, 1f)
-    },
-)
-
-private const val NavigationTransitionDurationMillis = 450
-private const val NavigationFadeDurationMillis = 90

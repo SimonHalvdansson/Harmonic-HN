@@ -51,6 +51,21 @@ General tips:
   `:core:compileKotlinIosSimulatorArm64`, `:ui:compileKotlinIosSimulatorArm64`, or
   `:desktop_app:compileKotlinDesktop` as applicable, in addition to Android verification below.
 
+## Navigation Transitions
+
+- Full-screen forward navigation in a single-pane layout uses
+  `ActivityNavigationTransitionViewport` from `ui/navigation/ActivityNavigationTransition.kt`.
+  It mirrors Android's default activity surface animation: the destination moves from `+96dp` to
+  rest over 450ms, its complete surface fades in after a 50ms delay over 83ms, and the retained
+  source moves from rest to `-96dp` without fading. Use the shared constants and easing in that file.
+- The destination's sampled edge must extend across the gap exposed by translation and must fade as
+  part of the destination surface. A plain `NavDisplay` `slideInHorizontally` plus `fadeIn` leaves a
+  moving background boundary and is not an equivalent implementation. Nested single-pane
+  navigators, including Settings list/detail navigation, must use the same surface compositor.
+- Adaptive two-pane detail changes, dialogs, and component-level content changes are not
+  full-screen activity opens; keep their pane- or component-specific motion. Predictive-back hosts
+  may supply their own gesture modifiers and should avoid replaying a completed exit animation.
+
 ## Icon Guidelines
 
 When adding or replacing app icons, use **Material Symbols**, not legacy Material Icons. Prefer the **Rounded** style and the official Android vector export. Match the repo's current default symbol settings unless there is a specific selected/filled state: Fill `0`, Weight `400`, Grade `0`, Optical Size `24`, 24dp size. Use source-aligned drawable names such as `ic_thumb_up.xml`, preserve the existing tint/alpha behavior for the target context, and avoid replacing custom branded/provider/badge assets with generic symbols.

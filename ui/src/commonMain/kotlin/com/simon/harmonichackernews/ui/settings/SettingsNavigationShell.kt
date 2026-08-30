@@ -1,10 +1,16 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.PathEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
@@ -28,14 +34,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
@@ -44,13 +55,27 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionOffset
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionViewport
+import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
 import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
+import kotlinx.coroutines.flow.first
 
 private data object SettingsListDestination : NavKey
 
 private data object SettingsTwoPaneDetailDestination : NavKey
 
 private data class SettingsDetailDestination(val section: SettingsSection) : NavKey
+
+private class RetainedSettingsLayer(
+    val section: SettingsSection,
+    initiallyVisible: Boolean,
+) {
+    val visibility = MutableTransitionState(initiallyVisible).apply {
+        targetState = true
+    }
+}
 
 data class SettingsPredictiveBackOverlay(
     val enterModifier: Modifier,
@@ -218,6 +243,17 @@ fun SettingsNavigationShell(
                     }
                 },
             )
+        } else if (showDetailNavigation) {
+            SinglePaneSettingsNavigation(
+                detailStack = navigationState.detailStack,
+                selectedSection = selectedSection,
+                onBackFromSettings = onBackFromSettings,
+                onNavigateBack = ::navigateBack,
+                onNavigateTo = ::navigateTo,
+                renderList = renderList,
+                renderDetail = renderDetail,
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
             NavDisplay(
                 sceneState = sceneState,
@@ -227,6 +263,140 @@ fun SettingsNavigationShell(
                 popTransitionSpec = { activityPopTransition(transitionOffsetPx) },
                 predictivePopTransitionSpec = { activityPopTransition(transitionOffsetPx) },
             )
+        }
+    }
+}
+
+/**
+ * Retains the one-pane Settings back stack so full-screen changes can use the same composed
+ * surface animation as the app's other activity-style destinations. Navigation3's ordinary
+ * slide/fade transform cannot extend the destination edge into the translated gap.
+ */
+@Composable
+private fun SinglePaneSettingsNavigation(
+    detailStack: List<SettingsSection>,
+    selectedSection: SettingsSection,
+    onBackFromSettings: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onNavigateTo: (SettingsSection, Boolean) -> Unit,
+    renderList: @Composable (
+        selectedSection: SettingsSection,
+        showSelection: Boolean,
+        onBack: () -> Unit,
+        onSectionSelected: (SettingsSection) -> Unit,
+    ) -> Unit,
+    renderDetail: @Composable (
+        section: SettingsSection,
+        singlePane: Boolean,
+        onBack: () -> Unit,
+        onNavigate: (SettingsSection, Boolean) -> Unit,
+    ) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val retainedDetails = remember {
+        mutableStateListOf<RetainedSettingsLayer>().apply {
+            detailStack.forEach { section ->
+                add(RetainedSettingsLayer(section, initiallyVisible = true))
+            }
+        }
+    }
+    LaunchedEffect(detailStack) {
+        detailStack.forEach { section ->
+            if (retainedDetails.none { it.section == section }) {
+                retainedDetails += RetainedSettingsLayer(section, initiallyVisible = false)
+            }
+        }
+        retainedDetails.forEach { layer ->
+            layer.visibility.targetState = layer.section in detailStack
+        }
+    }
+
+    val transitionOffsetPx = with(LocalDensity.current) {
+        ActivityNavigationTransitionOffset.roundToPx()
+    }
+    val listOffset by animateFloatAsState(
+        targetValue = if (detailStack.isEmpty()) 0f else -transitionOffsetPx.toFloat(),
+        animationSpec = if (retainedDetails.isEmpty() && detailStack.isEmpty()) {
+            snap()
+        } else {
+            tween(
+                durationMillis = ActivityNavigationTransitionDurationMillis,
+                easing = activityNavigationEasing(),
+            )
+        },
+        label = "settings list navigation offset",
+    )
+    val pageBackground = settingsPageBackgroundColor()
+
+    Box(modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(pageBackground)
+                .graphicsLayer { translationX = listOffset }
+                .then(
+                    if (detailStack.isEmpty()) Modifier else Modifier.clearAndSetSemantics { },
+                ),
+        ) {
+            renderList(
+                selectedSection,
+                false,
+                onBackFromSettings,
+                { section -> onNavigateTo(section, false) },
+            )
+        }
+
+        retainedDetails.forEachIndexed { index, layer ->
+            val retainedInStack = layer.section in detailStack
+            val isCurrent = layer.section == detailStack.lastOrNull()
+            val layerOffset by animateFloatAsState(
+                targetValue = if (retainedInStack && !isCurrent) {
+                    -transitionOffsetPx.toFloat()
+                } else {
+                    0f
+                },
+                animationSpec = tween(
+                    durationMillis = ActivityNavigationTransitionDurationMillis,
+                    easing = activityNavigationEasing(),
+                ),
+                label = "${layer.section.route} navigation offset",
+            )
+            LaunchedEffect(layer) {
+                snapshotFlow {
+                    layer.visibility.isIdle &&
+                        !layer.visibility.currentState &&
+                        !layer.visibility.targetState
+                }.first { it }
+                retainedDetails.remove(layer)
+            }
+
+            AnimatedVisibility(
+                visibleState = layer.visibility,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(index + 1f)
+                    .then(if (isCurrent) Modifier else Modifier.clearAndSetSemantics { }),
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
+                key(layer.section) {
+                    ActivityNavigationTransitionViewport(
+                        transition = transition,
+                        transitionOffsetPx = transitionOffsetPx,
+                        baseTranslationX = layerOffset,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Box(Modifier.fillMaxSize().background(pageBackground)) {
+                            renderDetail(
+                                layer.section,
+                                true,
+                                onNavigateBack,
+                                onNavigateTo,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
