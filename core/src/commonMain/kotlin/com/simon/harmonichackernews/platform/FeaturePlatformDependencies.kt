@@ -19,6 +19,7 @@ data class AppPlatformDependencies(
     val sharing: ShareService,
     val clipboard: ClipboardService,
     val connectivity: ConnectivityService,
+    val battery: BatteryStatusService = UnknownBatteryStatusService,
     val timeFormatting: PlatformTimeFormatter,
     val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val replyNotifications: ReplyNotificationPlatform? = null,

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
@@ -63,6 +65,32 @@ class CommentsPreloadRepositoryTest {
         assertEquals(0, repository.preparedCount())
     }
 
+    @Test
+    fun downloadsPreparesAndConsumesOfficialApiThread() = runTest {
+        val official = RecordingHackerNewsRepository()
+        val repository = CommentsPreloadRepository(
+            algolia = RecordingAlgoliaRepository(RESPONSE),
+            official = OfficialCommentThreadLoader(official),
+            nowMillis = { 1_000L },
+        )
+
+        val loaded = repository.preloadOfficial(42, listOf(7))
+        val reused = repository.preloadOfficial(42, listOf(7))
+
+        assertNotNull(loaded)
+        assertEquals(listOf(7, 8), loaded.comments.map(Comment::id))
+        assertEquals(listOf(0, 1), loaded.comments.map(Comment::depth))
+        assertEquals(1, official.storyRequests)
+        assertEquals(listOf(7, 8), official.commentRequests)
+        assertEquals(loaded, reused)
+        assertTrue(repository.isOfficialPrepared(42, listOf(7)))
+
+        val consumed = repository.takeOfficialOrAwait(42, listOf(7))
+
+        assertEquals(loaded, consumed)
+        assertFalse(repository.isOfficialPrepared(42, listOf(7)))
+    }
+
     private class RecordingAlgoliaRepository(
         private val response: String,
     ) : AlgoliaRepository {
@@ -75,6 +103,30 @@ class CommentsPreloadRepositoryTest {
             itemRequests++
             return response
         }
+    }
+
+    private class RecordingHackerNewsRepository : HackerNewsRepository {
+        var storyRequests = 0
+        val commentRequests = mutableListOf<Int>()
+
+        override suspend fun getStory(id: Int): Story {
+            storyRequests++
+            return Story("Official discussion", id, true, false).also {
+                it.kids = intArrayOf(7)
+            }
+        }
+
+        override suspend fun getComment(id: Int): Comment {
+            commentRequests += id
+            return Comment().also {
+                it.id = id
+                it.by = "user$id"
+                it.text = "Comment $id"
+                if (id == 7) it.kidsIds = intArrayOf(8)
+            }
+        }
+
+        override suspend fun getStoryIds(type: StoryType): List<Int> = emptyList()
     }
 
     private companion object {

@@ -424,7 +424,7 @@ class CommentsPresenter(
         val requestId = threadLoadSession.begin(storyId)
         publish(usingOfficialApiFallback = false)
         threadLoadJob = scope.launch {
-            val preloaded = if (action.useAlgolia) {
+            val preloadedAlgolia = if (action.useAlgolia) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId,
                     topLevelCommentIds,
@@ -433,7 +433,7 @@ class CommentsPresenter(
             } else {
                 null
             }
-            preloaded?.let { prepared ->
+            preloadedAlgolia?.let { prepared ->
                 if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
                     action = action,
                     requestId = requestId,
@@ -442,6 +442,25 @@ class CommentsPresenter(
                     responseToCache = null,
                     restoreScroll = action.restoreScrollFromCache,
                     broadcastStoryUpdate = false,
+                )
+                return@launch
+            }
+            val preloadedOfficial = if (!action.useAlgolia) {
+                commentThreadRepository.takePreloadedOfficial(
+                    storyId,
+                    topLevelCommentIds,
+                    action.filteredUsers,
+                )
+            } else {
+                null
+            }
+            preloadedOfficial?.let { prepared ->
+                if (threadLoadSession.isCurrent(requestId, storyId)) applyOfficialThread(
+                    action = action,
+                    requestId = requestId,
+                    officialStory = prepared.story,
+                    comments = prepared.comments,
+                    usedAsFallback = prepared.usedAsFallback,
                 )
                 return@launch
             }
@@ -504,23 +523,12 @@ class CommentsPresenter(
                     }
                 }
                 is CommentThreadLoadResult.Official -> {
-                    CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, result.story)
-                    thread.appendLoadedComments(
-                        action.story,
-                        result.comments,
-                        action.sorting,
-                        action.collapseTopLevel,
-                    )
-                    publish(loaded = true, refreshing = false, failure = null)
-                    mutableEffects.emit(
-                        CommentsEffect.ThreadApplied(
-                            requestId = requestId,
-                            storyId = storyId,
-                            contentApplied = true,
-                            networkCompleted = true,
-                            headerChanged = true,
-                            usedOfficialFallback = result.usedAsFallback,
-                        ),
+                    applyOfficialThread(
+                        action = action,
+                        requestId = requestId,
+                        officialStory = result.story,
+                        comments = result.comments,
+                        usedAsFallback = result.usedAsFallback,
                     )
                 }
                 is CommentThreadLoadResult.Failure -> {
@@ -535,6 +543,33 @@ class CommentsPresenter(
                 }
             }
         }
+    }
+
+    private suspend fun applyOfficialThread(
+        action: CommentsAction.LoadThread,
+        requestId: Int,
+        officialStory: Story,
+        comments: MutableList<Comment>,
+        usedAsFallback: Boolean,
+    ) {
+        CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, officialStory)
+        thread.appendLoadedComments(
+            action.story,
+            comments,
+            action.sorting,
+            action.collapseTopLevel,
+        )
+        publish(loaded = true, refreshing = false, failure = null)
+        mutableEffects.emit(
+            CommentsEffect.ThreadApplied(
+                requestId = requestId,
+                storyId = action.story.id,
+                contentApplied = true,
+                networkCompleted = true,
+                headerChanged = true,
+                usedOfficialFallback = usedAsFallback,
+            ),
+        )
     }
 
     private fun loadPollOptions(story: Story) {

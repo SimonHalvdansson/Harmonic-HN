@@ -90,6 +90,16 @@ interface ConnectivityService {
     fun isUnmetered(): Boolean
 }
 
+/** Current device charge used only to gate optional background work. */
+fun interface BatteryStatusService {
+    /** Returns a percentage from 0 to 100, or null when the platform cannot provide one. */
+    fun batteryPercent(): Int?
+}
+
+object UnknownBatteryStatusService : BatteryStatusService {
+    override fun batteryPercent(): Int? = null
+}
+
 data class SummaryRequest(
     val text: String,
     val prompt: String? = null,

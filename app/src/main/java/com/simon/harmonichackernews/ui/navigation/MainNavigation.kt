@@ -74,6 +74,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.AndroidLoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
@@ -416,6 +417,10 @@ class MainNavigationController internal constructor(
     }
 
     fun applySettingsChanges() = storiesCoordinator?.onResume()
+
+    internal fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
+        storiesCoordinator?.updateVisibleStories(stories)
+    }
 
     internal fun detachStoriesCoordinator(coordinator: StoriesCoordinator) {
         if (storiesCoordinator === coordinator) storiesCoordinator = null
@@ -1333,7 +1338,9 @@ private fun StoriesPane(
 ) {
     Box(Modifier.fillMaxSize()) {
         val storiesController = controller.storiesComposeController
-        storiesController?.let { AndroidStoriesScreen(it) }
+        storiesController?.let {
+            AndroidStoriesScreen(it, controller::updateVisibleStories)
+        }
         if (drawStatusBarProtection) {
             StatusBarProtection(
                 color = statusBarColor,

@@ -54,7 +54,8 @@ object UserPreferenceKeys {
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
     const val COLLAPSE_TOP_LEVEL = "pref_collapse_top_level"
     const val HIDE_DELAYED_COMMENTS = "pref_hide_delayed_comments"
-    const val PRELOAD_COMMENTS_FROM_STORIES = "pref_preload_comments_from_stories"
+    const val PRELOAD_COMMENTS_MODE = "pref_preload_comments_mode"
+    const val PRELOAD_COMMENTS_MINIMUM_BATTERY = "pref_preload_comments_minimum_battery"
     const val COMMENT_SORTING = "pref_comment_sorting"
     const val COMMENTS_SCROLLBAR = "pref_comments_scrollbar"
     const val COMMENTS_ANIMATION = "pref_comments_animation"
@@ -178,9 +179,18 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
                 hideDelayedComments = boolean(UserPreferenceKeys.HIDE_DELAYED_COMMENTS, false),
-                preloadCommentsFromStories = boolean(
-                    UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES,
-                    preloadCommentsFromStoriesByDefault,
+                preloadCommentsMode = WebViewPreferences.sanitizePreloadMode(
+                    string(
+                        UserPreferenceKeys.PRELOAD_COMMENTS_MODE,
+                        if (preloadCommentsFromStoriesByDefault) {
+                            WebViewPreferences.PRELOAD_ALWAYS
+                        } else {
+                            WebViewPreferences.PRELOAD_NEVER
+                        },
+                    ),
+                ),
+                preloadCommentsMinimumBattery = WebViewPreferences.clampBatteryPercent(
+                    integer(UserPreferenceKeys.PRELOAD_COMMENTS_MINIMUM_BATTERY, 0),
                 ),
                 sorting = CommentSortingPreference.fromStored(
                     string(UserPreferenceKeys.COMMENT_SORTING, CommentSortingPreference.DEFAULT.storedValue),

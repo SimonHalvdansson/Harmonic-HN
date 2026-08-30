@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.cache.StoryCacheUseCase
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.network.CommentsPreloadRepository
 import com.simon.harmonichackernews.network.NetworkGraph
+import com.simon.harmonichackernews.network.OfficialCommentThreadLoader
 import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.network.WidgetConfigurationService
 import com.simon.harmonichackernews.network.WidgetRefreshRuntime
@@ -123,6 +124,7 @@ class HarmonicAppComposition(
     )
     val commentsPreloads = CommentsPreloadRepository(
         algolia = network.algoliaRepository,
+        official = OfficialCommentThreadLoader(network.hackerNewsRepository),
         storeResponse = storyCache::cacheStory,
         nowMillis = nowMillis,
     )

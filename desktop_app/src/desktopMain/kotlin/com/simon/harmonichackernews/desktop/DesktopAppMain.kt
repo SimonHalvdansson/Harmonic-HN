@@ -48,8 +48,12 @@ import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
+import com.simon.harmonichackernews.network.CommentThreadSource
+import com.simon.harmonichackernews.presentation.CommentsPreloadCoordinator
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
+import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
@@ -429,10 +433,33 @@ private fun DesktopStoriesContent(
     onControllerChanged: (StoriesComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val preloadCoordinator = remember(app, scope) {
-        DesktopCommentsPreloadCoordinator(app, scope)
-    }
     val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
+    val latestAppSettings by rememberUpdatedState(appSettings)
+    val preloadCoordinator = remember(app, scope) {
+        CommentsPreloadCoordinator(
+            preloads = app.commentsPreloads,
+            loadFilteredUsers = { app.contentFilters.load().users },
+            preloadAllowed = {
+                val comments = latestAppSettings.comments
+                WebContentPolicy.shouldPreload(
+                    comments.preloadCommentsMode,
+                    comments.preloadCommentsMinimumBattery,
+                    WebPreloadEnvironment(
+                        unmeteredConnection = app.platform.connectivity.isUnmetered(),
+                        batteryPercent = app.platform.battery.batteryPercent(),
+                    ),
+                )
+            },
+            preloadSource = {
+                if (latestAppSettings.reading.useAlgoliaApi) {
+                    CommentThreadSource.ALGOLIA
+                } else {
+                    CommentThreadSource.OFFICIAL
+                }
+            },
+            scope = scope,
+        )
+    }
     val currentSplitLayout by rememberUpdatedState(isSplitLayout)
     val density = LocalDensity.current
     val defaultStoryHeightPx = with(density) { 96.dp.roundToPx() }
@@ -500,12 +527,12 @@ private fun DesktopStoriesContent(
     }
     LaunchedEffect(
         preloadCoordinator,
-        appSettings.comments.preloadCommentsFromStories,
+        appSettings.comments.preloadCommentsMode,
+        appSettings.comments.preloadCommentsMinimumBattery,
         appSettings.reading.useAlgoliaApi,
     ) {
         preloadCoordinator.setEnabled(
-            appSettings.comments.preloadCommentsFromStories &&
-                appSettings.reading.useAlgoliaApi,
+            appSettings.comments.preloadCommentsFromStories,
         )
     }
     LaunchedEffect(state, controller, contentInsetStartPx) {

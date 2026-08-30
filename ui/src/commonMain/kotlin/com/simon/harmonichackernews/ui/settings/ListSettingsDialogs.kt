@@ -137,6 +137,48 @@ fun PreloadWebViewDialog(
     onSave: (mode: WebViewPreloadMode, minimumBattery: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    PreloadPolicyDialog(
+        title = "Preload websites",
+        description = "When you open comments for a link, Harmonic can load the website " +
+            "WebView in the background while you read. This makes switching to the website " +
+            "faster, but uses network data, CPU, memory, and battery.",
+        initialMode = initialMode,
+        initialBattery = initialBattery,
+        onSave = onSave,
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+fun PreloadCommentsDialog(
+    initialMode: WebViewPreloadMode,
+    initialBattery: Int,
+    onSave: (mode: WebViewPreloadMode, minimumBattery: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    PreloadPolicyDialog(
+        title = "Preload comments",
+        description = "Harmonic can download and prepare comments for discussions visible " +
+            "on the stories screen. This makes opening them faster, but uses network data, " +
+            "CPU, memory, and battery—even for stories you never open. The official HN API " +
+            "requires a separate request for every comment, so it can use substantially more " +
+            "network data than Algolia.",
+        initialMode = initialMode,
+        initialBattery = initialBattery,
+        onSave = onSave,
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun PreloadPolicyDialog(
+    title: String,
+    description: String,
+    initialMode: WebViewPreloadMode,
+    initialBattery: Int,
+    onSave: (mode: WebViewPreloadMode, minimumBattery: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var modeValue by rememberSaveable { mutableStateOf(initialMode.storedValue) }
     val mode = WebViewPreloadMode.fromStored(modeValue)
     var battery by rememberSaveable {
@@ -147,14 +189,12 @@ fun PreloadWebViewDialog(
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle("Preload websites") },
+        title = { SettingsDialogTitle(title) },
         edgeToEdgeContent = true,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "When you open comments for a link, Harmonic can load the " +
-                        "website WebView in the background while you read. This makes " +
-                        "switching to the website faster, but uses network, CPU, and battery.",
+                    text = description,
                     color = HarmonicTheme.colors.textPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,

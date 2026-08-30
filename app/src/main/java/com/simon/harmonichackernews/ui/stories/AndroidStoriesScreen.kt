@@ -154,6 +154,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.settings.StoryPreviewPreferences
 import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 
@@ -162,7 +163,10 @@ import kotlin.math.roundToInt
  * controller during this migration; adapter notifications are converted to immutable snapshots.
  */
 @Composable
-internal fun AndroidStoriesScreen(controller: StoriesComposeController) {
+internal fun AndroidStoriesScreen(
+    controller: StoriesComposeController,
+    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
+) {
     val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
     StoriesRoute(
         controller = controller,
@@ -174,6 +178,7 @@ internal fun AndroidStoriesScreen(controller: StoriesComposeController) {
         extraCompactSelectedText =
             booleanResource(R.bool.extra_compact_stories_dropdown_selected_text),
         compactSelectedText = booleanResource(R.bool.compact_stories_dropdown_selected_text),
+        onVisibleStoriesChanged = onVisibleStoriesChanged,
     )
 }
 

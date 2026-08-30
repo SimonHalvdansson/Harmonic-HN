@@ -19,6 +19,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnPreDraw
 import androidx.webkit.WebViewFeature
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -118,6 +119,9 @@ class CommentsCoordinator(
     internal val composeUiController: CommentsComposeController?
         get() = composeController
     private var hostActive = true
+    private var firstDrawCompleted = false
+    private var pendingVisibleWebsiteInitialization = false
+    private var pendingComposeSummaryRequest = false
 
     init {
         coroutineScope.launch { commentsStore.effects.collect(::handleCommentsRuntimeEffect) }
@@ -380,17 +384,12 @@ class CommentsCoordinator(
 
         progressIndicator = host.progressIndicator
 
-        val shouldInitializeWebViewBeforeFirstDraw = integratedWebview && showWebsite
-
-        if (shouldInitializeWebViewBeforeFirstDraw) {
-            webViewController!!.initialize()
-        }
-
         // The pane color was already resolved from the active theme above. Reusing it avoids two
         // cold theme/preference/resource lookups on the comments-open frame.
         webViewController!!.setContainerBackgroundColor(commentsPaneStatusBarColor)
 
         initializeComposeUi()
+        scheduleWebViewInitializationAfterFirstDraw(view)
 
         val restoreScrollFromCache = !showWebsite
 
@@ -520,13 +519,13 @@ class CommentsCoordinator(
             override fun onSheetProgressChanged(expandedFraction: Float) {
                 if (expandedFraction < WEBSITE_PRELOAD_SHEET_THRESHOLD && integratedWebview &&
                     webViewController?.hasWebView() == false
-                ) webViewController?.initializeForVisibleWebsite()
+                ) requestVisibleWebsiteInitialization()
                 updateCommentsStatusBarAppearance()
             }
 
             override fun onSheetSettled(expanded: Boolean) {
                 if (!expanded && integratedWebview && webViewController?.hasWebView() == false) {
-                    webViewController?.initializeForVisibleWebsite()
+                    requestVisibleWebsiteInitialization()
                 }
                 syncOnBackPressedCallbackEnabledState()
                 updateCommentsStatusBarAppearance()
@@ -589,6 +588,10 @@ class CommentsCoordinator(
         )
 
     private fun requestComposeSummary() {
+        if (!firstDrawCompleted) {
+            pendingComposeSummaryRequest = true
+            return
+        }
         val beginSummary: (String?) -> Unit = commentsStore::startSummary
         webViewController?.getLoadedPageText(
             CommentsWebViewController.PageTextCallback(beginSummary),
@@ -608,7 +611,7 @@ class CommentsCoordinator(
                 reading,
                 reading.blockAds && !hostRestoration.adBlockDisabled,
             )
-            if (integratedWebview && !wasIntegrated) controller.initialize()
+            if (integratedWebview && !wasIntegrated) requestConfiguredWebViewInitialization()
         }
         updateWebViewContainerPadding()
         if (state.themeRefreshVersion != appliedCommentsThemeVersion) {
@@ -799,7 +802,7 @@ class CommentsCoordinator(
             return false
         }
         if (showWebsite) {
-            webViewController!!.initialize()
+            requestVisibleWebsiteInitialization()
             if (composeController != null) {
                 composeController!!.requestWebsite()
                 return true
@@ -823,12 +826,43 @@ class CommentsCoordinator(
     }
 
     private fun collapseBottomSheetForWebsite() {
-        if (webViewController != null) {
-            webViewController!!.initialize()
-        }
+        requestVisibleWebsiteInitialization()
         if (composeController != null) {
             composeController!!.requestCollapseSheet()
         }
+    }
+
+    private fun scheduleWebViewInitializationAfterFirstDraw(root: View) {
+        root.doOnPreDraw {
+            root.post {
+                if (view !== root || !isAdded) return@post
+                firstDrawCompleted = true
+                if (pendingVisibleWebsiteInitialization) {
+                    pendingVisibleWebsiteInitialization = false
+                    webViewController?.initializeForVisibleWebsite()
+                } else {
+                    requestConfiguredWebViewInitialization()
+                }
+                if (pendingComposeSummaryRequest) {
+                    pendingComposeSummaryRequest = false
+                    requestComposeSummary()
+                }
+            }
+        }
+    }
+
+    private fun requestVisibleWebsiteInitialization() {
+        if (!integratedWebview) return
+        if (!firstDrawCompleted) {
+            pendingVisibleWebsiteInitialization = true
+            return
+        }
+        webViewController?.initializeForVisibleWebsite()
+    }
+
+    private fun requestConfiguredWebViewInitialization() {
+        if (!integratedWebview || !firstDrawCompleted) return
+        webViewController?.initializeAfterFirstDraw()
     }
 
     private val currentCommentsStatusBarColor: Int

@@ -98,8 +98,6 @@ class StoredSettingsMutator(
                 CommentBooleanPreference.COLLAPSE_TOP_LEVEL -> UserPreferenceKeys.COLLAPSE_TOP_LEVEL
                 CommentBooleanPreference.HIDE_DELAYED_COMMENTS ->
                     UserPreferenceKeys.HIDE_DELAYED_COMMENTS
-                CommentBooleanPreference.PRELOAD_COMMENTS_FROM_STORIES ->
-                    UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES
                 CommentBooleanPreference.SWAP_LONG_PRESS_TAP -> UserPreferenceKeys.COMMENTS_SWAP_LONG
                 CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS ->
                     UserPreferenceKeys.SCROLL_NAVIGATION
@@ -189,6 +187,16 @@ class StoredSettingsMutator(
             UserPreferenceKeys.PRELOAD_WEBVIEW_MINIMUM_BATTERY,
             WebViewPreferences.clampBatteryPercent(minimumBattery),
         )
+    }
+
+    fun setCommentsPreload(mode: WebViewPreloadMode, minimumBattery: Int) {
+        store.update {
+            putString(UserPreferenceKeys.PRELOAD_COMMENTS_MODE, mode.storedValue)
+            putInt(
+                UserPreferenceKeys.PRELOAD_COMMENTS_MINIMUM_BATTERY,
+                WebViewPreferences.clampBatteryPercent(minimumBattery),
+            )
+        }
     }
 
     fun setArchiveRedirectDomains(domains: List<String>) {

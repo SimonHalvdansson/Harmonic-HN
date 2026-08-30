@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
@@ -8,14 +10,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Small application-scoped cache of fully downloaded and parsed Algolia discussions.
+ * Small application-scoped cache of fully downloaded and prepared comment discussions.
  *
  * Entries are consumed by the first comments screen that opens them because the portable comment
- * models are mutable presentation objects. The raw response is also written through the normal
+ * models are mutable presentation objects. Algolia responses are also written through the normal
  * story cache, so later openings retain the existing disk-cache behavior.
  */
 class CommentsPreloadRepository(
     private val algolia: AlgoliaRepository,
+    private val official: OfficialCommentThreadLoader? = null,
     private val parser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
     private val storeResponse: suspend (storyId: Int, response: String) -> Unit = { _, _ -> },
     private val nowMillis: () -> Long,
@@ -23,8 +26,8 @@ class CommentsPreloadRepository(
     private val maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
 ) {
     private val mutex = Mutex()
-    private val entries = LinkedHashMap<PreloadKey, PreloadedCommentsThread>()
-    private val inFlight = mutableMapOf<PreloadKey, CompletableDeferred<PreloadedCommentsThread?>>()
+    private val entries = LinkedHashMap<PreloadKey, PreparedCommentsThread>()
+    private val inFlight = mutableMapOf<PreloadKey, CompletableDeferred<PreparedCommentsThread?>>()
 
     suspend fun preload(
         storyId: Int,
@@ -32,12 +35,67 @@ class CommentsPreloadRepository(
         filteredUsers: Set<String> = emptySet(),
     ): PreloadedCommentsThread? {
         if (storyId <= 0) return null
-        val key = PreloadKey.create(storyId, topLevelCommentIds, filteredUsers)
+        val key = PreloadKey.create(
+            storyId,
+            topLevelCommentIds,
+            filteredUsers,
+            CommentThreadSource.ALGOLIA,
+        )
+        return prepare(key) {
+            val response = algolia.getItemJson(storyId)
+            val parsed = parser.parse(response, key.topLevelCommentIds, key.filteredUsers)
+            storeResponse(storyId, response)
+            PreloadedCommentsThread(
+                storyId = storyId,
+                topLevelCommentIds = key.topLevelCommentIds,
+                filteredUsers = key.filteredUsers,
+                response = response,
+                parsed = parsed,
+                loadedAtMillis = nowMillis(),
+            )
+        } as? PreloadedCommentsThread
+    }
+
+    suspend fun preloadOfficial(
+        storyId: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): PreloadedOfficialCommentsThread? {
+        if (storyId <= 0) return null
+        val loader = official ?: return null
+        val key = PreloadKey.create(
+            storyId,
+            topLevelCommentIds,
+            filteredUsers,
+            CommentThreadSource.OFFICIAL,
+        )
+        return prepare(key) {
+            when (val loaded = loader.load(storyId, key.filteredUsers, usedAsFallback = false)) {
+                is CommentThreadLoadResult.Official -> PreloadedOfficialCommentsThread(
+                    storyId = storyId,
+                    topLevelCommentIds = key.topLevelCommentIds,
+                    filteredUsers = key.filteredUsers,
+                    story = loaded.story,
+                    comments = loaded.comments,
+                    usedAsFallback = loaded.usedAsFallback,
+                    loadedAtMillis = nowMillis(),
+                )
+                is CommentThreadLoadResult.Algolia,
+                is CommentThreadLoadResult.Failure,
+                -> null
+            }
+        } as? PreloadedOfficialCommentsThread
+    }
+
+    private suspend fun prepare(
+        key: PreloadKey,
+        load: suspend () -> PreparedCommentsThread?,
+    ): PreparedCommentsThread? {
         var creator = false
         val deferred = mutex.withLock {
             removeExpiredLocked()
             entries[key]?.let { return it }
-            inFlight[key] ?: CompletableDeferred<PreloadedCommentsThread?>().also {
+            inFlight[key] ?: CompletableDeferred<PreparedCommentsThread?>().also {
                 inFlight[key] = it
                 creator = true
             }
@@ -45,17 +103,7 @@ class CommentsPreloadRepository(
         if (creator) {
             var cancellation: CancellationException? = null
             val loaded = try {
-                val response = algolia.getItemJson(storyId)
-                val parsed = parser.parse(response, key.topLevelCommentIds, key.filteredUsers)
-                storeResponse(storyId, response)
-                PreloadedCommentsThread(
-                    storyId = storyId,
-                    topLevelCommentIds = key.topLevelCommentIds,
-                    filteredUsers = key.filteredUsers,
-                    response = response,
-                    parsed = parsed,
-                    loadedAtMillis = nowMillis(),
-                )
+                load()
             } catch (error: CancellationException) {
                 cancellation = error
                 null
@@ -84,7 +132,33 @@ class CommentsPreloadRepository(
         filteredUsers: Set<String> = emptySet(),
     ): PreloadedCommentsThread? {
         if (storyId <= 0) return null
-        val key = PreloadKey.create(storyId, topLevelCommentIds, filteredUsers)
+        return takePrepared(
+            PreloadKey.create(
+                storyId,
+                topLevelCommentIds,
+                filteredUsers,
+                CommentThreadSource.ALGOLIA,
+            ),
+        ) as? PreloadedCommentsThread
+    }
+
+    suspend fun takeOfficialOrAwait(
+        storyId: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): PreloadedOfficialCommentsThread? {
+        if (storyId <= 0) return null
+        return takePrepared(
+            PreloadKey.create(
+                storyId,
+                topLevelCommentIds,
+                filteredUsers,
+                CommentThreadSource.OFFICIAL,
+            ),
+        ) as? PreloadedOfficialCommentsThread
+    }
+
+    private suspend fun takePrepared(key: PreloadKey): PreparedCommentsThread? {
         val pending = mutex.withLock {
             removeExpiredLocked()
             entries.remove(key)?.let { return it }
@@ -102,7 +176,30 @@ class CommentsPreloadRepository(
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
     ): Boolean {
-        val key = PreloadKey.create(storyId, topLevelCommentIds, filteredUsers)
+        val key = PreloadKey.create(
+            storyId,
+            topLevelCommentIds,
+            filteredUsers,
+            CommentThreadSource.ALGOLIA,
+        )
+        return isPrepared(key)
+    }
+
+    suspend fun isOfficialPrepared(
+        storyId: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): Boolean {
+        val key = PreloadKey.create(
+            storyId,
+            topLevelCommentIds,
+            filteredUsers,
+            CommentThreadSource.OFFICIAL,
+        )
+        return isPrepared(key)
+    }
+
+    private suspend fun isPrepared(key: PreloadKey): Boolean {
         return mutex.withLock {
             removeExpiredLocked()
             key in entries || key in inFlight
@@ -130,16 +227,19 @@ class CommentsPreloadRepository(
         val storyId: Int,
         val topLevelCommentIds: List<Int>,
         val filteredUsers: Set<String>,
+        val source: CommentThreadSource,
     ) {
         companion object {
             fun create(
                 storyId: Int,
                 topLevelCommentIds: List<Int>,
                 filteredUsers: Set<String>,
+                source: CommentThreadSource,
             ) = PreloadKey(
                 storyId = storyId,
                 topLevelCommentIds = topLevelCommentIds.toList(),
                 filteredUsers = filteredUsers.mapTo(linkedSetOf()) { it.lowercase() },
+                source = source,
             )
         }
     }
@@ -150,11 +250,28 @@ class CommentsPreloadRepository(
     }
 }
 
+sealed interface PreparedCommentsThread {
+    val storyId: Int
+    val topLevelCommentIds: List<Int>
+    val filteredUsers: Set<String>
+    val loadedAtMillis: Long
+}
+
 data class PreloadedCommentsThread(
-    val storyId: Int,
-    val topLevelCommentIds: List<Int>,
-    val filteredUsers: Set<String>,
+    override val storyId: Int,
+    override val topLevelCommentIds: List<Int>,
+    override val filteredUsers: Set<String>,
     val response: String,
     val parsed: AlgoliaCommentsResponse,
-    val loadedAtMillis: Long,
-)
+    override val loadedAtMillis: Long,
+) : PreparedCommentsThread
+
+data class PreloadedOfficialCommentsThread(
+    override val storyId: Int,
+    override val topLevelCommentIds: List<Int>,
+    override val filteredUsers: Set<String>,
+    val story: Story,
+    val comments: MutableList<Comment>,
+    val usedAsFallback: Boolean,
+    override val loadedAtMillis: Long,
+) : PreparedCommentsThread

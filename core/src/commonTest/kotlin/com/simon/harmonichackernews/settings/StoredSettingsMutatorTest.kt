@@ -67,6 +67,7 @@ class StoredSettingsMutatorTest {
         mutator.setCommentsVolumeNavigation(CommentVolumeNavigationMode.ALL)
         mutator.setReaderModeFont(AppFont.GEORGIA)
         mutator.setWebViewPreload(WebViewPreloadMode.WIFI_ONLY, 45)
+        mutator.setCommentsPreload(WebViewPreloadMode.ALWAYS, 30)
 
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
         assertFalse(settings.comments.headerTintEnabled)
@@ -79,6 +80,8 @@ class StoredSettingsMutatorTest {
         assertEquals(CommentVolumeNavigationMode.ALL, settings.comments.volumeNavigation)
         assertEquals(AppFont.GEORGIA, settings.reading.readerFont)
         assertEquals(WebViewPreloadMode.WIFI_ONLY, settings.reading.preloadMode)
+        assertEquals(WebViewPreloadMode.ALWAYS, settings.comments.commentsPreloadMode)
+        assertEquals(30, settings.comments.preloadCommentsMinimumBattery)
     }
 
     @Test

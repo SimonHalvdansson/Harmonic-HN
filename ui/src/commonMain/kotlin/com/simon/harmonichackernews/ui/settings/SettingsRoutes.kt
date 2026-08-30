@@ -396,6 +396,12 @@ fun CommentsSettingsRoute(
             presenter::setVolumeNavigation,
         )
         CommentsSettingsDialog.ThreadDepth -> threadDepthDialog(presenter) { dialog = null }
+        CommentsSettingsDialog.Preload -> PreloadCommentsDialog(
+            initialMode = settings.comments.commentsPreloadMode,
+            initialBattery = settings.comments.preloadCommentsMinimumBattery,
+            onSave = presenter::setPreload,
+            onDismiss = { dialog = null },
+        )
         null -> Unit
     }
 }

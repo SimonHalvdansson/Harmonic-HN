@@ -87,7 +87,8 @@ data class CommentPreferences(
     val collectReferenceLinks: Boolean,
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
-    val preloadCommentsFromStories: Boolean,
+    val preloadCommentsMode: String,
+    val preloadCommentsMinimumBattery: Int,
     val sorting: String,
     val showScrollbar: Boolean,
     val animateChanges: Boolean,
@@ -102,6 +103,10 @@ data class CommentPreferences(
         get() = CommentVolumeNavigationMode.fromStored(volumeNavigationMode)
     val fontChoice: AppFont
         get() = AppFont.fromStored(font)
+    val commentsPreloadMode: WebViewPreloadMode
+        get() = WebViewPreloadMode.fromStored(preloadCommentsMode)
+    val preloadCommentsFromStories: Boolean
+        get() = commentsPreloadMode != WebViewPreloadMode.NEVER
 }
 
 data class ReadingPreferences(

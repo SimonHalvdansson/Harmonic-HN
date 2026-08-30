@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.UserTagsRepository
+import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -40,7 +41,7 @@ class SettingsPresentersTest {
         val fixture = fixture()
         fixture.comments.setBoolean(CommentsBooleanSetting.Scrollbar, false)
         fixture.comments.setBoolean(CommentsBooleanSetting.ShowUpButton, true)
-        fixture.comments.setBoolean(CommentsBooleanSetting.PreloadCommentsFromStories, true)
+        fixture.comments.setPreload(WebViewPreloadMode.WIFI_ONLY, 40)
         fixture.comments.setSorting(CommentSortingPreference.NEWEST_FIRST.storedValue)
         fixture.comments.setProvider(CommentsProvider.OFFICIAL.storedValue)
         fixture.webLinks.setLinkPreview(LinkPreviewType.GITHUB_REPOSITORY, false)
@@ -53,7 +54,7 @@ class SettingsPresentersTest {
 
         assertFalse(comments.showScrollbar)
         assertTrue(comments.showUpButton)
-        assertTrue(comments.preloadCommentsFromStories)
+        assertEquals("Only on WiFi, battery at least 40%", comments.preloadCommentsSummary)
         assertEquals(CommentSortingPreference.NEWEST_FIRST, comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, comments.provider)
         assertFalse(LinkPreviewType.GITHUB_REPOSITORY in webLinks.enabledLinkPreviews)

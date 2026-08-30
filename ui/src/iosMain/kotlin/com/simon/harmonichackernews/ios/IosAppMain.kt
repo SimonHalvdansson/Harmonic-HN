@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -43,8 +44,12 @@ import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
+import com.simon.harmonichackernews.network.CommentThreadSource
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
+import com.simon.harmonichackernews.presentation.CommentsPreloadCoordinator
+import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
@@ -455,6 +460,33 @@ private fun IosStoriesContent(
     onControllerChanged: (StoriesComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
+    val latestAppSettings by rememberUpdatedState(appSettings)
+    val preloadCoordinator = remember(app, scope) {
+        CommentsPreloadCoordinator(
+            preloads = app.commentsPreloads,
+            loadFilteredUsers = { app.contentFilters.load().users },
+            preloadAllowed = {
+                val comments = latestAppSettings.comments
+                WebContentPolicy.shouldPreload(
+                    comments.preloadCommentsMode,
+                    comments.preloadCommentsMinimumBattery,
+                    WebPreloadEnvironment(
+                        unmeteredConnection = app.platform.connectivity.isUnmetered(),
+                        batteryPercent = app.platform.battery.batteryPercent(),
+                    ),
+                )
+            },
+            preloadSource = {
+                if (latestAppSettings.reading.useAlgoliaApi) {
+                    CommentThreadSource.ALGOLIA
+                } else {
+                    CommentThreadSource.OFFICIAL
+                }
+            },
+            scope = scope,
+        )
+    }
     val defaultStoryHeightPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val store = remember(app, scene, scope) {
         app.createStoriesStore(
@@ -512,7 +544,18 @@ private fun IosStoriesContent(
             onControllerChanged(null)
             store.onStop()
             store.close()
+            preloadCoordinator.dispose()
         }
+    }
+    LaunchedEffect(
+        preloadCoordinator,
+        appSettings.comments.preloadCommentsMode,
+        appSettings.comments.preloadCommentsMinimumBattery,
+        appSettings.reading.useAlgoliaApi,
+    ) {
+        preloadCoordinator.setEnabled(
+            appSettings.comments.preloadCommentsFromStories,
+        )
     }
     LaunchedEffect(state, controller) {
         val lastUpdatedText = state.lastUpdatedMillis?.let { millis ->
@@ -572,6 +615,7 @@ private fun IosStoriesContent(
             filterColors = filterColors,
             extraCompactSelectedText = false,
             compactSelectedText = false,
+            onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
         IosStatusBarProtection(HarmonicTheme.colors.background)
         if (controller.isStoryPreviewShowing()) {

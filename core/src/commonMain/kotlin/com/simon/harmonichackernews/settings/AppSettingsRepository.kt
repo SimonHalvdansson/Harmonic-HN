@@ -41,7 +41,6 @@ enum class CommentBooleanPreference {
     COLLAPSE_PARENT,
     COLLAPSE_TOP_LEVEL,
     HIDE_DELAYED_COMMENTS,
-    PRELOAD_COMMENTS_FROM_STORIES,
     SWAP_LONG_PRESS_TAP,
     SHOW_NAVIGATION_BUTTONS,
     SMOOTH_SCROLL,
@@ -134,6 +133,8 @@ class AppSettingsRepository(
     fun setCommentsVolumeNavigation(value: CommentVolumeNavigationMode) =
         mutator.setCommentsVolumeNavigation(value)
     fun setCommentDepthIndicatorMode(value: String) = mutator.setCommentDepthIndicatorMode(value)
+    fun setCommentsPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
+        mutator.setCommentsPreload(mode, minimumBattery)
 
     fun setReadingBoolean(preference: ReadingBooleanPreference, value: Boolean) =
         mutator.setReadingBoolean(preference, value)

@@ -35,7 +35,7 @@ data class CommentsSettingsUiState(
     val collapseParent: Boolean,
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
-    val preloadCommentsFromStories: Boolean,
+    val preloadCommentsSummary: String,
     val swapTap: Boolean,
     val sorting: CommentSortingPreference,
     val provider: CommentsProvider,
@@ -58,13 +58,12 @@ enum class CommentsBooleanSetting {
     CollapseParent,
     CollapseTopLevel,
     HideDelayedComments,
-    PreloadCommentsFromStories,
     SwapTap,
     NavigationButtons,
     SmoothScroll,
 }
 
-enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, ThreadDepth }
+enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, ThreadDepth, Preload }
 
 @Composable
 fun CommentsSettingsScreen(
@@ -205,13 +204,11 @@ fun CommentsSettingsScreen(
                     summary = "Hides comments whose text is exactly [delayed]",
                 )
                 SettingsDivider()
-                BooleanRow(
-                    "Preload comments from stories screen",
-                    Res.drawable.ic_database,
-                    state.preloadCommentsFromStories,
-                    CommentsBooleanSetting.PreloadCommentsFromStories,
-                    onBooleanChanged,
-                    summary = "Loads and prepares visible discussions in the background. Uses more battery and may affect performance.",
+                SettingRow(
+                    title = "Preload comments from stories screen",
+                    summary = state.preloadCommentsSummary,
+                    icon = Res.drawable.ic_database,
+                    onClick = { onDialogRequested(CommentsSettingsDialog.Preload) },
                 )
                 SettingsDivider()
                 SegmentedSetting(

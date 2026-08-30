@@ -10,9 +10,14 @@ import com.simon.harmonichackernews.app.createStoriesStore
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
+import com.simon.harmonichackernews.network.CommentThreadSource
 import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
 import com.simon.harmonichackernews.presentation.StoriesState
+import com.simon.harmonichackernews.presentation.CommentsPreloadCoordinator
+import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.MainDestination
@@ -53,6 +58,30 @@ class StoriesCoordinator(
             userSettings = userSettings,
         ),
     )
+    private var appSettings = appComposition.settings.snapshot()
+    private val commentsPreloadCoordinator = CommentsPreloadCoordinator(
+        preloads = appComposition.commentsPreloads,
+        loadFilteredUsers = { appComposition.contentFilters.load().users },
+        preloadAllowed = {
+            val comments = appSettings.comments
+            WebContentPolicy.shouldPreload(
+                comments.preloadCommentsMode,
+                comments.preloadCommentsMinimumBattery,
+                WebPreloadEnvironment(
+                    unmeteredConnection = appComposition.platform.connectivity.isUnmetered(),
+                    batteryPercent = appComposition.platform.battery.batteryPercent(),
+                ),
+            )
+        },
+        preloadSource = {
+            if (appSettings.reading.useAlgoliaApi) {
+                CommentThreadSource.ALGOLIA
+            } else {
+                CommentThreadSource.OFFICIAL
+            }
+        },
+        scope = coroutineScope,
+    )
     private var linkSummaryBackCallback: OnBackPressedCallback? = null
     private var hostActive = navigation.currentDestination == MainDestination.STORIES
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
@@ -76,6 +105,14 @@ class StoriesCoordinator(
 
         setupLinkSummaryBackCallback()
         coroutineScope.launch { storiesStore.effects.collect(::handleStoriesRuntimeEffect) }
+        coroutineScope.launch {
+            appComposition.settings.updates.collect { settings ->
+                appSettings = settings
+                commentsPreloadCoordinator.setEnabled(
+                    settings.comments.preloadCommentsFromStories,
+                )
+            }
+        }
         coroutineScope.launch {
             storiesStore.state.collect { state ->
                 composeController?.updateContent(
@@ -269,6 +306,10 @@ class StoriesCoordinator(
         syncComposeState()
     }
 
+    fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
+        commentsPreloadCoordinator.updateVisibleStories(stories)
+    }
+
     fun onSaveInstanceState(outState: Bundle) {
         val visibleStoryId = if (composeController == null)
             NO_PENDING_LINK_SUMMARY_STORY_ID
@@ -289,6 +330,7 @@ class StoriesCoordinator(
             linkSummaryBackCallback = null
         }
         storiesStore.close()
+        commentsPreloadCoordinator.dispose()
         coroutineScope.cancel()
         clearControllerReferences()
         destroyed = true

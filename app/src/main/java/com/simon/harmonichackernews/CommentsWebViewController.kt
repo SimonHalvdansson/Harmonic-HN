@@ -229,6 +229,19 @@ internal class CommentsWebViewController(
         }
     }
 
+    /** Starts configured background loading only after the destination has drawn once. */
+    fun initializeAfterFirstDraw() {
+        val context = coordinator.context ?: return
+        val shouldStartLoading = showWebsite || shouldPreloadStoryUrl(context) ||
+            linkPreviewController.shouldInitializeWebViewForPreview(context)
+        if (!shouldStartLoading) return
+        initialize()
+        if (webView != null && !startedLoading) {
+            startedLoading = true
+            loadUrl(story?.url)
+        }
+    }
+
     fun hasWebView(): Boolean {
         return webView != null
     }

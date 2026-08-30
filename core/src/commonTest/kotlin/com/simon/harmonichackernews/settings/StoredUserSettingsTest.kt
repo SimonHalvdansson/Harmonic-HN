@@ -34,6 +34,7 @@ class StoredUserSettingsTest {
         assertTrue(settings.comments.animateChanges)
         assertTrue(settings.comments.smoothScroll)
         assertFalse(settings.comments.preloadCommentsFromStories)
+        assertEquals(WebViewPreloadMode.NEVER, settings.comments.commentsPreloadMode)
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
         assertEquals(18, settings.reading.readerModeFontSize)
@@ -93,13 +94,17 @@ class StoredUserSettingsTest {
         )
         val storedChoice = StoredUserSettings(
             store = TestKeyValueStore(
-                mapOf(UserPreferenceKeys.PRELOAD_COMMENTS_FROM_STORIES to false),
+                mapOf(
+                    UserPreferenceKeys.PRELOAD_COMMENTS_MODE to
+                        WebViewPreloadMode.NEVER.storedValue,
+                ),
             ),
             changes = emptyFlow(),
             preloadCommentsFromStoriesByDefault = true,
         )
 
         assertTrue(desktopDefault.comments.preloadCommentsFromStories)
+        assertEquals(WebViewPreloadMode.ALWAYS, desktopDefault.comments.commentsPreloadMode)
         assertFalse(storedChoice.comments.preloadCommentsFromStories)
     }
 
@@ -110,6 +115,8 @@ class StoredUserSettingsTest {
                 UserPreferenceKeys.STORY_TEXT_SIZE to "not-a-number",
                 UserPreferenceKeys.COMMENT_TEXT_SIZE to "999",
                 UserPreferenceKeys.PRELOAD_WEBVIEW_MINIMUM_BATTERY to 500,
+                UserPreferenceKeys.PRELOAD_COMMENTS_MODE to "unexpected",
+                UserPreferenceKeys.PRELOAD_COMMENTS_MINIMUM_BATTERY to 500,
                 UserPreferenceKeys.STORIES_TO_CACHE to 202,
                 UserPreferenceKeys.FAVICON_PROVIDER to "unknown",
                 UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE to "unexpected",
@@ -127,6 +134,8 @@ class StoredUserSettingsTest {
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals(TextPreferences.MAX_COMMENT_TEXT_SIZE, settings.comments.textSize)
         assertEquals(100, settings.reading.preloadWebViewMinimumBattery)
+        assertEquals(WebViewPreloadMode.NEVER, settings.comments.commentsPreloadMode)
+        assertEquals(100, settings.comments.preloadCommentsMinimumBattery)
         assertEquals(200, settings.cache.storiesToCache)
         assertEquals(FaviconPreferences.GOOGLE, settings.story.faviconProvider)
         assertEquals("small", settings.story.previewImageMode)

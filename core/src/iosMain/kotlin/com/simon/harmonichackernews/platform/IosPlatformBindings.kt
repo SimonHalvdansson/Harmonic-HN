@@ -46,6 +46,7 @@ fun createIosPlatformDependencies(
     sharing = bindings.sharing,
     clipboard = bindings.clipboard,
     connectivity = bindings.connectivity,
+    battery = IosBatteryStatusService(),
     timeFormatting = bindings.timeFormatting,
     replyNotifications = bindings.replyNotifications,
     localSummary = bindings.localSummary,

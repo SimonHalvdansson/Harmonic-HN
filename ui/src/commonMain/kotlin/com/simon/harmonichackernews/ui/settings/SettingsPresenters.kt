@@ -148,7 +148,9 @@ class CommentsSettingsPresenter(
             collapseParent = comments.collapseParent,
             collapseTopLevel = comments.collapseTopLevel,
             hideDelayedComments = comments.hideDelayedComments,
-            preloadCommentsFromStories = comments.preloadCommentsFromStories,
+            preloadCommentsSummary = comments.commentsPreloadMode.summary(
+                comments.preloadCommentsMinimumBattery,
+            ),
             swapTap = comments.swapLongPressTap,
             sorting = comments.sortingPreference,
             provider = settings.reading.commentsProvider,
@@ -176,6 +178,8 @@ class CommentsSettingsPresenter(
     )
 
     fun setDepthIndicatorMode(value: String) = repository.setCommentDepthIndicatorMode(value)
+    fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
+        repository.setCommentsPreload(mode, minimumBattery)
 }
 
 class WebLinksSettingsPresenter(
@@ -373,8 +377,6 @@ private val CommentsBooleanSetting.preference: CommentBooleanPreference
         CommentsBooleanSetting.CollapseTopLevel -> CommentBooleanPreference.COLLAPSE_TOP_LEVEL
         CommentsBooleanSetting.HideDelayedComments ->
             CommentBooleanPreference.HIDE_DELAYED_COMMENTS
-        CommentsBooleanSetting.PreloadCommentsFromStories ->
-            CommentBooleanPreference.PRELOAD_COMMENTS_FROM_STORIES
         CommentsBooleanSetting.SwapTap -> CommentBooleanPreference.SWAP_LONG_PRESS_TAP
         CommentsBooleanSetting.NavigationButtons -> CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS
         CommentsBooleanSetting.SmoothScroll -> CommentBooleanPreference.SMOOTH_SCROLL

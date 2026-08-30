@@ -11,6 +11,7 @@ import android.text.format.DateFormat
 import com.simon.harmonichackernews.network.createAndroidLocalSummaryEngine
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.utils.AndroidAiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidConnectivityCapabilities
 import com.simon.harmonichackernews.utils.AndroidConnectivityStatus
@@ -126,6 +127,12 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
     }
 }
 
+class AndroidBatteryStatusService(context: Context) : BatteryStatusService {
+    private val appContext = context.applicationContext
+
+    override fun batteryPercent(): Int? = AndroidSettingsResources.batteryPercent(appContext)
+}
+
 class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {
     private val appContext = context.applicationContext
 
@@ -186,6 +193,7 @@ fun createAndroidPlatformDependencies(
         sharing = AndroidShareService(context),
         clipboard = AndroidClipboardService(context),
         connectivity = AndroidConnectivityService(context),
+        battery = AndroidBatteryStatusService(context),
         timeFormatting = AndroidTimeFormatter(context),
         credentialDispatcher = Dispatchers.IO,
         replyNotifications = AndroidReplyNotificationPlatform(context),

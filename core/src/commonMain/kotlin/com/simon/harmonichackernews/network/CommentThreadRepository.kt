@@ -14,15 +14,27 @@ import kotlinx.coroutines.coroutineScope
  */
 class CommentThreadRepository(
     private val algoliaRepository: AlgoliaRepository,
-    private val hackerNewsRepository: HackerNewsRepository,
+    hackerNewsRepository: HackerNewsRepository,
     private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
     private val preloads: CommentsPreloadRepository? = null,
 ) {
+    private val officialLoader = OfficialCommentThreadLoader(hackerNewsRepository)
+
     suspend fun takePreloadedAlgolia(
         storyId: Int,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
     ): PreloadedCommentsThread? = preloads?.takeOrAwait(
+        storyId,
+        topLevelCommentIds,
+        filteredUsers,
+    )
+
+    suspend fun takePreloadedOfficial(
+        storyId: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): PreloadedOfficialCommentsThread? = preloads?.takeOfficialOrAwait(
         storyId,
         topLevelCommentIds,
         filteredUsers,
@@ -38,7 +50,7 @@ class CommentThreadRepository(
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
         if (!useAlgolia) {
-            return loadFromOfficialApi(storyId, filteredUsers, usedAsFallback = false)
+            return officialLoader.load(storyId, filteredUsers, usedAsFallback = false)
         }
 
         return try {
@@ -52,7 +64,7 @@ class CommentThreadRepository(
         } catch (error: Exception) {
             if (error.shouldFallBackToOfficialApi()) {
                 onAlgoliaFallback()
-                loadFromOfficialApi(storyId, filteredUsers, usedAsFallback = true)
+                officialLoader.load(storyId, filteredUsers, usedAsFallback = true)
             } else {
                 CommentThreadLoadResult.Failure(
                     noInternet = error !is HttpStatusException,
@@ -73,7 +85,16 @@ class CommentThreadRepository(
         filteredUsers,
     )
 
-    private suspend fun loadFromOfficialApi(
+    private fun Exception.shouldFallBackToOfficialApi(): Boolean =
+        this is HttpRequestTimeoutException ||
+            this is HttpStatusException && (statusCode == 404 || statusCode >= 500)
+}
+
+/** Downloads and prepares a complete comment forest from the official per-item HN API. */
+class OfficialCommentThreadLoader(
+    private val hackerNewsRepository: HackerNewsRepository,
+) {
+    suspend fun load(
         storyId: Int,
         filteredUsers: Set<String>,
         usedAsFallback: Boolean,
@@ -138,10 +159,6 @@ class CommentThreadRepository(
             addAll(descendants)
         }
     }
-
-    private fun Exception.shouldFallBackToOfficialApi(): Boolean =
-        this is HttpRequestTimeoutException ||
-            this is HttpStatusException && (statusCode == 404 || statusCode >= 500)
 }
 
 enum class CommentThreadSource {
