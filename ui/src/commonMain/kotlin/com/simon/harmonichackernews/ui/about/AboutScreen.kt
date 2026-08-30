@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -100,7 +100,7 @@ fun AboutScreen(
             .fillMaxSize()
             .background(colors.background)
             .windowInsetsPadding(
-                WindowInsets.systemBars.only(
+                WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                 ),
             ),
@@ -119,7 +119,7 @@ fun AboutScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(
-                    WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
                 )
                 .padding(
                     start = 16.dp + sidePadding,
