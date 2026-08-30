@@ -5,19 +5,27 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
+import com.simon.harmonichackernews.presentation.SubmissionsIntent
+import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.ui.content.rememberSubmissionStoryItemUiModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Portable submissions Compose bridge; hosts provide only the final URL effect. */
 @Composable
 fun SubmissionsRoute(
-    controller: SubmissionsComposeController,
+    userName: String,
+    store: SubmissionsFeatureStore,
+    displaySettings: StoryDisplaySettings,
+    initialScrollRestoration: SubmissionsScrollRestoration?,
     previewService: StoryPreviewResourceService,
     tintStore: StoryResourceTintStore,
     includeStatusBarInset: Boolean = true,
@@ -25,34 +33,42 @@ fun SubmissionsRoute(
     pullToRefreshEnabled: Boolean = true,
     onOpenLink: (String) -> Unit,
 ) {
+    val state by store.state.collectAsState()
+    val onIntent = remember(store) { { intent: SubmissionsIntent -> store.accept(intent) } }
     val scope = rememberCoroutineScope()
     val previewResources = remember(scope, previewService, tintStore) {
         StoryListResourceRuntime(
             scope = scope,
             service = previewService,
-            settings = controller.displaySettings,
+            settings = displaySettings,
             tintStore = tintStore,
         )
     }
-    SideEffect { previewResources.updateSettings(controller.displaySettings) }
+    SideEffect { previewResources.updateSettings(displaySettings) }
     val states by previewResources.statesFlow.collectAsState()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
     val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
-    SubmissionsScreen(
-        controller = controller,
-        previewResources = previewResources,
-        includeStatusBarInset = includeStatusBarInset,
-        reserveBackButtonSpace = reserveBackButtonSpace,
-        pullToRefreshEnabled = pullToRefreshEnabled,
-        storyItemModel = { story, settings ->
-            rememberSubmissionStoryItemUiModel(
-                story = story,
-                settings = settings,
-                previewState = states[story.id],
-                previewResources = previewResources,
-                tintBaseColor = tintBaseColor,
-            )
-        },
-        onOpenLink = onOpenLink,
-    )
+    key(store) {
+        SubmissionsScreen(
+            userName = userName,
+            state = state,
+            displaySettings = displaySettings,
+            initialScrollRestoration = initialScrollRestoration,
+            onIntent = onIntent,
+            previewResources = previewResources,
+            includeStatusBarInset = includeStatusBarInset,
+            reserveBackButtonSpace = reserveBackButtonSpace,
+            pullToRefreshEnabled = pullToRefreshEnabled,
+            storyItemModel = { story, settings ->
+                rememberSubmissionStoryItemUiModel(
+                    story = story,
+                    settings = settings,
+                    previewState = states[story.id],
+                    previewResources = previewResources,
+                    tintBaseColor = tintBaseColor,
+                )
+            },
+            onOpenLink = onOpenLink,
+        )
+    }
 }

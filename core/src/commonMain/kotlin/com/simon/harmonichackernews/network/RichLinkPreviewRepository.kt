@@ -43,7 +43,7 @@ internal data class PackagePreviewTarget(
 
 /** URL classification shared by provider selection, settings fixtures and parser tests. */
 object RichLinkPreviewUrls {
-    fun type(url: String?): LinkPreviewType? = RichLinkPreviewProviders.type(url)
+    fun type(url: String?): LinkPreviewType? = LinkPreviewProviders.type(url)
 
     internal fun githubTarget(url: String?): GitHubPreviewTarget? {
         val parsed = url?.toNetworkUrlOrNull() ?: return null
@@ -204,11 +204,6 @@ object RichLinkPreviewUrls {
         return host == "reddit.com" && "comments" in segments
     }
 }
-
-internal suspend fun HttpClient.loadRichLinkPreview(
-    type: LinkPreviewType,
-    url: String,
-): LinkPreviewInfo = RichLinkPreviewProviders.load(this, type, url)
 
 internal suspend fun HttpClient.loadGitHubPreview(
     type: LinkPreviewType,

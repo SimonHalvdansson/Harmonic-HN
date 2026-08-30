@@ -8,7 +8,6 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 
 data class StoriesSettingsUiState(
@@ -87,25 +86,7 @@ fun StoriesSettingsScreen(
         pinnedContent = {
             StoryItem(
                 model = state.previewModel,
-                style = StoryItemStyle(
-                    previewImageMode = state.previewImageMode,
-                    borderlessLargeImage = state.borderlessLargeImage,
-                    compact = state.compact,
-                    showSummary = state.showSummary,
-                    showFavicon = state.showThumbnails,
-                    showPoints = state.showPoints,
-                    compactPoints = state.compactPoints,
-                    includeTopLevelDomain = state.includeTopLevelDomain,
-                    showCommentCount = state.showComments,
-                    showIndex = state.showIndex,
-                    commentsOnLeft = state.leftAlignComments,
-                    tintCard = state.tint,
-                    cardStyle = state.displayStyle == state.cardStyleValue,
-                    useHotnessIcon = state.hotnessEnabled,
-                    preferredFont = state.preferredFont,
-                    textSize = state.textSize,
-                    paletteTintConfigKey = state.paletteTintConfigKey,
-                ),
+                style = state.toPreviewStoryItemStyle(),
             )
         },
     ) {

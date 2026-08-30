@@ -12,18 +12,27 @@ import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.common.TranslucentBackButton
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
+import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 
 /** Android host hook for the shared submissions route. */
 @Composable
 internal fun AndroidSubmissionsScreen(
-    controller: SubmissionsComposeController,
+    userName: String,
+    store: SubmissionsFeatureStore,
+    displaySettings: StoryDisplaySettings,
+    initialScrollRestoration: SubmissionsScrollRestoration?,
     onBack: () -> Unit,
 ) {
     val app = LocalHarmonicUiDependencies.current
     HazeHost {
         Box(Modifier.fillMaxSize()) {
             SubmissionsRoute(
-                controller = controller,
+                userName = userName,
+                store = store,
+                displaySettings = displaySettings,
+                initialScrollRestoration = initialScrollRestoration,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
                 reserveBackButtonSpace = true,

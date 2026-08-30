@@ -39,9 +39,6 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.webkit.WebSettingsCompat
@@ -89,8 +86,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** The lifecycle state the WebView island needs from its owning comments surface. */
+internal interface CommentsWebViewHostGateway {
+    val context: Context?
+    val isAttached: Boolean
+}
+
 internal class CommentsWebViewController(
-    private val coordinator: CommentsCoordinator,
+    private val hostGateway: CommentsWebViewHostGateway,
     private val story: Story?,
     private val linkPreviewController: LinkPreviewController,
     webContentRuntime: WebContentRuntime,
@@ -101,9 +104,14 @@ internal class CommentsWebViewController(
 ) {
 
     internal interface Callbacks {
-        fun startActivity(intent: Intent)
-
         fun openExternalLink(url: String)
+
+        fun showMessage(
+            message: String?,
+            duration: UserMessageDuration = UserMessageDuration.SHORT,
+        )
+
+        fun setFullscreenSystemBarsHidden(hidden: Boolean)
 
         fun syncOnBackPressedCallbackEnabledState()
 
@@ -220,7 +228,7 @@ internal class CommentsWebViewController(
 
     /** Starts configured background loading only after the destination has drawn once. */
     fun initializeAfterFirstDraw() {
-        val context = coordinator.context ?: return
+        val context = hostGateway.context ?: return
         val shouldStartLoading = showWebsite || shouldPreloadStoryUrl(context) ||
             linkPreviewController.shouldInitializeWebViewForPreview(context)
         if (!shouldStartLoading) return
@@ -354,7 +362,7 @@ internal class CommentsWebViewController(
             storyUrl = story?.url,
             platformUrls = WEB_CONTENT_URLS,
         )
-        if (url == null) coordinator.showMessage(WebContentCopy.OPEN_URL_FAILED)
+        if (url == null) callbacks.showMessage(WebContentCopy.OPEN_URL_FAILED)
         else callbacks.openExternalLink(url)
     }
 
@@ -363,7 +371,7 @@ internal class CommentsWebViewController(
         val currentWebView = webView ?: return
         currentWebView.reload()
 
-        coordinator.showMessage(WebContentCopy.AD_BLOCK_DISABLED)
+        callbacks.showMessage(WebContentCopy.AD_BLOCK_DISABLED)
     }
 
     fun toggleReaderMode() {
@@ -373,15 +381,15 @@ internal class CommentsWebViewController(
         if (webView == null) {
             initialize()
         }
-        val context = coordinator.context ?: return
+        val context = hostGateway.context ?: return
         val currentWebView = webView ?: return
-        if (coordinator.view == null) return
+        if (!hostGateway.isAttached) return
 
         val currentUrl = currentWebView.url
         if (showingErrorPage ||
             !WebContentPagePolicy.isReaderEligible(currentUrl, WEB_CONTENT_URLS)
         ) {
-            coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
+            callbacks.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
             return
         }
 
@@ -395,7 +403,7 @@ internal class CommentsWebViewController(
         applyReaderModeChange(toggle.change)
         when (val decision = toggle.decision) {
             ReaderModeToggleDecision.Unavailable -> {
-                coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
+                callbacks.showMessage(WebContentCopy.READER_UNAVAILABLE_FOR_PAGE)
                 return
             }
             ReaderModeToggleDecision.LoadThenEnable -> {
@@ -403,7 +411,7 @@ internal class CommentsWebViewController(
                     startedLoading = true
                     loadUrl(story?.url)
                 }
-                coordinator.showMessage(WebContentCopy.READER_PENDING)
+                callbacks.showMessage(WebContentCopy.READER_PENDING)
                 return
             }
             is ReaderModeToggleDecision.Apply -> applyReaderMode(decision.enabled)
@@ -419,15 +427,15 @@ internal class CommentsWebViewController(
 
     private fun applyReaderMode(enable: Boolean, showFeedback: Boolean = true) {
         if (!readerModeFeatureEnabled) return
-        val context = coordinator.context ?: return
+        val context = hostGateway.context ?: return
         val targetWebView = webView ?: return
-        if (coordinator.view == null) return
+        if (!hostGateway.isAttached) return
 
         val script = readerModeResources.script(context)
         if (TextUtils.isEmpty(script)) {
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
             if (showFeedback) {
-                coordinator.showMessage(WebContentCopy.READER_UNAVAILABLE)
+                callbacks.showMessage(WebContentCopy.READER_UNAVAILABLE)
             }
             return
         }
@@ -438,8 +446,8 @@ internal class CommentsWebViewController(
             theme = readerModeResources.theme(context, readingPreferences),
             enabled = enable,
         ) { status ->
-            val callbackContext = coordinator.context
-            if (callbackContext == null || targetWebView !== webView || generation != webContentLoad.state.generation || coordinator.view == null) {
+            val callbackContext = hostGateway.context
+            if (callbackContext == null || targetWebView !== webView || generation != webContentLoad.state.generation || !hostGateway.isAttached) {
                 return@evaluateReaderMode
             }
 
@@ -453,12 +461,12 @@ internal class CommentsWebViewController(
             result.delayedUnavailableMillis?.let {
                 scheduleDelayedReaderModeUnavailable(generation, it)
             }
-            result.message?.let(coordinator::showMessage)
+            result.message?.let { callbacks.showMessage(it) }
         }
     }
 
     private fun checkReaderModeAvailability(view: WebView, generation: Int) {
-        val context = coordinator.context
+        val context = hostGateway.context
         if (!canCheckReaderModeAvailability(view, generation, context)) {
             applyReaderModeChange(webContentSession.setReaderUnavailableNow())
             return
@@ -471,7 +479,7 @@ internal class CommentsWebViewController(
         }
 
         webContentController.evaluateReaderModeAvailability(script.orEmpty()) { available ->
-            val callbackContext = coordinator.context
+            val callbackContext = hostGateway.context
             if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
                 return@evaluateReaderModeAvailability
             }
@@ -495,7 +503,7 @@ internal class CommentsWebViewController(
         generation: Int,
         context: Context?
     ): Boolean {
-        if (!readerModeFeatureEnabled || !integratedWebview || view !== webView || generation != webContentLoad.state.generation || context == null || coordinator.view == null) {
+        if (!readerModeFeatureEnabled || !integratedWebview || view !== webView || generation != webContentLoad.state.generation || context == null || !hostGateway.isAttached) {
             return false
         }
 
@@ -563,8 +571,8 @@ internal class CommentsWebViewController(
             return
         }
 
-        val context = coordinator.context
-        if (context == null || coordinator.view == null) {
+        val context = hostGateway.context
+        if (context == null || !hostGateway.isAttached) {
             return
         }
 
@@ -609,7 +617,7 @@ internal class CommentsWebViewController(
 
         currentWebView.webChromeClient = object : WebChromeClient() {
             override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-                if (coordinator.context == null || coordinator.view == null || fullscreenContainer == null || webViewContainer == null) {
+                if (hostGateway.context == null || !hostGateway.isAttached || fullscreenContainer == null || webViewContainer == null) {
                     callback.onCustomViewHidden()
                     return
                 }
@@ -664,11 +672,11 @@ internal class CommentsWebViewController(
             ?.loadUrl
 
     private fun isCurrentWebViewCallback(view: WebView?): Boolean {
-        return view != null && view === webView && coordinator.context != null && coordinator.view != null && webViewBackdrop != null
+        return view != null && view === webView && hostGateway.context != null && hostGateway.isAttached && webViewBackdrop != null
     }
 
     private fun beginWebViewLoad(view: WebView, url: String?) {
-        if (view !== webView || coordinator.context == null || coordinator.view == null) {
+        if (view !== webView || hostGateway.context == null || !hostGateway.isAttached) {
             return
         }
 
@@ -740,7 +748,7 @@ internal class CommentsWebViewController(
 
     private fun updateWebViewProgress(view: WebView, newProgress: Int) {
         val currentProgressIndicator = progressIndicator
-        if (view !== webView || coordinator.context == null || coordinator.view == null || currentProgressIndicator == null) {
+        if (view !== webView || hostGateway.context == null || !hostGateway.isAttached || currentProgressIndicator == null) {
             return
         }
         cancelProgressAnimator()
@@ -818,7 +826,7 @@ internal class CommentsWebViewController(
         ) {
             return
         }
-        linkPreviewController.onWebViewOfflineFallback(coordinator.context)
+        linkPreviewController.onWebViewOfflineFallback(hostGateway.context)
         val failure = webContentSession.planFailure(
             failure = errorPageType,
             failingUrl = failingUrl,
@@ -857,7 +865,7 @@ internal class CommentsWebViewController(
         checkNotNull(webViewContainer).visibility = View.VISIBLE
         callbacks.onFullscreenChanged(false)
 
-        setFullscreenSystemBarsHidden(false)
+        callbacks.setFullscreenSystemBarsHidden(false)
         callbacks.syncOnBackPressedCallbackEnabledState()
 
 
@@ -894,30 +902,9 @@ internal class CommentsWebViewController(
         checkNotNull(webViewContainer).visibility = View.GONE
         callbacks.onFullscreenChanged(true)
 
-        setFullscreenSystemBarsHidden(true)
+        callbacks.setFullscreenSystemBarsHidden(true)
         callbacks.syncOnBackPressedCallbackEnabledState()
 
-    }
-
-    private fun setFullscreenSystemBarsHidden(hidden: Boolean) {
-        if (coordinator.getActivity() == null) {
-            return
-        }
-
-        val windowInsetsController =
-            ViewCompat.getWindowInsetsController(
-                coordinator.requireActivity().getWindow().getDecorView()
-            )
-        if (windowInsetsController == null) {
-            return
-        }
-
-        if (hidden) {
-            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-            windowInsetsController.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE)
-        } else {
-            windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-        }
     }
 
     private fun isErrorPageUrl(url: String?): Boolean {
@@ -928,13 +915,13 @@ internal class CommentsWebViewController(
     private fun loadUrl(url: String?, pdfFilePath: String? = null) {
         var targetUrl = url
         var targetPdfFilePath = pdfFilePath
-        var context = coordinator.context
+        var context = hostGateway.context
         if (webView == null && integratedWebview) {
             initialize()
-            context = coordinator.context
+            context = hostGateway.context
         }
         val targetWebView = webView ?: return
-        if (context == null || coordinator.view == null || targetUrl.isNullOrEmpty()) return
+        if (context == null || !hostGateway.isAttached || targetUrl.isNullOrEmpty()) return
 
         val archiveRedirectUrl = archiveRedirectUrl(context, targetUrl)
         if (archiveRedirectUrl != null) {
@@ -995,7 +982,7 @@ internal class CommentsWebViewController(
                 }
             } catch (exception: RuntimeException) {
                 Log.e("MY_APP_TAG", "The embedded browser is unavailable", exception)
-                coordinator.showMessage(
+                callbacks.showMessage(
                     "Embedded browser unavailable. Check Android System WebView and try again",
                 )
                 return null
@@ -1045,7 +1032,7 @@ internal class CommentsWebViewController(
         if (ctx == null) {
             return
         }
-        coordinator.showMessage("Loading PDF...", UserMessageDuration.LONG)
+        callbacks.showMessage("Loading PDF...", UserMessageDuration.LONG)
         coroutineScope.launch {
             runCatching { pdfDownloads.download(url) }
                 .onSuccess { filePath -> loadUrl(PDF_LOADER_URL, filePath) }
@@ -1074,21 +1061,21 @@ internal class CommentsWebViewController(
                         val dm = view.getContext()
                             .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                         dm.enqueue(request)
-                        coordinator.showMessage("Downloading...", UserMessageDuration.LONG)
+                        callbacks.showMessage("Downloading...", UserMessageDuration.LONG)
                     } catch (e: Exception) {
-                        coordinator.showMessage(
+                        callbacks.showMessage(
                             "Failed to download, opening in browser",
                             UserMessageDuration.LONG,
                         )
                         if (!AndroidExternalLinkLauncher.openExternalBrowser(
-                                coordinator.requireActivity(),
+                                view.context,
                                 com.simon.harmonichackernews.platform.ExternalLinkRequest(
                                     url.orEmpty(),
                                     preferInApp = false,
                                 ),
                             )
                         ) {
-                            coordinator.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
+                            callbacks.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
                         }
                     }
                 }
@@ -1168,9 +1155,9 @@ internal class CommentsWebViewController(
     }
 
     private fun loadCachedArticleSnapshot(view: WebView?, failingUrl: String?): Boolean {
-        val context = coordinator.context
+        val context = hostGateway.context
         val currentStory = story
-        if (view == null || context == null || coordinator.view == null ||
+        if (view == null || context == null || !hostGateway.isAttached ||
             currentStory == null || !currentStory.isLink || currentStory.id <= 0
         ) return false
 
@@ -1187,7 +1174,7 @@ internal class CommentsWebViewController(
         webContentSession.showCachedContent(failingUrl, baseUrl)
         view.stopLoading()
         clearWebViewHistoryOnNextFinish = true
-        coordinator.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
+        callbacks.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
         view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
         return true
     }
@@ -1238,8 +1225,8 @@ internal class CommentsWebViewController(
     private fun isPdfViewerUrl(url: String?): Boolean = isTrustedPdfViewerUrl(url, PDF_LOADER_URL)
 
     private fun restartWebView() {
-        val context = coordinator.context
-        if (context == null || coordinator.view == null || webViewContainer == null) {
+        val context = hostGateway.context
+        if (context == null || !hostGateway.isAttached || webViewContainer == null) {
             destroy(true)
             return
         }
@@ -1410,7 +1397,7 @@ internal class CommentsWebViewController(
                 }
             }
 
-            linkPreviewController.onWebViewPageFinished(coordinator.context, view, url)
+            linkPreviewController.onWebViewPageFinished(hostGateway.context, view, url)
 
             val pageEligible = !showingErrorPage &&
                 WebContentPagePolicy.isReaderEligible(url, WEB_CONTENT_URLS)
@@ -1507,7 +1494,7 @@ internal class CommentsWebViewController(
                 destroy(true)
             }
 
-            if (coordinator.context == null || coordinator.view == null || webViewContainer == null) {
+            if (hostGateway.context == null || !hostGateway.isAttached || webViewContainer == null) {
                 return true
             }
 
@@ -1523,9 +1510,9 @@ internal class CommentsWebViewController(
 
                 return true
             }
-            val context = coordinator.context
+            val context = hostGateway.context
             if (context != null && wasCurrentWebView) {
-                coordinator.showMessage("WebView crashed, reinitializing")
+                callbacks.showMessage("WebView crashed, reinitializing")
                 restartWebView()
             }
 

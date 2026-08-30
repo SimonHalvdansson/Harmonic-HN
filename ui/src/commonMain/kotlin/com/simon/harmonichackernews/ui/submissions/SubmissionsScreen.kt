@@ -40,12 +40,11 @@ import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -72,134 +71,17 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.presentation.SubmissionFilter
+import com.simon.harmonichackernews.presentation.SubmissionsIntent
+import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
+import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.toStoryItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
-
-/**
- * State bridge used by the submissions coordinator inside MainActivity's Compose navigation.
- */
-class SubmissionsComposeController(
-    internal val userName: String,
-    initialFilter: SubmissionFilter,
-    initialDisplaySettings: StoryDisplaySettings,
-    internal val listener: Listener,
-) {
-
-    internal var submissions by mutableStateOf<List<Story>>(emptyList())
-        private set
-    internal var selectedFilter by mutableStateOf(initialFilter)
-        private set
-    internal var showFilter by mutableStateOf(false)
-        private set
-    internal var canLoadMore by mutableStateOf(false)
-        private set
-    internal var loadedSuccessfully by mutableStateOf(false)
-        private set
-    internal var loading by mutableStateOf(false)
-        private set
-    internal var showInitialLoading by mutableStateOf(false)
-        private set
-    internal var refreshing by mutableStateOf(false)
-        private set
-    internal var emptyText by mutableStateOf("No submissions")
-        private set
-    var displaySettings by mutableStateOf(initialDisplaySettings)
-        private set
-    internal var contentVersion by mutableIntStateOf(0)
-        private set
-    internal var scrollRestoreRequest by mutableStateOf<ScrollRestoreRequest?>(null)
-        private set
-
-    fun updateContent(
-        submissions: List<Story>,
-        selectedFilter: SubmissionFilter,
-        showFilter: Boolean,
-        canLoadMore: Boolean,
-        loadedSuccessfully: Boolean,
-        emptyText: String,
-        revision: Int,
-    ) {
-        this.submissions = submissions.toList()
-        this.selectedFilter = selectedFilter
-        this.showFilter = showFilter
-        this.canLoadMore = canLoadMore
-        this.loadedSuccessfully = loadedSuccessfully
-        this.emptyText = emptyText
-        this.contentVersion = revision
-    }
-
-    fun updateLoading(
-        loading: Boolean,
-        showInitialLoading: Boolean,
-        refreshing: Boolean,
-    ) {
-        this.loading = loading
-        this.showInitialLoading = showInitialLoading
-        this.refreshing = refreshing
-    }
-
-    fun updateDisplaySettings(settings: StoryDisplaySettings) {
-        displaySettings = settings
-    }
-
-    fun restoreScrollState(
-        firstVisiblePosition: Int,
-        firstVisibleTop: Int,
-        appBarCollapsed: Boolean,
-    ) {
-        scrollRestoreRequest = ScrollRestoreRequest(
-            firstVisiblePosition = firstVisiblePosition,
-            firstVisibleTop = firstVisibleTop,
-            appBarCollapsed = appBarCollapsed,
-        )
-    }
-
-    internal fun consumeScrollRestoreRequest(request: ScrollRestoreRequest) {
-        if (scrollRestoreRequest == request) {
-            scrollRestoreRequest = null
-        }
-    }
-
-    internal fun updateScrollState(state: LazyListState) {
-        val listIndex = state.firstVisibleItemIndex
-        listener.onScrollStateChanged(
-            firstVisibleStoryPosition = (listIndex - 1).coerceAtLeast(0),
-            firstVisibleStoryTop = if (listIndex == 0) {
-                0
-            } else {
-                -state.firstVisibleItemScrollOffset
-            },
-            appBarCollapsed = listIndex > 0 || state.firstVisibleItemScrollOffset > 0,
-        )
-    }
-
-    internal data class ScrollRestoreRequest(
-        val firstVisiblePosition: Int,
-        val firstVisibleTop: Int,
-        val appBarCollapsed: Boolean,
-    )
-
-    interface Listener {
-        fun onFilterSelected(filter: SubmissionFilter)
-        fun onRefresh()
-        fun onStoryLinkClick(story: Story)
-        fun onStoryCommentsClick(story: Story)
-        fun onCommentStoryClick(story: Story)
-        fun onCommentRepliesClick(story: Story)
-        fun onLoadMore()
-        fun onScrollStateChanged(
-            firstVisibleStoryPosition: Int,
-            firstVisibleStoryTop: Int,
-            appBarCollapsed: Boolean,
-        ) {}
-    }
-
-}
 
 /**
  * The header is the first lazy item, scrolling is supplied by the LazyColumn, and every content
@@ -208,7 +90,11 @@ class SubmissionsComposeController(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubmissionsScreen(
-    controller: SubmissionsComposeController,
+    userName: String,
+    state: SubmissionsUiState,
+    displaySettings: StoryDisplaySettings,
+    initialScrollRestoration: SubmissionsScrollRestoration?,
+    onIntent: (SubmissionsIntent) -> Unit,
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean = true,
     reserveBackButtonSpace: Boolean = false,
@@ -218,36 +104,50 @@ fun SubmissionsScreen(
 ) {
     val listState = rememberLazyListState()
     val hazeState = currentSharedHazeState()
+    val currentOnIntent by rememberUpdatedState(onIntent)
+    var pendingScrollRestoration by remember(initialScrollRestoration) {
+        mutableStateOf(initialScrollRestoration)
+    }
 
     LaunchedEffect(listState) {
         snapshotFlow {
             listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         }.collect {
-            controller.updateScrollState(listState)
+            val listIndex = listState.firstVisibleItemIndex
+            currentOnIntent(
+                SubmissionsIntent.RecordScrollPosition(
+                    firstVisibleStoryPosition = (listIndex - 1).coerceAtLeast(0),
+                    firstVisibleStoryTop = if (listIndex == 0) {
+                        0
+                    } else {
+                        -listState.firstVisibleItemScrollOffset
+                    },
+                    appBarCollapsed = listIndex > 0 || listState.firstVisibleItemScrollOffset > 0,
+                ),
+            )
         }
     }
 
-    val scrollRestoreRequest = controller.scrollRestoreRequest
     LaunchedEffect(
-        scrollRestoreRequest,
-        controller.submissions.size,
-        controller.loadedSuccessfully,
+        pendingScrollRestoration,
+        state.items.size,
+        state.loadedSuccessfully,
     ) {
-        val request = scrollRestoreRequest ?: return@LaunchedEffect
-        if (!controller.loadedSuccessfully && controller.submissions.isEmpty()) {
+        val restoration = pendingScrollRestoration ?: return@LaunchedEffect
+        if (!state.loadedSuccessfully && state.items.isEmpty()) {
             return@LaunchedEffect
         }
-        if (request.appBarCollapsed && controller.submissions.isNotEmpty()) {
-            val index = (request.firstVisiblePosition.coerceAtLeast(0) + 1)
-                .coerceAtMost(controller.submissions.size)
+        if (restoration.appBarCollapsed && state.items.isNotEmpty()) {
+            val index = (restoration.firstVisibleStoryPosition.coerceAtLeast(0) + 1)
+                .coerceAtMost(state.items.size)
             listState.scrollToItem(
                 index = index,
-                scrollOffset = (-request.firstVisibleTop).coerceAtLeast(0),
+                scrollOffset = (-restoration.firstVisibleStoryTop).coerceAtLeast(0),
             )
         } else {
             listState.scrollToItem(0)
         }
-        controller.consumeScrollRestoreRequest(request)
+        pendingScrollRestoration = null
     }
 
     val modifier = Modifier
@@ -256,18 +156,18 @@ fun SubmissionsScreen(
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         SubmissionsList(
-            userName = controller.userName,
-            submissions = controller.submissions,
-            selectedFilter = controller.selectedFilter,
-            showFilter = controller.showFilter,
-            canLoadMore = controller.canLoadMore,
-            loadedSuccessfully = controller.loadedSuccessfully,
-            loading = controller.loading,
-            emptyText = controller.emptyText,
-            displaySettings = controller.displaySettings,
-            contentVersion = controller.contentVersion,
+            userName = userName,
+            submissions = state.items,
+            selectedFilter = state.filter,
+            showFilter = state.hasUnfilteredItems,
+            canLoadMore = state.canLoadMore,
+            loadedSuccessfully = state.loadedSuccessfully,
+            loading = state.loading,
+            emptyText = state.emptyText,
+            displaySettings = displaySettings,
+            contentVersion = state.revision,
             listState = listState,
-            listener = controller.listener,
+            onIntent = onIntent,
             previewResources = previewResources,
             includeStatusBarInset = includeStatusBarInset,
             reserveBackButtonSpace = reserveBackButtonSpace,
@@ -275,7 +175,7 @@ fun SubmissionsScreen(
             onOpenLink = onOpenLink,
         )
 
-        if (controller.showInitialLoading) {
+        if (state.showInitialLoading) {
             HarmonicLoadingIndicator(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -286,8 +186,8 @@ fun SubmissionsScreen(
 
     if (pullToRefreshEnabled) {
         PullToRefreshBox(
-            isRefreshing = controller.refreshing,
-            onRefresh = controller.listener::onRefresh,
+            isRefreshing = state.refreshing,
+            onRefresh = { onIntent(SubmissionsIntent.Refresh) },
             modifier = modifier,
             content = content,
         )
@@ -312,7 +212,7 @@ private fun SubmissionsList(
     displaySettings: StoryDisplaySettings,
     contentVersion: Int,
     listState: LazyListState,
-    listener: SubmissionsComposeController.Listener,
+    onIntent: (SubmissionsIntent) -> Unit,
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean,
     reserveBackButtonSpace: Boolean,
@@ -336,7 +236,7 @@ private fun SubmissionsList(
                 sideMargin = sideMargin,
                 includeStatusBarInset = includeStatusBarInset,
                 reserveBackButtonSpace = reserveBackButtonSpace,
-                onFilterSelected = listener::onFilterSelected,
+                onFilterSelected = { onIntent(SubmissionsIntent.SelectFilter(it)) },
             )
         }
 
@@ -367,17 +267,24 @@ private fun SubmissionsList(
                         displaySettings = displaySettings,
                         contentVersion = contentVersion,
                         onOpenLink = onOpenLink,
-                        onStoryClick = { listener.onCommentStoryClick(story) },
-                        onRepliesClick = { listener.onCommentRepliesClick(story) },
+                        onStoryClick = { onIntent(SubmissionsIntent.OpenCommentMaster(story)) },
+                        onRepliesClick = { onIntent(SubmissionsIntent.OpenCommentReplies(story)) },
                     )
                 } else {
                     val model = storyItemModel(story, displaySettings)
                     StoryItem(
                         model = model,
-                        style = storyItemStyle(story, displaySettings),
+                        style = displaySettings.toStoryItemStyle(
+                            StoryItemStyleContext(
+                                score = story.score,
+                                commentCount = story.descendants,
+                                clicked = story.clicked,
+                                showIndex = false,
+                            ),
+                        ),
                         listItem = true,
-                        onLinkClick = { listener.onStoryLinkClick(story) },
-                        onCommentClick = { listener.onStoryCommentsClick(story) },
+                        onLinkClick = { onIntent(SubmissionsIntent.OpenStoryLink(story)) },
+                        onCommentClick = { onIntent(SubmissionsIntent.OpenStoryComments(story)) },
                         onPreviewLoadSuccess = {
                             model.previewImageUrl?.let { imageUrl ->
                                 previewResources.completePreviewImageLoad(
@@ -435,7 +342,7 @@ private fun SubmissionsList(
             item(key = "load-more") {
                 LoadMoreButton(
                     loading = loading,
-                    onClick = listener::onLoadMore,
+                    onClick = { onIntent(SubmissionsIntent.LoadMore) },
                     modifier = Modifier
                         .animateItem()
                         .padding(horizontal = sideMargin),
@@ -565,30 +472,6 @@ private fun SubmissionFilterButton(
         )
     }
 }
-
-private fun storyItemStyle(
-    story: Story,
-    settings: StoryDisplaySettings,
-): StoryItemStyle = StoryItemStyle(
-    previewImageMode = settings.previewImageMode,
-    borderlessLargeImage = settings.borderlessLargePreviewImage,
-    compact = settings.compactView,
-    showSummary = settings.showSummary,
-    showFavicon = settings.thumbnails,
-    showPoints = settings.showPoints,
-    compactPoints = settings.compactPoints,
-    includeTopLevelDomain = settings.includeTopLevelDomain,
-    showCommentCount = settings.showCommentsCount,
-    showIndex = false,
-    commentsOnLeft = settings.leftAlign,
-    tintCard = settings.tintCardUsingPreview,
-    cardStyle = settings.cardStyle,
-    useHotnessIcon = settings.hotness > 0 &&
-        story.score + story.descendants > settings.hotness,
-    preferredFont = settings.font,
-    textSize = settings.storyTextSize,
-    dimmed = settings.grayOutClicked && story.clicked,
-)
 
 /** Compose equivalent of `submissions_comment.xml` and its optional card wrapper. */
 @Composable

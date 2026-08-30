@@ -9,7 +9,6 @@ import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 
 data class CommentsSettingsUiState(
@@ -85,16 +84,7 @@ fun CommentsSettingsScreen(
         pinnedContent = {
             CommentItem(
                 model = SettingsCommentPreviewModel,
-                style = CommentItemStyle(
-                    cardStyle = state.displayStyle == DisplayStyle.CARD,
-                    showCardBorder = state.showBorder,
-                    textSize = state.textSize,
-                    collectLinks = state.collectLinks,
-                    emphasizeMeta = state.emphasizeMetadata,
-                    depthIndicatorMode = state.depthMode,
-                    showDivider = state.showDividers,
-                    preferredFont = state.preferredFont,
-                ),
+                style = state.toPreviewCommentItemStyle(),
             )
         },
     ) {

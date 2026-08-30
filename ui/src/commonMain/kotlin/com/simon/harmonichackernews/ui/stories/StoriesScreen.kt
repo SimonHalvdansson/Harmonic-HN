@@ -126,8 +126,9 @@ import com.simon.harmonichackernews.settings.StoryCachePreferences
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.toStoryItemStyle
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.LazyContentList
@@ -632,7 +633,14 @@ private fun StoriesList(
                             )
                         }
                         val style = remember(story, settings, storyRevision, model.summary) {
-                            settings.toItemStyle(story, model)
+                            settings.toStoryItemStyle(
+                                StoryItemStyleContext(
+                                    score = story.score,
+                                    commentCount = story.descendantCount,
+                                    clicked = story.clicked,
+                                    summaryAvailable = model.summary.isNotBlank(),
+                                ),
+                            )
                         }
                         val untintedStoryBackground = if (style.cardStyle) {
                             HarmonicTheme.colors.surfaceContainerHigh
@@ -1409,27 +1417,3 @@ private fun SavedCommentStoryItem(
         }
     }
 }
-
-private fun StoryDisplaySettings.toItemStyle(
-    story: StoryListItemSnapshot,
-    model: StoryItemUiModel,
-) = StoryItemStyle(
-    previewImageMode = previewImageMode,
-    borderlessLargeImage = borderlessLargePreviewImage,
-    compact = compactView,
-    showSummary = showSummary && !model.summary.isNullOrBlank(),
-    showFavicon = thumbnails,
-    showPoints = showPoints,
-    compactPoints = compactPoints,
-    includeTopLevelDomain = includeTopLevelDomain,
-    showCommentCount = showCommentsCount,
-    showIndex = showIndex,
-    commentsOnLeft = leftAlign,
-    tintCard = tintCardUsingPreview,
-    cardStyle = cardStyle,
-    useHotnessIcon = hotness > 0 && story.score + story.descendantCount > hotness,
-    preferredFont = font,
-    textSize = storyTextSize,
-    dimmed = grayOutClicked && story.clicked,
-    paletteTintConfigKey = paletteTintMode,
-)

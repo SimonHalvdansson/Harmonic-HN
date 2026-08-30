@@ -4,8 +4,7 @@ import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.HarmonicAppComposition
-import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
-import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
+import com.simon.harmonichackernews.app.createSubmissionsStore
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.navigation.StoryDestination
@@ -24,7 +23,7 @@ import kotlinx.coroutines.launch
 class SubmissionsCoordinator(
     private val activity: MainActivity,
     sessionKey: Int,
-    private val userName: String,
+    val userName: String,
     private val navigator: Navigator,
     private val scene: HarmonicSceneComposition,
     private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
@@ -38,28 +37,24 @@ class SubmissionsCoordinator(
     private val sessionState: SubmissionsSessionState =
         scene.sessions.submissionsStateFor(sessionKey, userName, algoliaRepository)
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val featureSession = appComposition.createSubmissionsFeatureSession(
+    val store = appComposition.createSubmissionsStore(
         scope = coroutineScope,
         sessionState = sessionState,
         userSettings = userSettings,
     )
-    private val screenSession = SubmissionsScreenSession(coroutineScope, featureSession)
-    val composeController: SubmissionsComposeController
+    val initialScrollRestoration = store.start()
+    val displaySettings = StoryDisplaySettings
+        .from(userSettings.story)
+        .withShowIndex(false)
 
     init {
-        composeController = screenSession.createController(
-            userName = userName,
-            displaySettings = StoryDisplaySettings
-                .from(userSettings.story)
-                .withShowIndex(false),
-        )
         coroutineScope.launch {
-            screenSession.effects.collect(::handleEffect)
+            store.effects.collect(::handleEffect)
         }
     }
 
     fun close() {
-        screenSession.dispose()
+        store.close()
         coroutineScope.cancel()
     }
 

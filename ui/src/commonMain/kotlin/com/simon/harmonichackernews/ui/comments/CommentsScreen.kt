@@ -64,7 +64,8 @@ import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
+import com.simon.harmonichackernews.ui.content.toCommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import dev.chrisbanes.haze.HazeInput
@@ -185,16 +186,8 @@ fun CommentsScreen(
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
     val itemStyle = remember(settings, animateComments) {
-        CommentItemStyle(
-            cardStyle = settings.cardStyle,
-            showCardBorder = settings.cardBorder,
-            textSize = settings.preferredTextSize,
-            collectLinks = settings.collectReferenceLinks,
-            emphasizeMeta = settings.highlightCommentMeta,
-            depthIndicatorMode = settings.commentDepthIndicatorMode,
-            showDivider = settings.showDividers,
-            preferredFont = settings.font,
-            animateChanges = animateComments,
+        settings.toCommentItemStyle(
+            CommentItemStyleContext.Thread(animateChanges = animateComments),
         )
     }
 

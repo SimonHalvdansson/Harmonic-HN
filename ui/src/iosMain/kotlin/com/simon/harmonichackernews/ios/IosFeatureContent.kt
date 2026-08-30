@@ -23,7 +23,7 @@ import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
-import com.simon.harmonichackernews.app.createSubmissionsFeatureSession
+import com.simon.harmonichackernews.app.createSubmissionsStore
 import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
@@ -35,7 +35,6 @@ import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.common.TranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.EditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
-import com.simon.harmonichackernews.ui.session.SubmissionsScreenSession
 import com.simon.harmonichackernews.ui.submissions.SubmissionsRoute
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
@@ -46,30 +45,24 @@ internal fun IosSubmissionsContent(
     request: MainSubmissionsRequest,
 ) {
     val scope = rememberCoroutineScope()
-    val screenSession = remember(app, scene, request.serial, scope) {
+    val store = remember(app, scene, request.serial, scope) {
         val state = scene.sessions.submissionsStateFor(
             request.serial,
             request.userName,
             app.network.algoliaRepository,
         )
-        SubmissionsScreenSession(
-            scope = scope,
-            feature = app.createSubmissionsFeatureSession(scope, state),
-        )
+        app.createSubmissionsStore(scope, state)
     }
-    val controller = remember(screenSession, request.userName) {
-        screenSession.createController(
-            userName = request.userName,
-            displaySettings = StoryDisplaySettings.from(app.userSettings.story)
-                .withShowIndex(false),
-        )
+    val initialScrollRestoration = remember(store) { store.start() }
+    val displaySettings = remember(store) {
+        StoryDisplaySettings.from(app.userSettings.story).withShowIndex(false)
     }
 
-    DisposableEffect(screenSession) {
-        onDispose(screenSession::dispose)
+    DisposableEffect(store) {
+        onDispose(store::close)
     }
-    LaunchedEffect(screenSession, scene) {
-        screenSession.effects.collect { effect ->
+    LaunchedEffect(store, scene) {
+        store.effects.collect { effect ->
             when (effect) {
                 is SubmissionsRuntimeEffect.OpenStory -> {
                     scene.navigation.openStory(effect.destination)
@@ -92,7 +85,10 @@ internal fun IosSubmissionsContent(
                 ),
         ) {
             SubmissionsRoute(
-                controller = controller,
+                userName = request.userName,
+                store = store,
+                displaySettings = displaySettings,
+                initialScrollRestoration = initialScrollRestoration,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
                 includeStatusBarInset = false,

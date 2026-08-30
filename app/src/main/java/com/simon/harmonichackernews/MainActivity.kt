@@ -77,7 +77,7 @@ class MainActivity : BaseActivity() {
             val topLevelOnly =
                 CommentNavigationPreferences.TOP_LEVEL == volumeNavigationMode
             val coordinator = navigationController.getCommentsCoordinator()
-            if (coordinator != null && coordinator.isAdded && coordinator.isBottomSheetFullyExpanded) {
+            if (coordinator?.canNavigateCommentsWithVolumeButtons() == true) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
                     coordinator.navigateToNextComment(topLevelOnly, true)
                     return true

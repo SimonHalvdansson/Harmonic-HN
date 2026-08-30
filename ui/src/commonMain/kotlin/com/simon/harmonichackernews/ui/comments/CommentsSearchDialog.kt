@@ -14,9 +14,9 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.Dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
-import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
+import com.simon.harmonichackernews.ui.content.toCommentItemStyle
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -96,18 +96,7 @@ fun CommentsSearchContent(
     requestFocus: Boolean,
 ) {
     val itemStyle = remember(settings) {
-        CommentItemStyle(
-            cardStyle = settings.cardStyle,
-            showCardBorder = settings.cardBorder,
-            textSize = settings.preferredTextSize,
-            collectLinks = false,
-            emphasizeMeta = settings.highlightCommentMeta,
-            depthIndicatorMode = CommentDepthPreferences.NONE,
-            showDivider = false,
-            preferredFont = settings.font,
-            animateChanges = false,
-            transparentNonCardBackground = true,
-        )
+        settings.toCommentItemStyle(CommentItemStyleContext.Search)
     }
 
     CommentSearchScreen(

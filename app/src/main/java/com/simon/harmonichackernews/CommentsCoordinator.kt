@@ -1,9 +1,7 @@
 package com.simon.harmonichackernews
 
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +17,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnPreDraw
 import androidx.webkit.WebViewFeature
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -41,6 +40,7 @@ import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilitie
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsSettingsState
 import com.simon.harmonichackernews.presentation.CommentsState
+import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
@@ -157,28 +157,13 @@ class CommentsCoordinator(
             return host.root
         }
 
-    val context: Context?
+    private val activeContext: Context?
         get() = if (destroyed) null else activity
 
-    fun getActivity(): MainActivity? {
-        return if (destroyed) null else activity
-    }
-
-    fun requireActivity(): MainActivity {
-        return activity
-    }
-
-    fun requireContext(): Context {
-        return activity
-    }
-
-    val resources: Resources
-        get() = activity.getResources()
-
-    val view: View?
+    private val attachedRoot: View?
         get() = if (destroyed) null else viewSession?.host?.root
 
-    val isAdded: Boolean
+    private val isActive: Boolean
         get() = !destroyed
 
     private fun initializeView(host: CommentsWebViewHost, savedInstanceState: Bundle?) {
@@ -197,12 +182,12 @@ class CommentsCoordinator(
             restoredSorting = restoredSorting,
         )
 
-        originalStatusBarColor = requireActivity().getWindow().getStatusBarColor()
+        originalStatusBarColor = activity.window.statusBarColor
         originalStatusBarColorCaptured = true
 
 
         commentsPaneStatusBarColor =
-            StatusBarProtectionUtils.getPaneBackgroundColor(requireContext())
+            StatusBarProtectionUtils.getPaneBackgroundColor(activity)
         commentsHeaderStatusBarColor = commentsPaneStatusBarColor
         appliedStatusBarProtectionKnown = false
         updateCommentsStatusBarAppearance()
@@ -221,7 +206,13 @@ class CommentsCoordinator(
             LinkPreviewController.Callbacks(commentsStore::refreshStoryPresentation),
         )
         val webViewController = CommentsWebViewController(
-            this,
+            object : CommentsWebViewHostGateway {
+                override val context: Context?
+                    get() = activeContext
+
+                override val isAttached: Boolean
+                    get() = attachedRoot != null
+            },
             story,
             linkPreviewController,
             appComposition.webContent.createRuntime(),
@@ -229,14 +220,31 @@ class CommentsCoordinator(
             appComposition.pdfDownloads,
             coroutineScope,
             object : CommentsWebViewController.Callbacks {
-                override fun startActivity(intent: Intent) {
-                    activity.startActivity(intent)
-                }
-
                 override fun openExternalLink(url: String) {
                     navigation.scene.links.openExternal(
                         ExternalLinkRequest(url, preferInApp = false),
                     )
+                }
+
+                override fun showMessage(
+                    message: String?,
+                    duration: UserMessageDuration,
+                ) {
+                    this@CommentsCoordinator.showMessage(message, duration)
+                }
+
+                override fun setFullscreenSystemBarsHidden(hidden: Boolean) {
+                    if (destroyed) return
+                    val windowInsetsController = ViewCompat.getWindowInsetsController(
+                        activity.window.decorView,
+                    ) ?: return
+                    if (hidden) {
+                        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+                        windowInsetsController.systemBarsBehavior =
+                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    } else {
+                        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+                    }
                 }
 
                 override fun syncOnBackPressedCallbackEnabledState() {
@@ -363,7 +371,7 @@ class CommentsCoordinator(
             }
         }
         session.backPressedCallback = backPressedCallback
-        requireActivity().onBackPressedDispatcher.addCallback(backPressedCallback)
+        activity.onBackPressedDispatcher.addCallback(backPressedCallback)
 
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
         // We want to watch for navigation bar height changes (tablets on Android 12L can cause
@@ -380,9 +388,9 @@ class CommentsCoordinator(
                 val cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
                 var contentPaddingLeft = 0
                 var contentPaddingRight = 0
-                if (AndroidDisplay.isTablet(this@CommentsCoordinator.resources)) {
+                if (AndroidDisplay.isTablet(activity.resources)) {
                     contentPaddingRight =
-                        this@CommentsCoordinator.resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
+                        activity.resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
                 }
                 val leftPadding = max(max(cutoutInsets.left, systemInsets.left), contentPaddingLeft)
                 val rightPadding =
@@ -412,7 +420,7 @@ class CommentsCoordinator(
         if (!commentsLoaded) {
             view.post(object : Runnable {
                 override fun run() {
-                    if (this@CommentsCoordinator.view !== view || !this@CommentsCoordinator.isAdded) {
+                    if (attachedRoot !== view || !isActive) {
                         return
                     }
                     loadInitialStoryAndComments(restoreScrollFromCache)
@@ -502,7 +510,7 @@ class CommentsCoordinator(
         val session = viewSession ?: return
         val platformCallbacks = object : CommentsFeatureListener.PlatformCallbacks {
             override fun isRestoringScroll() = restoringStoredProgress
-            override fun canHandleCommentAction() = isAdded && composeController != null
+            override fun canHandleCommentAction() = isActive && composeController != null
             override fun onCommentActionOverlayVisibilityChanged() {
                 syncOnBackPressedCallbackEnabledState()
                 updateCommentsStatusBarAppearance()
@@ -619,7 +627,7 @@ class CommentsCoordinator(
         updateWebViewContainerPadding()
         if (state.themeRefreshVersion != appliedCommentsThemeVersion) {
             appliedCommentsThemeVersion = state.themeRefreshVersion
-            context?.let { currentContext ->
+            activeContext?.let { currentContext ->
                 webViewController?.setContainerBackgroundColor(
                     ContextCompat.getColor(
                         currentContext,
@@ -651,7 +659,7 @@ class CommentsCoordinator(
                 }
             }
             CommentsPlatformEffect.ReloadLinkPreviews ->
-                linkPreviewController?.loadNetworkPreviews(context)
+                linkPreviewController?.loadNetworkPreviews(activeContext)
             CommentsPlatformEffect.Summarize -> requestComposeSummary()
             is CommentsPlatformEffect.OpenStory ->
                 navigation.openLinkedStory(effect.destination)
@@ -705,8 +713,8 @@ class CommentsCoordinator(
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {
         val standardMargin = AndroidDisplay.dpToPxInt(
-            this.resources, (if (AndroidDisplay.isTablet(
-                    this.resources
+            activity.resources, (if (AndroidDisplay.isTablet(
+                    activity.resources
                 )
             ) 81 else 68).toFloat()
         )
@@ -726,17 +734,17 @@ class CommentsCoordinator(
     }
 
     private fun syncCommentsStatusBarProtection() {
-        if (!this.isAdded) {
+        if (!isActive) {
             return
         }
         commentsPaneStatusBarColor =
-            StatusBarProtectionUtils.getPaneBackgroundColor(requireContext())
+            StatusBarProtectionUtils.getPaneBackgroundColor(activity)
         updateCommentsStatusBarAppearance()
     }
 
     private fun updateCommentsStatusBarAppearance(commentsStatusBarColor: Int = this.currentCommentsStatusBarColor) {
         val host = webViewHost
-        if (host == null || this.context == null) {
+        if (host == null || !isActive) {
             return
         }
 
@@ -755,7 +763,7 @@ class CommentsCoordinator(
             appliedStatusBarProtectionColor =
                 if (statusBarProtectionEnabled) statusBarColor else Color.TRANSPARENT
         }
-        if (getActivity() == null) {
+        if (!isActive) {
             return
         }
         val windowStatusBarColor =
@@ -765,8 +773,8 @@ class CommentsCoordinator(
                 Color.TRANSPARENT
             else
                 statusBarColor
-        if (requireActivity().getWindow().getStatusBarColor() != windowStatusBarColor) {
-            requireActivity().getWindow().setStatusBarColor(windowStatusBarColor)
+        if (activity.window.statusBarColor != windowStatusBarColor) {
+            activity.window.statusBarColor = windowStatusBarColor
         }
     }
 
@@ -781,7 +789,7 @@ class CommentsCoordinator(
             !navigation.isAdaptiveTwoPane() &&
             commentsStore.state.value.settings?.displaySettings?.showUpButton == true
         ) {
-            AndroidDisplay.dpToPxInt(resources, 64f)
+            AndroidDisplay.dpToPxInt(activity.resources, 64f)
         } else {
             0
         }
@@ -797,11 +805,14 @@ class CommentsCoordinator(
         return this.isBottomSheetFullyExpanded
     }
 
-    val isBottomSheetFullyExpanded: Boolean
+    private val isBottomSheetFullyExpanded: Boolean
         get() = composeController?.isSheetExpanded() == true
 
+    internal fun canNavigateCommentsWithVolumeButtons(): Boolean =
+        isActive && isBottomSheetFullyExpanded
+
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
-        if (!isAdded || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {
+        if (!isActive || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {
             return false
         }
         if (showWebsite) {
@@ -836,7 +847,7 @@ class CommentsCoordinator(
     private fun scheduleWebViewInitializationAfterFirstDraw(root: View) {
         root.doOnPreDraw {
             root.post {
-                if (view !== root || !isAdded) return@post
+                if (attachedRoot !== root || !isActive) return@post
                 firstDrawCompleted = true
                 if (pendingVisibleWebsiteInitialization) {
                     pendingVisibleWebsiteInitialization = false
@@ -885,7 +896,7 @@ class CommentsCoordinator(
         }
 
     fun onConfigurationChanged(newConfig: Configuration) {
-        if (this.context != null) refreshPresentationCapabilities()
+        if (isActive) refreshPresentationCapabilities()
     }
 
     private fun setCommentsContentSideInsets(leftInset: Int, rightInset: Int) {
@@ -907,7 +918,7 @@ class CommentsCoordinator(
         commentsStore.updatePresentationCapabilities(
             CommentsPresentationCapabilities(
                 showInvertAction = shouldShowInvertAction(),
-                isTablet = AndroidDisplay.isTablet(resources),
+                isTablet = AndroidDisplay.isTablet(activity.resources),
             ),
         )
     }
@@ -1033,8 +1044,7 @@ class CommentsCoordinator(
         if (started) onStop()
         val session = viewSession
         val controllerToDetach = session?.composeController
-        val changingConfigurations =
-            getActivity() != null && requireActivity().isChangingConfigurations()
+        val changingConfigurations = activity.isChangingConfigurations
         hostRestoration = captureHostRestoration(preserveOverlay = changingConfigurations)
         controllerToDetach?.let { controller ->
             if (controller.isLinkPreviewOverlayShowing()) {
@@ -1042,12 +1052,12 @@ class CommentsCoordinator(
             }
             controller.completeCommentActionDismiss(dispatchPendingAction = false)
         }
-        if (originalStatusBarColorCaptured && getActivity() != null) {
-            requireActivity().getWindow().setStatusBarColor(originalStatusBarColor)
+        if (originalStatusBarColorCaptured) {
+            activity.window.statusBarColor = originalStatusBarColor
             originalStatusBarColorCaptured = false
         }
 
-        val rootView = this.view
+        val rootView = attachedRoot
         if (rootView != null) {
             ViewCompat.setOnApplyWindowInsetsListener(rootView, null)
         }
@@ -1072,7 +1082,7 @@ class CommentsCoordinator(
     }
 
     private fun restoreLinkSummaryAfterRecreation() {
-        val rootView = this.view
+        val rootView = attachedRoot
         val overlay = hostRestoration.overlay
         if (overlay is CommentsOverlayRestoration.Image && rootView != null) {
             hostRestoration = hostRestoration.copy(overlay = null)
@@ -1082,8 +1092,8 @@ class CommentsCoordinator(
                         commentsHeaderStatusBarColor
                     else
                         ContextCompat.getColor(
-                            requireContext(),
-                            ThemeUtils.getBackgroundColorResource(requireContext())
+                            activity,
+                            ThemeUtils.getBackgroundColorResource(activity)
                         )
                     val storyTitle = story?.title
                     controller.showImagePreview(
@@ -1099,7 +1109,7 @@ class CommentsCoordinator(
             })
             return
         }
-        val referenceRootView = this.view
+        val referenceRootView = attachedRoot
         if (overlay !is CommentsOverlayRestoration.Reference || referenceRootView == null) {
             return
         }
@@ -1110,8 +1120,7 @@ class CommentsCoordinator(
     }
 
     private fun loadInitialStoryAndComments(restoreScrollFromCache: Boolean) {
-        val context = this.context
-        if (context == null || !this.isCommentsViewActive || story == null) {
+        if (!isActive || !isCommentsViewActive || story == null) {
             return
         }
 
@@ -1175,8 +1184,7 @@ class CommentsCoordinator(
 
     internal fun showMessage(
         message: String?,
-        duration: com.simon.harmonichackernews.presentation.UserMessageDuration =
-            com.simon.harmonichackernews.presentation.UserMessageDuration.SHORT,
+        duration: UserMessageDuration = UserMessageDuration.SHORT,
     ) {
         navigation.showMessage(message, duration)
     }
@@ -1186,7 +1194,7 @@ class CommentsCoordinator(
             return
         }
         if (updateHeaderAfterLoad) syncComposeState()
-        val commentsView = view ?: return
+        val commentsView = attachedRoot ?: return
         commentsView.post {
             if (!isCommentsViewActive) {
                 return@post
@@ -1207,7 +1215,7 @@ class CommentsCoordinator(
     }
 
     private val isCommentsViewActive: Boolean
-        get() = this.view != null
+        get() = attachedRoot != null
 
     @JvmOverloads
     fun navigateToNextComment(topLevelOnly: Boolean = true, scaleLongScrollSpeed: Boolean = false) {

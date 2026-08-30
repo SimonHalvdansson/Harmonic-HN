@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class RichLinkPreviewRepositoryTest {
     @Test
@@ -39,11 +40,35 @@ class RichLinkPreviewRepositoryTest {
             }
         })
 
-        val preview = withContext(Dispatchers.Default) {
-            client.loadRichLinkPreview(LinkPreviewType.SUBSTACK_ARTICLE, articleUrl)
-        }
+        val preview = assertIs<LinkPreviewData.Rich>(withContext(Dispatchers.Default) {
+            KtorLinkPreviewRepository(client).load(LinkPreviewType.SUBSTACK_ARTICLE, articleUrl)
+        })
 
-        assertEquals("https://writer.substack.com/img/substack.png", preview.imageUrl)
+        assertEquals("https://writer.substack.com/img/substack.png", preview.value.imageUrl)
+        client.close()
+    }
+
+    @Test
+    fun legacyProviderKeepsBespokePayloadAndCompatibilityAccessor() = runTest {
+        val client = HttpClient(MockEngine {
+            respond(
+                """{"name":"harmonic","owner":{"login":"simon"}}""",
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        })
+        val repository = KtorLinkPreviewRepository(client)
+
+        val preview = assertIs<LinkPreviewData.GitHub>(withContext(Dispatchers.Default) {
+            repository.load(LinkPreviewType.GITHUB_REPOSITORY, "https://github.com/simon/harmonic")
+        })
+
+        assertEquals("harmonic", preview.value.name)
+        assertEquals(
+            "simon",
+            withContext(Dispatchers.Default) {
+                repository.getGitHubInfo("https://github.com/simon/harmonic")
+            }.owner,
+        )
         client.close()
     }
 }

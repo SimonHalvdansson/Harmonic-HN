@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.ui.settings
+package com.simon.harmonichackernews.ui.navigation
 
 import android.content.Context
 import android.os.Build

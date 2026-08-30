@@ -1,8 +1,10 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.LinkPreviewType
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
@@ -50,6 +52,44 @@ class RichLinkPreviewUrlsTest {
     }
 
     @Test
+    fun everyEnabledNetworkTypeHasExactlyOneLoader() {
+        val externalTypes = LinkPreviewProviders.externalTypes
+        val enabledNetworkTypes = LinkPreviewType.entries
+            .filter { it.defaultEnabled && it !in externalTypes }
+            .toSet()
+
+        assertEquals(
+            enabledNetworkTypes,
+            LinkPreviewProviders.recognizedTypes.filter(LinkPreviewType::defaultEnabled).toSet(),
+        )
+        enabledNetworkTypes.forEach { type ->
+            assertEquals(1, LinkPreviewProviders.loaderCount(type), type.title)
+        }
+        externalTypes.forEach { type ->
+            assertEquals(0, LinkPreviewProviders.loaderCount(type), type.title)
+        }
+    }
+
+    @Test
+    fun twitterRemainsOnTheExternalNitterPath() = runTest {
+        var networkLoadCalls = 0
+        val useCase = LinkPreviewUseCase(object : LinkPreviewRepository {
+            override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData {
+                networkLoadCalls++
+                error("Network loader should not handle Twitter")
+            }
+
+            override suspend fun getArchiveUrl(url: String) = error("unused")
+        })
+
+        assertNull(RichLinkPreviewUrls.type("https://x.com/example/status/123"))
+        assertFailsWith<LinkPreviewException> {
+            useCase.load(LinkPreviewType.TWITTER_X, "https://x.com/example/status/123")
+        }
+        assertEquals(0, networkLoadCalls)
+    }
+
+    @Test
     fun rejectsProviderLandingPagesAndUnrelatedLookalikes() {
         listOf(
             "https://github.com/",
@@ -67,13 +107,7 @@ class RichLinkPreviewUrlsTest {
             remove(LinkPreviewType.GITHUB_ISSUE)
         }
         val useCase = LinkPreviewUseCase(object : LinkPreviewRepository {
-            override suspend fun getArxivInfo(url: String) = error("unused")
-            override suspend fun getGitHubInfo(url: String) = error("unused")
-            override suspend fun getGitLabInfo(url: String) = error("unused")
-            override suspend fun getHuggingFaceInfo(url: String) = error("unused")
-            override suspend fun getOpenRouterInfo(url: String) = error("unused")
-            override suspend fun getStackExchangeInfo(url: String) = error("unused")
-            override suspend fun getWikipediaInfo(url: String) = error("unused")
+            override suspend fun load(type: LinkPreviewType, url: String) = error("unused")
             override suspend fun getArchiveUrl(url: String) = error("unused")
         })
         val preferences = LinkPreviewPreferences(enabled)

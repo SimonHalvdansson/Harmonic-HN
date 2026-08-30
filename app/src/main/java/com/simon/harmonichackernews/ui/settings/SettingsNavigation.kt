@@ -24,6 +24,7 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.about.AndroidAboutScreen
 import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
+import com.simon.harmonichackernews.ui.navigation.DefaultActivityPredictiveBackAnimation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect

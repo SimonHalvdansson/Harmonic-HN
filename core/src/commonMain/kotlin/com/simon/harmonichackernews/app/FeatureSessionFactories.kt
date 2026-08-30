@@ -1,9 +1,14 @@
 package com.simon.harmonichackernews.app
 
-import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.network.StoryFeedRepository
+import com.simon.harmonichackernews.network.StoryLinkPreviewSession
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
+import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.presentation.ArchiveUrlResolver
 import com.simon.harmonichackernews.presentation.CommentMasterResolver
@@ -11,16 +16,17 @@ import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 import com.simon.harmonichackernews.presentation.CommentsPresenter
 import com.simon.harmonichackernews.presentation.CommentsSessionState
 import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
+import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoriesPresenter
 import com.simon.harmonichackernews.presentation.StoriesSessionState
 import com.simon.harmonichackernews.presentation.StoriesStore
-import com.simon.harmonichackernews.presentation.SubmissionsFeatureRuntime
+import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
-import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
-import com.simon.harmonichackernews.navigation.EditorType
-import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -29,51 +35,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
-import com.simon.harmonichackernews.presentation.SubmissionsUiState
-import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
-import com.simon.harmonichackernews.presentation.EditorSubmission
-import com.simon.harmonichackernews.presentation.EditorWorkflowResult
-import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
-import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.network.StoryLinkPreviewSession
-import com.simon.harmonichackernews.settings.ReadingPreferences
-
-sealed interface SubmissionsFeatureSessionEvent {
-    data class State(val state: SubmissionsUiState) : SubmissionsFeatureSessionEvent
-    data class Runtime(val effect: SubmissionsRuntimeEffect) : SubmissionsFeatureSessionEvent
-}
-
-class SubmissionsFeatureSession internal constructor(
-    val runtime: SubmissionsFeatureRuntime,
-    private val scope: CoroutineScope,
-) {
-    private val mutableEvents = MutableSharedFlow<SubmissionsFeatureSessionEvent>(
-        extraBufferCapacity = 64,
-    )
-    private val jobs = mutableListOf<Job>()
-    val events: SharedFlow<SubmissionsFeatureSessionEvent> = mutableEvents.asSharedFlow()
-
-    fun start(): SubmissionsScrollRestoration? {
-        jobs += scope.launch {
-            runtime.state.collect {
-                mutableEvents.emit(SubmissionsFeatureSessionEvent.State(it))
-            }
-        }
-        jobs += scope.launch {
-            runtime.effects.collect {
-                mutableEvents.emit(SubmissionsFeatureSessionEvent.Runtime(it))
-            }
-        }
-        return runtime.initialize()
-    }
-
-    fun dispose() {
-        jobs.forEach(Job::cancel)
-        jobs.clear()
-        runtime.dispose()
-    }
-}
 
 sealed interface EditorFeatureSessionEvent {
     data class Submitting(val value: Boolean) : EditorFeatureSessionEvent
@@ -233,18 +194,15 @@ private fun CoroutineScope.childFeatureScope(): CoroutineScope = CoroutineScope(
     coroutineContext + SupervisorJob(coroutineContext[Job]),
 )
 
-fun HarmonicAppComposition.createSubmissionsFeatureSession(
+fun HarmonicAppComposition.createSubmissionsStore(
     scope: CoroutineScope,
     sessionState: SubmissionsSessionState,
     userSettings: UserSettings = this.userSettings,
-): SubmissionsFeatureSession = SubmissionsFeatureSession(
-    runtime = SubmissionsFeatureRuntime(
-        scope = scope,
-        sessionState = sessionState,
-        commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
-        useIntegratedWebView = { userSettings.reading.integratedWebView },
-    ),
-    scope = scope,
+): SubmissionsFeatureStore = SubmissionsFeatureStore(
+    scope = scope.childFeatureScope(),
+    sessionState = sessionState,
+    commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
+    useIntegratedWebView = { userSettings.reading.integratedWebView },
 )
 
 fun HarmonicAppComposition.createEditorFeatureSession(

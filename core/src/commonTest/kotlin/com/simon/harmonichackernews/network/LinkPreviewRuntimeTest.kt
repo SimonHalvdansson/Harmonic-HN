@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews.network
 
-import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
-import com.simon.harmonichackernews.data.OpenRouterModelInfo
+import com.simon.harmonichackernews.data.LinkPreviewInfo
 import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.data.OpenRouterModelInfo
+import com.simon.harmonichackernews.data.RepoInfo
+import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.loadedLinkPreviewType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -14,9 +17,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-import com.simon.harmonichackernews.data.LinkPreviewInfo
-import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.loadedLinkPreviewType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LinkPreviewRuntimeTest {
@@ -105,10 +105,12 @@ class LinkPreviewRuntimeTest {
     @Test
     fun timeoutClearsLoadingState() = runTest {
         val repository = object : RecordingRepository() {
-            override suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
+            override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData =
                 withTimeout(1) {
                     delay(10)
-                    LinkPreviewInfo(type = type, title = "Too late", url = url)
+                    LinkPreviewData.Rich(
+                        LinkPreviewInfo(type = type, title = "Too late", url = url),
+                    )
                 }
         }
         val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))
@@ -137,23 +139,18 @@ class LinkPreviewRuntimeTest {
     private open class RecordingRepository : LinkPreviewRepository {
         var loadedUrl: String? = null
 
-        override suspend fun getGitHubInfo(url: String): RepoInfo {
+        override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData {
             loadedUrl = url
-            return RepoInfo()
+            return when (type) {
+                LinkPreviewType.GITHUB_REPOSITORY -> LinkPreviewData.GitHub(RepoInfo())
+                LinkPreviewType.HUGGING_FACE_MODEL ->
+                    LinkPreviewData.HuggingFace(HuggingFaceModelInfo())
+                LinkPreviewType.OPENROUTER_MODEL ->
+                    LinkPreviewData.OpenRouter(OpenRouterModelInfo())
+                else -> error("Unexpected provider")
+            }
         }
 
-        override suspend fun getArxivInfo(url: String) = error("Unexpected provider")
-        override suspend fun getGitLabInfo(url: String) = error("Unexpected provider")
-        override suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo {
-            loadedUrl = url
-            return HuggingFaceModelInfo()
-        }
-        override suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo {
-            loadedUrl = url
-            return OpenRouterModelInfo()
-        }
-        override suspend fun getStackExchangeInfo(url: String) = error("Unexpected provider")
-        override suspend fun getWikipediaInfo(url: String) = error("Unexpected provider")
         override suspend fun getArchiveUrl(url: String) = error("Unexpected provider")
     }
 }

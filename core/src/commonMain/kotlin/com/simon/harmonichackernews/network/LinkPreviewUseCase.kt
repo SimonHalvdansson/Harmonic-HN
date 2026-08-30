@@ -71,19 +71,10 @@ class LinkPreviewUseCase(private val repository: LinkPreviewRepository) {
     fun selectProvider(url: String?, preferences: LinkPreviewPreferences): LinkPreviewType? =
         RichLinkPreviewUrls.type(url)?.takeIf(preferences::isEnabled)
 
-    suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData = when (type) {
-        LinkPreviewType.ARXIV -> LinkPreviewData.Arxiv(repository.getArxivInfo(url))
-        LinkPreviewType.GITHUB_REPOSITORY -> LinkPreviewData.GitHub(repository.getGitHubInfo(url))
-        LinkPreviewType.GITLAB_PROJECT -> LinkPreviewData.GitLab(repository.getGitLabInfo(url))
-        LinkPreviewType.HUGGING_FACE_MODEL ->
-            LinkPreviewData.HuggingFace(repository.getHuggingFaceInfo(url))
-        LinkPreviewType.OPENROUTER_MODEL ->
-            LinkPreviewData.OpenRouter(repository.getOpenRouterInfo(url))
-        LinkPreviewType.STACK_EXCHANGE ->
-            LinkPreviewData.StackExchange(repository.getStackExchangeInfo(url))
-        LinkPreviewType.WIKIPEDIA -> LinkPreviewData.Wikipedia(repository.getWikipediaInfo(url))
-        LinkPreviewType.TWITTER_X ->
+    suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData {
+        if (type == LinkPreviewType.TWITTER_X) {
             throw LinkPreviewException("Twitter / X previews use the Nitter web runtime")
-        else -> LinkPreviewData.Rich(repository.getRichInfo(type, url))
+        }
+        return repository.load(type, url)
     }
 }

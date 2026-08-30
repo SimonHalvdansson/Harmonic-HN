@@ -82,7 +82,6 @@ import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.editor.EditorComposeController
 import com.simon.harmonichackernews.ui.editor.ComposeEditorCoordinator
 import com.simon.harmonichackernews.ui.editor.ComposeEditorScreen
-import com.simon.harmonichackernews.ui.settings.DefaultActivityPredictiveBackAnimation
 import com.simon.harmonichackernews.ui.settings.SettingsChangelogDialog
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsShell
@@ -817,154 +816,36 @@ private fun MainNavigation(
     }
 
     val settingsRequest = navigationSnapshot.settingsRequest
-    val settingsAnimationScope = rememberCoroutineScope()
-    var activeSettingsBackAnimation by remember {
-        mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
-    }
-    var completedSettingsPredictiveBack by remember { mutableStateOf(false) }
-
-    LaunchedEffect(settingsRequest?.serial) {
-        if (settingsRequest != null) completedSettingsPredictiveBack = false
-    }
-
     fun closeSettings() {
         controller.closeSettings()
         controller.applySettingsChanges()
     }
 
-    PredictiveBackHandler(
+    val settingsPredictiveBack = DefaultActivityPredictiveBackHandler(
+        requestKey = settingsRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.SETTINGS,
-    ) { events ->
-        var animation: DefaultActivityPredictiveBackAnimation? = null
-        try {
-            events.collect { event ->
-                val currentAnimation = animation
-                    ?: DefaultActivityPredictiveBackAnimation(event).also {
-                        animation = it
-                        activeSettingsBackAnimation = it
-                    }
-                settingsAnimationScope.launch {
-                    currentAnimation.animate(event)
-                }
-            }
-
-            val currentAnimation = animation
-            if (currentAnimation == null) {
-                closeSettings()
-                return@PredictiveBackHandler
-            }
-            currentAnimation.finish()
-            completedSettingsPredictiveBack = true
-            closeSettings()
-            // Keep the completed system-back layers alive until the retained Stories layer has
-            // committed the pop. Dropping both transforms in the same composition can expose the
-            // window background for one frame, which reads as a full-screen white flash.
-            repeat(3) { withFrameNanos { } }
-            activeSettingsBackAnimation = null
-        } catch (_: CancellationException) {
-            withContext(NonCancellable) {
-                animation?.cancel()
-                if (activeSettingsBackAnimation === animation) {
-                    activeSettingsBackAnimation = null
-                }
-            }
-        }
-    }
+        completedFrameHoldCount = 3,
+        onBack = ::closeSettings,
+    )
 
     val submissionsRequest = navigationSnapshot.submissionsRequest
-    val submissionsAnimationScope = rememberCoroutineScope()
-    var activeSubmissionsBackAnimation by remember {
-        mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
-    }
-    var completedSubmissionsPredictiveBack by remember { mutableStateOf(false) }
-
-    LaunchedEffect(submissionsRequest?.serial) {
-        if (submissionsRequest != null) completedSubmissionsPredictiveBack = false
-    }
-
-    PredictiveBackHandler(
+    val submissionsPredictiveBack = DefaultActivityPredictiveBackHandler(
+        requestKey = submissionsRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.SUBMISSIONS,
-    ) { events ->
-        var animation: DefaultActivityPredictiveBackAnimation? = null
-        try {
-            events.collect { event ->
-                val currentAnimation = animation
-                    ?: DefaultActivityPredictiveBackAnimation(event).also {
-                        animation = it
-                        activeSubmissionsBackAnimation = it
-                    }
-                submissionsAnimationScope.launch {
-                    currentAnimation.animate(event)
-                }
-            }
-            val currentAnimation = animation
-            if (currentAnimation == null) {
-                controller.closeSubmissions()
-                return@PredictiveBackHandler
-            }
-            currentAnimation.finish()
-            completedSubmissionsPredictiveBack = true
-            controller.closeSubmissions()
-            activeSubmissionsBackAnimation = null
-        } catch (_: CancellationException) {
-            withContext(NonCancellable) {
-                animation?.cancel()
-                if (activeSubmissionsBackAnimation === animation) {
-                    activeSubmissionsBackAnimation = null
-                }
-            }
-        }
-    }
+        onBack = controller::closeSubmissions,
+    )
 
     val editorRequest = navigationSnapshot.editorRequest
     var editorPredictiveBackEnabled by remember(editorRequest?.serial) {
         mutableStateOf(false)
     }
-    val editorAnimationScope = rememberCoroutineScope()
-    var activeEditorBackAnimation by remember {
-        mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
-    }
-    var completedEditorPredictiveBack by remember { mutableStateOf(false) }
-
-    LaunchedEffect(editorRequest?.serial) {
-        if (editorRequest != null) completedEditorPredictiveBack = false
-    }
-
-    PredictiveBackHandler(
+    val editorPredictiveBack = DefaultActivityPredictiveBackHandler(
+        requestKey = editorRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR &&
             editorPredictiveBackEnabled,
-    ) { events ->
-        var animation: DefaultActivityPredictiveBackAnimation? = null
-        try {
-            events.collect { event ->
-                val currentAnimation = animation
-                    ?: DefaultActivityPredictiveBackAnimation(event).also {
-                        animation = it
-                        activeEditorBackAnimation = it
-                    }
-                editorAnimationScope.launch {
-                    currentAnimation.animate(event)
-                }
-            }
-            val currentAnimation = animation
-            if (currentAnimation == null) {
-                controller.closeEditor()
-                return@PredictiveBackHandler
-            }
-            currentAnimation.finish()
-            completedEditorPredictiveBack = true
-            controller.closeEditor()
-            repeat(3) { withFrameNanos { } }
-            activeEditorBackAnimation = null
-        } catch (_: CancellationException) {
-            withContext(NonCancellable) {
-                animation?.cancel()
-                if (activeEditorBackAnimation === animation) {
-                    activeEditorBackAnimation = null
-                }
-            }
-        }
-    }
+        completedFrameHoldCount = 3,
+        onBack = controller::closeEditor,
+    )
 
     val coulombGasVisible = navigationSnapshot.coulombGasVisible
     PredictiveBackHandler(
@@ -1003,14 +884,14 @@ private fun MainNavigation(
     HarmonicAppRoot(
         navigation = navigationSnapshot,
         transitionOffsetPx = settingsTransitionOffsetPx,
-        completedSettingsPredictiveBack = completedSettingsPredictiveBack,
-        completedSubmissionsPredictiveBack = completedSubmissionsPredictiveBack,
-        completedEditorPredictiveBack = completedEditorPredictiveBack,
+        completedSettingsPredictiveBack = settingsPredictiveBack.completed,
+        completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
+        completedEditorPredictiveBack = editorPredictiveBack.completed,
         modifier = Modifier.background(HarmonicTheme.colors.background),
-        basePredictiveModifier = (activeSettingsBackAnimation?.enterModifier ?: Modifier)
-            .then(activeSubmissionsBackAnimation?.enterModifier ?: Modifier)
-            .then(activeEditorBackAnimation?.enterModifier ?: Modifier),
-        settingsPredictiveModifier = (activeSettingsBackAnimation?.exitModifier ?: Modifier)
+        basePredictiveModifier = settingsPredictiveBack.enterModifier
+            .then(submissionsPredictiveBack.enterModifier)
+            .then(editorPredictiveBack.enterModifier),
+        settingsPredictiveModifier = settingsPredictiveBack.exitModifier
             .then(
                 if (storyParentDestination == MainDestination.SETTINGS) {
                     activeBackAnimation?.enterModifier ?: Modifier
@@ -1018,15 +899,14 @@ private fun MainNavigation(
                     Modifier
                 },
             ),
-        submissionsPredictiveModifier =
-            (activeSubmissionsBackAnimation?.exitModifier ?: Modifier).then(
-                if (storyParentDestination == MainDestination.SUBMISSIONS) {
-                    activeBackAnimation?.enterModifier ?: Modifier
-                } else {
-                    Modifier
-                },
-            ),
-        editorPredictiveModifier = activeEditorBackAnimation?.exitModifier ?: Modifier,
+        submissionsPredictiveModifier = submissionsPredictiveBack.exitModifier.then(
+            if (storyParentDestination == MainDestination.SUBMISSIONS) {
+                activeBackAnimation?.enterModifier ?: Modifier
+            } else {
+                Modifier
+            },
+        ),
+        editorPredictiveModifier = editorPredictiveBack.exitModifier,
         linkPreview = controller.commentsComposeController
             ?.takeIf { it.linkPreviewOverlay != null && !it.searchDialogVisible }
             ?.let { commentsController ->
@@ -1101,7 +981,7 @@ private fun MainNavigation(
         settings = {
             if (
                 settingsRequest != null ||
-                !completedSettingsPredictiveBack
+                !settingsPredictiveBack.completed
             ) {
                 navigationSnapshot.lastSettingsRequest?.let { request ->
                     key(request.serial) {
@@ -1142,7 +1022,7 @@ private fun MainNavigation(
             }
         },
         submissions = {
-            if (submissionsRequest != null || !completedSubmissionsPredictiveBack) {
+            if (submissionsRequest != null || !submissionsPredictiveBack.completed) {
                 navigationSnapshot.lastSubmissionsRequest?.let { request ->
                     key(request.serial) {
                         val coordinator = remember(request.serial) {
@@ -1160,7 +1040,10 @@ private fun MainNavigation(
                             onDispose(coordinator::close)
                         }
                         AndroidSubmissionsScreen(
-                            controller = coordinator.composeController,
+                            userName = coordinator.userName,
+                            store = coordinator.store,
+                            displaySettings = coordinator.displaySettings,
+                            initialScrollRestoration = coordinator.initialScrollRestoration,
                             onBack = controller::closeSubmissions,
                         )
                     }
@@ -1168,7 +1051,7 @@ private fun MainNavigation(
             }
         },
         editor = {
-            if (editorRequest != null || !completedEditorPredictiveBack) {
+            if (editorRequest != null || !editorPredictiveBack.completed) {
                 navigationSnapshot.lastEditorRequest?.let { request ->
                     key(request.serial) {
                         Box(Modifier.fillMaxSize()) {

@@ -23,115 +23,47 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Suspend-first provider previews. Platform UI and lifecycle concerns stay outside this API. */
 interface LinkPreviewRepository {
-    suspend fun getArxivInfo(url: String): ArxivInfo
-    suspend fun getGitHubInfo(url: String): RepoInfo
-    suspend fun getGitLabInfo(url: String): GitLabInfo
-    suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo
-    suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo
-    suspend fun getStackExchangeInfo(url: String): StackExchangeInfo
-    suspend fun getWikipediaInfo(url: String): WikipediaInfo
+    suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData
+
+    /** Compatibility accessors retained for native callers and the generic link-summary loader. */
+    suspend fun getArxivInfo(url: String): ArxivInfo =
+        load(url = url, type = LinkPreviewType.ARXIV).requirePayload<LinkPreviewData.Arxiv>().value
+
+    suspend fun getGitHubInfo(url: String): RepoInfo =
+        load(url = url, type = LinkPreviewType.GITHUB_REPOSITORY)
+            .requirePayload<LinkPreviewData.GitHub>().value
+
+    suspend fun getGitLabInfo(url: String): GitLabInfo =
+        load(url = url, type = LinkPreviewType.GITLAB_PROJECT)
+            .requirePayload<LinkPreviewData.GitLab>().value
+
+    suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo =
+        load(url = url, type = LinkPreviewType.HUGGING_FACE_MODEL)
+            .requirePayload<LinkPreviewData.HuggingFace>().value
+
+    suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo =
+        load(url = url, type = LinkPreviewType.OPENROUTER_MODEL)
+            .requirePayload<LinkPreviewData.OpenRouter>().value
+
+    suspend fun getStackExchangeInfo(url: String): StackExchangeInfo =
+        load(url = url, type = LinkPreviewType.STACK_EXCHANGE)
+            .requirePayload<LinkPreviewData.StackExchange>().value
+
+    suspend fun getWikipediaInfo(url: String): WikipediaInfo =
+        load(url = url, type = LinkPreviewType.WIKIPEDIA)
+            .requirePayload<LinkPreviewData.Wikipedia>().value
+
     suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
-        throw LinkPreviewException("${type.title} is not implemented by this repository")
+        load(type, url).requirePayload<LinkPreviewData.Rich>().value
+
     suspend fun getArchiveUrl(url: String): String
 }
 
 class KtorLinkPreviewRepository(
     private val client: HttpClient,
 ) : LinkPreviewRepository {
-    override suspend fun getArxivInfo(url: String): ArxivInfo = coroutineScope {
-        val arxivId = LinkPreviewUrls.arxivId(url)
-            ?: throw LinkPreviewException("Invalid ArXiv URL")
-        val endpoint = URLBuilder("https://export.arxiv.org/api/query").apply {
-            parameters.append("id_list", arxivId)
-        }.buildString()
-        val htmlUrl = async {
-            try {
-                withTimeoutOrNull(ARXIV_HTML_PROBE_TIMEOUT_MILLIS) {
-                    LinkPreviewParsers.parseArxivHtmlUrl(
-                        client.getTextOrThrow("https://arxiv.org/abs/$arxivId"),
-                    )
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Throwable) {
-                null
-            }
-        }
-        val info = LinkPreviewParsers.parseArxiv(client.getTextOrThrow(endpoint), arxivId)
-            ?: throw LinkPreviewException("ArXiv data not found")
-        info.htmlUrl = htmlUrl.await()
-        info
-    }
-
-    private companion object {
-        const val ARXIV_HTML_PROBE_TIMEOUT_MILLIS = 10_000L
-    }
-
-    override suspend fun getGitHubInfo(url: String): RepoInfo {
-        val repository = LinkPreviewUrls.gitHubRepository(url)
-            ?: throw LinkPreviewException("Invalid GitHub URL")
-        val endpoint = "https://api.github.com/repos/" +
-            repository.owner.encodeURLPathPart() + "/" + repository.name.encodeURLPathPart()
-        return LinkPreviewParsers.parseGitHub(client.getTextOrThrow(endpoint))
-    }
-
-    override suspend fun getGitLabInfo(url: String): GitLabInfo {
-        val projectPath = LinkPreviewUrls.gitLabProjectPath(url)
-            ?: throw LinkPreviewException("Invalid GitLab URL")
-        val endpoint = "https://gitlab.com/api/v4/projects/${projectPath.encodeURLPathPart()}"
-        return LinkPreviewParsers.parseGitLab(client.getTextOrThrow(endpoint))
-    }
-
-    override suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo {
-        val model = LinkPreviewUrls.huggingFaceModel(url)
-            ?: throw LinkPreviewException("Invalid Hugging Face model URL")
-        val endpoint = "https://huggingface.co/api/models/" +
-            model.owner.encodeURLPathPart() + "/" + model.name.encodeURLPathPart()
-        return LinkPreviewParsers.parseHuggingFace(client.getTextOrThrow(endpoint))
-    }
-
-    override suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo {
-        val model = LinkPreviewUrls.openRouterModel(url)
-            ?: throw LinkPreviewException("Invalid OpenRouter model URL")
-        val endpoint = "https://openrouter.ai/api/v1/model/" +
-            model.author.encodeURLPathPart() + "/" + model.slug.encodeURLPathPart()
-        return LinkPreviewParsers.parseOpenRouter(client.getTextOrThrow(endpoint))
-    }
-
-    override suspend fun getStackExchangeInfo(url: String): StackExchangeInfo {
-        val request = LinkPreviewUrls.stackExchangeRequest(url)
-            ?: throw LinkPreviewException("Invalid Stack Exchange URL")
-        val path = if (request.isAnswer) {
-            "answers/${request.id}/questions"
-        } else {
-            "questions/${request.id}"
-        }
-        val endpoint = URLBuilder("https://api.stackexchange.com/2.3/$path").apply {
-            parameters.append("site", request.siteParam)
-            parameters.append("filter", "withbody")
-        }.buildString()
-        return LinkPreviewParsers.parseStackExchange(
-            client.getTextOrThrow(endpoint),
-            request,
-        ) ?: throw LinkPreviewException("Stack Exchange question not found")
-    }
-
-    override suspend fun getWikipediaInfo(url: String): WikipediaInfo {
-        val title = LinkPreviewUrls.wikipediaTitle(url)
-            ?: throw LinkPreviewException("Invalid Wikipedia URL")
-        val endpoint = URLBuilder("https://en.wikipedia.org/w/api.php").apply {
-            parameters.append("format", "json")
-            parameters.append("action", "query")
-            parameters.append("prop", "extracts")
-            parameters.append("exintro", "")
-            parameters.append("titles", title)
-        }.buildString()
-        return LinkPreviewParsers.parseWikipedia(client.getTextOrThrow(endpoint))
-            ?: throw LinkPreviewException("Wikipedia did not return a visible summary")
-    }
-
-    override suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
-        client.loadRichLinkPreview(type, url)
+    override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData =
+        LinkPreviewProviders.load(client, type, url)
 
     override suspend fun getArchiveUrl(url: String): String {
         val endpoint = URLBuilder("https://archive.org/wayback/available").apply {
@@ -141,6 +73,99 @@ class KtorLinkPreviewRepository(
             ?: throw LinkPreviewException("No saved copy on archive.org found")
     }
 }
+
+private inline fun <reified T : LinkPreviewData> LinkPreviewData.requirePayload(): T =
+    this as? T ?: throw LinkPreviewException("Unexpected ${type.title} preview payload")
+
+internal suspend fun HttpClient.loadArxivInfo(url: String): ArxivInfo = coroutineScope {
+    val arxivId = LinkPreviewUrls.arxivId(url)
+        ?: throw LinkPreviewException("Invalid ArXiv URL")
+    val endpoint = URLBuilder("https://export.arxiv.org/api/query").apply {
+        parameters.append("id_list", arxivId)
+    }.buildString()
+    val htmlUrl = async {
+        try {
+            withTimeoutOrNull(ARXIV_HTML_PROBE_TIMEOUT_MILLIS) {
+                LinkPreviewParsers.parseArxivHtmlUrl(
+                    getTextOrThrow("https://arxiv.org/abs/$arxivId"),
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
+    }
+    val info = LinkPreviewParsers.parseArxiv(getTextOrThrow(endpoint), arxivId)
+        ?: throw LinkPreviewException("ArXiv data not found")
+    info.htmlUrl = htmlUrl.await()
+    info
+}
+
+internal suspend fun HttpClient.loadGitHubInfo(url: String): RepoInfo {
+    val repository = LinkPreviewUrls.gitHubRepository(url)
+        ?: throw LinkPreviewException("Invalid GitHub URL")
+    val endpoint = "https://api.github.com/repos/" +
+        repository.owner.encodeURLPathPart() + "/" + repository.name.encodeURLPathPart()
+    return LinkPreviewParsers.parseGitHub(getTextOrThrow(endpoint))
+}
+
+internal suspend fun HttpClient.loadGitLabInfo(url: String): GitLabInfo {
+    val projectPath = LinkPreviewUrls.gitLabProjectPath(url)
+        ?: throw LinkPreviewException("Invalid GitLab URL")
+    val endpoint = "https://gitlab.com/api/v4/projects/${projectPath.encodeURLPathPart()}"
+    return LinkPreviewParsers.parseGitLab(getTextOrThrow(endpoint))
+}
+
+internal suspend fun HttpClient.loadHuggingFaceInfo(url: String): HuggingFaceModelInfo {
+    val model = LinkPreviewUrls.huggingFaceModel(url)
+        ?: throw LinkPreviewException("Invalid Hugging Face model URL")
+    val endpoint = "https://huggingface.co/api/models/" +
+        model.owner.encodeURLPathPart() + "/" + model.name.encodeURLPathPart()
+    return LinkPreviewParsers.parseHuggingFace(getTextOrThrow(endpoint))
+}
+
+internal suspend fun HttpClient.loadOpenRouterInfo(url: String): OpenRouterModelInfo {
+    val model = LinkPreviewUrls.openRouterModel(url)
+        ?: throw LinkPreviewException("Invalid OpenRouter model URL")
+    val endpoint = "https://openrouter.ai/api/v1/model/" +
+        model.author.encodeURLPathPart() + "/" + model.slug.encodeURLPathPart()
+    return LinkPreviewParsers.parseOpenRouter(getTextOrThrow(endpoint))
+}
+
+internal suspend fun HttpClient.loadStackExchangeInfo(url: String): StackExchangeInfo {
+    val request = LinkPreviewUrls.stackExchangeRequest(url)
+        ?: throw LinkPreviewException("Invalid Stack Exchange URL")
+    val path = if (request.isAnswer) {
+        "answers/${request.id}/questions"
+    } else {
+        "questions/${request.id}"
+    }
+    val endpoint = URLBuilder("https://api.stackexchange.com/2.3/$path").apply {
+        parameters.append("site", request.siteParam)
+        parameters.append("filter", "withbody")
+    }.buildString()
+    return LinkPreviewParsers.parseStackExchange(
+        getTextOrThrow(endpoint),
+        request,
+    ) ?: throw LinkPreviewException("Stack Exchange question not found")
+}
+
+internal suspend fun HttpClient.loadWikipediaInfo(url: String): WikipediaInfo {
+    val title = LinkPreviewUrls.wikipediaTitle(url)
+        ?: throw LinkPreviewException("Invalid Wikipedia URL")
+    val endpoint = URLBuilder("https://en.wikipedia.org/w/api.php").apply {
+        parameters.append("format", "json")
+        parameters.append("action", "query")
+        parameters.append("prop", "extracts")
+        parameters.append("exintro", "")
+        parameters.append("titles", title)
+    }.buildString()
+    return LinkPreviewParsers.parseWikipedia(getTextOrThrow(endpoint))
+        ?: throw LinkPreviewException("Wikipedia did not return a visible summary")
+}
+
+private const val ARXIV_HTML_PROBE_TIMEOUT_MILLIS = 10_000L
 
 class LinkPreviewException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
