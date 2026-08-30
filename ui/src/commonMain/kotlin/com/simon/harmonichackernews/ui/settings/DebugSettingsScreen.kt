@@ -147,7 +147,7 @@ fun DebugSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Link previews",
-                    icon = Res.drawable.ic_link,
+                    icon = Res.drawable.ic_preview,
                     onClick = onLinkPreviewsRequested,
                 )
             }
@@ -253,9 +253,14 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(settingsItemBackgroundColor())
-            .padding(start = 24.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
+            .padding(
+                start = HarmonicDimens.compose_settings_row_horizontal_padding,
+                top = 12.dp,
+                end = HarmonicDimens.compose_settings_row_horizontal_padding,
+                bottom = 12.dp,
+            ),
     ) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 painterResource(Res.drawable.ic_open_in_new),
                 contentDescription = null,
@@ -274,7 +279,7 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 56.dp, top = 12.dp),
+                .padding(start = 56.dp, top = 8.dp),
             verticalAlignment = Alignment.Top,
         ) {
             OutlinedTextField(
