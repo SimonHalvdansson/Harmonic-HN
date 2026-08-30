@@ -301,6 +301,7 @@ fun CommentsHeader(
                                 story = story,
                                 settings = settings,
                                 diagnostics = controller.summaryDiagnostics,
+                                streaming = controller.storySummaryLoading,
                                 containerColor = summaryContainerColor,
                             )
                             HeaderMeta(

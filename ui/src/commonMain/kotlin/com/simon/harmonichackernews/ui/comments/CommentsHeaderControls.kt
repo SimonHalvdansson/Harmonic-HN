@@ -140,6 +140,7 @@ fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
     diagnostics: StorySummaryDiagnostics? = null,
+    streaming: Boolean = false,
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
 ) {
     val summary = story.summary.orEmpty()
@@ -234,6 +235,8 @@ fun StorySummary(
                         fontSize = typography.commentTextSize.sp,
                         lineHeight = (typography.commentTextSize + 2f).sp,
                         enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                        animateStreamingText = streaming,
+                        animationContentKey = story.id,
                     )
                 }
             }

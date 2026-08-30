@@ -1,7 +1,16 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,13 +24,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.text.rememberTextMeasurer
 
 @Composable
 internal fun SummaryMarkdownText(
@@ -35,41 +43,214 @@ internal fun SummaryMarkdownText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     enableBoldFormatting: Boolean = true,
+    animateStreamingText: Boolean = false,
+    animationContentKey: Any? = null,
 ) {
-    val indentPrefix = remember(markdown) { summaryMarkdownHangingIndentPrefix(markdown) }
+    val listItems = remember(markdown) { summaryMarkdownListItems(markdown) }
+    if (listItems != null && maxLines == Int.MAX_VALUE) {
+        SummaryMarkdownList(
+            items = listItems,
+            color = color,
+            linkColor = linkColor,
+            fontFamily = fontFamily,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            modifier = modifier,
+            enableBoldFormatting = enableBoldFormatting,
+            animateStreamingText = animateStreamingText,
+            animationContentKey = animationContentKey,
+        )
+        return
+    }
+    SummaryMarkdownSingleText(
+        markdown = markdown,
+        color = color,
+        linkColor = linkColor,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        modifier = modifier,
+        maxLines = maxLines,
+        overflow = overflow,
+        enableBoldFormatting = enableBoldFormatting,
+        animateStreamingText = animateStreamingText,
+        animationContentKey = animationContentKey,
+    )
+}
+
+@Composable
+private fun SummaryMarkdownList(
+    items: List<SummaryMarkdownListItem>,
+    color: Color,
+    linkColor: Color,
+    fontFamily: FontFamily,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    modifier: Modifier,
+    enableBoldFormatting: Boolean,
+    animateStreamingText: Boolean,
+    animationContentKey: Any?,
+) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val hangingIndent = remember(indentPrefix, fontFamily, fontSize, textMeasurer, density) {
-        indentPrefix?.let { prefix ->
-            val width = textMeasurer.measure(
-                text = prefix,
+    val markerWidth = remember(items, fontFamily, fontSize, textMeasurer, density) {
+        val width = items.maxOf { item ->
+            textMeasurer.measure(
+                text = item.marker,
                 style = TextStyle(fontFamily = fontFamily, fontSize = fontSize),
                 maxLines = 1,
             ).size.width
-            with(density) { width.toSp() }
+        }
+        with(density) { width.toDp() }
+    }
+    Column(modifier) {
+        items.forEachIndexed { index, item ->
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    text = item.marker,
+                    modifier = Modifier.width(markerWidth),
+                    color = color,
+                    fontFamily = fontFamily,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight,
+                )
+                SummaryMarkdownSingleText(
+                    markdown = item.content,
+                    color = color,
+                    linkColor = linkColor,
+                    fontFamily = fontFamily,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight,
+                    modifier = Modifier.weight(1f),
+                    enableBoldFormatting = enableBoldFormatting,
+                    animateStreamingText = animateStreamingText,
+                    animationContentKey = animationContentKey to index,
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun SummaryMarkdownSingleText(
+    markdown: String,
+    color: Color,
+    linkColor: Color,
+    fontFamily: FontFamily,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    enableBoldFormatting: Boolean = true,
+    animateStreamingText: Boolean = false,
+    animationContentKey: Any? = null,
+) {
     val rendered = remember(markdown, linkColor, enableBoldFormatting) {
         summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting)
     }
+    val history = remember(animationContentKey) { StreamingTextHistory() }
+    val fadeRange = remember(animationContentKey, rendered.text, animateStreamingText) {
+        streamingTextFadeRange(
+            previous = history.renderedText,
+            current = rendered.text,
+            streaming = animateStreamingText,
+            wasStreaming = history.streaming,
+        )
+    }
+    val fadeAlpha = remember(animationContentKey, rendered.text, animateStreamingText) {
+        Animatable(if (fadeRange == null) 1f else 0f)
+    }
+    SideEffect {
+        history.renderedText = rendered.text
+        history.streaming = animateStreamingText
+    }
+    LaunchedEffect(fadeAlpha, fadeRange) {
+        if (fadeRange != null) {
+            fadeAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = STREAMING_TEXT_FADE_MILLIS,
+                    easing = LinearOutSlowInEasing,
+                ),
+            )
+        }
+    }
+    val displayed = if (fadeRange == null || fadeAlpha.value >= 1f) {
+        rendered
+    } else {
+        buildAnnotatedString {
+            append(rendered)
+            addStyle(
+                SpanStyle(color = color.copy(alpha = color.alpha * fadeAlpha.value)),
+                fadeRange.first,
+                fadeRange.last + 1,
+            )
+        }
+    }
     Text(
-        text = rendered,
+        text = displayed,
         modifier = modifier,
         color = color,
         fontFamily = fontFamily,
         fontSize = fontSize,
         lineHeight = lineHeight,
-        style = if (hangingIndent == null) {
-            TextStyle.Default
-        } else {
-            // One paragraph style applies the indent to every list paragraph without Compose's
-            // large inter-paragraph leading produced by separate ranged ParagraphStyles.
-            TextStyle.Default.copy(textIndent = TextIndent(restLine = hangingIndent))
-        },
         maxLines = maxLines,
         overflow = overflow,
     )
 }
+
+internal data class SummaryMarkdownListItem(
+    val marker: String,
+    val content: String,
+)
+
+internal fun summaryMarkdownListItems(markdown: String): List<SummaryMarkdownListItem>? {
+    val lines = compactSummaryMarkdownListSpacing(
+        markdown.stripMarkdownHtmlComments().trim().lines(),
+    ).filter(String::isNotBlank)
+    if (lines.isEmpty()) return null
+    return lines.mapIndexed { index, sourceLine ->
+        val line = sourceLine.trimStart().trimEnd()
+        val bulletItem = line.markdownBulletItemContent()
+        val numberedItem = line.markdownNumberedItemContent()
+        val incompleteBullet = index == lines.lastIndex && line in INCOMPLETE_BULLET_MARKERS
+        when {
+            bulletItem != null -> {
+                val task = bulletItem.markdownTaskItemContent()
+                SummaryMarkdownListItem(
+                    marker = task?.first ?: "• ",
+                    content = task?.second ?: bulletItem,
+                )
+            }
+
+            numberedItem != null -> SummaryMarkdownListItem(
+                marker = "${numberedItem.first}. ",
+                content = numberedItem.second,
+            )
+
+            incompleteBullet -> SummaryMarkdownListItem(marker = "• ", content = "")
+            else -> return null
+        }
+    }
+}
+
+internal fun streamingTextFadeRange(
+    previous: String,
+    current: String,
+    streaming: Boolean,
+    wasStreaming: Boolean,
+): IntRange? {
+    if ((!streaming && !wasStreaming) || current.isEmpty() || current == previous) return null
+    val commonPrefixLength = previous.commonPrefixWith(current).length
+    if (commonPrefixLength >= current.length) return null
+    return commonPrefixLength until current.length
+}
+
+private class StreamingTextHistory(
+    var renderedText: String = "",
+    var streaming: Boolean = false,
+)
 
 /** Renders the compact Markdown subset requested from summary providers. */
 internal fun summaryMarkdownAnnotatedString(
@@ -166,26 +347,6 @@ private fun compactSummaryMarkdownListSpacing(lines: List<String>): List<String>
         val duplicateBlankLine = lastOrNull()?.isBlank() == true
         if (!compactListGap && !compactHeadingGap && !duplicateBlankLine) add(line)
     }
-}
-
-private fun summaryMarkdownHangingIndentPrefix(markdown: String): String? {
-    val prefixes = compactSummaryMarkdownListSpacing(markdown.trim().lines())
-        .filter(String::isNotBlank)
-        .map { line ->
-            val trimmed = line.trimStart()
-            val numberedItem = trimmed.markdownNumberedItemContent()
-            val bulletItem = trimmed.markdownBulletItemContent()
-            val taskPrefix = bulletItem?.markdownTaskItemContent()?.first
-            when {
-                taskPrefix != null -> taskPrefix
-                bulletItem != null -> "• "
-                numberedItem != null -> "${numberedItem.first}. "
-                // Mixed prose/Markdown blocks keep their normal paragraph layout. AI summaries
-                // are list-only, so they receive one compact hanging indent across all bullets.
-                else -> return null
-            }
-        }
-    return prefixes.maxByOrNull(String::length)
 }
 
 private fun String.isMarkdownListItem(): Boolean {
@@ -325,4 +486,6 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     }
 }
 
+private val INCOMPLETE_BULLET_MARKERS = setOf("-", "*", "+", "•")
+private const val STREAMING_TEXT_FADE_MILLIS = 180
 private const val MARKDOWN_ESCAPABLE_CHARACTERS = "\\`*{}[]()#+-.!_>"

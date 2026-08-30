@@ -108,4 +108,56 @@ class SummaryMarkdownTest {
                 rendered.text.substring(it.start, it.end) == "code()"
         })
     }
+
+    @Test
+    fun separatesListMarkersFromContentForWrappedLineLayout() {
+        val items = summaryMarkdownListItems(
+            "- A first item long enough to wrap\n\n10. A numbered item\n- [x] A task",
+        )
+
+        assertEquals(
+            listOf(
+                SummaryMarkdownListItem("• ", "A first item long enough to wrap"),
+                SummaryMarkdownListItem("10. ", "A numbered item"),
+                SummaryMarkdownListItem("☑ ", "A task"),
+            ),
+            items,
+        )
+    }
+
+    @Test
+    fun listLayoutRejectsMixedParagraphs() {
+        assertEquals(null, summaryMarkdownListItems("- A list item\nFollowing paragraph"))
+    }
+
+    @Test
+    fun streamingFadeTargetsOnlyNewlyRenderedTextIncludingFinalChunk() {
+        assertEquals(
+            13..18,
+            streamingTextFadeRange(
+                previous = "Existing text",
+                current = "Existing text grows",
+                streaming = true,
+                wasStreaming = true,
+            ),
+        )
+        assertEquals(
+            19..19,
+            streamingTextFadeRange(
+                previous = "Existing text grows",
+                current = "Existing text grows!",
+                streaming = false,
+                wasStreaming = true,
+            ),
+        )
+        assertEquals(
+            null,
+            streamingTextFadeRange(
+                previous = "Cached",
+                current = "Cached summary",
+                streaming = false,
+                wasStreaming = false,
+            ),
+        )
+    }
 }
