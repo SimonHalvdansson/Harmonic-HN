@@ -335,7 +335,7 @@ class KtorHackerNewsActionRepository(
      */
     private suspend fun loadLoginResponse(request: HttpRequest): PageResult {
         val response = cookieClient.execute(request)
-        if (response.code !in LOGIN_GET_REDIRECT_CODES) {
+        if (response.code !in HN_GET_REDIRECT_CODES) {
             return classifyResponse(response, useCookies = true)
         }
 
@@ -360,11 +360,10 @@ class KtorHackerNewsActionRepository(
         useCookies: Boolean,
     ): HackerNewsActionResult = try {
         when (
-            val page = loadPage(
+            val page = loadActionResponse(
                 client,
                 request,
                 useCookies,
-                indeterminateOnHttpFailure = true,
             )
         ) {
             is PageResult.Success -> HackerNewsActionResult.Success()
@@ -377,6 +376,45 @@ class KtorHackerNewsActionRepository(
         throw IndeterminateHackerNewsActionException(error)
     } catch (error: Throwable) {
         throw IndeterminateHackerNewsActionException(error)
+    }
+
+    /**
+     * HN completes successful mutations with a redirect to the affected page. Ktor does not
+     * follow POST redirects, so mirror the legacy OkHttp behavior with an explicit, same-origin
+     * GET. Inspecting the destination page preserves HN's error and captcha classification.
+     */
+    private suspend fun loadActionResponse(
+        client: KtorHttpClient,
+        request: HttpRequest,
+        useCookies: Boolean,
+    ): PageResult {
+        val response = client.execute(request)
+        if (response.code !in HN_GET_REDIRECT_CODES) {
+            return classifyResponse(
+                response = response,
+                useCookies = useCookies,
+                indeterminateOnHttpFailure = true,
+            )
+        }
+
+        val location = response.header(LOCATION_HEADER)
+        response.close()
+        val redirectUrl = request.url.resolve(location.orEmpty())?.takeIf { url ->
+            url.scheme == "https" &&
+                url.host.equals(HackerNewsLinks.HOST, ignoreCase = true)
+        } ?: return PageResult.Result(
+            HackerNewsActionResult.Failure(
+                summary = "Unexpected action redirect",
+                detail = "HN did not redirect to one of its pages.",
+                reason = HackerNewsActionFailureReason.INDETERMINATE,
+            ),
+        )
+        return loadPage(
+            client = client,
+            request = get(redirectUrl.toString()),
+            useCookies = useCookies,
+            indeterminateOnHttpFailure = true,
+        )
     }
 
     private suspend fun loadPageAfterMutation(
@@ -511,7 +549,7 @@ class KtorHackerNewsActionRepository(
         const val LOCATION_HEADER = "Location"
         const val BAD_LOGIN_TEXT = "Bad login."
         const val UNKNOWN_OR_EXPIRED_LINK_TEXT = "Unknown or expired link."
-        val LOGIN_GET_REDIRECT_CODES = setOf(301, 302, 303)
+        val HN_GET_REDIRECT_CODES = setOf(301, 302, 303)
     }
 }
 
