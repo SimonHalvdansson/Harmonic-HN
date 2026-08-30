@@ -164,6 +164,8 @@ class StoryCacheRepository(
 ) {
     @Volatile
     private var recentStoryAvailability: RecentStoryAvailability? = null
+    @Volatile
+    private var indexedStoryIdsSnapshot: Set<Int>? = null
 
     fun storeStory(storyId: Int, payload: String?, cachedAtMillis: Long): Boolean {
         if (storyId <= 0 || payload.isNullOrEmpty() || payload == JSONParser.ALGOLIA_ERROR_STRING) {
@@ -198,6 +200,7 @@ class StoryCacheRepository(
                 remove(StoryCacheKeys.ARTICLE_CHARSET + evictedStoryId)
             }
         }
+        indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(update.encodedEntries)
         update.evictedStoryIds.forEach(::removeFiles)
         recentStoryAvailability = null
         return true
@@ -207,12 +210,14 @@ class StoryCacheRepository(
         files.readText(StoryCacheKeys.FULL_NAMESPACE, StoryCacheKeys.storyFile(it))
     }
 
-    fun hasStoryPayload(storyId: Int): Boolean = storyId > 0 &&
-        storyId in StoryCacheIndex.storyIds(metadata.getStringSet(StoryCacheKeys.INDEX))
+    fun hasStoryPayload(storyId: Int): Boolean = storyId > 0 && storyId in indexedStoryIds()
 
     fun hydrateStory(story: Story?): Boolean {
         story ?: return false
         if (story.id <= 0) return false
+        // The index is authoritative for story payloads. Most feed IDs are not cached, so avoid
+        // probing both summary and full-payload files for every miss on the UI thread.
+        if (story.id !in indexedStoryIds()) return false
         val summary = loadOrCreateSummary(story.id) ?: return false
         return JSONParser.updateStoryWithCachedStorySummary(story, summary)
     }
@@ -283,6 +288,7 @@ class StoryCacheRepository(
             remove(StoryCacheKeys.ARTICLE_URL + storyId)
             remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
         }
+        indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(updatedIndex)
         removeFiles(storyId)
         recentStoryAvailability = null
     }
@@ -303,6 +309,7 @@ class StoryCacheRepository(
             }
         }
         metadata.update { cacheMetadataKeys.forEach { key -> remove(key) } }
+        indexedStoryIdsSnapshot = emptySet()
         recentStoryAvailability = null
         return count
     }
@@ -354,6 +361,15 @@ class StoryCacheRepository(
 
     private fun recentEntries(nowMillis: Long): List<StoryCacheEntry> =
         StoryCacheIndex.recentEntries(metadata.getStringSet(StoryCacheKeys.INDEX), nowMillis)
+
+    private fun indexedStoryIds(): Set<Int> {
+        indexedStoryIdsSnapshot?.let { return it }
+        // A concurrent first read may calculate the same immutable set twice; that is cheaper than
+        // introducing a platform lock into common code and both snapshots are equivalent.
+        return StoryCacheIndex.storyIds(metadata.getStringSet(StoryCacheKeys.INDEX)).also {
+            indexedStoryIdsSnapshot = it
+        }
+    }
 
     private fun loadOrCreateSummary(storyId: Int): String? {
         val key = StoryCacheKeys.storyFile(storyId)

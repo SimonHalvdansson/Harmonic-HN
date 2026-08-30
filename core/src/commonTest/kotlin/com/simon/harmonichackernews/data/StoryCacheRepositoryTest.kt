@@ -42,6 +42,20 @@ class StoryCacheRepositoryTest {
     }
 
     @Test
+    fun hydrateSkipsFilesystemReadsForFeedIdsMissingFromTheIndex() {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val repository = StoryCacheRepository(files, metadata)
+
+        repeat(500) { index ->
+            assertFalse(repository.hydrateStory(Story().apply { id = index + 1 }))
+        }
+
+        assertEquals(0, files.readTextCount)
+        assertEquals(1, metadata.getStringSetCount)
+    }
+
+    @Test
     fun evictionRemovesStoryArticleAndMetadataTogether() {
         val files = FakeFiles()
         val metadata = FakeMetadata()
@@ -146,6 +160,7 @@ class StoryCacheRepositoryTest {
     private class FakeMetadata : StoryCacheMetadataStore {
         private val strings = mutableMapOf<String, String?>()
         private val sets = mutableMapOf<String, Set<String>>()
+        var getStringSetCount: Int = 0
 
         override fun getString(key: String): String? = strings[key]
 
@@ -158,7 +173,10 @@ class StoryCacheRepositoryTest {
             sets.remove(key)
         }
 
-        override fun getStringSet(key: String): Set<String> = sets[key].orEmpty()
+        override fun getStringSet(key: String): Set<String> {
+            getStringSetCount++
+            return sets[key].orEmpty()
+        }
 
         override fun putStringSet(key: String, value: Set<String>) {
             sets[key] = value

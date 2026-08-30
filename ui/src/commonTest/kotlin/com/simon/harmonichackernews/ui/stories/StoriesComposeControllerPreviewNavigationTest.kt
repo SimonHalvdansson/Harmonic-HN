@@ -227,7 +227,7 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
-    fun tapToUpdateDefersClearingRefreshUntilExitAnimationCompletes() {
+    fun tapToUpdateRetainsStoriesUntilReplacementRefreshCompletes() {
         val listener = TestListener(destinationRemainsBesideStories = false)
         val controller = controller(
             destinationRemainsBesideStories = false,
@@ -244,17 +244,52 @@ class StoriesComposeControllerPreviewNavigationTest {
 
         controller.completeTapToUpdateExit()
 
-        assertEquals(listOf(true), listener.refreshLoadingModes)
-        controller.updateContent(StoriesScreenState(loading = true, mainStories = emptyList()))
-        assertFalse(controller.tapToUpdateExitInProgress)
+        assertEquals(listOf(false), listener.refreshLoadingModes)
+        controller.updateContent(
+            StoriesScreenState(
+                refreshing = true,
+                mainStories = listOf(storySnapshot(1), storySnapshot(2)),
+            ),
+        )
+        assertTrue(controller.tapToUpdateExitInProgress)
         assertEquals(0, controller.scrollToTopRequestVersion)
 
         controller.updateContent(
             StoriesScreenState(
-                loading = false,
+                refreshing = false,
                 mainStories = listOf(storySnapshot(3), storySnapshot(4)),
             ),
         )
+        assertFalse(controller.tapToUpdateExitInProgress)
+        assertFalse(controller.tapToUpdateRefreshStarted)
+        assertEquals(1, controller.scrollToTopRequestVersion)
+    }
+
+    @Test
+    fun tapToUpdateReleasesTheHiddenLayerWhenRefreshFails() {
+        val listener = TestListener(destinationRemainsBesideStories = false)
+        val controller = controller(
+            destinationRemainsBesideStories = false,
+            listener = listener,
+        )
+        val retainedStories = listOf(storySnapshot(1), storySnapshot(2))
+        controller.updateContent(StoriesScreenState(mainStories = retainedStories))
+
+        controller.beginTapToUpdateExit()
+        controller.completeTapToUpdateExit()
+        controller.updateContent(
+            StoriesScreenState(refreshing = true, mainStories = retainedStories),
+        )
+        controller.updateContent(
+            StoriesScreenState(
+                refreshing = false,
+                loadingFailed = true,
+                mainStories = retainedStories,
+            ),
+        )
+
+        assertFalse(controller.tapToUpdateExitInProgress)
+        assertFalse(controller.tapToUpdateRefreshStarted)
         assertEquals(1, controller.scrollToTopRequestVersion)
     }
 

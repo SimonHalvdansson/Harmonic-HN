@@ -168,7 +168,6 @@ class StoriesComposeController private constructor(
         private set
     var tapToUpdateRefreshStarted by mutableStateOf(false)
         private set
-    private var tapToUpdateCoreCleared = false
     var headerMenuVisible by mutableStateOf(false)
         private set
     var headerMenuDismissRequestVersion by mutableIntStateOf(0)
@@ -282,19 +281,11 @@ class StoriesComposeController private constructor(
         if (requestedRefreshCompleted) {
             scrollToTopAfterRefresh = false
             refreshInProgressObserved = false
+            if (tapToUpdateRefreshStarted) {
+                tapToUpdateRefreshStarted = false
+                tapToUpdateExitInProgress = false
+            }
             scrollToTopRequestVersion++
-        }
-        if (tapToUpdateRefreshStarted && normalized.mainStories.isEmpty()) {
-            tapToUpdateCoreCleared = true
-            tapToUpdateExitInProgress = false
-        }
-        if (tapToUpdateCoreCleared && !normalized.loading &&
-            (normalized.mainStories.isNotEmpty() || normalized.loadingFailed ||
-                normalized.loadingFailedServerError)
-        ) {
-            tapToUpdateRefreshStarted = false
-            tapToUpdateCoreCleared = false
-            if (normalized.mainStories.isNotEmpty()) scrollToTopRequestVersion++
         }
     }
 
@@ -359,7 +350,6 @@ class StoriesComposeController private constructor(
         scrollToTopAfterRefresh = false
         refreshInProgressObserved = false
         tapToUpdateRefreshStarted = false
-        tapToUpdateCoreCleared = false
         tapToUpdateExitInProgress = true
         tapToUpdateExitRequestVersion++
     }
@@ -367,13 +357,17 @@ class StoriesComposeController private constructor(
     fun completeTapToUpdateExit() {
         if (!tapToUpdateExitInProgress || tapToUpdateRefreshStarted) return
         tapToUpdateRefreshStarted = true
-        listener.onRefresh(showMainLoadingIndicator = true)
+        scrollToTopAfterRefresh = true
+        refreshInProgressObserved = refreshing
+        // Keep the current snapshots in the store while the replacement feed loads. The UI layer
+        // is already fully faded, so clearing 500 rows here only creates avoidable cache hydration
+        // and layout work on the UI thread.
+        listener.onRefresh(showMainLoadingIndicator = false)
     }
 
     fun cancelTapToUpdateExit() {
         if (tapToUpdateRefreshStarted) return
         tapToUpdateExitInProgress = false
-        tapToUpdateCoreCleared = false
     }
 
     fun finishPullToRefresh() {

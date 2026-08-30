@@ -141,6 +141,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 
 private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val NoTapToUpdateExitProgress: () -> Float = { 0f }
 
 @Composable
 fun StoriesScreen(
@@ -165,12 +166,17 @@ fun StoriesScreen(
     val mainState = rememberLazyListState()
     val searchState = rememberLazyListState()
     val tapToUpdateExitClock = remember { Animatable(0f) }
+    val tapToUpdateExitProgress = remember(tapToUpdateExitClock) {
+        { tapToUpdateExitClock.value.coerceIn(0f, 1f) }
+    }
+    var suppressTapToUpdateRowExit by remember { mutableStateOf(false) }
 
     val tapToUpdateExitRequestVersion = controller.tapToUpdateExitRequestVersion
     LaunchedEffect(tapToUpdateExitRequestVersion) {
         if (tapToUpdateExitRequestVersion <= 0) return@LaunchedEffect
         var refreshStarted = false
         try {
+            suppressTapToUpdateRowExit = true
             tapToUpdateExitClock.snapTo(0f)
             // Fade the existing list as one stable layer before the refresh reaches the store.
             tapToUpdateExitClock.animateTo(
@@ -180,21 +186,29 @@ fun StoriesScreen(
                     easing = StoriesEasing,
                 ),
             )
-            // Keep the list anchored until its rows have faded, then let the header return with
-            // normal scroll motion. Removing the rows first makes LazyListState jump to zero and
-            // causes the collapsed header to pop fully open in one frame.
+            // Keep the list anchored until its rows have faded, then let the collapsed header
+            // return with normal scroll motion instead of jumping fully into view in one frame.
             mainState.animateScrollToItem(0)
             controller.completeTapToUpdateExit()
             refreshStarted = true
             snapshotFlow { controller.tapToUpdateExitInProgress }.first { inProgress ->
                 !inProgress
             }
-            // Let the empty/loading publication commit before releasing the fully faded layer.
-            // Otherwise the controller flag can expose the retained rows for one frame.
+            // Let the replacement publication commit while the layer is hidden, then reverse the
+            // same layer transition. The retained keyed rows are not additions from LazyList's
+            // perspective, so animateItem cannot provide their entrance animation.
             withFrameNanos { }
+            tapToUpdateExitClock.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = SavedListTransitionDurationMillis,
+                    easing = StoriesEasing,
+                ),
+            )
         } finally {
             if (!refreshStarted) controller.cancelTapToUpdateExit()
             tapToUpdateExitClock.snapTo(0f)
+            suppressTapToUpdateRowExit = false
         }
     }
 
@@ -270,8 +284,9 @@ fun StoriesScreen(
                 listState = mainState,
                 searchMode = false,
                 // The animation clock, rather than the controller hand-off flag, owns visibility.
-                // This keeps the old rows hidden until the loading frame has been committed.
-                tapToUpdateExitProgress = tapToUpdateExitClock.value,
+                // This keeps the old rows hidden until the replacement frame has been committed.
+                tapToUpdateExitProgress = tapToUpdateExitProgress,
+                suppressTapToUpdateRowExit = suppressTapToUpdateRowExit,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
@@ -290,7 +305,8 @@ fun StoriesScreen(
                 stories = controller.searchStories,
                 listState = searchState,
                 searchMode = true,
-                tapToUpdateExitProgress = 0f,
+                tapToUpdateExitProgress = NoTapToUpdateExitProgress,
+                suppressTapToUpdateRowExit = false,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
                 commentText = commentText,
@@ -413,7 +429,8 @@ private fun StoriesList(
     stories: List<StoryListItemSnapshot>,
     listState: LazyListState,
     searchMode: Boolean,
-    tapToUpdateExitProgress: Float,
+    tapToUpdateExitProgress: () -> Float,
+    suppressTapToUpdateRowExit: Boolean,
     storyItemModelCacheKey: Int,
     storyItemModel: (
         StoryListItemSnapshot,
@@ -442,7 +459,6 @@ private fun StoriesList(
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
     val tapToUpdateExitOffsetPx = with(density) { 8.dp.toPx() }
-    val clampedTapToUpdateExitProgress = tapToUpdateExitProgress.coerceIn(0f, 1f)
     val pullToRefreshState = rememberPullToRefreshState()
     val pullIndicatorTopInset = with(density) {
         WindowInsets.safeDrawing.getTop(density).toDp()
@@ -496,8 +512,9 @@ private fun StoriesList(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = 1f - clampedTapToUpdateExitProgress
-                        translationY = -tapToUpdateExitOffsetPx * clampedTapToUpdateExitProgress
+                        val progress = tapToUpdateExitProgress()
+                        alpha = 1f - progress
+                        translationY = -tapToUpdateExitOffsetPx * progress
                     },
                 contentPadding = PaddingValues(
                     start = startInset + safeStart,
@@ -545,9 +562,9 @@ private fun StoriesList(
                                     ),
                                     placementSpec = null,
                                     // The parent list already fades for Tap to update. A second
-                                    // row exit would become visible after the loading state clears
-                                    // the data, briefly resurrecting the old rows.
-                                    fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                    // row exit would become visible after the replacement is
+                                    // committed, briefly resurrecting the old rows.
+                                    fadeOutSpec = if (suppressTapToUpdateRowExit) {
                                         null
                                     } else {
                                         tween(
@@ -570,7 +587,7 @@ private fun StoriesList(
                                         easing = StoriesEasing,
                                     ),
                                     placementSpec = null,
-                                    fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                    fadeOutSpec = if (suppressTapToUpdateRowExit) {
                                         null
                                     } else {
                                         tween(
@@ -635,7 +652,7 @@ private fun StoriesList(
                                     easing = StoriesEasing,
                                 ),
                                 placementSpec = null,
-                                fadeOutSpec = if (clampedTapToUpdateExitProgress > 0f) {
+                                fadeOutSpec = if (suppressTapToUpdateRowExit) {
                                     null
                                 } else {
                                     tween(
@@ -741,7 +758,7 @@ private fun StoriesList(
             StoriesHeader(
                 controller = controller,
                 searchMode = searchMode,
-                tapToUpdateExitProgress = clampedTapToUpdateExitProgress,
+                tapToUpdateExitProgress = tapToUpdateExitProgress,
                 suppressLastUpdated = controller.tapToUpdateRefreshStarted,
                 filterColors = filterColors,
                 extraCompactSelectedText = extraCompactSelectedText,
@@ -831,7 +848,7 @@ internal inline fun calculateStoriesHeaderCollapsePx(
 private fun StoriesHeader(
     controller: StoriesComposeController,
     searchMode: Boolean,
-    tapToUpdateExitProgress: Float,
+    tapToUpdateExitProgress: () -> Float,
     suppressLastUpdated: Boolean,
     filterColors: HarmonicFilterButtonColors,
     extraCompactSelectedText: Boolean,
@@ -949,12 +966,13 @@ private fun StoriesHeader(
                         .fillMaxWidth()
                         .padding(start = sideStart, top = 4.dp, end = sideEnd)
                         .graphicsLayer {
+                            val progress = tapToUpdateExitProgress()
                             alpha = if (suppressLastUpdated) {
                                 0f
                             } else {
-                                1f - tapToUpdateExitProgress
+                                1f - progress
                             }
-                            translationY = -8.dp.toPx() * tapToUpdateExitProgress
+                            translationY = -8.dp.toPx() * progress
                         },
                     textAlign = TextAlign.Center,
                 )
