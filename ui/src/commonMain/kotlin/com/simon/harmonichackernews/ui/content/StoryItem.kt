@@ -52,6 +52,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.AlignmentLine
@@ -106,6 +107,8 @@ import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
 private const val ContentAnimationDuration = 220
+private const val DimmedStoryAlpha = 0.6f
+private const val StoryMetricPillDimStrength = 0.75f
 private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
 private val MediumPreviewImageRailWidth = 128.dp
@@ -116,7 +119,7 @@ private val MediumNoImageCommentsRailWidth = 64.dp
 private val MediumNoImageIconRailWidth = 52.dp
 private val MediumPreviewImageShape = RoundedCornerShape(10.dp)
 private val StoryMetricPillShape = RoundedCornerShape(50)
-private val StoryMetricPillHeight = 26.dp
+private val StoryMetricPillHeight = 25.dp
 
 /** Avoids transition state and animated layouts for immutable story-list presentation. */
 @Composable
@@ -317,13 +320,13 @@ fun StoryItem(
     val animate = animateChanges
     val dimAlpha = if (animate) {
         val animatedDimAlpha by animateFloatAsState(
-            targetValue = if (style.dimmed) 0.6f else 1f,
+            targetValue = if (style.dimmed) DimmedStoryAlpha else 1f,
             animationSpec = tween(180),
             label = "story dim alpha",
         )
         animatedDimAlpha
     } else if (style.dimmed) {
-        0.6f
+        DimmedStoryAlpha
     } else {
         1f
     }
@@ -603,6 +606,7 @@ fun StoryItem(
                             model = model,
                             style = style,
                             typography = typography,
+                            dimAlpha = dimAlpha,
                             onClick = onCommentClick,
                             animateChanges = animate,
                             modifier = Modifier.captureStoryPreviewElement(
@@ -935,7 +939,12 @@ private fun StoryMetricPill(
 ) {
     val colors = HarmonicTheme.colors
     val container = colors.surfaceContainerHighest
-    val foreground = if (dimAlpha < 1f) colors.storyDisabled else colors.storyNormal
+    val foreground = readStateForeground(
+        colors.storyNormal,
+        colors.storyDisabled,
+        dimAlpha,
+        StoryMetricPillDimStrength,
+    )
     val backgroundModifier = if (hazeState == null) {
         Modifier
             .clip(StoryMetricPillShape)
@@ -1019,6 +1028,16 @@ private fun compactStoryMetric(value: Int): String {
     }
 }
 
+private fun readStateForeground(
+    normal: Color,
+    disabled: Color,
+    dimAlpha: Float,
+    dimStrength: Float = 1f,
+): Color {
+    val dimProgress = ((1f - dimAlpha) / (1f - DimmedStoryAlpha)).coerceIn(0f, 1f)
+    return lerp(normal, disabled, dimProgress * dimStrength)
+}
+
 @Composable
 private fun StoryMainContent(
     model: StoryItemUiModel,
@@ -1041,6 +1060,11 @@ private fun StoryMainContent(
     itemGeometry: StoryItemGeometry,
     modifier: Modifier,
 ) {
+    val foreground = readStateForeground(
+        HarmonicTheme.colors.storyNormal,
+        HarmonicTheme.colors.storyDisabled,
+        dimAlpha,
+    )
     val titleSize = if (animateChanges) {
         val animatedTitleSize by animateFloatAsState(
             targetValue = typography.storyTitleSize,
@@ -1126,8 +1150,7 @@ private fun StoryMainContent(
                         onLayerChanged = { itemGeometry.indexLayer = it },
                     )
                     .graphicsLayer { alpha = indexAlpha },
-                color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
-                else HarmonicTheme.colors.storyNormal,
+                color = foreground,
                 fontFamily = typography.family,
                 fontSize = (titleSize - 1f).sp,
                 textAlign = TextAlign.Center,
@@ -1153,8 +1176,7 @@ private fun StoryMainContent(
                             onPositioned = { itemGeometry.titleCoordinates = it },
                             onLayerChanged = { itemGeometry.titleLayer = it },
                         ),
-                    color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
-                    else HarmonicTheme.colors.storyNormal,
+                    color = foreground,
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
                     fontSize = titleSize.sp,
@@ -1686,10 +1708,16 @@ private fun StoryCommentRail(
     model: StoryItemUiModel,
     style: StoryItemStyle,
     typography: ContentTypography,
+    dimAlpha: Float,
     onClick: (() -> Unit)?,
     animateChanges: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val foreground = readStateForeground(
+        HarmonicTheme.colors.storyNormal,
+        HarmonicTheme.colors.storyDisabled,
+        dimAlpha,
+    )
     val countSize = if (animateChanges) {
         val animatedCountSize by animateFloatAsState(
             targetValue = typography.storyCommentCountSize,
@@ -1716,7 +1744,7 @@ private fun StoryCommentRail(
             ),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = HarmonicTheme.colors.drawable.copy(alpha = if (style.dimmed) 0.6f else 1f),
+            tint = HarmonicTheme.colors.drawable.copy(alpha = dimAlpha),
         )
         StoryVisibility(
             visible = style.showCommentCount && !style.compact,
@@ -1724,8 +1752,7 @@ private fun StoryCommentRail(
         ) {
             Text(
                 text = model.commentCount.toString(),
-                color = if (style.dimmed) HarmonicTheme.colors.storyDisabled
-                else HarmonicTheme.colors.storyNormal,
+                color = foreground,
                 fontFamily = typography.family,
                 fontWeight = FontWeight.Bold,
                 fontSize = countSize.sp,
