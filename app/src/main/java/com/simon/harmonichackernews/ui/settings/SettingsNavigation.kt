@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -66,6 +67,8 @@ fun SettingsShell(
     var activeBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
+    var predictiveBackStack by remember { mutableStateOf<List<SettingsSection>?>(null) }
+    var completedPredictiveBack by remember { mutableStateOf(false) }
     var isBackAnimationRunning by remember { mutableStateOf(false) }
 
     fun popSettingsBackStack() {
@@ -85,12 +88,14 @@ fun SettingsShell(
             return@PredictiveBackHandler
         }
 
+        completedPredictiveBack = false
         isBackAnimationRunning = true
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
                 val current = animation ?: DefaultActivityPredictiveBackAnimation(event).also {
                     animation = it
+                    predictiveBackStack = navigationState.detailStack
                     activeBackAnimation = it
                 }
                 backAnimationScope.launch { current.animate(event) }
@@ -102,13 +107,21 @@ fun SettingsShell(
                 return@PredictiveBackHandler
             }
             current.finish()
+            completedPredictiveBack = true
             popSettingsBackStack()
+            // Keep the retained Settings surfaces under the completed predictive modifiers while
+            // the shared layer compositor observes the pop. This avoids replaying its exit.
+            repeat(3) { withFrameNanos { } }
             activeBackAnimation = null
+            predictiveBackStack = null
+            completedPredictiveBack = false
             isBackAnimationRunning = false
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
                 animation?.cancel()
                 if (activeBackAnimation === animation) activeBackAnimation = null
+                predictiveBackStack = null
+                completedPredictiveBack = false
                 isBackAnimationRunning = false
             }
         }
@@ -129,8 +142,17 @@ fun SettingsShell(
         onSectionChanged = onSectionChanged,
         modifier = modifier,
         predictiveBackOverlay = activeBackAnimation?.let {
-            SettingsPredictiveBackOverlay(it.enterModifier, it.exitModifier)
+            val gestureStack = predictiveBackStack ?: navigationState.detailStack
+            gestureStack.lastOrNull()?.let { sourceSection ->
+                SettingsPredictiveBackOverlay(
+                    enterModifier = it.enterModifier,
+                    exitModifier = it.exitModifier,
+                    sourceSection = sourceSection,
+                    parentSection = gestureStack.dropLast(1).lastOrNull(),
+                )
+            }
         },
+        completedPredictiveBack = completedPredictiveBack,
         renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
             SettingsListScreen(
                 selectedSection = selectedSection,

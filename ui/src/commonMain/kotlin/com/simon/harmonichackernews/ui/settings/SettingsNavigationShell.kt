@@ -33,10 +33,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
@@ -75,11 +77,14 @@ private class RetainedSettingsLayer(
     val visibility = MutableTransitionState(initiallyVisible).apply {
         targetState = true
     }
+    var predictiveExitCompleted by mutableStateOf(false)
 }
 
 data class SettingsPredictiveBackOverlay(
     val enterModifier: Modifier,
     val exitModifier: Modifier,
+    val sourceSection: SettingsSection,
+    val parentSection: SettingsSection?,
 )
 
 @Composable
@@ -123,6 +128,7 @@ fun SettingsNavigationShell(
     ) -> Unit,
     modifier: Modifier = Modifier,
     predictiveBackOverlay: SettingsPredictiveBackOverlay? = null,
+    completedPredictiveBack: Boolean = false,
     animateDetailChanges: Boolean = true,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
@@ -221,29 +227,7 @@ fun SettingsNavigationShell(
     Box(
         modifier = modifier.fillMaxSize().background(settingsPageBackgroundColor()),
     ) {
-        val previousScene = sceneState.previousScenes.lastOrNull()
-        if (showDetailNavigation && predictiveBackOverlay != null && previousScene != null) {
-            key(previousScene.key) {
-                Box(Modifier.fillMaxSize().then(predictiveBackOverlay.enterModifier)) {
-                    previousScene.content()
-                }
-            }
-            key(sceneState.currentScene.key) {
-                Box(Modifier.fillMaxSize().then(predictiveBackOverlay.exitModifier)) {
-                    sceneState.currentScene.content()
-                }
-            }
-            Box(
-                Modifier.fillMaxSize().pointerInput(Unit) {
-                    awaitEachGesture {
-                        do {
-                            val event = awaitPointerEvent()
-                            event.changes.forEach { it.consume() }
-                        } while (event.changes.any { it.pressed })
-                    }
-                },
-            )
-        } else if (showDetailNavigation) {
+        if (showDetailNavigation) {
             SinglePaneSettingsNavigation(
                 detailStack = navigationState.detailStack,
                 selectedSection = selectedSection,
@@ -252,6 +236,8 @@ fun SettingsNavigationShell(
                 onNavigateTo = ::navigateTo,
                 renderList = renderList,
                 renderDetail = renderDetail,
+                predictiveBackOverlay = predictiveBackOverlay,
+                completedPredictiveBack = completedPredictiveBack,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -291,6 +277,8 @@ private fun SinglePaneSettingsNavigation(
         onBack: () -> Unit,
         onNavigate: (SettingsSection, Boolean) -> Unit,
     ) -> Unit,
+    predictiveBackOverlay: SettingsPredictiveBackOverlay? = null,
+    completedPredictiveBack: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val retainedDetails = remember {
@@ -300,14 +288,21 @@ private fun SinglePaneSettingsNavigation(
             }
         }
     }
-    LaunchedEffect(detailStack) {
+    LaunchedEffect(detailStack, completedPredictiveBack) {
         detailStack.forEach { section ->
             if (retainedDetails.none { it.section == section }) {
                 retainedDetails += RetainedSettingsLayer(section, initiallyVisible = false)
             }
         }
         retainedDetails.forEach { layer ->
-            layer.visibility.targetState = layer.section in detailStack
+            val retainedInStack = layer.section in detailStack
+            if (completedPredictiveBack && !retainedInStack) {
+                // The host can clear its short-lived completion flag before AnimatedVisibility
+                // disposes this layer. Keep this specific outgoing layer snapped invisible until
+                // disposal so it cannot flash between the predictive and retained-layer states.
+                layer.predictiveExitCompleted = true
+            }
+            layer.visibility.targetState = retainedInStack
         }
     }
 
@@ -316,7 +311,10 @@ private fun SinglePaneSettingsNavigation(
     }
     val listOffset by animateFloatAsState(
         targetValue = if (detailStack.isEmpty()) 0f else -transitionOffsetPx.toFloat(),
-        animationSpec = if (retainedDetails.isEmpty() && detailStack.isEmpty()) {
+        animationSpec = if (
+            completedPredictiveBack ||
+            retainedDetails.isEmpty() && detailStack.isEmpty()
+        ) {
             snap()
         } else {
             tween(
@@ -327,40 +325,77 @@ private fun SinglePaneSettingsNavigation(
         label = "settings list navigation offset",
     )
     val pageBackground = settingsPageBackgroundColor()
+    val predictiveBackActive = predictiveBackOverlay != null
+    // These identities are captured when the gesture starts. Deriving them from detailStack would
+    // reassign the exit modifier to the parent in the composition that observes the completed pop.
+    val predictiveCurrentSection = predictiveBackOverlay?.sourceSection
+    val predictivePreviousSection = predictiveBackOverlay?.parentSection
+    val listIsPredictiveParent = predictiveBackActive && predictivePreviousSection == null
 
     Box(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(pageBackground)
-                .graphicsLayer { translationX = listOffset }
+                .graphicsLayer {
+                    translationX = if (!predictiveBackActive && !completedPredictiveBack) {
+                        listOffset
+                    } else {
+                        0f
+                    }
+                }
                 .then(
                     if (detailStack.isEmpty()) Modifier else Modifier.clearAndSetSemantics { },
                 ),
         ) {
-            renderList(
-                selectedSection,
-                false,
-                onBackFromSettings,
-                { section -> onNavigateTo(section, false) },
-            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (listIsPredictiveParent) {
+                            predictiveBackOverlay.enterModifier
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
+                renderList(
+                    selectedSection,
+                    false,
+                    onBackFromSettings,
+                    { section -> onNavigateTo(section, false) },
+                )
+            }
         }
 
         retainedDetails.forEachIndexed { index, layer ->
             val retainedInStack = layer.section in detailStack
             val isCurrent = layer.section == detailStack.lastOrNull()
+            // detailStack changes before the LaunchedEffect above can retire the AnimatedVisibility
+            // layer. Conceal a completed predictive source synchronously in that first composition.
+            val completedPredictiveExit = completedPredictiveBack && !retainedInStack
+            val skipExitAnimation = completedPredictiveBack || layer.predictiveExitCompleted
             val layerOffset by animateFloatAsState(
                 targetValue = if (retainedInStack && !isCurrent) {
                     -transitionOffsetPx.toFloat()
                 } else {
                     0f
                 },
-                animationSpec = tween(
-                    durationMillis = ActivityNavigationTransitionDurationMillis,
-                    easing = activityNavigationEasing(),
-                ),
+                animationSpec = if (skipExitAnimation) {
+                    snap()
+                } else {
+                    tween(
+                        durationMillis = ActivityNavigationTransitionDurationMillis,
+                        easing = activityNavigationEasing(),
+                    )
+                },
                 label = "${layer.section.route} navigation offset",
             )
+            val predictiveModifier = when (layer.section) {
+                predictiveCurrentSection -> predictiveBackOverlay.exitModifier
+                predictivePreviousSection -> predictiveBackOverlay.enterModifier
+                else -> Modifier
+            }
             LaunchedEffect(layer) {
                 snapshotFlow {
                     layer.visibility.isIdle &&
@@ -375,6 +410,13 @@ private fun SinglePaneSettingsNavigation(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(index + 1f)
+                    .graphicsLayer {
+                        alpha = if (completedPredictiveExit || layer.predictiveExitCompleted) {
+                            0f
+                        } else {
+                            1f
+                        }
+                    }
                     .then(if (isCurrent) Modifier else Modifier.clearAndSetSemantics { }),
                 enter = EnterTransition.None,
                 exit = ExitTransition.None,
@@ -383,8 +425,16 @@ private fun SinglePaneSettingsNavigation(
                     ActivityNavigationTransitionViewport(
                         transition = transition,
                         transitionOffsetPx = transitionOffsetPx,
-                        baseTranslationX = layerOffset,
+                        baseTranslationX = if (
+                            !predictiveBackActive && !skipExitAnimation
+                        ) {
+                            layerOffset
+                        } else {
+                            0f
+                        },
+                        skipExitAnimation = skipExitAnimation,
                         modifier = Modifier.fillMaxSize(),
+                        contentModifier = predictiveModifier,
                     ) {
                         Box(Modifier.fillMaxSize().background(pageBackground)) {
                             renderDetail(
@@ -397,6 +447,22 @@ private fun SinglePaneSettingsNavigation(
                     }
                 }
             }
+        }
+
+        if (predictiveBackActive) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(Float.MAX_VALUE)
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
         }
     }
 }

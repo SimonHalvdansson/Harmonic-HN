@@ -65,6 +65,8 @@ General tips:
 - Adaptive two-pane detail changes, dialogs, and component-level content changes are not
   full-screen activity opens; keep their pane- or component-specific motion. Predictive-back hosts
   may supply their own gesture modifiers and should avoid replaying a completed exit animation.
+  Apply those modifiers to the retained destination layers: replacing them with newly composed
+  scene content when a gesture starts resets screen-local state such as list scroll positions.
 
 ## Icon Guidelines
 
