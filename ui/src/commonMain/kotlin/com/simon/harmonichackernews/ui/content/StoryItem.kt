@@ -114,10 +114,6 @@ private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
 private val MediumPreviewImageRailWidth = 128.dp
 private val MediumPreviewImageMinimumHeight = 104.dp
-private val MediumNoImageFullRailWidth = 116.dp
-private val MediumNoImagePointsRailWidth = 92.dp
-private val MediumNoImageCommentsRailWidth = 64.dp
-private val MediumNoImageIconRailWidth = 52.dp
 private val MediumPreviewImageShape = RoundedCornerShape(10.dp)
 private val StoryMetricPillShape = RoundedCornerShape(50)
 private val StoryMetricPillHeight = 25.dp
@@ -619,20 +615,27 @@ fun StoryItem(
                         )
                     }
                 }
-                val targetRailWidth = when {
+                val targetRailWidth: Dp? = when {
                     !mediumPreview -> 60.dp
                     hasPreview -> MediumPreviewImageRailWidth
-                    else -> mediumNoImageRailWidth(style)
+                    else -> null
                 }
-                val animatedRailWidth by animateDpAsState(
-                    targetValue = targetRailWidth,
-                    animationSpec = contentTween(),
-                    label = "story metric rail width",
-                )
+                val animatedRailWidth = targetRailWidth?.let { width ->
+                    if (animate) {
+                        val animatedWidth by animateDpAsState(
+                            targetValue = width,
+                            animationSpec = contentTween(),
+                            label = "story metric rail width",
+                        )
+                        animatedWidth
+                    } else {
+                        width
+                    }
+                }
                 StoryContentRow(
                     commentsOnLeft = style.commentsOnLeft && !mediumPreview,
                     animateChanges = animate,
-                    railWidth = if (animate) animatedRailWidth else targetRailWidth,
+                    railWidth = animatedRailWidth,
                     contentMinHeight = if (mediumPreview && hasPreview) {
                         MediumPreviewImageMinimumHeight
                     } else {
@@ -677,12 +680,12 @@ fun StoryItem(
     }
 }
 
-/** Measures the variable story content once, then gives the fixed comment rail the same height. */
+/** Measures the metric rail at its requested or intrinsic width, then matches it to the content height. */
 @Composable
 private fun StoryContentRow(
     commentsOnLeft: Boolean,
     animateChanges: Boolean,
-    railWidth: Dp,
+    railWidth: Dp?,
     contentMinHeight: Dp,
     comments: @Composable () -> Unit,
     content: @Composable () -> Unit,
@@ -706,12 +709,15 @@ private fun StoryContentRow(
             comments()
         },
     ) { measurables, constraints ->
-        val railWidthPx = railWidth.roundToPx().coerceAtMost(constraints.maxWidth)
-        val contentWidth = (constraints.maxWidth - railWidthPx).coerceAtLeast(0)
         val minimumRowHeight = maxOf(
             constraints.minHeight,
             contentMinHeight.roundToPx(),
         ).coerceAtMost(constraints.maxHeight)
+        val railWidthPx = railWidth
+            ?.roundToPx()
+            ?: measurables[1].maxIntrinsicWidth(constraints.maxHeight)
+        val constrainedRailWidthPx = railWidthPx.coerceIn(0, constraints.maxWidth)
+        val contentWidth = (constraints.maxWidth - constrainedRailWidthPx).coerceAtLeast(0)
         val contentPlaceable = measurables[0].measure(
             constraints.copy(
                 minWidth = contentWidth,
@@ -722,15 +728,15 @@ private fun StoryContentRow(
         val rowHeight = contentPlaceable.height
         val railPlaceable = measurables[1].measure(
             constraints.copy(
-                minWidth = railWidthPx,
-                maxWidth = railWidthPx,
+                minWidth = constrainedRailWidthPx,
+                maxWidth = constrainedRailWidthPx,
                 minHeight = rowHeight,
                 maxHeight = rowHeight,
             ),
         )
 
         layout(constraints.maxWidth, rowHeight) {
-            val contentX = (railWidthPx * commentsOnLeftProgress).roundToInt()
+            val contentX = (constrainedRailWidthPx * commentsOnLeftProgress).roundToInt()
             val railX = (contentWidth * (1f - commentsOnLeftProgress)).roundToInt()
             contentPlaceable.placeRelative(contentX, 0)
             railPlaceable.placeRelative(railX, 0)
@@ -761,10 +767,11 @@ private fun StoryMediumPreviewRail(
     val showPoints = style.showPoints && !style.compact
     val showCommentPill = style.showCommentCount
     val showCommentText = style.showCommentCount && !style.compact
-    val railPadding = if (hasPreview) {
-        PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
-    } else {
-        PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
+    val railPadding = when {
+        hasPreview -> PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+        showPoints || showCommentPill ->
+            PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
+        else -> PaddingValues(0.dp)
     }
     val pointsDescription = "${model.points} ${if (model.points == 1) "point" else "points"}"
     val commentsDescription =
@@ -772,7 +779,7 @@ private fun StoryMediumPreviewRail(
 
     Box(
         modifier = modifier
-            .fillMaxSize()
+            .then(if (hasPreview) Modifier.fillMaxSize() else Modifier.fillMaxHeight())
             .clickable(
                 enabled = onClick != null,
                 onClickLabel = "Open comments",
@@ -1007,19 +1014,6 @@ private fun StoryMetricPill(
                 style = legacyTextStyle,
             )
         }
-    }
-}
-
-private fun mediumNoImageRailWidth(style: StoryItemStyle): Dp {
-    val showPoints = style.showPoints && !style.compact
-    val showCommentPill = style.showCommentCount
-    val showCommentText = style.showCommentCount && !style.compact
-    return when {
-        showPoints && showCommentText -> MediumNoImageFullRailWidth
-        showPoints && showCommentPill -> MediumNoImagePointsRailWidth
-        showPoints || showCommentText -> MediumNoImageCommentsRailWidth
-        showCommentPill -> MediumNoImageIconRailWidth
-        else -> 0.dp
     }
 }
 
