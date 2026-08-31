@@ -190,7 +190,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFE8DEF8),
         settingsToggleText = Color(0xFF1D192B),
         settingsSegment = Color(0xFFF3EDF7),
-        settingsPageBackground = Color(0xFFF7F2FA),
+        settingsPageBackground = Color(0xFFF3EDF7),
         settingsItemBackground = Color(0xFFFFFBFE),
         storyCardBackground = Color(0xFFF3EDF7),
         onPrimary = Color.White,

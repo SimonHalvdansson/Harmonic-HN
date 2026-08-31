@@ -34,6 +34,7 @@ class HarmonicThemeCatalogTest {
         )
 
         assertEquals(Color(0xFF6750A4), palette.colorScheme.primary)
+        assertEquals(Color(0xFFF3EDF7), palette.colors.settingsPageBackground)
         assertEquals(Color(0xFFEADDFF), palette.colors.overlayButton)
         assertEquals(Color(0xFF21005D), palette.colors.overlayButtonContent)
     }
