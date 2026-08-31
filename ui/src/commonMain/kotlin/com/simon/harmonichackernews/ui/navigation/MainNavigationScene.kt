@@ -212,7 +212,15 @@ fun SinglePaneNavigationScene(
             }
         }
     }
+    val requestedStorySerials = storyRequests.mapTo(mutableSetOf()) { it.serial }
+    val replacesRetainedStoryRun = requestedStorySerials.isNotEmpty() &&
+        retainedStories.none { it.request.serial in requestedStorySerials }
     LaunchedEffect(storyRequests) {
+        if (replacesRetainedStoryRun) {
+            // A story selected from Stories, Settings, or Submissions enters over that parent
+            // surface. The previous, unrelated story run is not an outgoing transition layer.
+            retainedStories.removeAll { it.request.serial !in requestedStorySerials }
+        }
         storyRequests.forEach { request ->
             if (retainedStories.none { it.request.serial == request.serial }) {
                 retainedStories += RetainedStoryLayer(request, initiallyVisible = false)
@@ -291,52 +299,57 @@ fun SinglePaneNavigationScene(
         }
 
         retainedStories.forEachIndexed { index, layer ->
-            val retainedInStack = storyRequests.any { it.serial == layer.request.serial }
-            val currentStorySerial = storyRequests.lastOrNull()?.serial
-            val layerOffset by animateFloatAsState(
-                targetValue = if (
-                    retainedInStack && layer.request.serial != currentStorySerial
-                ) {
-                    -transitionOffsetPx.toFloat()
-                } else {
-                    0f
-                },
-                animationSpec = tween(
-                    durationMillis = ActivityNavigationTransitionDurationMillis,
-                    easing = activityNavigationEasing(),
-                ),
-                label = "story ${layer.request.serial} navigation offset",
-            )
-            val predictiveModifier = when (layer.request.serial) {
-                predictiveCurrentSerial -> commentsPredictiveModifier
-                predictivePreviousSerial -> storiesPredictiveModifier
-                else -> Modifier
-            }
-            LaunchedEffect(layer) {
-                snapshotFlow {
-                    layer.visibility.isIdle &&
-                        !layer.visibility.currentState &&
-                        !layer.visibility.targetState
-                }.first { it }
-                retainedStories.remove(layer)
-            }
-
-            AnimatedVisibility(
-                visibleState = layer.visibility,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(index + 1f)
-                    .then(
-                        if (layer.request.serial == currentStorySerial) {
-                            Modifier
-                        } else {
-                            Modifier.clearAndSetSemantics { }
-                        },
+            // Key the whole layer so a remaining AndroidView moves with its story when an
+            // outgoing layer is removed instead of being recreated in the vacated slot.
+            key(layer.request.serial) {
+                val retainedInStack = storyRequests.any { it.serial == layer.request.serial }
+                val currentStorySerial = storyRequests.lastOrNull()?.serial
+                val layerOffset by animateFloatAsState(
+                    targetValue = if (
+                        retainedInStack && layer.request.serial != currentStorySerial
+                    ) {
+                        -transitionOffsetPx.toFloat()
+                    } else {
+                        0f
+                    },
+                    animationSpec = tween(
+                        durationMillis = ActivityNavigationTransitionDurationMillis,
+                        easing = activityNavigationEasing(),
                     ),
-                enter = EnterTransition.None,
-                exit = ExitTransition.None,
-            ) {
-                key(layer.request.serial) {
+                    label = "story ${layer.request.serial} navigation offset",
+                )
+                val predictiveModifier = when (layer.request.serial) {
+                    predictiveCurrentSerial -> commentsPredictiveModifier
+                    predictivePreviousSerial -> storiesPredictiveModifier
+                    else -> Modifier
+                }
+                LaunchedEffect(layer) {
+                    snapshotFlow {
+                        layer.visibility.isIdle &&
+                            !layer.visibility.currentState &&
+                            !layer.visibility.targetState
+                    }.first { it }
+                    retainedStories.remove(layer)
+                }
+
+                AnimatedVisibility(
+                    visibleState = layer.visibility,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(index + 1f)
+                        .graphicsLayer {
+                            alpha = if (replacesRetainedStoryRun && !retainedInStack) 0f else 1f
+                        }
+                        .then(
+                            if (layer.request.serial == currentStorySerial) {
+                                Modifier
+                            } else {
+                                Modifier.clearAndSetSemantics { }
+                            },
+                        ),
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
+                ) {
                     ActivityNavigationTransitionViewport(
                         transition = transition,
                         transitionOffsetPx = transitionOffsetPx,
