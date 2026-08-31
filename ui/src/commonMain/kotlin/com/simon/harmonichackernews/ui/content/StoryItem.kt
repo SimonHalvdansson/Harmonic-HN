@@ -114,7 +114,6 @@ private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
 private val MediumPreviewImageRailWidth = 128.dp
 private val MediumPreviewImageMinimumHeight = 104.dp
-private val MediumPreviewImageShape = RoundedCornerShape(10.dp)
 private val StoryMetricPillShape = RoundedCornerShape(50)
 private val StoryMetricPillHeight = 25.dp
 
@@ -407,7 +406,7 @@ fun StoryItem(
         when {
             style.previewImageMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
             style.previewImageMode == StoryPreviewMode.MEDIUM && style.borderlessLargeImage ->
-                8.dp.toPx()
+                0f
             style.previewImageMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
             style.previewImageMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
                 8.dp.toPx()
@@ -770,9 +769,73 @@ private fun StoryMediumPreviewRail(
     val showCommentPill = style.showCommentCount
     val showCommentText = style.showCommentCount && !style.compact
     val borderlessImage = hasPreview && style.borderlessLargeImage
+    val imageVerticalInset = if (animateChanges) {
+        val animatedInset by animateDpAsState(
+            targetValue = if (borderlessImage) 0.dp else 8.dp,
+            animationSpec = contentTween(),
+            label = "medium story image vertical inset",
+        )
+        animatedInset
+    } else if (borderlessImage) {
+        0.dp
+    } else {
+        8.dp
+    }
+    val imageEndInset = if (animateChanges) {
+        val animatedInset by animateDpAsState(
+            targetValue = if (borderlessImage) 0.dp else 8.dp,
+            animationSpec = contentTween(),
+            label = "medium story image end inset",
+        )
+        animatedInset
+    } else if (borderlessImage) {
+        0.dp
+    } else {
+        8.dp
+    }
+    val imageHeight = if (animateChanges) {
+        val animatedHeight by animateDpAsState(
+            targetValue = if (borderlessImage) MediumPreviewImageMinimumHeight else 88.dp,
+            animationSpec = contentTween(),
+            label = "medium story image height",
+        )
+        animatedHeight
+    } else if (borderlessImage) {
+        MediumPreviewImageMinimumHeight
+    } else {
+        88.dp
+    }
+    val imageStartRadius = if (animateChanges) {
+        val animatedRadius by animateDpAsState(
+            targetValue = if (borderlessImage) 0.dp else 10.dp,
+            animationSpec = contentTween(),
+            label = "medium story image start radius",
+        )
+        animatedRadius
+    } else if (borderlessImage) {
+        0.dp
+    } else {
+        10.dp
+    }
+    val imageEndRadius = if (animateChanges) {
+        val animatedRadius by animateDpAsState(
+            targetValue = if (borderlessImage) 8.dp else 10.dp,
+            animationSpec = contentTween(),
+            label = "medium story image end radius",
+        )
+        animatedRadius
+    } else if (borderlessImage) {
+        8.dp
+    } else {
+        10.dp
+    }
     val railPadding = when {
-        borderlessImage -> PaddingValues(start = 4.dp)
-        hasPreview -> PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+        hasPreview -> PaddingValues(
+            start = 4.dp,
+            top = imageVerticalInset,
+            end = imageEndInset,
+            bottom = imageVerticalInset,
+        )
         showPoints || showCommentPill ->
             PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
         else -> PaddingValues(0.dp)
@@ -795,8 +858,15 @@ private fun StoryMediumPreviewRail(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (borderlessImage) MediumPreviewImageMinimumHeight else 88.dp)
-                    .clip(if (borderlessImage) StoryCardShape else MediumPreviewImageShape),
+                    .height(imageHeight)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = imageStartRadius,
+                            topEnd = imageEndRadius,
+                            bottomEnd = imageEndRadius,
+                            bottomStart = imageStartRadius,
+                        ),
+                    ),
             ) {
                 StoryPreviewImage(
                     model = model,
