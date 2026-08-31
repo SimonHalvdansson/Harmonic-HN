@@ -214,12 +214,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     fun openStory(destination: StoryDestination) {
         MainStoryRequest(++storyRequestSerial, destination).also { request ->
             lastStoryRequest = request
-            val entry = MainNavigationEntry.Story(request)
-            if (currentDestination == MainDestination.STORY) {
-                backStack[backStack.lastIndex] = entry
-            } else {
-                backStack += entry
-            }
+            replaceTopOrPush(MainNavigationEntry.Story(request))
         }
     }
 
@@ -241,12 +236,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         currentSettingsSectionRoute = sectionRoute
         MainSettingsRequest(++settingsRequestSerial, sectionRoute).also { request ->
             lastSettingsRequest = request
-            val entry = MainNavigationEntry.Settings(request)
-            if (currentDestination == MainDestination.SETTINGS) {
-                backStack[backStack.lastIndex] = entry
-            } else {
-                backStack += entry
-            }
+            replaceTopOrPush(MainNavigationEntry.Settings(request))
         }
     }
 
@@ -302,12 +292,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     fun openEditor(destination: EditorDestination) {
         MainEditorRequest(++editorRequestSerial, destination).also { request ->
             lastEditorRequest = request
-            val entry = MainNavigationEntry.Editor(request)
-            if (currentDestination == MainDestination.EDITOR) {
-                backStack[backStack.lastIndex] = entry
-            } else {
-                backStack += entry
-            }
+            replaceTopOrPush(MainNavigationEntry.Editor(request))
         }
     }
 
@@ -316,12 +301,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     fun openSubmissions(userName: String) {
         MainSubmissionsRequest(++submissionsRequestSerial, userName).also { request ->
             lastSubmissionsRequest = request
-            val entry = MainNavigationEntry.Submissions(request)
-            if (currentDestination == MainDestination.SUBMISSIONS) {
-                backStack[backStack.lastIndex] = entry
-            } else {
-                backStack += entry
-            }
+            replaceTopOrPush(MainNavigationEntry.Submissions(request))
         }
     }
 
@@ -339,6 +319,14 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
 
     fun detailRemovedFromBackStack() {
         pop(MainDestination.STORY)
+    }
+
+    private fun replaceTopOrPush(entry: MainNavigationEntry) {
+        if (currentDestination == entry.destination) {
+            backStack[backStack.lastIndex] = entry
+        } else {
+            backStack += entry
+        }
     }
 
     fun destinationRestoration(): List<MainNavigationEntryRestoration> = backStack.map { entry ->

@@ -329,27 +329,29 @@ class CommentsPresenter(
     ) {
         val key = "$kind:${request.itemId}"
         if (savedItemActionJobs[key]?.isActive == true) return
-        if (request is CommentsSavedItemRequest.StoryVote) {
-            storyVotePendingIds += request.itemId
-            publish(storyVoteLoading = true)
-        }
-        if (request is CommentsSavedItemRequest.StoryFavorite) {
-            storyFavoritePendingIds += request.itemId
-            publish(storyFavoriteLoading = true)
-        }
-        if (request is CommentsSavedItemRequest.CommentFavorite) {
-            commentFavoritePendingIds.remove(request.itemId)
-            commentFavoritePendingIds += request.itemId
-            publish(commentFavoriteLoadingId = request.itemId)
-        }
-        if (request is CommentsSavedItemRequest.CommentVote) {
-            val loadingAction = VoteDirection.fromWireValue(request.direction).commentMenuAction
-            commentVotePendingActions.remove(request.itemId)
-            commentVotePendingActions[request.itemId] = loadingAction
-            publish(
-                commentVoteLoadingId = request.itemId,
-                commentVoteLoadingAction = loadingAction,
-            )
+        when (request) {
+            is CommentsSavedItemRequest.StoryVote -> {
+                storyVotePendingIds += request.itemId
+                publish(storyVoteLoading = true)
+            }
+            is CommentsSavedItemRequest.StoryFavorite -> {
+                storyFavoritePendingIds += request.itemId
+                publish(storyFavoriteLoading = true)
+            }
+            is CommentsSavedItemRequest.CommentFavorite -> {
+                commentFavoritePendingIds.remove(request.itemId)
+                commentFavoritePendingIds += request.itemId
+                publish(commentFavoriteLoadingId = request.itemId)
+            }
+            is CommentsSavedItemRequest.CommentVote -> {
+                val loadingAction = VoteDirection.fromWireValue(request.direction).commentMenuAction
+                commentVotePendingActions.remove(request.itemId)
+                commentVotePendingActions[request.itemId] = loadingAction
+                publish(
+                    commentVoteLoadingId = request.itemId,
+                    commentVoteLoadingAction = loadingAction,
+                )
+            }
         }
         mutableEffects.tryEmit(CommentsEffect.SavedItemActionStarted(request))
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {

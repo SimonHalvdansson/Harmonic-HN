@@ -2,23 +2,14 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -41,9 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
@@ -57,10 +46,13 @@ import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionOffset
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionViewport
 import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
+import com.simon.harmonichackernews.ui.navigation.activityNavigationOpenContentTransform
+import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTransform
 import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 import kotlinx.coroutines.flow.first
 
@@ -222,7 +214,9 @@ fun SettingsNavigationShell(
     val navigationEventState = rememberNavigationEventState(
         currentInfo = SceneInfo(sceneState.currentScene),
     )
-    val transitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    val transitionOffsetPx = with(LocalDensity.current) {
+        ActivityNavigationTransitionOffset.roundToPx()
+    }
 
     Box(
         modifier = modifier.fillMaxSize().background(settingsPageBackgroundColor()),
@@ -245,9 +239,15 @@ fun SettingsNavigationShell(
                 sceneState = sceneState,
                 navigationEventState = navigationEventState,
                 modifier = Modifier.fillMaxSize().padding(horizontal = tabletPaneHorizontalPadding),
-                transitionSpec = { activityOpenTransition(transitionOffsetPx) },
-                popTransitionSpec = { activityPopTransition(transitionOffsetPx) },
-                predictivePopTransitionSpec = { activityPopTransition(transitionOffsetPx) },
+                transitionSpec = {
+                    activityNavigationOpenContentTransform(transitionOffsetPx)
+                },
+                popTransitionSpec = {
+                    activityNavigationPopContentTransform(transitionOffsetPx)
+                },
+                predictivePopTransitionSpec = {
+                    activityNavigationPopContentTransform(transitionOffsetPx)
+                },
             )
         }
     }
@@ -454,52 +454,8 @@ private fun SinglePaneSettingsNavigation(
                 Modifier
                     .fillMaxSize()
                     .zIndex(Float.MAX_VALUE)
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            do {
-                                val event = awaitPointerEvent()
-                                event.changes.forEach { it.consume() }
-                            } while (event.changes.any { it.pressed })
-                        }
-                    },
+                    .consumeAllPointerGestures(),
             )
         }
     }
 }
-
-private const val ActivityTransitionDurationMillis = 450
-private const val ActivityEnterAlphaDelayMillis = 50
-private const val ActivityExitAlphaDelayMillis = 35
-private const val ActivityAlphaDurationMillis = 83
-
-private fun aospFastOutExtraSlowInEasing(): Easing = PathEasing(
-    Path().apply {
-        moveTo(0f, 0f)
-        cubicTo(0.05f, 0f, 0.133333f, 0.06f, 0.166666f, 0.4f)
-        cubicTo(0.208333f, 0.82f, 0.25f, 1f, 1f, 1f)
-    },
-)
-
-private fun activityOpenTransition(offsetPx: Int): ContentTransform = ContentTransform(
-    targetContentEnter = slideInHorizontally(
-        tween(ActivityTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-    ) { offsetPx } + fadeIn(
-        tween(ActivityAlphaDurationMillis, ActivityEnterAlphaDelayMillis, LinearEasing),
-    ),
-    initialContentExit = slideOutHorizontally(
-        tween(ActivityTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-    ) { -offsetPx },
-    targetContentZIndex = 1f,
-)
-
-private fun activityPopTransition(offsetPx: Int): ContentTransform = ContentTransform(
-    targetContentEnter = slideInHorizontally(
-        tween(ActivityTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-    ) { -offsetPx },
-    initialContentExit = slideOutHorizontally(
-        tween(ActivityTransitionDurationMillis, easing = aospFastOutExtraSlowInEasing()),
-    ) { offsetPx } + fadeOut(
-        tween(ActivityAlphaDurationMillis, ActivityExitAlphaDelayMillis, LinearEasing),
-    ),
-    targetContentZIndex = -1f,
-)

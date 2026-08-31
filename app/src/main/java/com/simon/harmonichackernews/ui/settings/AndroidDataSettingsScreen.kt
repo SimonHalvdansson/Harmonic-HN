@@ -133,27 +133,7 @@ fun AndroidDataSettingsScreen(
         loggedIn = dataSnapshot.loggedIn,
         showNavigation = showNavigation,
         onBack = onBack,
-        onAction = { action ->
-            when (action) {
-                DataSettingsAction.AddBookmarksToFavorites -> {
-                    runtime.addBookmarksToFavorites()
-                }
-                DataSettingsAction.ExportBookmarks -> {
-                    runtime.exportBookmarks()
-                }
-                DataSettingsAction.ImportBookmarks ->
-                    runtime.showDialog(DataSettingsDialogState.IMPORT)
-                DataSettingsAction.ClearHistory -> runtime.clearHistory()
-                DataSettingsAction.ClearPostCache -> runtime.clearPostCache()
-                DataSettingsAction.ClearTintCache -> runtime.clearTintCache()
-                DataSettingsAction.ClearAiModels ->
-                    runtime.showDialog(DataSettingsDialogState.AI_MODELS)
-                DataSettingsAction.OpenLinksSettings ->
-                    runtime.showDialog(DataSettingsDialogState.LINKS)
-                DataSettingsAction.ResetSettings ->
-                    runtime.showDialog(DataSettingsDialogState.RESET)
-            }
-        },
+        onAction = runtime::handleDataSettingsAction,
         contentVersion = runtimeState.revision,
     )
 

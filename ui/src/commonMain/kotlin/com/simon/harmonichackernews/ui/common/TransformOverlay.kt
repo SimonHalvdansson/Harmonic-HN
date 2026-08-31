@@ -35,13 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
@@ -217,7 +214,7 @@ fun TransformOverlay(
         else -> localSource
     }
     val container = if (transitionSource != null && localTarget != null) {
-        lerp(transitionSource, localTarget, progress)
+        lerpRect(transitionSource, localTarget, progress)
     } else {
         localTarget
     }
@@ -262,7 +259,7 @@ fun TransformOverlay(
     }
     val movingElevation =
         (shadowElevation.value * shadowProgress * backScale * verticalSwipeScale).dp
-    val gestureBlocker = if (consumeAllGestures) Modifier.consumeModalGestures() else Modifier
+    val gestureBlocker = if (consumeAllGestures) Modifier.consumeAllPointerGestures() else Modifier
     val contentMorphScaleX = if (
         scaleContentWithContainer && localTarget != null && localTarget.width > 0f &&
         container != null
@@ -424,7 +421,7 @@ fun TransformOverlay(
                     if (bounds == null || bounds.width <= 0f || bounds.height <= 0f) {
                         return@drawWithContent
                     }
-                    clipPath(roundedPath(bounds, visualRadiusPx)) {
+                    clipPath(roundedRectPath(bounds, visualRadiusPx)) {
                         this@drawWithContent.drawContent()
                     }
                 },
@@ -512,7 +509,7 @@ fun TransformOverlay(
             val snapshotAlpha = ((0.62f - progress) / 0.62f).coerceIn(0f, 1f)
             if (snapshotAlpha > 0f && visualContainer != null) {
                 androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                    clipPath(roundedPath(visualContainer, visualRadiusPx)) {
+                    clipPath(roundedRectPath(visualContainer, visualRadiusPx)) {
                         if (preserveContentAspectRatio) {
                             val snapshotScale = max(
                                 visualContainer.width / snapshot.width,
@@ -559,18 +556,6 @@ internal fun Modifier.captureSharedTransformSourceContent(
         layer.record { this@snapshot.drawContent() }
         drawLayer(layer)
     }
-}
-
-private fun roundedPath(rect: Rect, radius: Float): Path = Path().apply {
-    addRoundRect(
-        RoundRect(
-            rect = rect,
-            topLeft = CornerRadius(radius),
-            topRight = CornerRadius(radius),
-            bottomRight = CornerRadius(radius),
-            bottomLeft = CornerRadius(radius),
-        ),
-    )
 }
 
 internal fun Rect.transformedForPredictiveBack(
@@ -655,20 +640,4 @@ private fun Rect.intersectionOrNull(other: Rect): Rect? {
         bottom = min(bottom, other.bottom),
     )
     return intersection.takeIf { it.width > 0f && it.height > 0f }
-}
-
-private fun lerp(start: Rect, end: Rect, progress: Float): Rect = Rect(
-    left = start.left + (end.left - start.left) * progress,
-    top = start.top + (end.top - start.top) * progress,
-    right = start.right + (end.right - start.right) * progress,
-    bottom = start.bottom + (end.bottom - start.bottom) * progress,
-)
-
-private fun Modifier.consumeModalGestures(): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        do {
-            val event = awaitPointerEvent()
-            event.changes.forEach { it.consume() }
-        } while (event.changes.any { it.pressed })
-    }
 }

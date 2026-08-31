@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -47,7 +46,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.simon.harmonichackernews.ui.common.isSnapshotCaptureSafe
+import com.simon.harmonichackernews.ui.common.GraphicsLayerSnapshot
+import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -190,19 +190,19 @@ fun StoryPreviewOverlay(
     // are already current. Reusing them makes the transform reverse immediately. A fully opened
     // dialog still refreshes snapshots on dismiss to include any actions or late-loaded content.
     val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
-    val targetImageCapture = rememberLayerSnapshot(targetImageLayer, snapshotRefreshKey)
-    val targetTitleCapture = rememberLayerSnapshot(targetTitleLayer, snapshotRefreshKey)
-    val targetSummaryCapture = rememberLayerSnapshot(targetSummaryLayer, snapshotRefreshKey)
-    val targetMetaCapture = rememberLayerSnapshot(targetMetaLayer, snapshotRefreshKey)
+    val targetImageCapture = rememberGraphicsLayerSnapshot(targetImageLayer, snapshotRefreshKey)
+    val targetTitleCapture = rememberGraphicsLayerSnapshot(targetTitleLayer, snapshotRefreshKey)
+    val targetSummaryCapture = rememberGraphicsLayerSnapshot(targetSummaryLayer, snapshotRefreshKey)
+    val targetMetaCapture = rememberGraphicsLayerSnapshot(targetMetaLayer, snapshotRefreshKey)
     val targetSupplementaryCapture =
-        rememberLayerSnapshot(targetSupplementaryLayer, snapshotRefreshKey)
+        rememberGraphicsLayerSnapshot(targetSupplementaryLayer, snapshotRefreshKey)
     val sourceGeometry = controller.sourceGeometryForStory(currentStory.id)
-    val sourceImageCapture = rememberLayerSnapshot(sourceGeometry?.imageLayer, snapshotRefreshKey)
-    val sourceTitleCapture = rememberLayerSnapshot(sourceGeometry?.titleLayer, snapshotRefreshKey)
-    val sourceSummaryCapture = rememberLayerSnapshot(sourceGeometry?.summaryLayer, snapshotRefreshKey)
-    val sourceMetaCapture = rememberLayerSnapshot(sourceGeometry?.metaLayer, snapshotRefreshKey)
-    val sourceIndexCapture = rememberLayerSnapshot(sourceGeometry?.indexLayer, snapshotRefreshKey)
-    val sourceCommentsCapture = rememberLayerSnapshot(
+    val sourceImageCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.imageLayer, snapshotRefreshKey)
+    val sourceTitleCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.titleLayer, snapshotRefreshKey)
+    val sourceSummaryCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.summaryLayer, snapshotRefreshKey)
+    val sourceMetaCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.metaLayer, snapshotRefreshKey)
+    val sourceIndexCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.indexLayer, snapshotRefreshKey)
+    val sourceCommentsCapture = rememberGraphicsLayerSnapshot(
         sourceGeometry?.commentsLayer,
         snapshotRefreshKey,
     )
@@ -219,9 +219,9 @@ fun StoryPreviewOverlay(
     val sourceCommentsSnapshot = sourceCommentsCapture.image
     var lastPagerPosition by remember(state) { mutableFloatStateOf(state.initialPage.toFloat()) }
     var pendingListScroll by remember(state) { mutableFloatStateOf(0f) }
-    fun sourceSnapshotReady(bounds: Rect?, capture: LayerSnapshot): Boolean =
+    fun sourceSnapshotReady(bounds: Rect?, capture: GraphicsLayerSnapshot): Boolean =
         bounds == null || capture.isCurrent(snapshotRefreshKey)
-    fun sourceSnapshotUnavailable(bounds: Rect?, capture: LayerSnapshot): Boolean =
+    fun sourceSnapshotUnavailable(bounds: Rect?, capture: GraphicsLayerSnapshot): Boolean =
         bounds != null && capture.isUnavailable(snapshotRefreshKey)
     val sourceSnapshotsReady =
         sourceGeometry != null &&
@@ -727,44 +727,4 @@ internal fun storyPreviewPredictiveBackBounds(
         right = transformX(bounds.right),
         bottom = transformY(bounds.bottom),
     )
-}
-
-@Composable
-private fun rememberLayerSnapshot(
-    layer: GraphicsLayer?,
-    refreshKey: Int,
-): LayerSnapshot {
-    // Keep the last bitmap visible while a dismiss-triggered refresh is recorded. Replacing it
-    // with null here produces a single empty overlay frame when an opening animation is reversed.
-    var snapshot by remember(layer) { mutableStateOf(LayerSnapshot()) }
-    LaunchedEffect(layer, refreshKey) {
-        val currentLayer = layer ?: return@LaunchedEffect
-        // The layer is published at composition time and recorded during draw.
-        withFrameNanos { }
-        if (!currentLayer.isSnapshotCaptureSafe()) {
-            snapshot = snapshot.copy(resolvedKey = refreshKey)
-            return@LaunchedEffect
-        }
-        val image = try {
-            currentLayer.toImageBitmap()
-        } catch (_: Exception) {
-            snapshot = snapshot.copy(resolvedKey = refreshKey)
-            return@LaunchedEffect
-        }
-        snapshot = LayerSnapshot(
-            image = image,
-            refreshKey = refreshKey,
-            resolvedKey = refreshKey,
-        )
-    }
-    return snapshot
-}
-
-private data class LayerSnapshot(
-    val image: ImageBitmap? = null,
-    val refreshKey: Int? = null,
-    val resolvedKey: Int? = null,
-) {
-    fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
-    fun isUnavailable(key: Int): Boolean = resolvedKey == key && !isCurrent(key)
 }

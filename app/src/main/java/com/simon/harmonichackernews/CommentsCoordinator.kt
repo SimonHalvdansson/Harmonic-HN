@@ -293,86 +293,119 @@ class CommentsCoordinator(
             return
         }
 
-        val backPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackCancelled() {
-                when (commentsBackTarget()) {
-                    CommentsBackTarget.LINK_PREVIEW ->
-                        composeController?.cancelLinkPreviewPredictiveBack()
-                    CommentsBackTarget.COMMENT_ACTION ->
-                        composeController?.cancelCommentActionPredictiveBack()
-                    CommentsBackTarget.CLOSE_WEBSITE -> endCommentsPredictiveBackVisuals()
-                    else -> Unit
-                }
-            }
-
-            override fun handleOnBackProgressed(backEvent: BackEventCompat) {
-                when (commentsBackTarget()) {
-                    CommentsBackTarget.LINK_PREVIEW -> composeController?.updateLinkPreviewPredictiveBack(
-                        backEvent.progress,
-                        backEvent.swipeEdge,
-                        backEvent.touchY
-                    )
-                    CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
-                        backEvent.progress,
-                        backEvent.swipeEdge,
-                        backEvent.touchY
-                    )
-                    CommentsBackTarget.CLOSE_WEBSITE ->
-                        updateCommentsPredictiveBackVisuals(backEvent.progress, false)
-                    else -> Unit
-                }
-            }
-
-            override fun handleOnBackStarted(backEvent: BackEventCompat) {
-                when (commentsBackTarget()) {
-                    CommentsBackTarget.LINK_PREVIEW -> composeController?.startLinkPreviewPredictiveBack(
-                        backEvent.progress,
-                        backEvent.swipeEdge,
-                        backEvent.touchY
-                    )
-                    CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
-                        backEvent.progress,
-                        backEvent.swipeEdge,
-                        backEvent.touchY
-                    )
-                    CommentsBackTarget.CLOSE_WEBSITE ->
-                        updateCommentsPredictiveBackVisuals(backEvent.progress, true)
-                    else -> Unit
-                }
-            }
-
-            override fun handleOnBackPressed() {
-                when (commentsBackTarget()) {
-                    CommentsBackTarget.LINK_PREVIEW -> {
-                        if (composeController?.isLinkPreviewPredictiveBackActive() == true) {
-                            composeController?.commitLinkPreviewPredictiveBack()
-                        } else {
-                            composeController?.requestDismissLinkPreview()
-                        }
-                    }
-                    CommentsBackTarget.COMMENT_ACTION -> {
-                        if (composeController?.isCommentActionPredictiveBackActive() == true) {
-                            composeController?.commitCommentActionPredictiveBack()
-                        } else {
-                            composeController?.requestDismissCommentActions()
-                        }
-                    }
-                    CommentsBackTarget.CUSTOM_WEB_CONTENT ->
-                        webViewController.hideCustomView(true)
-                    CommentsBackTarget.READER_MODE -> webViewController.disableReaderMode()
-                    CommentsBackTarget.CLOSE_WEBSITE -> {
-                        composeController?.requestExpandSheet()
-                        endCommentsPredictiveBackVisuals()
-                    }
-                    CommentsBackTarget.WEB_HISTORY ->
-                        webViewController.goBackFromVisibleWebView()
-                    CommentsBackTarget.NONE -> navigation.closeStory()
-                }
-            }
-        }
+        val backPressedCallback = createBackPressedCallback(webViewController)
         session.backPressedCallback = backPressedCallback
         activity.onBackPressedDispatcher.addCallback(backPressedCallback)
 
+        installWindowInsetsListener(view)
+
+        syncOnBackPressedCallbackEnabledState()
+
+        // The pane color was already resolved from the active theme above. Reusing it avoids two
+        // cold theme/preference/resource lookups on the comments-open frame.
+        webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor)
+
+        initializeComposeUi()
+        scheduleWebViewInitializationAfterFirstDraw(view)
+
+        val restoreScrollFromCache = !showWebsite
+
+        // Navigation Compose owns the screen transition. Do not hold the first frame
+        // behind the old inset-gated postponed transition; render the header skeleton immediately
+        // and start loading on the next main-loop turn.
+        if (!commentsLoaded) {
+            view.post(object : Runnable {
+                override fun run() {
+                    if (attachedRoot !== view || !isActive) {
+                        return
+                    }
+                    loadInitialStoryAndComments(restoreScrollFromCache)
+                }
+            })
+        }
+    }
+
+    private fun createBackPressedCallback(
+        webViewController: CommentsWebViewController,
+    ): OnBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackCancelled() {
+            when (commentsBackTarget()) {
+                CommentsBackTarget.LINK_PREVIEW ->
+                    composeController?.cancelLinkPreviewPredictiveBack()
+                CommentsBackTarget.COMMENT_ACTION ->
+                    composeController?.cancelCommentActionPredictiveBack()
+                CommentsBackTarget.CLOSE_WEBSITE -> endCommentsPredictiveBackVisuals()
+                else -> Unit
+            }
+        }
+
+        override fun handleOnBackProgressed(backEvent: BackEventCompat) {
+            when (commentsBackTarget()) {
+                CommentsBackTarget.LINK_PREVIEW -> composeController?.updateLinkPreviewPredictiveBack(
+                    backEvent.progress,
+                    backEvent.swipeEdge,
+                    backEvent.touchY
+                )
+                CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
+                    backEvent.progress,
+                    backEvent.swipeEdge,
+                    backEvent.touchY
+                )
+                CommentsBackTarget.CLOSE_WEBSITE ->
+                    updateCommentsPredictiveBackVisuals(backEvent.progress, false)
+                else -> Unit
+            }
+        }
+
+        override fun handleOnBackStarted(backEvent: BackEventCompat) {
+            when (commentsBackTarget()) {
+                CommentsBackTarget.LINK_PREVIEW -> composeController?.startLinkPreviewPredictiveBack(
+                    backEvent.progress,
+                    backEvent.swipeEdge,
+                    backEvent.touchY
+                )
+                CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
+                    backEvent.progress,
+                    backEvent.swipeEdge,
+                    backEvent.touchY
+                )
+                CommentsBackTarget.CLOSE_WEBSITE ->
+                    updateCommentsPredictiveBackVisuals(backEvent.progress, true)
+                else -> Unit
+            }
+        }
+
+        override fun handleOnBackPressed() {
+            when (commentsBackTarget()) {
+                CommentsBackTarget.LINK_PREVIEW -> {
+                    if (composeController?.isLinkPreviewPredictiveBackActive() == true) {
+                        composeController?.commitLinkPreviewPredictiveBack()
+                    } else {
+                        composeController?.requestDismissLinkPreview()
+                    }
+                }
+                CommentsBackTarget.COMMENT_ACTION -> {
+                    if (composeController?.isCommentActionPredictiveBackActive() == true) {
+                        composeController?.commitCommentActionPredictiveBack()
+                    } else {
+                        composeController?.requestDismissCommentActions()
+                    }
+                }
+                CommentsBackTarget.CUSTOM_WEB_CONTENT ->
+                    webViewController.hideCustomView(true)
+                CommentsBackTarget.READER_MODE -> webViewController.disableReaderMode()
+                CommentsBackTarget.CLOSE_WEBSITE -> {
+                    composeController?.requestExpandSheet()
+                    endCommentsPredictiveBackVisuals()
+                }
+                CommentsBackTarget.WEB_HISTORY ->
+                    webViewController.goBackFromVisibleWebView()
+                CommentsBackTarget.NONE -> navigation.closeStory()
+            }
+        }
+    }
+
+    private fun installWindowInsetsListener(view: View) {
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
         // We want to watch for navigation bar height changes (tablets on Android 12L can cause
         // these)
@@ -402,31 +435,6 @@ class CommentsCoordinator(
             }
         })
         ViewUtils.requestApplyInsetsWhenAttached(view)
-
-        syncOnBackPressedCallbackEnabledState()
-
-        // The pane color was already resolved from the active theme above. Reusing it avoids two
-        // cold theme/preference/resource lookups on the comments-open frame.
-        webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor)
-
-        initializeComposeUi()
-        scheduleWebViewInitializationAfterFirstDraw(view)
-
-        val restoreScrollFromCache = !showWebsite
-
-        // Navigation Compose owns the screen transition. Do not hold the first frame
-        // behind the old inset-gated postponed transition; render the header skeleton immediately
-        // and start loading on the next main-loop turn.
-        if (!commentsLoaded) {
-            view.post(object : Runnable {
-                override fun run() {
-                    if (attachedRoot !== view || !isActive) {
-                        return
-                    }
-                    loadInitialStoryAndComments(restoreScrollFromCache)
-                }
-            })
-        }
     }
 
     private fun updateCommentsPredictiveBackVisuals(progress: Float, started: Boolean) {

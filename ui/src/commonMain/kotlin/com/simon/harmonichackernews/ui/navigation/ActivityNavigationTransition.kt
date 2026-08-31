@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -8,6 +9,10 @@ import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -30,6 +35,54 @@ internal const val ActivityNavigationTransitionDurationMillis = 450
 internal const val ActivityNavigationFadeDurationMillis = 83
 internal const val ActivityNavigationOpenFadeDelayMillis = 50
 internal const val ActivityNavigationCloseFadeDelayMillis = 35
+
+internal fun activityNavigationOpenContentTransform(
+    transitionOffsetPx: Int,
+): ContentTransform = ContentTransform(
+    targetContentEnter = slideInHorizontally(
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { transitionOffsetPx } + fadeIn(
+        tween(
+            ActivityNavigationFadeDurationMillis,
+            ActivityNavigationOpenFadeDelayMillis,
+            LinearEasing,
+        ),
+    ),
+    initialContentExit = slideOutHorizontally(
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { -transitionOffsetPx },
+    targetContentZIndex = 1f,
+)
+
+internal fun activityNavigationPopContentTransform(
+    transitionOffsetPx: Int,
+): ContentTransform = ContentTransform(
+    targetContentEnter = slideInHorizontally(
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { -transitionOffsetPx },
+    initialContentExit = slideOutHorizontally(
+        tween(
+            ActivityNavigationTransitionDurationMillis,
+            easing = activityNavigationEasing(),
+        ),
+    ) { transitionOffsetPx } + fadeOut(
+        tween(
+            ActivityNavigationFadeDurationMillis,
+            ActivityNavigationCloseFadeDelayMillis,
+            LinearEasing,
+        ),
+    ),
+    targetContentZIndex = -1f,
+)
 
 /**
  * Recreates the platform activity surface used by Android's default open/close animations.

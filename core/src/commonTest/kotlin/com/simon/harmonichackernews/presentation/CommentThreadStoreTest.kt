@@ -115,6 +115,7 @@ class CommentThreadStoreTest {
         val after = store.state.value
         assertSame(before.allComments, after.allComments)
         assertSame(before.displayedComments, after.displayedComments)
+        assertSame(before.searchResults, after.searchResults)
         assertSame(before.visibleComments, after.visibleComments)
     }
 
@@ -138,6 +139,8 @@ class CommentThreadStoreTest {
         val after = store.state.value
         assertTrue(before.allComments[1] !== after.allComments[1])
         assertSame(before.allComments[2], after.allComments[2])
+        assertSame(before.displayedComments[2], after.displayedComments[2])
+        assertSame(before.searchResults[1], after.searchResults[1])
     }
 
     @Test

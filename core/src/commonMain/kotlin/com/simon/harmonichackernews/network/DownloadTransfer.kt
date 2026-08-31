@@ -90,34 +90,25 @@ class KtorTransferClient(
     private val client: KtorHttpClient,
 ) : TransferClient, ScopedTransferClient {
     override suspend fun open(request: TransferRequest): TransferResponse {
-        val requestBuilder = HttpRequest.Builder().url(request.url)
-        request.headers.forEach { (name, value) -> requestBuilder.header(name, value) }
         val response = client.execute(
-            requestBuilder.build(),
+            request.toHttpRequest(),
         )
-        return object : TransferResponse {
-            override val statusCode: Int get() = response.code
-            override val statusMessage: String get() = response.message
-            override val contentLength: Long get() = response.body.contentLength()
-            override val contentType: HttpMediaType? get() = response.body.contentType()
-            override val body: TransferBody = object : TransferBody {
-                override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-                    response.body.readAvailable(buffer, offset, length)
-            }
-
-            override fun close() = response.close()
-        }
+        return response.asTransferResponse()
     }
 
     override suspend fun <T> withResponse(
         request: TransferRequest,
         block: suspend (TransferResponse) -> T,
     ): T {
-        val requestBuilder = HttpRequest.Builder().url(request.url)
-        request.headers.forEach { (name, value) -> requestBuilder.header(name, value) }
-        return client.executeStreaming(requestBuilder.build()) { response ->
+        return client.executeStreaming(request.toHttpRequest()) { response ->
             block(response.asTransferResponse())
         }
+    }
+
+    private fun TransferRequest.toHttpRequest(): HttpRequest {
+        val requestBuilder = HttpRequest.Builder().url(url)
+        headers.forEach { (name, value) -> requestBuilder.header(name, value) }
+        return requestBuilder.build()
     }
 
     private fun HttpResponse.asTransferResponse(): TransferResponse =

@@ -52,6 +52,27 @@ data class StoryPreviewResourceState(
     val faviconTint: StoryResourceTintState? = null,
 )
 
+private fun StoryPreviewResourceState.withReconciledResources(
+    chosenImageUrl: String?,
+    imageResolutionEvidence: Boolean,
+    chosenSummary: LinkSummary?,
+    summaryResolutionEvidence: Boolean,
+    clearContentLoadFailure: Boolean,
+): StoryPreviewResourceState {
+    val imageChanged = chosenImageUrl != imageUrl
+    return copy(
+        imageUrlResolved = imageUrlResolved || imageResolutionEvidence,
+        imageUrl = chosenImageUrl,
+        summaryResolved = summaryResolved || summaryResolutionEvidence,
+        summary = chosenSummary,
+        contentLoadFailed = if (clearContentLoadFailure) false else contentLoadFailed,
+        imageLoading = if (imageChanged) false else imageLoading,
+        imageLoaded = if (imageChanged) false else imageLoaded,
+        imageLoadFailed = if (imageChanged) false else imageLoadFailed,
+        previewTint = if (imageChanged) null else previewTint,
+    )
+}
+
 interface StoryPreviewResourceService {
     suspend fun readCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource
     suspend fun load(request: StoryPreviewResourceRequest): PreviewContent
@@ -121,18 +142,12 @@ class StoryPreviewResourceRuntime(
                         update(next.copy(loading = false, contentLoadFailed = true))
                         return@launch
                     }
-                    val resolvedImageUrl = loaded.imageUrl ?: next.imageUrl
-                    val imageChanged = resolvedImageUrl != next.imageUrl
-                    next = next.copy(
-                        imageUrlResolved = next.imageUrlResolved || effectiveRequest.loadImage,
-                        imageUrl = resolvedImageUrl,
-                        summaryResolved = next.summaryResolved || effectiveRequest.loadSummary,
-                        summary = loaded.summary ?: next.summary,
-                        contentLoadFailed = false,
-                        imageLoading = if (imageChanged) false else next.imageLoading,
-                        imageLoaded = if (imageChanged) false else next.imageLoaded,
-                        imageLoadFailed = if (imageChanged) false else next.imageLoadFailed,
-                        previewTint = if (imageChanged) null else next.previewTint,
+                    next = next.withReconciledResources(
+                        chosenImageUrl = loaded.imageUrl ?: next.imageUrl,
+                        imageResolutionEvidence = effectiveRequest.loadImage,
+                        chosenSummary = loaded.summary ?: next.summary,
+                        summaryResolutionEvidence = effectiveRequest.loadSummary,
+                        clearContentLoadFailure = true,
                     )
                 }
                 update(next.copy(loading = false))
@@ -242,18 +257,12 @@ class StoryPreviewResourceRuntime(
         cached: CachedStoryPreviewResource,
     ): StoryPreviewResourceState {
         val summaryImage = cached.summary?.imageUrl?.takeIf(String::isNotEmpty)
-        val resolvedImageUrl = summaryImage ?: cached.imageUrl ?: imageUrl
-        val imageChanged = resolvedImageUrl != imageUrl
-        return copy(
-            imageUrlResolved = imageUrlResolved || cached.imageUrlResolved || summaryImage != null,
-            imageUrl = resolvedImageUrl,
-            summaryResolved = summaryResolved || cached.summary != null,
-            summary = cached.summary ?: summary,
-            contentLoadFailed = false,
-            imageLoading = if (imageChanged) false else imageLoading,
-            imageLoaded = if (imageChanged) false else imageLoaded,
-            imageLoadFailed = if (imageChanged) false else imageLoadFailed,
-            previewTint = if (imageChanged) null else previewTint,
+        return withReconciledResources(
+            chosenImageUrl = summaryImage ?: cached.imageUrl ?: imageUrl,
+            imageResolutionEvidence = cached.imageUrlResolved || summaryImage != null,
+            chosenSummary = cached.summary ?: summary,
+            summaryResolutionEvidence = cached.summary != null,
+            clearContentLoadFailure = true,
         )
     }
 
@@ -261,18 +270,12 @@ class StoryPreviewResourceRuntime(
         request: StoryPreviewResourceRequest,
     ): StoryPreviewResourceState {
         val summaryImage = request.knownSummary?.imageUrl?.takeIf(String::isNotEmpty)
-        val resolvedImageUrl = request.knownImageUrl ?: summaryImage ?: imageUrl
-        val imageChanged = resolvedImageUrl != imageUrl
-        return copy(
-            imageUrlResolved = imageUrlResolved || request.imageUrlAlreadyResolved ||
-                summaryImage != null,
-            imageUrl = resolvedImageUrl,
-            summaryResolved = summaryResolved || request.knownSummary != null,
-            summary = request.knownSummary ?: summary,
-            imageLoading = if (imageChanged) false else imageLoading,
-            imageLoaded = if (imageChanged) false else imageLoaded,
-            imageLoadFailed = if (imageChanged) false else imageLoadFailed,
-            previewTint = if (imageChanged) null else previewTint,
+        return withReconciledResources(
+            chosenImageUrl = request.knownImageUrl ?: summaryImage ?: imageUrl,
+            imageResolutionEvidence = request.imageUrlAlreadyResolved || summaryImage != null,
+            chosenSummary = request.knownSummary ?: summary,
+            summaryResolutionEvidence = request.knownSummary != null,
+            clearContentLoadFailure = false,
         )
     }
 

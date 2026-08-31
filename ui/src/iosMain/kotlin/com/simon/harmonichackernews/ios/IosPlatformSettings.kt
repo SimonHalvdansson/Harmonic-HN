@@ -26,13 +26,13 @@ import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsRoute
 import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
 import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
-import com.simon.harmonichackernews.ui.settings.DataSettingsAction
 import com.simon.harmonichackernews.ui.settings.DataSettingsRoute
 import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
 import com.simon.harmonichackernews.ui.settings.ManagedLocalModelPanel
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
 import com.simon.harmonichackernews.ui.settings.SettingsSection
+import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import org.jetbrains.compose.resources.painterResource
 import platform.UIKit.UIDevice
 
@@ -203,23 +203,7 @@ private fun IosDataSettings(
         showAppLinkSettings = false,
         onBack = onBack,
         contentVersion = state.revision,
-        onAction = { action ->
-            when (action) {
-                DataSettingsAction.AddBookmarksToFavorites -> runtime.addBookmarksToFavorites()
-                DataSettingsAction.ExportBookmarks -> runtime.exportBookmarks()
-                DataSettingsAction.ImportBookmarks ->
-                    runtime.showDialog(DataSettingsDialogState.IMPORT)
-                DataSettingsAction.ClearHistory -> runtime.clearHistory()
-                DataSettingsAction.ClearPostCache -> runtime.clearPostCache()
-                DataSettingsAction.ClearTintCache -> runtime.clearTintCache()
-                DataSettingsAction.ClearAiModels ->
-                    runtime.showDialog(DataSettingsDialogState.AI_MODELS)
-                DataSettingsAction.OpenLinksSettings ->
-                    runtime.showDialog(DataSettingsDialogState.LINKS)
-                DataSettingsAction.ResetSettings ->
-                    runtime.showDialog(DataSettingsDialogState.RESET)
-            }
-        },
+        onAction = runtime::handleDataSettingsAction,
     )
 
     when (state.dialog) {

@@ -320,53 +320,36 @@ class CommentThreadStore {
     private fun snapshotList(
         comments: List<Comment>,
         previous: List<PortableCommentItem>,
-    ): List<PortableCommentItem> {
-        if (comments.size == previous.size) comments.forEachIndexed { index, comment ->
-            val item = portableItem(comment)
-            if (previous[index] !== item) {
-                return buildSnapshotList(comments, previous, index, item)
-            }
-        }
-        if (comments.size == previous.size) return previous
-        return comments.mapTo(ArrayList(comments.size), ::portableItem)
-    }
+    ): List<PortableCommentItem> = identityPreservingMap(comments, previous, ::portableItem)
 
     private fun snapshotIds(
         ids: List<Int>,
         previous: List<PortableCommentItem>,
-    ): List<PortableCommentItem> {
-        if (ids.size == previous.size) ids.forEachIndexed { index, id ->
-            val item = portableItem(commentsById.getValue(id))
+    ): List<PortableCommentItem> = identityPreservingMap(ids, previous) { id ->
+        portableItem(commentsById.getValue(id))
+    }
+
+    private fun <Source, Snapshot> identityPreservingMap(
+        source: List<Source>,
+        previous: List<Snapshot>,
+        transform: (Source) -> Snapshot,
+    ): List<Snapshot> {
+        if (source.size != previous.size) {
+            return source.mapTo(ArrayList(source.size), transform)
+        }
+        for (index in source.indices) {
+            val item = transform(source[index])
             if (previous[index] !== item) {
-                return buildSnapshotIdList(ids, previous, index, item)
+                return ArrayList<Snapshot>(source.size).apply {
+                    addAll(previous.subList(0, index))
+                    add(item)
+                    for (remainingIndex in index + 1 until source.size) {
+                        add(transform(source[remainingIndex]))
+                    }
+                }
             }
         }
-        if (ids.size == previous.size) return previous
-        return ids.mapTo(ArrayList(ids.size)) { id -> portableItem(commentsById.getValue(id)) }
-    }
-
-    private fun buildSnapshotList(
-        comments: List<Comment>,
-        previous: List<PortableCommentItem>,
-        changedIndex: Int,
-        changedItem: PortableCommentItem,
-    ): List<PortableCommentItem> = ArrayList<PortableCommentItem>(comments.size).apply {
-        addAll(previous.subList(0, changedIndex))
-        add(changedItem)
-        for (index in changedIndex + 1 until comments.size) add(portableItem(comments[index]))
-    }
-
-    private fun buildSnapshotIdList(
-        ids: List<Int>,
-        previous: List<PortableCommentItem>,
-        changedIndex: Int,
-        changedItem: PortableCommentItem,
-    ): List<PortableCommentItem> = ArrayList<PortableCommentItem>(ids.size).apply {
-        addAll(previous.subList(0, changedIndex))
-        add(changedItem)
-        for (index in changedIndex + 1 until ids.size) {
-            add(portableItem(commentsById.getValue(ids[index])))
-        }
+        return previous
     }
 
     private fun refreshVisibleSnapshots(

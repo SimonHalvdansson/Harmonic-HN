@@ -312,6 +312,108 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
     parentId = parentId,
 )
 
+private fun RepoInfo.toSnapshot(): RepoInfoSnapshot = RepoInfoSnapshot(
+    name = name,
+    owner = owner,
+    avatarUrl = avatarUrl,
+    about = about,
+    website = website,
+    license = license,
+    language = language,
+    stars = stars,
+    watching = watching,
+    forks = forks,
+)
+
+private fun GitLabInfo.toSnapshot(): GitLabInfoSnapshot = GitLabInfoSnapshot(
+    name = name,
+    namespace = namespace,
+    description = description,
+    website = website,
+    language = language,
+    visibility = visibility,
+    stars = stars,
+    forks = forks,
+)
+
+private fun HuggingFaceModelInfo.toSnapshot(): HuggingFaceModelInfoSnapshot =
+    HuggingFaceModelInfoSnapshot(
+        author = author,
+        name = name,
+        website = website,
+        logoUrl = logoUrl,
+        pipelineTag = pipelineTag,
+        libraryName = libraryName,
+        quantization = quantization,
+        licenseName = licenseName,
+        lastModified = lastModified,
+        likes = likes,
+        downloads = downloads,
+        parameterCount = parameterCount,
+    )
+
+private fun OpenRouterModelInfo.toSnapshot(): OpenRouterModelInfoSnapshot =
+    OpenRouterModelInfoSnapshot(
+        provider = provider,
+        name = name,
+        website = website,
+        providerIconUrl = providerIconUrl,
+        description = description,
+        promptPricePerToken = promptPricePerToken,
+        completionPricePerToken = completionPricePerToken,
+        contextLength = contextLength,
+        maxCompletionTokens = maxCompletionTokens,
+        inputModalities = inputModalities,
+        outputModalities = outputModalities,
+        knowledgeCutoff = knowledgeCutoff,
+    )
+
+private fun StackExchangeInfo.toSnapshot(): StackExchangeInfoSnapshot =
+    StackExchangeInfoSnapshot(
+        title = title,
+        author = author,
+        questionText = questionText,
+        tags = tags?.toList().orEmpty(),
+        site = site,
+        score = score,
+        answerCount = answerCount,
+        viewCount = viewCount,
+        isAnswered = isAnswered,
+        hasAcceptedAnswer = hasAcceptedAnswer,
+    )
+
+private fun ArxivInfo.toSnapshot(): ArxivInfoSnapshot = ArxivInfoSnapshot(
+    arxivAbstract = arxivAbstract,
+    authors = authors.toList(),
+    primaryCategory = primaryCategory,
+    arxivID = arxivID,
+    secondaryCategories = secondaryCategories.toList(),
+    publishedDate = publishedDate,
+    htmlUrl = htmlUrl,
+)
+
+private fun WikipediaInfo.toSnapshot(): WikipediaInfoSnapshot = WikipediaInfoSnapshot(
+    summary = summary,
+    title = title,
+)
+
+private fun NitterInfo.toSnapshot(): NitterInfoSnapshot = NitterInfoSnapshot(
+    text = text,
+    userName = userName,
+    userTag = userTag,
+    date = date,
+    replyCount = replyCount,
+    reposts = reposts,
+    likes = likes,
+    imgSrc = imgSrc,
+    hasVideo = hasVideo,
+    beforeUserName = beforeUserName,
+    beforeUserTag = beforeUserTag,
+    beforeText = beforeText,
+    beforeDate = beforeDate,
+    beforeImgSrc = beforeImgSrc,
+)
+
 fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationSnapshot(
     loaded = loaded,
     clicked = clicked,
@@ -359,53 +461,14 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     pollOptions = pollOptionArrayList.orEmpty().map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)
     },
-    repoInfo = repoInfo?.let {
-        RepoInfoSnapshot(
-            it.name, it.owner, it.avatarUrl, it.about, it.website, it.license, it.language,
-            it.stars, it.watching, it.forks,
-        )
-    },
-    gitLabInfo = gitLabInfo?.let {
-        GitLabInfoSnapshot(
-            it.name, it.namespace, it.description, it.website, it.language, it.visibility,
-            it.stars, it.forks,
-        )
-    },
-    huggingFaceInfo = huggingFaceInfo?.let {
-        HuggingFaceModelInfoSnapshot(
-            it.author, it.name, it.website, it.logoUrl, it.pipelineTag, it.libraryName,
-            it.quantization, it.licenseName, it.lastModified, it.likes, it.downloads,
-            it.parameterCount,
-        )
-    },
-    openRouterInfo = openRouterInfo?.let {
-        OpenRouterModelInfoSnapshot(
-            it.provider, it.name, it.website, it.providerIconUrl, it.description,
-            it.promptPricePerToken, it.completionPricePerToken, it.contextLength,
-            it.maxCompletionTokens, it.inputModalities, it.outputModalities,
-            it.knowledgeCutoff,
-        )
-    },
-    stackExchangeInfo = stackExchangeInfo?.let {
-        StackExchangeInfoSnapshot(
-            it.title, it.author, it.questionText, it.tags?.toList().orEmpty(), it.site,
-            it.score, it.answerCount, it.viewCount, it.isAnswered, it.hasAcceptedAnswer,
-        )
-    },
-    arxivInfo = arxivInfo?.let {
-        ArxivInfoSnapshot(
-            it.arxivAbstract, it.authors.toList(), it.primaryCategory, it.arxivID,
-            it.secondaryCategories.toList(), it.publishedDate, it.htmlUrl,
-        )
-    },
-    wikiInfo = wikiInfo?.let { WikipediaInfoSnapshot(it.summary, it.title) },
-    nitterInfo = nitterInfo?.let {
-        NitterInfoSnapshot(
-            it.text, it.userName, it.userTag, it.date, it.replyCount, it.reposts, it.likes,
-            it.imgSrc, it.hasVideo, it.beforeUserName, it.beforeUserTag, it.beforeText,
-            it.beforeDate, it.beforeImgSrc,
-        )
-    },
+    repoInfo = repoInfo?.toSnapshot(),
+    gitLabInfo = gitLabInfo?.toSnapshot(),
+    huggingFaceInfo = huggingFaceInfo?.toSnapshot(),
+    openRouterInfo = openRouterInfo?.toSnapshot(),
+    stackExchangeInfo = stackExchangeInfo?.toSnapshot(),
+    arxivInfo = arxivInfo?.toSnapshot(),
+    wikiInfo = wikiInfo?.toSnapshot(),
+    nitterInfo = nitterInfo?.toSnapshot(),
     linkPreviewInfo = linkPreviewInfo,
     linkPreviewLoading = linkPreviewLoading,
 )

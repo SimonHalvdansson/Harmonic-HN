@@ -358,7 +358,7 @@ class KtorHackerNewsActionRepository(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
-    ): HackerNewsActionResult = try {
+    ): HackerNewsActionResult = runIndeterminateAfterDispatch {
         when (
             val page = loadActionResponse(
                 client,
@@ -369,13 +369,6 @@ class KtorHackerNewsActionRepository(
             is PageResult.Success -> HackerNewsActionResult.Success()
             is PageResult.Result -> page.value
         }
-    } catch (error: IndeterminateHackerNewsActionException) {
-        throw error
-    } catch (error: CancellationException) {
-        if (!currentCoroutineContext().isActive) throw error
-        throw IndeterminateHackerNewsActionException(error)
-    } catch (error: Throwable) {
-        throw IndeterminateHackerNewsActionException(error)
     }
 
     /**
@@ -421,13 +414,17 @@ class KtorHackerNewsActionRepository(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
-    ): PageResult = try {
+    ): PageResult = runIndeterminateAfterDispatch {
         loadPage(
             client,
             request,
             useCookies,
             indeterminateOnHttpFailure = true,
         )
+    }
+
+    private suspend fun <T> runIndeterminateAfterDispatch(block: suspend () -> T): T = try {
+        block()
     } catch (error: IndeterminateHackerNewsActionException) {
         throw error
     } catch (error: CancellationException) {

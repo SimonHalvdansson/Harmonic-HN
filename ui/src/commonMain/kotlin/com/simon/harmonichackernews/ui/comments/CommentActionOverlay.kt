@@ -30,15 +30,15 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
-import com.simon.harmonichackernews.ui.common.isSnapshotCaptureSafe
+import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
+import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import androidx.compose.material3.ButtonDefaults
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -60,11 +60,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -129,10 +127,10 @@ fun CommentActionOverlay(
         dismissRequestVersion = dismissRequest,
     )
     val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
-    val sourceCapture = rememberCommentActionLayerSnapshot(source?.contentLayer, 0)
-    val targetUserCapture = rememberCommentActionLayerSnapshot(targetUserLayer, snapshotRefreshKey)
-    val targetBodyCapture = rememberCommentActionLayerSnapshot(targetBodyLayer, snapshotRefreshKey)
-    val targetSupplementaryCapture = rememberCommentActionLayerSnapshot(
+    val sourceCapture = rememberGraphicsLayerSnapshot(source?.contentLayer, 0)
+    val targetUserCapture = rememberGraphicsLayerSnapshot(targetUserLayer, snapshotRefreshKey)
+    val targetBodyCapture = rememberGraphicsLayerSnapshot(targetBodyLayer, snapshotRefreshKey)
+    val targetSupplementaryCapture = rememberGraphicsLayerSnapshot(
         targetSupplementaryLayer,
         snapshotRefreshKey,
     )
@@ -284,7 +282,7 @@ fun CommentActionOverlay(
             }
         },
     )
-    val modalGestures = Modifier.consumeCommentActionGestures()
+    val modalGestures = Modifier.consumeAllPointerGestures()
 
     Box(
         modifier = Modifier
@@ -757,51 +755,3 @@ private data class CommentActionVisual(
     val description: String,
     val loading: Boolean,
 )
-
-@Composable
-private fun rememberCommentActionLayerSnapshot(
-    layer: GraphicsLayer?,
-    refreshKey: Int,
-): CommentActionLayerSnapshot {
-    // Preserve the previous bitmap while a dismiss refresh is recorded. Clearing it first leaves
-    // one empty frame when dismissal interrupts the opening animation.
-    var snapshot by remember(layer) { mutableStateOf(CommentActionLayerSnapshot()) }
-    LaunchedEffect(layer, refreshKey) {
-        val currentLayer = layer ?: return@LaunchedEffect
-        withFrameNanos { }
-        if (!currentLayer.isSnapshotCaptureSafe()) {
-            snapshot = snapshot.copy(resolvedKey = refreshKey)
-            return@LaunchedEffect
-        }
-        val image = try {
-            currentLayer.toImageBitmap()
-        } catch (_: Exception) {
-            snapshot = snapshot.copy(resolvedKey = refreshKey)
-            return@LaunchedEffect
-        }
-        snapshot = CommentActionLayerSnapshot(
-            image = image,
-            refreshKey = refreshKey,
-            resolvedKey = refreshKey,
-        )
-    }
-    return snapshot
-}
-
-private data class CommentActionLayerSnapshot(
-    val image: ImageBitmap? = null,
-    val refreshKey: Int? = null,
-    val resolvedKey: Int? = null,
-) {
-    fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
-    fun isUnavailable(key: Int): Boolean = resolvedKey == key && !isCurrent(key)
-}
-
-private fun Modifier.consumeCommentActionGestures(): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        do {
-            val event = awaitPointerEvent()
-            event.changes.forEach { it.consume() }
-        } while (event.changes.any { it.pressed })
-    }
-}

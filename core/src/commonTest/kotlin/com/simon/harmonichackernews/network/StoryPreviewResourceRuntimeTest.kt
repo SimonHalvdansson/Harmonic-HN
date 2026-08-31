@@ -14,6 +14,172 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewResourceRuntimeTest {
     @Test
+    fun cachedSummaryImageTakesPrecedenceOverCachedImageUrl() = runTest {
+        val summary = LinkSummary(
+            description = "Cached summary",
+            imageUrl = "https://example.com/summary.png",
+        )
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(
+                        imageUrlResolved = true,
+                        imageUrl = "https://example.com/cached.png",
+                        summary = summary,
+                    )
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent =
+                    error("Resolved cached resources should not be loaded")
+            },
+        )
+
+        runtime.request(request(storyId = 10))
+        runCurrent()
+
+        assertEquals("https://example.com/summary.png", runtime.stateFor(10)?.imageUrl)
+        assertEquals(summary, runtime.stateFor(10)?.summary)
+    }
+
+    @Test
+    fun knownImageUrlTakesPrecedenceOverKnownSummaryImage() = runTest {
+        var cacheReads = 0
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(
+                        imageUrlResolved = true,
+                        imageUrl = "https://example.com/initial.png",
+                        summary = null,
+                    ).also { cacheReads++ }
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent =
+                    error("Resolved known resources should not be loaded")
+            },
+        )
+        runtime.request(request(storyId = 11, loadSummary = false))
+        runCurrent()
+        val summary = LinkSummary(
+            description = "Known summary",
+            imageUrl = "https://example.com/summary.png",
+        )
+
+        assertFalse(
+            runtime.request(
+                request(storyId = 11).copy(
+                    knownImageUrl = "https://example.com/known.png",
+                    imageUrlAlreadyResolved = true,
+                    knownSummary = summary,
+                ),
+            ),
+        )
+
+        assertEquals(1, cacheReads)
+        assertEquals("https://example.com/known.png", runtime.stateFor(11)?.imageUrl)
+        assertEquals(summary, runtime.stateFor(11)?.summary)
+    }
+
+    @Test
+    fun cachedRetryWithUnchangedImagePreservesImageStateAndClearsContentFailure() = runTest {
+        val imageUrl = "https://example.com/image.png"
+        val previewTint = tint(imageUrl, tintColorArgb = 4)
+        val faviconTint = tint("https://example.com/favicon.ico", tintColorArgb = 5)
+        var cacheReads = 0
+        var loads = 0
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    if (cacheReads++ == 0) {
+                        CachedStoryPreviewResource(false, null, null)
+                    } else {
+                        CachedStoryPreviewResource(true, imageUrl, null)
+                    }
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent {
+                    loads++
+                    return PreviewContent(null, null, PreviewImageResult.TRANSIENT_FAILURE)
+                }
+            },
+        )
+        val unresolvedKnownImage = request(storyId = 12, loadSummary = false).copy(
+            knownImageUrl = imageUrl,
+            imageUrlAlreadyResolved = false,
+        )
+
+        runtime.request(unresolvedKnownImage)
+        runCurrent()
+        assertTrue(runtime.stateFor(12)?.contentLoadFailed == true)
+        assertTrue(runtime.recordTint(12, PAGE_URL, StoryResourceTintKind.PREVIEW_IMAGE, previewTint))
+        assertTrue(runtime.recordTint(12, PAGE_URL, StoryResourceTintKind.FAVICON, faviconTint))
+
+        runtime.request(unresolvedKnownImage)
+        runCurrent()
+
+        val state = requireNotNull(runtime.stateFor(12))
+        assertEquals(2, cacheReads)
+        assertEquals(1, loads)
+        assertTrue(state.imageUrlResolved)
+        assertFalse(state.contentLoadFailed)
+        assertTrue(state.imageLoaded)
+        assertEquals(previewTint, state.previewTint)
+        assertEquals(faviconTint, state.faviconTint)
+    }
+
+    @Test
+    fun changedImageUrlClearsOnlyStateBelongingToThePreviousImage() = runTest {
+        val firstImageUrl = "https://example.com/first.png"
+        val faviconTint = tint("https://example.com/favicon.ico", tintColorArgb = 5)
+        val runtime = StoryPreviewResourceRuntime(
+            scope = this,
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(true, firstImageUrl, null)
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent =
+                    error("Resolved known resources should not be loaded")
+            },
+        )
+        runtime.request(request(storyId = 13, loadSummary = false))
+        runCurrent()
+        assertTrue(runtime.recordTint(13, PAGE_URL, StoryResourceTintKind.FAVICON, faviconTint))
+        assertTrue(runtime.beginImageLoad(13, PAGE_URL, firstImageUrl))
+
+        val secondImageUrl = "https://example.com/second.png"
+        assertFalse(runtime.request(knownImageRequest(storyId = 13, imageUrl = secondImageUrl)))
+        var state = requireNotNull(runtime.stateFor(13))
+        assertFalse(state.imageLoading)
+        assertEquals(faviconTint, state.faviconTint)
+
+        assertTrue(runtime.beginImageLoad(13, PAGE_URL, secondImageUrl))
+        runtime.completeImageLoad(13, PAGE_URL, secondImageUrl, success = true)
+        val previewTint = tint(secondImageUrl, tintColorArgb = 4)
+        assertTrue(runtime.recordTint(13, PAGE_URL, StoryResourceTintKind.PREVIEW_IMAGE, previewTint))
+
+        val thirdImageUrl = "https://example.com/third.png"
+        assertFalse(runtime.request(knownImageRequest(storyId = 13, imageUrl = thirdImageUrl)))
+        state = requireNotNull(runtime.stateFor(13))
+        assertFalse(state.imageLoaded)
+        assertNull(state.previewTint)
+        assertEquals(faviconTint, state.faviconTint)
+
+        assertTrue(runtime.beginImageLoad(13, PAGE_URL, thirdImageUrl))
+        runtime.completeImageLoad(13, PAGE_URL, thirdImageUrl, success = false)
+        assertFalse(
+            runtime.request(
+                knownImageRequest(
+                    storyId = 13,
+                    imageUrl = "https://example.com/fourth.png",
+                ),
+            ),
+        )
+        state = requireNotNull(runtime.stateFor(13))
+        assertFalse(state.imageLoadFailed)
+        assertEquals(faviconTint, state.faviconTint)
+    }
+
+    @Test
     fun cachedSummaryHydratesImmutableStateWithoutFetching() = runTest {
         var fetches = 0
         val service = object : StoryPreviewResourceService {
@@ -243,6 +409,24 @@ class StoryPreviewResourceRuntimeTest {
         pageUrl = PAGE_URL,
         loadImage = true,
         loadSummary = loadSummary,
+    )
+
+    private fun knownImageRequest(
+        storyId: Int,
+        imageUrl: String,
+    ) = request(storyId = storyId, loadSummary = false).copy(
+        knownImageUrl = imageUrl,
+        imageUrlAlreadyResolved = true,
+    )
+
+    private fun tint(
+        sourceUrl: String,
+        tintColorArgb: Int,
+    ) = StoryResourceTintState(
+        sourceUrl = sourceUrl,
+        baseColorArgb = 1,
+        paletteConfigKey = "test-palette",
+        tintColorArgb = tintColorArgb,
     )
 
     private companion object {

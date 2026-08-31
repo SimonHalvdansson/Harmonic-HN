@@ -183,6 +183,38 @@ class MainNavigationStateTest {
     }
 
     @Test
+    fun reopeningDestinationsReplacesTheirTopEntry() {
+        val state = MainNavigationState()
+
+        state.openStory(StoryDestination(storyId = 1))
+        state.openStory(StoryDestination(storyId = 2))
+        state.openSettings("stories")
+        state.openSettings("comments")
+        state.openEditor(EditorDestination(EditorType.POST))
+        state.openEditor(EditorDestination(EditorType.COMMENT_REPLY, itemId = 42))
+        state.openSubmissions("first")
+        state.openSubmissions("second")
+
+        assertEquals(
+            listOf(
+                MainDestination.STORIES,
+                MainDestination.STORY,
+                MainDestination.SETTINGS,
+                MainDestination.EDITOR,
+                MainDestination.SUBMISSIONS,
+            ),
+            state.destinationStack.map(MainNavigationEntry::destination),
+        )
+        assertEquals(MainStoryRequest(2, StoryDestination(storyId = 2)), state.storyRequest)
+        assertEquals(MainSettingsRequest(2, "comments"), state.settingsRequest)
+        assertEquals(
+            MainEditorRequest(2, EditorDestination(EditorType.COMMENT_REPLY, itemId = 42)),
+            state.editorRequest,
+        )
+        assertEquals(MainSubmissionsRequest(2, "second"), state.submissionsRequest)
+    }
+
+    @Test
     fun transientDialogsOwnSerialAndPresencePolicyInSharedState() {
         val state = MainNavigationState()
         val firstCaptcha = state.showCaptchaDialog(captcha("first"))

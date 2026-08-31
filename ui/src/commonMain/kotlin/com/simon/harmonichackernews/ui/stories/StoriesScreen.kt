@@ -545,6 +545,23 @@ private fun StoriesList(
             ) { index, story ->
                     // Loaded stories often replace shorter skeletons in batches. Keep fades, but
                     // snap placement so neighboring rows never spring through each other.
+                    val itemAnimationModifier = Modifier.animateItem(
+                        fadeInSpec = tween(
+                            SavedListTransitionDurationMillis,
+                            easing = StoriesEasing,
+                        ),
+                        placementSpec = null,
+                        // The parent list already fades for Tap to update. A second row exit would
+                        // become visible after replacement, briefly resurrecting the old rows.
+                        fadeOutSpec = if (suppressTapToUpdateRowExit) {
+                            null
+                        } else {
+                            tween(
+                                SavedListTransitionDurationMillis,
+                                easing = StoriesEasing,
+                            )
+                        },
+                    )
                     if (story.isComment) {
                         val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
                             controller.updateStoryItemHeight(story.id, coordinates.size.height)
@@ -555,49 +572,14 @@ private fun StoriesList(
                             onStory = { controller.listener.onCommentStoryClick(story) },
                             onReplies = { controller.listener.onCommentRepliesClick(story) },
                             commentText = commentText,
-                            modifier = Modifier
-                                .animateItem(
-                                    fadeInSpec = tween(
-                                        SavedListTransitionDurationMillis,
-                                        easing = StoriesEasing,
-                                    ),
-                                    placementSpec = null,
-                                    // The parent list already fades for Tap to update. A second
-                                    // row exit would become visible after the replacement is
-                                    // committed, briefly resurrecting the old rows.
-                                    fadeOutSpec = if (suppressTapToUpdateRowExit) {
-                                        null
-                                    } else {
-                                        tween(
-                                            SavedListTransitionDurationMillis,
-                                            easing = StoriesEasing,
-                                        )
-                                    },
-                                )
-                                .then(itemHeightModifier),
+                            modifier = itemAnimationModifier.then(itemHeightModifier),
                         )
                     } else if (!story.loaded && !story.loadingFailed) {
                         val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
                             controller.updateStoryItemHeight(story.id, coordinates.size.height)
                         }
                         StoryLoadingItem(
-                            modifier = Modifier
-                                .animateItem(
-                                    fadeInSpec = tween(
-                                        SavedListTransitionDurationMillis,
-                                        easing = StoriesEasing,
-                                    ),
-                                    placementSpec = null,
-                                    fadeOutSpec = if (suppressTapToUpdateRowExit) {
-                                        null
-                                    } else {
-                                        tween(
-                                            SavedListTransitionDurationMillis,
-                                            easing = StoriesEasing,
-                                        )
-                                    },
-                                )
-                                .then(itemHeightModifier),
+                            modifier = itemAnimationModifier.then(itemHeightModifier),
                         )
                     } else {
                         val pagingAlpha = controller.storyPagingAlphaState(story.id)
@@ -653,22 +635,7 @@ private fun StoriesList(
                         } else {
                             untintedStoryBackground.toArgb()
                         }
-                        val itemModifier = Modifier
-                            .animateItem(
-                                fadeInSpec = tween(
-                                    SavedListTransitionDurationMillis,
-                                    easing = StoriesEasing,
-                                ),
-                                placementSpec = null,
-                                fadeOutSpec = if (suppressTapToUpdateRowExit) {
-                                    null
-                                } else {
-                                    tween(
-                                        SavedListTransitionDurationMillis,
-                                        easing = StoriesEasing,
-                                    )
-                                },
-                            )
+                        val itemModifier = itemAnimationModifier
                             .graphicsLayer {
                                 alpha = if (keepPreviewSourceVisible) {
                                     revealAlpha

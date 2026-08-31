@@ -357,6 +357,21 @@ fun StoryItem(
         tintBaseColorArgb,
         style.paletteTintConfigKey,
     ) { mutableStateOf<Int?>(null) }
+    val handlePreviewLoadFailed: () -> Unit = {
+        previewFailed = true
+        onPreviewLoadFailed?.invoke()
+    }
+    val handlePreviewLoadSuccess: () -> Unit = {
+        onPreviewLoadSuccess?.invoke()
+    }
+    val handlePreviewTintExtracted: (Int) -> Unit = { tintColor ->
+        extractedPreviewTint = tintColor
+        onPreviewTintExtracted?.invoke(tintColor)
+    }
+    val handleFaviconTintExtracted: (Int) -> Unit = { tintColor ->
+        extractedFaviconTint = tintColor
+        onFaviconTintExtracted?.invoke(tintColor)
+    }
     val previewAvailable = style.previewImageMode != StoryPreviewMode.OFF && hasPreview
     val tint = if (previewAvailable) {
         (model.previewImageTintArgb ?: extractedPreviewTint)?.let(::Color)
@@ -552,18 +567,12 @@ fun StoryItem(
                                 onLayerChanged = { itemGeometry.largeImageLayer = it },
                             )
                             .graphicsLayer(alpha = dimAlpha),
-                        onLoadFailed = {
-                            previewFailed = true
-                            onPreviewLoadFailed?.invoke()
-                        },
-                        onLoadSuccess = { onPreviewLoadSuccess?.invoke() },
+                        onLoadFailed = handlePreviewLoadFailed,
+                        onLoadSuccess = handlePreviewLoadSuccess,
                         tintBaseColorArgb = tintBaseColorArgb,
                         paletteTintConfigKey = style.paletteTintConfigKey,
                         extractTint = style.tintCard && model.previewImageTintArgb == null,
-                        onTintExtracted = { tintColor ->
-                            extractedPreviewTint = tintColor
-                            onPreviewTintExtracted?.invoke(tintColor)
-                        },
+                        onTintExtracted = handlePreviewTintExtracted,
                     )
                 }
                 val comments: @Composable () -> Unit = if (mediumPreview) {
@@ -575,19 +584,13 @@ fun StoryItem(
                             hasPreview = hasPreview,
                             dimAlpha = dimAlpha,
                             onClick = onCommentClick,
-                            onPreviewLoadFailed = {
-                                previewFailed = true
-                                onPreviewLoadFailed?.invoke()
-                            },
-                            onPreviewLoadSuccess = { onPreviewLoadSuccess?.invoke() },
+                            onPreviewLoadFailed = handlePreviewLoadFailed,
+                            onPreviewLoadSuccess = handlePreviewLoadSuccess,
                             tintBaseColorArgb = tintBaseColorArgb,
                             paletteTintConfigKey = style.paletteTintConfigKey,
                             extractPreviewTint = style.tintCard &&
                                 model.previewImageTintArgb == null,
-                            onPreviewTintExtracted = { tintColor ->
-                                extractedPreviewTint = tintColor
-                                onPreviewTintExtracted?.invoke(tintColor)
-                            },
+                            onPreviewTintExtracted = handlePreviewTintExtracted,
                             capturePreviewSource = captureSourceContent,
                             itemGeometry = itemGeometry,
                             animateChanges = animate,
@@ -651,24 +654,15 @@ fun StoryItem(
                         dimAlpha = dimAlpha,
                         onLinkClick = onLinkClick,
                         onLinkLongClick = trackedLinkLongClick,
-                        onPreviewLoadFailed = {
-                            previewFailed = true
-                            onPreviewLoadFailed?.invoke()
-                        },
-                        onPreviewLoadSuccess = { onPreviewLoadSuccess?.invoke() },
+                        onPreviewLoadFailed = handlePreviewLoadFailed,
+                        onPreviewLoadSuccess = handlePreviewLoadSuccess,
                         tintBaseColorArgb = tintBaseColorArgb,
                         paletteTintConfigKey = style.paletteTintConfigKey,
                         extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
-                        onPreviewTintExtracted = { tintColor ->
-                            extractedPreviewTint = tintColor
-                            onPreviewTintExtracted?.invoke(tintColor)
-                        },
+                        onPreviewTintExtracted = handlePreviewTintExtracted,
                         extractFaviconTint = style.tintCard && !previewAvailable &&
                             model.faviconTintArgb == null,
-                        onFaviconTintExtracted = { tintColor ->
-                            extractedFaviconTint = tintColor
-                            onFaviconTintExtracted?.invoke(tintColor)
-                        },
+                        onFaviconTintExtracted = handleFaviconTintExtracted,
                         animateChanges = animate,
                         capturePreviewSource = captureSourceContent,
                         itemGeometry = itemGeometry,

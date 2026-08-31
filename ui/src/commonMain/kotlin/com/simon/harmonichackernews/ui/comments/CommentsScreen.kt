@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,7 +53,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.ui.common.LazyContentList
+import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
 import com.simon.harmonichackernews.ui.content.toCommentItemStyle
@@ -713,14 +712,7 @@ private fun CommentNavigationButtons(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        do {
-                            val event = awaitPointerEvent()
-                            event.changes.forEach { it.consume() }
-                        } while (event.changes.any { it.pressed })
-                    }
-                },
+                .consumeAllPointerGestures(),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

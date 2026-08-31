@@ -118,16 +118,20 @@ private final class KeychainVault {
         self.service = service
     }
 
-    func read(account: String) -> Foundation.Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        let query: [String: Any] = [
+    private func selector(account: String) -> [String: Any] {
+        [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
+    }
+
+    func read(account: String) -> Foundation.Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        var query = selector(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
             return nil
@@ -139,23 +143,19 @@ private final class KeychainVault {
     func write(_ data: Foundation.Data, account: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        let selector: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
+        let updateSelector = selector(account: account)
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
-        let update = SecItemUpdate(selector as CFDictionary, attributes as CFDictionary)
+        let update = SecItemUpdate(updateSelector as CFDictionary, attributes as CFDictionary)
         if update == errSecSuccess {
             return true
         }
         guard update == errSecItemNotFound else {
             return false
         }
-        var insertion = selector
+        var insertion = updateSelector
         attributes.forEach { insertion[$0.key] = $0.value }
         return SecItemAdd(insertion as CFDictionary, nil) == errSecSuccess
     }
@@ -164,11 +164,7 @@ private final class KeychainVault {
     func remove(account: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
+        let query = selector(account: account)
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }

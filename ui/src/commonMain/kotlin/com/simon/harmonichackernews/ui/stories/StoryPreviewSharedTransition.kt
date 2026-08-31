@@ -16,13 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -36,6 +33,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.lerpRect
+import com.simon.harmonichackernews.ui.common.moveRectBetweenContainers
+import com.simon.harmonichackernews.ui.common.roundedRectPath
 import kotlin.math.roundToInt
 
 /** Window-space geometry and transparent element layers captured before a preview opens. */
@@ -208,7 +208,7 @@ internal fun StoryPreviewTransitionOverlay(
     val sourceContainer = localSource.container
     val targetContainer = transition.targetContainer?.localTo(rootOffset) ?: sourceContainer
     val progress = transition.progress.coerceIn(0f, 1f)
-    val container = lerp(sourceContainer, targetContainer, progress)
+    val container = lerpRect(sourceContainer, targetContainer, progress)
     val density = LocalDensity.current
     val sourceRadiusPx = with(density) { 8.dp.toPx() }
     val targetRadiusPx = with(density) { 28.dp.toPx() } * transition.targetScale
@@ -224,7 +224,7 @@ internal fun StoryPreviewTransitionOverlay(
     val shape = RoundedCornerShape(containerRadius)
     val targetCommentsButton = transition.targetCommentsButton?.localTo(rootOffset)
     val commentsButton = targetCommentsButton?.let { bounds ->
-        moveBetweenContainers(bounds, targetContainer, container)
+        moveRectBetweenContainers(bounds, targetContainer, container)
     }
     val commentsShadowProgress = supplementaryAlpha(progress)
     val commentsButtonShape = RoundedCornerShape(percent = 50)
@@ -294,7 +294,7 @@ private fun DrawScope.drawTransitionContent(
     targetImageRadiusPx: Float,
     progress: Float,
 ) {
-    val containerClip = roundedPath(container, containerRadiusPx, containerRadiusPx)
+    val containerClip = roundedRectPath(container, containerRadiusPx)
 
     fun drawElement(
         element: StoryPreviewSharedElement,
@@ -305,14 +305,15 @@ private fun DrawScope.drawTransitionContent(
         val targetBounds = transition.targetBounds(element)?.localTo(transition.rootOffset)
         val targetSnapshot = transition.targetSnapshot(element)
         val destination = when {
-            sourceBounds != null && targetBounds != null -> lerp(sourceBounds, targetBounds, progress)
+            sourceBounds != null && targetBounds != null ->
+                lerpRect(sourceBounds, targetBounds, progress)
             targetBounds != null -> mapBetweenContainers(targetBounds, targetContainer, container)
             sourceBounds != null -> mapBetweenContainers(sourceBounds, sourceContainer, container)
             else -> return
         }
         val imageClip = if (image) {
             val sourceImageRadius = source.imageCornerRadiusPx
-            roundedPath(
+            roundedRectPath(
                 destination,
                 lerp(sourceImageRadius, targetImageRadiusPx, progress),
                 lerp(sourceImageRadius, 0f, progress),
@@ -353,7 +354,7 @@ private fun DrawScope.drawTransitionContent(
     fun drawSourceAccessory(bounds: Rect?, snapshot: ImageBitmap?) {
         val alpha = sourceAccessoryAlpha(progress)
         if (bounds == null || snapshot == null || alpha <= 0.001f) return
-        val destination = moveBetweenContainers(bounds, sourceContainer, container)
+        val destination = moveRectBetweenContainers(bounds, sourceContainer, container)
         clipPath(containerClip) {
             drawSnapshot(
                 snapshot = snapshot,
@@ -402,7 +403,7 @@ private fun DrawScope.drawTransitionContent(
         // Bottom controls follow the container's motion, but retain their measured size. Scaling
         // this bitmap with the container visibly squashes the icons and Comments pill early in
         // opening and late in closing.
-        val destination = moveBetweenContainers(supplementary, targetContainer, container)
+        val destination = moveRectBetweenContainers(supplementary, targetContainer, container)
         clipPath(containerClip) {
             drawSnapshot(
                 snapshot = supplementarySnapshot,
@@ -460,32 +461,6 @@ private fun mapBetweenContainers(rect: Rect, from: Rect, to: Rect): Rect {
     )
 }
 
-/** Maps an element's center with its container while preserving the element's intrinsic size. */
-private fun moveBetweenContainers(rect: Rect, from: Rect, to: Rect): Rect {
-    if (from.width <= 0f || from.height <= 0f) return rect
-    val centerX = to.left + (rect.center.x - from.left) / from.width * to.width
-    val centerY = to.top + (rect.center.y - from.top) / from.height * to.height
-    return Rect(
-        left = centerX - rect.width / 2f,
-        top = centerY - rect.height / 2f,
-        right = centerX + rect.width / 2f,
-        bottom = centerY + rect.height / 2f,
-    )
-}
-
-private fun roundedPath(rect: Rect, topRadius: Float, bottomRadius: Float): Path =
-    Path().apply {
-        addRoundRect(
-            RoundRect(
-                rect = rect,
-                topLeft = CornerRadius(topRadius),
-                topRight = CornerRadius(topRadius),
-                bottomRight = CornerRadius(bottomRadius),
-                bottomLeft = CornerRadius(bottomRadius),
-            ),
-        )
-    }
-
 private fun StoryPreviewSourceGeometry.localTo(offset: Offset): StoryPreviewSourceGeometry =
     copy(
         container = container.localTo(offset),
@@ -505,13 +480,6 @@ private fun supplementaryAlpha(progress: Float): Float =
 /** Fades out in the first 60% when opening and fades in in the final 60% when closing. */
 private fun sourceAccessoryAlpha(progress: Float): Float =
     (1f - progress / 0.6f).coerceIn(0f, 1f)
-
-private fun lerp(start: Rect, end: Rect, progress: Float): Rect = Rect(
-    left = lerp(start.left, end.left, progress),
-    top = lerp(start.top, end.top, progress),
-    right = lerp(start.right, end.right, progress),
-    bottom = lerp(start.bottom, end.bottom, progress),
-)
 
 private fun lerp(start: Float, end: Float, progress: Float): Float =
     start + (end - start) * progress

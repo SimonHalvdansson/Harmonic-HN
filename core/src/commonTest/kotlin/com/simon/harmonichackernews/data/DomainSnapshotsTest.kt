@@ -119,6 +119,221 @@ class DomainSnapshotsTest {
     }
 
     @Test
+    fun linkPreviewModelsMapEveryFieldIntoNamedSnapshots() {
+        val story = Story().apply {
+            repoInfo = RepoInfo().apply {
+                name = "repo"
+                owner = "owner"
+                avatarUrl = "https://example.com/avatar.png"
+                about = "about"
+                website = "https://example.com/repo"
+                license = "Apache-2.0"
+                language = "Kotlin"
+                stars = 1
+                watching = 2
+                forks = 3
+            }
+            gitLabInfo = GitLabInfo().apply {
+                name = "project"
+                namespace = "group/project"
+                description = "description"
+                website = "https://example.com/project"
+                language = "Swift"
+                visibility = "public"
+                stars = 4
+                forks = 5
+            }
+            huggingFaceInfo = HuggingFaceModelInfo().apply {
+                author = "model-author"
+                name = "model"
+                website = "https://example.com/model"
+                logoUrl = "https://example.com/model.png"
+                pipelineTag = "text-generation"
+                libraryName = "transformers"
+                quantization = "Q4"
+                licenseName = "mit"
+                lastModified = "2026-08-30"
+                likes = 6
+                downloads = 7
+                parameterCount = 8
+            }
+            openRouterInfo = OpenRouterModelInfo().apply {
+                provider = "provider"
+                name = "router-model"
+                website = "https://example.com/router-model"
+                providerIconUrl = "https://example.com/provider.png"
+                description = "router description"
+                promptPricePerToken = "0.000001"
+                completionPricePerToken = "0.000002"
+                contextLength = 9
+                maxCompletionTokens = 10
+                inputModalities = listOf("text", "image")
+                outputModalities = listOf("text")
+                knowledgeCutoff = "2025-01"
+            }
+            stackExchangeInfo = StackExchangeInfo().apply {
+                title = "Question"
+                author = "question-author"
+                questionText = "question text"
+                tags = arrayOf("kotlin", null)
+                site = "Stack Overflow"
+                score = 11
+                answerCount = 12
+                viewCount = 13
+                isAnswered = true
+                hasAcceptedAnswer = false
+            }
+            arxivInfo = ArxivInfo().apply {
+                arxivAbstract = "abstract"
+                authors = arrayOf("First Author", null)
+                primaryCategory = "cs.SE"
+                arxivID = "2608.12345"
+                secondaryCategories = arrayOf("cs.AI", null)
+                publishedDate = "2026-08-30"
+                htmlUrl = "https://arxiv.org/html/2608.12345"
+            }
+            wikiInfo = WikipediaInfo().apply {
+                title = "Article title"
+                summary = "Article summary"
+            }
+            nitterInfo = NitterInfo().apply {
+                text = "post"
+                userName = "User"
+                userTag = "@user"
+                date = "today"
+                replyCount = "14"
+                reposts = "15"
+                likes = "16"
+                imgSrc = "https://example.com/post.png"
+                hasVideo = true
+                beforeUserName = "Quoted User"
+                beforeUserTag = "@quoted"
+                beforeText = "quoted post"
+                beforeDate = "yesterday"
+                beforeImgSrc = "https://example.com/quoted.png"
+            }
+        }
+
+        val snapshot = story.presentationSnapshot()
+
+        assertEquals(
+            RepoInfoSnapshot(
+                name = "repo",
+                owner = "owner",
+                avatarUrl = "https://example.com/avatar.png",
+                about = "about",
+                website = "https://example.com/repo",
+                license = "Apache-2.0",
+                language = "Kotlin",
+                stars = 1,
+                watching = 2,
+                forks = 3,
+            ),
+            snapshot.repoInfo,
+        )
+        assertEquals(
+            GitLabInfoSnapshot(
+                name = "project",
+                namespace = "group/project",
+                description = "description",
+                website = "https://example.com/project",
+                language = "Swift",
+                visibility = "public",
+                stars = 4,
+                forks = 5,
+            ),
+            snapshot.gitLabInfo,
+        )
+        assertEquals(
+            HuggingFaceModelInfoSnapshot(
+                author = "model-author",
+                name = "model",
+                website = "https://example.com/model",
+                logoUrl = "https://example.com/model.png",
+                pipelineTag = "text-generation",
+                libraryName = "transformers",
+                quantization = "Q4",
+                licenseName = "mit",
+                lastModified = "2026-08-30",
+                likes = 6,
+                downloads = 7,
+                parameterCount = 8,
+            ),
+            snapshot.huggingFaceInfo,
+        )
+        assertEquals(
+            OpenRouterModelInfoSnapshot(
+                provider = "provider",
+                name = "router-model",
+                website = "https://example.com/router-model",
+                providerIconUrl = "https://example.com/provider.png",
+                description = "router description",
+                promptPricePerToken = "0.000001",
+                completionPricePerToken = "0.000002",
+                contextLength = 9,
+                maxCompletionTokens = 10,
+                inputModalities = listOf("text", "image"),
+                outputModalities = listOf("text"),
+                knowledgeCutoff = "2025-01",
+            ),
+            snapshot.openRouterInfo,
+        )
+        assertEquals(
+            StackExchangeInfoSnapshot(
+                title = "Question",
+                author = "question-author",
+                questionText = "question text",
+                tags = listOf("kotlin", null),
+                site = "Stack Overflow",
+                score = 11,
+                answerCount = 12,
+                viewCount = 13,
+                isAnswered = true,
+                hasAcceptedAnswer = false,
+            ),
+            snapshot.stackExchangeInfo,
+        )
+        assertEquals(
+            ArxivInfoSnapshot(
+                arxivAbstract = "abstract",
+                authors = listOf("First Author", null),
+                primaryCategory = "cs.SE",
+                arxivID = "2608.12345",
+                secondaryCategories = listOf("cs.AI", null),
+                publishedDate = "2026-08-30",
+                htmlUrl = "https://arxiv.org/html/2608.12345",
+            ),
+            snapshot.arxivInfo,
+        )
+        assertEquals(
+            WikipediaInfoSnapshot(
+                summary = "Article summary",
+                title = "Article title",
+            ),
+            snapshot.wikiInfo,
+        )
+        assertEquals(
+            NitterInfoSnapshot(
+                text = "post",
+                userName = "User",
+                userTag = "@user",
+                date = "today",
+                replyCount = "14",
+                reposts = "15",
+                likes = "16",
+                imgSrc = "https://example.com/post.png",
+                hasVideo = true,
+                beforeUserName = "Quoted User",
+                beforeUserTag = "@quoted",
+                beforeText = "quoted post",
+                beforeDate = "yesterday",
+                beforeImgSrc = "https://example.com/quoted.png",
+            ),
+            snapshot.nitterInfo,
+        )
+    }
+
+    @Test
     fun loadedPreviewTypeIsSharedByMutableStoriesAndSnapshots() {
         val story = Story().apply {
             linkPreviewInfo = LinkPreviewInfo(

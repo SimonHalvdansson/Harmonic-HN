@@ -141,6 +141,8 @@ object StoryCacheKeys {
 
     fun storyFile(storyId: Int): String = "$storyId.json"
     fun articleFile(storyId: Int): String = "$storyId.html"
+    fun articleUrlKey(storyId: Int): String = ARTICLE_URL + storyId
+    fun articleCharsetKey(storyId: Int): String = ARTICLE_CHARSET + storyId
 }
 
 object ArticleCacheMetadata {
@@ -196,8 +198,8 @@ class StoryCacheRepository(
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
             update.evictedStoryIds.forEach { evictedStoryId ->
-                remove(StoryCacheKeys.ARTICLE_URL + evictedStoryId)
-                remove(StoryCacheKeys.ARTICLE_CHARSET + evictedStoryId)
+                remove(StoryCacheKeys.articleUrlKey(evictedStoryId))
+                remove(StoryCacheKeys.articleCharsetKey(evictedStoryId))
             }
         }
         indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(update.encodedEntries)
@@ -285,8 +287,8 @@ class StoryCacheRepository(
         val updatedIndex = StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId)
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, updatedIndex)
-            remove(StoryCacheKeys.ARTICLE_URL + storyId)
-            remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+            remove(StoryCacheKeys.articleUrlKey(storyId))
+            remove(StoryCacheKeys.articleCharsetKey(storyId))
         }
         indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(updatedIndex)
         removeFiles(storyId)
@@ -324,22 +326,22 @@ class StoryCacheRepository(
             return null
         }
         files.touch(StoryCacheKeys.ARTICLE_NAMESPACE, key, nowMillis)
-        val charset = metadata.getString(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+        val charset = metadata.getString(StoryCacheKeys.articleCharsetKey(storyId))
             ?.takeIf(String::isNotBlank)
             ?: "UTF-8"
         return files.readText(StoryCacheKeys.ARTICLE_NAMESPACE, key, charset)
     }
 
     fun articleUrl(storyId: Int): String? = storyId.takeIf { it > 0 }?.let {
-        metadata.getString(StoryCacheKeys.ARTICLE_URL + it)
+        metadata.getString(StoryCacheKeys.articleUrlKey(it))
     }
 
     fun recordArticleMetadata(storyId: Int, sourceUrl: String, contentType: String?) {
         if (storyId <= 0) return
         metadata.update {
-            putString(StoryCacheKeys.ARTICLE_URL + storyId, sourceUrl)
+            putString(StoryCacheKeys.articleUrlKey(storyId), sourceUrl)
             putString(
-                StoryCacheKeys.ARTICLE_CHARSET + storyId,
+                StoryCacheKeys.articleCharsetKey(storyId),
                 ArticleCacheMetadata.charsetName(contentType),
             )
         }
@@ -348,8 +350,8 @@ class StoryCacheRepository(
     fun removeArticleMetadata(storyId: Int) {
         if (storyId <= 0) return
         metadata.update {
-            remove(StoryCacheKeys.ARTICLE_URL + storyId)
-            remove(StoryCacheKeys.ARTICLE_CHARSET + storyId)
+            remove(StoryCacheKeys.articleUrlKey(storyId))
+            remove(StoryCacheKeys.articleCharsetKey(storyId))
         }
     }
 

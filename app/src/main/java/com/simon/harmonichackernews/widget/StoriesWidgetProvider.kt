@@ -85,12 +85,10 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             HarmonicLog.debug("WidgetProvider updateWidget widgetId=$appWidgetId start")
             widgetService(context).setSkipFetch(appWidgetId, false)
             widgetService(context).setRefreshing(appWidgetId, true)
-            val views = RemoteViews(context.packageName, R.layout.widget_stories)
-            bindWidgetCommonViews(context, views, appWidgetId)
+            val views = createWidgetViews(context, appWidgetId)
 
             // Show refreshing state initially
-            views.setViewVisibility(R.id.widget_refresh_button, View.GONE)
-            views.setViewVisibility(R.id.widget_refresh_progress, View.VISIBLE)
+            views.setRefreshIndicator(refreshing = true)
             views.setTextViewText(R.id.widget_updated_text, "")
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
@@ -111,16 +109,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             )
             widgetService(context).setSkipFetch(appWidgetId, false)
 
-            val views = RemoteViews(context.packageName, R.layout.widget_stories)
-            bindWidgetCommonViews(context, views, appWidgetId)
-            views.setViewVisibility(
-                R.id.widget_refresh_button,
-                if (refreshing) View.GONE else View.VISIBLE
-            )
-            views.setViewVisibility(
-                R.id.widget_refresh_progress,
-                if (refreshing) View.VISIBLE else View.GONE
-            )
+            val views = createWidgetViews(context, appWidgetId)
+            views.setRefreshIndicator(refreshing)
             views.setTextViewText(
                 R.id.widget_updated_text,
                 formatUpdatedTime(context, appWidgetId)
@@ -146,10 +136,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
         ) {
             HarmonicLog.debug("WidgetProvider showRefreshing widgetId=$appWidgetId")
             widgetService(context).setRefreshing(appWidgetId, true)
-            val views = RemoteViews(context.packageName, R.layout.widget_stories)
-            bindWidgetCommonViews(context, views, appWidgetId)
-            views.setViewVisibility(R.id.widget_refresh_button, android.view.View.GONE)
-            views.setViewVisibility(R.id.widget_refresh_progress, android.view.View.VISIBLE)
+            val views = createWidgetViews(context, appWidgetId)
+            views.setRefreshIndicator(refreshing = true)
             views.setTextViewText(R.id.widget_updated_text, "")
             views.setTextViewText(
                 R.id.widget_empty_text,
@@ -162,10 +150,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             HarmonicLog.debug("WidgetProvider updateRefreshDone widgetId=$appWidgetId")
             widgetService(context).setRefreshing(appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val views = RemoteViews(context.packageName, R.layout.widget_stories)
-            bindWidgetCommonViews(context, views, appWidgetId)
-            views.setViewVisibility(R.id.widget_refresh_button, android.view.View.VISIBLE)
-            views.setViewVisibility(R.id.widget_refresh_progress, android.view.View.GONE)
+            val views = createWidgetViews(context, appWidgetId)
+            views.setRefreshIndicator(refreshing = false)
             views.setTextViewText(
                 R.id.widget_updated_text,
                 formatUpdatedTime(context, appWidgetId)
@@ -177,10 +163,8 @@ class StoriesWidgetProvider : AppWidgetProvider() {
             HarmonicLog.debug("WidgetProvider updateRefreshError widgetId=$appWidgetId")
             widgetService(context).setRefreshing(appWidgetId, false)
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val views = RemoteViews(context.packageName, R.layout.widget_stories)
-            bindWidgetCommonViews(context, views, appWidgetId)
-            views.setViewVisibility(R.id.widget_refresh_button, android.view.View.VISIBLE)
-            views.setViewVisibility(R.id.widget_refresh_progress, android.view.View.GONE)
+            val views = createWidgetViews(context, appWidgetId)
+            views.setRefreshIndicator(refreshing = false)
             views.setTextViewText(
                 R.id.widget_empty_text,
                 context.getString(R.string.widget_could_not_load_stories),
@@ -191,6 +175,22 @@ class StoriesWidgetProvider : AppWidgetProvider() {
                 formatUpdatedTime(context, appWidgetId)
             )
             appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views)
+        }
+
+        private fun createWidgetViews(context: Context, appWidgetId: Int): RemoteViews =
+            RemoteViews(context.packageName, R.layout.widget_stories).also { views ->
+                bindWidgetCommonViews(context, views, appWidgetId)
+            }
+
+        private fun RemoteViews.setRefreshIndicator(refreshing: Boolean) {
+            setViewVisibility(
+                R.id.widget_refresh_button,
+                if (refreshing) View.GONE else View.VISIBLE,
+            )
+            setViewVisibility(
+                R.id.widget_refresh_progress,
+                if (refreshing) View.VISIBLE else View.GONE,
+            )
         }
 
         private fun bindWidgetCommonViews(

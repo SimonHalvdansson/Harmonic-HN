@@ -16,13 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -37,7 +34,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.common.lerpRect
+import com.simon.harmonichackernews.ui.common.moveRectBetweenContainers
 import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
+import com.simon.harmonichackernews.ui.common.roundedRectPath
 import com.simon.harmonichackernews.ui.common.transformedForPredictiveBack
 import kotlin.math.max
 import kotlin.math.min
@@ -179,7 +179,7 @@ internal fun CommentActionTransitionOverlay(
         x = with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection,
         y = with(density) { 18.dp.toPx() } * predictiveVisualProgress,
     )
-    val baseContainer = lerp(visibleSource, targetContainer, progress)
+    val baseContainer = lerpRect(visibleSource, targetContainer, progress)
     val container = baseContainer.transformedForPredictiveBack(
         scale = backScale,
         pivotFractionX = backPivotFractionX,
@@ -256,12 +256,12 @@ private fun DrawScope.drawCommentActionContent(
     radiusPx: Float,
     progress: Float,
 ) {
-    val clip = roundedPath(visualContainer, radiusPx)
+    val clip = roundedRectPath(visualContainer, radiusPx)
     // The original comment should travel with its container, not inherit the dialog's changing
     // height. Scaling this bitmap made the source text progressively taller until it occupied the
     // whole dialog. Preserve its intrinsic size, like the fixed-size source accessories in the
     // story preview transition, and crossfade to the separately measured dialog groups instead.
-    val sourceDestination = moveBetweenContainers(sourceContainer, visibleSource, baseContainer)
+    val sourceDestination = moveRectBetweenContainers(sourceContainer, visibleSource, baseContainer)
         .transformedForPredictiveBack(
             scale = predictiveBackScale,
             pivotFractionX = predictiveBackPivotFractionX,
@@ -286,7 +286,7 @@ private fun DrawScope.drawCommentActionContent(
             val snapshot = transition.targetSnapshot(element) ?: return@forEach
             // Destination content follows its container but retains its measured size. Scaling
             // the complete final dialog is the artifact this transition is replacing.
-            val destination = moveBetweenContainers(bounds, targetContainer, baseContainer)
+            val destination = moveRectBetweenContainers(bounds, targetContainer, baseContainer)
                 .transformedForPredictiveBack(
                     scale = predictiveBackScale,
                     pivotFractionX = predictiveBackPivotFractionX,
@@ -393,30 +393,6 @@ private fun GraphicsLayer.resetForLocalDraw() {
     pivotOffset = Offset.Zero
 }
 
-private fun moveBetweenContainers(rect: Rect, from: Rect, to: Rect): Rect {
-    if (from.width <= 0f || from.height <= 0f) return rect
-    val centerX = to.left + (rect.center.x - from.left) / from.width * to.width
-    val centerY = to.top + (rect.center.y - from.top) / from.height * to.height
-    return Rect(
-        left = centerX - rect.width / 2f,
-        top = centerY - rect.height / 2f,
-        right = centerX + rect.width / 2f,
-        bottom = centerY + rect.height / 2f,
-    )
-}
-
-private fun roundedPath(rect: Rect, radius: Float): Path = Path().apply {
-    addRoundRect(
-        RoundRect(
-            rect = rect,
-            topLeft = CornerRadius(radius),
-            topRight = CornerRadius(radius),
-            bottomRight = CornerRadius(radius),
-            bottomLeft = CornerRadius(radius),
-        ),
-    )
-}
-
 private fun Rect.intersectionOrNull(other: Rect): Rect? {
     val intersection = Rect(
         left = max(left, other.left),
@@ -434,13 +410,6 @@ private fun targetAlpha(element: CommentActionTargetElement, progress: Float): F
 }
 
 private fun sourceAlpha(progress: Float): Float = (1f - progress / 0.68f).coerceIn(0f, 1f)
-
-private fun lerp(start: Rect, end: Rect, progress: Float): Rect = Rect(
-    left = lerp(start.left, end.left, progress),
-    top = lerp(start.top, end.top, progress),
-    right = lerp(start.right, end.right, progress),
-    bottom = lerp(start.bottom, end.bottom, progress),
-)
 
 private fun lerp(start: Float, end: Float, progress: Float): Float =
     start + (end - start) * progress

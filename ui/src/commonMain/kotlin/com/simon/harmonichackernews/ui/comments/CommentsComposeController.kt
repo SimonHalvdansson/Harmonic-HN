@@ -561,6 +561,22 @@ class CommentsComposeController private constructor(
         syncInteractionState()
     }
 
+    private fun updateLinkPreviewSource(
+        sourceBounds: Rect?,
+        sourceIsReferenceRow: Boolean,
+        sourceContainerColor: Color?,
+        sourceContentLayer: GraphicsLayer?,
+        sourceImageAspectRatio: Float?,
+    ) {
+        linkPreviewSourceBounds = sourceBounds
+        linkPreviewSourceIsReferenceRow = sourceIsReferenceRow
+        linkPreviewSourceContainerColor = sourceContainerColor
+        linkPreviewSourceContentLayer = sourceContentLayer
+        linkPreviewSourceImageAspectRatio = sourceImageAspectRatio
+        linkPreviewSourceCovered = false
+        headerPreviewSuppressed = false
+    }
+
     fun showReferencePreview(
         link: CollectedReferenceLinks.ReferenceLink,
         sourceBounds: androidx.compose.ui.geometry.Rect?,
@@ -601,13 +617,13 @@ class CommentsComposeController private constructor(
             sourceCommentId = sourceCommentId.takeIf { it > 0 },
             headerReference = headerReference,
         )) return
-        linkPreviewSourceBounds = sourceBounds
-        linkPreviewSourceIsReferenceRow = sourceIsReferenceRow
-        linkPreviewSourceContainerColor = sourceContainerColor
-        linkPreviewSourceContentLayer = sourceContentLayer
-        linkPreviewSourceImageAspectRatio = null
-        linkPreviewSourceCovered = false
-        headerPreviewSuppressed = false
+        updateLinkPreviewSource(
+            sourceBounds = sourceBounds,
+            sourceIsReferenceRow = sourceIsReferenceRow,
+            sourceContainerColor = sourceContainerColor,
+            sourceContentLayer = sourceContentLayer,
+            sourceImageAspectRatio = null,
+        )
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
@@ -625,13 +641,14 @@ class CommentsComposeController private constructor(
             description = description.orEmpty(),
             backgroundColor = backgroundColor,
         )) return
-        linkPreviewSourceBounds = sourceBounds
-        linkPreviewSourceIsReferenceRow = false
-        linkPreviewSourceContainerColor = null
-        linkPreviewSourceContentLayer = sourceContentLayer
-        linkPreviewSourceImageAspectRatio = imageAspectRatio?.takeIf { it.isFinite() && it > 0f }
-        linkPreviewSourceCovered = false
-        headerPreviewSuppressed = false
+        val validImageAspectRatio = imageAspectRatio?.takeIf { it.isFinite() && it > 0f }
+        updateLinkPreviewSource(
+            sourceBounds = sourceBounds,
+            sourceIsReferenceRow = false,
+            sourceContainerColor = null,
+            sourceContentLayer = sourceContentLayer,
+            sourceImageAspectRatio = validImageAspectRatio,
+        )
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
@@ -683,13 +700,13 @@ class CommentsComposeController private constructor(
 
     fun completeLinkPreviewDismiss() {
         if (!interactionStore.completeLinkPreviewDismiss()) return
-        linkPreviewSourceBounds = null
-        linkPreviewSourceIsReferenceRow = false
-        linkPreviewSourceContainerColor = null
-        linkPreviewSourceContentLayer = null
-        linkPreviewSourceImageAspectRatio = null
-        linkPreviewSourceCovered = false
-        headerPreviewSuppressed = false
+        updateLinkPreviewSource(
+            sourceBounds = null,
+            sourceIsReferenceRow = false,
+            sourceContainerColor = null,
+            sourceContentLayer = null,
+            sourceImageAspectRatio = null,
+        )
         syncInteractionState()
         listener.onLinkPreviewOverlayVisibilityChanged(false)
     }

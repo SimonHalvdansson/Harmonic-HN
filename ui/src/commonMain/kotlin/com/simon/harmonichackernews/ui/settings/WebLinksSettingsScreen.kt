@@ -68,25 +68,23 @@ fun WebLinksSettingsScreen(
     ) {
         item {
             SettingsCategory("WebView") {
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Integrated WebView",
                     summary = "Opens websites in the app which has a hit on performance",
                     icon = Res.drawable.ic_web_asset,
                     checked = state.integratedWebView,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.IntegratedWebView, it)
-                    },
+                    setting = WebLinksBooleanSetting.IntegratedWebView,
+                    onBooleanChanged = onBooleanChanged,
                 )
                 SettingsDivider()
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Go back to comments",
                     summary = "Back navigation closes integrated WebView",
                     icon = Res.drawable.ic_arrow_back,
                     checked = state.closeWebViewOnBack,
+                    setting = WebLinksBooleanSetting.CloseWebViewOnBack,
+                    onBooleanChanged = onBooleanChanged,
                     enabled = state.integratedWebView,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.CloseWebViewOnBack, it)
-                    },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -97,48 +95,44 @@ fun WebLinksSettingsScreen(
                     onClick = { onDialogRequested(WebLinksSettingsDialog.Preload) },
                 )
                 SettingsDivider()
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Match WebView dark mode to theme",
                     icon = Res.drawable.ic_invert_colors,
                     checked = state.matchWebViewTheme,
+                    setting = WebLinksBooleanSetting.MatchWebViewTheme,
+                    onBooleanChanged = onBooleanChanged,
                     enabled = state.integratedWebView,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.MatchWebViewTheme, it)
-                    },
                 )
                 SettingsDivider()
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Block WebView ads",
                     summary = "May cause some sites to stop working and has a small performance penalty",
                     icon = Res.drawable.ic_block,
                     checked = state.blockWebViewAds,
+                    setting = WebLinksBooleanSetting.BlockWebViewAds,
+                    onBooleanChanged = onBooleanChanged,
                     enabled = state.integratedWebView,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.BlockWebViewAds, it)
-                    },
                 )
             }
         }
         item {
             SettingsCategory("Reader mode") {
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Enable reader mode",
                     icon = Res.drawable.ic_chrome_reader_mode,
                     checked = state.readerModeEnabled,
+                    setting = WebLinksBooleanSetting.ReaderModeEnabled,
+                    onBooleanChanged = onBooleanChanged,
                     enabled = state.integratedWebView,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.ReaderModeEnabled, it)
-                    },
                 )
                 SettingsDivider()
-                SwitchSettingRow(
+                BooleanSettingRow(
                     title = "Reader mode on by default",
                     icon = Res.drawable.ic_chrome_reader_mode,
                     checked = state.readerModeDefault,
+                    setting = WebLinksBooleanSetting.ReaderModeDefault,
+                    onBooleanChanged = onBooleanChanged,
                     enabled = readerControlsEnabled,
-                    onCheckedChange = {
-                        onBooleanChanged(WebLinksBooleanSetting.ReaderModeDefault, it)
-                    },
                 )
                 SettingsDivider()
                 SettingRow(
@@ -170,20 +164,20 @@ fun WebLinksSettingsScreen(
         item {
             SettingsCategory("Browser and links") {
                 BooleanSettingRow(
-                    "Use external browser",
-                    Res.drawable.ic_open_in_browser,
-                    state.externalBrowser,
-                    WebLinksBooleanSetting.ExternalBrowser,
-                    onBooleanChanged,
+                    title = "Use external browser",
+                    icon = Res.drawable.ic_open_in_browser,
+                    checked = state.externalBrowser,
+                    setting = WebLinksBooleanSetting.ExternalBrowser,
+                    onBooleanChanged = onBooleanChanged,
                     summary = "In place of custom tabs",
                 )
                 SettingsDivider()
                 BooleanSettingRow(
-                    "Redirect Twitter/X to Nitter",
-                    Res.drawable.ic_shuffle,
-                    state.redirectNitter,
-                    WebLinksBooleanSetting.RedirectNitter,
-                    onBooleanChanged,
+                    title = "Redirect Twitter/X to Nitter",
+                    icon = Res.drawable.ic_shuffle,
+                    checked = state.redirectNitter,
+                    setting = WebLinksBooleanSetting.RedirectNitter,
+                    onBooleanChanged = onBooleanChanged,
                 )
                 SettingsDivider()
                 SettingRow(
@@ -216,12 +210,14 @@ private fun BooleanSettingRow(
     setting: WebLinksBooleanSetting,
     onBooleanChanged: (WebLinksBooleanSetting, Boolean) -> Unit,
     summary: String? = null,
+    enabled: Boolean = true,
 ) {
     SwitchSettingRow(
         title = title,
         summary = summary,
         icon = icon,
         checked = checked,
+        enabled = enabled,
         onCheckedChange = { onBooleanChanged(setting, it) },
     )
 }

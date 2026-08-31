@@ -1,18 +1,12 @@
 package com.simon.harmonichackernews.ui.navigation
 
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
@@ -159,9 +153,11 @@ fun MainNavigationScene(
         sceneState = sceneState,
         navigationEventState = eventState,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { mainOpenTransition(transitionOffsetPx) },
-        popTransitionSpec = { mainPopTransition(transitionOffsetPx) },
-        predictivePopTransitionSpec = { mainPopTransition(transitionOffsetPx) },
+        transitionSpec = { activityNavigationOpenContentTransform(transitionOffsetPx) },
+        popTransitionSpec = { activityNavigationPopContentTransform(transitionOffsetPx) },
+        predictivePopTransitionSpec = {
+            activityNavigationPopContentTransform(transitionOffsetPx)
+        },
     )
 }
 
@@ -368,51 +364,3 @@ fun SinglePaneNavigationScene(
         }
     }
 }
-
-private fun mainOpenTransition(transitionOffsetPx: Int): ContentTransform = ContentTransform(
-    targetContentEnter = commentsOpenEnter(transitionOffsetPx),
-    initialContentExit = slideOutHorizontally(
-        tween(
-            ActivityNavigationTransitionDurationMillis,
-            easing = activityNavigationEasing(),
-        ),
-    ) { -transitionOffsetPx },
-    targetContentZIndex = 1f,
-)
-
-private fun commentsOpenEnter(transitionOffsetPx: Int): EnterTransition = slideInHorizontally(
-    tween(
-        ActivityNavigationTransitionDurationMillis,
-        easing = activityNavigationEasing(),
-    ),
-) { transitionOffsetPx } + fadeIn(
-    tween(
-        ActivityNavigationFadeDurationMillis,
-        ActivityNavigationOpenFadeDelayMillis,
-        LinearEasing,
-    ),
-)
-
-private fun mainPopTransition(transitionOffsetPx: Int): ContentTransform = ContentTransform(
-    targetContentEnter = slideInHorizontally(
-        tween(
-            ActivityNavigationTransitionDurationMillis,
-            easing = activityNavigationEasing(),
-        ),
-    ) { -transitionOffsetPx },
-    initialContentExit = commentsPopExit(transitionOffsetPx),
-    targetContentZIndex = -1f,
-)
-
-private fun commentsPopExit(transitionOffsetPx: Int): ExitTransition = slideOutHorizontally(
-    tween(
-        ActivityNavigationTransitionDurationMillis,
-        easing = activityNavigationEasing(),
-    ),
-) { transitionOffsetPx } + fadeOut(
-    tween(
-        ActivityNavigationFadeDurationMillis,
-        ActivityNavigationCloseFadeDelayMillis,
-        LinearEasing,
-    ),
-)

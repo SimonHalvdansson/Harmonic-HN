@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.DataSettingsDialogState
+import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.settings.DataSettingsSnapshot
 import com.simon.harmonichackernews.summary.formatDecimalBytes
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -37,6 +39,20 @@ enum class DataSettingsAction {
     ClearAiModels,
     OpenLinksSettings,
     ResetSettings,
+}
+
+fun DataSettingsRuntime.handleDataSettingsAction(action: DataSettingsAction) {
+    when (action) {
+        DataSettingsAction.AddBookmarksToFavorites -> addBookmarksToFavorites()
+        DataSettingsAction.ExportBookmarks -> exportBookmarks()
+        DataSettingsAction.ImportBookmarks -> showDialog(DataSettingsDialogState.IMPORT)
+        DataSettingsAction.ClearHistory -> clearHistory()
+        DataSettingsAction.ClearPostCache -> clearPostCache()
+        DataSettingsAction.ClearTintCache -> clearTintCache()
+        DataSettingsAction.ClearAiModels -> showDialog(DataSettingsDialogState.AI_MODELS)
+        DataSettingsAction.OpenLinksSettings -> showDialog(DataSettingsDialogState.LINKS)
+        DataSettingsAction.ResetSettings -> showDialog(DataSettingsDialogState.RESET)
+    }
 }
 
 @Composable
