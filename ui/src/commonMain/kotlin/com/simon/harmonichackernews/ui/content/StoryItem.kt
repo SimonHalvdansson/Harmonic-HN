@@ -1,14 +1,22 @@
+@file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -224,6 +232,27 @@ private fun Modifier.captureStoryPreviewElement(
 ): Modifier = if (enabled) {
     onGloballyPositioned(onPositioned)
         .captureStoryPreviewSourceContent(onLayerChanged)
+} else {
+    this
+}
+
+@Composable
+private fun Modifier.sharedStoryPreviewImage(
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+    sharedContentKey: Any?,
+): Modifier = if (
+    sharedTransitionScope != null &&
+    animatedVisibilityScope != null &&
+    sharedContentKey != null
+) {
+    with(sharedTransitionScope) {
+        this@sharedStoryPreviewImage.sharedElement(
+            sharedContentState = rememberSharedContentState(sharedContentKey),
+            animatedVisibilityScope = animatedVisibilityScope,
+            boundsTransform = BoundsTransform { _, _ -> contentTween() },
+        )
+    }
 } else {
     this
 }
@@ -585,45 +614,6 @@ fun StoryItem(
                         onTintExtracted = handlePreviewTintExtracted,
                     )
                 }
-                val comments: @Composable () -> Unit = if (mediumPreview) {
-                    {
-                        StoryMediumPreviewRail(
-                            model = model,
-                            style = style,
-                            typography = typography,
-                            hasPreview = hasPreview,
-                            dimAlpha = dimAlpha,
-                            onClick = onCommentClick,
-                            onPreviewLoadFailed = handlePreviewLoadFailed,
-                            onPreviewLoadSuccess = handlePreviewLoadSuccess,
-                            tintBaseColorArgb = tintBaseColorArgb,
-                            paletteTintConfigKey = style.paletteTintConfigKey,
-                            extractPreviewTint = style.tintCard &&
-                                model.previewImageTintArgb == null,
-                            onPreviewTintExtracted = handlePreviewTintExtracted,
-                            capturePreviewSource = captureSourceContent,
-                            itemGeometry = itemGeometry,
-                            animateChanges = animate,
-                            sourceAccessoryAlpha = sourceAccessoryAlpha,
-                        )
-                    }
-                } else {
-                    {
-                        StoryCommentRail(
-                            model = model,
-                            style = style,
-                            typography = typography,
-                            dimAlpha = dimAlpha,
-                            onClick = onCommentClick,
-                            animateChanges = animate,
-                            modifier = Modifier.captureStoryPreviewElement(
-                                enabled = captureSourceContent,
-                                onPositioned = { itemGeometry.commentsCoordinates = it },
-                                onLayerChanged = { itemGeometry.commentsLayer = it },
-                            ),
-                        )
-                    }
-                }
                 val targetRailWidth: Dp? = when {
                     !mediumPreview -> 60.dp
                     hasPreview -> MediumPreviewImageRailWidth
@@ -641,39 +631,185 @@ fun StoryItem(
                         width
                     }
                 }
-                StoryContentRow(
-                    commentsOnLeft = style.commentsOnLeft && !mediumPreview,
-                    animateChanges = animate,
-                    railWidth = animatedRailWidth,
-                    contentMinHeight = if (mediumPreview && hasPreview) {
-                        MediumPreviewImageMinimumHeight
-                    } else {
-                        0.dp
-                    },
-                    comments = comments,
-                ) {
-                    StoryMainContent(
-                        model = model,
-                        style = style,
-                        typography = typography,
-                        hasSmallPreview = hasPreview && style.previewImageMode == StoryPreviewMode.SMALL,
-                        dimAlpha = dimAlpha,
-                        onLinkClick = onLinkClick,
-                        onLinkLongClick = trackedLinkLongClick,
-                        onPreviewLoadFailed = handlePreviewLoadFailed,
-                        onPreviewLoadSuccess = handlePreviewLoadSuccess,
-                        tintBaseColorArgb = tintBaseColorArgb,
-                        paletteTintConfigKey = style.paletteTintConfigKey,
-                        extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
-                        onPreviewTintExtracted = handlePreviewTintExtracted,
-                        extractFaviconTint = style.tintCard && !previewAvailable &&
-                            model.faviconTintArgb == null,
-                        onFaviconTintExtracted = handleFaviconTintExtracted,
-                        animateChanges = animate,
-                        capturePreviewSource = captureSourceContent,
-                        itemGeometry = itemGeometry,
-                        modifier = Modifier,
-                    )
+                val sharedPreviewImageKey = remember(
+                    model.previewImageUrl,
+                    model.previewImageFallback,
+                ) { Any() }
+                val storyContentRow: @Composable (SharedTransitionScope?) -> Unit =
+                    { sharedTransitionScope ->
+                        val sharedImageTransitionActive =
+                            sharedTransitionScope?.isTransitionActive == true
+                        val sharedAccessoryAlpha = if (sharedTransitionScope != null) {
+                            val animatedAlpha by animateFloatAsState(
+                                targetValue = if (sharedImageTransitionActive) 0f else 1f,
+                                animationSpec = if (sharedImageTransitionActive) {
+                                    snap()
+                                } else {
+                                    tween(
+                                        durationMillis = 140,
+                                        easing = ContentMotionEasing,
+                                    )
+                                },
+                                label = "story shared image accessories",
+                            )
+                            animatedAlpha
+                        } else {
+                            1f
+                        }
+                        val comments: @Composable () -> Unit = if (
+                            sharedTransitionScope != null
+                        ) {
+                            {
+                                Box(Modifier.fillMaxSize()) {
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = mediumPreview,
+                                        modifier = Modifier.fillMaxSize(),
+                                        enter = fadeIn(contentTween()),
+                                        exit = fadeOut(contentTween()),
+                                    ) {
+                                        StoryMediumPreviewRail(
+                                            model = model,
+                                            style = style,
+                                            typography = typography,
+                                            hasPreview = hasPreview,
+                                            dimAlpha = dimAlpha,
+                                            onClick = onCommentClick,
+                                            onPreviewLoadFailed = handlePreviewLoadFailed,
+                                            onPreviewLoadSuccess = handlePreviewLoadSuccess,
+                                            tintBaseColorArgb = tintBaseColorArgb,
+                                            paletteTintConfigKey = style.paletteTintConfigKey,
+                                            extractPreviewTint = style.tintCard &&
+                                                model.previewImageTintArgb == null,
+                                            onPreviewTintExtracted = handlePreviewTintExtracted,
+                                            capturePreviewSource = captureSourceContent,
+                                            itemGeometry = itemGeometry,
+                                            animateChanges = true,
+                                            sourceAccessoryAlpha =
+                                                sourceAccessoryAlpha * sharedAccessoryAlpha,
+                                            sharedTransitionScope = sharedTransitionScope,
+                                            animatedVisibilityScope = this,
+                                            sharedContentKey = sharedPreviewImageKey,
+                                        )
+                                    }
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = !mediumPreview,
+                                        modifier = Modifier.fillMaxSize(),
+                                        enter = fadeIn(contentTween()),
+                                        exit = fadeOut(contentTween()),
+                                    ) {
+                                        StoryCommentRail(
+                                            model = model,
+                                            style = style,
+                                            typography = typography,
+                                            dimAlpha = dimAlpha,
+                                            onClick = onCommentClick,
+                                            animateChanges = true,
+                                            modifier = Modifier
+                                                .graphicsLayer(alpha = sharedAccessoryAlpha)
+                                                .captureStoryPreviewElement(
+                                                    enabled = captureSourceContent,
+                                                    onPositioned = {
+                                                        itemGeometry.commentsCoordinates = it
+                                                    },
+                                                    onLayerChanged = {
+                                                        itemGeometry.commentsLayer = it
+                                                    },
+                                                ),
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (mediumPreview) {
+                            {
+                                StoryMediumPreviewRail(
+                                    model = model,
+                                    style = style,
+                                    typography = typography,
+                                    hasPreview = hasPreview,
+                                    dimAlpha = dimAlpha,
+                                    onClick = onCommentClick,
+                                    onPreviewLoadFailed = handlePreviewLoadFailed,
+                                    onPreviewLoadSuccess = handlePreviewLoadSuccess,
+                                    tintBaseColorArgb = tintBaseColorArgb,
+                                    paletteTintConfigKey = style.paletteTintConfigKey,
+                                    extractPreviewTint = style.tintCard &&
+                                        model.previewImageTintArgb == null,
+                                    onPreviewTintExtracted = handlePreviewTintExtracted,
+                                    capturePreviewSource = captureSourceContent,
+                                    itemGeometry = itemGeometry,
+                                    animateChanges = animate,
+                                    sourceAccessoryAlpha = sourceAccessoryAlpha,
+                                    sharedTransitionScope = null,
+                                    animatedVisibilityScope = null,
+                                    sharedContentKey = null,
+                                )
+                            }
+                        } else {
+                            {
+                                StoryCommentRail(
+                                    model = model,
+                                    style = style,
+                                    typography = typography,
+                                    dimAlpha = dimAlpha,
+                                    onClick = onCommentClick,
+                                    animateChanges = animate,
+                                    modifier = Modifier.captureStoryPreviewElement(
+                                        enabled = captureSourceContent,
+                                        onPositioned = {
+                                            itemGeometry.commentsCoordinates = it
+                                        },
+                                        onLayerChanged = {
+                                            itemGeometry.commentsLayer = it
+                                        },
+                                    ),
+                                )
+                            }
+                        }
+                        StoryContentRow(
+                            commentsOnLeft = style.commentsOnLeft && !mediumPreview,
+                            animateChanges = animate,
+                            railWidth = animatedRailWidth,
+                            contentMinHeight = if (mediumPreview && hasPreview) {
+                                MediumPreviewImageMinimumHeight
+                            } else {
+                                0.dp
+                            },
+                            comments = comments,
+                        ) {
+                            StoryMainContent(
+                                model = model,
+                                style = style,
+                                typography = typography,
+                                hasSmallPreview = hasPreview &&
+                                    style.previewImageMode == StoryPreviewMode.SMALL,
+                                dimAlpha = dimAlpha,
+                                onLinkClick = onLinkClick,
+                                onLinkLongClick = trackedLinkLongClick,
+                                onPreviewLoadFailed = handlePreviewLoadFailed,
+                                onPreviewLoadSuccess = handlePreviewLoadSuccess,
+                                tintBaseColorArgb = tintBaseColorArgb,
+                                paletteTintConfigKey = style.paletteTintConfigKey,
+                                extractPreviewTint = style.tintCard &&
+                                    model.previewImageTintArgb == null,
+                                onPreviewTintExtracted = handlePreviewTintExtracted,
+                                extractFaviconTint = style.tintCard && !previewAvailable &&
+                                    model.faviconTintArgb == null,
+                                onFaviconTintExtracted = handleFaviconTintExtracted,
+                                animateChanges = animate,
+                                capturePreviewSource = captureSourceContent,
+                                itemGeometry = itemGeometry,
+                                sharedTransitionScope = sharedTransitionScope,
+                                sharedContentKey = sharedPreviewImageKey,
+                                modifier = Modifier,
+                            )
+                        }
+                    }
+                if (animate && hasPreview && !listItem) {
+                    SharedTransitionLayout {
+                        storyContentRow(this)
+                    }
+                } else {
+                    storyContentRow(null)
                 }
             }
         }
@@ -762,6 +898,9 @@ private fun StoryMediumPreviewRail(
     itemGeometry: StoryItemGeometry,
     animateChanges: Boolean,
     sourceAccessoryAlpha: Float,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+    sharedContentKey: Any?,
     modifier: Modifier = Modifier,
 ) {
     val hazeState = if (hasPreview) rememberHazeState() else null
@@ -871,7 +1010,20 @@ private fun StoryMediumPreviewRail(
                 StoryPreviewImage(
                     model = model,
                     modifier = Modifier
+                        .sharedStoryPreviewImage(
+                            sharedTransitionScope = sharedTransitionScope,
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            sharedContentKey = sharedContentKey,
+                        )
                         .fillMaxSize()
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = imageStartRadius,
+                                topEnd = imageEndRadius,
+                                bottomEnd = imageEndRadius,
+                                bottomStart = imageStartRadius,
+                            ),
+                        )
                         .hazeSource(hazeState)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
@@ -1148,6 +1300,8 @@ private fun StoryMainContent(
     animateChanges: Boolean,
     capturePreviewSource: Boolean,
     itemGeometry: StoryItemGeometry,
+    sharedTransitionScope: SharedTransitionScope?,
+    sharedContentKey: Any?,
     modifier: Modifier,
 ) {
     val foreground = readStateForeground(
@@ -1321,34 +1475,96 @@ private fun StoryMainContent(
                     )
                 }
             }
-            StoryVisibility(
-                visible = hasSmallPreview,
-                animate = animateChanges,
-                modifier = Modifier.align(Alignment.CenterVertically),
-                enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
-            ) {
-                StoryPreviewImage(
+            if (animateChanges) {
+                AnimatedVisibility(
+                    visible = hasSmallPreview,
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
+                    exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                ) {
+                    StorySmallPreviewImage(
+                        model = model,
+                        dimAlpha = dimAlpha,
+                        onPreviewLoadFailed = onPreviewLoadFailed,
+                        onPreviewLoadSuccess = onPreviewLoadSuccess,
+                        tintBaseColorArgb = tintBaseColorArgb,
+                        paletteTintConfigKey = paletteTintConfigKey,
+                        extractPreviewTint = extractPreviewTint,
+                        onPreviewTintExtracted = onPreviewTintExtracted,
+                        capturePreviewSource = capturePreviewSource,
+                        itemGeometry = itemGeometry,
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = this,
+                        sharedContentKey = sharedContentKey,
+                    )
+                }
+            } else if (hasSmallPreview) {
+                StorySmallPreviewImage(
                     model = model,
-                    modifier = Modifier
-                        .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
-                        .size(width = 72.dp, height = 52.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .captureStoryPreviewElement(
-                            enabled = capturePreviewSource,
-                            onPositioned = { itemGeometry.smallImageCoordinates = it },
-                            onLayerChanged = { itemGeometry.smallImageLayer = it },
-                        )
-                        .graphicsLayer(alpha = dimAlpha),
-                    onLoadFailed = onPreviewLoadFailed,
-                    onLoadSuccess = onPreviewLoadSuccess,
+                    dimAlpha = dimAlpha,
+                    onPreviewLoadFailed = onPreviewLoadFailed,
+                    onPreviewLoadSuccess = onPreviewLoadSuccess,
                     tintBaseColorArgb = tintBaseColorArgb,
                     paletteTintConfigKey = paletteTintConfigKey,
-                    extractTint = extractPreviewTint,
-                    onTintExtracted = onPreviewTintExtracted,
+                    extractPreviewTint = extractPreviewTint,
+                    onPreviewTintExtracted = onPreviewTintExtracted,
+                    capturePreviewSource = capturePreviewSource,
+                    itemGeometry = itemGeometry,
+                    sharedTransitionScope = null,
+                    animatedVisibilityScope = null,
+                    sharedContentKey = null,
+                    modifier = Modifier.align(Alignment.CenterVertically),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StorySmallPreviewImage(
+    model: StoryItemUiModel,
+    dimAlpha: Float,
+    onPreviewLoadFailed: () -> Unit,
+    onPreviewLoadSuccess: () -> Unit,
+    tintBaseColorArgb: Int,
+    paletteTintConfigKey: String,
+    extractPreviewTint: Boolean,
+    onPreviewTintExtracted: (Int) -> Unit,
+    capturePreviewSource: Boolean,
+    itemGeometry: StoryItemGeometry,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+    sharedContentKey: Any?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+            .size(width = 72.dp, height = 52.dp),
+    ) {
+        StoryPreviewImage(
+            model = model,
+            modifier = Modifier
+                .sharedStoryPreviewImage(
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    sharedContentKey = sharedContentKey,
+                )
+                .fillMaxSize()
+                .clip(RoundedCornerShape(6.dp))
+                .captureStoryPreviewElement(
+                    enabled = capturePreviewSource,
+                    onPositioned = { itemGeometry.smallImageCoordinates = it },
+                    onLayerChanged = { itemGeometry.smallImageLayer = it },
+                )
+                .graphicsLayer(alpha = dimAlpha),
+            onLoadFailed = onPreviewLoadFailed,
+            onLoadSuccess = onPreviewLoadSuccess,
+            tintBaseColorArgb = tintBaseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            extractTint = extractPreviewTint,
+            onTintExtracted = onPreviewTintExtracted,
+        )
     }
 }
 
