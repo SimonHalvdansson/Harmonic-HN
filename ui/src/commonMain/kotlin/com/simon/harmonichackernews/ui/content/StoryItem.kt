@@ -14,10 +14,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -251,6 +254,18 @@ private fun Modifier.sharedStoryPreviewImage(
             sharedContentState = rememberSharedContentState(sharedContentKey),
             animatedVisibilityScope = animatedVisibilityScope,
             boundsTransform = BoundsTransform { _, _ -> contentTween() },
+        )
+    }
+} else {
+    this
+}
+
+private fun Modifier.renderOverSharedStoryPreviewImage(
+    sharedTransitionScope: SharedTransitionScope?,
+): Modifier = if (sharedTransitionScope != null) {
+    with(sharedTransitionScope) {
+        this@renderOverSharedStoryPreviewImage.renderInSharedTransitionScopeOverlay(
+            zIndexInOverlay = 1f,
         )
     }
 } else {
@@ -620,7 +635,32 @@ fun StoryItem(
                     else -> null
                 }
                 val animatedRailWidth = targetRailWidth?.let { width ->
-                    if (animate) {
+                    if (animate && hasPreview && !listItem) {
+                        val railModeTransition = updateTransition(
+                            targetState = style.previewImageMode,
+                            label = "story preview rail mode",
+                        )
+                        val animatedWidth by railModeTransition.animateDp(
+                            transitionSpec = {
+                                if (
+                                    initialState == StoryPreviewMode.MEDIUM &&
+                                    targetState == StoryPreviewMode.SMALL
+                                ) {
+                                    snap()
+                                } else {
+                                    contentTween()
+                                }
+                            },
+                            label = "story metric rail width",
+                        ) { mode ->
+                            if (mode == StoryPreviewMode.MEDIUM) {
+                                MediumPreviewImageRailWidth
+                            } else {
+                                60.dp
+                            }
+                        }
+                        animatedWidth
+                    } else if (animate) {
                         val animatedWidth by animateDpAsState(
                             targetValue = width,
                             animationSpec = contentTween(),
@@ -637,24 +677,50 @@ fun StoryItem(
                 ) { Any() }
                 val storyContentRow: @Composable (SharedTransitionScope?) -> Unit =
                     { sharedTransitionScope ->
-                        val sharedImageTransitionActive =
-                            sharedTransitionScope?.isTransitionActive == true
-                        val sharedAccessoryAlpha = if (sharedTransitionScope != null) {
-                            val animatedAlpha by animateFloatAsState(
-                                targetValue = if (sharedImageTransitionActive) 0f else 1f,
-                                animationSpec = if (sharedImageTransitionActive) {
-                                    snap()
-                                } else {
-                                    tween(
-                                        durationMillis = 140,
-                                        easing = ContentMotionEasing,
-                                    )
-                                },
-                                label = "story shared image accessories",
+                        val mediumAccessoryAlpha: Float
+                        val smallAccessoryAlpha: Float
+                        if (sharedTransitionScope != null) {
+                            val previewModeTransition = updateTransition(
+                                targetState = mediumPreview,
+                                label = "story preview image mode",
                             )
-                            animatedAlpha
+                            val animatedMediumAlpha by previewModeTransition.animateFloat(
+                                transitionSpec = {
+                                    if (!initialState && targetState) {
+                                        tween(
+                                            durationMillis = 75,
+                                            delayMillis = 105,
+                                            easing = ContentMotionEasing,
+                                        )
+                                    } else {
+                                        snap()
+                                    }
+                                },
+                                label = "medium story accessories",
+                            ) { isMedium ->
+                                if (isMedium) 1f else 0f
+                            }
+                            val animatedSmallAlpha by previewModeTransition.animateFloat(
+                                transitionSpec = {
+                                    if (initialState && !targetState) {
+                                        tween(
+                                            durationMillis = 80,
+                                            delayMillis = 85,
+                                            easing = ContentMotionEasing,
+                                        )
+                                    } else {
+                                        snap()
+                                    }
+                                },
+                                label = "small story accessories",
+                            ) { isMedium ->
+                                if (isMedium) 0f else 1f
+                            }
+                            mediumAccessoryAlpha = animatedMediumAlpha
+                            smallAccessoryAlpha = animatedSmallAlpha
                         } else {
-                            1f
+                            mediumAccessoryAlpha = 1f
+                            smallAccessoryAlpha = 1f
                         }
                         val comments: @Composable () -> Unit = if (
                             sharedTransitionScope != null
@@ -685,7 +751,7 @@ fun StoryItem(
                                             itemGeometry = itemGeometry,
                                             animateChanges = true,
                                             sourceAccessoryAlpha =
-                                                sourceAccessoryAlpha * sharedAccessoryAlpha,
+                                                sourceAccessoryAlpha * mediumAccessoryAlpha,
                                             sharedTransitionScope = sharedTransitionScope,
                                             animatedVisibilityScope = this,
                                             sharedContentKey = sharedPreviewImageKey,
@@ -705,7 +771,7 @@ fun StoryItem(
                                             onClick = onCommentClick,
                                             animateChanges = true,
                                             modifier = Modifier
-                                                .graphicsLayer(alpha = sharedAccessoryAlpha)
+                                                .graphicsLayer(alpha = smallAccessoryAlpha)
                                                 .captureStoryPreviewElement(
                                                     enabled = captureSourceContent,
                                                     onPositioned = {
@@ -1042,6 +1108,7 @@ private fun StoryMediumPreviewRail(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)
+                        .renderOverSharedStoryPreviewImage(sharedTransitionScope)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
                             onPositioned = { itemGeometry.commentsCoordinates = it },
