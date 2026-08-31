@@ -6,10 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -24,7 +29,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 @Immutable
 data class HarmonicFilterButtonColors(
@@ -36,6 +44,18 @@ data class HarmonicFilterButtonColors(
 )
 
 @Composable
+fun harmonicFilterButtonColors(): HarmonicFilterButtonColors {
+    val colors = HarmonicTheme.colors
+    return HarmonicFilterButtonColors(
+        checkedBackground = colors.secondaryContainer,
+        checkedText = colors.onSecondaryContainer,
+        checkedStroke = colors.secondaryContainer,
+        uncheckedText = colors.textPrimary,
+        uncheckedStroke = colors.outlineVariant,
+    )
+}
+
+@Composable
 fun HarmonicFilterButton(
     label: String,
     selected: Boolean,
@@ -45,34 +65,26 @@ fun HarmonicFilterButton(
     modifier: Modifier = Modifier,
     fontFamily: FontFamily = ProductSansFontFamily,
     lastPosition: Int = 2,
+    icon: DrawableResource? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val innerCorner by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 8.dp,
+        targetValue = when {
+            isPressed -> 4.dp
+            selected -> 24.dp
+            else -> 8.dp
+        },
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f),
         label = "filter button corners",
     )
-    val shape = if (selected) {
-        RoundedCornerShape(if (isPressed) 12.dp else 24.dp)
-    } else {
-        when (position) {
-            0 -> RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = innerCorner,
-                bottomEnd = innerCorner,
-                bottomStart = 24.dp,
-            )
-            lastPosition -> RoundedCornerShape(
-                topStart = innerCorner,
-                topEnd = 24.dp,
-                bottomEnd = 24.dp,
-                bottomStart = innerCorner,
-            )
-            else -> RoundedCornerShape(innerCorner)
-        }
-    }
-    Box(
+    val shape = RoundedCornerShape(
+        topStart = if (position == 0) 24.dp else innerCorner,
+        topEnd = if (position == lastPosition) 24.dp else innerCorner,
+        bottomEnd = if (position == lastPosition) 24.dp else innerCorner,
+        bottomStart = if (position == 0) 24.dp else innerCorner,
+    )
+    Row(
         modifier = modifier
             .height(48.dp)
             .clip(shape)
@@ -88,8 +100,18 @@ fun HarmonicFilterButton(
                 role = Role.RadioButton,
                 interactionSource = interactionSource,
             ),
-        contentAlignment = Alignment.Center,
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        icon?.let {
+            Icon(
+                painter = painterResource(it),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (selected) colors.checkedText else colors.uncheckedText,
+            )
+            Spacer(Modifier.width(7.dp))
+        }
         Text(
             text = label,
             color = if (selected) colors.checkedText else colors.uncheckedText,

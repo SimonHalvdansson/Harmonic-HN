@@ -35,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,7 +53,7 @@ import com.simon.harmonichackernews.resources.widget_config_story_count_label
 import com.simon.harmonichackernews.resources.widget_config_title
 import com.simon.harmonichackernews.resources.widget_config_top_stories
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
-import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
+import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -203,13 +202,7 @@ private fun WidgetStoryCountSelector(
     modifier: Modifier = Modifier,
 ) {
     val options = WidgetConfiguration.allowedStoryCounts.sorted()
-    val colors = HarmonicFilterButtonColors(
-        checkedBackground = HarmonicTheme.colors.onSurface.copy(alpha = 0.9f),
-        checkedText = HarmonicTheme.colors.background,
-        checkedStroke = Color.Transparent,
-        uncheckedText = HarmonicTheme.colors.textPrimary,
-        uncheckedStroke = MaterialTheme.colorScheme.outlineVariant,
-    )
+    val colors = harmonicFilterButtonColors()
     Row(
         modifier.fillMaxWidth().height(48.dp).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(2.dp),

@@ -104,7 +104,15 @@ fun StoriesSettingsScreen(
                     onSelected = onPreviewImageModeChanged,
                 )
                 SettingsDivider()
-                BooleanRow("Borderless large image", Res.drawable.ic_fullscreen, state.borderlessLargeImage, StoriesBooleanSetting.BorderlessLargeImage, onBooleanChanged, enabled = state.previewImageMode == StoryPreviewMode.LARGE)
+                BooleanRow(
+                    "Borderless image",
+                    Res.drawable.ic_fullscreen,
+                    state.borderlessLargeImage,
+                    StoriesBooleanSetting.BorderlessLargeImage,
+                    onBooleanChanged,
+                    enabled = state.previewImageMode == StoryPreviewMode.MEDIUM ||
+                        state.previewImageMode == StoryPreviewMode.LARGE,
+                )
                 SettingsDivider()
                 SliderSetting(
                     title = "Text size",

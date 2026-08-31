@@ -891,8 +891,7 @@ fun <T> SegmentedSetting(
                     bottomEnd = if (index == options.lastIndex) outerCorner else innerCorner,
                     bottomStart = if (index == 0) outerCorner else innerCorner,
                 )
-                val selectedBackground =
-                    HarmonicTheme.colors.onSurface.copy(alpha = 0.9f)
+                val selectedBackground = HarmonicTheme.colors.secondaryContainer
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -933,7 +932,7 @@ fun <T> SegmentedSetting(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                             tint = if (isSelected) {
-                                HarmonicTheme.colors.background
+                                HarmonicTheme.colors.onSecondaryContainer
                             } else {
                                 HarmonicTheme.colors.drawable
                             },
@@ -943,7 +942,7 @@ fun <T> SegmentedSetting(
                     Text(
                         text = label,
                         color = if (isSelected) {
-                            HarmonicTheme.colors.background
+                            HarmonicTheme.colors.onSecondaryContainer
                         } else {
                             HarmonicTheme.colors.textPrimary
                         },
@@ -1068,6 +1067,7 @@ fun MultiChoiceDialog(
     selected: Set<String>,
     onDismiss: () -> Unit,
     onSelectionChanged: (Set<String>) -> Unit,
+    description: String? = null,
 ) {
     var workingSelection by remember(options, selected) {
         mutableStateOf(selected)
@@ -1082,6 +1082,23 @@ fun MultiChoiceDialog(
                     .fillMaxWidth()
                     .heightIn(max = 480.dp),
             ) {
+                if (!description.isNullOrBlank()) {
+                    item(key = "description") {
+                        Text(
+                            text = description,
+                            modifier = Modifier.padding(
+                                start = 24.dp,
+                                top = 4.dp,
+                                end = 24.dp,
+                                bottom = 12.dp,
+                            ),
+                            color = HarmonicTheme.colors.storyDisabled,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                        )
+                    }
+                }
                 items(options, key = { it }) { option ->
                     val checked = option in workingSelection
                     Row(

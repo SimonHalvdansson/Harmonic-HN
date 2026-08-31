@@ -11,9 +11,11 @@ import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -643,6 +645,22 @@ private fun StoriesList(
                                     (if (suppressed) 0f else pagingAlpha.floatValue) * revealAlpha
                                 }
                             }
+                        val returningPreviewSource =
+                            controller.visibleStoryPreviewId == story.id &&
+                                controller.storyPreviewDismissRequest != 0
+                        val sourceAccessoryAlpha by animateFloatAsState(
+                            targetValue = if (returningPreviewSource) 0f else 1f,
+                            animationSpec = if (returningPreviewSource) {
+                                snap()
+                            } else {
+                                tween(
+                                    durationMillis = 180,
+                                    delayMillis = 40,
+                                    easing = StoriesEasing,
+                                )
+                            },
+                            label = "story preview source accessories",
+                        )
                         StoryItem(
                             model = model,
                             style = style,
@@ -678,6 +696,7 @@ private fun StoriesList(
                             },
                             capturePreviewSourceGeometry =
                                 controller.visibleStoryPreviewId == story.id,
+                            sourceAccessoryAlpha = sourceAccessoryAlpha,
                             onPreviewLoadSuccess = {
                                 model.previewImageUrl?.let { imageUrl ->
                                     controller.listener.onStoryPreviewImageLoaded(
@@ -876,9 +895,33 @@ private fun StoriesHeader(
                     .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                SavedFilterButton("Stories", SavedItemFilter.STORIES, 0, controller, filterColors, Modifier.weight(1f))
-                SavedFilterButton("Both", SavedItemFilter.BOTH, 1, controller, filterColors, Modifier.weight(1f))
-                SavedFilterButton("Comments", SavedItemFilter.COMMENTS, 2, controller, filterColors, Modifier.weight(1f))
+                SavedFilterButton(
+                    "Stories",
+                    Res.drawable.ic_newspaper,
+                    SavedItemFilter.STORIES,
+                    0,
+                    controller,
+                    filterColors,
+                    Modifier.weight(1f),
+                )
+                SavedFilterButton(
+                    "Both",
+                    Res.drawable.ic_stacks,
+                    SavedItemFilter.BOTH,
+                    1,
+                    controller,
+                    filterColors,
+                    Modifier.weight(1f),
+                )
+                SavedFilterButton(
+                    "Comments",
+                    Res.drawable.ic_comment,
+                    SavedItemFilter.COMMENTS,
+                    2,
+                    controller,
+                    filterColors,
+                    Modifier.weight(1f),
+                )
             }
         }
 
@@ -919,20 +962,26 @@ private fun StoriesHeader(
             }
         }
 
-        AnimatedContent(
-            targetState = controller.lastUpdatedText.takeIf { !searchMode },
-            transitionSpec = {
-                fadeIn(tween(160, easing = StoriesEasing)) togetherWith
-                    fadeOut(tween(120, easing = StoriesEasing))
-            },
-            label = "last updated header",
+        val lastUpdated = controller.lastUpdatedText.takeIf { !searchMode }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = tween(220, easing = StoriesEasing),
+                    alignment = Alignment.TopCenter,
+                ),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            value ->
-            if (value == null) {
+            if (lastUpdated == null) {
                 Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
-            } else {
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = lastUpdated != null,
+                enter = fadeIn(tween(160, easing = StoriesEasing)),
+                exit = fadeOut(tween(120, easing = StoriesEasing)),
+            ) {
                 Text(
-                    text = value,
+                    text = lastUpdated.orEmpty(),
                     color = HarmonicTheme.colors.storyDisabled,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 12.sp,
@@ -1275,6 +1324,7 @@ private fun MoreItem(
 @Composable
 private fun SavedFilterButton(
     label: String,
+    icon: DrawableResource,
     value: SavedItemFilter,
     position: Int,
     controller: StoriesComposeController,
@@ -1288,6 +1338,7 @@ private fun SavedFilterButton(
         position = position,
         colors = colors,
         modifier = modifier,
+        icon = icon,
     )
 }
 

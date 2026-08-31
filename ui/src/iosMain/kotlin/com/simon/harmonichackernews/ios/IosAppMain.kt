@@ -53,7 +53,7 @@ import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
+import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
@@ -526,15 +526,7 @@ private fun IosStoriesContent(
     }
     val state by store.state.collectAsState()
     val colors = HarmonicTheme.colors
-    val filterColors = remember(colors) {
-        HarmonicFilterButtonColors(
-            checkedBackground = colors.storyNormal,
-            checkedText = colors.background,
-            checkedStroke = colors.storyNormal,
-            uncheckedText = colors.storyNormal,
-            uncheckedStroke = colors.outlineVariant,
-        )
-    }
+    val filterColors = harmonicFilterButtonColors()
 
     SideEffect { onControllerChanged(controller) }
     DisposableEffect(store) {

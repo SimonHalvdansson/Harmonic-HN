@@ -7,7 +7,6 @@ import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -33,6 +32,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
+import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.currentSharedHazeState
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import androidx.compose.material3.Icon
@@ -57,7 +58,6 @@ import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -411,6 +411,7 @@ private fun SubmissionsHeader(
             ) {
                 SubmissionFilterButton(
                     label = "Stories",
+                    icon = Res.drawable.ic_newspaper,
                     selected = selectedFilter == SubmissionFilter.STORIES,
                     position = 0,
                     onClick = { onFilterSelected(SubmissionFilter.STORIES) },
@@ -418,6 +419,7 @@ private fun SubmissionsHeader(
                 )
                 SubmissionFilterButton(
                     label = "Both",
+                    icon = Res.drawable.ic_stacks,
                     selected = selectedFilter == SubmissionFilter.BOTH,
                     position = 1,
                     onClick = { onFilterSelected(SubmissionFilter.BOTH) },
@@ -425,6 +427,7 @@ private fun SubmissionsHeader(
                 )
                 SubmissionFilterButton(
                     label = "Comments",
+                    icon = Res.drawable.ic_comment,
                     selected = selectedFilter == SubmissionFilter.COMMENTS,
                     position = 2,
                     onClick = { onFilterSelected(SubmissionFilter.COMMENTS) },
@@ -439,38 +442,21 @@ private fun SubmissionsHeader(
 @Composable
 private fun SubmissionFilterButton(
     label: String,
+    icon: DrawableResource,
     selected: Boolean,
     position: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = when (position) {
-        0 -> RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 8.dp, bottomEnd = 8.dp)
-        2 -> RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 24.dp, bottomEnd = 24.dp)
-        else -> RoundedCornerShape(8.dp)
-    }
-    val colors = HarmonicTheme.colors
-    Box(
-        modifier = modifier
-            .height(48.dp)
-            .clip(shape)
-            .background(if (selected) colors.storyNormal else Color.Transparent)
-            .border(1.dp, if (selected) colors.storyNormal else colors.outlineVariant, shape)
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (selected) colors.background else colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-        )
-    }
+    HarmonicFilterButton(
+        label = label,
+        icon = icon,
+        selected = selected,
+        position = position,
+        colors = harmonicFilterButtonColors(),
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
 
 /** Compose equivalent of `submissions_comment.xml` and its optional card wrapper. */

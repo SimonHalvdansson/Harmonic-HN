@@ -40,13 +40,13 @@ class StoriesComposeControllerPreviewNavigationTest {
     }
 
     @Test
-    fun websiteNavigationStillDismissesPreviewInSinglePane() {
+    fun websiteNavigationKeepsPreviewReadyForBackInSinglePane() {
         val controller = controller(destinationRemainsBesideStories = false)
 
         controller.onStoryPreviewNavigate(page = 0, showWebsite = true)
 
         assertNotNull(controller.storyPreviewOverlay)
-        assertEquals(1, controller.storyPreviewDismissRequest)
+        assertEquals(0, controller.storyPreviewDismissRequest)
     }
 
     @Test

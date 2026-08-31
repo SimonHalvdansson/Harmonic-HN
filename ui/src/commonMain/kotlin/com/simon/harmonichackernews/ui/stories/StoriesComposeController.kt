@@ -628,18 +628,12 @@ class StoriesComposeController private constructor(
 
     fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
         val target = interactionStore.storyPreviewTarget(page) ?: return
-        val remainsVisibleBesideDestination = listener.onStoryPreviewNavigate(
+        listener.onStoryPreviewNavigate(
             target.story,
             showWebsite,
         )
-        // Keep the preview open when Comments are shown, including when the destination opens
-        // beside Stories in a split layout. In a single-pane layout the retained preview is ready
-        // when Back returns to Stories. Website navigation keeps its existing single-pane dismissal.
-        val shouldDismiss = showWebsite && !remainsVisibleBesideDestination
-        if (shouldDismiss) {
-            interactionStore.requestDismissStoryPreview()
-            syncInteractionState()
-        }
+        // The preview remains part of the Stories destination in both single- and multi-pane
+        // layouts. Retaining it lets Back return to the exact preview page and action state.
     }
 
     fun onStoryPreviewAction(page: Int, action: StoryPreviewActionKind) {

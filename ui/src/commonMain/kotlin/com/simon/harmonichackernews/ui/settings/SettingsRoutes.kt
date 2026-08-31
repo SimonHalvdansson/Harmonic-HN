@@ -331,6 +331,7 @@ fun StoriesSettingsRoute(
         }
         StoriesSettingsDialog.AdditionalFrontpages -> MultiChoiceDialog(
             title = "Additional frontpages",
+            description = "Choose which optional Hacker News frontpages appear in the story-list picker. You can set the default under Starting page.",
             options = StoryTypeSettingsPolicy.additionalFrontpageLabels,
             selected = story.additionalFrontpages,
             onDismiss = { dialog = null },

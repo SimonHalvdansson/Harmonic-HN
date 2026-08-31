@@ -304,6 +304,7 @@ fun StoryItem(
     onGeometryChanged: ((bounds: Rect, itemHeightPx: Int) -> Unit)? = null,
     onPreviewSourceGeometryChanged: ((StoryPreviewSourceGeometry) -> Unit)? = null,
     capturePreviewSourceGeometry: Boolean = false,
+    sourceAccessoryAlpha: Float = 1f,
     onPreviewLoadSuccess: (() -> Unit)? = null,
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
@@ -405,6 +406,8 @@ fun StoryItem(
     val previewImageCornerRadiusPx = with(density) {
         when {
             style.previewImageMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
+            style.previewImageMode == StoryPreviewMode.MEDIUM && style.borderlessLargeImage ->
+                8.dp.toPx()
             style.previewImageMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
             style.previewImageMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
                 8.dp.toPx()
@@ -559,6 +562,14 @@ fun StoryItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(176.dp)
+                            .combinedClickable(
+                                enabled = onLinkClick != null || trackedLinkLongClick != null,
+                                onClick = { onLinkClick?.invoke() },
+                                onLongClick = { trackedLinkLongClick?.invoke() },
+                            )
+                            .onSecondaryClick(enabled = trackedLinkLongClick != null) {
+                                trackedLinkLongClick?.invoke()
+                            }
                             .padding(start = imageInset, top = imageInset, end = imageInset)
                             .clip(RoundedCornerShape(imageRadius))
                             .captureStoryPreviewElement(
@@ -594,11 +605,7 @@ fun StoryItem(
                             capturePreviewSource = captureSourceContent,
                             itemGeometry = itemGeometry,
                             animateChanges = animate,
-                            modifier = Modifier.captureStoryPreviewElement(
-                                enabled = captureSourceContent,
-                                onPositioned = { itemGeometry.commentsCoordinates = it },
-                                onLayerChanged = { itemGeometry.commentsLayer = it },
-                            ),
+                            sourceAccessoryAlpha = sourceAccessoryAlpha,
                         )
                     }
                 } else {
@@ -755,13 +762,16 @@ private fun StoryMediumPreviewRail(
     capturePreviewSource: Boolean,
     itemGeometry: StoryItemGeometry,
     animateChanges: Boolean,
+    sourceAccessoryAlpha: Float,
     modifier: Modifier = Modifier,
 ) {
     val hazeState = if (hasPreview) rememberHazeState() else null
     val showPoints = style.showPoints && !style.compact
     val showCommentPill = style.showCommentCount
     val showCommentText = style.showCommentCount && !style.compact
+    val borderlessImage = hasPreview && style.borderlessLargeImage
     val railPadding = when {
+        borderlessImage -> PaddingValues(start = 4.dp)
         hasPreview -> PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
         showPoints || showCommentPill ->
             PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)
@@ -785,8 +795,8 @@ private fun StoryMediumPreviewRail(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(88.dp)
-                    .clip(MediumPreviewImageShape),
+                    .height(if (borderlessImage) MediumPreviewImageMinimumHeight else 88.dp)
+                    .clip(if (borderlessImage) StoryCardShape else MediumPreviewImageShape),
             ) {
                 StoryPreviewImage(
                     model = model,
@@ -809,7 +819,13 @@ private fun StoryMediumPreviewRail(
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp),
+                        .padding(4.dp)
+                        .captureStoryPreviewElement(
+                            enabled = capturePreviewSource,
+                            onPositioned = { itemGeometry.commentsCoordinates = it },
+                            onLayerChanged = { itemGeometry.commentsLayer = it },
+                        )
+                        .graphicsLayer(alpha = sourceAccessoryAlpha),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -868,6 +884,13 @@ private fun StoryMediumPreviewRail(
             }
         } else {
             Row(
+                modifier = Modifier
+                    .captureStoryPreviewElement(
+                        enabled = capturePreviewSource,
+                        onPositioned = { itemGeometry.commentsCoordinates = it },
+                        onLayerChanged = { itemGeometry.commentsLayer = it },
+                    )
+                    .graphicsLayer(alpha = sourceAccessoryAlpha),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically,
             ) {

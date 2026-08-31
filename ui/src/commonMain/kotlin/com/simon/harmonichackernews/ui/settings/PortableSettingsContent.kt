@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.about.AboutScreen
-import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
+import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
@@ -222,7 +222,6 @@ private fun PortableAppearanceSettings(
                     onDismiss = dismiss,
                 )
                 AppearanceSettingsDialog.Style -> {
-                    val colors = HarmonicTheme.colors
                     WelcomeSettingsDialog(
                         styleChooser = true,
                         initialExpressive = snapshot.story.cardStyle,
@@ -232,13 +231,7 @@ private fun PortableAppearanceSettings(
                             dismiss()
                         },
                         onDismiss = dismiss,
-                        filterButtonColors = HarmonicFilterButtonColors(
-                            checkedBackground = colors.storyNormal,
-                            checkedText = colors.background,
-                            checkedStroke = colors.storyNormal,
-                            uncheckedText = colors.storyNormal,
-                            uncheckedStroke = colors.outlineVariant,
-                        ),
+                        filterButtonColors = harmonicFilterButtonColors(),
                         launcherIcon = {
                             Image(
                                 painter = appIcon,
@@ -404,7 +397,6 @@ fun PortableWelcomeDialog(
     appIcon: Painter,
     onDismiss: () -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
     WelcomeSettingsDialog(
         styleChooser = false,
         initialExpressive = app.settings.snapshot().story.cardStyle,
@@ -414,13 +406,7 @@ fun PortableWelcomeDialog(
             onDismiss()
         },
         onDismiss = onDismiss,
-        filterButtonColors = HarmonicFilterButtonColors(
-            checkedBackground = colors.storyNormal,
-            checkedText = colors.background,
-            checkedStroke = colors.storyNormal,
-            uncheckedText = colors.storyNormal,
-            uncheckedStroke = colors.outlineVariant,
-        ),
+        filterButtonColors = harmonicFilterButtonColors(),
         launcherIcon = {
             Image(
                 painter = appIcon,
