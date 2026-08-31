@@ -5,15 +5,20 @@ object ThemePreferences {
     const val NIGHTTIME_KEY = "pref_theme_nighttime"
     const val DEFAULT = "material_daynight"
     const val DEFAULT_NIGHTTIME = "dark"
+    const val MATERIAL_FIXED_AUTO = "material_fixed_daynight"
+    const val MATERIAL_FIXED_LIGHT = "material_fixed_light"
+    const val MATERIAL_FIXED_DARK = "material_fixed_dark"
 
     fun isAutomatic(theme: String?): Boolean = theme in setOf(
         DEFAULT,
+        MATERIAL_FIXED_AUTO,
         "darklight_daynight",
         "amoledwhite_daynight",
     )
 
     fun isDark(theme: String?): Boolean = theme in setOf(
         "material_dark",
+        MATERIAL_FIXED_DARK,
         "dark",
         "hacker",
         "amoled",
@@ -22,6 +27,13 @@ object ThemePreferences {
 
     fun selectableNighttimeTheme(theme: String?): String =
         theme?.takeIf(::isDark) ?: DEFAULT_NIGHTTIME
+
+    fun fixedMaterialEquivalent(theme: String?): String? = when (theme) {
+        DEFAULT -> MATERIAL_FIXED_AUTO
+        "material_light" -> MATERIAL_FIXED_LIGHT
+        "material_dark" -> MATERIAL_FIXED_DARK
+        else -> theme
+    }
 }
 
 object PaletteTintPreferences {

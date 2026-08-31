@@ -37,6 +37,7 @@ data class HarmonicColors(
     val settingsMainToggle: Color,
     val settingsMainToggleText: Color,
     val overlayButton: Color,
+    val overlayButtonContent: Color,
     val submissionsCommentTimeBackground: Color,
     val submissionsCommentTimeOutline: Color,
 )

@@ -505,7 +505,7 @@ fun CommentsScreen(
                     Icon(
                         painterResource(Res.drawable.ic_arrow_upward),
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
+                        tint = HarmonicTheme.colors.overlayButtonContent.copy(alpha = 0.8f),
                     )
                 },
                 text = {
@@ -524,7 +524,7 @@ fun CommentsScreen(
                     ),
                 shape = scrollTopShape,
                 containerColor = Color.Transparent,
-                contentColor = Color.White,
+                contentColor = HarmonicTheme.colors.overlayButtonContent,
                 // Keep the shadow present but constant. AnimatedVisibility owns the appearance
                 // transition, so Material's interaction elevation cannot flash it on entry.
                 elevation = FloatingActionButtonDefaults.elevation(
@@ -707,7 +707,11 @@ private fun CommentNavigationButtons(
                 .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(Res.drawable.ic_keyboard_arrow_up_dark), "Previous top-level comment", tint = Color.Unspecified)
+            Icon(
+                painterResource(Res.drawable.ic_keyboard_arrow_up_dark),
+                "Previous top-level comment",
+                tint = HarmonicTheme.colors.overlayButtonContent,
+            )
         }
         Box(
             modifier = Modifier
@@ -719,7 +723,7 @@ private fun CommentNavigationButtons(
                 painterResource(Res.drawable.ic_explore_dark),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = Color.Unspecified,
+                tint = HarmonicTheme.colors.overlayButtonContent,
             )
         }
         Box(
@@ -728,7 +732,11 @@ private fun CommentNavigationButtons(
                 .combinedClickable(onClick = onNext, onLongClick = onLast),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(Res.drawable.ic_keyboard_arrow_down_dark), "Next top-level comment", tint = Color.Unspecified)
+            Icon(
+                painterResource(Res.drawable.ic_keyboard_arrow_down_dark),
+                "Next top-level comment",
+                tint = HarmonicTheme.colors.overlayButtonContent,
+            )
         }
     }
 }

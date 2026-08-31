@@ -2,6 +2,8 @@
 
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialDark"></style>
 
+    <style name="AppThemeMaterialFixedDayNight" parent="AppThemeMaterialFixedDark"></style>
+
     <style name="AppThemeDarkLightDayNight" parent="AppTheme"></style>
 
     <style name="AppThemeAmoledWhiteDayNight" parent="AppThemeAmoledDark"></style>

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.graphics.Bitmap
+import android.os.Build
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
@@ -15,10 +16,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewMode
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 
 @Composable
@@ -29,14 +30,16 @@ fun AndroidThemeSelectionDialog(
 ) {
     val app = LocalHarmonicUiDependencies.current
     val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
-    val selected = if (nighttime) {
+    val selectedTheme = if (nighttime) {
         presenter.snapshot.appearance.nighttimeTheme
     } else {
         presenter.snapshot.appearance.theme
     }
+    val materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     ThemeSelectionDialog(
         nighttime = nighttime,
-        selected = selected,
+        selected = selectedTheme,
+        materialYouAvailable = materialYouAvailable,
         onThemeSelected = { theme ->
             presenter.setTheme(theme, nighttime).forEach { effect ->
                 if (effect == SettingsPlatformEffect.ThemeChanged) onThemeChanged()

@@ -195,6 +195,10 @@ private fun harmonicColors(
             R.attr.overlayButtonColor,
             fallbackScheme.secondaryContainer,
         ),
+        overlayButtonContent = context.colorAttribute(
+            R.attr.overlayButtonContentColor,
+            fallbackScheme.onSecondaryContainer,
+        ),
         submissionsCommentTimeBackground = context.colorAttribute(
             R.attr.submissionsCommentTimeBackgroundColor,
             fallbackScheme.surfaceContainerHighest,

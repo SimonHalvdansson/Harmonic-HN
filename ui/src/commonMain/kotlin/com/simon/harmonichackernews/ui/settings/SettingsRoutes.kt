@@ -224,6 +224,7 @@ fun DebugSettingsRoute(
 data class AppearanceRouteLabels(
     val nighttimeRange: String,
     val showTransparentStatusBar: Boolean,
+    val materialYouAvailable: Boolean = true,
 )
 
 @Composable
@@ -249,11 +250,13 @@ fun AppearanceSettingsRoute(
             themeLabel = harmonicThemeLabel(
                 settings.appearance.theme,
                 ThemePreferences.DEFAULT,
+                labels.materialYouAvailable,
             ),
             nighttimeRangeLabel = labels.nighttimeRange,
             nighttimeThemeLabel = harmonicThemeLabel(
                 settings.appearance.nighttimeTheme,
                 ThemePreferences.DEFAULT_NIGHTTIME,
+                labels.materialYouAvailable,
             ),
             fontLabel = settings.story.fontChoice.label,
             showTransparentStatusBar = labels.showTransparentStatusBar,

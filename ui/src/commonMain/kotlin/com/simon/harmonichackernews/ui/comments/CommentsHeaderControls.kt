@@ -933,7 +933,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = Color.White,
+                    contentColor = HarmonicTheme.colors.overlayButtonContent,
                     icon = {
                         Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                     },

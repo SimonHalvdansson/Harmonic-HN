@@ -11,7 +11,17 @@ class StoredUserSettingsTest {
     @Test
     fun themeSemanticsArePortable() {
         assertTrue(ThemePreferences.isAutomatic(ThemePreferences.DEFAULT))
+        assertTrue(ThemePreferences.isAutomatic(ThemePreferences.MATERIAL_FIXED_AUTO))
+        assertTrue(ThemePreferences.isDark(ThemePreferences.MATERIAL_FIXED_DARK))
         assertTrue(ThemePreferences.isDark("amoled"))
+        assertEquals(
+            ThemePreferences.MATERIAL_FIXED_AUTO,
+            ThemePreferences.fixedMaterialEquivalent(ThemePreferences.DEFAULT),
+        )
+        assertEquals(
+            ThemePreferences.MATERIAL_FIXED_LIGHT,
+            ThemePreferences.fixedMaterialEquivalent("material_light"),
+        )
         assertEquals("gray", ThemePreferences.selectableNighttimeTheme("gray"))
         assertEquals(
             ThemePreferences.DEFAULT_NIGHTTIME,

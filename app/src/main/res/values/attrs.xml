@@ -12,6 +12,7 @@
     <attr name="commentCountIndicatorColor" format="reference"/>
     <attr name="secondaryTextColor" format="reference"/>
     <attr name="overlayButtonColor" format="reference|color"/>
+    <attr name="overlayButtonContentColor" format="reference|color"/>
     <attr name="overlayButtonOutlineColor" format="reference|color"/>
     <attr name="submissionsCommentTimeBackgroundColor" format="reference|color"/>
     <attr name="submissionsCommentTimeOutlineColor" format="reference|color"/>

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalResources
 import com.simon.harmonichackernews.R
@@ -24,6 +25,7 @@ fun AndroidAppearanceSettingsScreen(
                 app.platform.timeFormatting.uses24HourClock(),
             ),
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
+            materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
         ),
         showNavigation = showNavigation,
         onBack = onBack,

@@ -17,8 +17,11 @@ data class HarmonicThemePalette(
 object HarmonicThemeCatalog {
     fun resolve(theme: String?, systemDark: Boolean): HarmonicThemePalette = when (theme) {
         ThemePreferences.DEFAULT -> if (systemDark) materialDark else materialLight
+        ThemePreferences.MATERIAL_FIXED_AUTO -> if (systemDark) materialFixedDark else materialFixedLight
         "darklight_daynight" -> if (systemDark) dark else light
         "amoledwhite_daynight" -> if (systemDark) amoled else white
+        ThemePreferences.MATERIAL_FIXED_DARK -> materialFixedDark
+        ThemePreferences.MATERIAL_FIXED_LIGHT -> materialFixedLight
         "material_dark" -> materialDark
         "material_light" -> materialLight
         "light" -> light
@@ -86,6 +89,7 @@ object HarmonicThemeCatalog {
         settingsSegment = Color.Black,
         onPrimary = Color(0xFFF6F6EF),
         overlayButton = Color.Black,
+        overlayButtonContent = Color(0xFFDFDFDF),
         submissionsOutline = Color(0x33FFFFFF),
     )
     private val hacker = create(
@@ -108,6 +112,7 @@ object HarmonicThemeCatalog {
         secondaryContainer = Color(0xFF003300),
         onSecondaryContainer = Color(0xFF00FF00),
         overlayButton = Color.Black,
+        overlayButtonContent = Color(0xFF00FF00),
         submissionsOutline = Color(0x6600FF00),
     )
     private val light = create(
@@ -167,6 +172,58 @@ object HarmonicThemeCatalog {
         onPrimary = Color.White,
         onSecondary = Color.White,
         overlayButton = Color(0xFFBF5724),
+        overlayButtonContent = Color.White,
+    )
+    private val materialFixedLight = create(
+        dark = false,
+        background = Color(0xFFFFFBFE),
+        surface = Color(0xFFECE6F0),
+        accent = Color(0xFF6750A4),
+        primary = Color(0xFF6750A4),
+        secondary = Color(0xFF625B71),
+        primaryContainer = Color(0xFFEADDFF),
+        text = Color(0xFF1C1B1F),
+        secondaryText = Color(0xFF49454F),
+        storyDisabled = Color(0xFF79747E),
+        divider = Color(0xFFCAC4D0),
+        settingsHeader = Color(0xFFF3EDF7),
+        settingsToggle = Color(0xFFE8DEF8),
+        settingsToggleText = Color(0xFF1D192B),
+        settingsSegment = Color(0xFFF3EDF7),
+        settingsPageBackground = Color(0xFFF7F2FA),
+        settingsItemBackground = Color(0xFFFFFBFE),
+        storyCardBackground = Color(0xFFF3EDF7),
+        onPrimary = Color.White,
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFE8DEF8),
+        onSecondaryContainer = Color(0xFF1D192B),
+        overlayButton = Color(0xFFEADDFF),
+        overlayButtonContent = Color(0xFF21005D),
+    )
+    private val materialFixedDark = create(
+        dark = true,
+        background = Color(0xFF1C1B1F),
+        surface = Color(0xFF2B2930),
+        accent = Color(0xFFD0BCFF),
+        primary = Color(0xFFD0BCFF),
+        secondary = Color(0xFFCCC2DC),
+        primaryContainer = Color(0xFF4F378B),
+        text = Color(0xFFE6E1E5),
+        secondaryText = Color(0xFFCAC4D0),
+        storyDisabled = Color(0xFF938F99),
+        divider = Color(0xFF49454F),
+        settingsHeader = Color(0xFF211F26),
+        settingsToggle = Color(0xFF4A4458),
+        settingsToggleText = Color(0xFFE8DEF8),
+        settingsSegment = Color(0xFF211F26),
+        storyCardBackground = Color(0xFF211F26),
+        onPrimary = Color(0xFF381E72),
+        onSecondary = Color(0xFF332D41),
+        secondaryContainer = Color(0xFF4A4458),
+        onSecondaryContainer = Color(0xFFE8DEF8),
+        overlayButton = Color(0xFF4F378B),
+        overlayButtonContent = Color(0xFFEADDFF),
+        popup = Color(0xFF211F26),
     )
     private val materialLight = create(
         dark = false,
@@ -185,6 +242,8 @@ object HarmonicThemeCatalog {
         settingsSegment = Color(0xFFE1E3E5),
         storyCardBackground = Color(0xFFE1E3E5),
         onSecondary = Color.White,
+        overlayButton = Color(0xFF374955),
+        overlayButtonContent = Color.White,
     )
     private val materialDark = create(
         dark = true,
@@ -204,6 +263,8 @@ object HarmonicThemeCatalog {
         settingsToggleText = Color(0xFFD6CFF5),
         settingsSegment = Color(0xFF2A3136),
         onPrimary = Color(0xFFE1E3E5),
+        overlayButton = Color(0xFF374955),
+        overlayButtonContent = Color(0xFFE1E3E5),
         popup = Color(0xFF2E3133),
     )
 
@@ -232,6 +293,7 @@ object HarmonicThemeCatalog {
         secondaryContainer: Color? = null,
         onSecondaryContainer: Color? = null,
         overlayButton: Color? = null,
+        overlayButtonContent: Color? = null,
         popup: Color = surface,
         submissionsOutline: Color? = null,
     ): HarmonicThemePalette {
@@ -240,6 +302,16 @@ object HarmonicThemeCatalog {
         val outline = lerp(background, text, 0.24f)
         val resolvedSecondaryContainer = secondaryContainer ?: base.secondaryContainer
         val resolvedOnSecondaryContainer = onSecondaryContainer ?: base.onSecondaryContainer
+        val resolvedOverlayButton = overlayButton ?: if (dark) {
+            resolvedSecondaryContainer
+        } else {
+            secondary
+        }
+        val resolvedOverlayButtonContent = overlayButtonContent ?: if (dark) {
+            resolvedOnSecondaryContainer
+        } else {
+            onSecondary ?: base.onSecondary
+        }
         val scheme = base.copy(
             primary = primary,
             onPrimary = onPrimary ?: base.onPrimary,
@@ -295,11 +367,8 @@ object HarmonicThemeCatalog {
                 settingsHeaderSelected = settingsHeader,
                 settingsMainToggle = settingsToggle,
                 settingsMainToggleText = settingsToggleText,
-                overlayButton = overlayButton ?: if (dark) {
-                    resolvedSecondaryContainer
-                } else {
-                    secondary
-                },
+                overlayButton = resolvedOverlayButton,
+                overlayButtonContent = resolvedOverlayButtonContent,
                 submissionsCommentTimeBackground = if (submissionsOutline != null) {
                     background
                 } else {

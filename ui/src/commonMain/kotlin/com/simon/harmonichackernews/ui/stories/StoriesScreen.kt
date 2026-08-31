@@ -347,7 +347,7 @@ fun StoriesScreen(
                     },
                     modifier = Modifier.widthIn(min = 189.dp),
                     containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = Color.White,
+                    contentColor = HarmonicTheme.colors.overlayButtonContent,
                     icon = {
                         Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                     },

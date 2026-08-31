@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
@@ -38,6 +39,7 @@ data class ThemeUiOption(
     val description: String,
     val automatic: Boolean = false,
     val dark: Boolean = false,
+    val materialYou: Boolean = false,
 )
 
 data class ThemePreviewPalette(
@@ -51,17 +53,41 @@ data class ThemePreviewPalette(
 
 val HarmonicThemeOptions = listOf(
     ThemeUiOption(
-        "material_daynight",
-        "Material You (auto)",
-        "Follows the system theme",
+        ThemePreferences.MATERIAL_FIXED_AUTO,
+        "Material (auto)",
+        "Fixed Material colors, follows the system theme",
         automatic = true,
     ),
-    ThemeUiOption("material_light", "Material You (light)", "Softer Material light palette"),
+    ThemeUiOption(
+        ThemePreferences.MATERIAL_FIXED_LIGHT,
+        "Material (light)",
+        "Fixed Material light palette",
+    ),
+    ThemeUiOption(
+        ThemePreferences.MATERIAL_FIXED_DARK,
+        "Material (dark)",
+        "Fixed Material dark palette",
+        dark = true,
+    ),
+    ThemeUiOption(
+        "material_daynight",
+        "Material You (auto)",
+        "Wallpaper colors, follows the system theme",
+        automatic = true,
+        materialYou = true,
+    ),
+    ThemeUiOption(
+        "material_light",
+        "Material You (light)",
+        "Wallpaper-based light palette",
+        materialYou = true,
+    ),
     ThemeUiOption(
         "material_dark",
         "Material You (dark)",
-        "Softer Material dark palette",
+        "Wallpaper-based dark palette",
         dark = true,
+        materialYou = true,
     ),
     ThemeUiOption(
         "darklight_daynight",
@@ -84,25 +110,50 @@ val HarmonicThemeOptions = listOf(
     ThemeUiOption("gray", "Gray", "Low-contrast dark gray", dark = true),
 )
 
-fun harmonicThemeLabel(value: String, fallback: String): String =
-    HarmonicThemeOptions.firstOrNull { it.value == value }?.label
-        ?: HarmonicThemeOptions.firstOrNull { it.value == fallback }?.label
+fun harmonicThemeLabel(
+    value: String,
+    fallback: String,
+    materialYouAvailable: Boolean = true,
+): String {
+    val availableValue = if (materialYouAvailable) {
+        value
+    } else {
+        ThemePreferences.fixedMaterialEquivalent(value).orEmpty()
+    }
+    val availableFallback = if (materialYouAvailable) {
+        fallback
+    } else {
+        ThemePreferences.fixedMaterialEquivalent(fallback).orEmpty()
+    }
+    return HarmonicThemeOptions.firstOrNull { it.value == availableValue }?.label
+        ?: HarmonicThemeOptions.firstOrNull { it.value == availableFallback }?.label
         ?: value
+}
+
+internal fun harmonicThemeOptions(
+    nighttime: Boolean,
+    materialYouAvailable: Boolean,
+): List<ThemeUiOption> = HarmonicThemeOptions.filter { option ->
+    (materialYouAvailable || !option.materialYou) &&
+        (!nighttime || option.dark && !option.automatic)
+}
 
 @Composable
 fun ThemeSelectionDialog(
     nighttime: Boolean,
     selected: String,
+    materialYouAvailable: Boolean = true,
     onThemeSelected: (String) -> Unit,
     onDismiss: () -> Unit,
     previewPalettes: @Composable (String) -> Pair<ThemePreviewPalette, ThemePreviewPalette?>,
 ) {
-    val options = remember(nighttime) {
-        if (nighttime) {
-            HarmonicThemeOptions.filter { it.dark && !it.automatic }
-        } else {
-            HarmonicThemeOptions
-        }
+    val availableSelected = if (materialYouAvailable) {
+        selected
+    } else {
+        ThemePreferences.fixedMaterialEquivalent(selected).orEmpty()
+    }
+    val options = remember(nighttime, materialYouAvailable) {
+        harmonicThemeOptions(nighttime, materialYouAvailable)
     }
 
     SettingsAlertDialog(
@@ -119,7 +170,7 @@ fun ThemeSelectionDialog(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 104.dp)
                             .selectable(
-                                selected = selected == option.value,
+                                selected = availableSelected == option.value,
                                 role = Role.RadioButton,
                                 onClick = { onThemeSelected(option.value) },
                             )
@@ -147,7 +198,7 @@ fun ThemeSelectionDialog(
                             )
                         }
                         SettingsRadioButton(
-                            selected = selected == option.value,
+                            selected = availableSelected == option.value,
                             modifier = Modifier.padding(start = 10.dp),
                         )
                     }

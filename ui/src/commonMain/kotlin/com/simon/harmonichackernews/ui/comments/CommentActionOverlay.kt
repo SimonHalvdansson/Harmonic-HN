@@ -445,7 +445,7 @@ private fun CommentActionCardContent(
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = Color.White,
+                    contentColor = HarmonicTheme.colors.overlayButtonContent,
                 ),
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.height(40.dp),
@@ -598,7 +598,7 @@ private fun CommentActionCardContent(
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = HarmonicTheme.colors.overlayButton,
-                            contentColor = Color.White,
+                            contentColor = HarmonicTheme.colors.overlayButtonContent,
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
