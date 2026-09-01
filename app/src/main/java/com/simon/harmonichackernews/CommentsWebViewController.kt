@@ -141,6 +141,7 @@ internal class CommentsWebViewController(
     private var downloadButton: MaterialButton? = null
     private var progressIndicator: LinearProgressIndicator? = null
     private var progressAnimator: ValueAnimator? = null
+    private var progressIndicatorTargetVisible = false
     private var showWebsite = false
     private var integratedWebview = true
     private var preloadWebview: String? = "never"
@@ -181,9 +182,12 @@ internal class CommentsWebViewController(
         host: CommentsWebViewHost,
         progressIndicator: LinearProgressIndicator
     ) {
+        this.progressIndicator?.animate()?.cancel()
         this.progressIndicator = progressIndicator
         progressIndicator.visibility = View.GONE
+        progressIndicator.alpha = 0f
         progressIndicator.progress = 0
+        progressIndicatorTargetVisible = false
         webView = null
         downloadButton = host.downloadButton
         webViewContainer = host.webViewContainer
@@ -743,7 +747,7 @@ internal class CommentsWebViewController(
 
         cancelProgressAnimator()
         currentProgressIndicator.setProgress(progress)
-        currentProgressIndicator.setVisibility(View.VISIBLE)
+        showProgressIndicator(currentProgressIndicator)
     }
 
     private fun updateWebViewProgress(view: WebView, newProgress: Int) {
@@ -773,7 +777,7 @@ internal class CommentsWebViewController(
         if (newProgress >= 100) {
             finishWebViewLoadUi(view, webContentLoad.state.generation, true)
         } else if (!webContentLoad.state.uiSettled) {
-            currentProgressIndicator.setVisibility(View.VISIBLE)
+            showProgressIndicator(currentProgressIndicator)
         }
     }
 
@@ -799,9 +803,44 @@ internal class CommentsWebViewController(
             if (completeProgress) {
                 currentProgressIndicator.setProgress(100)
             }
-            currentProgressIndicator.setVisibility(View.GONE)
+            hideProgressIndicator(currentProgressIndicator)
         }
 
+    }
+
+    private fun showProgressIndicator(indicator: LinearProgressIndicator) {
+        if (progressIndicatorTargetVisible && indicator.visibility == View.VISIBLE) {
+            return
+        }
+
+        progressIndicatorTargetVisible = true
+        indicator.animate().cancel()
+        if (indicator.visibility != View.VISIBLE) {
+            indicator.alpha = 0f
+            indicator.visibility = View.VISIBLE
+        }
+        indicator.animate()
+            .alpha(1f)
+            .setDuration(PROGRESS_INDICATOR_FADE_DURATION_MILLIS)
+            .start()
+    }
+
+    private fun hideProgressIndicator(indicator: LinearProgressIndicator) {
+        if (!progressIndicatorTargetVisible && indicator.visibility != View.VISIBLE) {
+            return
+        }
+
+        progressIndicatorTargetVisible = false
+        indicator.animate().cancel()
+        indicator.animate()
+            .alpha(0f)
+            .setDuration(PROGRESS_INDICATOR_FADE_DURATION_MILLIS)
+            .withEndAction {
+                if (progressIndicator === indicator && !progressIndicatorTargetVisible) {
+                    indicator.visibility = View.GONE
+                }
+            }
+            .start()
     }
 
     private fun hideWebViewLoadingBackdrop() {
@@ -1270,7 +1309,9 @@ internal class CommentsWebViewController(
         fullscreenContainer = null
         webViewBackdrop = null
         downloadButton = null
+        progressIndicator?.animate()?.cancel()
         progressIndicator = null
+        progressIndicatorTargetVisible = false
         customView = null
         customViewCallback = null
         webContentDriver.publish(WebContentDriverState())
@@ -1583,6 +1624,7 @@ internal class CommentsWebViewController(
 
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
+        private const val PROGRESS_INDICATOR_FADE_DURATION_MILLIS = 50L
         private val PDF_LOADER_URL = Res.getUri(sharedWebResource(WebContentAssets.PDF_VIEWER_INDEX))
         private val OFFLINE_PAGE_URL = Res.getUri(sharedWebResource(WebContentAssets.OFFLINE_PAGE))
         private val WEB_CONTENT_URLS = WebContentPlatformUrls(PDF_LOADER_URL, OFFLINE_PAGE_URL)
