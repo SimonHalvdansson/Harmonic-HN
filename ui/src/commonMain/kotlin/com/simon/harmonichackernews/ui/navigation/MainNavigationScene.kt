@@ -18,6 +18,7 @@ import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
@@ -26,6 +27,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -40,6 +42,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 private data object StoriesDestination : NavKey
@@ -259,11 +262,34 @@ fun SinglePaneNavigationScene(
     )
     val storiesArePredictiveParent = predictiveBackActive &&
         predictivePreviousSerial == null && showStoriesRoot
+    var storySurfaceCoversStories by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        storyRequests.lastOrNull()?.serial,
+        showStoriesRoot,
+        predictiveBackActive,
+        completedPredictivePop,
+    ) {
+        storySurfaceCoversStories = false
+        if (
+            showStoriesRoot &&
+            storyRequests.isNotEmpty() &&
+            !predictiveBackActive &&
+            !completedPredictivePop
+        ) {
+            delay(
+                ActivityNavigationOpenContentOpaqueMillis.toLong(),
+            )
+            storySurfaceCoversStories = true
+        }
+    }
 
     Box(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .drawWithContent {
+                    if (!storySurfaceCoversStories) drawContent()
+                }
                 .then(
                     if (storiesArePredictiveParent) {
                         Modifier.background(HarmonicTheme.colors.background)

@@ -8,11 +8,16 @@ import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
 import com.simon.harmonichackernews.settings.CommentNavigationPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : BaseActivity() {
     internal lateinit var navigationController: MainNavigationController
@@ -38,10 +43,44 @@ class MainActivity : BaseActivity() {
     }
 
     private fun consumeLaunchIntent(intent: Intent?) {
+        if (consumeCommentsBenchmarkIntent(intent)) {
+            // Benchmark actions are one-shot too. Clearing the current intent keeps activity
+            // recreation from reopening the fixture and contaminating the next sample.
+            setIntent(Intent(this, MainActivity::class.java))
+            return
+        }
         if (launchIntentRouter.route(intent)) {
             // Navigation now owns the destination. Keeping the one-shot action as the Activity's
             // current intent would apply it again during a configuration-driven recreation.
             setIntent(Intent(this, MainActivity::class.java))
+        }
+    }
+
+    /**
+     * Deterministic Macrobenchmark entry point. The route is inert in every distributable build;
+     * the benchmark-only package reads its bundled fixture, writes it through the production cache,
+     * then opens the normal Comments destination so parsing and rendering remain representative.
+     */
+    private fun consumeCommentsBenchmarkIntent(intent: Intent?): Boolean {
+        if (BuildConfig.APPLICATION_ID != COMMENTS_BENCHMARK_APPLICATION_ID) return false
+        return when (intent?.action) {
+            ACTION_BENCHMARK_SEED_COMMENTS -> {
+                lifecycleScope.launch {
+                    val payload = withContext(Dispatchers.IO) {
+                        assets.open(COMMENTS_BENCHMARK_ASSET).bufferedReader().use { it.readText() }
+                    }
+                    check(harmonicAppComposition.storyCache.storeStory(COMMENTS_BENCHMARK_ID, payload)) {
+                        "Could not seed the deterministic Comments benchmark fixture"
+                    }
+                    navigationController.openStory(StoryDestination(COMMENTS_BENCHMARK_ID))
+                }
+                true
+            }
+            ACTION_BENCHMARK_OPEN_COMMENTS -> {
+                navigationController.openStory(StoryDestination(COMMENTS_BENCHMARK_ID))
+                true
+            }
+            else -> false
         }
     }
 
@@ -111,5 +150,16 @@ class MainActivity : BaseActivity() {
         ThemeUtils.setupTheme(this)
         harmonicAppComposition.appearance.refreshSelection()
         navigationController.onConfigurationChanged(newConfig)
+    }
+
+    private companion object {
+        const val COMMENTS_BENCHMARK_APPLICATION_ID =
+            "com.simon.harmonichackernews.compose.benchmark"
+        const val ACTION_BENCHMARK_SEED_COMMENTS =
+            "com.simon.harmonichackernews.action.BENCHMARK_SEED_COMMENTS"
+        const val ACTION_BENCHMARK_OPEN_COMMENTS =
+            "com.simon.harmonichackernews.action.BENCHMARK_OPEN_COMMENTS"
+        const val COMMENTS_BENCHMARK_ASSET = "comments_benchmark_fixture.json"
+        const val COMMENTS_BENCHMARK_ID = 990000001
     }
 }

@@ -8,8 +8,10 @@ import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** Optional host hook for low-overhead, cross-thread performance slices. */
+data class CommentsPerformanceTrace(
+    val begin: (name: String, cookie: Int) -> Unit = { _, _ -> },
+    val end: (name: String, cookie: Int) -> Unit = { _, _ -> },
+)
 
 data class CommentsPresenterState(
     val thread: PortableCommentThreadState = PortableCommentThreadState(),
@@ -80,6 +89,14 @@ sealed interface CommentsAction {
         val collapseTopLevel: Boolean,
         val previousResponse: String?,
         val restoreScrollFromCache: Boolean,
+        /**
+         * Defers potentially blocking cache access until the cancellable thread-load job runs.
+         * Production hosts use a background dispatcher; direct responses remain useful for
+         * refreshes and focused presenter tests.
+         */
+        val loadPreviousResponse: (suspend () -> String?)? = null,
+        /** Optional host gate after background parsing and before cached UI state is published. */
+        val beforeApplyCachedResponse: (suspend () -> Unit)? = null,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
@@ -156,6 +173,8 @@ class CommentsPresenter(
     private val pollOptionsLoader: PollOptionsLoader,
     private val savedItemActions: SavedItemActionUseCase,
     private val votingService: HackerNewsVotingService,
+    private val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
+    private val threadPreparationDispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
 ) : Feature<CommentsAction, CommentsPresenterState, CommentsEffect> {
     val thread: CommentThreadStore = sessionState.commentThread
     private val mutableState = MutableStateFlow(
@@ -466,24 +485,57 @@ class CommentsPresenter(
                 )
                 return@launch
             }
-            val alreadyAppliedResponse = action.previousResponse
-            action.previousResponse?.let { cachedResponse ->
-                runCatching {
-                    commentThreadRepository.parseAlgolia(
-                        cachedResponse,
-                        topLevelCommentIds,
-                        action.filteredUsers,
-                    )
-                }.getOrNull()?.let { parsed ->
-                    if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
-                        action = action,
-                        requestId = requestId,
-                        parsed = parsed,
-                        networkCompleted = false,
-                        responseToCache = null,
-                        restoreScroll = action.restoreScrollFromCache,
-                        broadcastStoryUpdate = false,
-                    )
+            val previousResponse = traced(TRACE_CACHE_READ, requestId) {
+                action.loadPreviousResponse?.invoke() ?: action.previousResponse
+            }
+            val alreadyAppliedResponse = previousResponse
+            previousResponse?.let { cachedResponse ->
+                traced(TRACE_PARSE_CACHED_JSON, requestId) {
+                    runCatching {
+                        commentThreadRepository.parseAlgolia(
+                            cachedResponse,
+                            topLevelCommentIds,
+                            action.filteredUsers,
+                        )
+                    }.getOrNull()
+                }?.let parsed@ { parsed ->
+                    if (!threadLoadSession.isCurrent(requestId, storyId)) return@parsed
+                    val prepared = if (thread.allComments.size <= 1) {
+                        val headerChanged = parsed.updateStoryInformation(
+                            action.story,
+                            thread.allComments.size,
+                        )
+                        val preparedThread = traced(TRACE_PREPARE_CACHED_THREAD, requestId) {
+                            withContext(threadPreparationDispatcher) {
+                                thread.prepareInitialParsedComments(
+                                    story = action.story,
+                                    parsedComments = parsed.comments,
+                                    sorting = action.sorting,
+                                    collapseTopLevel = action.collapseTopLevel,
+                                )
+                            }
+                        }
+                        CachedThreadPreparation(preparedThread, headerChanged)
+                    } else {
+                        null
+                    }
+                    if (threadLoadSession.isCurrent(requestId, storyId)) {
+                        action.beforeApplyCachedResponse?.invoke()
+                    }
+                    if (threadLoadSession.isCurrent(requestId, storyId)) {
+                        traced(TRACE_APPLY_CACHED_THREAD, requestId) {
+                            applyAlgoliaThread(
+                                action = action,
+                                requestId = requestId,
+                                parsed = parsed,
+                                networkCompleted = false,
+                                responseToCache = null,
+                                restoreScroll = action.restoreScrollFromCache,
+                                broadcastStoryUpdate = false,
+                                prepared = prepared,
+                            )
+                        }
+                    }
                 }
             }
             val result = commentThreadRepository.load(
@@ -544,6 +596,19 @@ class CommentsPresenter(
                     )
                 }
             }
+        }
+    }
+
+    private suspend fun <T> traced(
+        name: String,
+        cookie: Int,
+        block: suspend () -> T,
+    ): T {
+        performanceTrace.begin(name, cookie)
+        return try {
+            block()
+        } finally {
+            performanceTrace.end(name, cookie)
         }
     }
 
@@ -654,14 +719,22 @@ class CommentsPresenter(
         responseToCache: String?,
         restoreScroll: Boolean,
         broadcastStoryUpdate: Boolean,
+        prepared: CachedThreadPreparation? = null,
     ) {
-        val headerChanged = parsed.updateStoryInformation(action.story, thread.allComments.size)
-        thread.replaceParsedComments(
+        val headerChanged = prepared?.headerChanged ?: parsed.updateStoryInformation(
             action.story,
-            parsed.comments,
-            action.sorting,
-            action.collapseTopLevel,
+            thread.allComments.size,
         )
+        if (prepared == null) {
+            thread.replaceParsedComments(
+                action.story,
+                parsed.comments,
+                action.sorting,
+                action.collapseTopLevel,
+            )
+        } else {
+            thread.commitPreparedInitialComments(action.story, prepared.thread)
+        }
         publish(
             loaded = true,
             refreshing = if (networkCompleted) false else state.value.refreshing,
@@ -726,6 +799,15 @@ class CommentsPresenter(
     }
 
     private companion object {
+        private data class CachedThreadPreparation(
+            val thread: PreparedInitialCommentThread,
+            val headerChanged: Boolean,
+        )
+
         const val POLL_VOTE_DIRECTION = "up"
+        const val TRACE_CACHE_READ = "CommentsOpen.cacheRead"
+        const val TRACE_PARSE_CACHED_JSON = "CommentsOpen.parseCachedJson"
+        const val TRACE_APPLY_CACHED_THREAD = "CommentsOpen.applyCachedThread"
+        const val TRACE_PREPARE_CACHED_THREAD = "CommentsOpen.prepareCachedThreadState"
     }
 }

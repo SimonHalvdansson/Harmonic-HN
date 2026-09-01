@@ -40,6 +40,7 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.PreviewTintPalette
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.PreviewTintSwatch
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.ui.content.PaletteTintCache
@@ -209,7 +210,7 @@ class FaviconTintChainBenchmark {
             showCommentsCount = true,
             compactView = false,
             thumbnails = false,
-            previewImageMode = "off",
+            previewImageMode = StoryPreviewMode.OFF,
             borderlessLargePreviewImage = false,
             showSummary = false,
             storyTextSize = 16f,

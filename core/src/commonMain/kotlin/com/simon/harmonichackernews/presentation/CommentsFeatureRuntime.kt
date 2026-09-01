@@ -95,7 +95,8 @@ class CommentsFeatureRuntime(
     private val canLoadArticleTextOnDemand: Boolean = false,
     private val hydrateCachedStory: (Story) -> Boolean = { false },
     private val isThreadCached: (Int) -> Boolean = { false },
-    private val loadCachedThread: (Int) -> String? = { null },
+    private val loadCachedThread: suspend (Int) -> String? = { null },
+    private val awaitInitialPresentation: suspend () -> Unit = {},
     private val storeCachedThread: suspend (Int, String) -> Unit = { _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
@@ -370,6 +371,8 @@ class CommentsFeatureRuntime(
         cachedResponse: String?,
         restoreScrollFromCache: Boolean = false,
         refreshing: Boolean = false,
+        loadCachedResponse: (suspend () -> String?)? = null,
+        beforeApplyCachedResponse: (suspend () -> Unit)? = null,
     ) {
         val story = story ?: return
         presenter.dispatch(CommentsAction.SetRefreshing(refreshing))
@@ -383,6 +386,8 @@ class CommentsFeatureRuntime(
                 collapseTopLevel = collapseTopLevel,
                 previousResponse = cachedResponse,
                 restoreScrollFromCache = restoreScrollFromCache,
+                loadPreviousResponse = loadCachedResponse,
+                beforeApplyCachedResponse = beforeApplyCachedResponse,
             ),
         )
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
@@ -391,7 +396,12 @@ class CommentsFeatureRuntime(
 
     fun loadInitial(restoreScrollFromCache: Boolean) {
         val storyId = story?.id ?: return
-        load(loadCachedThread(storyId), restoreScrollFromCache)
+        load(
+            cachedResponse = null,
+            restoreScrollFromCache = restoreScrollFromCache,
+            loadCachedResponse = { loadCachedThread(storyId) },
+            beforeApplyCachedResponse = awaitInitialPresentation,
+        )
         platform(CommentsPlatformEffect.ReloadLinkPreviews)
     }
 

@@ -13,7 +13,7 @@ android {
         targetSdk = 37
         testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
-                "EMULATOR,DEBUGGABLE,NOT-AOT-COMPILED"
+                "EMULATOR,DEBUGGABLE"
     }
 
     buildTypes {

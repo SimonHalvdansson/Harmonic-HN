@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.presentation.ArchiveUrlResolver
 import com.simon.harmonichackernews.presentation.CommentMasterResolver
 import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 import com.simon.harmonichackernews.presentation.CommentsPresenter
+import com.simon.harmonichackernews.presentation.CommentsPerformanceTrace
 import com.simon.harmonichackernews.presentation.CommentsSessionState
 import com.simon.harmonichackernews.presentation.CommentsStore
 import com.simon.harmonichackernews.presentation.EditorSubmission
@@ -29,12 +30,14 @@ import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 sealed interface EditorFeatureSessionEvent {
     data class Submitting(val value: Boolean) : EditorFeatureSessionEvent
@@ -80,6 +83,8 @@ data class CommentsFeatureHost(
     val platform: CommentsPlatformDependencies,
     val userSettings: UserSettings,
     val canLoadArticleTextOnDemand: Boolean = false,
+    val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
+    val awaitInitialPresentation: suspend () -> Unit = {},
 )
 
 /**
@@ -165,6 +170,8 @@ fun HarmonicAppComposition.createCommentsStore(
         network.pollOptionsRepository,
         actions,
         hackerNewsUser,
+        performanceTrace = host.performanceTrace,
+        threadPreparationDispatcher = Dispatchers.Default,
     )
     val runtime = CommentsFeatureRuntime(
         scope = featureScope,
@@ -181,7 +188,10 @@ fun HarmonicAppComposition.createCommentsStore(
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         hydrateCachedStory = storyCache::hydrateStory,
         isThreadCached = storyCache::hasStoryPayload,
-        loadCachedThread = storyCache::loadStoryPayload,
+        loadCachedThread = { storyId ->
+            withContext(Dispatchers.Default) { storyCache.loadStoryPayload(storyId) }
+        },
+        awaitInitialPresentation = host.awaitInitialPresentation,
         storeCachedThread = storyCache::cacheStory,
         publishStoryUpdate = storyUpdates::publish,
         previewResourceService = previewResources,

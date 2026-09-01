@@ -12,9 +12,12 @@ import dev.chrisbanes.haze.rememberHazeState
 private val LocalSharedHazeState = compositionLocalOf<HazeState?> { null }
 
 @Composable
-fun HazeHost(content: @Composable () -> Unit) {
+fun HazeHost(
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     val hazeState = rememberHazeState()
-    CompositionLocalProvider(LocalSharedHazeState provides hazeState) {
+    CompositionLocalProvider(LocalSharedHazeState provides hazeState.takeIf { enabled }) {
         content()
     }
 }

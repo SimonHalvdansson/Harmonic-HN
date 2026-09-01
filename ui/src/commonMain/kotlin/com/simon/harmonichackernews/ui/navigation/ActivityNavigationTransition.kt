@@ -31,10 +31,12 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 internal val ActivityNavigationTransitionOffset = 96.dp
-internal const val ActivityNavigationTransitionDurationMillis = 450
+const val ActivityNavigationTransitionDurationMillis = 450
 internal const val ActivityNavigationFadeDurationMillis = 83
 internal const val ActivityNavigationOpenFadeDelayMillis = 50
 internal const val ActivityNavigationCloseFadeDelayMillis = 35
+const val ActivityNavigationOpenContentOpaqueMillis =
+    ActivityNavigationOpenFadeDelayMillis + ActivityNavigationFadeDurationMillis
 
 internal fun activityNavigationOpenContentTransform(
     transitionOffsetPx: Int,

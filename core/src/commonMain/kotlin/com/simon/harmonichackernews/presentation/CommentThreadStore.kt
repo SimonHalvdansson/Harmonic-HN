@@ -55,6 +55,12 @@ data class PortableCommentThreadState(
     val revision: Long = 0,
 )
 
+internal data class PreparedInitialCommentThread(
+    val allComments: List<Comment>,
+    val displayedComments: List<Comment>,
+    val state: PortableCommentThreadState,
+)
+
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
 class CommentThreadStore {
     val allComments: MutableList<Comment> = mutableListOf()
@@ -113,6 +119,46 @@ class CommentThreadStore {
             }
         }
         prepareAndReplace(story, nextComments, sorting, collapseTopLevel)
+    }
+
+    /** Builds the initial immutable thread snapshot without mutating the live screen store. */
+    internal fun prepareInitialParsedComments(
+        story: Story?,
+        parsedComments: List<Comment>,
+        sorting: String,
+        collapseTopLevel: Boolean,
+    ): PreparedInitialCommentThread {
+        val prepared = CommentThreadStore().also { store ->
+            store.hideDelayedComments = hideDelayedComments
+            store.reset(story, allComments.firstOrNull() ?: Comment(), sorting)
+            store.replaceParsedComments(story, parsedComments, sorting, collapseTopLevel)
+        }
+        return PreparedInitialCommentThread(
+            allComments = prepared.allComments.toList(),
+            displayedComments = prepared.displayedComments.toList(),
+            state = prepared.state.value,
+        )
+    }
+
+    /** Atomically installs a background-prepared initial thread into the live store. */
+    internal fun commitPreparedInitialComments(
+        story: Story?,
+        prepared: PreparedInitialCommentThread,
+    ) {
+        allComments.clear()
+        allComments.addAll(prepared.allComments)
+        displayedComments.clear()
+        displayedComments.addAll(prepared.displayedComments)
+        commentsById.clear()
+        allComments.forEach { comment -> commentsById[comment.id] = comment }
+        searchableTextById.clear()
+        portableItemsById.clear()
+        prepared.state.allComments.forEach { item -> portableItemsById[item.id] = item }
+        currentStory = story
+        mutableState.value = prepared.state.copy(
+            story = story?.toSnapshot(),
+            revision = mutableState.value.revision + 1,
+        )
     }
 
     fun appendLoadedComments(

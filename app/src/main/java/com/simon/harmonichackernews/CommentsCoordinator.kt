@@ -5,6 +5,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.os.Trace
 import android.text.TextUtils
 import android.util.Log
 import android.view.View
@@ -36,6 +38,7 @@ import com.simon.harmonichackernews.presentation.CommentsBackTarget
 import com.simon.harmonichackernews.presentation.CommentsHostRestoration
 import com.simon.harmonichackernews.presentation.CommentsOverlayRestoration
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
+import com.simon.harmonichackernews.presentation.CommentsPerformanceTrace
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
 import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
 import com.simon.harmonichackernews.presentation.CommentsSettingsState
@@ -45,6 +48,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -59,6 +63,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.simon.harmonichackernews.settings.UserSettings
+import java.util.concurrent.ConcurrentHashMap
 
 private class CommentsViewSession(
     val host: CommentsWebViewHost,
@@ -90,6 +95,10 @@ class CommentsCoordinator(
     private var restoringStoredProgress = scrollProgress.initialized
     private var started = false
     private var destroyed = false
+    private var contentReadyTraceOpen = true
+    private val performanceTrace = commentsPerformanceTrace().also { trace ->
+        trace.begin(TRACE_CONTENT_READY, sessionKey)
+    }
     private val commentsStore = appComposition.createCommentsStore(
         CommentsFeatureHost(
             scope = coroutineScope,
@@ -97,6 +106,7 @@ class CommentsCoordinator(
             platform = platformDependencies,
             userSettings = userSettings,
             canLoadArticleTextOnDemand = true,
+            performanceTrace = performanceTrace,
         ),
     )
     private var viewSession: CommentsViewSession? = null
@@ -133,8 +143,32 @@ class CommentsCoordinator(
         get() = composeController
     private var hostActive = true
     private var firstDrawCompleted = false
+    private var initialCommentsLoadStarted = false
     private var pendingVisibleWebsiteInitialization = false
     private var pendingComposeSummaryRequest = false
+
+    private fun commentsPerformanceTrace(): CommentsPerformanceTrace {
+        if (BuildConfig.APPLICATION_ID != COMMENTS_BENCHMARK_APPLICATION_ID) {
+            return CommentsPerformanceTrace()
+        }
+        val starts = ConcurrentHashMap<String, Long>()
+        return CommentsPerformanceTrace(
+            begin = { name, cookie ->
+                if (Build.VERSION.SDK_INT >= 29) Trace.beginAsyncSection(name, cookie)
+                starts["$name#$cookie"] = SystemClock.elapsedRealtimeNanos()
+            },
+            end = { name, cookie ->
+                if (Build.VERSION.SDK_INT >= 29) Trace.endAsyncSection(name, cookie)
+                val durationNanos = starts.remove("$name#$cookie")
+                if (durationNanos != null) {
+                    Log.i(
+                        COMMENTS_PERFORMANCE_TAG,
+                        "$name ${(SystemClock.elapsedRealtimeNanos() - durationNanos) / 1_000_000f} ms",
+                    )
+                }
+            },
+        )
+    }
 
     init {
         coroutineScope.launch { commentsStore.effects.collect(::handleCommentsRuntimeEffect) }
@@ -305,24 +339,9 @@ class CommentsCoordinator(
         // cold theme/preference/resource lookups on the comments-open frame.
         webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor)
 
-        initializeComposeUi()
-        scheduleWebViewInitializationAfterFirstDraw(view)
-
         val restoreScrollFromCache = !showWebsite
-
-        // Navigation Compose owns the screen transition. Do not hold the first frame
-        // behind the old inset-gated postponed transition; render the header skeleton immediately
-        // and start loading on the next main-loop turn.
-        if (!commentsLoaded) {
-            view.post(object : Runnable {
-                override fun run() {
-                    if (attachedRoot !== view || !isActive) {
-                        return
-                    }
-                    loadInitialStoryAndComments(restoreScrollFromCache)
-                }
-            })
-        }
+        initializeComposeUi()
+        scheduleOpeningWorkAfterFirstDraw(view, restoreScrollFromCache)
     }
 
     private fun createBackPressedCallback(
@@ -852,22 +871,76 @@ class CommentsCoordinator(
         composeController?.requestCollapseSheet()
     }
 
-    private fun scheduleWebViewInitializationAfterFirstDraw(root: View) {
+    /**
+     * Keeps the destination's first frame small, then overlaps cache/network work with the shared
+     * open transition. Hidden WebView preloading is deliberately held until that transition ends;
+     * Chromium startup is large enough to monopolize one of the frames we are trying to protect.
+     */
+    private fun scheduleOpeningWorkAfterFirstDraw(
+        root: View,
+        restoreScrollFromCache: Boolean,
+    ) {
         root.doOnPreDraw {
             root.post {
                 if (attachedRoot !== root || !isActive) return@post
                 firstDrawCompleted = true
-                if (pendingVisibleWebsiteInitialization) {
-                    pendingVisibleWebsiteInitialization = false
-                    webViewController?.initializeForVisibleWebsite()
+
+                // The cache read suspends onto a background dispatcher. Starting it here lets its
+                // disk I/O and JSON parsing use the animation window without delaying first draw.
+                startInitialCommentsLoad(restoreScrollFromCache)
+
+                val openingDelayMillis = if (navigation.isAdaptiveTwoPane()) {
+                    0L
                 } else {
-                    requestConfiguredWebViewInitialization()
+                    ActivityNavigationTransitionDurationMillis.toLong()
                 }
-                if (pendingComposeSummaryRequest) {
-                    pendingComposeSummaryRequest = false
-                    requestComposeSummary()
+                root.postDelayed(
+                    {
+                        if (attachedRoot !== root || !isActive) return@postDelayed
+                        composeController?.completeOpeningTransition()
+                    },
+                    openingDelayMillis,
+                )
+
+                if (showWebsite || pendingVisibleWebsiteInitialization) {
+                    root.postOnAnimation {
+                        if (attachedRoot !== root || !isActive) return@postOnAnimation
+                        runDeferredWebViewWork(visibleWebsite = true)
+                    }
+                } else {
+                    val delayMillis = if (navigation.isAdaptiveTwoPane()) {
+                        0L
+                    } else {
+                        ActivityNavigationTransitionDurationMillis.toLong()
+                    }
+                    root.postDelayed(
+                        {
+                            if (attachedRoot !== root || !isActive) return@postDelayed
+                            runDeferredWebViewWork(visibleWebsite = false)
+                        },
+                        delayMillis,
+                    )
                 }
             }
+        }
+    }
+
+    private fun startInitialCommentsLoad(restoreScrollFromCache: Boolean) {
+        if (initialCommentsLoadStarted || commentsLoaded) return
+        initialCommentsLoadStarted = true
+        loadInitialStoryAndComments(restoreScrollFromCache)
+    }
+
+    private fun runDeferredWebViewWork(visibleWebsite: Boolean) {
+        if (visibleWebsite) {
+            pendingVisibleWebsiteInitialization = false
+            requestVisibleWebsiteInitialization()
+        } else {
+            requestConfiguredWebViewInitialization()
+        }
+        if (pendingComposeSummaryRequest) {
+            pendingComposeSummaryRequest = false
+            requestComposeSummary()
         }
     }
 
@@ -1049,6 +1122,7 @@ class CommentsCoordinator(
 
     fun onDestroy() {
         if (destroyed) return
+        finishContentReadyTrace()
         if (started) onStop()
         val session = viewSession
         val controllerToDetach = session?.composeController
@@ -1143,6 +1217,7 @@ class CommentsCoordinator(
                 composeController?.showCommentActions(effect.comment)
             is CommentsRuntimeEffect.ThreadReady -> {
                 if (!isCommentsViewActive) return
+                finishContentReadyTrace()
                 commentsStore.state.value.settings?.let(::applyPlatformSettingsState)
                 if (effect.restoreScroll && restoringStoredProgress &&
                     scrollProgress.storyId == story?.id
@@ -1173,6 +1248,12 @@ class CommentsCoordinator(
         controller.requestSummary(
             CommentsWebViewController.PageTextCallback(commentsStore::startSummary),
         )
+    }
+
+    private fun finishContentReadyTrace() {
+        if (!contentReadyTraceOpen) return
+        contentReadyTraceOpen = false
+        performanceTrace.end(TRACE_CONTENT_READY, sessionKey)
     }
 
     private fun showActionFailure(
@@ -1240,6 +1321,10 @@ class CommentsCoordinator(
 
     companion object {
         private const val TAG = "CommentsCoordinator"
+        private const val COMMENTS_PERFORMANCE_TAG = "CommentsPerformance"
+        private const val TRACE_CONTENT_READY = "CommentsOpen.contentReady"
+        private const val COMMENTS_BENCHMARK_APPLICATION_ID =
+            "com.simon.harmonichackernews.compose.benchmark"
         private const val STATE_COMMENT_ACTION_COMMENT_ID =
             "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID"
         private const val STATE_ADBLOCK_DISABLED_FOR_SESSION =

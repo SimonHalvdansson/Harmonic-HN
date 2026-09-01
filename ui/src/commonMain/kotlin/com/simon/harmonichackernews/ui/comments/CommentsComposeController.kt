@@ -133,6 +133,9 @@ class CommentsComposeController private constructor(
         private set
     var firstVisibleCommentOffset: Int = 0
         private set
+    /** Full-screen haze is activated after the single-pane open surface stops moving. */
+    var openingTransitionComplete by mutableStateOf(false)
+        private set
 
     private val interactionStore = CommentsInteractionStore(initialShowWebsite, shouldSmoothScroll)
     private var interactionState by mutableStateOf(interactionStore.state)
@@ -255,6 +258,10 @@ class CommentsComposeController private constructor(
 
     fun updateHeaderPreviewSuppressed(suppressed: Boolean) {
         headerPreviewSuppressed = suppressed
+    }
+
+    fun completeOpeningTransition() {
+        openingTransitionComplete = true
     }
 
     fun updateHeaderMenuVisibility(visible: Boolean) {

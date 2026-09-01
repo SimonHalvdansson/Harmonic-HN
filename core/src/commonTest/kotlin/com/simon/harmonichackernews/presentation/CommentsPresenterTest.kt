@@ -417,6 +417,64 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun cachedResponseLookupRunsInsideTheCancellableThreadLoadJob() = runTest {
+        val response = """
+            {
+              "id": 42,
+              "title": "Cached comments",
+              "points": 10,
+              "author": "simon",
+              "type": "story",
+              "children": [
+                {"id": 7, "parent_id": 42, "author": "alice", "text": "Ready"}
+              ]
+            }
+        """.trimIndent()
+        val presenter = CommentsPresenter(
+            backgroundScope,
+            CommentsSessionState(),
+            CommentThreadRepository(
+                algoliaRepository = FakeAlgoliaRepository(response),
+                hackerNewsRepository = UnusedHackerNewsRepository,
+                algoliaCommentsParser = AlgoliaCommentsParser(
+                    parsingDispatcher = UnconfinedTestDispatcher(testScheduler),
+                ),
+            ),
+            UnusedPollOptions,
+            savedItemActions(),
+            UnusedVotingService,
+        )
+        val story = Story("Loading", 42, false, false)
+        var cacheReads = 0
+        val effect = async { presenter.effects.first() }
+        runCurrent()
+
+        presenter.dispatch(
+            CommentsAction.LoadThread(
+                story = story,
+                useAlgolia = true,
+                filteredUsers = emptySet(),
+                sorting = "default",
+                collapseTopLevel = false,
+                previousResponse = null,
+                restoreScrollFromCache = true,
+                loadPreviousResponse = {
+                    cacheReads++
+                    response
+                },
+            ),
+        )
+        assertEquals(0, cacheReads)
+
+        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+
+        assertEquals(1, cacheReads)
+        assertFalse(applied.networkCompleted)
+        assertTrue(applied.restoreScroll)
+        assertEquals("Cached comments", story.title)
+    }
+
+    @Test
     fun algoliaFallbackStateIsPublishedBeforeOfficialApiCompletes() = runTest {
         val officialStory = CompletableDeferred<Story?>()
         val presenter = CommentsPresenter(

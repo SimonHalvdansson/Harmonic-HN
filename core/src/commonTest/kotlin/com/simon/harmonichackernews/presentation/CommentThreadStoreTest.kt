@@ -248,6 +248,37 @@ class CommentThreadStoreTest {
         assertTrue(portable.displayedComments.last().presentation.expanded)
     }
 
+    @Test
+    fun preparedInitialCommentsMatchDirectReplacementAndDoNotPublishBeforeCommit() {
+        val sourceStory = story()
+        val preparedStore = CommentThreadStore().also { it.reset(sourceStory) }
+        val before = preparedStore.state.value
+
+        val prepared = preparedStore.prepareInitialParsedComments(
+            story = sourceStory,
+            parsedComments = comments(),
+            sorting = "Default",
+            collapseTopLevel = true,
+        )
+
+        assertSame(before, preparedStore.state.value)
+        preparedStore.commitPreparedInitialComments(sourceStory, prepared)
+
+        val directStore = CommentThreadStore().also { it.reset(sourceStory) }
+        directStore.replaceParsedComments(
+            story = sourceStory,
+            parsedComments = comments(),
+            sorting = "Default",
+            collapseTopLevel = true,
+        )
+        assertEquals(
+            directStore.state.value.copy(revision = 0),
+            preparedStore.state.value.copy(revision = 0),
+        )
+        assertEquals(listOf(1), preparedStore.state.value.visibleComments.map { it.comment.id })
+        assertEquals("child", preparedStore.findComment(2)?.text)
+    }
+
     private fun story() = Story("Story", 99, true, false)
 
     private fun comments() = listOf(

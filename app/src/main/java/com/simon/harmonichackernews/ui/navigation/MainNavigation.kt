@@ -4,6 +4,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.Trace
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.animateColorAsState
@@ -422,13 +423,18 @@ class MainNavigationController internal constructor(
         request: MainStoryRequest,
     ): CommentsCoordinator {
         val coordinator = commentsCoordinatorCache.getOrPut(request.serial) {
-            CommentsCoordinator(
-                activity,
-                request.destination,
-                request.serial,
-                consumeCommentsSavedState(request.serial),
-                navigation = this,
-            )
+            Trace.beginSection("CommentsOpen.createCoordinator")
+            try {
+                CommentsCoordinator(
+                    activity,
+                    request.destination,
+                    request.serial,
+                    consumeCommentsSavedState(request.serial),
+                    navigation = this,
+                )
+            } finally {
+                Trace.endSection()
+            }
         }
         commentsCoordinatorReferences[request.serial] =
             (commentsCoordinatorReferences[request.serial] ?: 0) + 1
@@ -1253,13 +1259,14 @@ private fun CommentsPane(
             controller.releaseCommentsCoordinator(activeCoordinator)
         }
     }
-    CommentsHazeHost {
+    val commentsController = activeCoordinator.composeUiController
+    CommentsHazeHost(enabled = commentsController?.openingTransitionComplete != false) {
         Box(Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { activeCoordinator.webViewRoot },
             )
-            activeCoordinator.composeUiController?.let { commentsController ->
+            commentsController?.let { commentsController ->
                 val showFloatingUpButton = showUpButton &&
                     commentsController.displaySettings?.showUpButton == true
                 if (!commentsController.webViewFullscreen) {
