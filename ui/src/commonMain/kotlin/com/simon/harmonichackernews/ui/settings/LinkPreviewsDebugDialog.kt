@@ -1,5 +1,13 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -196,32 +204,69 @@ private fun DebugLinkPreviewSampleRow(
             lineHeight = 18.sp,
             textDecoration = TextDecoration.Underline,
         )
-        when (val current = state) {
-            DebugPreviewLoadState.Loading -> Box(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                HarmonicLoadingIndicator(Modifier.size(42.dp))
-            }
-            is DebugPreviewLoadState.Loaded -> LinkPreviewContent(
-                story = current.story,
-                contentVersion = current.story.hashCode(),
-                settings = displaySettings,
-            )
-            is DebugPreviewLoadState.Failed -> Text(
-                text = current.message,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.errorContainer,
-                        RoundedCornerShape(12.dp),
+        AnimatedContent(
+            targetState = state,
+            modifier = Modifier.fillMaxWidth(),
+            transitionSpec = {
+                val enter = if (targetState is DebugPreviewLoadState.Loaded) {
+                    fadeIn(
+                        animationSpec = tween(
+                            durationMillis = 220,
+                            delayMillis = 40,
+                            easing = FastOutSlowInEasing,
+                        ),
+                    ) + slideInVertically(
+                        animationSpec = tween(
+                            durationMillis = 260,
+                            easing = FastOutSlowInEasing,
+                        ),
+                        initialOffsetY = { height -> height / 16 },
                     )
-                    .padding(14.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 14.sp,
-            )
+                } else {
+                    fadeIn(tween(180, easing = FastOutSlowInEasing))
+                }
+                (enter togetherWith fadeOut(tween(120))).using(
+                    SizeTransform(clip = false) { _, _ ->
+                        tween(260, easing = FastOutSlowInEasing)
+                    },
+                )
+            },
+            contentKey = { previewState ->
+                when (previewState) {
+                    DebugPreviewLoadState.Loading -> "loading"
+                    is DebugPreviewLoadState.Loaded -> "loaded"
+                    is DebugPreviewLoadState.Failed -> "failed"
+                }
+            },
+            label = "debug link preview load state",
+        ) { current ->
+            when (current) {
+                DebugPreviewLoadState.Loading -> Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HarmonicLoadingIndicator(Modifier.size(42.dp))
+                }
+                is DebugPreviewLoadState.Loaded -> LinkPreviewContent(
+                    story = current.story,
+                    contentVersion = current.story.hashCode(),
+                    settings = displaySettings,
+                )
+                is DebugPreviewLoadState.Failed -> Text(
+                    text = current.message,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            RoundedCornerShape(12.dp),
+                        )
+                        .padding(14.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 14.sp,
+                )
+            }
         }
     }
 }
