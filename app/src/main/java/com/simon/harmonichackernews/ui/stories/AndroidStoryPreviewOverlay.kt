@@ -15,7 +15,10 @@ import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
-internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
+internal fun AndroidStoryPreviewOverlay(
+    controller: StoriesComposeController,
+    onScrimAlphaChanged: (Float) -> Unit = {},
+) {
     val dependencies = LocalHarmonicUiDependencies.current
     val fallbackSettings = remember(dependencies.userSettings.story) {
         StoryDisplaySettings.from(dependencies.userSettings.story)
@@ -30,6 +33,7 @@ internal fun AndroidStoryPreviewOverlay(controller: StoriesComposeController) {
     StoryPreviewOverlay(
         controller = controller,
         tablet = AndroidDisplay.isTablet(LocalResources.current),
+        onScrimAlphaChanged = onScrimAlphaChanged,
     ) { story, page, cardColor, modifier ->
         val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }

@@ -165,11 +165,14 @@ import kotlin.math.roundToInt
 @Composable
 internal fun AndroidStoriesScreen(
     controller: StoriesComposeController,
+    mainListState: LazyListState,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
 ) {
     val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
     StoriesRoute(
         controller = controller,
+        mainListState = mainListState,
+        showTapToUpdateButton = false,
         tintStore = tintStore,
         commentText = { html ->
             runCatching { AnnotatedString.fromHtml(html) }.getOrElse { AnnotatedString(html) }

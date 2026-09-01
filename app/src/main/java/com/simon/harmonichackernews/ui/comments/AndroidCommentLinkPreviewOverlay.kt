@@ -42,13 +42,17 @@ import com.simon.harmonichackernews.utils.AndroidDisplay
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun AndroidCommentLinkPreviewOverlay(controller: CommentsComposeController) {
+internal fun AndroidCommentLinkPreviewOverlay(
+    controller: CommentsComposeController,
+    onScrimAlphaChanged: (Float) -> Unit = {},
+) {
     CommentLinkPreviewOverlay(
         controller = controller,
         tablet = controller.displaySettings?.isTablet == true ||
             AndroidDisplay.isTablet(LocalResources.current),
         referenceContent = { state -> ReferencePreviewCard(controller, state) },
         imageContent = ::ImageOnlyPreviewCard,
+        onScrimAlphaChanged = onScrimAlphaChanged,
     )
 }
 

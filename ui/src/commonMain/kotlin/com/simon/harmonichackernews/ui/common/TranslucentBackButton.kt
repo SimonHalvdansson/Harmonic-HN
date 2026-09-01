@@ -32,6 +32,8 @@ import org.jetbrains.compose.resources.painterResource
 fun TranslucentBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    modalScrimAlpha: Float = 0f,
+    modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
     val colors = HarmonicTheme.colors
     val shape = RoundedCornerShape(percent = 50)
@@ -89,6 +91,7 @@ fun TranslucentBackButton(
                     fontWeight = FontWeight.Medium,
                 )
             }
+            ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
         }
     }
 }

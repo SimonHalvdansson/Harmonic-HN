@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 internal fun AndroidCommentActionOverlay(
     controller: CommentsComposeController,
     settings: CommentDisplaySettings,
+    onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val accountState by dependencies.platform.accounts.accountState.collectAsState()
@@ -23,6 +24,7 @@ internal fun AndroidCommentActionOverlay(
         bookmarksEnabled = dependencies.userSettings.general.bookmarksEnabled,
         textStyle = commentActionLegacyTextStyle,
         onOpenLink = { url -> dependencies.links.open(url) },
+        onScrimAlphaChanged = onScrimAlphaChanged,
     )
 }
 

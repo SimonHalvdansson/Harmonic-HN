@@ -141,6 +141,9 @@ internal fun AndroidCommentsScreen(
         controller = controller,
         listModifier = Modifier.nestedScroll(nestedScrollInterop),
         reserveUpButtonInset = reserveUpButtonInset,
+        // The pane host draws these after its long-press overlays so the transition content stays
+        // behind both the back button and the bottom navigation controls.
+        showNavigationControls = false,
         headerContent = { settings ->
             AndroidCommentsHeader(
                 controller = controller,

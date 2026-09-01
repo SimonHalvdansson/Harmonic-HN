@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.AnnotatedString
@@ -12,6 +14,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 @Composable
 fun StoriesRoute(
     controller: StoriesComposeController,
+    mainListState: LazyListState = rememberLazyListState(),
+    showTapToUpdateButton: Boolean = true,
     tintStore: StoryResourceTintStore,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
@@ -24,6 +28,8 @@ fun StoriesRoute(
     val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
     StoriesScreen(
         controller = controller,
+        mainListState = mainListState,
+        showTapToUpdateButton = showTapToUpdateButton,
         storyItemModelCacheKey = tintBaseColor,
         storyItemModel = { story, position, settings, previewResource, nowMillis ->
             storyItemUiModel(

@@ -93,6 +93,7 @@ fun CommentLinkPreviewOverlay(
     tablet: Boolean,
     referenceContent: @Composable (CommentLinkPreviewOverlayState.Reference) -> Unit,
     imageContent: @Composable (CommentLinkPreviewOverlayState.Image) -> Unit,
+    onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val state = controller.linkPreviewOverlay ?: return
     val predictiveProgressAnimation = remember(state) { Animatable(0f) }
@@ -170,6 +171,7 @@ fun CommentLinkPreviewOverlay(
         },
         onDismissRequest = controller::requestDismissLinkPreview,
         onDismissAnimationFinished = controller::completeLinkPreviewDismiss,
+        onScrimAlphaChanged = onScrimAlphaChanged,
     ) {
         when (state) {
             is CommentLinkPreviewOverlayState.Reference -> referenceContent(state)

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -35,6 +36,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ import com.simon.harmonichackernews.ui.comments.AndroidCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentNavigationControls
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
@@ -94,6 +97,7 @@ import com.simon.harmonichackernews.ui.submissions.SubmissionsCoordinator
 import com.simon.harmonichackernews.ui.submissions.AndroidSubmissionsScreen
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoryTapToUpdateButton
 import com.simon.harmonichackernews.ui.stories.AndroidStoriesScreen
 import com.simon.harmonichackernews.ui.stories.AndroidStoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -913,11 +917,6 @@ private fun MainNavigation(
             },
         ),
         editorPredictiveModifier = editorPredictiveBack.exitModifier,
-        linkPreview = controller.commentsComposeController
-            ?.takeIf { it.linkPreviewOverlay != null && !it.searchDialogVisible }
-            ?.let { commentsController ->
-                { AndroidCommentLinkPreviewOverlay(commentsController) }
-            },
         base = {
             if (usesTwoPaneStoryScene) {
                 MainNavigationScene(
@@ -1214,8 +1213,18 @@ private fun StoriesPane(
 ) {
     Box(Modifier.fillMaxSize()) {
         val storiesController = controller.storiesComposeController
+        val mainListState = rememberLazyListState()
+        var previewScrimAlpha by remember(storiesController) { mutableFloatStateOf(0f) }
+        val previewVisible = storiesController?.storyPreviewOverlay != null
+        LaunchedEffect(previewVisible) {
+            if (!previewVisible) previewScrimAlpha = 0f
+        }
         storiesController?.let {
-            AndroidStoriesScreen(it, controller::updateVisibleStories)
+            AndroidStoriesScreen(
+                controller = it,
+                mainListState = mainListState,
+                onVisibleStoriesChanged = controller::updateVisibleStories,
+            )
         }
         if (drawStatusBarProtection) {
             StatusBarProtection(
@@ -1225,7 +1234,23 @@ private fun StoriesPane(
         }
         storiesController
             ?.takeIf { it.storyPreviewOverlay != null }
-            ?.let { AndroidStoryPreviewOverlay(it) }
+            ?.let {
+                Box(Modifier.fillMaxSize().zIndex(100f)) {
+                    AndroidStoryPreviewOverlay(
+                        controller = it,
+                        onScrimAlphaChanged = { alpha -> previewScrimAlpha = alpha },
+                    )
+                }
+            }
+        storiesController?.let {
+            StoryTapToUpdateButton(
+                controller = it,
+                mainListState = mainListState,
+                modifier = Modifier.zIndex(101f),
+                modalScrimAlpha = previewScrimAlpha,
+                modalScrimActive = previewVisible,
+            )
+        }
     }
 }
 
@@ -1269,6 +1294,15 @@ private fun CommentsPane(
             commentsController?.let { commentsController ->
                 val showFloatingUpButton = showUpButton &&
                     commentsController.displaySettings?.showUpButton == true
+                var modalScrimAlpha by remember(commentsController) { mutableFloatStateOf(0f) }
+                val modalOverlayVisible = !commentsController.searchDialogVisible &&
+                    (
+                        commentsController.linkPreviewOverlay != null ||
+                            commentsController.commentActionOverlay != null
+                    )
+                LaunchedEffect(modalOverlayVisible) {
+                    if (!modalOverlayVisible) modalScrimAlpha = 0f
+                }
                 if (!commentsController.webViewFullscreen) {
                     CommentsScaffold(
                         controller = commentsController,
@@ -1286,6 +1320,8 @@ private fun CommentsPane(
                 if (showFloatingUpButton) {
                     CommentsUpButton(
                         onClick = controller::closeStory,
+                        modalScrimAlpha = modalScrimAlpha,
+                        modalScrimActive = modalOverlayVisible,
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .statusBarsPadding()
@@ -1293,10 +1329,31 @@ private fun CommentsPane(
                             .zIndex(101f),
                     )
                 }
-                commentsController.displaySettings?.let { settings ->
-                    Box(Modifier.fillMaxSize().zIndex(102f)) {
-                        AndroidCommentActionOverlay(commentsController, settings)
+                if (modalOverlayVisible) {
+                    Box(Modifier.fillMaxSize().zIndex(100f)) {
+                        AndroidCommentLinkPreviewOverlay(
+                            controller = commentsController,
+                            onScrimAlphaChanged = { alpha -> modalScrimAlpha = alpha },
+                        )
+                        commentsController.displaySettings?.let { settings ->
+                            AndroidCommentActionOverlay(
+                                controller = commentsController,
+                                settings = settings,
+                                onScrimAlphaChanged = { alpha -> modalScrimAlpha = alpha },
+                            )
+                        }
                     }
+                }
+                if (
+                    !commentsController.webViewFullscreen &&
+                    !commentsController.searchDialogVisible
+                ) {
+                    CommentNavigationControls(
+                        controller = commentsController,
+                        modifier = Modifier.zIndex(101f),
+                        modalScrimAlpha = modalScrimAlpha,
+                        modalScrimActive = modalOverlayVisible,
+                    )
                 }
             }
         }

@@ -52,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -92,6 +93,7 @@ fun CommentActionOverlay(
     bookmarksEnabled: Boolean,
     textStyle: TextStyle,
     onOpenLink: (String) -> Unit,
+    onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val state = controller.commentActionOverlay ?: return
     val comment = state.comment
@@ -225,6 +227,8 @@ fun CommentActionOverlay(
     val backTranslationX =
         with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
     val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
+    val scrimAlpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress)
+    SideEffect { onScrimAlphaChanged(scrimAlpha) }
     val shape = RoundedCornerShape(HarmonicDimens.compose_comment_action_corner_radius)
     val sharedTransition = CommentActionSharedTransitionState(
         progress = progress,
@@ -293,9 +297,7 @@ fun CommentActionOverlay(
             Modifier
                 .fillMaxSize()
                 .background(
-                    Color.Black.copy(
-                        alpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress),
-                    ),
+                    Color.Black.copy(alpha = scrimAlpha),
                 )
                 .then(modalGestures)
                 .clickable(

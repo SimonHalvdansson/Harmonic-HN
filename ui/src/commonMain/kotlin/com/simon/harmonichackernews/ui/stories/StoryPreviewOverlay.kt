@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -118,6 +119,7 @@ fun StoryPreviewOverlay(
     controller: StoriesComposeController,
     tablet: Boolean,
     pageOnScrollWheel: Boolean = false,
+    onScrimAlphaChanged: (Float) -> Unit = {},
     cardContent: @Composable (
         story: com.simon.harmonichackernews.presentation.StoryListItemSnapshot,
         page: Int,
@@ -463,6 +465,8 @@ fun StoryPreviewOverlay(
         predictiveEased * backDirection
     val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } *
         predictiveEased
+    val scrimAlpha = 0.32f * progress * (1f - 0.55f * predictiveEased)
+    SideEffect { onScrimAlphaChanged(scrimAlpha) }
     fun transformTargetBounds(bounds: Rect?): Rect? {
         val container = targetBounds ?: return bounds
         return bounds?.let {
@@ -570,11 +574,7 @@ fun StoryPreviewOverlay(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { rootOffset = it.boundsInWindow().topLeft }
-            .background(
-                Color.Black.copy(
-                    alpha = 0.32f * progress * (1f - 0.55f * predictiveEased),
-                ),
-            )
+            .background(Color.Black.copy(alpha = scrimAlpha))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

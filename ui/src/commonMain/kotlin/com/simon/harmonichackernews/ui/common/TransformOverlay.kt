@@ -98,6 +98,7 @@ fun TransformOverlay(
     onSourceReadyToCover: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onDismissAnimationFinished: () -> Unit,
+    onScrimAlphaChanged: (Float) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -259,6 +260,10 @@ fun TransformOverlay(
     }
     val movingElevation =
         (shadowElevation.value * shadowProgress * backScale * verticalSwipeScale).dp
+    val scrimAlpha = 0.32f * progress *
+        (1f - 0.55f * predictiveVisualProgress) *
+        (1f - verticalSwipeProgress)
+    SideEffect { onScrimAlphaChanged(scrimAlpha) }
     val gestureBlocker = if (consumeAllGestures) Modifier.consumeAllPointerGestures() else Modifier
     val contentMorphScaleX = if (
         scaleContentWithContainer && localTarget != null && localTarget.width > 0f &&
@@ -372,11 +377,7 @@ fun TransformOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Color.Black.copy(
-                        alpha = 0.32f * progress *
-                            (1f - 0.55f * predictiveVisualProgress) *
-                            (1f - verticalSwipeProgress),
-                    ),
+                    Color.Black.copy(alpha = scrimAlpha),
                 )
                 .then(gestureBlocker)
                 .clickable(

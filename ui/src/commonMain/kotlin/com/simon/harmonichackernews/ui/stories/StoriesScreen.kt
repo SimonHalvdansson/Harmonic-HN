@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -134,6 +135,7 @@ import com.simon.harmonichackernews.ui.content.toStoryItemStyle
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.LazyContentList
+import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -149,6 +151,8 @@ private val NoTapToUpdateExitProgress: () -> Float = { 0f }
 @Composable
 fun StoriesScreen(
     controller: StoriesComposeController,
+    mainListState: LazyListState = rememberLazyListState(),
+    showTapToUpdateButton: Boolean = true,
     storyItemModelCacheKey: Int,
     storyItemModel: (
         StoryListItemSnapshot,
@@ -166,7 +170,7 @@ fun StoriesScreen(
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
     val settings = controller.displaySettings ?: return
-    val mainState = rememberLazyListState()
+    val mainState = mainListState
     val searchState = rememberLazyListState()
     val tapToUpdateExitClock = remember { Animatable(0f) }
     val tapToUpdateExitProgress = remember(tapToUpdateExitClock) {
@@ -322,42 +326,11 @@ fun StoriesScreen(
             )
         },
         overlay = {
-            AnimatedVisibility(
-                visible = controller.showUpdate && !controller.searching &&
-                    !controller.tapToUpdateExitInProgress,
-                enter = fadeIn(tween(180, easing = StoriesEasing)),
-                exit = fadeOut(tween(140, easing = StoriesEasing)),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .zIndex(2f)
-                    .padding(
-                        bottom = WindowInsets.navigationBars.asPaddingValues()
-                            .calculateBottomPadding() + 8.dp,
-                    ),
-            ) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        val alreadyAtTop = mainState.firstVisibleItemIndex == 0 &&
-                            mainState.firstVisibleItemScrollOffset == 0
-                        if (alreadyAtTop) {
-                            controller.refresh()
-                        } else {
-                            controller.beginTapToUpdateExit()
-                        }
-                    },
-                    modifier = Modifier.widthIn(min = 189.dp),
-                    containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = HarmonicTheme.colors.overlayButtonContent,
-                    icon = {
-                        Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
-                    },
-                    text = {
-                        Text(
-                            "Tap to update",
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    },
+            if (showTapToUpdateButton) {
+                StoryTapToUpdateButton(
+                    controller = controller,
+                    mainListState = mainState,
+                    modifier = Modifier.zIndex(2f),
                 )
             }
         },
@@ -369,6 +342,59 @@ fun StoriesScreen(
             onDismiss = controller::dismissFrontDatePicker,
             onSelected = controller::selectFrontDate,
         )
+    }
+}
+
+/** A host-positionable update control that can stay above story preview transition content. */
+@Composable
+fun BoxScope.StoryTapToUpdateButton(
+    controller: StoriesComposeController,
+    mainListState: LazyListState,
+    modifier: Modifier = Modifier,
+    modalScrimAlpha: Float = 0f,
+    modalScrimActive: Boolean = modalScrimAlpha > 0f,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    AnimatedVisibility(
+        visible = controller.showUpdate && !controller.searching &&
+            !controller.tapToUpdateExitInProgress,
+        enter = fadeIn(tween(180, easing = StoriesEasing)),
+        exit = fadeOut(tween(140, easing = StoriesEasing)),
+        modifier = modifier
+            .align(Alignment.BottomCenter)
+            .padding(
+                bottom = WindowInsets.navigationBars.asPaddingValues()
+                    .calculateBottomPadding() + 8.dp,
+            ),
+    ) {
+        Box {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    val alreadyAtTop = mainListState.firstVisibleItemIndex == 0 &&
+                        mainListState.firstVisibleItemScrollOffset == 0
+                    if (alreadyAtTop) {
+                        controller.refresh()
+                    } else {
+                        controller.beginTapToUpdateExit()
+                    }
+                },
+                modifier = Modifier.widthIn(min = 189.dp),
+                shape = shape,
+                containerColor = HarmonicTheme.colors.overlayButton,
+                contentColor = HarmonicTheme.colors.overlayButtonContent,
+                icon = {
+                    Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
+                },
+                text = {
+                    Text(
+                        "Tap to update",
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+            )
+            ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
+        }
     }
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.ui.common.LazyContentList
+import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
@@ -145,6 +147,7 @@ fun CommentsScreen(
     listModifier: Modifier,
     reserveUpButtonInset: Boolean,
     pullToRefreshEnabled: Boolean = true,
+    showNavigationControls: Boolean = true,
     animateComments: Boolean,
     showScrollbar: Boolean,
     smoothScroll: Boolean,
@@ -448,27 +451,7 @@ fun CommentsScreen(
             }
         }
 
-        AnimatedVisibility(
-            visible = settings.showNavigationBar && visibleComments.isNotEmpty(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = navigationBottom),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            // Keep the shadow inside AnimatedVisibility's bounds while its layer fades in.
-            Box(modifier = Modifier.padding(16.dp)) {
-                CommentNavigationButtons(
-                    onPrevious = { controller.navigatePrevious(true, false) },
-                    onNext = { controller.navigateNext(true, false) },
-                    onFirst = {
-                        controller.navigationRequest?.let(controller::consumeNavigationRequest)
-                        controller.navigateFirst()
-                    },
-                    onLast = controller::navigateLast,
-                )
-            }
-        }
+        if (showNavigationControls) CommentNavigationControls(controller)
 
         if (showScrollbar && controller.sheetSlideOffset >= 0.999f) {
             CommentsScrollbar(
@@ -539,6 +522,46 @@ fun CommentsScreen(
 
     if (controller.searchDialogVisible) searchDialog()
     actionOverlay()
+}
+
+/**
+ * Persistent comment navigation chrome. Hosts with pane-level modal transforms can place this as
+ * their later sibling so captured source content always travels underneath the controls.
+ */
+@Composable
+fun BoxScope.CommentNavigationControls(
+    controller: CommentsComposeController,
+    modifier: Modifier = Modifier,
+    modalScrimAlpha: Float = 0f,
+    modalScrimActive: Boolean = modalScrimAlpha > 0f,
+) {
+    val settings = controller.displaySettings ?: return
+    val navigationBottom = WindowInsets.navigationBars
+        .asPaddingValues()
+        .calculateBottomPadding()
+    AnimatedVisibility(
+        visible = settings.showNavigationBar && controller.visibleComments.isNotEmpty(),
+        modifier = modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = navigationBottom),
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        // Keep the shadow inside AnimatedVisibility's bounds while its layer fades in.
+        Box(modifier = Modifier.padding(16.dp)) {
+            CommentNavigationButtons(
+                onPrevious = { controller.navigatePrevious(true, false) },
+                onNext = { controller.navigateNext(true, false) },
+                onFirst = {
+                    controller.navigationRequest?.let(controller::consumeNavigationRequest)
+                    controller.navigateFirst()
+                },
+                onLast = controller::navigateLast,
+                modalScrimAlpha = modalScrimAlpha,
+                modalScrimActive = modalScrimActive,
+            )
+        }
+    }
 }
 
 @Composable
@@ -686,58 +709,63 @@ private fun CommentNavigationButtons(
     onNext: () -> Unit,
     onFirst: () -> Unit,
     onLast: () -> Unit,
+    modalScrimAlpha: Float = 0f,
+    modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
     val shape = RoundedCornerShape(28.dp)
     val hazeState = currentCommentsHazeState()
     val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
 
-    Row(
-        modifier = Modifier
-            .shadow(6.dp, shape, clip = false)
-            .commentsHazeBackground(
-                hazeState = hazeState,
-                surfaceColor = surfaceColor,
-                shape = shape,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    Box {
+        Row(
             modifier = Modifier
-                .size(56.dp)
-                .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
-            contentAlignment = Alignment.Center,
+                .shadow(6.dp, shape, clip = false)
+                .commentsHazeBackground(
+                    hazeState = hazeState,
+                    surfaceColor = surfaceColor,
+                    shape = shape,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painterResource(Res.drawable.ic_keyboard_arrow_up_dark),
-                "Previous top-level comment",
-                tint = HarmonicTheme.colors.overlayButtonContent,
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_keyboard_arrow_up_dark),
+                    "Previous top-level comment",
+                    tint = HarmonicTheme.colors.overlayButtonContent,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .consumeAllPointerGestures(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_explore_dark),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = HarmonicTheme.colors.overlayButtonContent,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .combinedClickable(onClick = onNext, onLongClick = onLast),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_keyboard_arrow_down_dark),
+                    "Next top-level comment",
+                    tint = HarmonicTheme.colors.overlayButtonContent,
+                )
+            }
         }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .consumeAllPointerGestures(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(Res.drawable.ic_explore_dark),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = HarmonicTheme.colors.overlayButtonContent,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .combinedClickable(onClick = onNext, onLongClick = onLast),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(Res.drawable.ic_keyboard_arrow_down_dark),
-                "Next top-level comment",
-                tint = HarmonicTheme.colors.overlayButtonContent,
-            )
-        }
+        ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
     }
 }
 

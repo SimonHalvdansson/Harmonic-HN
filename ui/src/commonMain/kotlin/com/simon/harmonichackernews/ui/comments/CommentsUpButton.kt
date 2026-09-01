@@ -9,4 +9,11 @@ import com.simon.harmonichackernews.ui.common.TranslucentBackButton
 fun CommentsUpButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-) = TranslucentBackButton(onClick = onClick, modifier = modifier)
+    modalScrimAlpha: Float = 0f,
+    modalScrimActive: Boolean = modalScrimAlpha > 0f,
+) = TranslucentBackButton(
+    onClick = onClick,
+    modifier = modifier,
+    modalScrimAlpha = modalScrimAlpha,
+    modalScrimActive = modalScrimActive,
+)
