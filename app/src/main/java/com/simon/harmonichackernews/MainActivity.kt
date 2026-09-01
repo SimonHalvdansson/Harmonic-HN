@@ -63,21 +63,24 @@ class MainActivity : BaseActivity() {
      */
     private fun consumeCommentsBenchmarkIntent(intent: Intent?): Boolean {
         if (BuildConfig.APPLICATION_ID != COMMENTS_BENCHMARK_APPLICATION_ID) return false
+        val fixture = CommentsBenchmarkFixture.fromIntentValue(
+            intent?.getStringExtra(EXTRA_BENCHMARK_COMMENTS_FIXTURE),
+        )
         return when (intent?.action) {
             ACTION_BENCHMARK_SEED_COMMENTS -> {
                 lifecycleScope.launch {
                     val payload = withContext(Dispatchers.IO) {
-                        assets.open(COMMENTS_BENCHMARK_ASSET).bufferedReader().use { it.readText() }
+                        assets.open(fixture.assetName).bufferedReader().use { it.readText() }
                     }
-                    check(harmonicAppComposition.storyCache.storeStory(COMMENTS_BENCHMARK_ID, payload)) {
-                        "Could not seed the deterministic Comments benchmark fixture"
+                    check(harmonicAppComposition.storyCache.storeStory(fixture.storyId, payload)) {
+                        "Could not seed the ${fixture.intentValue} Comments benchmark fixture"
                     }
-                    navigationController.openStory(StoryDestination(COMMENTS_BENCHMARK_ID))
+                    navigationController.openStory(StoryDestination(fixture.storyId))
                 }
                 true
             }
             ACTION_BENCHMARK_OPEN_COMMENTS -> {
-                navigationController.openStory(StoryDestination(COMMENTS_BENCHMARK_ID))
+                navigationController.openStory(StoryDestination(fixture.storyId))
                 true
             }
             else -> false
@@ -159,7 +162,34 @@ class MainActivity : BaseActivity() {
             "com.simon.harmonichackernews.action.BENCHMARK_SEED_COMMENTS"
         const val ACTION_BENCHMARK_OPEN_COMMENTS =
             "com.simon.harmonichackernews.action.BENCHMARK_OPEN_COMMENTS"
-        const val COMMENTS_BENCHMARK_ASSET = "comments_benchmark_fixture.json"
-        const val COMMENTS_BENCHMARK_ID = 990000001
+        const val EXTRA_BENCHMARK_COMMENTS_FIXTURE = "benchmark_comments_fixture"
+    }
+
+    private enum class CommentsBenchmarkFixture(
+        val intentValue: String,
+        val assetName: String,
+        val storyId: Int,
+    ) {
+        SMALL(
+            intentValue = "small",
+            assetName = "comments_benchmark_fixture.json",
+            storyId = 990000001,
+        ),
+        MEDIUM(
+            intentValue = "medium",
+            assetName = "comments_benchmark_fixture_medium.json",
+            storyId = 26296339,
+        ),
+        LARGE(
+            intentValue = "large",
+            assetName = "comments_benchmark_fixture_large.json",
+            storyId = 41002195,
+        ),
+        ;
+
+        companion object {
+            fun fromIntentValue(value: String?): CommentsBenchmarkFixture =
+                entries.firstOrNull { it.intentValue == value } ?: SMALL
+        }
     }
 }

@@ -22,8 +22,8 @@ class BaselineProfileGenerator {
         startActivityAndWait()
         awaitStoryContent()
         scrollStoryList()
-        prepareDeterministicCommentsFixture()
-        openDeterministicCommentsFixture()
-        scrollComments()
+        prepareDeterministicCommentsFixture(CommentsBenchmarkFixture.LARGE)
+        openDeterministicCommentsFixture(CommentsBenchmarkFixture.LARGE)
+        scrollComments(repetitions = 6)
     }
 }

@@ -12,12 +12,29 @@ import java.util.regex.Pattern
 
 internal const val BenchmarkPackageName =
     "com.simon.harmonichackernews.compose.benchmark"
-internal const val CommentsBenchmarkTitle =
-    "Deterministic Comments benchmark fixture"
 private const val SeedCommentsBenchmarkAction =
     "com.simon.harmonichackernews.action.BENCHMARK_SEED_COMMENTS"
 private const val OpenCommentsBenchmarkAction =
     "com.simon.harmonichackernews.action.BENCHMARK_OPEN_COMMENTS"
+private const val CommentsBenchmarkFixtureExtra = "benchmark_comments_fixture"
+
+internal enum class CommentsBenchmarkFixture(
+    val intentValue: String,
+    val title: String,
+) {
+    SMALL(
+        intentValue = "small",
+        title = "Deterministic Comments benchmark fixture",
+    ),
+    MEDIUM(
+        intentValue = "medium",
+        title = "How I cut GTA Online loading times by 70%",
+    ),
+    LARGE(
+        intentValue = "large",
+        title = "CrowdStrike Update: Windows Bluescreen and Boot Loops",
+    ),
+}
 
 internal fun MacrobenchmarkScope.awaitStoryContent() {
     device.awaitStoryContent()
@@ -94,15 +111,17 @@ internal fun MacrobenchmarkScope.openFirstStoryComments() {
 }
 
 /** Seeds the fixed JSON through the app's real cache, verifies production parsing, then returns. */
-internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture() {
-    device.executeShellCommand(commentsBenchmarkCommand(SeedCommentsBenchmarkAction))
-    check(device.wait(Until.hasObject(By.text(CommentsBenchmarkTitle)), 30_000)) {
-        "The deterministic Comments fixture did not parse and render"
+internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
+    fixture: CommentsBenchmarkFixture,
+) {
+    device.executeShellCommand(commentsBenchmarkCommand(SeedCommentsBenchmarkAction, fixture))
+    check(device.wait(Until.hasObject(By.text(fixture.title)), 30_000)) {
+        "The ${fixture.intentValue} deterministic Comments fixture did not parse and render"
     }
     device.waitForIdle()
     device.pressBack()
-    check(device.wait(Until.gone(By.text(CommentsBenchmarkTitle)), 10_000)) {
-        "The deterministic Comments fixture did not close"
+    check(device.wait(Until.gone(By.text(fixture.title)), 10_000)) {
+        "The ${fixture.intentValue} deterministic Comments fixture did not close"
     }
     check(device.wait(Until.hasObject(By.text("Top Stories")), 10_000)) {
         "The Stories screen did not return after fixture setup"
@@ -112,8 +131,10 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture() {
 }
 
 /** Opens the already-seeded fixed JSON through the normal Comments route without UI lookup. */
-internal fun MacrobenchmarkScope.openDeterministicCommentsFixture() {
-    device.executeShellCommand(commentsBenchmarkCommand(OpenCommentsBenchmarkAction))
+internal fun MacrobenchmarkScope.openDeterministicCommentsFixture(
+    fixture: CommentsBenchmarkFixture,
+) {
+    device.executeShellCommand(commentsBenchmarkCommand(OpenCommentsBenchmarkAction, fixture))
     SystemClock.sleep(550)
     device.waitForIdle()
 }
@@ -157,6 +178,10 @@ internal fun MacrobenchmarkScope.scrollComments(repetitions: Int = 3) {
 
 private val StoryRankPattern = Pattern.compile("[0-9]+\\.")
 
-private fun commentsBenchmarkCommand(action: String): String =
+private fun commentsBenchmarkCommand(
+    action: String,
+    fixture: CommentsBenchmarkFixture,
+): String =
     "am start -W --activity-single-top -a $action " +
+        "--es $CommentsBenchmarkFixtureExtra ${fixture.intentValue} " +
         "-n $BenchmarkPackageName/com.simon.harmonichackernews.MainActivity"

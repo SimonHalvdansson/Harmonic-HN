@@ -58,7 +58,18 @@ class HarmonicMacrobenchmark {
 
     @Test
     @OptIn(ExperimentalMetricApi::class)
-    fun commentsOpen() {
+    fun commentsOpenSmall() = measureCommentsOpen(CommentsBenchmarkFixture.SMALL)
+
+    @Test
+    @OptIn(ExperimentalMetricApi::class)
+    fun commentsOpenMedium() = measureCommentsOpen(CommentsBenchmarkFixture.MEDIUM)
+
+    @Test
+    @OptIn(ExperimentalMetricApi::class)
+    fun commentsOpenLarge() = measureCommentsOpen(CommentsBenchmarkFixture.LARGE)
+
+    @OptIn(ExperimentalMetricApi::class)
+    private fun measureCommentsOpen(fixture: CommentsBenchmarkFixture) {
         rule.measureRepeated(
             packageName = BenchmarkPackageName,
             metrics = listOf(
@@ -95,10 +106,10 @@ class HarmonicMacrobenchmark {
             setupBlock = {
                 pressHome()
                 startActivityAndWait()
-                prepareDeterministicCommentsFixture()
+                prepareDeterministicCommentsFixture(fixture)
             },
             measureBlock = {
-                openDeterministicCommentsFixture()
+                openDeterministicCommentsFixture(fixture)
             },
         )
     }
