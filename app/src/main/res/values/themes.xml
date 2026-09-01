@@ -394,8 +394,8 @@
         <item name="selfCommentColor">?attr/colorPrimary</item>
         <item name="commentCountIndicatorColor">?attr/colorPrimary</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnPrimaryContainer</item>
+        <item name="overlayButtonColor">?attr/colorPrimary</item>
+        <item name="overlayButtonContentColor">?attr/colorOnPrimary</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
         <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
         <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
