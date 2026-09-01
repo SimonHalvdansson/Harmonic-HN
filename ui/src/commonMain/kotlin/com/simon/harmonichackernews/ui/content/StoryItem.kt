@@ -608,7 +608,7 @@ fun StoryItem(
                             .combinedClickable(
                                 enabled = onLinkClick != null || trackedLinkLongClick != null,
                                 onClick = { onLinkClick?.invoke() },
-                                onLongClick = { trackedLinkLongClick?.invoke() },
+                                onLongClick = trackedLinkLongClick,
                             )
                             .onSecondaryClick(enabled = trackedLinkLongClick != null) {
                                 trackedLinkLongClick?.invoke()
@@ -1437,7 +1437,7 @@ private fun StoryMainContent(
             .combinedClickable(
                 enabled = onLinkClick != null || onLinkLongClick != null,
                 onClick = { onLinkClick?.invoke() },
-                onLongClick = { onLinkLongClick?.invoke() },
+                onLongClick = onLinkLongClick,
             )
             .onSecondaryClick(enabled = onLinkLongClick != null) {
                 onLinkLongClick?.invoke()

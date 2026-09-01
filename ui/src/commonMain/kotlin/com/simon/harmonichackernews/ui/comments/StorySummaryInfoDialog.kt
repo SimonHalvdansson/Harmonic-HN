@@ -183,8 +183,10 @@ private fun TimingSection(
     backend: BackendPresentation,
 ) {
     val hasReportedLoad = diagnostics?.modelLoadMillis != null || backend.loadTime != null
+    val showLoadPhase = diagnostics?.mode != StorySummaryMode.CLOUD &&
+        backend.localModelRuntime() != LocalModelRuntime.GEMINI_NANO
     val phases = buildList {
-        if (diagnostics?.mode != StorySummaryMode.CLOUD) {
+        if (showLoadPhase) {
             add(
                 TimingPhase(
                     label = "Load",
@@ -481,13 +483,15 @@ private data class BackendPresentation(
     val loadTime: String?,
 )
 
+private fun BackendPresentation.localModelRuntime(): LocalModelRuntime? = name?.let { modelName ->
+    LocalModelCatalog.models.firstOrNull { it.displayName == modelName }?.runtime
+}
+
 private fun modelIdentity(
     mode: StorySummaryMode?,
     backend: BackendPresentation,
 ): ModelIdentity {
-    val localRuntime = backend.name?.let { name ->
-        LocalModelCatalog.models.firstOrNull { it.displayName == name }?.runtime
-    }
+    val localRuntime = backend.localModelRuntime()
     return when (mode) {
         StorySummaryMode.LOCAL -> when (localRuntime) {
             LocalModelRuntime.GEMINI_NANO -> ModelIdentity(
