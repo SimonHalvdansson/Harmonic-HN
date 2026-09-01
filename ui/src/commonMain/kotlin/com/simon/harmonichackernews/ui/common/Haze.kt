@@ -22,5 +22,11 @@ fun HazeHost(content: @Composable () -> Unit) {
 @Composable
 internal fun currentSharedHazeState(): HazeState? = LocalSharedHazeState.current
 
-internal fun Modifier.sharedHazeSource(hazeState: HazeState?): Modifier =
-    if (hazeState == null) this else hazeSource(hazeState)
+internal fun Modifier.sharedHazeSource(
+    hazeState: HazeState?,
+    zIndex: Float = 0f,
+): Modifier = if (hazeState == null) {
+    this
+} else {
+    hazeSource(hazeState, zIndex = zIndex)
+}

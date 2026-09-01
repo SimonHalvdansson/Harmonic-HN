@@ -96,6 +96,7 @@ fun CommentActionOverlay(
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val state = controller.commentActionOverlay ?: return
+    val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
     val cardColor = if (settings.cardStyle) {
         HarmonicTheme.colors.surfaceContainerHigh
@@ -310,6 +311,14 @@ fun CommentActionOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .commentsHazeSource(
+                    hazeState = commentsHazeState,
+                    zIndex = CommentsModalHazeSourceZIndex,
+                ),
+        ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(
                     horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
@@ -387,6 +396,7 @@ fun CommentActionOverlay(
             }
         }
         CommentActionTransitionOverlay(sharedTransition, cardColor)
+        }
     }
 }
 

@@ -95,6 +95,7 @@ fun TransformOverlay(
     consumeAllGestures: Boolean = true,
     verticalSwipeDismissEnabled: Boolean = false,
     sourceContentLayer: GraphicsLayer? = null,
+    sharedHazeSourceZIndex: Float? = null,
     onSourceReadyToCover: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onDismissAnimationFinished: () -> Unit,
@@ -102,6 +103,11 @@ fun TransformOverlay(
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
+    val sharedHazeState = if (sharedHazeSourceZIndex != null) {
+        currentSharedHazeState()
+    } else {
+        null
+    }
     val transformProgress = remember(contentKey) { Animatable(0f) }
     var verticalSwipeOffset by remember(contentKey) { mutableFloatStateOf(0f) }
     var verticalSwipeSettleTarget by remember(contentKey) { mutableStateOf<Float?>(null) }
@@ -387,6 +393,14 @@ fun TransformOverlay(
                 ),
         )
 
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .sharedHazeSource(
+                    hazeState = sharedHazeState,
+                    zIndex = sharedHazeSourceZIndex ?: 0f,
+                ),
+        ) {
         if (visualContainer != null && visualContainer.width > 0f && visualContainer.height > 0f) {
             Box(
                 Modifier
@@ -542,6 +556,7 @@ fun TransformOverlay(
                     }
                 }
             }
+        }
         }
     }
 }

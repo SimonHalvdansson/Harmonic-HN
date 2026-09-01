@@ -11,8 +11,12 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun CommentsHazeHost(content: @Composable () -> Unit) = HazeHost(content)
 
+internal const val CommentsModalHazeSourceZIndex = 1f
+
 @Composable
 internal fun currentCommentsHazeState() = currentSharedHazeState()
 
-internal fun Modifier.commentsHazeSource(hazeState: HazeState?): Modifier =
-    sharedHazeSource(hazeState)
+internal fun Modifier.commentsHazeSource(
+    hazeState: HazeState?,
+    zIndex: Float = 0f,
+): Modifier = sharedHazeSource(hazeState, zIndex)
