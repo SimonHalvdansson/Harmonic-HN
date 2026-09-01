@@ -11,6 +11,7 @@ class CommentsHeaderStatusTest {
             shouldShowCommentsHeaderLoading(
                 loadingFailed = false,
                 pullToRefreshInProgress = false,
+                headerRefreshInProgress = false,
                 commentsLoaded = false,
                 initialThreadCached = false,
             ),
@@ -18,11 +19,12 @@ class CommentsHeaderStatusTest {
     }
 
     @Test
-    fun cachedInitialLoadAndRefreshesDoNotShowLoading() {
+    fun cachedInitialLoadAndBackgroundRefreshesDoNotShowLoading() {
         assertFalse(
             shouldShowCommentsHeaderLoading(
                 loadingFailed = false,
                 pullToRefreshInProgress = false,
+                headerRefreshInProgress = false,
                 commentsLoaded = false,
                 initialThreadCached = true,
             ),
@@ -31,6 +33,33 @@ class CommentsHeaderStatusTest {
             shouldShowCommentsHeaderLoading(
                 loadingFailed = false,
                 pullToRefreshInProgress = false,
+                headerRefreshInProgress = false,
+                commentsLoaded = true,
+                initialThreadCached = false,
+            ),
+        )
+    }
+
+    @Test
+    fun userRequestedHeaderRefreshShowsLoadingForCachedAndLoadedThreads() {
+        assertTrue(
+            shouldShowCommentsHeaderLoading(
+                loadingFailed = false,
+                pullToRefreshInProgress = false,
+                headerRefreshInProgress = true,
+                commentsLoaded = true,
+                initialThreadCached = true,
+            ),
+        )
+    }
+
+    @Test
+    fun pullToRefreshUsesOnlyItsOwnIndicator() {
+        assertFalse(
+            shouldShowCommentsHeaderLoading(
+                loadingFailed = false,
+                pullToRefreshInProgress = true,
+                headerRefreshInProgress = false,
                 commentsLoaded = true,
                 initialThreadCached = false,
             ),

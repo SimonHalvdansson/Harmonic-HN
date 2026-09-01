@@ -417,7 +417,10 @@ fun HeaderActions(
         if (!hasAccount) {
             CommentsTooltip("Refresh") {
                 IconButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
+                    onClick = {
+                        controller.beginHeaderRefresh()
+                        controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                    },
                     modifier = Modifier.size(CommentsHeaderActionButtonSize),
                 ) {
                     Icon(
@@ -686,6 +689,9 @@ private fun MoreMenu(
                                 },
                                 onClick = {
                                     onDismiss()
+                                    if (id == CommentsMoreAction.REFRESH) {
+                                        controller.beginHeaderRefresh()
+                                    }
                                     controller.listener.onMoreAction(id)
                                 },
                             )
@@ -820,16 +826,18 @@ private enum class HeaderStatusState {
 internal fun shouldShowCommentsHeaderLoading(
     loadingFailed: Boolean,
     pullToRefreshInProgress: Boolean,
+    headerRefreshInProgress: Boolean,
     commentsLoaded: Boolean,
     initialThreadCached: Boolean,
-): Boolean = !loadingFailed && !pullToRefreshInProgress &&
-    !commentsLoaded && !initialThreadCached
+): Boolean = !pullToRefreshInProgress &&
+    (headerRefreshInProgress || (!loadingFailed && !commentsLoaded && !initialThreadCached))
 
 @Composable
 fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: String?) {
     val showLoading = shouldShowCommentsHeaderLoading(
         loadingFailed = controller.loadingFailed,
         pullToRefreshInProgress = controller.pullToRefreshInProgress,
+        headerRefreshInProgress = controller.headerRefreshInProgress,
         commentsLoaded = controller.commentsLoaded,
         initialThreadCached = controller.initialThreadCached,
     )
@@ -837,8 +845,8 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
         controller.comments.size <= 1
     AnimatedContent(
         targetState = when {
-            controller.loadingFailed -> HeaderStatusState.Failed
             showLoading -> HeaderStatusState.Loading
+            controller.loadingFailed -> HeaderStatusState.Failed
             showEmpty -> HeaderStatusState.Empty
             controller.showUpdate -> HeaderStatusState.Refresh
             else -> HeaderStatusState.None
@@ -875,7 +883,10 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     fontSize = 22.sp,
                 )
                 OutlinedButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
+                    onClick = {
+                        controller.beginHeaderRefresh()
+                        controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                    },
                     modifier = Modifier
                         .padding(top = 8.dp)
                         .height(56.dp),
@@ -927,7 +938,10 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     )
                 }
                 ExtendedFloatingActionButton(
-                    onClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH) },
+                    onClick = {
+                        controller.beginHeaderRefresh()
+                        controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                    },
                     modifier = Modifier
                         .padding(top = 10.dp, bottom = 16.dp)
                         .height(56.dp),

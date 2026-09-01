@@ -77,6 +77,11 @@ class CommentsComposeController private constructor(
     var pullToRefreshInProgress by mutableStateOf(false)
         private set
 
+    /** True only while the current refresh was requested from a header affordance. */
+    var headerRefreshInProgress by mutableStateOf(false)
+        private set
+    private var headerRefreshObserved = false
+
     val story: StoryListItemSnapshot get() = screenState.story
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
@@ -236,6 +241,9 @@ class CommentsComposeController private constructor(
 
     fun updateContent(state: CommentsScreenState) {
         val updateBecameVisible = !screenState.showUpdate && state.showUpdate
+        val headerRefreshFinished = headerRefreshInProgress &&
+            (headerRefreshObserved || screenState.commentsRefreshInProgress) &&
+            !state.commentsRefreshInProgress
         // CommentsScreenStateFactory already exposes immutable presentation snapshots. Copying
         // all three thread lists here made every load and state change allocate and traverse the
         // full thread again on the UI thread.
@@ -248,6 +256,11 @@ class CommentsComposeController private constructor(
             downvotedIds = state.downvotedCommentIds,
         )
         if (updateBecameVisible) interactionStore.clearSearchScrollTopTarget()
+        if (headerRefreshInProgress && state.commentsRefreshInProgress) {
+            headerRefreshObserved = true
+        } else if (headerRefreshFinished) {
+            finishHeaderRefresh()
+        }
         syncInteractionState()
         contentVersion++
     }
@@ -277,6 +290,16 @@ class CommentsComposeController private constructor(
 
     fun finishPullToRefresh() {
         pullToRefreshInProgress = false
+    }
+
+    fun beginHeaderRefresh() {
+        headerRefreshObserved = commentsRefreshInProgress
+        headerRefreshInProgress = true
+    }
+
+    fun finishHeaderRefresh() {
+        headerRefreshInProgress = false
+        headerRefreshObserved = false
     }
 
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
