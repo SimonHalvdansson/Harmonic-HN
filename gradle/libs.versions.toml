@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.1"
+agp = "9.3.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -8,17 +8,17 @@ android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "a
 [libraries]
 androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
 androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0"
-androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
+androidx-appcompat = "androidx.appcompat:appcompat:1.8.0"
 androidx-core = "androidx.core:core:1.19.0"
 androidx-recyclerview = "androidx.recyclerview:recyclerview:1.4.0"
 androidx-browser = "androidx.browser:browser:1.10.0"
 androidx-cardview = "androidx.cardview:cardview:1.0.0"
-androidx-fragment = "androidx.fragment:fragment:1.8.9"
+androidx-fragment = "androidx.fragment:fragment:1.9.0"
 androidx-preference = "androidx.preference:preference:1.2.1"
 androidx-palette = "androidx.palette:palette:1.0.0"
 androidx-security = "androidx.security:security-crypto:1.1.0"
 androidx-swiperefreshlayout = "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0"
-androidx-webkit = "androidx.webkit:webkit:1.16.0"
+androidx-webkit = "androidx.webkit:webkit:1.17.0"
 androidx-activity = "androidx.activity:activity:1.13.0"
 androidx-window = "androidx.window:window:1.5.1"
 androidx-window-java = "androidx.window:window-java:1.5.1"
@@ -29,10 +29,10 @@ materialui = "com.google.android.material:material:1.14.0"
 
 volley = "com.android.volley:volley:1.2.1"
 
-okhttp-core = "com.squareup.okhttp3:okhttp:5.4.0"
-okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.4.0"
+okhttp-core = "com.squareup.okhttp3:okhttp:5.5.0"
+okhttp-urlconnection = "com.squareup.okhttp3:okhttp-urlconnection:5.5.0"
 
-jsoup = "org.jsoup:jsoup:1.22.2"
+jsoup = "org.jsoup:jsoup:1.23.2"
 coil = "io.coil-kt:coil:2.7.0"
 coil-svg = "io.coil-kt:coil-svg:2.7.0"
 
