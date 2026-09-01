@@ -889,19 +889,6 @@ class CommentsCoordinator(
                 // disk I/O and JSON parsing use the animation window without delaying first draw.
                 startInitialCommentsLoad(restoreScrollFromCache)
 
-                val openingDelayMillis = if (navigation.isAdaptiveTwoPane()) {
-                    0L
-                } else {
-                    ActivityNavigationTransitionDurationMillis.toLong()
-                }
-                root.postDelayed(
-                    {
-                        if (attachedRoot !== root || !isActive) return@postDelayed
-                        composeController?.completeOpeningTransition()
-                    },
-                    openingDelayMillis,
-                )
-
                 if (showWebsite || pendingVisibleWebsiteInitialization) {
                     root.postOnAnimation {
                         if (attachedRoot !== root || !isActive) return@postOnAnimation

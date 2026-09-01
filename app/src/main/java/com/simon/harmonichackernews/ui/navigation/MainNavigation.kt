@@ -1260,7 +1260,7 @@ private fun CommentsPane(
         }
     }
     val commentsController = activeCoordinator.composeUiController
-    CommentsHazeHost(enabled = commentsController?.openingTransitionComplete != false) {
+    CommentsHazeHost {
         Box(Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),

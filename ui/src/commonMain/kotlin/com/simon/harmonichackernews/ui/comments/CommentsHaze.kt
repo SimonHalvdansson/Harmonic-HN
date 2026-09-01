@@ -9,10 +9,7 @@ import dev.chrisbanes.haze.HazeState
 
 /** Provides the shared backdrop source used by the comments screen's floating controls. */
 @Composable
-fun CommentsHazeHost(
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) = HazeHost(enabled, content)
+fun CommentsHazeHost(content: @Composable () -> Unit) = HazeHost(content)
 
 @Composable
 internal fun currentCommentsHazeState() = currentSharedHazeState()
