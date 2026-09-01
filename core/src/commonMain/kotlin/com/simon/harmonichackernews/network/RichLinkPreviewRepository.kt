@@ -222,7 +222,12 @@ internal suspend fun HttpClient.loadGitHubPreview(
         LinkPreviewType.GITHUB_DISCUSSION -> "$root/discussions/${target.identifier?.encodeURLPathPart()}"
         else -> error("Unexpected GitHub preview type")
     }
-    return RichLinkPreviewParsers.parseGitHub(type, getTextOrThrow(endpoint), target, url)
+    return try {
+        RichLinkPreviewParsers.parseGitHub(type, getTextOrThrow(endpoint), target, url)
+    } catch (error: HttpStatusException) {
+        if (error.statusCode != 403 && error.statusCode != 429) throw error
+        RichLinkPreviewParsers.parseGitHubPage(type, getTextOrThrow(url), target, url)
+    }
 }
 
 internal suspend fun HttpClient.loadHuggingFacePreview(
@@ -416,6 +421,7 @@ private const val SUBSTACK_FEED_HEADER_MAX_BYTES = 64 * 1024
 private const val SUBSTACK_FEED_READ_CHUNK_BYTES = 4 * 1024
 
 internal object RichLinkPreviewParsers {
+    private const val GITHUB_PAGE_DESCRIPTION_MAX_CHARS = 600
     private const val MASTODON_DESCRIPTION_MAX_CHARS = 600
     private const val SUBSTACK_DESCRIPTION_MAX_CHARS = 600
     private val monthAbbreviations = listOf(
@@ -538,6 +544,61 @@ internal object RichLinkPreviewParsers {
             )
             else -> throw LinkPreviewException("Unsupported GitHub preview response")
         }
+    }
+
+    fun parseGitHubPage(
+        type: LinkPreviewType,
+        response: String,
+        target: GitHubPreviewTarget,
+        url: String,
+    ): LinkPreviewInfo {
+        val document = Ksoup.parse(response, baseUri = url)
+        val repository = "${target.owner}/${target.repository}"
+        val rawTitle = document.selectFirst("meta[property=og:title]")?.attr("content")
+            .orEmpty()
+            .requiredPreviewTitle(type)
+        val providerSuffix = " · $repository"
+        val pageTitle = rawTitle.removeSuffix(providerSuffix).let { title ->
+            when (type) {
+                LinkPreviewType.GITHUB_ISSUE ->
+                    title.removeSuffix(" · Issue #${target.identifier}")
+                LinkPreviewType.GITHUB_PULL_REQUEST ->
+                    title.removeSuffix(" · Pull Request #${target.identifier}")
+                LinkPreviewType.GITHUB_DISCUSSION ->
+                    title.removeSuffix(" · Discussion #${target.identifier}")
+                else -> title
+            }
+        }
+        val repoLabel = "${target.owner} / ${target.repository}"
+        val subtitle = when (type) {
+            LinkPreviewType.GITHUB_ISSUE,
+            LinkPreviewType.GITHUB_PULL_REQUEST,
+            LinkPreviewType.GITHUB_DISCUSSION,
+            -> "$repoLabel · #${target.identifier}"
+            LinkPreviewType.GITHUB_FILE -> "$repoLabel · ${target.ref}"
+            else -> repoLabel
+        }
+        val description = document.selectFirst("meta[property=og:description]")?.attr("content")
+            ?.let(HtmlTextUtils::plainText)
+            ?.let {
+                HtmlTextUtils.normalizeAndTruncatePlainText(
+                    it,
+                    GITHUB_PAGE_DESCRIPTION_MAX_CHARS,
+                )
+            }
+            ?.takeIf(String::isNotBlank)
+        val author = document.selectFirst("meta[property=og:author:username]")
+            ?.attr("content")
+            ?.takeIf(String::isNotBlank)
+        return LinkPreviewInfo(
+            type = type,
+            title = pageTitle,
+            subtitle = subtitle,
+            description = description,
+            imageUrl = null,
+            url = url,
+            details = listOfNotNull(author?.let { LinkPreviewDetail("Author", it) }),
+        )
     }
 
     fun parseHuggingFace(

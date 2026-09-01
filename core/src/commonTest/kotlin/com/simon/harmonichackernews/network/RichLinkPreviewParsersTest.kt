@@ -85,6 +85,34 @@ class RichLinkPreviewParsersTest {
     }
 
     @Test
+    fun parsesGitHubPageMetadataWithoutProviderTitleSuffix() {
+        val result = RichLinkPreviewParsers.parseGitHubPage(
+            type = LinkPreviewType.GITHUB_ISSUE,
+            response = """
+                <html><head>
+                  <meta property="og:title" content="[Community Help Needed] Google Play: no longer allowing our Open Collective donation link · Issue #21656 · ankidroid/Anki-Android">
+                  <meta property="og:description" content="Last updated: 2026-08-29; Google Ticket Number: #9-2777000041594">
+                  <meta property="og:author:username" content="david-allison">
+                </head></html>
+            """.trimIndent(),
+            target = GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_ISSUE,
+                "ankidroid",
+                "Anki-Android",
+                identifier = "21656",
+            ),
+            url = "https://github.com/ankidroid/Anki-Android/issues/21656",
+        )
+
+        assertEquals(
+            "[Community Help Needed] Google Play: no longer allowing our Open Collective donation link",
+            result.title,
+        )
+        assertEquals("ankidroid / Anki-Android · #21656", result.subtitle)
+        assertEquals("david-allison", result.details.single().value)
+    }
+
+    @Test
     fun parsesEveryHuggingFaceShape() {
         val cases = listOf(
             Triple(

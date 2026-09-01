@@ -5,6 +5,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -14,6 +15,34 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class RichLinkPreviewRepositoryTest {
+    @Test
+    fun githubRateLimitFallsBackToPublicPageMetadata() = runTest {
+        val issueUrl = "https://github.com/ankidroid/Anki-Android/issues/21656"
+        val client = HttpClient(MockEngine { request ->
+            if (request.url.host == "api.github.com") {
+                respond("rate limited", status = HttpStatusCode.Forbidden)
+            } else {
+                respond(
+                    """
+                    <html><head>
+                      <meta property="og:title" content="Issue title · Issue #21656 · ankidroid/Anki-Android">
+                      <meta property="og:description" content="Issue summary">
+                    </head></html>
+                    """.trimIndent(),
+                    headers = headersOf(HttpHeaders.ContentType, "text/html"),
+                )
+            }
+        })
+
+        val preview = assertIs<LinkPreviewData.Rich>(withContext(Dispatchers.Default) {
+            KtorLinkPreviewRepository(client).load(LinkPreviewType.GITHUB_ISSUE, issueUrl)
+        })
+
+        assertEquals("Issue title", preview.value.title)
+        assertEquals("Issue summary", preview.value.description)
+        client.close()
+    }
+
     @Test
     fun substackPreviewUsesRssChannelImageInsteadOfArticleHero() = runTest {
         val articleUrl = "https://writer.substack.com/p/example"
