@@ -3,11 +3,25 @@ package com.simon.harmonichackernews.settings
 object ThemePreferences {
     const val KEY = "pref_theme"
     const val NIGHTTIME_KEY = "pref_theme_nighttime"
+    const val FOLLOW_SYSTEM_KEY = "pref_theme_follow_system"
+    const val MANUAL_DARK_KEY = "pref_theme_manual_dark"
+    const val LIGHT_KEY = "pref_theme_light"
+    const val DARK_KEY = "pref_theme_dark"
+    const val ACCENT_KEY = "pref_theme_accent"
     const val DEFAULT = "material_daynight"
     const val DEFAULT_NIGHTTIME = "dark"
+    const val DEFAULT_LIGHT = "material_light"
+    const val DEFAULT_DARK = "material_dark"
     const val MATERIAL_FIXED_AUTO = "material_fixed_daynight"
     const val MATERIAL_FIXED_LIGHT = "material_fixed_light"
     const val MATERIAL_FIXED_DARK = "material_fixed_dark"
+
+    const val ACCENT_DEFAULT = "default"
+    const val ACCENT_ORANGE = "orange"
+    const val ACCENT_BLUE = "blue"
+    const val ACCENT_VIOLET = "violet"
+    const val ACCENT_TEAL = "teal"
+    const val ACCENT_ROSE = "rose"
 
     fun isAutomatic(theme: String?): Boolean = theme in setOf(
         DEFAULT,
@@ -27,6 +41,38 @@ object ThemePreferences {
 
     fun selectableNighttimeTheme(theme: String?): String =
         theme?.takeIf(::isDark) ?: DEFAULT_NIGHTTIME
+
+    fun selectableLightTheme(theme: String?): String = when (theme) {
+        "material_light", MATERIAL_FIXED_LIGHT, "light", "hacker_news", "white" -> theme
+        else -> pairedLightTheme(theme)
+    }
+
+    fun selectableDarkTheme(theme: String?): String = when (theme) {
+        "material_dark", MATERIAL_FIXED_DARK, "dark", "hacker", "amoled", "gray" -> theme
+        else -> pairedDarkTheme(theme)
+    }
+
+    fun pairedLightTheme(theme: String?): String = when (theme) {
+        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> MATERIAL_FIXED_LIGHT
+        "darklight_daynight", "light", "dark", "gray" -> "light"
+        "amoledwhite_daynight", "amoled", "white" -> "white"
+        "hacker", "hacker_news" -> "hacker_news"
+        else -> DEFAULT_LIGHT
+    }
+
+    fun pairedDarkTheme(theme: String?): String = when (theme) {
+        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> MATERIAL_FIXED_DARK
+        "darklight_daynight", "light", "dark" -> "dark"
+        "amoledwhite_daynight", "amoled", "white" -> "amoled"
+        "hacker", "hacker_news" -> "hacker"
+        "gray" -> "gray"
+        else -> DEFAULT_DARK
+    }
+
+    fun sanitizeAccent(accent: String?): String = when (accent) {
+        ACCENT_ORANGE, ACCENT_BLUE, ACCENT_VIOLET, ACCENT_TEAL, ACCENT_ROSE -> accent
+        else -> ACCENT_DEFAULT
+    }
 
     fun fixedMaterialEquivalent(theme: String?): String? = when (theme) {
         DEFAULT -> MATERIAL_FIXED_AUTO

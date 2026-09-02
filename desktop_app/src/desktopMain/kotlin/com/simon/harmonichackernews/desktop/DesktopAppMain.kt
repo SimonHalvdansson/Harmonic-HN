@@ -134,7 +134,11 @@ fun main() {
                     initial = bootstrap.app.appearance.selection(),
                 )
                 val palette = remember(selection) {
-                    HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
+                    HarmonicThemeCatalog.resolve(
+                        selection.theme,
+                        selection.dark,
+                        selection.accentPreset,
+                    )
                 }
                 LaunchedEffect(window, selection.dark, palette.colors.background) {
                     DesktopWindowAppearance.apply(

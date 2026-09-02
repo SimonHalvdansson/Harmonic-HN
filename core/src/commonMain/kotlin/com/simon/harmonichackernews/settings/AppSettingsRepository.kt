@@ -169,6 +169,13 @@ class AppSettingsRepository(
 
     fun setTheme(value: String) = mutator.setTheme(value)
     fun setNighttimeTheme(value: String) = mutator.setNighttimeTheme(value)
+    fun setFollowSystemTheme(value: Boolean) = mutator.setFollowSystem(value)
+    fun setManualDarkTheme(value: Boolean) = mutator.setManualDark(value)
+    fun setLightTheme(value: String) = mutator.setLightTheme(value)
+    fun setDarkTheme(value: String) = mutator.setDarkTheme(value)
+    fun setThemeAccent(value: String) = mutator.setAccentPreset(value)
+    fun setThemePair(lightTheme: String, darkTheme: String) =
+        mutator.setThemePair(lightTheme, darkTheme)
 
     fun setGeneralBoolean(preference: GeneralBooleanPreference, value: Boolean) =
         mutator.setGeneralBoolean(preference, value)

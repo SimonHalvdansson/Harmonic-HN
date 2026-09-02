@@ -13,9 +13,9 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.ThemeSelection
-import com.simon.harmonichackernews.utils.ThemeUtils
 
 @Composable
 fun HarmonicTheme(
@@ -23,10 +23,7 @@ fun HarmonicTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val activeSelection = selection ?: ThemeSelection(
-        theme = ThemeUtils.getPreferredTheme(context),
-        dark = ThemeUtils.isDarkMode(context),
-    )
+    val activeSelection = selection ?: context.harmonicAppComposition.appearance.selection()
     val canonical = HarmonicThemeCatalog.resolve(
         theme = activeSelection.theme,
         systemDark = activeSelection.dark,
@@ -78,20 +75,28 @@ fun HarmonicTheme(
         outlineVariant = colors.outlineVariant,
     )
 
+    val accented = ThemeAccentCatalog.apply(
+        canonical.copy(colors = colors, colorScheme = colorScheme),
+        activeSelection.accentPreset,
+    )
     HarmonicTheme(
-        colors = colors,
-        colorScheme = colorScheme,
-        darkTheme = canonical.dark,
+        colors = accented.colors,
+        colorScheme = accented.colorScheme,
+        darkTheme = accented.dark,
         content = content,
     )
 }
 
 fun harmonicColors(context: Context): HarmonicColors {
+    val selection = context.harmonicAppComposition.appearance.selection()
     val canonical = HarmonicThemeCatalog.resolve(
-        theme = ThemeUtils.getPreferredTheme(context),
-        systemDark = ThemeUtils.uiModeNight(context),
+        theme = selection.theme,
+        systemDark = selection.dark,
     )
-    return harmonicColors(context, canonical)
+    return ThemeAccentCatalog.apply(
+        canonical.copy(colors = harmonicColors(context, canonical)),
+        selection.accentPreset,
+    ).colors
 }
 
 private fun harmonicColors(

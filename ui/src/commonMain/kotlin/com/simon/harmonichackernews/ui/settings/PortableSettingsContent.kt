@@ -58,7 +58,8 @@ fun PortableSettingsDetail(
             appIcon,
             singlePane,
             onBack,
-        ) { onNavigate(it, singlePane) }
+        ) { target -> onNavigate(target, singlePane || target == SettingsSection.Theme) }
+        SettingsSection.Theme -> PortableThemeSettings(app, true, onBack)
         SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack)
         SettingsSection.Comments -> PortableCommentsSettings(app, singlePane, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(
@@ -169,16 +170,11 @@ private fun PortableAppearanceSettings(
     onNavigate: (SettingsSection) -> Unit,
 ) {
     val snapshot = app.settings.snapshot()
-    val schedule = app.appearance.schedule
     fun themeChanged() = app.appearance.refreshSelection()
 
     AppearanceSettingsRoute(
         repository = app.settings,
         labels = AppearanceRouteLabels(
-            nighttimeRange = ThemeSelectionPolicy.formatSchedule(
-                schedule,
-                app.platform.timeFormatting.uses24HourClock(),
-            ),
             showTransparentStatusBar = false,
         ),
         showNavigation = showNavigation,
@@ -255,6 +251,88 @@ private fun PortableAppearanceSettings(
                         onDismiss = dismiss,
                     )
                 }
+            }
+        },
+    )
+}
+
+@Composable
+private fun PortableThemeSettings(
+    app: HarmonicAppComposition,
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+) {
+    fun themeChanged() = app.appearance.refreshSelection()
+    ThemeSettingsRoute(
+        repository = app.settings,
+        labels = ThemeRouteLabels(
+            nighttimeRange = ThemeSelectionPolicy.formatSchedule(
+                app.appearance.schedule,
+                app.platform.timeFormatting.uses24HourClock(),
+            ),
+            activeTheme = app.appearance.selection().theme,
+        ),
+        showNavigation = showNavigation,
+        onBack = onBack,
+        onThemeChanged = ::themeChanged,
+        dialogContent = { dialog, presenter, dismiss ->
+            val appearance = presenter.snapshot.appearance
+            when (dialog) {
+                ThemeSettingsDialog.LightTheme -> ThemeSelectionDialog(
+                    nighttime = false,
+                    selected = appearance.lightTheme,
+                    selectionKind = ThemeSelectionKind.Light,
+                    title = "Light theme",
+                    onThemeSelected = { value ->
+                        presenter.setLightTheme(value)
+                        themeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
+                    },
+                )
+                ThemeSettingsDialog.DarkTheme -> ThemeSelectionDialog(
+                    nighttime = false,
+                    selected = appearance.darkTheme,
+                    selectionKind = ThemeSelectionKind.Dark,
+                    title = "Dark theme",
+                    onThemeSelected = { value ->
+                        presenter.setDarkTheme(value)
+                        themeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
+                    },
+                )
+                ThemeSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
+                    nighttime = true,
+                    selected = appearance.nighttimeTheme,
+                    selectionKind = ThemeSelectionKind.Dark,
+                    onThemeSelected = { value ->
+                        presenter.setTheme(value, nighttime = true)
+                        themeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
+                    },
+                )
+                ThemeSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
+                    initialHours = app.appearance.schedule.toIntArray(),
+                    is24Hour = app.platform.timeFormatting.uses24HourClock(),
+                    onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
+                        app.appearance.saveSchedule(
+                            NighttimeSchedule(fromHour, fromMinute, toHour, toMinute),
+                        )
+                        themeChanged()
+                    },
+                    onDismiss = dismiss,
+                )
             }
         },
     )

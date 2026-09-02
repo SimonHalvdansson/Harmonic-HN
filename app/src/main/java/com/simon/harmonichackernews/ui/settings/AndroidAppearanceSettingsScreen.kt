@@ -20,10 +20,6 @@ fun AndroidAppearanceSettingsScreen(
     AppearanceSettingsRoute(
         repository = repository,
         labels = AppearanceRouteLabels(
-            nighttimeRange = formatNighttimeRange(
-                app.appearance.schedule,
-                app.platform.timeFormatting.uses24HourClock(),
-            ),
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
             materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
         ),
@@ -56,6 +52,94 @@ fun AndroidAppearanceSettingsScreen(
                     onDismiss = dismiss,
                 )
                 AppearanceSettingsDialog.PaletteTint -> AndroidPaletteTintDialog(onDismiss = dismiss)
+            }
+        },
+    )
+}
+
+@Composable
+fun AndroidThemeSettingsScreen(
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onThemeChanged: () -> Unit,
+) {
+    val app = LocalHarmonicUiDependencies.current
+    val materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    ThemeSettingsRoute(
+        repository = app.settings,
+        labels = ThemeRouteLabels(
+            nighttimeRange = formatNighttimeRange(
+                app.appearance.schedule,
+                app.platform.timeFormatting.uses24HourClock(),
+            ),
+            activeTheme = app.appearance.selection().theme,
+            materialYouAvailable = materialYouAvailable,
+        ),
+        showNavigation = showNavigation,
+        onBack = onBack,
+        onThemeChanged = onThemeChanged,
+        dialogContent = { dialog, presenter, dismiss ->
+            when (dialog) {
+                ThemeSettingsDialog.LightTheme -> ThemeSelectionDialog(
+                    nighttime = false,
+                    selected = presenter.snapshot.appearance.lightTheme,
+                    materialYouAvailable = materialYouAvailable,
+                    selectionKind = ThemeSelectionKind.Light,
+                    title = "Light theme",
+                    onThemeSelected = { theme ->
+                        presenter.setLightTheme(theme)
+                        onThemeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(
+                            it,
+                            presenter.snapshot.appearance.accentPreset,
+                        )
+                    },
+                )
+                ThemeSettingsDialog.DarkTheme -> ThemeSelectionDialog(
+                    nighttime = false,
+                    selected = presenter.snapshot.appearance.darkTheme,
+                    materialYouAvailable = materialYouAvailable,
+                    selectionKind = ThemeSelectionKind.Dark,
+                    title = "Dark theme",
+                    onThemeSelected = { theme ->
+                        presenter.setDarkTheme(theme)
+                        onThemeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(
+                            it,
+                            presenter.snapshot.appearance.accentPreset,
+                        )
+                    },
+                )
+                ThemeSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
+                    nighttime = true,
+                    selected = presenter.snapshot.appearance.nighttimeTheme,
+                    materialYouAvailable = materialYouAvailable,
+                    selectionKind = ThemeSelectionKind.Dark,
+                    onThemeSelected = { theme ->
+                        presenter.setTheme(theme, nighttime = true)
+                        onThemeChanged()
+                        dismiss()
+                    },
+                    onDismiss = dismiss,
+                    previewPalettes = {
+                        ThemePreviewCatalog.palettes(
+                            it,
+                            presenter.snapshot.appearance.accentPreset,
+                        )
+                    },
+                )
+                ThemeSettingsDialog.NighttimeRange -> AndroidNighttimeRangeDialog(
+                    onDismiss = dismiss,
+                    onRangeSelected = onThemeChanged,
+                )
             }
         },
     )

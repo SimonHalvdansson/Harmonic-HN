@@ -59,6 +59,11 @@ class StoredUserSettingsTest {
         assertTrue(settings.general.bookmarksEnabled)
         assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
+        assertTrue(settings.appearance.followSystem)
+        assertFalse(settings.appearance.manualDark)
+        assertEquals(ThemePreferences.DEFAULT_LIGHT, settings.appearance.lightTheme)
+        assertEquals(ThemePreferences.DEFAULT_DARK, settings.appearance.darkTheme)
+        assertEquals(ThemePreferences.ACCENT_DEFAULT, settings.appearance.accentPreset)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
     }
 

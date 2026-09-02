@@ -133,7 +133,7 @@ private fun IosApp(
         initial = bootstrap.app.appearance.selection(),
     )
     val palette = remember(selection) {
-        HarmonicThemeCatalog.resolve(selection.theme, selection.dark)
+        HarmonicThemeCatalog.resolve(selection.theme, selection.dark, selection.accentPreset)
     }
     SideEffect { appearance.setDarkAppearance(selection.dark) }
     LaunchedEffect(bootstrap.app.launchState) {

@@ -56,7 +56,7 @@ class NighttimeScheduleStoreTest {
 
         val selections = runtime.selections.take(2).toList()
 
-        assertEquals(ThemePreferences.DEFAULT, selections.first().theme)
+        assertEquals(ThemePreferences.DEFAULT_LIGHT, selections.first().theme)
         assertEquals("amoled", selections.last().theme)
         assertEquals(true, selections.last().dark)
     }
@@ -81,5 +81,39 @@ class NighttimeScheduleStoreTest {
 
         assertEquals(false, selections.first().dark)
         assertEquals(true, selections.last().dark)
+    }
+
+    @Test
+    fun manualAndScheduledSelectionsUseTheirDedicatedPalettes() {
+        val manual = ThemeSelectionPolicy.select(
+            configuredTheme = ThemePreferences.DEFAULT,
+            nighttimeTheme = "gray",
+            useSpecialNighttimeTheme = false,
+            schedule = NighttimeSchedule(),
+            currentMinutesFromMidnight = 12 * 60,
+            systemDark = true,
+            followSystem = false,
+            manualDark = false,
+            lightTheme = "white",
+            darkTheme = "amoled",
+            accentPreset = ThemePreferences.ACCENT_ROSE,
+        )
+        val scheduled = ThemeSelectionPolicy.select(
+            configuredTheme = ThemePreferences.DEFAULT,
+            nighttimeTheme = "gray",
+            useSpecialNighttimeTheme = true,
+            schedule = NighttimeSchedule(),
+            currentMinutesFromMidnight = 23 * 60,
+            systemDark = false,
+            followSystem = true,
+            lightTheme = "white",
+            darkTheme = "amoled",
+        )
+
+        assertEquals("white", manual.theme)
+        assertEquals(false, manual.dark)
+        assertEquals(ThemePreferences.ACCENT_ROSE, manual.accentPreset)
+        assertEquals("gray", scheduled.theme)
+        assertEquals(true, scheduled.dark)
     }
 }

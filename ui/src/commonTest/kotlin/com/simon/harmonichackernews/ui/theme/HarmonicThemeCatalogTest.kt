@@ -50,4 +50,18 @@ class HarmonicThemeCatalogTest {
         assertEquals(Color(0xFF4F378B), palette.colors.overlayButton)
         assertEquals(Color(0xFFEADDFF), palette.colors.overlayButtonContent)
     }
+
+    @Test
+    fun accentPresetOverridesInteractiveColorsWithoutReplacingSurfaces() {
+        val base = HarmonicThemeCatalog.resolve("light", systemDark = false)
+        val accented = HarmonicThemeCatalog.resolve(
+            "light",
+            systemDark = false,
+            accentPreset = ThemePreferences.ACCENT_ORANGE,
+        )
+
+        assertEquals(base.colors.background, accented.colors.background)
+        assertEquals(Color(0xFFA74413), accented.colors.accent)
+        assertEquals(Color(0xFFA74413), accented.colorScheme.primary)
+    }
 }

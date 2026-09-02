@@ -81,6 +81,23 @@ class StoredSettingsMutatorTest {
     }
 
     @Test
+    fun structuredThemeChoicesRoundTripAndSanitize() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setThemePair("white", "amoled")
+        mutator.setManualDark(true)
+        mutator.setAccentPreset(ThemePreferences.ACCENT_TEAL)
+
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
+        assertTrue(settings.followSystem)
+        assertTrue(settings.manualDark)
+        assertEquals("white", settings.lightTheme)
+        assertEquals("amoled", settings.darkTheme)
+        assertEquals(ThemePreferences.ACCENT_TEAL, settings.accentPreset)
+    }
+
+    @Test
     fun compoundUpdatesAreNormalizedInCommonCode() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)

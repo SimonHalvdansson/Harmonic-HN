@@ -222,8 +222,13 @@ fun DebugSettingsRoute(
 }
 
 data class AppearanceRouteLabels(
-    val nighttimeRange: String,
     val showTransparentStatusBar: Boolean,
+    val materialYouAvailable: Boolean = true,
+)
+
+data class ThemeRouteLabels(
+    val nighttimeRange: String,
+    val activeTheme: String,
     val materialYouAvailable: Boolean = true,
 )
 
@@ -247,15 +252,8 @@ fun AppearanceSettingsRoute(
     AppearanceSettingsScreen(
         state = presenter.state(
             settings = settings,
-            themeLabel = harmonicThemeLabel(
-                settings.appearance.theme,
-                ThemePreferences.DEFAULT,
-                labels.materialYouAvailable,
-            ),
-            nighttimeRangeLabel = labels.nighttimeRange,
-            nighttimeThemeLabel = harmonicThemeLabel(
-                settings.appearance.nighttimeTheme,
-                ThemePreferences.DEFAULT_NIGHTTIME,
+            themeLabel = themeSettingsSummary(
+                settings.appearance,
                 labels.materialYouAvailable,
             ),
             fontLabel = settings.story.fontChoice.label,
@@ -270,6 +268,50 @@ fun AppearanceSettingsRoute(
             }
         },
         onDialogRequested = { dialog = it },
+        contentVersion = settings.hashCode(),
+    )
+    dialog?.let { dialogContent(it, presenter) { dialog = null } }
+}
+
+@Composable
+fun ThemeSettingsRoute(
+    repository: AppSettingsRepository,
+    labels: ThemeRouteLabels,
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onThemeChanged: () -> Unit,
+    dialogContent: @Composable (
+        dialog: ThemeSettingsDialog,
+        presenter: AppearanceSettingsPresenter,
+        onDismiss: () -> Unit,
+    ) -> Unit,
+) {
+    var dialog by rememberSaveable { mutableStateOf<ThemeSettingsDialog?>(null) }
+    val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
+    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+
+    fun applyThemeChange(block: () -> Set<SettingsPlatformEffect>) {
+        if (SettingsPlatformEffect.ThemeChanged in block()) onThemeChanged()
+    }
+
+    ThemeSettingsScreen(
+        state = presenter.themeState(
+            nighttimeRangeLabel = labels.nighttimeRange,
+            activeTheme = labels.activeTheme,
+            materialYouAvailable = labels.materialYouAvailable,
+            settings = settings,
+        ),
+        showNavigation = showNavigation,
+        onBack = onBack,
+        onFollowSystemChanged = { value -> applyThemeChange { presenter.setFollowSystem(value) } },
+        onManualDarkChanged = { value -> applyThemeChange { presenter.setManualDark(value) } },
+        onPairSelected = { pair -> applyThemeChange { presenter.setPair(pair) } },
+        onAccentSelected = { value -> applyThemeChange { presenter.setAccent(value) } },
+        onSpecialNighttimeChanged = { value ->
+            applyThemeChange { presenter.setSpecialNighttime(value) }
+        },
+        onDialogRequested = { dialog = it },
+        previewPalette = ThemePreviewCatalog::preview,
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

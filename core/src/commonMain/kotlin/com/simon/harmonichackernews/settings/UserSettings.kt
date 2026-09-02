@@ -149,6 +149,11 @@ data class GeneralPreferences(
 data class AppearancePreferences(
     val theme: String,
     val nighttimeTheme: String,
+    val followSystem: Boolean,
+    val manualDark: Boolean,
+    val lightTheme: String,
+    val darkTheme: String,
+    val accentPreset: String,
 )
 
 data class DebugPreferences(

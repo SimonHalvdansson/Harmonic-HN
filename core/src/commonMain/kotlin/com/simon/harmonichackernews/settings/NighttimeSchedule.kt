@@ -35,6 +35,7 @@ data class NighttimeSchedule(
 data class ThemeSelection(
     val theme: String,
     val dark: Boolean,
+    val accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
 )
 
 /** Shared automatic/nighttime theme selection; hosts only supply system mode and local time. */
@@ -46,19 +47,35 @@ object ThemeSelectionPolicy {
         schedule: NighttimeSchedule,
         currentMinutesFromMidnight: Int,
         systemDark: Boolean,
+        followSystem: Boolean = ThemePreferences.isAutomatic(configuredTheme),
+        manualDark: Boolean = ThemePreferences.isDark(configuredTheme),
+        lightTheme: String? = null,
+        darkTheme: String? = null,
+        accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
     ): ThemeSelection {
         val base = configuredTheme ?: ThemePreferences.DEFAULT
+        val selectedLight = ThemePreferences.selectableLightTheme(
+            lightTheme ?: ThemePreferences.pairedLightTheme(base),
+        )
+        val selectedDark = ThemePreferences.selectableDarkTheme(
+            darkTheme ?: ThemePreferences.pairedDarkTheme(base),
+        )
         val selected = if (
             useSpecialNighttimeTheme && schedule.containsMinutes(currentMinutesFromMidnight)
         ) {
             ThemePreferences.selectableNighttimeTheme(nighttimeTheme)
         } else {
-            base
+            when {
+                followSystem && systemDark -> selectedDark
+                followSystem -> selectedLight
+                manualDark -> selectedDark
+                else -> selectedLight
+            }
         }
         return ThemeSelection(
             theme = selected,
-            dark = if (ThemePreferences.isAutomatic(selected)) systemDark
-            else ThemePreferences.isDark(selected),
+            dark = ThemePreferences.isDark(selected),
+            accentPreset = ThemePreferences.sanitizeAccent(accentPreset),
         )
     }
 
@@ -147,6 +164,26 @@ class AppearanceRuntime(
         schedule = schedule,
         currentMinutesFromMidnight = currentMinutesFromMidnight(),
         systemDark = systemDark(),
+        followSystem = if (settings.contains(ThemePreferences.FOLLOW_SYSTEM_KEY)) {
+            settings.getBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
+        } else {
+            ThemePreferences.isAutomatic(
+                settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+            )
+        },
+        manualDark = if (settings.contains(ThemePreferences.MANUAL_DARK_KEY)) {
+            settings.getBoolean(ThemePreferences.MANUAL_DARK_KEY, false)
+        } else {
+            ThemePreferences.isDark(
+                settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+            )
+        },
+        lightTheme = settings.getString(ThemePreferences.LIGHT_KEY),
+        darkTheme = settings.getString(ThemePreferences.DARK_KEY),
+        accentPreset = settings.getString(
+            ThemePreferences.ACCENT_KEY,
+            ThemePreferences.ACCENT_DEFAULT,
+        ) ?: ThemePreferences.ACCENT_DEFAULT,
     )
 
     fun saveSchedule(schedule: NighttimeSchedule) {

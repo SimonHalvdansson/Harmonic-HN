@@ -392,6 +392,8 @@ fun SettingsListScreen(
                 ) {
                     visibleEntries.forEachIndexed { index, entry ->
                         val isSelected = selectedSection == entry.section ||
+                            entry.section == SettingsSection.Appearance &&
+                            selectedSection == SettingsSection.Theme ||
                             entry.section == SettingsSection.Debug &&
                             selectedSection == SettingsSection.DebugLinkPreviews ||
                             entry.section == SettingsSection.About &&

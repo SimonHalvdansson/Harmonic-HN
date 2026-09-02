@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettings
 import com.simon.harmonichackernews.settings.AppSettingsRepository
+import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
@@ -225,8 +226,6 @@ class AppearanceSettingsPresenter(
 ) {
     fun state(
         themeLabel: String,
-        nighttimeRangeLabel: String,
-        nighttimeThemeLabel: String,
         fontLabel: String,
         showTransparentStatusBar: Boolean,
         settings: AppSettings = repository.snapshot(),
@@ -234,9 +233,6 @@ class AppearanceSettingsPresenter(
         val tintEnabled = settings.story.tintCardUsingPreview
         return AppearanceSettingsUiState(
             themeLabel = themeLabel,
-            specialNighttime = settings.general.specialNighttimeTheme,
-            nighttimeRangeLabel = nighttimeRangeLabel,
-            nighttimeThemeLabel = nighttimeThemeLabel,
             fontLabel = fontLabel,
             paletteTintSummary = if (tintEnabled) {
                 PaletteTintPreferences.summary(settings.story.paletteTintConfigKey)
@@ -264,6 +260,48 @@ class AppearanceSettingsPresenter(
 
     fun setTheme(value: String, nighttime: Boolean): Set<SettingsPlatformEffect> {
         if (nighttime) repository.setNighttimeTheme(value) else repository.setTheme(value)
+        return setOf(SettingsPlatformEffect.ThemeChanged)
+    }
+
+    fun themeState(
+        nighttimeRangeLabel: String,
+        activeTheme: String,
+        materialYouAvailable: Boolean,
+        settings: AppSettings = repository.snapshot(),
+    ): ThemeSettingsUiState = ThemeSettingsUiState(
+        followSystem = settings.appearance.followSystem,
+        manualDark = settings.appearance.manualDark,
+        lightTheme = settings.appearance.lightTheme,
+        darkTheme = settings.appearance.darkTheme,
+        accentPreset = settings.appearance.accentPreset,
+        specialNighttime = settings.general.specialNighttimeTheme,
+        nighttimeRangeLabel = nighttimeRangeLabel,
+        nighttimeTheme = settings.appearance.nighttimeTheme,
+        activeTheme = activeTheme,
+        materialYouAvailable = materialYouAvailable,
+    )
+
+    fun setFollowSystem(value: Boolean) = themeEffect {
+        repository.setFollowSystemTheme(value)
+    }
+
+    fun setManualDark(value: Boolean) = themeEffect {
+        repository.setManualDarkTheme(value)
+    }
+
+    fun setLightTheme(value: String) = themeEffect { repository.setLightTheme(value) }
+    fun setDarkTheme(value: String) = themeEffect { repository.setDarkTheme(value) }
+    fun setAccent(value: String) = themeEffect { repository.setThemeAccent(value) }
+    fun setSpecialNighttime(value: Boolean) = themeEffect {
+        repository.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, value)
+    }
+
+    fun setPair(pair: ThemePairPreset) = themeEffect {
+        repository.setThemePair(pair.lightTheme, pair.darkTheme)
+    }
+
+    private inline fun themeEffect(change: () -> Unit): Set<SettingsPlatformEffect> {
+        change()
         return setOf(SettingsPlatformEffect.ThemeChanged)
     }
 

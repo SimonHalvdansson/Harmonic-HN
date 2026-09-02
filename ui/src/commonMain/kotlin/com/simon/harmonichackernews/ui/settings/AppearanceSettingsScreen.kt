@@ -3,14 +3,11 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_dark_mode
 import com.simon.harmonichackernews.resources.ic_design_services
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_horizontal_split
-import com.simon.harmonichackernews.resources.ic_nights_stay
 import com.simon.harmonichackernews.resources.ic_open_in_new
 import com.simon.harmonichackernews.resources.ic_palette
-import com.simon.harmonichackernews.resources.ic_schedule
 import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
@@ -18,9 +15,6 @@ import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 
 data class AppearanceSettingsUiState(
     val themeLabel: String,
-    val specialNighttime: Boolean,
-    val nighttimeRangeLabel: String,
-    val nighttimeThemeLabel: String,
     val fontLabel: String,
     val paletteTintSummary: String,
     val paletteTintEnabled: Boolean,
@@ -58,32 +52,7 @@ fun AppearanceSettingsScreen(
                     title = "Theme",
                     summary = state.themeLabel,
                     icon = Res.drawable.ic_style,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.Theme) },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Special nighttime theme",
-                    icon = Res.drawable.ic_nights_stay,
-                    checked = state.specialNighttime,
-                    onCheckedChange = {
-                        onBooleanChanged(AppearanceBooleanSetting.SpecialNighttime, it)
-                    },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Timed range",
-                    summary = state.nighttimeRangeLabel,
-                    icon = Res.drawable.ic_schedule,
-                    enabled = state.specialNighttime,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.NighttimeRange) },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Nighttime theme",
-                    summary = state.nighttimeThemeLabel,
-                    icon = Res.drawable.ic_dark_mode,
-                    enabled = state.specialNighttime,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.NighttimeTheme) },
+                    onClick = { onNavigate(SettingsSection.Theme) },
                 )
             }
         }

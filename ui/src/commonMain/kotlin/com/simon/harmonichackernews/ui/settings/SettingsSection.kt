@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.resources.settings_section_debug_link_previe
 import com.simon.harmonichackernews.resources.settings_section_filters_tags
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.resources.settings_section_stories
+import com.simon.harmonichackernews.resources.settings_section_theme
 import com.simon.harmonichackernews.resources.settings_section_web_links
 import org.jetbrains.compose.resources.StringResource
 
@@ -19,6 +20,7 @@ enum class SettingsSection(
     val titleResource: StringResource,
 ) {
     Appearance("appearance", Res.string.settings_section_appearance),
+    Theme("theme", Res.string.settings_section_theme),
     Stories("stories", Res.string.settings_section_stories),
     Comments("comments", Res.string.settings_section_comments),
     WebLinks("web_links", Res.string.settings_section_web_links),

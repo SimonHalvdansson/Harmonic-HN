@@ -261,12 +261,40 @@ class StoredUserSettings(
         )
 
     override val appearance: AppearancePreferences
-        get() = AppearancePreferences(
-            theme = string(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-            nighttimeTheme = ThemePreferences.selectableNighttimeTheme(
-                string(ThemePreferences.NIGHTTIME_KEY, ThemePreferences.DEFAULT_NIGHTTIME),
-            ),
-        )
+        get() {
+            val legacyTheme = string(ThemePreferences.KEY, ThemePreferences.DEFAULT)
+            return AppearancePreferences(
+                theme = legacyTheme,
+                nighttimeTheme = ThemePreferences.selectableNighttimeTheme(
+                    string(ThemePreferences.NIGHTTIME_KEY, ThemePreferences.DEFAULT_NIGHTTIME),
+                ),
+                followSystem = if (store.contains(ThemePreferences.FOLLOW_SYSTEM_KEY)) {
+                    boolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
+                } else {
+                    ThemePreferences.isAutomatic(legacyTheme)
+                },
+                manualDark = if (store.contains(ThemePreferences.MANUAL_DARK_KEY)) {
+                    boolean(ThemePreferences.MANUAL_DARK_KEY, false)
+                } else {
+                    ThemePreferences.isDark(legacyTheme)
+                },
+                lightTheme = ThemePreferences.selectableLightTheme(
+                    string(
+                        ThemePreferences.LIGHT_KEY,
+                        ThemePreferences.pairedLightTheme(legacyTheme),
+                    ),
+                ),
+                darkTheme = ThemePreferences.selectableDarkTheme(
+                    string(
+                        ThemePreferences.DARK_KEY,
+                        ThemePreferences.pairedDarkTheme(legacyTheme),
+                    ),
+                ),
+                accentPreset = ThemePreferences.sanitizeAccent(
+                    string(ThemePreferences.ACCENT_KEY, ThemePreferences.ACCENT_DEFAULT),
+                ),
+            )
+        }
 
     override val debug: DebugPreferences
         get() = DebugPreferences(

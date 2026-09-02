@@ -168,7 +168,14 @@ fun SettingsShell(
                 SettingsSection.Appearance -> AndroidAppearanceSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
-                    onNavigate = { onNavigate(it, singlePane) },
+                    onNavigate = { target ->
+                        onNavigate(target, singlePane || target == SettingsSection.Theme)
+                    },
+                    onThemeChanged = onThemeChanged,
+                )
+                SettingsSection.Theme -> AndroidThemeSettingsScreen(
+                    showNavigation = true,
+                    onBack = onBack,
                     onThemeChanged = onThemeChanged,
                 )
                 SettingsSection.Stories -> AndroidStoriesSettingsScreen(

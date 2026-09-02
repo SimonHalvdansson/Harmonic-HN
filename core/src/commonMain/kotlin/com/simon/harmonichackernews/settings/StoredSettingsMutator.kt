@@ -146,7 +146,48 @@ class StoredSettingsMutator(
     }
 
     fun setTheme(value: String) {
-        store.putString(ThemePreferences.KEY, value)
+        store.update {
+            putString(ThemePreferences.KEY, value)
+            putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, ThemePreferences.isAutomatic(value))
+            if (ThemePreferences.isAutomatic(value)) {
+                putString(ThemePreferences.LIGHT_KEY, ThemePreferences.pairedLightTheme(value))
+                putString(ThemePreferences.DARK_KEY, ThemePreferences.pairedDarkTheme(value))
+            } else if (ThemePreferences.isDark(value)) {
+                putBoolean(ThemePreferences.MANUAL_DARK_KEY, true)
+                putString(ThemePreferences.DARK_KEY, ThemePreferences.selectableDarkTheme(value))
+            } else {
+                putBoolean(ThemePreferences.MANUAL_DARK_KEY, false)
+                putString(ThemePreferences.LIGHT_KEY, ThemePreferences.selectableLightTheme(value))
+            }
+        }
+    }
+
+    fun setFollowSystem(value: Boolean) =
+        store.putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, value)
+
+    fun setManualDark(value: Boolean) = store.putBoolean(ThemePreferences.MANUAL_DARK_KEY, value)
+
+    fun setLightTheme(value: String) =
+        store.putString(ThemePreferences.LIGHT_KEY, ThemePreferences.selectableLightTheme(value))
+
+    fun setDarkTheme(value: String) =
+        store.putString(ThemePreferences.DARK_KEY, ThemePreferences.selectableDarkTheme(value))
+
+    fun setAccentPreset(value: String) =
+        store.putString(ThemePreferences.ACCENT_KEY, ThemePreferences.sanitizeAccent(value))
+
+    fun setThemePair(lightTheme: String, darkTheme: String) {
+        store.update {
+            putString(
+                ThemePreferences.LIGHT_KEY,
+                ThemePreferences.selectableLightTheme(lightTheme),
+            )
+            putString(
+                ThemePreferences.DARK_KEY,
+                ThemePreferences.selectableDarkTheme(darkTheme),
+            )
+            putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
+        }
     }
 
     fun setNighttimeTheme(value: String) {

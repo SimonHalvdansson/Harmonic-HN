@@ -51,6 +51,8 @@ data class ThemePreviewPalette(
     val dark: Boolean,
 )
 
+enum class ThemeSelectionKind { All, Light, Dark }
+
 val HarmonicThemeOptions = listOf(
     ThemeUiOption(
         ThemePreferences.MATERIAL_FIXED_AUTO,
@@ -143,6 +145,8 @@ fun ThemeSelectionDialog(
     nighttime: Boolean,
     selected: String,
     materialYouAvailable: Boolean = true,
+    selectionKind: ThemeSelectionKind = ThemeSelectionKind.All,
+    title: String? = null,
     onThemeSelected: (String) -> Unit,
     onDismiss: () -> Unit,
     previewPalettes: @Composable (String) -> Pair<ThemePreviewPalette, ThemePreviewPalette?>,
@@ -152,13 +156,21 @@ fun ThemeSelectionDialog(
     } else {
         ThemePreferences.fixedMaterialEquivalent(selected).orEmpty()
     }
-    val options = remember(nighttime, materialYouAvailable) {
-        harmonicThemeOptions(nighttime, materialYouAvailable)
+    val options = remember(nighttime, materialYouAvailable, selectionKind) {
+        harmonicThemeOptions(nighttime, materialYouAvailable).filter { option ->
+            when (selectionKind) {
+                ThemeSelectionKind.All -> true
+                ThemeSelectionKind.Light -> !option.automatic && !option.dark
+                ThemeSelectionKind.Dark -> !option.automatic && option.dark
+            }
+        }
     }
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle(if (nighttime) "Nighttime theme" else "Theme") },
+        title = {
+            SettingsDialogTitle(title ?: if (nighttime) "Nighttime theme" else "Theme")
+        },
         edgeToEdgeContent = true,
         text = {
             LazyColumn(

@@ -15,7 +15,11 @@ data class HarmonicThemePalette(
 
 /** Canonical, platform-neutral fallback palettes for every stored Harmonic theme. */
 object HarmonicThemeCatalog {
-    fun resolve(theme: String?, systemDark: Boolean): HarmonicThemePalette = when (theme) {
+    fun resolve(
+        theme: String?,
+        systemDark: Boolean,
+        accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
+    ): HarmonicThemePalette = (when (theme) {
         ThemePreferences.DEFAULT -> if (systemDark) materialDark else materialLight
         ThemePreferences.MATERIAL_FIXED_AUTO -> if (systemDark) materialFixedDark else materialFixedLight
         "darklight_daynight" -> if (systemDark) dark else light
@@ -31,7 +35,7 @@ object HarmonicThemeCatalog {
         "white" -> white
         "gray" -> gray
         else -> dark
-    }
+    }).let { ThemeAccentCatalog.apply(it, accentPreset) }
 
     private val dark = create(
         dark = true,
