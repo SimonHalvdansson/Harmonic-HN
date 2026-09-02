@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.stopScroll
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -81,6 +83,9 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
+// Comment rows can be several viewports tall; prepare the next rows before they enter the screen.
+private const val COMMENTS_CACHE_AHEAD_FRACTION = 2f
+private const val COMMENTS_CACHE_BEHIND_FRACTION = 0.5f
 private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
 
 private suspend fun LazyListState.animateToCommentNavigationTarget(
@@ -140,7 +145,7 @@ private suspend fun LazyListState.animateToCommentNavigationTarget(
     scrollToItem(index, scrollOffset)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsScreen(
     controller: CommentsComposeController,
@@ -172,7 +177,12 @@ fun CommentsScreen(
 
     val colors = HarmonicTheme.colors
     val commentsHazeState = currentCommentsHazeState()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyListState(
+        cacheWindow = LazyLayoutCacheWindow(
+            aheadFraction = COMMENTS_CACHE_AHEAD_FRACTION,
+            behindFraction = COMMENTS_CACHE_BEHIND_FRACTION,
+        ),
+    )
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
     val density = LocalDensity.current
