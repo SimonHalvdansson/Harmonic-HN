@@ -14,12 +14,14 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -47,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
@@ -1286,7 +1289,7 @@ private fun CommentsPane(
     }
     val commentsController = activeCoordinator.composeUiController
     CommentsHazeHost {
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { activeCoordinator.webViewRoot },
@@ -1294,6 +1297,14 @@ private fun CommentsPane(
             commentsController?.let { commentsController ->
                 val showFloatingUpButton = showUpButton &&
                     commentsController.displaySettings?.showUpButton == true
+                val navigationBottom = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding()
+                val sheetPeekHeight = navigationBottom +
+                    if (commentsController.displaySettings?.isTablet == true) 81.dp else 68.dp
+                val sheetTravelPx = with(LocalDensity.current) {
+                    (maxHeight - sheetPeekHeight).toPx().coerceAtLeast(0f)
+                }
                 var modalScrimAlpha by remember(commentsController) { mutableFloatStateOf(0f) }
                 val modalOverlayVisible = !commentsController.searchDialogVisible &&
                     (
@@ -1350,7 +1361,15 @@ private fun CommentsPane(
                 ) {
                     CommentNavigationControls(
                         controller = commentsController,
-                        modifier = Modifier.zIndex(101f),
+                        modifier = Modifier
+                            .zIndex(101f)
+                            // The controls are hoisted for modal layering, so mirror the sheet's
+                            // translation to keep them attached to the comments surface.
+                            .graphicsLayer {
+                                translationY = (
+                                    1f - commentsController.sheetSlideOffset.coerceIn(0f, 1f)
+                                ) * sheetTravelPx
+                            },
                         modalScrimAlpha = modalScrimAlpha,
                         modalScrimActive = modalOverlayVisible,
                     )
