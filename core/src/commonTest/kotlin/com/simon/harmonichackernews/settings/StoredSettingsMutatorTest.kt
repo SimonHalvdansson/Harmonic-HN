@@ -8,6 +8,66 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun storyLayoutResetRestoresLayoutDefaultsAndPreservesBehavior() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setStoryPreviewMode(StoryPreviewMode.MEDIUM)
+        mutator.setStoryBoolean(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE, true)
+        mutator.setStoryTextSize(TextPreferences.MAX_STORY_TEXT_SIZE)
+        mutator.setStoryString(
+            StoryStringPreference.DISPLAY_STYLE,
+            DisplayStylePreferences.CARD,
+        )
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.COMPACT_VIEW, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_SUMMARY, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_THUMBNAILS, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.COMPACT_POINTS, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_COMMENTS_COUNT, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_INDEX, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.LEFT_ALIGN, true)
+        mutator.setHotness(300)
+
+        mutator.setStoryBoolean(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.PAGINATION, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.HIDE_CLICKED, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.GRAY_OUT_CLICKED, false)
+        mutator.setPreferredStoryType("best")
+        mutator.setAdditionalFrontpages(setOf(AdditionalFrontpagePreferences.FRONT))
+        mutator.setFaviconProvider(FaviconPreferences.DUCK_DUCK_GO)
+
+        mutator.resetStoryLayout()
+
+        val story = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).story
+        assertEquals(StoryPreviewMode.SMALL, story.previewImageMode)
+        assertFalse(story.borderlessLargePreviewImage)
+        assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, story.storyTextSize)
+        assertFalse(story.cardStyle)
+        assertTrue(story.tintCardUsingPreview)
+        assertFalse(story.compactView)
+        assertFalse(story.showSummary)
+        assertTrue(story.thumbnails)
+        assertTrue(story.showPoints)
+        assertFalse(story.compactPoints)
+        assertTrue(story.includeTopLevelDomain)
+        assertTrue(story.showCommentsCount)
+        assertTrue(story.showIndex)
+        assertFalse(story.leftAlign)
+        assertEquals(-1, story.hotness)
+
+        assertTrue(story.alwaysOpenComments)
+        assertTrue(story.pagination)
+        assertTrue(story.hideClicked)
+        assertFalse(story.grayOutClicked)
+        assertEquals("best", story.preferredStoryType)
+        assertEquals(setOf(AdditionalFrontpagePreferences.FRONT), story.additionalFrontpages)
+        assertEquals(FaviconPreferences.DUCK_DUCK_GO, story.faviconProvider)
+    }
+
+    @Test
     fun linkPreviewUpdatesUseIndependentKeysAndEnableNitterRedirectForX() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)

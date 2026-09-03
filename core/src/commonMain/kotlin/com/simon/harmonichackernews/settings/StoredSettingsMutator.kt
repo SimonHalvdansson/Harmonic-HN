@@ -53,6 +53,12 @@ class StoredSettingsMutator(
         )
     }
 
+    fun resetStoryLayout() {
+        store.update {
+            storyLayoutPreferenceKeys.forEach { remove(it) }
+        }
+    }
+
     fun setCommentBoolean(preference: CommentBooleanPreference, value: Boolean) {
         store.putBoolean(preference.storageKey, value)
     }
@@ -310,4 +316,24 @@ class StoredSettingsMutator(
 
     private fun serializeFloat(value: Float): String =
         if (value == value.toInt().toFloat()) value.toInt().toString() else value.toString()
+
+    private companion object {
+        val storyLayoutPreferenceKeys = setOf(
+            UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
+            UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS,
+            UserPreferenceKeys.STORY_TEXT_SIZE,
+            UserPreferenceKeys.STORY_DISPLAY_STYLE,
+            UserPreferenceKeys.TINT_CARD_USING_PREVIEW,
+            UserPreferenceKeys.COMPACT_VIEW,
+            UserPreferenceKeys.SHOW_STORY_SUMMARY,
+            UserPreferenceKeys.THUMBNAILS,
+            UserPreferenceKeys.SHOW_POINTS,
+            UserPreferenceKeys.COMPACT_POINTS,
+            UserPreferenceKeys.INCLUDE_TOP_LEVEL_DOMAIN,
+            UserPreferenceKeys.SHOW_COMMENTS_COUNT,
+            UserPreferenceKeys.SHOW_INDEX,
+            UserPreferenceKeys.LEFT_ALIGN,
+            UserPreferenceKeys.HOTNESS,
+        )
+    }
 }

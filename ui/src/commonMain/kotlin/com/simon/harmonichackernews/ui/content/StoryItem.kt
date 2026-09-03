@@ -971,8 +971,8 @@ private fun StoryMediumPreviewRail(
 ) {
     val hazeState = if (hasPreview) rememberHazeState() else null
     val showPoints = style.showPoints && !style.compact
-    val showCommentPill = style.showCommentCount
-    val showCommentText = style.showCommentCount && !style.compact
+    val showCommentPill = style.showCommentCount && !style.compact
+    val showCommentText = showCommentPill
     val borderlessImage = hasPreview && style.borderlessLargeImage
     val imageVerticalInset = if (animateChanges) {
         val animatedInset by animateDpAsState(
@@ -1972,7 +1972,18 @@ private fun StoryMetaRow(
     modifier: Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        StoryVisibility(visible = style.showFavicon, animate = animateChanges) {
+        StoryVisibility(
+            visible = style.showFavicon,
+            animate = animateChanges,
+            enter = fadeIn(contentTween()) + expandHorizontally(
+                animationSpec = contentTween(),
+                expandFrom = Alignment.Start,
+            ),
+            exit = fadeOut(contentTween()) + shrinkHorizontally(
+                animationSpec = contentTween(),
+                shrinkTowards = Alignment.Start,
+            ),
+        ) {
             if (model.faviconUrl != null) {
                 var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
                 var failed by remember(model.faviconUrl) { mutableStateOf(false) }

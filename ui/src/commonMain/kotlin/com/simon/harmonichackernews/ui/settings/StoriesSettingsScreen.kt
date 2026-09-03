@@ -75,6 +75,7 @@ fun StoriesSettingsScreen(
     onPreviewImageModeChanged: (StoryPreviewMode) -> Unit,
     onStringChanged: (StoriesStringSetting, String) -> Unit,
     onTextSizeOffsetChanged: (Int) -> Unit,
+    onResetLayout: () -> Unit,
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
     contentVersion: Int = 0,
 ) {
@@ -136,13 +137,13 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Tint", Res.drawable.ic_palette, state.tint, StoriesBooleanSetting.Tint, onBooleanChanged, summary = "Uses preview or favicon")
                 SettingsDivider()
-                BooleanRow("Compact stories", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
+                BooleanRow("Compact layout", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
                 SettingsDivider()
-                BooleanRow("Show summary", Res.drawable.ic_subject, state.showSummary, StoriesBooleanSetting.ShowSummary, onBooleanChanged)
+                BooleanRow("Summary", Res.drawable.ic_subject, state.showSummary, StoriesBooleanSetting.ShowSummary, onBooleanChanged)
                 SettingsDivider()
-                BooleanRow("Show story thumbnails", Res.drawable.ic_public, state.showThumbnails, StoriesBooleanSetting.ShowThumbnails, onBooleanChanged, enabled = !state.compact)
+                BooleanRow("Thumbnails", Res.drawable.ic_public, state.showThumbnails, StoriesBooleanSetting.ShowThumbnails, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
-                BooleanRow("Show story points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
+                BooleanRow("Points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
                 BooleanRow(
                     "Compact points",
@@ -157,7 +158,7 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Include top level domain", Res.drawable.ic_public, state.includeTopLevelDomain, StoriesBooleanSetting.IncludeTopLevelDomain, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
-                BooleanRow("Show comment count", Res.drawable.ic_comment, state.showComments, StoriesBooleanSetting.ShowComments, onBooleanChanged, enabled = !state.compact)
+                BooleanRow("Comment count", Res.drawable.ic_comment, state.showComments, StoriesBooleanSetting.ShowComments, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
                 BooleanRow("Show story indices", Res.drawable.ic_format_list_numbered, state.showIndex, StoriesBooleanSetting.ShowIndex, onBooleanChanged)
                 SettingsDivider()
@@ -175,6 +176,12 @@ fun StoriesSettingsScreen(
                     summary = state.hotnessLabel,
                     icon = Res.drawable.ic_whatshot,
                     onClick = { onDialogRequested(StoriesSettingsDialog.Hotness) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Reset",
+                    icon = Res.drawable.ic_refresh,
+                    onClick = onResetLayout,
                 )
             }
         }

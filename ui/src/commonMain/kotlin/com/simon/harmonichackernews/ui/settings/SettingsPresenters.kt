@@ -111,6 +111,11 @@ class StoriesSettingsPresenter(
 
     fun setFaviconProvider(value: String) = repository.setFaviconProvider(value)
 
+    fun resetLayout(): Set<SettingsPlatformEffect> {
+        repository.resetStoryLayout()
+        return setOf(SettingsPlatformEffect.RefreshStoryWidgets)
+    }
+
     val snapshot: AppSettings get() = repository.snapshot()
 }
 

@@ -348,6 +348,9 @@ fun StoriesSettingsRoute(
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onStringChanged = presenter::setString,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
+        onResetLayout = {
+            presenter.resetLayout().forEach(onPlatformEffect)
+        },
         onDialogRequested = { dialog = it },
         contentVersion = settings.hashCode() + refresh,
     )

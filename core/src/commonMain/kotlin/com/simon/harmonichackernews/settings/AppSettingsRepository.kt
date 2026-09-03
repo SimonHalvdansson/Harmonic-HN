@@ -127,6 +127,7 @@ class AppSettingsRepository(
     fun setPreferredStoryType(value: String) = mutator.setPreferredStoryType(value)
     fun setAdditionalFrontpages(value: Set<String>) = mutator.setAdditionalFrontpages(value)
     fun setFaviconProvider(value: String) = mutator.setFaviconProvider(value)
+    fun resetStoryLayout() = mutator.resetStoryLayout()
     fun setFont(value: String) = mutator.setFont(value)
     fun setFont(value: AppFont) = mutator.setFont(value)
 

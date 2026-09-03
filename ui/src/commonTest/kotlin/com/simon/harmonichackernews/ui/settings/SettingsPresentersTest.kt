@@ -37,6 +37,20 @@ class SettingsPresentersTest {
     }
 
     @Test
+    fun storiesLayoutResetRefreshesWidgetsWithoutResettingBehavior() {
+        val presenter = fixture().stories
+        presenter.setBoolean(StoriesBooleanSetting.ShowIndex, false)
+        presenter.setBoolean(StoriesBooleanSetting.HideClicked, true)
+
+        assertEquals(
+            setOf(SettingsPlatformEffect.RefreshStoryWidgets),
+            presenter.resetLayout(),
+        )
+        assertTrue(presenter.snapshot.story.showIndex)
+        assertTrue(presenter.snapshot.story.hideClicked)
+    }
+
+    @Test
     fun commentsAndWebLinksBuildStateFromSharedSettings() {
         val fixture = fixture()
         fixture.comments.setBoolean(CommentsBooleanSetting.Scrollbar, false)
