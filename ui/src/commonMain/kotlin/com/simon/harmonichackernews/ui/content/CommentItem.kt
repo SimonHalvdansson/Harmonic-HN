@@ -1,15 +1,21 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -173,13 +179,14 @@ fun CommentItem(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
     )
-    val previewReferences = remember(model.body, style.collectLinks) {
-        if (style.collectLinks) CollectedReferenceLinks.parse(model.body) else null
+    val previewReferences = remember(model.body) {
+        CollectedReferenceLinks.parse(model.body)
     }
-    val previewBody = previewReferences
-        ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
-        ?.bodyHtml
-        ?: model.body
+    val hasPreviewReference = previewReferences.hasLinks()
+    val previewBody = if (hasPreviewReference) previewReferences.bodyHtml else model.body
+    val inlineReferenceHtml = remember(model.referenceMarker, model.referenceUrl) {
+        "${model.referenceMarker} <a href=\"${model.referenceUrl}\">${model.referenceUrl}</a>"
+    }
     val bodySize by animateFloatAsState(
         targetValue = typography.commentTextSize,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -217,18 +224,52 @@ fun CommentItem(
             onLinkClick = {},
             onLinkLongClick = { _, _, _ -> },
         )
-        AnimatedVisibility(
-            visible = style.collectLinks,
-            enter = fadeIn(contentTween()) + expandVertically(contentTween()),
-            exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
-        ) {
-            ReferenceRow(
-                marker = model.referenceMarker,
-                label = model.referenceUrl,
-                modifier = Modifier.padding(top = 5.dp),
-                onClick = {},
-                onLongClick = { _, _ -> },
-            )
+        if (hasPreviewReference) {
+            AnimatedContent(
+                targetState = style.collectLinks,
+                transitionSpec = {
+                    val direction = if (targetState) 1 else -1
+                    val enter = fadeIn(
+                        animationSpec = tween(durationMillis = 150, delayMillis = 70),
+                    ) + slideInVertically(
+                        animationSpec = contentTween(),
+                        initialOffsetY = { height -> direction * height / 6 },
+                    )
+                    val exit = fadeOut(
+                        animationSpec = tween(durationMillis = 90),
+                    ) + slideOutVertically(
+                        animationSpec = contentTween(),
+                        targetOffsetY = { height -> -direction * height / 6 },
+                    )
+                    (enter togetherWith exit).using(
+                        SizeTransform(clip = true) { _, _ -> contentTween() },
+                    )
+                },
+                contentAlignment = Alignment.TopStart,
+                label = "comment preview reference collection",
+            ) { collectLinks ->
+                if (collectLinks) {
+                    ReferenceRow(
+                        marker = model.referenceMarker,
+                        label = model.referenceUrl,
+                        modifier = Modifier.padding(top = 5.dp),
+                        onClick = {},
+                        onLongClick = { _, _ -> },
+                    )
+                } else {
+                    CommentBodyText(
+                        html = inlineReferenceHtml,
+                        modifier = Modifier.padding(top = 16.dp),
+                        searchTerm = "",
+                        markedColor = HarmonicTheme.colors.storyNormal,
+                        fontFamily = typography.family,
+                        fontSize = bodySize,
+                        animateSearchMatches = false,
+                        onLinkClick = {},
+                        onLinkLongClick = { _, _, _ -> },
+                    )
+                }
+            }
         }
     }
 }
