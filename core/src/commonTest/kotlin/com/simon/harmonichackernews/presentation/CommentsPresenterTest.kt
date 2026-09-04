@@ -526,6 +526,49 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun cachedThreadAppearsWhileItsPreloadIsStillDownloading() = runTest {
+        val response = """{"id":42,"title":"Cached","type":"story","children":[{"id":7,"author":"alice","text":"Ready"}]}"""
+        val networkResponse = CompletableDeferred<String>()
+        var networkRequests = 0
+        val source = object : AlgoliaRepository {
+            override suspend fun getSubmissions(userName: String, limit: Int): List<Story> = error("Unused")
+            override suspend fun search(url: String): List<Story> = error("Unused")
+            override suspend fun getItemJson(id: Int): String {
+                networkRequests++
+                return networkResponse.await()
+            }
+        }
+        val parser = AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))
+        val preloads = CommentsPreloadRepository(algolia = source, parser = parser, nowMillis = { 0L })
+        backgroundScope.launch { preloads.preload(42, listOf(7)) }
+        runCurrent()
+        val presenter = CommentsPresenter(
+            backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+        )
+        val effects = mutableListOf<CommentsEffect>()
+        backgroundScope.launch { presenter.effects.collect { effects += it } }
+        val story = Story("Loading", 42, false, false).also { it.kids = intArrayOf(7) }
+        presenter.dispatch(
+            CommentsAction.LoadThread(
+                story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "default",
+                collapseTopLevel = false, previousResponse = response, restoreScrollFromCache = true,
+            ),
+        )
+        runCurrent()
+        assertEquals("Cached", story.title)
+        assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().restoreScroll)
+        assertFalse(networkResponse.isCompleted)
+
+        networkResponse.complete(response)
+        runCurrent()
+        assertEquals(1, networkRequests)
+        assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().last().networkCompleted)
+    }
+
+    @Test
     fun preparedAlgoliaThreadOpensWithoutASecondNetworkRequest() = runTest {
         val response = """
             {

@@ -130,6 +130,7 @@ class CommentsPreloadRepository(
         storyId: Int,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
+        awaitInFlight: Boolean = true,
     ): PreloadedCommentsThread? {
         if (storyId <= 0) return null
         return takePrepared(
@@ -139,6 +140,7 @@ class CommentsPreloadRepository(
                 filteredUsers,
                 CommentThreadSource.ALGOLIA,
             ),
+            awaitInFlight = awaitInFlight,
         ) as? PreloadedCommentsThread
     }
 
@@ -158,11 +160,14 @@ class CommentsPreloadRepository(
         ) as? PreloadedOfficialCommentsThread
     }
 
-    private suspend fun takePrepared(key: PreloadKey): PreparedCommentsThread? {
+    private suspend fun takePrepared(
+        key: PreloadKey,
+        awaitInFlight: Boolean = true,
+    ): PreparedCommentsThread? {
         val pending = mutex.withLock {
             removeExpiredLocked()
             entries.remove(key)?.let { return it }
-            inFlight[key]
+            inFlight[key].takeIf { awaitInFlight }
         } ?: return null
         pending.await() ?: return null
         return mutex.withLock {

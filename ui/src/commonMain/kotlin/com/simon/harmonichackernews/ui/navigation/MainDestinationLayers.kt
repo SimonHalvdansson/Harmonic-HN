@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.navigation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,6 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
@@ -58,7 +64,10 @@ fun MainDestinationLayers(
     submissionsPredictiveModifier: Modifier = Modifier,
     editorPredictiveModifier: Modifier = Modifier,
     linkPreview: (@Composable () -> Unit)? = null,
+    completedStoryPredictiveBack: Boolean = false,
 ) {
+    val settingsBehindStory = retainStoryParentDuringExit(state.settingsBehindStory, completedStoryPredictiveBack)
+    val submissionsBehindStory = retainStoryParentDuringExit(state.submissionsBehindStory, completedStoryPredictiveBack)
     Box(modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -95,7 +104,7 @@ fun MainDestinationLayers(
             visible = state.settingsVisible,
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(if (state.settingsBehindStory) -1f else 5f)
+                .zIndex(if (settingsBehindStory) -1f else 5f)
                 .then(
                     if (state.settingsSemanticsHidden || state.settingsBehindStory) {
                         Modifier.clearAndSetSemantics { }
@@ -121,7 +130,7 @@ fun MainDestinationLayers(
             visible = state.submissionsVisible,
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(if (state.submissionsBehindStory) -1f else 7f)
+                .zIndex(if (submissionsBehindStory) -1f else 7f)
                 .then(
                     if (state.submissionsSemanticsHidden || state.submissionsBehindStory) {
                         Modifier.clearAndSetSemantics { }
@@ -180,4 +189,18 @@ fun MainDestinationLayers(
 
         foreground()
     }
+}
+
+/** A popped story still paints above its parent for the duration of its retained exit. */
+@Composable
+private fun retainStoryParentDuringExit(behindStory: Boolean, exitCompleted: Boolean): Boolean {
+    var retained by remember { mutableStateOf(behindStory) }
+    LaunchedEffect(behindStory, exitCompleted) {
+        if (!behindStory && !exitCompleted) {
+            // Use a Compose animation so the retention honors the system's animation scale.
+            Animatable(0f).animateTo(1f, tween(ActivityNavigationTransitionDurationMillis))
+        }
+        retained = behindStory
+    }
+    return behindStory || (retained && !exitCompleted)
 }

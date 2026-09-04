@@ -29,6 +29,7 @@ fun HarmonicAppRoot(
     submissionsPredictiveModifier: Modifier = Modifier,
     editorPredictiveModifier: Modifier = Modifier,
     linkPreview: (@Composable () -> Unit)? = null,
+    completedStoryPredictiveBack: Boolean = false,
 ) {
     val current = navigation.currentDestination
     val settingsVisible = navigation.destinationStack.any {
@@ -68,5 +69,6 @@ fun HarmonicAppRoot(
         submissionsPredictiveModifier = submissionsPredictiveModifier,
         editorPredictiveModifier = editorPredictiveModifier,
         linkPreview = linkPreview,
+        completedStoryPredictiveBack = completedStoryPredictiveBack,
     )
 }

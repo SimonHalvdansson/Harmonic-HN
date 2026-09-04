@@ -264,7 +264,8 @@ fun ReferenceCardContent(
         DomainNamePolicy.fromUrl(url) ?: url
     }
     val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
-    var imageExpanded by remember(url, imageUrl) { mutableStateOf(false) }
+    val directImage = result?.contentType?.startsWith("image/", ignoreCase = true) == true
+    var imageExpanded by remember(url, imageUrl, directImage) { mutableStateOf(directImage) }
     var imageBoundsAnimating by remember(url, imageUrl) { mutableStateOf(false) }
     val metadataAlpha = remember(url, imageUrl) { Animatable(1f) }
     var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }

@@ -24,10 +24,12 @@ class CommentThreadRepository(
         storyId: Int,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
+        awaitInFlight: Boolean = true,
     ): PreloadedCommentsThread? = preloads?.takeOrAwait(
         storyId,
         topLevelCommentIds,
         filteredUsers,
+        awaitInFlight,
     )
 
     suspend fun takePreloadedOfficial(

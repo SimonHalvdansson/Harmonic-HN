@@ -828,12 +828,12 @@ private fun WikipediaPreview(story: StoryListItemSnapshot) {
 private fun RichLinkPreview(story: StoryListItemSnapshot) {
     val info = story.linkPreviewInfo ?: return
     val details = remember(info.details) { splitRichPreviewDetails(info.details) }
-    val releaseImageUrl = info.imageUrl.takeIf { info.type == LinkPreviewType.GITHUB_RELEASE }
+    val isRelease = info.type == LinkPreviewType.GITHUB_RELEASE
     Column {
         PreviewHeader(
             text = info.title,
             icon = info.type.linkPreviewIcon(),
-            logoUrl = info.imageUrl.takeUnless { releaseImageUrl != null },
+            logoUrl = info.imageUrl.takeUnless { isRelease },
         )
         PreviewBody(
             text = info.subtitle.orEmpty(),
@@ -841,19 +841,13 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
             topPadding = 5.dp,
             bottomPadding = 0.dp,
         )
-        if (releaseImageUrl != null) {
-            AsyncImage(
-                model = releaseImageUrl,
-                contentDescription = "Release preview image",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 4.dp)
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop,
+        if (isRelease) {
+            ReleaseMarkdownContent(
+                markdown = info.description.orEmpty(),
+                pageUrl = info.url,
+                modifier = Modifier.padding(vertical = 4.dp),
             )
-        }
-        if (info.type.hasMarkdownDescription()) {
+        } else if (info.type.hasMarkdownDescription()) {
             SummaryMarkdownText(
                 markdown = info.description.orEmpty(),
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),

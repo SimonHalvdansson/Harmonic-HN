@@ -18,6 +18,7 @@ import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -216,6 +217,16 @@ fun SinglePaneNavigationScene(
         }
     }
     val requestedStorySerials = storyRequests.mapTo(mutableSetOf()) { it.serial }
+    var retainedStoriesRoot by remember { mutableStateOf(showStoriesRoot) }
+    SideEffect {
+        if (storyRequests.isNotEmpty()) retainedStoriesRoot = showStoriesRoot
+    }
+    // Keep a Settings/Submissions parent exposed until the last story finishes exiting.
+    val storiesRootVisible = if (storyRequests.isEmpty() && retainedStories.isNotEmpty()) {
+        retainedStoriesRoot
+    } else {
+        showStoriesRoot
+    }
     val replacesRetainedStoryRun = requestedStorySerials.isNotEmpty() &&
         retainedStories.none { it.request.serial in requestedStorySerials }
     LaunchedEffect(storyRequests) {
@@ -298,7 +309,7 @@ fun SinglePaneNavigationScene(
                     },
                 )
                 .graphicsLayer {
-                    alpha = if (showStoriesRoot) 1f else 0f
+                    alpha = if (storiesRootVisible) 1f else 0f
                     translationX = if (!predictiveBackActive && !completedPredictivePop) {
                         storiesOffset
                     } else {
@@ -306,7 +317,7 @@ fun SinglePaneNavigationScene(
                     }
                 }
                 .then(
-                    if (showStoriesRoot) Modifier else Modifier.clearAndSetSemantics { },
+                    if (storiesRootVisible) Modifier else Modifier.clearAndSetSemantics { },
                 ),
         ) {
             Box(

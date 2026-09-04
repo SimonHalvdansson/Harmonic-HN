@@ -292,7 +292,11 @@ fun CommentsScreen(
                 navigationTopOffsetPx = navigationTopOffsetPx,
             )
             if (request.animate) {
-                listState.animateScrollToItem(listIndex, scrollOffset)
+                listState.animateToCommentNavigationTarget(
+                    index = listIndex,
+                    scrollOffset = scrollOffset,
+                    scaleLongScrollSpeed = controller.initialScrollRestorationPending,
+                )
             } else {
                 listState.scrollToItem(listIndex, scrollOffset)
             }
@@ -341,13 +345,14 @@ fun CommentsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
-                // The list still lays out and restores while hidden, then appears at its saved row.
-                // Ordinary and cache-bypassed opens remain visible so their existing header
-                // shimmer can transition directly into the loaded story.
+                // Animated restoration starts from the visible header. If smooth scrolling is
+                // disabled, hide only the frame in which the saved position is applied directly.
                 .graphicsLayer {
                     alpha = if (
                         controller.initialScrollRestorationPending &&
-                        !controller.loadingFailed
+                        !controller.loadingFailed &&
+                        visibleComments.isNotEmpty() &&
+                        scrollToCommentRequest?.animate != true
                     ) 0f else 1f
                 }
                 .then(listModifier)

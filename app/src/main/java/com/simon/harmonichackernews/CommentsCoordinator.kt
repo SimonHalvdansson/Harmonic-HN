@@ -584,7 +584,8 @@ class CommentsCoordinator(
             story = storySnapshot,
             initialThreadCached = commentsStore.state.value.initialThreadCached,
             showWebsite = showWebsite,
-            initialScrollRestorationPending = restoringStoredProgress && !showWebsite,
+            initialScrollRestorationPending = restoringStoredProgress && !showWebsite &&
+                (scrollProgress.topCommentId != 0 || scrollProgress.topCommentOffset != 0),
             accountUser = commentsStore.state.value.accountUser,
             savedItemState = commentsStore.savedItemState,
             listener = CommentsFeatureListener(commentsStore, platformCallbacks),
@@ -1089,9 +1090,9 @@ class CommentsCoordinator(
         if (controller != null && restoration != null) {
             syncComposeState()
             controller.scrollToComment(
-                restoration.commentId,
-                restoration.offset,
-                false
+                commentId = restoration.commentId,
+                topOffsetPx = restoration.offset,
+                animate = true,
             )
         }
     }

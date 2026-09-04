@@ -900,6 +900,7 @@ private fun MainNavigation(
         completedSettingsPredictiveBack = settingsPredictiveBack.completed,
         completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
         completedEditorPredictiveBack = editorPredictiveBack.completed,
+        completedStoryPredictiveBack = completedPredictivePop,
         modifier = Modifier.background(HarmonicTheme.colors.background),
         basePredictiveModifier = settingsPredictiveBack.enterModifier
             .then(submissionsPredictiveBack.enterModifier)

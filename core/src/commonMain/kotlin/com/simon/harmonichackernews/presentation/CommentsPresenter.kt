@@ -451,6 +451,7 @@ class CommentsPresenter(
                     storyId,
                     topLevelCommentIds,
                     action.filteredUsers,
+                    awaitInFlight = false,
                 )
             } else {
                 null
@@ -552,7 +553,16 @@ class CommentsPresenter(
                     }
                 }
             }
-            val result = commentThreadRepository.load(
+            // Display disk-cached comments before joining an unfinished network preload. Large
+            // discussions can take seconds to download even when their cached thread is ready.
+            val pendingPreload = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
+                commentThreadRepository.takePreloadedAlgolia(
+                    storyId, topLevelCommentIds, action.filteredUsers,
+                )
+            } else null
+            val result = pendingPreload?.let {
+                CommentThreadLoadResult.Algolia(it.response, it.parsed)
+            } ?: commentThreadRepository.load(
                 storyId = storyId,
                 useAlgolia = action.useAlgolia,
                 filteredUsers = action.filteredUsers,
@@ -739,7 +749,15 @@ class CommentsPresenter(
             action.story,
             thread.allComments.size,
         )
-        if (prepared == null) {
+        val initialThread = prepared?.thread ?: if (thread.allComments.size <= 1) {
+            withContext(threadPreparationDispatcher) {
+                thread.prepareInitialParsedComments(
+                    action.story, parsed.comments, action.sorting, action.collapseTopLevel,
+                )
+            }
+        } else null
+        if (!threadLoadSession.isCurrent(requestId, action.story.id)) return
+        if (initialThread == null) {
             thread.replaceParsedComments(
                 action.story,
                 parsed.comments,
@@ -747,7 +765,7 @@ class CommentsPresenter(
                 action.collapseTopLevel,
             )
         } else {
-            thread.commitPreparedInitialComments(action.story, prepared.thread)
+            thread.commitPreparedInitialComments(action.story, initialThread)
         }
         publish(
             loaded = true,
