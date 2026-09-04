@@ -333,7 +333,9 @@ class StoriesStore internal constructor(
             online = runtime.online,
             userItemsInitialLoadInProgress = runtime.isUserItemsInitialLoadInProgress,
             savedSourceHasItems = runtime.savedSourceHasItems,
-            cachedStoriesAvailable = runtime.cachedStoriesAvailable,
+            // Only the failed main feed can offer cached stories; this check may read disk.
+            cachedStoriesAvailable = !runtime.searching &&
+                runtime.mainStore.state.value.failure != null && runtime.cachedStoriesAvailable,
             savedFilter = runtime.savedFilter,
             frontDateLabel = frontDate.requestParameter,
             frontDateSelectedMillis = frontDate.selectedMillis,
