@@ -338,7 +338,7 @@ private fun IosCommentsHeader(
         storyPosterTag = presentation.posterTag,
         tintBaseColor = tintBase,
         initialTint = presentation.tint.initialTintArgb,
-        headerTopPadding = 0.dp,
+        headerTopPadding = if (settings.isTablet) 32.dp else 24.dp,
         actionHorizontalPadding = 8.dp,
         bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
         lastRefreshedText = presentation.lastRefreshedText,
