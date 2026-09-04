@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
@@ -118,25 +117,23 @@ private fun harmonicColors(
         fallback.settingsSegment -> settingsSegment
         else -> fallbackColor
     }
-    val defaultTextView = AppCompatTextView(context)
+    val onSurface = context.colorAttribute(
+        MaterialR.attr.colorOnSurface,
+        fallbackScheme.onSurface,
+    )
     return HarmonicColors(
         background = background,
         accent = context.colorAttribute(
             AppCompatR.attr.colorAccent,
             fallback.accent,
         ),
-        onSurface = context.colorAttribute(
-            MaterialR.attr.colorOnSurface,
-            fallbackScheme.onSurface,
-        ),
-        textPrimary = Color(defaultTextView.currentTextColor).takeUnless {
-            it == Color.Unspecified
-        } ?: fallback.textPrimary,
+        onSurface = onSurface,
+        textPrimary = onSurface,
         textSecondary = context.colorAttribute(
             R.attr.secondaryTextColor,
             fallbackScheme.onSurfaceVariant,
         ),
-        link = Color(defaultTextView.linkTextColors.defaultColor),
+        link = context.colorAttribute(android.R.attr.textColorLink, fallback.link),
         surfaceContainerHigh = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHigh,
             fallbackScheme.surfaceContainerHigh,

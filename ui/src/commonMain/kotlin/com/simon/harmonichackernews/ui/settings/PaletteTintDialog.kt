@@ -114,7 +114,7 @@ fun PaletteTintDialog(
         title = { SettingsDialogTitle("Configure palette tint") },
         edgeToEdgeContent = true,
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 556.dp)) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 672.dp)) {
                 item {
                     PaletteSectionLabel(
                         text = "Preview",

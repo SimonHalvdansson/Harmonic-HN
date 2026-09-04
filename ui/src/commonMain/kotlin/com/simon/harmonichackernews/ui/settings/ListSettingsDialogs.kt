@@ -105,7 +105,7 @@ fun FontSelectionDialog(
                         Spacer(Modifier.width(4.dp))
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy((-2).dp),
+                            verticalArrangement = Arrangement.spacedBy((-3).dp),
                         ) {
                             Text(
                                 text = label,

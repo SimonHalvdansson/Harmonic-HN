@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +79,8 @@ data class ThemeSettingsUiState(
 )
 
 enum class ThemeSettingsDialog { LightTheme, DarkTheme, NighttimeRange, NighttimeTheme }
+
+private const val ThemeSelectionAnimationDurationMillis = 180
 
 data class ThemePairPreset(
     val label: String,
@@ -359,13 +365,23 @@ private fun StoryThemePreview(
     current: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val borderWidth by animateDpAsState(
+        targetValue = if (current) 2.dp else 1.dp,
+        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
+        label = "theme preview border width",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (current) palette.accent else palette.text.copy(alpha = 0.16f),
+        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
+        label = "theme preview border color",
+    )
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(palette.background)
             .border(
-                width = if (current) 2.dp else 1.dp,
-                color = if (current) palette.accent else palette.text.copy(alpha = 0.16f),
+                width = borderWidth,
+                color = borderColor,
                 shape = RoundedCornerShape(16.dp),
             )
             .padding(10.dp),
@@ -379,7 +395,13 @@ private fun StoryThemePreview(
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
             )
-            if (current) {
+            AnimatedVisibility(
+                visible = current,
+                enter = fadeIn(tween(ThemeSelectionAnimationDurationMillis)) +
+                    scaleIn(tween(ThemeSelectionAnimationDurationMillis), initialScale = 0.75f),
+                exit = fadeOut(tween(ThemeSelectionAnimationDurationMillis)) +
+                    scaleOut(tween(ThemeSelectionAnimationDurationMillis), targetScale = 0.75f),
+            ) {
                 Text(
                     text = "NOW",
                     color = palette.accent,
@@ -472,16 +494,29 @@ private fun PairPresetCard(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
+    val borderWidth by animateDpAsState(
+        targetValue = if (selected) 2.dp else 1.dp,
+        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
+        label = "quick pair border width",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.outlineVariant
+        },
+        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
+        label = "quick pair border color",
+    )
     Column(
         modifier = Modifier
             .width(150.dp)
-            .defaultMinSize(minHeight = 120.dp)
+            .defaultMinSize(minHeight = 108.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) MaterialTheme.colorScheme.primary else
-                    MaterialTheme.colorScheme.outlineVariant,
+                width = borderWidth,
+                color = borderColor,
                 shape = shape,
             )
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
@@ -517,7 +552,13 @@ private fun PairPresetCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (selected) {
+            AnimatedVisibility(
+                visible = selected,
+                enter = fadeIn(tween(ThemeSelectionAnimationDurationMillis)) +
+                    scaleIn(tween(ThemeSelectionAnimationDurationMillis), initialScale = 0.75f),
+                exit = fadeOut(tween(ThemeSelectionAnimationDurationMillis)) +
+                    scaleOut(tween(ThemeSelectionAnimationDurationMillis), targetScale = 0.75f),
+            ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_check),
                     contentDescription = "Selected",
