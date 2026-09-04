@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
@@ -113,6 +114,7 @@ sealed interface CommentsEffect {
         val contentApplied: Boolean,
         val networkCompleted: Boolean,
         val responseToCache: String? = null,
+        val cacheSummary: AlgoliaStorySummary? = null,
         val restoreScroll: Boolean = false,
         val broadcastStoryUpdate: Boolean = false,
         val headerChanged: Boolean = false,
@@ -779,6 +781,7 @@ class CommentsPresenter(
                 contentApplied = true,
                 networkCompleted = networkCompleted,
                 responseToCache = responseToCache,
+                cacheSummary = if (responseToCache != null) parsed.cacheSummary else null,
                 restoreScroll = restoreScroll,
                 broadcastStoryUpdate = broadcastStoryUpdate,
                 headerChanged = headerChanged || broadcastStoryUpdate,

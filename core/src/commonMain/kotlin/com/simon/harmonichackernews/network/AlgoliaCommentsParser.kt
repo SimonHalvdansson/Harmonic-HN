@@ -8,9 +8,13 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -21,6 +25,11 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
+import kotlinx.serialization.modules.overwriteWith
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
 /** Platform-neutral result of parsing an Algolia item and its comment tree. */
@@ -37,6 +46,7 @@ data class AlgoliaCommentsResponse(
     val url: String = "",
     val text: String = "",
     val id: Int = 0,
+    val cacheSummary: AlgoliaStorySummary? = null,
 ) {
     fun updateStoryInformation(story: Story, oldCommentCount: Int): Boolean {
         val changed = story.title.isNullOrEmpty() ||
@@ -84,13 +94,32 @@ class AlgoliaCommentsParser(
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    // Decode normal string fields directly. Unusual scalar types retain the legacy coercions
+    // through a second decode from the original input, never from a partly consumed decoder.
+    private val fastJson = Json(json) {
+        isLenient = false
+        serializersModule = json.serializersModule.overwriteWith(SerializersModule {
+            contextual(String::class, NullableDefaultStringSerializer)
+        })
+    }
+    private val flexibleJson = Json(json) {
+        serializersModule = json.serializersModule.overwriteWith(SerializersModule {
+            contextual(String::class, FlexibleStringSerializer)
+        })
+    }
+
     suspend fun parse(
         response: String?,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
     ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
-        val payload = try {
-            json.decodeFromString<AlgoliaCommentsPayload>(response.orEmpty())
+        val (item, payload) = try {
+            val item = try {
+                fastJson.decodeFromString(itemSerializer, response.orEmpty())
+            } catch (_: IllegalArgumentException) {
+                flexibleJson.decodeFromString(itemSerializer, response.orEmpty())
+            }
+            item to json.decodeFromJsonElement<AlgoliaCommentsPayload>(item.metadata.toJsonElement())
         } catch (error: SerializationException) {
             throw ApiDecodingException("Invalid Algolia comments JSON", error)
         } catch (error: IllegalArgumentException) {
@@ -103,22 +132,21 @@ class AlgoliaCommentsParser(
                 if (trimmed.isNotEmpty()) add(trimmed.lowercase())
             }
         }
-        val topLevelComments = payload.children.mapNotNull { child ->
-            parseComment(child, depth = 0, normalizedFilteredUsers)
-        }.toMutableList()
-
-        if (topLevelCommentIds.isNotEmpty() && topLevelComments.size > 1) {
+        val topLevelComments = if (topLevelCommentIds.isNotEmpty() && item.children.size > 1) {
             val priorityById = mutableMapOf<Int, Int>()
             topLevelCommentIds.forEachIndexed { index, id ->
                 if (id !in priorityById) priorityById[id] = index
             }
-            topLevelComments.sortBy { node ->
-                priorityById[node.comment.id] ?: topLevelCommentIds.size
+            item.children.sortedBy { node ->
+                priorityById[node.id] ?: topLevelCommentIds.size
             }
-        }
+        } else item.children
 
-        val flattenedComments = mutableListOf<Comment>()
-        topLevelComments.forEach { node -> flatten(node, flattenedComments) }
+        val descendants = item.children.sumOf { 1 + it.descendants }
+        val flattenedComments = ArrayList<Comment>(descendants)
+        for (node in topLevelComments) {
+            appendComment(node, 0, normalizedFilteredUsers, coroutineContext, flattenedComments)
+        }
         AlgoliaCommentsResponse(
             comments = flattenedComments,
             title = payload.title,
@@ -132,52 +160,42 @@ class AlgoliaCommentsParser(
             url = payload.url,
             text = payload.text,
             id = payload.id,
+            cacheSummary = AlgoliaStorySummary(item.metadata, descendants),
         )
     }
 
-    private suspend fun parseComment(
+    private fun appendComment(
         payload: AlgoliaCommentPayload,
         depth: Int,
         filteredUsers: Set<String>,
-    ): ParsedCommentNode? {
-        coroutineContext.ensureActive()
+        context: CoroutineContext,
+        destination: MutableList<Comment>,
+    ) {
+        context.ensureActive()
         val rawText = payload.text.trim()
         val author = payload.author.trim()
-        if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return null
-        if (filteredUsers.isNotEmpty() && author.lowercase() in filteredUsers) return null
+        if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return
+        if (filteredUsers.isNotEmpty() && author.lowercase() in filteredUsers) return
 
-        val childNodes = payload.children.mapNotNull { child ->
-            parseComment(child, depth + 1, filteredUsers)
-        }.sortedByDescending { node -> node.comment.children }
-        coroutineContext.ensureActive()
-
-        return ParsedCommentNode(
-            comment = Comment().also { comment ->
-                comment.id = payload.id
-                comment.parent = payload.parentId
-                comment.by = author
-                comment.text = StoryTextProcessor.preprocessHtml(rawText)
-                comment.time = payload.createdAt
-                comment.expanded = true
-                comment.depth = depth
-                comment.children = payload.children.size
-            },
-            children = childNodes,
-        )
+        destination.add(Comment().also { comment ->
+            comment.id = payload.id
+            comment.parent = payload.parentId
+            comment.by = author
+            comment.text = StoryTextProcessor.preprocessHtml(rawText)
+            comment.time = payload.createdAt
+            comment.expanded = true
+            comment.depth = depth
+            comment.children = payload.children.size
+        })
+        val children = if (payload.children.size > 1) {
+            payload.children.sortedByDescending { it.children.size }
+        } else payload.children
+        for (child in children) appendComment(child, depth + 1, filteredUsers, context, destination)
     }
-
-    private fun flatten(node: ParsedCommentNode, destination: MutableList<Comment>) {
-        destination += node.comment
-        node.children.forEach { child -> flatten(child, destination) }
-    }
-
-    private data class ParsedCommentNode(
-        val comment: Comment,
-        val children: List<ParsedCommentNode>,
-    )
 
     private companion object {
         const val JSON_NULL_LITERAL = "null"
+        val itemSerializer = AlgoliaItemSerializer(ListSerializer(AlgoliaCommentPayload.serializer()), emptyList())
     }
 }
 
@@ -209,14 +227,13 @@ private data class AlgoliaCommentsPayload(
     val text: String = "",
     @Serializable(with = FlexibleIntSerializer::class)
     val id: Int = 0,
-    val children: List<AlgoliaCommentPayload> = emptyList(),
 )
 
 @Serializable
 private data class AlgoliaCommentPayload(
-    @Serializable(with = FlexibleStringSerializer::class)
+    @Contextual
     val text: String = "",
-    @Serializable(with = FlexibleStringSerializer::class)
+    @Contextual
     val author: String = "",
     @SerialName("parent_id")
     @Serializable(with = FlexibleIntSerializer::class)
@@ -227,7 +244,17 @@ private data class AlgoliaCommentPayload(
     @Serializable(with = FlexibleIntSerializer::class)
     val id: Int = 0,
     val children: List<AlgoliaCommentPayload> = emptyList(),
-)
+) {
+    val descendants: Int = children.sumOf { 1 + it.descendants }
+}
+
+private object NullableDefaultStringSerializer : KSerializer<String> {
+    private val nullableSerializer = String.serializer().nullable
+    override val descriptor = nullableSerializer.descriptor
+    override fun deserialize(decoder: Decoder): String =
+        decoder.decodeSerializableValue(nullableSerializer).orEmpty()
+    override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+}
 
 private object FlexibleStringSerializer : KSerializer<String> {
     override val descriptor: SerialDescriptor =
@@ -249,7 +276,11 @@ private object FlexibleIntSerializer : KSerializer<Int> {
     override fun deserialize(decoder: Decoder): Int {
         val jsonDecoder = decoder as? JsonDecoder ?: return decoder.decodeInt()
         val primitive = jsonDecoder.decodeJsonElement() as? JsonPrimitive ?: return 0
-        if (primitive.isString) return primitive.content.toIntOrNull() ?: 0
+        // Ordinary integers need no second JSON lexer. Preserve the existing exponent/decimal
+        // handling below, and the stricter conversion of quoted numeric strings.
+        val integer = primitive.content.toIntOrNull()
+        if (primitive.isString) return integer ?: 0
+        if (integer != null) return integer
         primitive.intOrNull?.let { return it }
         val doubleValue = primitive.doubleOrNull ?: return 0
         val intValue = doubleValue.toInt()

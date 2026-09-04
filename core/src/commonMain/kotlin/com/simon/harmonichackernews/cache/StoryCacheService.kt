@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.cache
 
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
 import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.CachedDownloadService
@@ -104,6 +105,14 @@ class StoryCacheService(
 
     override suspend fun cacheStory(id: Int, payload: String) {
         storeStory(id, payload)
+    }
+
+    suspend fun cacheParsedStory(
+        id: Int,
+        payload: String,
+        summary: AlgoliaStorySummary?,
+    ) {
+        writeMutex.withLock { repository.storeStory(id, payload, nowMillis(), summary) }
     }
 
     override suspend fun cacheArticle(id: Int, url: String): Boolean =

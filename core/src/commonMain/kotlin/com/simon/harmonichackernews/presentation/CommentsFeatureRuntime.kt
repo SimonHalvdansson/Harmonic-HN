@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
@@ -97,7 +98,7 @@ class CommentsFeatureRuntime(
     private val isThreadCached: (Int) -> Boolean = { false },
     private val loadCachedThread: suspend (Int) -> String? = { null },
     private val awaitInitialPresentation: suspend () -> Unit = {},
-    private val storeCachedThread: suspend (Int, String) -> Unit = { _, _ -> },
+    private val storeCachedThread: suspend (Int, String, AlgoliaStorySummary?) -> Unit = { _, _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
     private val storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
@@ -653,7 +654,7 @@ class CommentsFeatureRuntime(
                     story?.id != effect.storyId
                 ) return
                 effect.responseToCache?.let { response ->
-                    storeCachedThread(effect.storyId, response)
+                    storeCachedThread(effect.storyId, response, effect.cacheSummary)
                 }
                 if (effect.broadcastStoryUpdate) {
                     story?.let(publishStoryUpdate)

@@ -20,7 +20,7 @@ class CommentsPreloadRepository(
     private val algolia: AlgoliaRepository,
     private val official: OfficialCommentThreadLoader? = null,
     private val parser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
-    private val storeResponse: suspend (storyId: Int, response: String) -> Unit = { _, _ -> },
+    private val storeResponse: suspend (storyId: Int, response: String, summary: AlgoliaStorySummary?) -> Unit = { _, _, _ -> },
     private val nowMillis: () -> Long,
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
     private val maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
@@ -44,7 +44,7 @@ class CommentsPreloadRepository(
         return prepare(key) {
             val response = algolia.getItemJson(storyId)
             val parsed = parser.parse(response, key.topLevelCommentIds, key.filteredUsers)
-            storeResponse(storyId, response)
+            storeResponse(storyId, response, parsed.cacheSummary)
             PreloadedCommentsThread(
                 storyId = storyId,
                 topLevelCommentIds = key.topLevelCommentIds,

@@ -20,7 +20,10 @@ class CommentsPreloadRepositoryTest {
         val stored = mutableListOf<Pair<Int, String>>()
         val repository = CommentsPreloadRepository(
             algolia = source,
-            storeResponse = { storyId, response -> stored += storyId to response },
+            storeResponse = { storyId, response, summary ->
+                assertEquals(JSONParser.compactAlgoliaStoryResponse(response, storyId), assertNotNull(summary).encode(storyId))
+                stored += storyId to response
+            },
             nowMillis = { 1_000L },
         )
 

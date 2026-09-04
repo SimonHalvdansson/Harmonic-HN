@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.data
 
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.JSONParser
 import kotlin.concurrent.Volatile
 
@@ -169,7 +170,12 @@ class StoryCacheRepository(
     @Volatile
     private var indexedStoryIdsSnapshot: Set<Int>? = null
 
-    fun storeStory(storyId: Int, payload: String?, cachedAtMillis: Long): Boolean {
+    fun storeStory(
+        storyId: Int,
+        payload: String?,
+        cachedAtMillis: Long,
+        parsedSummary: AlgoliaStorySummary? = null,
+    ): Boolean {
         if (storyId <= 0 || payload.isNullOrEmpty() || payload == JSONParser.ALGOLIA_ERROR_STRING) {
             return false
         }
@@ -181,7 +187,7 @@ class StoryCacheRepository(
         ) {
             return false
         }
-        JSONParser.compactAlgoliaStoryResponse(payload, storyId)?.let { summary ->
+        (parsedSummary?.encode(storyId) ?: JSONParser.compactAlgoliaStoryResponse(payload, storyId))?.let { summary ->
             files.write(
                 StoryCacheKeys.SUMMARY_NAMESPACE,
                 StoryCacheKeys.storyFile(storyId),

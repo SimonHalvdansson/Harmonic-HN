@@ -29,6 +29,16 @@ baselineProfile {
     skipBenchmarksOnEmulator = false
 }
 
+// The baseline-profile plugin creates benchmark<BuildType> variants after the DSL above.
+// Microbenchmarks execute inside this APK, so those variants must also be non-debuggable.
+androidComponents {
+    finalizeDsl { extension ->
+        extension.buildTypes.configureEach {
+            if (name.startsWith("benchmark")) debuggable = false
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(project(":resources"))

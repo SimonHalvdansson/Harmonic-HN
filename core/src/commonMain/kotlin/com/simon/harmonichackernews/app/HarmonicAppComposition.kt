@@ -125,7 +125,7 @@ class HarmonicAppComposition(
     val commentsPreloads = CommentsPreloadRepository(
         algolia = network.algoliaRepository,
         official = OfficialCommentThreadLoader(network.hackerNewsRepository),
-        storeResponse = storyCache::cacheStory,
+        storeResponse = storyCache::cacheParsedStory,
         nowMillis = nowMillis,
     )
     val pdfDownloads = PdfDownloadService(network.httpClient, host.pdfDownloadStore, nowMillis)

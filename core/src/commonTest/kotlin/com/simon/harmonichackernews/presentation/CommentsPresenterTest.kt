@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
+import kotlin.test.assertNotNull
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PollOption
 import com.simon.harmonichackernews.data.SavedItemsRepository
@@ -413,6 +414,7 @@ class CommentsPresenterTest {
         assertTrue(applied.contentApplied)
         assertTrue(applied.networkCompleted)
         assertEquals(response, applied.responseToCache)
+        assertNotNull(applied.cacheSummary)
         assertTrue(applied.broadcastStoryUpdate)
     }
 

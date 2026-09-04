@@ -33,6 +33,19 @@ object JSONParser {
     private const val KEY_FAVICON_TINT_BASE_COLOR = "favicon_tint_base_color"
     private const val KEY_FAVICON_TINT_MODE = "favicon_tint_mode"
 
+    internal val ALGOLIA_SUMMARY_FIELDS = listOf(
+        "id", "type", "title", "author", "points", "created_at_i", "url", "text",
+        "story_id", "parent_id", "story_title", "story_url",
+        KEY_PREVIEW_IMAGE_URL, KEY_PREVIEW_IMAGE_URL_LOADED,
+        KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, KEY_PREVIEW_IMAGE_TINT_COLOR,
+        KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, KEY_PREVIEW_IMAGE_TINT_BASE_COLOR,
+        KEY_PREVIEW_IMAGE_TINT_MODE, KEY_FAVICON_TINT_COLOR_LOADED, KEY_FAVICON_TINT_COLOR,
+        KEY_FAVICON_TINT_SOURCE_URL, KEY_FAVICON_TINT_BASE_COLOR, KEY_FAVICON_TINT_MODE,
+    )
+    private val summarySerializer by lazy {
+        AlgoliaItemSerializer(AlgoliaChildrenCountSerializer, 0)
+    }
+
     private fun hasOnlyTwoTopLevelFields(jsonObject: JSONObject): Boolean {
         return jsonObject.length() == 2
     }
@@ -180,39 +193,49 @@ object JSONParser {
         }
 
         try {
-            val item = JSONObject(response)
-            val summary = JSONObject()
-            var id = item.optInt("id", fallbackId)
-            if (id <= 0) {
-                id = fallbackId
-            }
-
-            summary.put("cache_version", CACHED_STORY_SUMMARY_VERSION)
-            summary.put("id", id)
-            summary.put("type", item.optString("type", "story"))
-            summary.put("title", item.optString("title", ""))
-            summary.put("author", item.optString("author", ""))
-            summary.put("points", item.optInt("points", 0))
-            summary.put("created_at_i", item.optInt("created_at_i", 0))
-            summary.put("descendants", countAlgoliaComments(item.optJSONArray("children")))
-            putNonNullString(summary, "url", item.optString("url", ""))
-            putNonNullString(summary, "text", item.optString("text", ""))
-
-            if (item.has("story_id")) {
-                summary.put("story_id", item.optInt("story_id", 0))
-            }
-            if (item.has("parent_id")) {
-                summary.put("parent_id", item.optInt("parent_id", 0))
-            }
-            putNonNullString(summary, "story_title", item.optString("story_title", ""))
-            putNonNullString(summary, "story_url", item.optString("story_url", ""))
-            copyPreviewImageSummaryFields(item, summary)
-            copyFaviconTintSummaryFields(item, summary)
-
-            return summary.toString()
-        } catch (e: JSONException) {
-            return null
+            val item = ALGOLIA_JSON.decodeFromString(summarySerializer, response)
+            return compactAlgoliaStoryFields(item.metadata, fallbackId, item.children)
+        } catch (_: IllegalArgumentException) {
+            // Retain legacy handling of unusual children values (nulls, primitives, etc.).
         }
+        return try {
+            val item = JSONObject(response)
+            compactAlgoliaStoryFields(item, fallbackId, countAlgoliaComments(item.optJSONArray("children")))
+        } catch (_: JSONException) {
+            null
+        }
+    }
+
+    internal fun compactAlgoliaStoryFields(item: JSONObject, fallbackId: Int, descendants: Int): String {
+        val summary = JSONObject()
+        var id = item.optInt("id", fallbackId)
+        if (id <= 0) {
+            id = fallbackId
+        }
+
+        summary.put("cache_version", CACHED_STORY_SUMMARY_VERSION)
+        summary.put("id", id)
+        summary.put("type", item.optString("type", "story"))
+        summary.put("title", item.optString("title", ""))
+        summary.put("author", item.optString("author", ""))
+        summary.put("points", item.optInt("points", 0))
+        summary.put("created_at_i", item.optInt("created_at_i", 0))
+        summary.put("descendants", descendants)
+        putNonNullString(summary, "url", item.optString("url", ""))
+        putNonNullString(summary, "text", item.optString("text", ""))
+
+        if (item.has("story_id")) {
+            summary.put("story_id", item.optInt("story_id", 0))
+        }
+        if (item.has("parent_id")) {
+            summary.put("parent_id", item.optInt("parent_id", 0))
+        }
+        putNonNullString(summary, "story_title", item.optString("story_title", ""))
+        putNonNullString(summary, "story_url", item.optString("story_url", ""))
+        copyPreviewImageSummaryFields(item, summary)
+        copyFaviconTintSummaryFields(item, summary)
+
+        return summary.toString()
     }
 
     fun updateCachedStorySummaryPreviewState(response: String?, story: Story?): String? {

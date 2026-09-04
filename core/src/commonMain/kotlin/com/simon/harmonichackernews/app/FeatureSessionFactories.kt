@@ -192,7 +192,7 @@ fun HarmonicAppComposition.createCommentsStore(
             withContext(Dispatchers.Default) { storyCache.loadStoryPayload(storyId) }
         },
         awaitInitialPresentation = host.awaitInitialPresentation,
-        storeCachedThread = storyCache::cacheStory,
+        storeCachedThread = storyCache::cacheParsedStory,
         publishStoryUpdate = storyUpdates::publish,
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,

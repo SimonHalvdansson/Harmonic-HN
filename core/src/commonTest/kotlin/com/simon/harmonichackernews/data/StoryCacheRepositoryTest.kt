@@ -5,8 +5,28 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
+import kotlinx.coroutines.test.runTest
+import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 
 class StoryCacheRepositoryTest {
+    @Test
+    fun parsedSummaryHydratesTheUnfilteredCommentCount() = runTest {
+        val files = FakeFiles()
+        val repository = StoryCacheRepository(files, FakeMetadata())
+        val payload = """{"id":42,"title":"Cached","children":[
+            {"text":"hidden","author":"blocked","children":[{"text":"child"}]},
+            {"text":"visible"}
+        ]}"""
+        val parsed = AlgoliaCommentsParser().parse(payload, filteredUsers = setOf("blocked"))
+        assertEquals(1, parsed.comments.size)
+        assertTrue(repository.storeStory(42, payload, 1_000, assertNotNull(parsed.cacheSummary)))
+        val story = Story().apply { id = 42 }
+        assertTrue(repository.hydrateStory(story))
+        assertEquals(3, story.descendants)
+        assertEquals("Cached", story.title)
+    }
+
     @Test
     fun storeCompactsIndexesAndHydratesAStory() {
         val files = FakeFiles()
