@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
+import com.kmpalette.extensions.resource.rememberResourcePaletteState
+import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
@@ -133,6 +138,7 @@ fun NighttimeRangeDialog(
 fun WelcomeSettingsDialog(
     styleChooser: Boolean,
     initialExpressive: Boolean,
+    paletteTintConfigKey: String,
     onApplyPreset: (expressive: Boolean) -> Unit,
     onDismiss: () -> Unit,
     filterButtonColors: HarmonicFilterButtonColors,
@@ -200,6 +206,7 @@ fun WelcomeSettingsDialog(
                 item {
                     WelcomeStoryPreview(
                         expressive = expressive,
+                        paletteTintConfigKey = paletteTintConfigKey,
                         textStyle = welcomeTextStyle,
                         modifier = Modifier.padding(top = 16.dp),
                     )
@@ -292,21 +299,44 @@ private fun StylePresetButton(
 @Composable
 private fun WelcomeStoryPreview(
     expressive: Boolean,
+    paletteTintConfigKey: String,
     textStyle: androidx.compose.ui.text.TextStyle,
     modifier: Modifier = Modifier,
 ) {
+    val baseColor = HarmonicTheme.colors.storyCardBackground
+    val paletteState = rememberResourcePaletteState { maximumColorCount(16) }
+    LaunchedEffect(Unit) { paletteState.generate(Res.drawable.palette1) }
+    val targetExpressiveColor = remember(
+        paletteState.palette,
+        paletteTintConfigKey,
+        baseColor,
+    ) {
+        Color(
+            PreviewTintPolicy.calculateCardTint(
+                baseColor = baseColor.toArgb(),
+                palette = paletteState.palette?.toPreviewTintPalette(),
+                modeOrConfigKey = paletteTintConfigKey,
+            ),
+        )
+    }
+    val expressiveColor by animateColorAsState(
+        targetValue = targetExpressiveColor,
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "welcome KMPalette tint",
+    )
     AnimatedContent(
         targetState = expressive,
         modifier = modifier,
         label = "welcome style preview",
     ) { isExpressive ->
-        WelcomeStoryPreviewContent(isExpressive, textStyle)
+        WelcomeStoryPreviewContent(isExpressive, expressiveColor, textStyle)
     }
 }
 
 @Composable
 private fun WelcomeStoryPreviewContent(
     expressive: Boolean,
+    expressiveColor: Color,
     textStyle: androidx.compose.ui.text.TextStyle,
 ) {
     val fontFamily = if (expressive) {
@@ -318,7 +348,7 @@ private fun WelcomeStoryPreviewContent(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (expressive) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                if (expressive) expressiveColor else Color.Transparent,
                 RoundedCornerShape(8.dp),
             )
             .padding(12.dp),

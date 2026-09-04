@@ -504,13 +504,20 @@ internal object RichLinkPreviewParsers {
             )
             LinkPreviewType.GITHUB_RELEASE -> {
                 val tag = json.optString("tag_name").requiredPreviewTitle(type)
-                val name = json.nullableString("name") ?: tag
+                val body = json.nullableString("body")
+                val name = json.nullableString("name")
+                    ?: githubReleaseHeading(body)
+                    ?: tag
                 LinkPreviewInfo(
                     type,
-                    repoLabel,
-                    listOf(name, tag).distinct().joinToString(" · "),
-                    json.nullableString("body"),
-                    avatar,
+                    name,
+                    listOfNotNull(
+                        "GitHub release",
+                        repoLabel,
+                        tag.takeUnless { it == name },
+                    ).joinToString(" · "),
+                    body,
+                    githubReleaseImage(body, url),
                     url,
                     details(
                         "Author" to author,
@@ -566,6 +573,7 @@ internal object RichLinkPreviewParsers {
                     title.removeSuffix(" · Pull Request #${target.identifier}")
                 LinkPreviewType.GITHUB_DISCUSSION ->
                     title.removeSuffix(" · Discussion #${target.identifier}")
+                LinkPreviewType.GITHUB_RELEASE -> title.removePrefix("Release ")
                 else -> title
             }
         }
@@ -576,6 +584,7 @@ internal object RichLinkPreviewParsers {
             LinkPreviewType.GITHUB_DISCUSSION,
             -> "$repoLabel · #${target.identifier}"
             LinkPreviewType.GITHUB_FILE -> "$repoLabel · ${target.ref}"
+            LinkPreviewType.GITHUB_RELEASE -> "GitHub release · $repoLabel"
             else -> repoLabel
         }
         val description = document.selectFirst("meta[property=og:description]")?.attr("content")
@@ -590,15 +599,49 @@ internal object RichLinkPreviewParsers {
         val author = document.selectFirst("meta[property=og:author:username]")
             ?.attr("content")
             ?.takeIf(String::isNotBlank)
+        val imageUrl = if (type == LinkPreviewType.GITHUB_RELEASE) {
+            document.selectFirst("meta[property=og:image], meta[name=twitter:image]")
+                ?.attr("content")
+                ?.let(LinkSummaryParser::normalizeHttpUrl)
+        } else {
+            null
+        }
         return LinkPreviewInfo(
             type = type,
             title = pageTitle,
             subtitle = subtitle,
             description = description,
-            imageUrl = null,
+            imageUrl = imageUrl,
             url = url,
-            details = listOfNotNull(author?.let { LinkPreviewDetail("Author", it) }),
+            details = listOfNotNull(
+                LinkPreviewDetail("Kind", "Release")
+                    .takeIf { type == LinkPreviewType.GITHUB_RELEASE },
+                author?.let { LinkPreviewDetail("Author", it) },
+            ),
         )
+    }
+
+    private fun githubReleaseHeading(body: String?): String? = body
+        ?.lineSequence()
+        ?.map(String::trim)
+        ?.firstOrNull { line -> line.startsWith('#') && line.dropWhile { it == '#' }.startsWith(' ') }
+        ?.dropWhile { it == '#' }
+        ?.trim()
+        ?.removeSurrounding("**")
+        ?.takeIf(String::isNotBlank)
+
+    private fun githubReleaseImage(body: String?, pageUrl: String): String? {
+        if (body.isNullOrBlank()) return null
+        val htmlImage = Ksoup.parse(body, baseUri = pageUrl)
+            .selectFirst("img[src]")
+            ?.let { image -> image.absUrl("src").ifBlank { image.attr("src") } }
+            ?.let(LinkSummaryParser::normalizeHttpUrl)
+        if (htmlImage != null) return htmlImage
+        return Regex("!\\[[^]]*]\\((https?://[^\\s)]+)")
+            .find(body)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let(LinkSummaryParser::normalizeHttpUrl)
     }
 
     fun parseHuggingFace(

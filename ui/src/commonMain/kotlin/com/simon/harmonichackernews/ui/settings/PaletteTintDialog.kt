@@ -375,7 +375,7 @@ private fun PalettePreviewCard(
     }
 }
 
-private fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
+internal fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
     vibrant = vibrantSwatch?.toPreviewTintSwatch(),
     lightVibrant = lightVibrantSwatch?.toPreviewTintSwatch(),
     darkVibrant = darkVibrantSwatch?.toPreviewTintSwatch(),

@@ -94,6 +94,7 @@ fun AndroidWelcomeSettingsDialog(
             storyPreferences.font != "productsans" ||
             storyPreferences.tintCardUsingPreview ||
             storyPreferences.previewImageMode != StoryPreviewMode.OFF,
+        paletteTintConfigKey = storyPreferences.paletteTintConfigKey,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
             if (!styleChooser) app.appearance.markWelcomeShown()

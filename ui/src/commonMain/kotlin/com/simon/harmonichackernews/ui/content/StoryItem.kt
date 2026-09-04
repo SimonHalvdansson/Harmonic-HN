@@ -1606,7 +1606,7 @@ private fun StorySmallPreviewImage(
 ) {
     Box(
         modifier = modifier
-            .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+            .padding(start = 4.dp, top = 6.dp, bottom = 6.dp)
             .size(width = 72.dp, height = 52.dp),
     ) {
         StoryPreviewImage(

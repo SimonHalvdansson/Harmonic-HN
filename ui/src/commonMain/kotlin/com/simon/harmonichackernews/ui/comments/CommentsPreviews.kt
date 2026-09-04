@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -827,11 +828,12 @@ private fun WikipediaPreview(story: StoryListItemSnapshot) {
 private fun RichLinkPreview(story: StoryListItemSnapshot) {
     val info = story.linkPreviewInfo ?: return
     val details = remember(info.details) { splitRichPreviewDetails(info.details) }
+    val releaseImageUrl = info.imageUrl.takeIf { info.type == LinkPreviewType.GITHUB_RELEASE }
     Column {
         PreviewHeader(
             text = info.title,
             icon = info.type.linkPreviewIcon(),
-            logoUrl = info.imageUrl,
+            logoUrl = info.imageUrl.takeUnless { releaseImageUrl != null },
         )
         PreviewBody(
             text = info.subtitle.orEmpty(),
@@ -839,6 +841,18 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
             topPadding = 5.dp,
             bottomPadding = 0.dp,
         )
+        if (releaseImageUrl != null) {
+            AsyncImage(
+                model = releaseImageUrl,
+                contentDescription = "Release preview image",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 4.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop,
+            )
+        }
         if (info.type.hasMarkdownDescription()) {
             SummaryMarkdownText(
                 markdown = info.description.orEmpty(),

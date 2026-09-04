@@ -58,7 +58,7 @@ fun HeaderPreviewImage(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
-                .height(176.dp)
+                .height(196.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .graphicsLayer(alpha = if (suppressed) 0f else 1f)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }

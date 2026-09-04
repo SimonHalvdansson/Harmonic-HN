@@ -61,6 +61,26 @@ class LinkSummaryRepositoryTest {
         client.close()
     }
 
+    @Test
+    fun directImageBecomesAnImageSummaryInsteadOfAWebPageError() = runTest {
+        val imageUrl = "https://cdn.example.com/media/benchmark.png"
+        val client = HttpClient(MockEngine {
+            respond(
+                content = byteArrayOf(1, 2, 3),
+                headers = headersOf(HttpHeaders.ContentType, "image/png"),
+            )
+        })
+
+        val result = KtorLinkSummaryRepository(client).load(imageUrl, imageUrl)
+
+        assertEquals("benchmark.png", result.title)
+        assertEquals("cdn.example.com", result.siteName)
+        assertEquals("image/png", result.contentType)
+        assertEquals(imageUrl, result.imageUrl)
+        assertEquals(imageUrl, result.finalUrl)
+        client.close()
+    }
+
     private class RecordingDispatcher(
         private val delegate: CoroutineDispatcher,
     ) : CoroutineDispatcher() {

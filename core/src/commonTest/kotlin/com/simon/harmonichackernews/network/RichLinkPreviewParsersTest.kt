@@ -51,7 +51,7 @@ class RichLinkPreviewParsersTest {
             LinkPreviewType.GITHUB_FILE to
                 """{"name":"README.md","path":"README.md","type":"file","size":2048,"sha":"1234567890abcdef","download_url":"https://example.com/file"}""",
             LinkPreviewType.GITHUB_RELEASE to
-                """{"name":"Version 1","tag_name":"v1.0","body":"Release notes","prerelease":false,"draft":false,"assets":[{}],"author":{"login":"octocat"}}""",
+                """{"name":"","tag_name":"v1.0","body":"## Version 1\n\n<a><img src=\"https://images.example/release.png\"></a>\n\nRelease notes","prerelease":false,"draft":false,"assets":[{}],"author":{"login":"octocat"}}""",
             LinkPreviewType.GITHUB_DISCUSSION to
                 """{"title":"Discussion title","body":"Discussion body","comments":5,"category":{"name":"Ideas"},"user":{"login":"octocat"}}""",
         )
@@ -72,8 +72,9 @@ class RichLinkPreviewParsersTest {
                     result.details.single { it.label == "Comments" }.displayText,
                 )
                 LinkPreviewType.GITHUB_RELEASE -> {
-                    assertEquals("octo / project", result.title)
-                    assertEquals("Version 1 · v1.0", result.subtitle)
+                    assertEquals("Version 1", result.title)
+                    assertEquals("GitHub release · octo / project · v1.0", result.subtitle)
+                    assertEquals("https://images.example/release.png", result.imageUrl)
                 }
                 LinkPreviewType.GITHUB_DISCUSSION -> assertEquals(
                     "5 comments",
@@ -110,6 +111,31 @@ class RichLinkPreviewParsersTest {
         )
         assertEquals("ankidroid / Anki-Android · #21656", result.subtitle)
         assertEquals("david-allison", result.details.single().value)
+    }
+
+    @Test
+    fun parsesGitHubReleasePageImageAndProminentReleaseLabel() {
+        val result = RichLinkPreviewParsers.parseGitHubPage(
+            type = LinkPreviewType.GITHUB_RELEASE,
+            response = """
+                <html><head>
+                  <meta property="og:title" content="Release Audacity-4.0.0 · audacity/audacity">
+                  <meta property="og:image" content="https://images.example/audacity.png">
+                </head></html>
+            """.trimIndent(),
+            target = GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_RELEASE,
+                "audacity",
+                "audacity",
+                identifier = "Audacity-4.0.0",
+            ),
+            url = "https://github.com/audacity/audacity/releases/tag/Audacity-4.0.0",
+        )
+
+        assertEquals("Audacity-4.0.0", result.title)
+        assertEquals("GitHub release · audacity / audacity", result.subtitle)
+        assertEquals("https://images.example/audacity.png", result.imageUrl)
+        assertEquals("Release", result.details.first().value)
     }
 
     @Test

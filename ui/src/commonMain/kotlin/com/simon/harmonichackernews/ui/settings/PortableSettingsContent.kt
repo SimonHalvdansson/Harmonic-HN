@@ -221,6 +221,7 @@ private fun PortableAppearanceSettings(
                     WelcomeSettingsDialog(
                         styleChooser = true,
                         initialExpressive = snapshot.story.cardStyle,
+                        paletteTintConfigKey = snapshot.story.paletteTintConfigKey,
                         onApplyPreset = { expressive ->
                             presenter.applyWelcomePreset(expressive)
                             themeChanged()
@@ -478,6 +479,7 @@ fun PortableWelcomeDialog(
     WelcomeSettingsDialog(
         styleChooser = false,
         initialExpressive = app.settings.snapshot().story.cardStyle,
+        paletteTintConfigKey = app.settings.snapshot().story.paletteTintConfigKey,
         onApplyPreset = { expressive ->
             app.settings.applyWelcomePreset(expressive)
             app.appearance.markWelcomeShown()

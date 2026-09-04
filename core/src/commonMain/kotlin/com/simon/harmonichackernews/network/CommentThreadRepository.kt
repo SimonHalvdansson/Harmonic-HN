@@ -14,7 +14,7 @@ import kotlinx.coroutines.coroutineScope
  */
 class CommentThreadRepository(
     private val algoliaRepository: AlgoliaRepository,
-    hackerNewsRepository: HackerNewsRepository,
+    private val hackerNewsRepository: HackerNewsRepository,
     private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
     private val preloads: CommentsPreloadRepository? = null,
 ) {
@@ -54,11 +54,20 @@ class CommentThreadRepository(
         }
 
         return try {
-            val response = algoliaRepository.getItemJson(storyId)
-            CommentThreadLoadResult.Algolia(
-                response,
-                parseAlgolia(response, topLevelCommentIds, filteredUsers),
-            )
+            coroutineScope {
+                val response = async { algoliaRepository.getItemJson(storyId) }
+                val resolvedIds = if (topLevelCommentIds.isEmpty()) {
+                    async { resolveTopLevelCommentIds(storyId, topLevelCommentIds) }
+                } else {
+                    null
+                }
+                val responseText = response.await()
+                val orderedIds = resolvedIds?.await() ?: topLevelCommentIds
+                CommentThreadLoadResult.Algolia(
+                    responseText,
+                    parseAlgolia(responseText, orderedIds, filteredUsers),
+                )
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -72,6 +81,25 @@ class CommentThreadRepository(
                     cause = error,
                 )
             }
+        }
+    }
+
+    /**
+     * Algolia returns a useful comment tree but not Hacker News' ranked top-level order. A story
+     * opened from a deep link may not carry its `kids` array, so resolve it before parsing cached
+     * or network comment JSON.
+     */
+    internal suspend fun resolveTopLevelCommentIds(
+        storyId: Int,
+        knownIds: List<Int>,
+    ): List<Int> {
+        if (knownIds.isNotEmpty()) return knownIds
+        return try {
+            hackerNewsRepository.getStory(storyId)?.kids?.toList().orEmpty()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 

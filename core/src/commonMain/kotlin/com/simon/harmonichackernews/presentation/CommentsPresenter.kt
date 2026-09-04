@@ -441,11 +441,12 @@ class CommentsPresenter(
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
         val storyId = action.story.id
-        val topLevelCommentIds = action.story.kids?.toList().orEmpty()
+        val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
         publish(usingOfficialApiFallback = false)
         threadLoadJob = scope.launch {
-            val preloadedAlgolia = if (action.useAlgolia) {
+            var topLevelCommentIds = knownTopLevelCommentIds
+            val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId,
                     topLevelCommentIds,
@@ -487,6 +488,19 @@ class CommentsPresenter(
             }
             val previousResponse = traced(TRACE_CACHE_READ, requestId) {
                 action.loadPreviousResponse?.invoke() ?: action.previousResponse
+            }
+            if (
+                action.useAlgolia &&
+                previousResponse != null &&
+                topLevelCommentIds.isEmpty()
+            ) {
+                topLevelCommentIds = commentThreadRepository.resolveTopLevelCommentIds(
+                    storyId,
+                    topLevelCommentIds,
+                )
+                if (topLevelCommentIds.isNotEmpty()) {
+                    action.story.kids = topLevelCommentIds.toIntArray()
+                }
             }
             val alreadyAppliedResponse = previousResponse
             previousResponse?.let { cachedResponse ->

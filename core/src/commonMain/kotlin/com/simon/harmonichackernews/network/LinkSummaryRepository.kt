@@ -123,6 +123,13 @@ class KtorLinkSummaryRepository(
                 normalizedUrl,
                 "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             )
+            if (response.contentType.startsWith("image/", ignoreCase = true)) {
+                return@withContext LinkSummaryParser.directImage(
+                    imageUrl = response.finalUrl,
+                    fallbackTitle = fallbackTitle,
+                    contentType = response.contentType,
+                )
+            }
             if (
                 response.contentType.isNotEmpty() &&
                 !response.contentType.contains("html", ignoreCase = true) &&
@@ -146,6 +153,18 @@ class KtorLinkSummaryRepository(
             throw LinkPreviewException("The page returned HTTP ${response.status.value}")
         }
         val channel = response.bodyAsChannel()
+        val contentType = LinkSummaryParser.normalizeContentType(
+            response.headers[HttpHeaders.ContentType],
+        )
+        val finalUrl = response.call.request.url.toString()
+        if (contentType.startsWith("image/", ignoreCase = true)) {
+            channel.cancel(CancellationException("Direct image metadata resolved"))
+            return FetchedText(
+                body = "",
+                contentType = contentType,
+                finalUrl = finalUrl,
+            )
+        }
         val bytes = ByteArray(MAX_RESPONSE_BYTES)
         var size = 0
         while (size < bytes.size) {
@@ -162,10 +181,8 @@ class KtorLinkSummaryRepository(
         }
         return FetchedText(
             body = bytes.decodeToString(0, size),
-            contentType = LinkSummaryParser.normalizeContentType(
-                response.headers[HttpHeaders.ContentType],
-            ),
-            finalUrl = response.call.request.url.toString(),
+            contentType = contentType,
+            finalUrl = finalUrl,
         )
     }
 
@@ -308,6 +325,27 @@ object LinkSummaryParser {
             ),
             imageUrl = extractImageUrl(metadata, document, finalUrl),
             finalUrl = finalUrl,
+        )
+    }
+
+    fun directImage(
+        imageUrl: String,
+        fallbackTitle: String?,
+        contentType: String,
+    ): LinkSummary {
+        val parsed = imageUrl.toNetworkUrlOrNull()
+        val fallback = clean(fallbackTitle)
+            .takeUnless { normalizeHttpUrl(it) != null }
+        val fileName = parsed?.pathSegments
+            ?.lastOrNull(String::isNotBlank)
+            ?.substringBefore('?')
+            .orEmpty()
+        return LinkSummary(
+            title = firstNonEmpty(fallback, fileName, "Image"),
+            siteName = parsed?.host.orEmpty(),
+            contentType = clean(contentType),
+            imageUrl = imageUrl,
+            finalUrl = imageUrl,
         )
     }
 

@@ -88,6 +88,12 @@ private const val COMMENTS_CACHE_AHEAD_FRACTION = 2f
 private const val COMMENTS_CACHE_BEHIND_FRACTION = 0.5f
 private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
 
+internal fun commentScrollTopOffset(
+    requestedTopOffsetPx: Int,
+    searchResult: Boolean,
+    navigationTopOffsetPx: Int,
+): Int = if (searchResult) navigationTopOffsetPx else requestedTopOffsetPx
+
 private suspend fun LazyListState.animateToCommentNavigationTarget(
     index: Int,
     scrollOffset: Int,
@@ -270,7 +276,7 @@ fun CommentsScreen(
     }
 
     val scrollToCommentRequest = controller.scrollToCommentRequest
-    LaunchedEffect(scrollToCommentRequest, visibleComments) {
+    LaunchedEffect(scrollToCommentRequest, visibleComments, navigationTopOffsetPx) {
         val request = scrollToCommentRequest ?: return@LaunchedEffect
         val listIndex = if (request.commentId == 0) {
             0
@@ -280,7 +286,11 @@ fun CommentsScreen(
                 ?.plus(1)
         }
         if (listIndex != null) {
-            val scrollOffset = -request.topOffsetPx
+            val scrollOffset = -commentScrollTopOffset(
+                requestedTopOffsetPx = request.topOffsetPx,
+                searchResult = request.searchResult,
+                navigationTopOffsetPx = navigationTopOffsetPx,
+            )
             if (request.animate) {
                 listState.animateScrollToItem(listIndex, scrollOffset)
             } else {
