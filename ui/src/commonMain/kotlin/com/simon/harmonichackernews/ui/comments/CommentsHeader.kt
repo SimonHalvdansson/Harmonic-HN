@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -352,6 +353,10 @@ private fun CommentsSheetControls(
     onAction: (CommentsSheetAction) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
+    val collapsedProgress = progress.coerceIn(0f, 1f)
+    val navigationBarClearance = with(LocalDensity.current) {
+        WindowInsets.navigationBars.getBottom(this).toDp()
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
@@ -361,11 +366,11 @@ private fun CommentsSheetControls(
                 .clip(RoundedCornerShape(3.dp))
                 .background(colors.storyDisabled.copy(alpha = 0.6f)),
         )
-        val actionAlpha = progress.coerceIn(0f, 1f).let { it * it * it }
+        val actionAlpha = collapsedProgress * collapsedProgress * collapsedProgress
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((56f * progress).dp)
+                .height((56f * collapsedProgress).dp)
                 .graphicsLayer(alpha = actionAlpha * contentAlpha)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -401,6 +406,9 @@ private fun CommentsSheetControls(
                 }
             }
         }
+        // The peek height includes the system navigation inset. Keep header content below that
+        // inset while collapsed, then remove the clearance as the comments sheet expands.
+        Spacer(Modifier.height(navigationBarClearance * collapsedProgress))
     }
 }
 
