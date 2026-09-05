@@ -1,8 +1,11 @@
 package com.simon.harmonichackernews.cache
 
-import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.data.ArticleSnapshotPolicy
+import com.simon.harmonichackernews.data.PreparedCommentThread
+import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheRepository
+import com.simon.harmonichackernews.network.AlgoliaCommentsParser
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.CachedDownloadService
 import com.simon.harmonichackernews.network.DownloadCachePolicy
 import com.simon.harmonichackernews.network.DownloadStore
@@ -10,8 +13,10 @@ import com.simon.harmonichackernews.network.HttpMediaType
 import com.simon.harmonichackernews.network.KtorHttpClient
 import com.simon.harmonichackernews.network.KtorTransferClient
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** Portable article-snapshot transfer and cache policy over a platform filesystem adapter. */
 class ArticleSnapshotService(
@@ -77,6 +82,31 @@ class StoryCacheService(
     private val nowMillis: () -> Long,
 ) : StoryCacheSink {
     private val writeMutex = Mutex()
+    private val commentsParser = AlgoliaCommentsParser()
+
+    /** Missing, old-schema and corrupt entries rebuild from retained JSON, including offline. */
+    suspend fun loadPreparedThread(storyId: Int): PreparedCommentThread? = withContext(Dispatchers.Default) {
+        // Atomic files make a complete hit safe to read during a concurrent refresh. Do not make
+        // reopening wait for an unrelated article download holding the cache's mutation lock.
+        repository.loadPreparedThread(storyId)?.let { return@withContext it }
+        writeMutex.withLock {
+            repository.loadPreparedThread(storyId)?.let { return@withLock it }
+            val response = repository.loadStoryPayload(storyId) ?: return@withLock null
+            val story = Story().apply { id = storyId }
+            repository.hydrateStory(story)
+            try {
+                commentsParser.prepare(response, story.kids?.toList().orEmpty()).also {
+                    repository.storePreparedThread(storyId, it)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: IllegalArgumentException) {
+                null
+            } catch (_: com.simon.harmonichackernews.network.ApiDecodingException) {
+                null
+            }
+        }
+    }
 
     fun hydrateStory(story: com.simon.harmonichackernews.data.Story?): Boolean =
         repository.hydrateStory(story)
@@ -100,8 +130,20 @@ class StoryCacheService(
 
     suspend fun remove(storyId: Int) = writeMutex.withLock { repository.remove(storyId) }
 
-    suspend fun storeStory(id: Int, payload: String): Boolean =
-        writeMutex.withLock { repository.storeStory(id, payload, nowMillis()) }
+    suspend fun storeStory(id: Int, payload: String): Boolean = withContext(Dispatchers.Default) {
+        // Background/offline downloads enter here without a parsed response. Prepare them eagerly
+        // too, so their first offline open gets the same benefit as an already-viewed thread.
+        val summary = try {
+            commentsParser.prepare(payload).cacheSummary()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: IllegalArgumentException) {
+            null
+        } catch (_: com.simon.harmonichackernews.network.ApiDecodingException) {
+            null
+        }
+        writeMutex.withLock { repository.storeStory(id, payload, nowMillis(), summary) }
+    }
 
     override suspend fun cacheStory(id: Int, payload: String) {
         storeStory(id, payload)
@@ -111,8 +153,9 @@ class StoryCacheService(
         id: Int,
         payload: String,
         summary: AlgoliaStorySummary?,
-    ) {
+    ) = withContext(Dispatchers.Default) {
         writeMutex.withLock { repository.storeStory(id, payload, nowMillis(), summary) }
+        Unit
     }
 
     override suspend fun cacheArticle(id: Int, url: String): Boolean =

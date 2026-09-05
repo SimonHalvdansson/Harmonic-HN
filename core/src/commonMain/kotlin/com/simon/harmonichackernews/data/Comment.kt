@@ -13,6 +13,21 @@ class Comment {
 
     private var cachedExpandedAnchorText: String? = null
 
+    /** Restores versioned, platform-neutral text preparation without repeating HTML parsing. */
+    internal fun restorePreparedText(html: String, expandedHtml: String) {
+        text = html
+        cachedExpandedAnchorTextSource = html
+        cachedExpandedAnchorText = expandedHtml
+    }
+
+    internal fun updateTextFrom(other: Comment) {
+        text = other.text
+        if (other.cachedExpandedAnchorTextSource == other.text) {
+            cachedExpandedAnchorTextSource = other.text
+            cachedExpandedAnchorText = other.cachedExpandedAnchorText
+        }
+    }
+
     var time: Int = 0
     var expanded: Boolean = false
     var depth: Int = 0

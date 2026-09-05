@@ -1,5 +1,53 @@
 # Comment parsing benchmarks
 
+## Prepared comment cache
+
+Physical Pixel measurements and tradeoffs: [PREPARED_CACHE_RESULTS.md](PREPARED_CACHE_RESULTS.md).
+
+`PreparedCommentsBenchmark` compares the retained raw-JSON parser with the prepared cache on
+the same device and in the same APK. `rawReadMedium/Large`, `jsonReadMedium/Large`, and
+`protobufReadMedium/Large` include production filesystem reads, decoding, filtering, sorting,
+expanded-link HTML and initial immutable snapshots. Prepared reads also include checksum and
+schema/structure validation. Network and screen rendering are excluded. Files are read on every
+operation, with a warm OS filesystem cache; this is not a cold-storage benchmark.
+
+The corresponding `*PrepareAndWriteMedium/Large` tests start with an in-memory API response and
+include parsing/preparation, snapshots, raw JSON and summary writes, plus the additional prepared
+encoding/write where applicable. `reportSizes` reports actual bytes for each encoding; add raw
+and prepared sizes to obtain the retained payload footprint (compact summaries are additional).
+Prepared JSON is a comparison format; production writes ProtoBuf.
+
+Use the default microbenchmark runner and full AOT compilation after installing the test APK:
+
+```powershell
+./gradlew.bat :benchmark:assembleBenchmarkBenchmark :app:assembleBenchmark
+android install --apks=app/build/outputs/apk/benchmark/app-benchmark.apk --device=PIXEL_SERIAL
+android install --apks=benchmark/build/outputs/apk/benchmarkBenchmark/benchmark-benchmarkBenchmark.apk --device=PIXEL_SERIAL
+adb -s PIXEL_SERIAL shell cmd package compile -m speed -f com.simon.harmonichackernews.benchmark
+adb -s PIXEL_SERIAL shell am instrument -w -r -e class com.simon.harmonichackernews.benchmark.PreparedCommentsBenchmark com.simon.harmonichackernews.benchmark/androidx.benchmark.junit4.AndroidBenchmarkRunner
+```
+
+Repeat the suite, saving `com.simon.harmonichackernews.benchmark-benchmarkData.json` after each
+run. Compare pooled timing/allocation medians and inspect individual runs for drift. AndroidX's
+separate method-tracing phase is not a timed sample. Never suppress `DEBUGGABLE` or
+`NOT-AOT-COMPILED`. On physical devices, record and temporarily enable staying awake while
+powered, then restore the original setting; leave the normal app's data intact.
+
+For CPU sampling, select only `PreparedCommentsBenchmark#profileLarge` and pass
+`-e prepared.profile.mode raw` or `-e prepared.profile.mode protobuf`. It runs a separate
+15-second workload after a two-second setup pause, marking iterations as `PreparedCache.raw`
+or `PreparedCache.protobuf`. Record all process threads using Perfetto's `linux.perf` source;
+sampling only the instrumentation thread misses coroutine workers. Do not use profiled
+durations as benchmark results.
+
+The existing medium/large screen benchmarks seed through production storage and perform an
+unmeasured opening before the measured reopening. Thus they exercise a prepared-cache hit once
+migration has completed, rather than its one-time raw-JSON rebuild.
+Setup closes any Comments screen left from the previous iteration before seeding, so old rows
+cannot satisfy the setup wait before the new cache write has completed.
+
+## Raw JSON baseline
+
 `CommentsParsingBenchmark` measures the existing medium (699 comments, 409,022 bytes)
 and large (3,767 comments, 2,019,072 bytes) Algolia fixtures. It reuses the fixtures
 packaged in the benchmark app; it does not fetch live Hacker News content.

@@ -14,7 +14,7 @@ android {
         testInstrumentationRunner = providers.gradleProperty("benchmarkRunner")
                 .getOrElse("androidx.benchmark.junit4.AndroidBenchmarkRunner")
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
-                "EMULATOR,DEBUGGABLE"
+                "EMULATOR"
     }
 
     buildTypes {

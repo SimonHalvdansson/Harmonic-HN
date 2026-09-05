@@ -51,6 +51,48 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun preparedCacheDisplaysOfflineWithCurrentFiltersWithoutReadingRawJson() = runTest {
+        val response = """{"id":42,"title":"Cached","children":[
+            {"id":7,"author":"blocked","text":"One"},{"id":8,"text":"Two"}
+        ]}"""
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+        val prepared = parser.prepare(response, listOf(8, 7))
+        val network = CompletableDeferred<String>()
+        val algolia = object : AlgoliaRepository {
+            override suspend fun getItemJson(id: Int): String = network.await()
+            override suspend fun getSubmissions(userName: String, limit: Int): List<Story> = error("Unused")
+            override suspend fun search(url: String): List<Story> = error("Unused")
+        }
+        val source = RecordingHackerNewsRepository()
+        val presenter = CommentsPresenter(
+            backgroundScope, CommentsSessionState(), CommentThreadRepository(algolia, source, parser),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = dispatcher,
+        )
+        val effects = mutableListOf<CommentsEffect.ThreadApplied>()
+        backgroundScope.launch { presenter.effects.filterIsInstance<CommentsEffect.ThreadApplied>().collect { effects += it } }
+        presenter.dispatch(CommentsAction.LoadThread(
+            story = Story("Cached", 42, true, false), useAlgolia = true,
+            filteredUsers = setOf("blocked"), sorting = "Default", collapseTopLevel = false,
+            previousResponse = null, restoreScrollFromCache = true,
+            loadPreviousResponse = { error("A valid prepared cache must not read raw JSON") },
+            loadPreparedThread = { prepared },
+        ))
+        runCurrent()
+        assertTrue(presenter.state.value.loaded)
+        assertEquals(listOf(8), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertFalse(network.isCompleted)
+        assertEquals(0, source.storyRequests)
+        assertTrue(effects.single().restoreScroll)
+        network.complete(response)
+        runCurrent()
+        assertFalse(effects.last().contentApplied)
+        assertTrue(effects.last().networkCompleted)
+        assertEquals(0, source.storyRequests)
+    }
+
+    @Test
     fun loadedAlgoliaStoryRestoresCachedRankingBeforeLoadingComments() = runTest {
         val response = """{"id":42,"title":"Old cached title","points":1,"children":[
             {"id":7,"text":"One"},{"id":8,"text":"Two"}

@@ -1,11 +1,12 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
+import com.simon.harmonichackernews.data.canonicalize
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
-import com.simon.harmonichackernews.data.canonicalize
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
@@ -14,31 +15,31 @@ import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.network.StoryResourceTintState
-import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.settings.ReadingPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
-import com.simon.harmonichackernews.summary.SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.summary.StorySummaryState
 import com.simon.harmonichackernews.summary.StorySummaryStatus
-import kotlinx.coroutines.CoroutineScope
+import com.simon.harmonichackernews.summary.SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 sealed interface CommentsRuntimeEffect {
@@ -97,6 +98,7 @@ class CommentsFeatureRuntime(
     private val hydrateCachedStory: (Story) -> Boolean = { false },
     private val isThreadCached: (Int) -> Boolean = { false },
     private val loadCachedThread: suspend (Int) -> String? = { null },
+    private val loadPreparedThread: (suspend (Int) -> PreparedCommentThread?)? = null,
     private val awaitInitialPresentation: suspend () -> Unit = {},
     private val storeCachedThread: suspend (Int, String, AlgoliaStorySummary?) -> Unit = { _, _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
@@ -374,6 +376,7 @@ class CommentsFeatureRuntime(
         refreshing: Boolean = false,
         loadCachedResponse: (suspend () -> String?)? = null,
         beforeApplyCachedResponse: (suspend () -> Unit)? = null,
+        loadPreparedResponse: (suspend () -> PreparedCommentThread?)? = null,
     ) {
         val story = story ?: return
         presenter.dispatch(CommentsAction.SetRefreshing(refreshing))
@@ -389,6 +392,7 @@ class CommentsFeatureRuntime(
                 restoreScrollFromCache = restoreScrollFromCache,
                 loadPreviousResponse = loadCachedResponse,
                 beforeApplyCachedResponse = beforeApplyCachedResponse,
+                loadPreparedThread = loadPreparedResponse,
             ),
         )
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
@@ -402,6 +406,7 @@ class CommentsFeatureRuntime(
             restoreScrollFromCache = restoreScrollFromCache,
             loadCachedResponse = { loadCachedThread(storyId) },
             beforeApplyCachedResponse = awaitInitialPresentation,
+            loadPreparedResponse = loadPreparedThread?.let { load -> { load(storyId) } },
         )
         platform(CommentsPlatformEffect.ReloadLinkPreviews)
     }

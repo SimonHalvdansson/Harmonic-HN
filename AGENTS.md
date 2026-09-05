@@ -134,6 +134,14 @@ Before searching live Hacker News content or adding temporary debug hooks, check
 
 ### Device State Restoration
 
+When testing on a physical device, keep it awake for the duration of verification. Record its
+existing stay-awake setting, enable staying awake while connected to power, and restore the
+original setting when finished. Do not disable the user's screen lock.
+Verify that staying awake is effective: a device-admin timeout can override the setting. If the
+setting is overridden, keep the unlocked device active during long builds/profiling with occasional
+harmless input (for example, a paired Shift key press), and stop any helper when finished. If the
+device locks, ask the user to unlock it rather than changing the device-admin policy.
+
 Before changing device or app state for verification, note the original state. Restore any connectivity mode, animation scales, orientation, app preferences, and other persistent changes when verification is complete. Do not clear app data, caches, accounts, or user content unless the user explicitly authorizes it.
 
 ### Screenshot and Animation Capture

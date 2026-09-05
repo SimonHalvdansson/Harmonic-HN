@@ -43,7 +43,7 @@ class CommentsPreloadRepository(
         )
         return prepare(key) {
             val response = algolia.getItemJson(storyId)
-            val parsed = parser.parse(response, key.topLevelCommentIds, key.filteredUsers)
+            val parsed = parser.parsePrepared(response, key.topLevelCommentIds, key.filteredUsers)
             storeResponse(storyId, response, parsed.cacheSummary)
             PreloadedCommentsThread(
                 storyId = storyId,

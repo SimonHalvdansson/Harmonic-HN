@@ -114,6 +114,16 @@ internal fun MacrobenchmarkScope.openFirstStoryComments() {
 internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
 ) {
+    // A warm launch resumes the previous iteration's Comments screen. Close it before seeding:
+    // otherwise the old title/rows can satisfy the waits while the asynchronous cache write is
+    // still running, invalidating the prepared entry during the measured reopen.
+    if (device.hasObject(By.res("comment-row"))) {
+        device.pressBack()
+        check(device.wait(Until.hasObject(By.text("Top Stories")), 10_000)) {
+            "The Stories screen did not return before fixture setup"
+        }
+        device.waitForIdle()
+    }
     device.executeShellCommand(commentsBenchmarkCommand(SeedCommentsBenchmarkAction, fixture))
     check(device.wait(Until.hasObject(By.text(fixture.title)), 30_000)) {
         "The ${fixture.intentValue} deterministic Comments fixture did not parse and render"

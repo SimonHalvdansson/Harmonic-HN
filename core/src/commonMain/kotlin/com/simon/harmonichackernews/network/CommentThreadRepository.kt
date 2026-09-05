@@ -109,11 +109,7 @@ class CommentThreadRepository(
         response: String,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
-    ): AlgoliaCommentsResponse = algoliaCommentsParser.parse(
-        response,
-        topLevelCommentIds,
-        filteredUsers,
-    )
+    ): AlgoliaCommentsResponse = algoliaCommentsParser.parsePrepared(response, topLevelCommentIds, filteredUsers)
 
     private fun Exception.shouldFallBackToOfficialApi(): Boolean =
         this is HttpRequestTimeoutException ||

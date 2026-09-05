@@ -138,6 +138,7 @@ object StoryCacheKeys {
 
     const val FULL_NAMESPACE = "story_cache/full"
     const val SUMMARY_NAMESPACE = "story_cache/summary"
+    const val PREPARED_NAMESPACE = "story_cache/prepared"
     const val ARTICLE_NAMESPACE = "article_cache"
 
     fun storyFile(storyId: Int): String = "$storyId.json"
@@ -179,6 +180,12 @@ class StoryCacheRepository(
         if (storyId <= 0 || payload.isNullOrEmpty() || payload == JSONParser.ALGOLIA_ERROR_STRING) {
             return false
         }
+        // Invalidate first: a crash or failed raw write must never pair new JSON with old prepared
+        // content. If removal failed and the entry still exists, leave the old pair untouched.
+        val preparedKey = "$storyId.bin"
+        if (!files.remove(StoryCacheKeys.PREPARED_NAMESPACE, preparedKey) &&
+            files.read(StoryCacheKeys.PREPARED_NAMESPACE, preparedKey) != null
+        ) return false
         if (!files.write(
                 StoryCacheKeys.FULL_NAMESPACE,
                 StoryCacheKeys.storyFile(storyId),
@@ -210,6 +217,11 @@ class StoryCacheRepository(
         }
         indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(update.encodedEntries)
         update.evictedStoryIds.forEach(::removeFiles)
+        if (storyId in indexedStoryIdsSnapshot.orEmpty()) {
+            parsedSummary?.preparedThread?.let { prepared ->
+                storePreparedThread(storyId, prepared.copy(rankedIds = parsedSummary.topLevelCommentIds.toList()))
+            }
+        }
         recentStoryAvailability = null
         return true
     }
@@ -219,6 +231,19 @@ class StoryCacheRepository(
     }
 
     fun hasStoryPayload(storyId: Int): Boolean = storyId > 0 && storyId in indexedStoryIds()
+
+    fun loadPreparedThread(storyId: Int): PreparedCommentThread? {
+        if (!hasStoryPayload(storyId)) return null
+        val bytes = files.read(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin") ?: return null
+        return PreparedCommentCodec.decode(bytes)?.takeIf { it.story.id == storyId }
+    }
+
+    /** Called under StoryCacheService's write lock, after the corresponding raw JSON is stored. */
+    internal fun storePreparedThread(storyId: Int, thread: PreparedCommentThread): Boolean {
+        if (!hasStoryPayload(storyId) || thread.story.id != storyId) return false
+        val bytes = runCatching { PreparedCommentCodec.encode(thread) }.getOrNull() ?: return false
+        return files.write(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin", bytes)
+    }
 
     fun hydrateStory(story: Story?): Boolean {
         story ?: return false
@@ -283,6 +308,9 @@ class StoryCacheRepository(
         files.list(StoryCacheKeys.SUMMARY_NAMESPACE).forEach { file ->
             CacheFileNamePolicy.storyId(file.key, suffix = ".json")?.let(::add)
         }
+        files.list(StoryCacheKeys.PREPARED_NAMESPACE).forEach { file ->
+            CacheFileNamePolicy.storyId(file.key, suffix = ".bin")?.let(::add)
+        }
         files.list(StoryCacheKeys.ARTICLE_NAMESPACE).forEach { file ->
             CacheFileNamePolicy.storyId(file.key, suffix = ".html")?.let(::add)
         }
@@ -305,6 +333,7 @@ class StoryCacheRepository(
         val count = cachedItemIds().size
         files.clear(StoryCacheKeys.FULL_NAMESPACE)
         files.clear(StoryCacheKeys.SUMMARY_NAMESPACE)
+        files.clear(StoryCacheKeys.PREPARED_NAMESPACE)
         files.clear(StoryCacheKeys.ARTICLE_NAMESPACE)
         val cacheMetadataKeys = metadata.keys().filter { key ->
             if (key == StoryCacheKeys.INDEX ||
@@ -394,6 +423,7 @@ class StoryCacheRepository(
         val storyKey = StoryCacheKeys.storyFile(storyId)
         files.remove(StoryCacheKeys.FULL_NAMESPACE, storyKey)
         files.remove(StoryCacheKeys.SUMMARY_NAMESPACE, storyKey)
+        files.remove(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin")
         files.remove(StoryCacheKeys.ARTICLE_NAMESPACE, StoryCacheKeys.articleFile(storyId))
     }
 

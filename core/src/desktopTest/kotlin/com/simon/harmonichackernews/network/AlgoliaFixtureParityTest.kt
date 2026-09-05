@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.PreparedCommentCodec
+import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.data.presentationSnapshot
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
 import java.nio.file.Files
@@ -18,6 +21,28 @@ import kotlin.test.assertNotNull
 
 /** Golden outputs captured from 8586f059, before the parsing optimizations. */
 class AlgoliaFixtureParityTest {
+    @Test
+    fun preparedFixturesMatchRawParserIncludingExpandedHtmlAndFilteredSubtrees() = runBlocking {
+        val parser = AlgoliaCommentsParser()
+        for (fixture in fixtures) {
+            val payload = Files.readString(Path.of("../app/src/benchmark/assets/comments_benchmark_fixture${fixture.suffix}.json"))
+            val prepared = parser.prepare(payload)
+            val reversedIds = prepared.comments.filter { it.depth == 0 }.map { it.id }.reversed()
+            for (encoding in PreparedCommentCodec.Encoding.entries) {
+                val cached = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(prepared, encoding)))
+                for (ids in listOf(emptyList(), reversedIds)) {
+                    for (filters in listOf(emptySet(), setOf(prepared.comments.first().author))) {
+                        val expected = parser.parse(payload, ids, filters)
+                        val actual = cached.restore(ids, filters)
+                        assertEquals(expected.comments.map { it.toSnapshot() }, actual.comments.map { it.toSnapshot() })
+                        assertEquals(expected.comments.map { it.presentationSnapshot() }, actual.comments.map { it.presentationSnapshot() })
+                        assertEquals(expected.cacheSummary!!.encode(1), actual.cacheSummary!!.encode(1))
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     fun allFixturesMatchOriginalParserAndSummary() = runBlocking {
         for (fixture in fixtures) {

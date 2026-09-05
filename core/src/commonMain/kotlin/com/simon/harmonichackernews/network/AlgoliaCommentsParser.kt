@@ -1,36 +1,37 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.HackerNewsLinks
-import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.contextual
 import kotlinx.serialization.modules.overwriteWith
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.SerialName
 
 /** Platform-neutral result of parsing an Algolia item and its comment tree. */
 data class AlgoliaCommentsResponse(
@@ -97,6 +98,23 @@ class AlgoliaCommentsParser(
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    suspend fun parsePrepared(
+        response: String,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+    ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
+        prepare(response, topLevelCommentIds).restore(topLevelCommentIds, filteredUsers)
+    }
+
+    /** Prepare neutral content once; user filters are applied only when restoring presentation. */
+    suspend fun prepare(
+        response: String,
+        topLevelCommentIds: List<Int> = emptyList(),
+    ): PreparedCommentThread = withContext(parsingDispatcher) {
+        // Keep canonical Algolia root order, allowing later live rankings to reorder whole subtrees.
+        PreparedCommentThread.fromParsed(response, parse(response), topLevelCommentIds)
+    }
+
     // Decode normal string fields directly. Unusual scalar types retain the legacy coercions
     // through a second decode from the original input, never from a partly consumed decoder.
     private val fastJson = Json(json) {

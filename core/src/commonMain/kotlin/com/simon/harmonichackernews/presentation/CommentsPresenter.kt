@@ -1,8 +1,9 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
@@ -13,13 +14,13 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -98,6 +99,7 @@ sealed interface CommentsAction {
         val loadPreviousResponse: (suspend () -> String?)? = null,
         /** Optional host gate after background parsing and before cached UI state is published. */
         val beforeApplyCachedResponse: (suspend () -> Unit)? = null,
+        val loadPreparedThread: (suspend () -> PreparedCommentThread?)? = null,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
@@ -447,7 +449,7 @@ class CommentsPresenter(
         val requestId = threadLoadSession.begin(storyId)
         publish(usingOfficialApiFallback = false)
         threadLoadJob = scope.launch {
-            val topLevelCommentIds = knownTopLevelCommentIds
+            var topLevelCommentIds = knownTopLevelCommentIds
             val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId,
@@ -489,13 +491,22 @@ class CommentsPresenter(
                 )
                 return@launch
             }
-            val previousResponse = traced(TRACE_CACHE_READ, requestId) {
-                action.loadPreviousResponse?.invoke() ?: action.previousResponse
+            val (cachedPrepared, previousResponse) = traced(TRACE_CACHE_READ, requestId) {
+                val prepared = action.loadPreparedThread?.invoke()
+                prepared to if (prepared == null) {
+                    action.loadPreviousResponse?.invoke() ?: action.previousResponse
+                } else null
+            }
+            if (topLevelCommentIds.isEmpty() && cachedPrepared != null) {
+                topLevelCommentIds = cachedPrepared.rankedIds
             }
             // Display cached content without awaiting a live ranking lookup. Hydrated summaries
             // carry known IDs; legacy caches use Algolia order until the network result arrives.
-            val alreadyAppliedResponse = previousResponse
-            previousResponse?.let { cachedResponse ->
+            val cachedParsed = if (cachedPrepared != null) {
+                withContext(threadPreparationDispatcher) {
+                    cachedPrepared.restore(topLevelCommentIds, action.filteredUsers)
+                }
+            } else previousResponse?.let { cachedResponse ->
                 traced(TRACE_PARSE_CACHED_JSON, requestId) {
                     runCatching {
                         commentThreadRepository.parseAlgolia(
@@ -504,43 +515,44 @@ class CommentsPresenter(
                             action.filteredUsers,
                         )
                     }.getOrNull()
-                }?.let parsed@ { parsed ->
-                    if (!threadLoadSession.isCurrent(requestId, storyId)) return@parsed
-                    val prepared = if (thread.allComments.size <= 1) {
-                        val headerChanged = parsed.updateStoryInformation(
-                            action.story,
-                            thread.allComments.size,
-                        )
-                        val preparedThread = traced(TRACE_PREPARE_CACHED_THREAD, requestId) {
-                            withContext(threadPreparationDispatcher) {
-                                thread.prepareInitialParsedComments(
-                                    story = action.story,
-                                    parsedComments = parsed.comments,
-                                    sorting = action.sorting,
-                                    collapseTopLevel = action.collapseTopLevel,
-                                )
-                            }
-                        }
-                        CachedThreadPreparation(preparedThread, headerChanged)
-                    } else {
-                        null
-                    }
-                    if (threadLoadSession.isCurrent(requestId, storyId)) {
-                        action.beforeApplyCachedResponse?.invoke()
-                    }
-                    if (threadLoadSession.isCurrent(requestId, storyId)) {
-                        traced(TRACE_APPLY_CACHED_THREAD, requestId) {
-                            applyAlgoliaThread(
-                                action = action,
-                                requestId = requestId,
-                                parsed = parsed,
-                                networkCompleted = false,
-                                responseToCache = null,
-                                restoreScroll = action.restoreScrollFromCache,
-                                broadcastStoryUpdate = false,
-                                prepared = prepared,
+                }
+            }
+            cachedParsed?.let parsed@ { parsed ->
+                if (!threadLoadSession.isCurrent(requestId, storyId)) return@parsed
+                val prepared = if (thread.allComments.size <= 1) {
+                    val headerChanged = parsed.updateStoryInformation(
+                        action.story,
+                        thread.allComments.size,
+                    )
+                    val preparedThread = traced(TRACE_PREPARE_CACHED_THREAD, requestId) {
+                        withContext(threadPreparationDispatcher) {
+                            thread.prepareInitialParsedComments(
+                                story = action.story,
+                                parsedComments = parsed.comments,
+                                sorting = action.sorting,
+                                collapseTopLevel = action.collapseTopLevel,
                             )
                         }
+                    }
+                    CachedThreadPreparation(preparedThread, headerChanged)
+                } else {
+                    null
+                }
+                if (threadLoadSession.isCurrent(requestId, storyId)) {
+                    action.beforeApplyCachedResponse?.invoke()
+                }
+                if (threadLoadSession.isCurrent(requestId, storyId)) {
+                    traced(TRACE_APPLY_CACHED_THREAD, requestId) {
+                        applyAlgoliaThread(
+                            action = action,
+                            requestId = requestId,
+                            parsed = parsed,
+                            networkCompleted = false,
+                            responseToCache = null,
+                            restoreScroll = action.restoreScrollFromCache,
+                            broadcastStoryUpdate = false,
+                            prepared = prepared,
+                        )
                     }
                 }
             }
@@ -567,8 +579,10 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
-                    if (alreadyAppliedResponse.isNullOrEmpty() ||
-                        alreadyAppliedResponse != result.response ||
+                    val sameResponse = if (cachedPrepared != null) {
+                        cachedPrepared.sourceDigest == result.parsed.cacheSummary?.preparedThread?.sourceDigest
+                    } else previousResponse == result.response
+                    if (cachedParsed == null || !sameResponse ||
                         (topLevelCommentIds.isEmpty() &&
                             !result.parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
                     ) {
@@ -579,7 +593,7 @@ class CommentsPresenter(
                             networkCompleted = true,
                             responseToCache = result.response,
                             restoreScroll = false,
-                            broadcastStoryUpdate = alreadyAppliedResponse == null,
+                            broadcastStoryUpdate = cachedParsed == null,
                         )
                     } else {
                         publish(loaded = true, refreshing = false, failure = null)

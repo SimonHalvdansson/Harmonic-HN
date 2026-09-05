@@ -29,6 +29,7 @@ kotlin {
             api(libs.kotlinx.io.core)
             api(libs.ktor.client.core)
             api(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.serialization.protobuf)
             implementation(libs.ksoup)
         }
         commonTest.dependencies {

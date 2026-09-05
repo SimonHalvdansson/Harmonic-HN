@@ -1,22 +1,28 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.serialization.JsonObject
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 
 /** Root metadata retained from the original decode; counts include hidden/deleted subtrees. */
 class AlgoliaStorySummary internal constructor(
     private val metadata: JsonObject,
     private val descendants: Int,
     val topLevelCommentIds: List<Int> = emptyList(),
+    val preparedThread: PreparedCommentThread? = null,
 ) {
+    /** Keeps benchmark raw/summary writes identical while comparing alternative sidecar encodings. */
+    fun withoutPreparedThread(): AlgoliaStorySummary =
+        AlgoliaStorySummary(metadata, descendants, topLevelCommentIds)
+
     fun encode(fallbackId: Int): String =
         JSONParser.compactAlgoliaStoryFields(metadata, fallbackId, descendants, topLevelCommentIds)
 }
