@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f4ef">
+  <link rel="icon" href="data:,">
+  <title>Harmonic · Motion study</title>
+  <link rel="stylesheet" href="preview.css">
+</head>
+<body>
+<main>
+  <header><a class="brand" href="#" aria-label="Harmonic motion study"><span class="brand-mark" aria-hidden="true"></span>Harmonic<span class="brand-divider">/</span><span class="brand-sub">Motion study</span></a><span class="edition">THREE WAYS TO BEGIN</span></header>
+  <div class="intro"><div><p class="eyebrow">SPLASH ICON EXPLORATION</p><h1>Waves, coming together.</h1><p class="lede">Three ways to build the same familiar mark. Ready whenever the app is.</p></div><span class="duration-badge">600<span>ms</span></span></div>
+  <nav class="tabs" aria-label="Preview view"><button class="tab active" id="motion-tab" aria-pressed="true">Motion</button><button class="tab" id="match-tab" aria-pressed="false">Match the PNG</button></nav>
+  <section id="motion-panel" aria-label="Animation preview">
+    <div class="variant-toolbar"><span>Choose a direction</span><label><input id="keep-time" type="checkbox">Keep playhead when switching</label></div>
+    <div class="variant-picker" id="variant-picker" role="group" aria-label="Animation direction"></div>
+    <div class="workspace">
+      <div class="stage light" id="stage">
+        <div class="stage-top"><span id="stage-label">SPLASH PREVIEW</span><span class="stage-status" id="stage-status">At rest</span></div>
+        <div class="stage-center"><div class="icon-wrap" id="main-icon"></div><div class="app-ready" id="app-ready" hidden><span class="ready-dot"></span><strong>App ready</strong><span>Simulated first frame</span></div></div>
+        <div class="stage-bottom"><span id="stage-caption">Builds into the original silhouette</span><span id="stage-size">192 dp icon · 1×</span></div>
+      </div>
+      <aside class="controls" aria-label="Animation controls">
+        <div class="controls-heading"><h2 id="motion-name">Ink flow</h2><span class="tiny-dot"></span></div>
+        <p class="description" id="motion-description"></p>
+        <div class="control-block"><span class="control-label" id="speed-label">Playback speed</span><div class="segments" role="group" aria-labelledby="speed-label"><button data-speed="0.25" aria-pressed="false">¼×</button><button data-speed="0.5" aria-pressed="false">½×</button><button data-speed="1" class="selected" aria-pressed="true">1×</button></div></div>
+        <div class="control-block"><span class="control-label" id="theme-label">Splash background</span><div class="segments" role="group" aria-labelledby="theme-label"><button data-theme="light" class="selected" aria-pressed="true">Light</button><button data-theme="dark" aria-pressed="false">Dark</button></div></div>
+        <div class="control-block"><label class="control-label" for="cutoff">App becomes ready</label><select id="cutoff"><option value="600">Show full motion</option><option value="120">120 ms · very fast launch</option><option value="220">220 ms · fast launch</option><option value="360">360 ms · mid-animation</option></select><p class="micro" id="cutoff-note">Preview the whole animation, or interrupt it as soon as the app is ready.</p></div>
+        <div class="check-row"><label><input type="checkbox" id="loop">Loop preview</label><label><input type="checkbox" id="guides">Safe area</label></div>
+        <div class="no-hold"><span aria-hidden="true">↗</span><div><strong>No waiting for the animation</strong><span>Early dismissal stops the splash immediately.</span></div></div>
+      </aside>
+    </div>
+    <div class="transport">
+      <div class="transport-top"><div class="play-buttons"><button id="play" class="primary">Play</button><button id="replay" class="secondary" aria-label="Replay">↺ <span>Replay</span></button></div><div class="time-display"><output id="time">0</output><span>/ 600 ms</span></div></div>
+      <label class="sr-only" for="scrubber">Animation time in milliseconds</label><input id="scrubber" type="range" min="0" max="600" step="1" value="0" aria-valuetext="0 milliseconds">
+      <div class="ruler" aria-hidden="true"><span>0</span><span>150</span><span>300</span><span>450</span><span>600 ms</span></div>
+    </div>
+    <div class="frames-heading"><h2>The gesture, frame by frame</h2><span>Select a frame to inspect</span></div><div class="filmstrip" id="filmstrip"></div>
+  </section>
+  <section id="match-panel" aria-label="PNG fidelity comparison" hidden>
+    <div class="match-heading"><div><h2>The familiar mark, flowing smoothly.</h2><p>The production PNG beside the smooth curves used throughout the animation.</p></div><label class="control-label zoom-label" for="compare-mode">Comparison<select id="compare-mode"><option value="wipe">Wipe</option><option value="overlay">50% overlay</option><option value="difference">Difference ×8</option></select></label></div>
+    <div class="comparison-grid"><figure><div class="comparison-art" id="reference-art"></div><figcaption><strong>Original PNG</strong><span>Production splash asset</span></figcaption></figure><figure><div class="comparison-art" id="vector-art"></div><figcaption><strong>Smooth vector</strong><span>Two strokes · six cubic curves</span></figcaption></figure><figure><div class="comparison-art combined" id="combined-art"><div id="compare-base"></div><div id="compare-top"></div><canvas id="difference" width="1024" height="1024" hidden></canvas><div id="wipe-line"></div></div><figcaption><strong id="comparison-title">Wipe comparison</strong><span id="comparison-detail">PNG left · vector right</span></figcaption></figure></div>
+    <div class="compare-slider"><label for="wipe">Comparison split <output id="wipe-value">50%</output></label><input id="wipe" type="range" min="0" max="100" value="50"></div>
+    <div class="match-notes"><p><strong>Built for continuous motion.</strong> The colors and proportions follow the PNG. Smooth curves and rounded ends keep every intermediate frame clean.</p><p><strong>The drawing is the finished icon.</strong> The same two strokes stay on screen throughout. There is no final overlay or shape replacement. The difference view shows the intentional changes from the PNG.</p></div>
+  </section>
+  <footer><span>Harmonic for Hacker News</span><div><a href="export/harmonic-foreground.svg" download>Vector SVG ↗</a><a id="avd-download" href="export/ic_harmonic_splash_gather.xml" download>Gather · Android AVD ↗</a></div><span>Browser motion study · native timing is system-controlled</span></footer>
+</main>
+<script src="preview-data.js"></script><script src="motion.js"></script><script src="preview.js"></script>
+</body>
+</html>
+
