@@ -18,19 +18,13 @@ object SearchRelevanceUtils {
             )
         }
 
-        scoredStories.sortWith(Comparator { left, right ->
-            when {
-                left.relevanceScore != right.relevanceScore ->
-                    right.relevanceScore.compareTo(left.relevanceScore)
-                left.story.score != right.story.score ->
-                    right.story.score.compareTo(left.story.score)
-                left.story.descendants != right.story.descendants ->
-                    right.story.descendants.compareTo(left.story.descendants)
-                left.story.time != right.story.time ->
-                    right.story.time.compareTo(left.story.time)
-                else -> left.originalIndex.compareTo(right.originalIndex)
-            }
-        })
+        scoredStories.sortWith(
+            compareByDescending<ScoredStory> { it.relevanceScore }
+                .thenByDescending { it.story.score }
+                .thenByDescending { it.story.descendants }
+                .thenByDescending { it.story.time }
+                .thenBy { it.originalIndex },
+        )
         scoredStories.forEachIndexed { index, scored -> stories[index] = scored.story }
     }
 

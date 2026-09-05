@@ -5,16 +5,18 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
-import com.simon.harmonichackernews.network.HttpStatusException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class StorySearchOptions(
     val sortIndex: Int = 0,
@@ -61,6 +63,7 @@ class StorySearchStore(
     private var request: Request? = null
     private var loadJob: Job? = null
     private var generation = 0L
+    private val clickedStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
 
     val sortLabel: String get() = controller.sortLabel
     val dateRangeLabel: String get() = controller.dateRangeLabel
@@ -72,7 +75,7 @@ class StorySearchStore(
 
     fun resetOptions() {
         controller.resetOptions()
-        publish(options = currentOptions())
+        publish { copy(options = currentOptions()) }
     }
 
     fun restoreOptions(options: StorySearchOptions) {
@@ -81,7 +84,7 @@ class StorySearchStore(
         controller.minimumPointsIndex = options.minimumPointsIndex.coerceIn(StorySearchController.minimumPointsLabels.indices)
         controller.minimumCommentsIndex = options.minimumCommentsIndex.coerceIn(StorySearchController.minimumCommentsLabels.indices)
         if (controller.isOnlyClicked != options.onlyClicked) controller.toggleOnlyClicked()
-        publish(options = currentOptions())
+        publish { copy(options = currentOptions()) }
     }
 
     fun selectSort(index: Int) = updateOption {
@@ -119,14 +122,8 @@ class StorySearchStore(
     }
 
     fun loadMore() {
-        if (state.value.loading || request == null) return
-        publish(
-            hitsPerPage = state.value.hitsPerPage + StorySearchController.ALGOLIA_HITS_INCREMENT,
-            loading = true,
-            loadingMore = true,
-            failure = null,
-        )
-        execute(loadMore = true, publishLoading = false)
+        if (state.value.loading || !state.value.canLoadMore || request == null) return
+        execute(loadMore = true)
     }
 
     fun retry() {
@@ -134,20 +131,19 @@ class StorySearchStore(
     }
 
     fun cancel(clearResults: Boolean = false) {
-        generation++
-        loadJob?.cancel()
-        loadJob = null
+        cancelLoad()
         request = null
-        val current = state.value
-        publish(
-            mode = StorySearchMode.NONE,
-            query = "",
-            stories = if (clearResults) emptyList() else current.stories,
-            loading = false,
-            loadingMore = false,
-            canLoadMore = false,
-            failure = null,
-        )
+        publish {
+            copy(
+                mode = StorySearchMode.NONE,
+                query = "",
+                stories = if (clearResults) emptyList() else stories,
+                loading = false,
+                loadingMore = false,
+                canLoadMore = false,
+                failure = null,
+            )
+        }
     }
 
     fun restore(
@@ -160,35 +156,47 @@ class StorySearchStore(
         canLoadMore: Boolean,
         failure: StoryLoadFailure?,
     ) {
+        cancelLoad()
         restoreOptions(options)
         request = when (mode) {
             StorySearchMode.QUERY -> Request.Query(query)
             StorySearchMode.TOP_STORIES -> Request.TopStories(topStoriesStartTime)
             StorySearchMode.NONE -> null
         }
-        publish(
-            mode = mode,
-            query = query,
-            stories = stories,
-            hitsPerPage = hitsPerPage.coerceAtLeast(StorySearchController.ALGOLIA_HITS_INCREMENT),
-            topStoriesStartTime = topStoriesStartTime,
-            loading = false,
-            loadingMore = false,
-            canLoadMore = canLoadMore,
-            failure = failure,
-            options = currentOptions(),
-        )
+        publish {
+            copy(
+                mode = mode,
+                query = query,
+                stories = stories,
+                hitsPerPage = hitsPerPage.coerceAtLeast(StorySearchController.ALGOLIA_HITS_INCREMENT),
+                topStoriesStartTime = topStoriesStartTime,
+                loading = false,
+                loadingMore = false,
+                canLoadMore = canLoadMore,
+                failure = failure,
+                options = currentOptions(),
+            )
+        }
     }
 
-    private fun execute(loadMore: Boolean, publishLoading: Boolean = true) {
-        val activeRequest = request ?: return
-        val requestGeneration = ++generation
+    private fun cancelLoad() {
+        generation++
         loadJob?.cancel()
-        if (publishLoading) {
-            publish(
+        loadJob = null
+    }
+
+    private fun execute(loadMore: Boolean) {
+        val activeRequest = request ?: return
+        cancelLoad()
+        val requestGeneration = generation
+        val hitsPerPage = state.value.hitsPerPage +
+            if (loadMore) StorySearchController.ALGOLIA_HITS_INCREMENT else 0
+        publish {
+            copy(
                 mode = activeRequest.mode,
                 query = activeRequest.query,
-                stories = if (loadMore) state.value.stories else emptyList(),
+                stories = if (loadMore) stories else emptyList(),
+                hitsPerPage = hitsPerPage,
                 topStoriesStartTime = activeRequest.topStoriesStartTime,
                 loading = true,
                 loadingMore = loadMore,
@@ -196,45 +204,39 @@ class StorySearchStore(
             )
         }
         loadJob = scope.launch {
-            try {
-                val result = when {
+            val result = try {
+                when {
                     activeRequest is Request.Query && controller.isOnlyClicked ->
                         loadOnlyClickedStories(activeRequest.query)
-                    else -> loadAlgoliaStories(activeRequest)
+                    else -> loadAlgoliaStories(activeRequest, hitsPerPage)
                 }
-                if (requestGeneration != generation) return@launch
-                loadJob = null
-                publish(
-                    mode = activeRequest.mode,
-                    query = activeRequest.query,
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                SearchResult(
+                    stories = state.value.stories,
+                    canLoadMore = false,
+                    failure = StoryFeedRefreshPolicy.failureFor(error),
+                )
+            }
+            if (requestGeneration != generation) return@launch
+            loadJob = null
+            publish {
+                copy(
                     stories = result.stories,
-                    topStoriesStartTime = activeRequest.topStoriesStartTime,
                     loading = false,
                     loadingMore = false,
                     canLoadMore = result.canLoadMore,
                     failure = result.failure,
                 )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                if (requestGeneration != generation) return@launch
-                loadJob = null
-                publish(
-                    mode = activeRequest.mode,
-                    query = activeRequest.query,
-                    loading = false,
-                    loadingMore = false,
-                    canLoadMore = false,
-                    failure = error.toStoryLoadFailure(),
-                )
             }
         }
     }
 
-    private suspend fun loadAlgoliaStories(request: Request): SearchResult {
+    private suspend fun loadAlgoliaStories(request: Request, hitsPerPage: Int): SearchResult {
         val url = when (request) {
-            is Request.Query -> controller.buildSearchUrl(request.query, state.value.hitsPerPage)
-            is Request.TopStories -> controller.buildTopStoriesUrl(request.startTime, state.value.hitsPerPage)
+            is Request.Query -> controller.buildSearchUrl(request.query, hitsPerPage)
+            is Request.TopStories -> controller.buildTopStoriesUrl(request.startTime, hitsPerPage)
         }
         val parsedStories = algoliaRepository.search(url)
         val visibleStories = parsedStories.filter { story ->
@@ -243,7 +245,7 @@ class StorySearchStore(
         }
         return SearchResult(
             stories = visibleStories,
-            canLoadMore = controller.canLoadMoreResults(parsedStories.size, state.value.hitsPerPage),
+            canLoadMore = controller.canLoadMoreResults(parsedStories.size, hitsPerPage),
         )
     }
 
@@ -252,50 +254,49 @@ class StorySearchStore(
         if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
 
         val normalizedQuery = controller.normalizeQuery(query)
-        val deferredStories = ids.map { id ->
+        val outcomes = ids.map { id ->
             async {
-                try {
-                    ClickedStoryLoad(
-                        story = hackerNewsRepository.getStory(id)?.also { it.clicked = true },
-                        failed = false,
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Exception) {
-                    ClickedStoryLoad(story = null, failed = true)
+                clickedStoryRequests.withPermit {
+                    try {
+                        ClickedStoryLoad(
+                            story = hackerNewsRepository.getStory(id)?.also { it.clicked = true },
+                            failed = false,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        ClickedStoryLoad(story = null, failed = true)
+                    }
                 }
             }
-        }
-        val outcomes = deferredStories.map { it.await() }
-        val failures = outcomes.count(ClickedStoryLoad::failed)
+        }.awaitAll()
+        val filter = StorySearchController.StoryFilter(shouldFilterStory)
         val stories = outcomes.mapNotNull(ClickedStoryLoad::story)
             .filter { story ->
-                controller.shouldIncludeOnlyClickedStory(
-                    story,
-                    normalizedQuery,
-                    StorySearchController.StoryFilter(shouldFilterStory),
-                )
+                controller.shouldIncludeOnlyClickedStory(story, normalizedQuery, filter)
             }
             .toMutableList()
-        controller.sortOnlyClickedResultsIfNeeded(stories, query)
+        controller.sortOnlyClickedResults(stories, query)
         SearchResult(
             stories = stories,
             canLoadMore = false,
-            failure = StoryLoadFailure.GENERAL.takeIf { failures == ids.size },
+            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(ClickedStoryLoad::failed) },
         )
     }
 
     private fun resetResultLimit() {
-        publish(
-            hitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT,
-            loadingMore = false,
-            canLoadMore = false,
-        )
+        publish {
+            copy(
+                hitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT,
+                loadingMore = false,
+                canLoadMore = false,
+            )
+        }
     }
 
     private fun updateOption(block: () -> Unit) {
         block()
-        publish(options = currentOptions())
+        publish { copy(options = currentOptions()) }
     }
 
     private fun currentOptions() = StorySearchOptions(
@@ -306,30 +307,12 @@ class StorySearchStore(
         onlyClicked = controller.isOnlyClicked,
     )
 
-    private fun publish(
-        mode: StorySearchMode = state.value.mode,
-        query: String = state.value.query,
-        stories: List<Story> = state.value.stories,
-        options: StorySearchOptions = state.value.options,
-        hitsPerPage: Int = state.value.hitsPerPage,
-        topStoriesStartTime: Int = state.value.topStoriesStartTime,
-        loading: Boolean = state.value.loading,
-        loadingMore: Boolean = state.value.loadingMore,
-        canLoadMore: Boolean = state.value.canLoadMore,
-        failure: StoryLoadFailure? = state.value.failure,
-    ) {
-        mutableState.value = StorySearchUiState(
-            mode = mode,
-            query = query,
-            stories = stories.toList(),
-            options = options,
-            hitsPerPage = hitsPerPage,
-            topStoriesStartTime = topStoriesStartTime,
-            loading = loading,
-            loadingMore = loadingMore,
-            canLoadMore = canLoadMore,
-            failure = failure,
-            revision = state.value.revision + 1,
+    private inline fun publish(update: StorySearchUiState.() -> StorySearchUiState) {
+        val current = state.value
+        val next = current.update()
+        mutableState.value = next.copy(
+            stories = next.stories.toList(),
+            revision = current.revision + 1,
         )
     }
 
@@ -357,10 +340,8 @@ class StorySearchStore(
     )
 
     private data class ClickedStoryLoad(val story: Story?, val failed: Boolean)
-}
 
-private fun Throwable.toStoryLoadFailure(): StoryLoadFailure = when {
-    this is HttpStatusException && statusCode == 404 -> StoryLoadFailure.NOT_FOUND
-    this is HttpStatusException && statusCode == 429 -> StoryLoadFailure.RATE_LIMITED
-    else -> StoryLoadFailure.GENERAL
+    private companion object {
+        const val MAX_CONCURRENT_HISTORY_REQUESTS = 8
+    }
 }

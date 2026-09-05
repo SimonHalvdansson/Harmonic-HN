@@ -110,10 +110,7 @@ class StorySearchController(
         normalizedQuery: String,
         storyFilter: StoryFilter
     ): Boolean {
-        val title = story.title
-        if (title == null || !title.lowercase()
-                .contains(normalizedQuery)
-        ) {
+        if (story.title?.lowercase()?.contains(normalizedQuery) != true) {
             return false
         }
 
@@ -135,9 +132,11 @@ class StorySearchController(
         return !storyFilter.shouldFilterStory(story)
     }
 
-    fun sortOnlyClickedResultsIfNeeded(stories: MutableList<Story>, query: String?) {
+    fun sortOnlyClickedResults(stories: MutableList<Story>, query: String?) {
         if (sortIndex == 0) {
             SearchRelevanceUtils.sortStoriesByRelevance(stories, query)
+        } else {
+            stories.sortByDescending(Story::time)
         }
     }
 
