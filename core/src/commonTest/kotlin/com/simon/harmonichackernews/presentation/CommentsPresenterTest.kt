@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.HttpStatusException
+import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.network.OfficialCommentThreadLoader
 import com.simon.harmonichackernews.network.PollOptionsLoader
 import com.simon.harmonichackernews.settings.KeyValueStore
@@ -49,6 +50,95 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
+    @Test
+    fun loadedAlgoliaStoryRestoresCachedRankingBeforeLoadingComments() = runTest {
+        val response = """{"id":42,"title":"Old cached title","points":1,"children":[
+            {"id":7,"text":"One"},{"id":8,"text":"Two"}
+        ]}"""
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+        val summary = assertNotNull(parser.parse(response, listOf(8, 7)).cacheSummary).encode(42)
+        for (initialKids in listOf(null, intArrayOf())) {
+            val session = CommentsSessionState()
+            val source = RecordingHackerNewsRepository()
+            val presenter = CommentsPresenter(
+                backgroundScope, session,
+                CommentThreadRepository(FakeAlgoliaRepository(response), source, parser),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = dispatcher,
+            )
+            val runtime = CommentsFeatureRuntime(
+                backgroundScope, session, presenter,
+                hydrateCachedStory = { JSONParser.updateStoryWithCachedStorySummary(it, summary) },
+                loadCachedThread = { response },
+                nowMillis = { 0L },
+            )
+            val story = Story("Fresh Algolia title", 42, true, false).apply {
+                kids = initialKids
+                score = 100
+                descendants = 3
+            }
+            runtime.initialize(story, false, -1, "Default", restoring = false)
+            assertEquals(listOf(8, 7), story.kids?.toList())
+            assertEquals("Fresh Algolia title", story.title)
+            assertEquals(100, story.score)
+            assertEquals(3, story.descendants)
+
+            val appliedOrders = mutableListOf<List<Int>>()
+            backgroundScope.launch {
+                presenter.effects.filterIsInstance<CommentsEffect.ThreadApplied>().collect {
+                    appliedOrders += presenter.thread.state.value.allComments.drop(1).map { it.id }
+                }
+            }
+            runCurrent()
+            runtime.loadInitial(restoreScrollFromCache = false)
+            runCurrent()
+            assertTrue(presenter.state.value.loaded)
+            assertTrue(appliedOrders.isNotEmpty())
+            assertTrue(appliedOrders.all { it == listOf(8, 7) })
+            assertEquals(0, source.storyRequests)
+        }
+    }
+
+    @Test
+    fun cachedOrderingRestorationPreservesLiveOrderAndHandlesUnavailableSummaries() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope, session,
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+        )
+        var summary: String? = """{"id":42,"title":"Cached","kids":[8,7]}"""
+        var cacheReads = 0
+        val runtime = CommentsFeatureRuntime(
+            backgroundScope, session, presenter,
+            hydrateCachedStory = {
+                cacheReads++
+                JSONParser.updateStoryWithCachedStorySummary(it, summary)
+            },
+            nowMillis = { 0L },
+        )
+        val live = Story("Live", 42, true, false).apply { kids = intArrayOf(7, 8, 9) }
+        runtime.initialize(live, false, -1, "Default", restoring = false)
+        assertEquals(0, cacheReads)
+        assertEquals(listOf(7, 8, 9), live.kids?.toList())
+
+        val placeholder = Story().apply { id = 42 }
+        runtime.initialize(placeholder, false, -1, "Default", restoring = false)
+        assertTrue(placeholder.loaded)
+        assertEquals("Cached", placeholder.title)
+        assertEquals(listOf(8, 7), placeholder.kids?.toList())
+
+        for (unavailable in listOf(null, "broken json", """{"id":42,"title":"Legacy"}""")) {
+            summary = unavailable
+            val story = Story("Live", 42, true, false)
+            runtime.initialize(story, false, -1, "Default", restoring = false)
+            assertEquals(null, story.kids)
+            assertEquals("Live", story.title)
+            assertTrue(story.loaded)
+        }
+    }
+
     @Test
     fun cachedThreadDisplaysBeforeRankingAndIdenticalNetworkJsonStillReordersIt() = runTest {
         val response = """{"id":42,"title":"Cached","children":[

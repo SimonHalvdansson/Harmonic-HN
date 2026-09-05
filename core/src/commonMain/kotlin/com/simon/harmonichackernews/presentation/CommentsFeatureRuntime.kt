@@ -190,7 +190,7 @@ class CommentsFeatureRuntime(
             )
         }
         sessionState.initialized = true
-        storyNeedingCachedSummary()?.let(hydrateCachedStory)
+        restoreCachedStoryInformation()
         reconcileSettings()
     }
 
@@ -415,7 +415,19 @@ class CommentsFeatureRuntime(
     fun shouldUseIntegratedWebView(preferred: Boolean): Boolean =
         preferred && story?.isLink == true
 
-    fun storyNeedingCachedSummary(): Story? = story?.takeIf { !it.loaded && it.id > 0 }
+    private fun restoreCachedStoryInformation() {
+        val story = story?.takeIf { it.id > 0 } ?: return
+        if (!story.loaded) {
+            hydrateCachedStory(story)
+        } else if (story.kids?.isNotEmpty() != true) {
+            // Algolia feed stories are loaded but lack ranking. Restore only the missing IDs,
+            // keeping the feed's newer metadata instead of replacing it with the cached summary.
+            val cachedStory = Story().apply { id = story.id }
+            if (hydrateCachedStory(cachedStory)) {
+                cachedStory.kids?.takeIf { it.isNotEmpty() }?.let { story.kids = it.copyOf() }
+            }
+        }
+    }
 
     fun canSwitchStoryView(storyId: Int): Boolean =
         story?.id == storyId && settingsState.value?.integratedWebView == true
