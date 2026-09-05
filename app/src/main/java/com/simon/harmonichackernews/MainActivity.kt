@@ -26,6 +26,11 @@ class MainActivity : BaseActivity() {
 
     protected override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        fullyDrawnReporter.addOnReportDrawnListener {
+            window.decorView.post {
+                (application as HarmonicApplication).startDeferredServices()
+            }
+        }
         ThemeUtils.setupTheme(this)
 
         navigationController = install(this, savedInstanceState)

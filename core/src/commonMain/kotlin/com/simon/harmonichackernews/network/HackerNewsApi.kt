@@ -22,12 +22,14 @@ interface HackerNewsApi {
 }
 
 class KtorHackerNewsApi(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) : HackerNewsApi {
+    constructor(client: HttpClient, json: Json = Json { ignoreUnknownKeys = true }) :
+        this({ client }, json)
     override suspend fun getItem(id: Int): HackerNewsItemDto? {
         require(id > 0) { "A positive Hacker News item ID is required" }
-        val body = client.getTextOrThrow("$API_BASE/item/$id.json")
+        val body = client().getTextOrThrow("$API_BASE/item/$id.json")
         if (body.isBlank() || body.trim() == "null") return null
         return decode(body)
     }
@@ -38,13 +40,13 @@ class KtorHackerNewsApi(
         val url = URLBuilder(API_BASE)
             .appendPathSegments("user", "$normalized.json")
             .buildString()
-        val body = client.getTextOrThrow(url)
+        val body = client().getTextOrThrow(url)
         if (body.isBlank() || body.trim() == "null") return null
         return decode(body)
     }
 
     override suspend fun getMaxItemId(): Int =
-        client.getTextOrThrow("$API_BASE/maxitem.json").trim().toIntOrNull() ?: 0
+        client().getTextOrThrow("$API_BASE/maxitem.json").trim().toIntOrNull() ?: 0
 
     override suspend fun getStoryIds(type: StoryType): List<Int> {
         val path = when (type) {
@@ -56,7 +58,7 @@ class KtorHackerNewsApi(
             StoryType.HN_JOBS -> "job"
             else -> throw IllegalArgumentException("$type has no official HN story-list endpoint")
         }
-        return decode(client.getTextOrThrow("$API_BASE/${path}stories.json"))
+        return decode(client().getTextOrThrow("$API_BASE/${path}stories.json"))
     }
 
     private inline fun <reified T> decode(body: String): T = try {

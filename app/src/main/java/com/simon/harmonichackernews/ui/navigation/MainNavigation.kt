@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Trace
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -638,6 +639,15 @@ private fun MainNavigation(
     controller: MainNavigationController,
 ) {
     val navigationSnapshot by controller.navigationState.state.collectAsState()
+    // Include asynchronous feed population in launcher time-to-full-display. Other
+    // destinations have their own loading lifecycle and must not wait for the hidden feed.
+    ReportDrawnWhen {
+        navigationSnapshot.currentDestination != MainDestination.STORIES ||
+            controller.storiesComposeController?.let { stories ->
+                stories.loadingFailed || stories.showEmptySavedList ||
+                    (!stories.loading && stories.mainStories.any { it.loaded })
+            } == true
+    }
     val storyRequests = navigationSnapshot.storyBackStack
     val appearance = controller.scene.app.appearance
     val uiDependencies = LocalHarmonicUiDependencies.current

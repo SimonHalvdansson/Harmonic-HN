@@ -1,0 +1,162 @@
+{
+    "context": {
+        "build": {
+            "brand": "google",
+            "device": "kodiak",
+            "fingerprint": "google/kodiak/kodiak:17/CD1A.260714.001.A9/15938155:user/release-keys",
+            "id": "CD1A.260714.001.A9",
+            "model": "Pixel 11 Pro XL",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 37
+            }
+        },
+        "cpuCoreCount": 7,
+        "cpuLocked": false,
+        "cpuMaxFreqHz": 4109000000,
+        "memTotalBytes": 12212826112,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 370547160,
+        "osCodenameAbbreviated": "REL",
+        "compilationMode": "verify",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "coldStartupWithBaselineProfile",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.HarmonicMacrobenchmark",
+            "totalRunTimeNs": 146112077352,
+            "metrics": {
+                "timeToFullDisplayMs": {
+                    "minimum": 1400.510893,
+                    "maximum": 2325.589241,
+                    "median": 1599.12438,
+                    "coefficientOfVariation": 0.14279776750620762,
+                    "runs": [
+                        1739.990135,
+                        1599.12438,
+                        1630.367949,
+                        1609.87162,
+                        2325.589241,
+                        1865.71159,
+                        1406.242248,
+                        1562.407141,
+                        1400.510893,
+                        1546.601099,
+                        1489.485997,
+                        1521.945632,
+                        1467.063549,
+                        1852.129821,
+                        1644.331516
+                    ]
+                },
+                "timeToInitialDisplayMs": {
+                    "minimum": 212.490466,
+                    "maximum": 238.526586,
+                    "median": 226.535779,
+                    "coefficientOfVariation": 0.032209891187432116,
+                    "runs": [
+                        238.526586,
+                        235.671585,
+                        216.14419,
+                        234.797836,
+                        238.173138,
+                        228.945674,
+                        230.106846,
+                        228.107028,
+                        226.535779,
+                        225.902653,
+                        212.490466,
+                        223.544763,
+                        224.805335,
+                        226.153097,
+                        225.050987
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 15,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter000_2026-09-05-05-32-04.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter001_2026-09-05-05-32-15.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter002_2026-09-05-05-32-24.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter003_2026-09-05-05-32-33.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter004_2026-09-05-05-32-42.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 5",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter005_2026-09-05-05-32-51.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 6",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter006_2026-09-05-05-33-01.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 7",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter007_2026-09-05-05-33-10.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 8",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter008_2026-09-05-05-33-19.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 9",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter009_2026-09-05-05-33-28.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 10",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter010_2026-09-05-05-33-37.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 11",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter011_2026-09-05-05-33-46.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 12",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter012_2026-09-05-05-33-55.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 13",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter013_2026-09-05-05-34-04.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 14",
+                    "filename": "HarmonicMacrobenchmark_coldStartupWithBaselineProfile_iter014_2026-09-05-05-34-13.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

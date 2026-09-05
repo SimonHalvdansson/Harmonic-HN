@@ -14,6 +14,18 @@ class BaselineProfileGenerator {
     val rule = BaselineProfileRule()
 
     @Test
+    fun startup() = rule.collect(
+        packageName = BenchmarkPackageName,
+        includeInStartupProfile = true,
+        filterPredicate = { rule -> rule.contains("com/simon/harmonichackernews") },
+    ) {
+        pressHome()
+        startActivityAndWait()
+        // DEX layout should prioritize the first screen, without post-launch AI warm-up,
+        // scrolling, or the comments fixture. The broader profile below covers those journeys.
+    }
+
+    @Test
     fun generate() = rule.collect(
         packageName = BenchmarkPackageName,
         filterPredicate = { rule -> rule.contains("com/simon/harmonichackernews") },

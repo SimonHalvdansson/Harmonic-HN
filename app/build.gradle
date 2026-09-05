@@ -85,8 +85,11 @@ android {
 
             signingConfig = signingConfigs.debug
             debuggable = false
-            minifyEnabled = false
-            shrinkResources = false
+            // Opt in for startup comparisons that also measure release DEX layout optimization.
+            minifyEnabled = providers.gradleProperty("harmonic.benchmark.minify")
+                    .map { it.toBoolean() }.getOrElse(false)
+            shrinkResources = minifyEnabled
+            proguardFiles "benchmark-rules.pro"
             matchingFallbacks.add("release")
         }
 
@@ -215,6 +218,12 @@ tasks.register("installBenchmarkBaselineProfile", Copy) {
         include("*-baseline-prof-*.txt")
         filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
         rename { "baseline-prof.txt" }
+    }
+    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
+        include("*-startup-prof-*.txt")
+        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
+        rename { "startup-prof.txt" }
+        into("baselineProfiles")
     }
     into(layout.projectDirectory.dir("src/main"))
 }

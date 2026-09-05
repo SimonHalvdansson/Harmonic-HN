@@ -16,9 +16,11 @@ interface AlgoliaRepository {
 }
 
 class KtorAlgoliaRepository(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) : AlgoliaRepository {
+    constructor(client: HttpClient, json: Json = Json { ignoreUnknownKeys = true }) :
+        this({ client }, json)
     override suspend fun getSubmissions(userName: String, limit: Int): List<Story> {
         require(userName.isNotBlank()) { "A username is required" }
         require(limit > 0) { "A positive result limit is required" }
@@ -30,7 +32,7 @@ class KtorAlgoliaRepository(
     }
 
     override suspend fun search(url: String): List<Story> {
-        val body = client.getTextOrThrow(url)
+        val body = client().getTextOrThrow(url)
         return try {
             json.decodeFromString<AlgoliaSearchResponseDto>(body)
                 .hits
@@ -48,7 +50,7 @@ class KtorAlgoliaRepository(
         var attempt = 0
         while (true) {
             try {
-                return client.getTextOrThrow(url)
+                return client().getTextOrThrow(url)
             } catch (error: HttpRequestTimeoutException) {
                 if (++attempt >= ITEM_REQUEST_ATTEMPTS) throw error
             } catch (error: HttpStatusException) {

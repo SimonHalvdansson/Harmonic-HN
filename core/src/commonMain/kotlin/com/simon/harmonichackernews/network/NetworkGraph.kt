@@ -45,23 +45,35 @@ class ResettableAuthenticatedHttpClientProvider(
  * Platforms supply configured Ktor transports and a lifecycle scope; all repository and use-case
  * wiring stays shared so Android and iOS expose the same networking surface.
  */
-class NetworkGraph(
-    val transportClient: HttpClient,
+class NetworkGraph internal constructor(
+    private val transport: NetworkTransport,
     private val scope: CoroutineScope,
     private val authenticatedClientProvider: AuthenticatedHttpClientProvider,
     val userAgent: String = "Harmonic-HN",
     private val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
 ) {
-    val httpClient: KtorHttpClient = KtorHttpClient(transportClient)
+    /** Retains ownership of caller-supplied transports for native and test hosts. */
+    constructor(
+        transportClient: HttpClient,
+        scope: CoroutineScope,
+        authenticatedClientProvider: AuthenticatedHttpClientProvider,
+        userAgent: String = "Harmonic-HN",
+        cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
+    ) : this(NetworkTransport(transportClient), scope, authenticatedClientProvider, userAgent, cacheMaintenance)
 
-    val hackerNewsApi: HackerNewsApi = KtorHackerNewsApi(transportClient)
+    /** Native compatibility access. Portable repositories await initialization off the UI thread. */
+    val transportClient: HttpClient get() = transport.get()
+    private val client: suspend () -> HttpClient = transport::await
+    val httpClient: KtorHttpClient = KtorHttpClient(client)
+
+    val hackerNewsApi: HackerNewsApi = KtorHackerNewsApi(client)
     val hackerNewsRepository: HackerNewsRepository = DefaultHackerNewsRepository(hackerNewsApi)
     val pollOptionsRepository: PollOptionsRepository = PollOptionsRepository(hackerNewsApi)
     val replyScanner: ReplyScanner = DefaultReplyScanner(hackerNewsApi)
-    val algoliaRepository: AlgoliaRepository = KtorAlgoliaRepository(transportClient)
-    val linkPreviewRepository: LinkPreviewRepository = KtorLinkPreviewRepository(transportClient)
+    val algoliaRepository: AlgoliaRepository = KtorAlgoliaRepository(client)
+    val linkPreviewRepository: LinkPreviewRepository = KtorLinkPreviewRepository(client)
     val linkSummaryRepository: LinkSummaryRepository =
-        KtorLinkSummaryRepository(transportClient, linkPreviewRepository)
+        KtorLinkSummaryRepository(client, linkPreviewRepository)
     val previewContentCoordinator: PreviewContentCoordinator = PreviewContentCoordinator(scope)
     val cloudSummaryRepository: CloudSummaryRepository =
         KtorCloudSummaryRepository(httpClient, userAgent)
@@ -71,7 +83,7 @@ class NetworkGraph(
     val openRouterProviderIconRepository: OpenRouterProviderIconRepository =
         KtorOpenRouterProviderIconRepository(httpClient, scope)
     val hackerNewsWebRepository: HackerNewsWebRepository =
-        KtorHackerNewsWebRepository(transportClient)
+        KtorHackerNewsWebRepository(client)
 
     val httpClientWithCookies: KtorHttpClient
         get() = KtorHttpClient(authenticatedClientProvider.get())
@@ -100,6 +112,6 @@ class NetworkGraph(
 
     fun close() {
         authenticatedClientProvider.close()
-        transportClient.close()
+        transport.close()
     }
 }

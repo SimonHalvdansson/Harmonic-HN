@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 
 /** Inputs that genuinely differ between Ktor hosts. */
 data class NetworkGraphEnvironment(
@@ -15,6 +17,7 @@ data class NetworkGraphEnvironment(
     val configureAuthenticated: HttpClientConfig<*>.() -> Unit = {
         installHarmonicHttpCookies()
     },
+    val transportDispatcher: CoroutineDispatcher = Dispatchers.Default,
 )
 
 /** Canonical network bootstrap used by Android, iOS and desktop. */
@@ -29,11 +32,13 @@ object NetworkGraphFactory {
                 )
             }
         return NetworkGraph(
-            transportClient = createHarmonicHttpClient(
-                environment.engine(),
-                environment.userAgent,
-                environment.configureTransport,
-            ),
+            transport = NetworkTransport(environment.transportDispatcher) {
+                createHarmonicHttpClient(
+                    environment.engine(),
+                    environment.userAgent,
+                    environment.configureTransport,
+                )
+            },
             scope = environment.scope,
             authenticatedClientProvider = authenticated,
             userAgent = environment.userAgent,

@@ -155,12 +155,18 @@ class HttpRequest private constructor(
 }
 
 class KtorHttpClient(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
     private val readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
     private val requestTimeoutMillis: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
 ) {
+    constructor(
+        client: HttpClient,
+        readTimeoutMillis: Long = DEFAULT_READ_TIMEOUT_MILLIS,
+        requestTimeoutMillis: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
+    ) : this({ client }, readTimeoutMillis, requestTimeoutMillis)
+
     suspend fun execute(request: HttpRequest): HttpResponse {
-        val response = client.request(request.url.toString()) {
+        val response = client().request(request.url.toString()) {
             method = request.method
             timeout {
                 requestTimeoutMillis = this@KtorHttpClient.requestTimeoutMillis
@@ -186,7 +192,7 @@ class KtorHttpClient(
     suspend fun <T> executeStreaming(
         request: HttpRequest,
         block: suspend (HttpResponse) -> T,
-    ): T = client.prepareRequest(request.url.toString()) {
+    ): T = client().prepareRequest(request.url.toString()) {
         method = request.method
         timeout {
             requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
@@ -216,7 +222,7 @@ class KtorHttpClient(
     fun newBuilder(): Builder = Builder(client, readTimeoutMillis, requestTimeoutMillis)
 
     class Builder internal constructor(
-        private val client: HttpClient,
+        private val client: suspend () -> HttpClient,
         private var readTimeoutMillis: Long,
         private var requestTimeoutMillis: Long,
     ) {

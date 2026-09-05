@@ -57,6 +57,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
             authenticatedClientProvider = authenticatedClientProvider,
             userAgent = userAgent,
             cacheMaintenance = this,
+            transportDispatcher = Dispatchers.IO,
             configureTransport = {
                 install(HttpCache) {
                     publicStorage(responseCache)

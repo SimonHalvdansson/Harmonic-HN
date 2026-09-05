@@ -121,8 +121,13 @@ class HarmonicMacrobenchmark {
         metrics = listOf(StartupTimingMetric()),
         compilationMode = compilationMode,
         startupMode = StartupMode.COLD,
-        iterations = 8,
+        iterations = androidx.test.platform.app.InstrumentationRegistry.getArguments()
+            .getString("startup.iterations")?.toInt()?.also { require(it > 0) } ?: 15,
         setupBlock = { pressHome() },
-        measureBlock = { startActivityAndWait() },
+        measureBlock = {
+            startActivityAndWait()
+            // Keep tracing through asynchronous story rendering, including reportFullyDrawn.
+            awaitStoryContent()
+        },
     )
 }

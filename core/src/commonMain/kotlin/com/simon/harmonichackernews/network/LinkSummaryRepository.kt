@@ -69,10 +69,15 @@ interface LinkSummaryRepository {
 }
 
 class KtorLinkSummaryRepository(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
     private val linkPreviews: LinkPreviewRepository = KtorLinkPreviewRepository(client),
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : LinkSummaryRepository {
+    constructor(
+        client: HttpClient,
+        linkPreviews: LinkPreviewRepository = KtorLinkPreviewRepository(client),
+        parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    ) : this({ client }, linkPreviews, parsingDispatcher)
     override suspend fun load(pageUrl: String, fallbackTitle: String?): LinkSummary =
         withContext(parsingDispatcher) {
             val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
@@ -148,7 +153,7 @@ class KtorLinkSummaryRepository(
         }
 
     private suspend fun fetchText(url: String, accept: String): FetchedText {
-        val response = client.get(url) { header(HttpHeaders.Accept, accept) }
+        val response = client().get(url) { header(HttpHeaders.Accept, accept) }
         if (response.status.value !in 200..299) {
             throw LinkPreviewException("The page returned HTTP ${response.status.value}")
         }

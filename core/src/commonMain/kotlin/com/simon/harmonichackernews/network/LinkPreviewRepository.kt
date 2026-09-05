@@ -60,16 +60,17 @@ interface LinkPreviewRepository {
 }
 
 class KtorLinkPreviewRepository(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
 ) : LinkPreviewRepository {
+    constructor(client: HttpClient) : this({ client })
     override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData =
-        LinkPreviewProviders.load(client, type, url)
+        LinkPreviewProviders.load(client(), type, url)
 
     override suspend fun getArchiveUrl(url: String): String {
         val endpoint = URLBuilder("https://archive.org/wayback/available").apply {
             parameters.append("url", url)
         }.buildString()
-        return LinkPreviewParsers.parseArchiveUrl(client.getTextOrThrow(endpoint))
+        return LinkPreviewParsers.parseArchiveUrl(client().getTextOrThrow(endpoint))
             ?: throw LinkPreviewException("No saved copy on archive.org found")
     }
 }

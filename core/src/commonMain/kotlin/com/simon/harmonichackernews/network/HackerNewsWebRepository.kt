@@ -34,8 +34,9 @@ interface HackerNewsWebRepository {
 }
 
 class KtorHackerNewsWebRepository(
-    private val client: HttpClient,
+    private val client: suspend () -> HttpClient,
 ) : HackerNewsWebRepository {
+    constructor(client: HttpClient) : this({ client })
     override suspend fun getStoryList(
         path: String,
         commentsPage: Boolean,
@@ -53,13 +54,13 @@ class KtorHackerNewsWebRepository(
         url: String,
         commentsPage: Boolean,
     ): HackerNewsListPage = HackerNewsWebParser.parseStoryListPage(
-        client.getTextOrThrow(url),
+        client().getTextOrThrow(url),
         commentsPage,
     )
 
     override suspend fun getListDirectory(): List<Story> =
         HackerNewsWebParser.parseListDirectory(
-            client.getTextOrThrow(HackerNewsLinks.absolutePath("lists")),
+            client().getTextOrThrow(HackerNewsLinks.absolutePath("lists")),
         )
 
     override suspend fun getUserItems(path: String, username: String): HackerNewsUserItems {
@@ -84,7 +85,7 @@ class KtorHackerNewsWebRepository(
         while (!nextUrl.isNullOrEmpty() && page < MAX_USER_ITEM_LIST_PAGES) {
             page++
             val parsed = HackerNewsWebParser.parseStoryListPage(
-                client.getTextOrThrow(nextUrl),
+                client().getTextOrThrow(nextUrl),
                 commentsPage = comments,
             )
             itemIds += parsed.itemIds
