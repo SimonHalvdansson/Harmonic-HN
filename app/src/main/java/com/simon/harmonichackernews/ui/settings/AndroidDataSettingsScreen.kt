@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -18,7 +19,6 @@ import com.simon.harmonichackernews.platform.AndroidTextDocuments
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
-import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -102,10 +102,11 @@ fun AndroidDataSettingsScreen(
                 DataSettingsRuntimeEffect.OpenImportDocument ->
                     importLauncher.launch(arrayOf("text/plain"))
                 DataSettingsRuntimeEffect.OpenAppLinkSettings -> {
-                    appComposition.userMessages.show(
+                    Toast.makeText(
+                        context,
                         "The option should be under \"Open by default\"",
-                        UserMessageDuration.LONG,
-                    )
+                        Toast.LENGTH_LONG,
+                    ).show()
                     context.startActivity(
                         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.fromParts("package", context.packageName, null)
@@ -156,7 +157,7 @@ fun AndroidDataSettingsScreen(
 
         DataSettingsDialogState.LINKS -> MessageActionDialog(
             message = "Since Harmonic does not own the domain news.ycombinator.com, " +
-                "intercepting links needs to be enabled by the user manually.\n\n" +
+                "intercepting links needs to be enabled manually.\n\n" +
                 "Go to \"Open by default\" → \"Add link\" in the linked app settings page.",
             neutralLabel = "Go to settings",
             onNeutral = runtime::openAppLinkSettings,
