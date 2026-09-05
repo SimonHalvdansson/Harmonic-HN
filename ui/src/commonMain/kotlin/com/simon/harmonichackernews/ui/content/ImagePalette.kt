@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import coil3.Image
 import com.kmpalette.generatePalette
@@ -68,6 +69,32 @@ internal fun rememberCoilImagePaletteTint(
     )
 }
 
+/** Keeps preview sampling identical to BitmapPainter while moving its work off the UI thread. */
+@Composable
+internal fun rememberPreviewImagePaletteTint(
+    image: Image?,
+    fallbackPainter: Painter?,
+    baseColorArgb: Int,
+    paletteTintConfigKey: String,
+    enabled: Boolean,
+): Int? = if (image?.supportsOffMainPaletteSampling() == true && fallbackPainter is BitmapPainter) {
+    rememberImagePaletteTint(
+        image = image,
+        baseColorArgb = baseColorArgb,
+        paletteTintConfigKey = paletteTintConfigKey,
+        enabled = enabled,
+        sharedCacheKey = null,
+        preview = true,
+    )
+} else {
+    rememberPainterPaletteTint(
+        painter = fallbackPainter,
+        baseColorArgb = baseColorArgb,
+        paletteTintConfigKey = paletteTintConfigKey,
+        enabled = enabled,
+    )
+}
+
 @Composable
 private fun rememberImagePaletteTint(
     image: Image,
@@ -75,22 +102,27 @@ private fun rememberImagePaletteTint(
     paletteTintConfigKey: String,
     enabled: Boolean,
     sharedCacheKey: String?,
+    preview: Boolean = false,
 ): Int? {
-    var tint by remember(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
+    var tint by remember(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey, preview) {
         mutableStateOf<Int?>(null)
     }
 
-    LaunchedEffect(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
+    LaunchedEffect(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey, preview) {
         if (!enabled) {
             tint = null
             return@LaunchedEffect
         }
         val extract: suspend () -> Int? = {
-            paletteExtractionRunner.run {
-                image.toPaletteSampleBitmap()?.calculateTint(
-                    baseColorArgb = baseColorArgb,
-                    paletteTintConfigKey = paletteTintConfigKey,
-                )
+            if (preview) {
+                image.extractPreviewPaletteTint(baseColorArgb, paletteTintConfigKey)
+            } else {
+                paletteExtractionRunner.run {
+                    image.toPaletteSampleBitmap()?.calculateTint(
+                        baseColorArgb = baseColorArgb,
+                        paletteTintConfigKey = paletteTintConfigKey,
+                    )
+                }
             }
         }
         tint = if (sharedCacheKey != null) {
@@ -103,6 +135,20 @@ private fun rememberImagePaletteTint(
         }
     }
     return tint
+}
+
+internal suspend fun Image.extractPreviewPaletteTint(
+    baseColorArgb: Int,
+    paletteTintConfigKey: String,
+): Int? = try {
+    paletteExtractionRunner.run {
+        toPreviewPaletteSampleBitmap()?.calculateTint(baseColorArgb, paletteTintConfigKey)
+    }
+} catch (error: CancellationException) {
+    throw error
+} catch (_: Exception) {
+    // Match PaletteState's error behavior: leave the existing card color in place.
+    null
 }
 
 /** Common palette extraction for Coil and Compose resource painters. */

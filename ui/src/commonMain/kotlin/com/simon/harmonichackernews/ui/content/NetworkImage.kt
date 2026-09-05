@@ -45,8 +45,10 @@ fun NetworkImage(
             .build()
     }
     var painter by remember(url) { mutableStateOf<Painter?>(null) }
-    val extractedTint = rememberPainterPaletteTint(
-        painter = painter,
+    var image by remember(url) { mutableStateOf<coil3.Image?>(null) }
+    val extractedTint = rememberPreviewImagePaletteTint(
+        image = image,
+        fallbackPainter = painter,
         baseColorArgb = tintBaseColorArgb ?: 0,
         paletteTintConfigKey = paletteTintConfigKey,
         enabled = extractTint && tintBaseColorArgb != null,
@@ -61,6 +63,7 @@ fun NetworkImage(
         modifier = modifier,
         contentScale = contentScale,
         onSuccess = { result ->
+            image = result.result.image
             painter = result.painter
             result.painter.intrinsicSize.let { size ->
                 if (

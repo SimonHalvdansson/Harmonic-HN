@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -42,5 +43,13 @@ class PaletteExtractionRunnerTest {
         assertEquals(96 to 48, paletteSampleDimensions(200, 100))
         assertEquals(48 to 96, paletteSampleDimensions(100, 200))
         assertEquals(96 to 96, paletteSampleDimensions(32, 32))
+    }
+
+    @Test
+    fun previewSamplesRoundLikeTheOriginalPainterRatherThanTruncating() {
+        assertEquals(IntSize(96, 64), previewPaletteSampleDimensions(101, 67))
+        assertEquals(IntSize(64, 96), previewPaletteSampleDimensions(67, 101))
+        assertEquals(IntSize(96, 96), previewPaletteSampleDimensions(32, 32))
+        assertEquals(IntSize(1, 96), previewPaletteSampleDimensions(1, 173))
     }
 }

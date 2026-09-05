@@ -1689,9 +1689,11 @@ private fun StoryPreviewImage(
 ) {
     if (model.previewImageUrl != null) {
         var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
+        var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
         var loadedPainter by remember(model.previewImageUrl) { mutableStateOf<Painter?>(null) }
-        val extractedTint = rememberPainterPaletteTint(
-            painter = loadedPainter,
+        val extractedTint = rememberPreviewImagePaletteTint(
+            image = loadedImage,
+            fallbackPainter = loadedPainter,
             baseColorArgb = tintBaseColorArgb,
             paletteTintConfigKey = paletteTintConfigKey,
             enabled = extractTint,
@@ -1716,6 +1718,7 @@ private fun StoryPreviewImage(
             contentScale = ContentScale.Crop,
             onSuccess = { success ->
                 loaded = true
+                loadedImage = success.result.image
                 loadedPainter = success.painter
                 onLoadSuccess()
             },
