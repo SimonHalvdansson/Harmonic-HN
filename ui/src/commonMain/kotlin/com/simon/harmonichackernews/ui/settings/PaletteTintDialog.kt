@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,13 +39,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kmpalette.extensions.resource.rememberResourcePaletteState
-import com.kmpalette.palette.graphics.Palette
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.PreviewTintPalette
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
-import com.simon.harmonichackernews.settings.PreviewTintSwatch
+import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.Job
@@ -324,14 +320,12 @@ private fun PalettePreviewCard(
     modifier: Modifier = Modifier,
 ) {
     val baseColor = HarmonicTheme.colors.storyCardBackground
-    val paletteState = rememberResourcePaletteState { maximumColorCount(16) }
-    LaunchedEffect(sample.title) { paletteState.generate(sample.drawable) }
-    val palette = paletteState.palette
+    val palette = rememberResourceTintPalette(sample.drawable)
     val targetColor = remember(palette, configKey, baseColor) {
         Color(
             PreviewTintPolicy.calculateCardTint(
                 baseColor.toArgb(),
-                palette?.toPreviewTintPalette(),
+                palette,
                 configKey,
             ),
         )
@@ -374,16 +368,3 @@ private fun PalettePreviewCard(
         }
     }
 }
-
-internal fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
-    vibrant = vibrantSwatch?.toPreviewTintSwatch(),
-    lightVibrant = lightVibrantSwatch?.toPreviewTintSwatch(),
-    darkVibrant = darkVibrantSwatch?.toPreviewTintSwatch(),
-    dominant = dominantSwatch?.toPreviewTintSwatch(),
-    muted = mutedSwatch?.toPreviewTintSwatch(),
-    lightMuted = lightMutedSwatch?.toPreviewTintSwatch(),
-    darkMuted = darkMutedSwatch?.toPreviewTintSwatch(),
-)
-
-private fun Palette.Swatch.toPreviewTintSwatch(): PreviewTintSwatch =
-    PreviewTintSwatch(hue = hsl[0], saturation = hsl[1])

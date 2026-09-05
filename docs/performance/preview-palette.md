@@ -1,5 +1,9 @@
 # Preview palette extraction
 
+Historical sampling-only investigation. The subsequent
+[Harmonic extractor investigation](harmonic-palette.md) replaces the quantizer;
+current production-path benchmarks include that newer change.
+
 Measured on 2026-09-05 on `emulator-5554`, an Android API 37 x86_64 emulator
 (`sdk_gphone16k_x86_64`, 1080 × 2424, 420 dpi). These are emulator microbenchmarks,
 not physical-device or scrolling frame-rate measurements.

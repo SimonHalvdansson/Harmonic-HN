@@ -10,7 +10,6 @@ navigation3 = "1.2.0-alpha02"
 coil = "3.6.0"
 ksoup = "0.2.6"
 ktor = "3.5.2"
-kmpalette = "4.0.0"
 haze = "2.0.0-beta02"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
@@ -62,7 +61,6 @@ androidx-preference = "androidx.preference:preference:1.2.1"
 androidx-security = "androidx.security:security-crypto:1.1.0"
 androidx-webkit = "androidx.webkit:webkit:1.17.0"
 androidx-activity = "androidx.activity:activity:1.13.0"
-kmpalette-core = { module = "com.materialkolor.palette:core", version.ref = "kmpalette" }
 
 materialui = "com.google.android.material:material:1.14.0"
 

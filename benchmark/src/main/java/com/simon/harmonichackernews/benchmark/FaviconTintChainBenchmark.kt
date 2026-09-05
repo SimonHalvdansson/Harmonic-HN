@@ -8,12 +8,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.benchmark.junit4.BenchmarkRule
 import androidx.benchmark.junit4.measureRepeated
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Density
@@ -24,8 +20,6 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.asImage
 import coil3.memory.MemoryCache
-import com.kmpalette.from
-import com.kmpalette.palette.graphics.Palette
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
@@ -37,19 +31,16 @@ import com.simon.harmonichackernews.network.PreviewContent
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.network.StoryResourceTintState
 import com.simon.harmonichackernews.settings.KeyValueStore
-import com.simon.harmonichackernews.settings.PreviewTintPalette
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
-import com.simon.harmonichackernews.settings.PreviewTintSwatch
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.ui.content.PaletteTintCache
+import com.simon.harmonichackernews.ui.content.BitmapPaletteExtractor
+import com.simon.harmonichackernews.ui.content.toPainterPaletteSample
 import com.simon.harmonichackernews.ui.content.PaletteTintCacheKey
 import com.simon.harmonichackernews.ui.content.storyItemUiModel
 import java.io.ByteArrayOutputStream
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -74,12 +65,11 @@ class FaviconTintChainBenchmark {
         sourceBitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
         output.toByteArray()
     }
-    private val samplePainter = PaletteSamplePainter(BitmapPainter(sourceBitmap.asImageBitmap()))
+    private val samplePainter = BitmapPainter(sourceBitmap.asImageBitmap())
     private val density = Density(1f)
     private val sampledBitmap = rasterize(samplePainter, density)
-    private val palette = Palette.from(sampledBitmap)
-        .maximumColorCount(16)
-        .generate()
+    private val extractor = BitmapPaletteExtractor(1)
+    private val palette = runBlocking { extractor.extract(sampledBitmap) }
     private val previewPalette = palette.toPreviewTintPalette()
     private val tint = PreviewTintPolicy.calculateCardTint(baseColor, previewPalette, configKey)
 
@@ -124,10 +114,7 @@ class FaviconTintChainBenchmark {
     @Test
     fun palettePixelExtractionAndQuantization96() = benchmarkRule.measureRepeated {
         check(
-            Palette.from(sampledBitmap)
-                .maximumColorCount(16)
-                .generate()
-                .swatches.isNotEmpty(),
+            runBlocking { extractor.extract(sampledBitmap) }.swatches.isNotEmpty(),
         )
     }
 
@@ -296,46 +283,8 @@ class FaviconTintChainBenchmark {
         }
 }
 
-/** Mirrors the production 96 px wrapper in SharedImagePalette.kt. */
-private class PaletteSamplePainter(private val source: Painter) : Painter() {
-    override val intrinsicSize: Size = source.intrinsicSize.paletteSampleSize()
-
-    override fun DrawScope.onDraw() {
-        with(source) { draw(size) }
-    }
-}
-
-private fun Size.paletteSampleSize(): Size {
-    val width = width.takeIf { it.isFinite() && it > 0f } ?: 1f
-    val height = height.takeIf { it.isFinite() && it > 0f } ?: 1f
-    val scale = min(96f / width, 96f / height)
-    return Size(max(1f, width * scale), max(1f, height * scale))
-}
-
-/** Mirrors KMPalette's PainterImage.asBitmap, which production calls before Dispatchers.Default. */
-private fun rasterize(painter: Painter, density: Density): ImageBitmap {
-    val width = painter.intrinsicSize.width.roundToInt()
-    val height = painter.intrinsicSize.height.roundToInt()
-    val bitmap = ImageBitmap(width, height)
-    val size = Size(width.toFloat(), height.toFloat())
-    bitmap.prepareToDraw()
-    CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(bitmap), size) {
-        with(painter) { draw(size) }
-    }
-    return bitmap
-}
-
-private fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
-    vibrant = vibrantSwatch?.toPreviewTintSwatch(),
-    lightVibrant = lightVibrantSwatch?.toPreviewTintSwatch(),
-    darkVibrant = darkVibrantSwatch?.toPreviewTintSwatch(),
-    dominant = dominantSwatch?.toPreviewTintSwatch(),
-    muted = mutedSwatch?.toPreviewTintSwatch(),
-    lightMuted = lightMutedSwatch?.toPreviewTintSwatch(),
-    darkMuted = darkMutedSwatch?.toPreviewTintSwatch(),
-)
-
-private fun Palette.Swatch.toPreviewTintSwatch() = PreviewTintSwatch(hsl[0], hsl[1])
+private fun rasterize(painter: Painter, density: Density): ImageBitmap =
+    runBlocking { painter.toPainterPaletteSample(density, LayoutDirection.Ltr) }
 
 private class MemoryKeyValueStore : KeyValueStore {
     private val values = mutableMapOf<String, Any?>()

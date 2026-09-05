@@ -6,18 +6,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import coil3.Image
-import com.kmpalette.generatePalette
-import com.kmpalette.extensions.painter.rememberPainterPaletteState
-import com.kmpalette.palette.graphics.Palette
-import com.simon.harmonichackernews.settings.PreviewTintPalette
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
-import com.simon.harmonichackernews.settings.PreviewTintSwatch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -35,9 +30,10 @@ private const val PaletteSampleSize = 96
 private const val MaxPaletteTintEntries = 256
 private const val MaxConcurrentPaletteExtractions = 4
 private val paletteTintCache = PaletteTintCache(MaxPaletteTintEntries)
-private val paletteExtractionRunner = PaletteExtractionRunner(
+internal val paletteExtractionRunner = PaletteExtractionRunner(
     maxConcurrentExtractions = MaxConcurrentPaletteExtractions,
 )
+private val bitmapPaletteExtractor = BitmapPaletteExtractor(MaxConcurrentPaletteExtractions)
 
 /**
  * Extracts a tint directly from a shareable Coil bitmap. Rasterization, palette generation, and
@@ -147,7 +143,7 @@ internal suspend fun Image.extractPreviewPaletteTint(
 } catch (error: CancellationException) {
     throw error
 } catch (_: Exception) {
-    // Match PaletteState's error behavior: leave the existing card color in place.
+    // Leave the existing card color in place when extraction fails.
     null
 }
 
@@ -160,36 +156,35 @@ fun rememberPainterPaletteTint(
     enabled: Boolean = true,
     sharedCacheKey: String? = null,
 ): Int? {
-    val sampledPainter = remember(painter) { painter?.let(::PaletteSamplePainter) }
-    val paletteState = rememberPainterPaletteState(
-        cacheSize = 0,
-    ) {
-        maximumColorCount(16)
-    }
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     var tint by remember(painter, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
         mutableStateOf<Int?>(null)
     }
 
     LaunchedEffect(
-        sampledPainter,
+        painter,
+        density,
+        layoutDirection,
         baseColorArgb,
         paletteTintConfigKey,
         enabled,
         sharedCacheKey,
     ) {
-        if (!enabled || sampledPainter == null) {
+        if (!enabled || painter == null) {
             tint = null
             return@LaunchedEffect
         }
-        val painterToSample = sampledPainter
         val extract: suspend () -> Int? = {
-            paletteState.generate(painterToSample)
-            paletteState.palette?.let { palette ->
-                PreviewTintPolicy.calculateCardTint(
-                    baseColorArgb,
-                    palette.toPreviewTintPalette(),
-                    paletteTintConfigKey,
-                )
+            try {
+                val sample = painter.toPainterPaletteSample(density, layoutDirection)
+                paletteExtractionRunner.run {
+                    sample.calculateTint(baseColorArgb, paletteTintConfigKey)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                null
             }
         }
         tint = if (sharedCacheKey != null) {
@@ -321,30 +316,6 @@ internal class PaletteExtractionRunner(
     }
 }
 
-/**
- * Gives KMPalette a bounded-size [Painter] so its built-in loader does not first rasterize a large
- * preview at its full intrinsic dimensions. The source painter remains the one returned by Coil.
- */
-private class PaletteSamplePainter(
-    private val source: Painter,
-) : Painter() {
-    override val intrinsicSize: Size = source.intrinsicSize.paletteSampleSize()
-
-    override fun DrawScope.onDraw() {
-        with(source) { draw(size) }
-    }
-}
-
-private fun Size.paletteSampleSize(): Size {
-    val width = width.takeIf { it.isFinite() && it > 0f } ?: 1f
-    val height = height.takeIf { it.isFinite() && it > 0f } ?: 1f
-    val scale = min(PaletteSampleSize / width, PaletteSampleSize / height)
-    return Size(
-        width = max(1f, width * scale),
-        height = max(1f, height * scale),
-    )
-}
-
 private fun Image.toPaletteSampleBitmap(): ImageBitmap? {
     val dimensions = paletteSampleDimensions(width, height)
     return toPaletteImageBitmap(dimensions.first, dimensions.second)
@@ -357,29 +328,14 @@ internal fun paletteSampleDimensions(width: Int, height: Int): Pair<Int, Int> {
     return max(1, (safeWidth * scale).toInt()) to max(1, (safeHeight * scale).toInt())
 }
 
-private suspend fun ImageBitmap.calculateTint(
+internal suspend fun ImageBitmap.calculateTint(
     baseColorArgb: Int,
     paletteTintConfigKey: String,
 ): Int {
-    val palette = generatePalette {
-        maximumColorCount(16)
-    }
+    val palette = bitmapPaletteExtractor.extract(this)
     return PreviewTintPolicy.calculateCardTint(
         baseColorArgb,
         palette.toPreviewTintPalette(),
         paletteTintConfigKey,
     )
 }
-
-private fun Palette.toPreviewTintPalette(): PreviewTintPalette = PreviewTintPalette(
-    vibrant = vibrantSwatch?.toPreviewTintSwatch(),
-    lightVibrant = lightVibrantSwatch?.toPreviewTintSwatch(),
-    darkVibrant = darkVibrantSwatch?.toPreviewTintSwatch(),
-    dominant = dominantSwatch?.toPreviewTintSwatch(),
-    muted = mutedSwatch?.toPreviewTintSwatch(),
-    lightMuted = lightMutedSwatch?.toPreviewTintSwatch(),
-    darkMuted = darkMutedSwatch?.toPreviewTintSwatch(),
-)
-
-private fun Palette.Swatch.toPreviewTintSwatch(): PreviewTintSwatch =
-    PreviewTintSwatch(hue = hsl[0], saturation = hsl[1])

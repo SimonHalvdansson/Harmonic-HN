@@ -6600,7 +6600,6 @@ SPLcom/simon/harmonichackernews/ui/content/FontMetrics$Companion;->forFont(Ljava
 Lcom/simon/harmonichackernews/ui/content/HarmonicDropdownMenuKt;
 SPLcom/simon/harmonichackernews/ui/content/HarmonicDropdownMenuKt;->HarmonicDropdownMenu(ZLkotlin/jvm/functions/Function0;Landroidx/compose/ui/Modifier;Lkotlin/jvm/functions/Function3;Landroidx/compose/runtime/Composer;II)V
 Lcom/simon/harmonichackernews/ui/content/ImagePaletteKt;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->$r8$lambda$8EFsQqbESoUgTPGt0g-my-I77HA(Lcom/kmpalette/palette/graphics/Palette$Builder;)Lkotlin/Unit;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;-><clinit>()V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$calculateTint(Landroidx/compose/ui/graphics/ImageBitmap;ILjava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$getPaletteExtractionRunner$p()Lcom/simon/harmonichackernews/ui/content/PaletteExtractionRunner;
@@ -6609,8 +6608,6 @@ SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$paletteSample
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$rememberImagePaletteTint$lambda$2(Landroidx/compose/runtime/MutableState;Ljava/lang/Integer;)V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$rememberPainterPaletteTint$lambda$4(Landroidx/compose/runtime/MutableState;Ljava/lang/Integer;)V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$toPaletteSampleBitmap(Lcoil3/Image;)Landroidx/compose/ui/graphics/ImageBitmap;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->access$toPreviewTintPalette(Lcom/kmpalette/palette/graphics/Palette;)Lcom/simon/harmonichackernews/settings/PreviewTintPalette;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->calculateTint$lambda$0(Lcom/kmpalette/palette/graphics/Palette$Builder;)Lkotlin/Unit;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->calculateTint(Landroidx/compose/ui/graphics/ImageBitmap;ILjava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->paletteSampleDimensions(II)Lkotlin/Pair;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->paletteSampleSize-uvyYCjk(J)J
@@ -6618,13 +6615,10 @@ HSPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberCoilImagePa
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberImagePaletteTint$lambda$1(Landroidx/compose/runtime/MutableState;)Ljava/lang/Integer;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberImagePaletteTint$lambda$2(Landroidx/compose/runtime/MutableState;Ljava/lang/Integer;)V
 HSPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberImagePaletteTint(Lcoil3/Image;ILjava/lang/String;ZLjava/lang/String;Landroidx/compose/runtime/Composer;I)Ljava/lang/Integer;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberPainterPaletteTint$lambda$1$0(Lcom/kmpalette/palette/graphics/Palette$Builder;)Lkotlin/Unit;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberPainterPaletteTint$lambda$3(Landroidx/compose/runtime/MutableState;)Ljava/lang/Integer;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberPainterPaletteTint$lambda$4(Landroidx/compose/runtime/MutableState;Ljava/lang/Integer;)V
 HSPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->rememberPainterPaletteTint(Landroidx/compose/ui/graphics/painter/Painter;ILjava/lang/String;ZLjava/lang/String;Landroidx/compose/runtime/Composer;II)Ljava/lang/Integer;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->toPaletteSampleBitmap(Lcoil3/Image;)Landroidx/compose/ui/graphics/ImageBitmap;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->toPreviewTintPalette(Lcom/kmpalette/palette/graphics/Palette;)Lcom/simon/harmonichackernews/settings/PreviewTintPalette;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt;->toPreviewTintSwatch(Lcom/kmpalette/palette/graphics/Palette$Swatch;)Lcom/simon/harmonichackernews/settings/PreviewTintSwatch;
 Lcom/simon/harmonichackernews/ui/content/ImagePaletteKt$$ExternalSyntheticLambda0;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$$ExternalSyntheticLambda0;-><init>()V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$$ExternalSyntheticLambda0;->invoke(Ljava/lang/Object;)Ljava/lang/Object;
@@ -6650,11 +6644,9 @@ SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberImagePaletteTi
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberImagePaletteTint$1$1$extract$1$1;->invoke(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberImagePaletteTint$1$1$extract$1$1;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
 Lcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1;-><init>(ZLcom/simon/harmonichackernews/ui/content/PaletteSamplePainter;Ljava/lang/String;ILjava/lang/String;Landroidx/compose/runtime/MutableState;Lcom/kmpalette/PaletteState;Lkotlin/coroutines/Continuation;)V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1;->create(Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
 Lcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1$extract$1;
-SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1$extract$1;-><init>(Lcom/kmpalette/PaletteState;Lcom/simon/harmonichackernews/ui/content/PaletteSamplePainter;ILjava/lang/String;Lkotlin/coroutines/Continuation;)V
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1$extract$1;->create(Lkotlin/coroutines/Continuation;)Lkotlin/coroutines/Continuation;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1$extract$1;->invoke(Ljava/lang/Object;)Ljava/lang/Object;
 SPLcom/simon/harmonichackernews/ui/content/ImagePaletteKt$rememberPainterPaletteTint$1$1$extract$1;->invoke(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

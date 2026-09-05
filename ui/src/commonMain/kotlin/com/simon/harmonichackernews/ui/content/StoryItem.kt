@@ -331,8 +331,8 @@ val SettingsStoryPreviewModel = StoryItemUiModel(
 )
 
 /**
- * Complete platform-neutral story row. Image fetching and palette extraction use Coil's and
- * KMPalette's multiplatform Compose integrations; platforms only persist resolved tint state.
+ * Complete platform-neutral story row. Image fetching uses Coil and palette extraction uses
+ * the shared Harmonic extractor; platforms only persist resolved tint state.
  */
 @Composable
 fun StoryItem(

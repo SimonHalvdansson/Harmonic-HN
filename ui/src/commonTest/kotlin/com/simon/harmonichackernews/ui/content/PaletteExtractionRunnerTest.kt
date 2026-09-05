@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.geometry.Size
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -10,6 +11,23 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PaletteExtractionRunnerTest {
+    @Test
+    fun painterSamplingHandlesUnspecifiedAndFractionalIntrinsicSizes() {
+        assertEquals(IntSize(96, 96), painterPaletteSampleDimensions(Size.Unspecified))
+        assertEquals(IntSize(96, 96), painterPaletteSampleDimensions(Size.Zero))
+        assertEquals(IntSize(96, 64), painterPaletteSampleDimensions(Size(101f, 67f)))
+        assertEquals(IntSize(96, 48), painterPaletteSampleDimensions(Size(100.5f, 50.25f)))
+        assertEquals(IntSize(1, 96), painterPaletteSampleDimensions(Size(1f, 173f)))
+    }
+
+    @Test
+    fun resourceSamplingRetainsItsDistinctAreaLimitAndDoesNotUpscale() {
+        assertEquals(IntSize(1, 1), resourcePaletteSampleDimensions(1, 1))
+        assertEquals(IntSize(112, 112), resourcePaletteSampleDimensions(112, 112))
+        assertEquals(IntSize(112, 112), resourcePaletteSampleDimensions(224, 224))
+        assertEquals(IntSize(150, 84), resourcePaletteSampleDimensions(1600, 900))
+    }
+
     @Test
     fun limitsSimultaneousExtractions() = runTest {
         val runner = PaletteExtractionRunner(

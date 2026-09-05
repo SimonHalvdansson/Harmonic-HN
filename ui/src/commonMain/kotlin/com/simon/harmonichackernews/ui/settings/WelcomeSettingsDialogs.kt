@@ -30,7 +30,6 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
-import com.kmpalette.extensions.resource.rememberResourcePaletteState
+import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -304,17 +303,16 @@ private fun WelcomeStoryPreview(
     modifier: Modifier = Modifier,
 ) {
     val baseColor = HarmonicTheme.colors.storyCardBackground
-    val paletteState = rememberResourcePaletteState { maximumColorCount(16) }
-    LaunchedEffect(Unit) { paletteState.generate(Res.drawable.palette1) }
+    val palette = rememberResourceTintPalette(Res.drawable.palette1)
     val targetExpressiveColor = remember(
-        paletteState.palette,
+        palette,
         paletteTintConfigKey,
         baseColor,
     ) {
         Color(
             PreviewTintPolicy.calculateCardTint(
                 baseColor = baseColor.toArgb(),
-                palette = paletteState.palette?.toPreviewTintPalette(),
+                palette = palette,
                 modeOrConfigKey = paletteTintConfigKey,
             ),
         )
@@ -322,7 +320,7 @@ private fun WelcomeStoryPreview(
     val expressiveColor by animateColorAsState(
         targetValue = targetExpressiveColor,
         animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-        label = "welcome KMPalette tint",
+        label = "welcome palette tint",
     )
     AnimatedContent(
         targetState = expressive,

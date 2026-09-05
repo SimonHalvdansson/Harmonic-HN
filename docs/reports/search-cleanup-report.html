@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Harmonic — Search cleanup report</title>
+  <style>
+    :root{--ink:#202c39;--muted:#596675;--paper:#fff;--bg:#f5f4ef;--line:#dedfd8;--accent:#b64b16;--soft:#fff0e5;--green:#23624a;--green-bg:#eaf3ed;--code:#172431}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Segoe UI",Arial,sans-serif}a{color:var(--accent);text-underline-offset:3px}a:hover{text-decoration-thickness:2px}button{font:inherit;cursor:pointer}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:5px}::selection{background:#ffd9bc}
+    .shell{max-width:1400px;margin:auto;padding:0 48px}.masthead{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;border-bottom:1px solid var(--line)}.brand{display:flex;gap:12px;align-items:center;font-weight:700;letter-spacing:.03em}.mark{display:grid;place-items:center;background:var(--accent);color:white;border-radius:8px;width:34px;height:34px}.edition{color:var(--muted);font-size:13px}.layout{display:grid;grid-template-columns:205px minmax(0,1fr);gap:58px;align-items:start}.sidebar{position:sticky;top:28px;padding-top:46px}.eyebrow{color:var(--accent);font-size:12px;font-weight:750;letter-spacing:.13em;text-transform:uppercase}.sidebar nav{display:grid;gap:5px;margin:20px 0 28px}.sidebar nav a{text-decoration:none;color:var(--muted);font-size:14px;padding:7px 0}.sidebar nav a:hover{color:var(--accent)}.sidebar nav a span{display:inline-block;width:28px;color:var(--accent);font-size:12px}.side-note{font-size:12px;line-height:1.65;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}.button{display:inline-block;padding:9px 15px;border:1px solid #b8c0c6;border-radius:6px;background:white;color:var(--ink);font-size:13px;font-weight:600}.button:hover{background:var(--soft)}main{min-width:0;padding:50px 0 70px}.hero{padding-bottom:35px}h1{font-family:Georgia,serif;font-size:clamp(38px,4.3vw,62px);line-height:1.08;letter-spacing:-.045em;font-weight:500;max-width:750px;margin:17px 0 24px}h1 em{color:var(--accent);font-style:normal}.lead{font-size:19px;line-height:1.65;color:var(--muted);max-width:760px}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:25px}.pill{font-size:12px;font-weight:600;padding:4px 10px;border:1px solid var(--line);border-radius:30px;background:white}.metrics{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 0 42px}.metric{padding:21px 0}.metric+.metric{border-left:1px solid var(--line);padding-left:24px}.metric strong{font-size:32px;font-weight:650;display:block;line-height:1.2}.metric span{color:var(--muted);font-size:13px}.section{border-top:1px solid var(--line);padding-top:36px;margin-top:38px}.section:first-of-type{border-top:0;margin-top:0;padding-top:0}h2{font-size:28px;font-weight:650;letter-spacing:-.025em;line-height:1.3;margin:9px 0 20px}h3{font-size:18px;margin:27px 0 9px;line-height:1.45}p{margin:0 0 16px}ul,ol{padding-left:24px}li{padding-left:3px;margin:8px 0}.muted,.caption{color:var(--muted)}.caption{font-size:13px;line-height:1.6;margin-top:11px}.callout{border-left:3px solid var(--accent);background:var(--soft);padding:20px 24px;margin:23px 0}.callout p:last-child{margin-bottom:0}.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:22px 0}.card{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:22px;min-width:0}.card h3{margin-top:0}.card p:last-child{margin-bottom:0}.tag{display:inline-block;font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px;color:var(--muted)}.tag.after{color:var(--green)}.card.after{border-top:3px solid var(--green)}.card.before{border-top:3px solid #b99d83}.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:23px 0}.step{padding:15px;background:white;border:1px solid var(--line);border-radius:7px;font-size:13px;line-height:1.5}.step b{display:block;color:var(--accent);font-size:11px;text-transform:uppercase;margin-bottom:7px}.step strong{display:block;font-size:14px;margin-bottom:5px}code{font-family:Consolas,"Cascadia Code",monospace;font-size:.88em;background:#e9eae5;border-radius:3px;padding:2px 5px;overflow-wrap:anywhere}pre{background:var(--code);color:#e1eaf1;border-radius:7px;padding:20px;margin:12px 0 0;font-size:13px;line-height:1.7;overflow:auto;tab-size:4}pre code{background:none;color:inherit;padding:0;font-size:inherit;overflow-wrap:normal}details{border:1px solid var(--line);border-radius:8px;background:#fff;margin:21px 0;padding:0 20px 16px}details:not([open]){padding-bottom:0}summary{font-size:14px;font-weight:600;cursor:pointer;padding:16px 0}details p{font-size:14px}.code-label{font-size:12px;color:var(--muted);margin:12px 0 0}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:20px 0;background:#fff}table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}th{background:#eeefe9;font-size:12px;letter-spacing:.025em;font-weight:700}th,td{padding:14px 17px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}td:first-child{font-weight:600}table code{font-size:12px}.pass{white-space:nowrap;color:var(--green);font-weight:700}.timeline{list-style:none;padding:0;margin:0}.timeline li{margin:0;padding:12px 0 12px 27px;border-left:1px solid var(--line);position:relative;font-size:14px}.timeline li:before{content:"";width:9px;height:9px;background:var(--accent);border-radius:50%;position:absolute;left:-5px;top:21px}.outcome{margin-top:15px;padding:12px 14px;border-radius:5px;font-size:14px;background:var(--soft)}.after .outcome{background:var(--green-bg);color:var(--green)}.queue{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0}.queue span{display:grid;place-items:center;width:29px;height:29px;border-radius:4px;border:1px solid #9ea7ae;color:#536170;background:#f4f5f2;font-size:11px}.queue .active{color:#fff;background:var(--green);border-color:var(--green)}.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend i{display:inline-block;width:9px;height:9px;margin-right:6px;background:var(--green)}.legend i.wait{background:#d9dedb}.source-list{display:grid;gap:14px}.source{padding:18px 20px;background:white;border:1px solid var(--line);border-radius:7px}.source p{font-size:14px;margin:8px 0 0}.source code{font-size:12px}.footer{border-top:1px solid var(--line);padding:24px 0 35px;font-size:12px;color:var(--muted)}.footline{display:flex;justify-content:space-between;gap:20px}.test-name{display:block;color:var(--muted);font:11px/1.5 Consolas,monospace;overflow-wrap:anywhere;margin-top:5px}.small{font-size:14px}.no-break{break-inside:avoid}
+    @media(max-width:1080px){.shell{padding:0 28px}.layout{grid-template-columns:165px minmax(0,1fr);gap:30px}.two{grid-template-columns:1fr}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:740px){.shell{padding:0 20px}.masthead{padding:18px 0}.edition{font-size:11px}.layout{display:block}.sidebar{position:static;padding-top:22px}.sidebar nav{display:flex;flex-wrap:wrap;gap:3px 17px;margin:10px 0 15px}.sidebar nav a{font-size:12px}.sidebar nav a span{width:21px}.sidebar .side-note{display:none}.sidebar .button{font-size:12px}.sidebar>.eyebrow{display:none}main{padding-top:30px}.lead{font-size:17px}.metric strong{font-size:27px}.metric+.metric{padding-left:12px}.metric span{font-size:11px}h2{font-size:24px}.card{padding:18px}th,td{padding:12px}.table-wrap table{min-width:520px}.footline{display:block}pre{font-size:12px;padding:15px}.flow{gap:8px}.callout{padding:17px}.metrics{margin-bottom:30px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{body{background:#fff;font-size:10pt;line-height:1.55}.shell{max-width:none;padding:0}.sidebar,.print-controls{display:none!important}.layout{display:block}main{padding:25px 0}.masthead{padding:10px 0}.hero{padding-bottom:20px}h1{font-size:34pt}h2{font-size:20pt}.lead{font-size:12pt}.section{margin-top:24px;padding-top:22px}.two{grid-template-columns:1fr 1fr}.flow{grid-template-columns:repeat(4,1fr)}.card,.callout,.flow,details,.source{break-inside:avoid}.table-wrap{overflow:visible}table{font-size:9pt}.table-wrap table{min-width:0}tr{break-inside:avoid}pre{white-space:pre-wrap;font-size:8pt;background:#edf0f2;color:#172431;border:1px solid #ccd1d5}.metrics{margin-bottom:25px}.metric strong{font-size:24pt}a{color:inherit}summary{font-size:10pt}.footer{padding-bottom:0}.section{scroll-margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:16mm}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="masthead"><div class="brand"><span class="mark" aria-hidden="true">H</span> HARMONIC <span class="edition">Engineering notes</span></div><div class="edition">05 September 2026</div></header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Report navigation">
+      <div class="eyebrow">Inside this report</div>
+      <nav aria-label="Contents">
+        <a href="#overview"><span>01</span> The scope</a><a href="#state"><span>02</span> Simpler state &amp; loading</a><a href="#stale"><span>03</span> Stale response protection</a><a href="#history"><span>04</span> Bounded history requests</a><a href="#sorting"><span>05</span> Sorting that reads clearly</a><a href="#pagination"><span>06</span> Pagination boundaries</a><a href="#verification"><span>07</span> Verification</a><a href="#files"><span>08</span> Files &amp; references</a>
+      </nav>
+      <button class="button" id="print-report" type="button">Print / save PDF</button>
+      <p class="side-note">A self-contained explanation of the search cleanup. All styling and examples are included in this file. No internet connection is required.</p>
+    </aside>
+    <main id="main">
+      <div class="hero">
+        <div class="eyebrow">Code review → focused improvements</div>
+        <h1>Less repetition.<br><em>More reliable search.</em></h1>
+        <p class="lead">A detailed account of the changes to Harmonic’s search and history loading: the code that was simplified, the bugs uncovered in the process, and the evidence behind the fixes.</p>
+        <div class="meta"><span class="pill">Shared Kotlin core</span><span class="pill">3 implementation files</span><span class="pill">1 new test file</span><span class="pill">Android build verified</span></div>
+      </div>
+      <div class="metrics" aria-label="Verification summary from the implementation pass">
+        <div class="metric"><strong>525</strong><span>core tests passed</span></div><div class="metric"><strong>8</strong><span>new regression tests</span></div><div class="metric"><strong>8</strong><span>maximum active history requests</span></div>
+      </div>
+
+      <section class="section" id="overview">
+        <div class="eyebrow">01 / The scope</div><h2>Cleanup with a concrete payoff</h2>
+        <p>Your request was to look for ways to simplify the app and improve its code. I inspected shared presentation logic, search, submissions, settings, data storage, and loading helpers. Search stood out because several small pieces of duplication also made request ownership harder to follow.</p>
+        <p>The changes are concentrated in <code>core/src/commonMain</code>, where Android, iOS, and desktop share their application logic. The resulting code has one place to start a search load, one place to finish it, and one cancellation helper used when replacing or restoring a search.</p>
+        <div class="two">
+          <div class="card"><span class="tag">Code cleanup</span><h3>Make the existing rules easier to maintain</h3><p>Use Kotlin’s data-class copying for state updates, reuse the existing error policy, consolidate loading paths, and express sorting with comparator builders.</p></div>
+          <div class="card"><span class="tag after">Behavior improvements</span><h3>Fix the boundaries between requests</h3><p>Reject obsolete results after restoration, honor the “Newest” option in history search, limit simultaneous history lookups, and refuse pagination after results are exhausted.</p></div>
+        </div>
+        <p class="small muted">Across the three production files, the patch adds 115 lines and removes 141: a net reduction of 26 lines. The new test file adds 243 lines. The meaningful improvement is fewer places that must agree on the same behavior.</p>
+      </section>
+
+      <section class="section" id="state">
+        <div class="eyebrow">02 / State &amp; loading</div><h2>One loading path, one completion path</h2>
+        <p>Previously, <code>loadMore()</code> updated the result limit and loading flags itself, then called <code>execute(loadMore = true, publishLoading = false)</code>. A normal search let <code>execute()</code> set those flags. That extra boolean meant a caller had to know whether the loading work had already been done.</p>
+        <p>Now <code>loadMore()</code> checks whether another load is allowed and delegates to <code>execute(loadMore = true)</code>. The executor calculates the request’s result limit and publishes the loading state in one place.</p>
+        <div class="flow" aria-label="The consolidated request lifecycle">
+          <div class="step"><b>Step 1</b><strong>Start</strong>Cancel the previous load and capture the new generation.</div>
+          <div class="step"><b>Step 2</b><strong>Prepare</strong>Choose the result limit and set the loading flags.</div>
+          <div class="step"><b>Step 3</b><strong>Resolve</strong>Produce a SearchResult from success or an ordinary failure.</div>
+          <div class="step"><b>Step 4</b><strong>Publish</strong>Reject an obsolete generation, then apply one completion update.</div>
+        </div>
+        <h3>Success and failure use the same finishing logic</h3>
+        <p>The old <code>try</code> and <code>catch</code> branches each checked the generation, cleared the job reference, and reset loading flags. Both now produce a <code>SearchResult</code>. A single block checks whether that result still belongs to the active request and publishes it.</p>
+        <p>On a “load more” failure, the result retains the currently displayed stories. Cancellation is still rethrown as <code>CancellationException</code>, so stopping a coroutine does not become a normal search error.</p>
+        <h3>State updates use the data class directly</h3>
+        <p>The previous <code>publish()</code> helper repeated ten state fields as parameters with defaults, then copied those fields into a new <code>StorySearchUiState</code>. Adding a new field meant maintaining another parallel list. The new helper accepts an update such as <code>copy(options = currentOptions())</code>, using the copy function Kotlin generates for the data class.</p>
+        <p>The helper still makes a list copy and increments the revision counter. These preserve the existing list-container ownership and change-notification behavior; this is not a deep copy of every <code>Story</code>.</p>
+        <details><summary>See the new state-update helper</summary>
+          <pre><code>private inline fun publish(update: StorySearchUiState.() -&gt; StorySearchUiState) {
+    val current = state.value
+    val next = current.update()
+    mutableState.value = next.copy(
+        stories = next.stories.toList(),
+        revision = current.revision + 1,
+    )
+}
+
+// Example call site:
+publish { copy(options = currentOptions()) }</code></pre>
+        </details>
+        <h3>Error classification has one source</h3>
+        <p>The private <code>Throwable.toStoryLoadFailure()</code> in the search store duplicated <code>StoryFeedRefreshPolicy.failureFor()</code>. I removed the duplicate and reused the policy: HTTP 404 maps to “not found,” HTTP 429 to “rate limited,” and other errors to “general.” The classification stays the same, while future changes only need to be made once.</p>
+      </section>
+
+      <section class="section" id="stale">
+        <div class="eyebrow">03 / Correctness</div><h2>Restored results stay restored</h2>
+        <p>A request receives a generation number when it starts. Before publishing, it checks that its generation still matches the store’s current number. The old code already used this protection when starting a new search, but <code>restore()</code> did not invalidate the previous request.</p>
+        <p>That left a specific race: restore a saved search while an older request is pending, then let that older request finish. Its generation still looked current, so it could replace the restored content.</p>
+        <div class="two">
+          <div class="card before"><span class="tag">Before</span><ol class="timeline"><li>Search A begins with generation 7.</li><li>Saved search B is restored. Generation stays 7.</li><li>A finishes and passes the generation check.</li></ol><div class="outcome">A can overwrite B’s restored results.</div></div>
+          <div class="card after"><span class="tag after">After</span><ol class="timeline"><li>Search A begins with generation 7.</li><li>Restoring B cancels A and advances the generation to 8.</li><li>A’s late result carries generation 7 and is rejected.</li></ol><div class="outcome">B’s restored state remains intact.</div></div>
+        </div>
+        <p>A shared <code>cancelLoad()</code> now increments the generation, cancels the previous job, and clears its reference. It is used by <code>cancel()</code>, <code>restore()</code>, and <code>execute()</code>.</p>
+        <details><summary>See the cancellation helper and the stale-result guard</summary><pre><code>private fun cancelLoad() {
+    generation++
+    loadJob?.cancel()
+    loadJob = null
+}
+
+// restore() calls cancelLoad() before restoring options and results.
+// After a request resolves, execute() checks:
+if (requestGeneration != generation) return@launch</code></pre></details>
+        <div class="callout"><p><strong>Why cancel and check a generation?</strong> Cancellation asks old work to stop. The generation check prevents a late result from being applied even if that work does not cooperate. The regression test deliberately uses a continuation that can finish after cancellation, then asserts that the entire restored state is unchanged.</p></div>
+      </section>
+
+      <section class="section" id="history">
+        <div class="eyebrow">04 / Resource usage</div><h2>History search has a concurrency limit</h2>
+        <p>“Only clicked” search loads stories from the saved history IDs. Previously, it started one <code>async</code> coroutine for each ID, with no limit around repository requests. A long history could therefore attempt many story lookups at once.</p>
+        <p>I added a store-owned <code>Semaphore(8)</code>. Each lookup must acquire a permit through <code>withPermit</code>, and releases it when the lookup completes, fails, or is cancelled. Work waiting for a permit can proceed when a slot becomes available.</p>
+        <div class="card no-break"><span class="tag after">Illustration / 24 pending lookups</span><div class="queue" aria-label="Eight active lookups and sixteen waiting lookups"><span class="active">1</span><span class="active">2</span><span class="active">3</span><span class="active">4</span><span class="active">5</span><span class="active">6</span><span class="active">7</span><span class="active">8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span></div><div class="legend"><span><i></i>Active lookup</span><span><i class="wait"></i>Waiting for a permit</span></div><p class="caption">Illustrative workload, not a benchmark. The limit applies to history lookups in one StorySearchStore.</p></div>
+        <h3>Result handling is easier to follow</h3>
+        <p><code>awaitAll()</code> replaces the manual list of deferred results followed by <code>map { it.await() }</code>. Results remain associated with the original ID order before sorting; completion order does not choose the displayed order.</p>
+        <p>The filter adapter is created once for the result list instead of once per story. The complete-failure rule is expressed directly with <code>outcomes.all(ClickedStoryLoad::failed)</code>. A story that cannot be found is still different from a thrown request failure, successful partial results are still kept, and an empty history returns an empty result without an error.</p>
+        <details><summary>See the bounded request structure</summary><p>This abbreviated example shows where the permit sits. The production block also records success and ordinary failures for each story.</p><pre><code>private val clickedStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
+
+val outcomes = ids.map { id -&gt;
+    async {
+        clickedStoryRequests.withPermit {
+            // Fetch the story and record its outcome here.
+            // CancellationException is rethrown.
+        }
+    }
+}.awaitAll()
+
+private companion object {
+    const val MAX_CONCURRENT_HISTORY_REQUESTS = 8
+}</code></pre></details>
+        <p class="small muted"><strong>Tradeoff:</strong> Eight is an explicit engineering limit, not a measured optimum. It reduces simultaneous lookups, but does not guarantee faster searches. The code still creates one coroutine per history ID and waits for all outcomes; this change does not introduce a history cache, incremental results, or a fixed-size worker pool.</p>
+      </section>
+
+      <section class="section" id="sorting">
+        <div class="eyebrow">05 / Readability &amp; behavior</div><h2>Sorting rules are explicit</h2>
+        <h3>“Newest” now means publication time</h3>
+        <p>The old <code>sortOnlyClickedResultsIfNeeded()</code> only sorted when the selection was “Relevance.” Selecting “Newest” left results in the incoming history order, which reflects visits rather than necessarily reflecting when stories were published.</p>
+        <p>I renamed the function to <code>sortOnlyClickedResults()</code> and added a descending sort on <code>Story.time</code> for the “Newest” branch. Relevance still uses the existing relevance scorer.</p>
+        <div class="table-wrap"><table><thead><tr><th>Example input order</th><th>Publication time</th><th>Position with “Newest”</th></tr></thead><tbody><tr><td>Story 1</td><td>100</td><td>3rd</td></tr><tr><td>Story 2</td><td>300</td><td>1st</td></tr><tr><td>Story 3</td><td>200</td><td>2nd</td></tr></tbody></table></div>
+        <p class="caption">These are the synthetic times from the regression test. Expected output: Story 2, Story 3, Story 1.</p>
+        <h3>The relevance comparator reads like its specification</h3>
+        <p>The previous comparator had a handwritten conditional branch for each tie-breaker. The replacement uses Kotlin comparator builders in the same order: relevance score, points, comment count, publication time, then original position. All are descending except original position, which preserves input order for exact ties.</p>
+        <details open><summary>Relevance comparator after cleanup</summary><pre><code>scoredStories.sortWith(
+    compareByDescending&lt;ScoredStory&gt; { it.relevanceScore }
+        .thenByDescending { it.story.score }
+        .thenByDescending { it.story.descendants }
+        .thenByDescending { it.story.time }
+        .thenBy { it.originalIndex },
+)</code></pre></details>
+        <p>The scoring formula itself is unchanged, and each story is still scored once before sorting. The existing relevance test verifies ranking and original-order preservation for ties. I also shortened the history title-match check to a single nullable expression that still rejects missing titles.</p>
+      </section>
+
+      <section class="section" id="pagination">
+        <div class="eyebrow">06 / Request boundaries</div><h2>Stop when there are no more results</h2>
+        <p>The old <code>loadMore()</code> guard rejected calls while loading or without a request, but did not inspect <code>canLoadMore</code>. Even after the repository returned fewer results than requested, another call could increase the limit and make another request.</p>
+        <div class="two"><div class="card before"><span class="tag">Before / actual guard</span><pre><code>if (state.value.loading || request == null) return</code></pre></div><div class="card after"><span class="tag after">After / actual guard</span><pre><code>if (state.value.loading ||
+    !state.value.canLoadMore ||
+    request == null) return</code></pre></div></div>
+        <p>The executor also captures <code>hitsPerPage</code> for the request and passes it to <code>loadAlgoliaStories()</code>. Both URL construction and the “can load more?” decision use that same value, rather than rereading mutable state after the network call.</p>
+        <h3>Pagination still follows the raw response count</h3>
+        <p>The search asks Algolia for an expanding result window: 200 results, then 400, and so on. It replaces the returned list rather than requesting a separate numbered page. The cleanup preserves that contract.</p>
+        <p>A response containing 200 stories may leave only one visible after user filters. The raw count still permits another request. The new test checks exactly that case, confirms existing rows stay visible during loading, then verifies that a short response stops further pagination. A separate test confirms that top-story searches keep their original time cutoff when the result limit grows.</p>
+      </section>
+
+      <section class="section" id="verification">
+        <div class="eyebrow">07 / Evidence</div><h2>What was tested</h2>
+        <p>Before implementing the fixes, I ran seven new search tests against the old code. Four failed: restoration, newest-history ordering, the request concurrency bound, and stopping pagination after exhaustion. After the changes, those passed. An eighth test was added for the top-stories time window.</p>
+        <div class="table-wrap"><table><thead><tr><th>New regression coverage</th><th>What it proves</th><th>Result</th></tr></thead><tbody>
+          <tr><td>Pagination and filtering<span class="test-name">paginationUsesUnfilteredCountAndKeepsResultsWhileLoadingMore</span></td><td>Uses raw result count, keeps rows during loading, rejects duplicate active loads, and stops after exhaustion.</td><td class="pass">Pass</td></tr>
+          <tr><td>Load-more failure<span class="test-name">loadMoreFailurePreservesResultsAndUsesSharedFailurePolicy</span></td><td>HTTP 429 produces RATE_LIMITED while retaining rows and clearing loading flags.</td><td class="pass">Pass</td></tr>
+          <tr><td>Restore race<span class="test-name">restoringStateRejectsAnOlderResponseEvenIfItDoesNotCooperateWithCancellation</span></td><td>A late old response cannot modify restored query, results, or revision.</td><td class="pass">Pass</td></tr>
+          <tr><td>Replacement query<span class="test-name">startingANewQueryRejectsAnOlderResponse</span></td><td>The existing stale-response protection also survives the refactor for normal search replacement.</td><td class="pass">Pass</td></tr>
+          <tr><td>Concurrency and cancellation<span class="test-name">historyRequestsAreBoundedAndCancellationReleasesTheSlots</span></td><td>At most eight lookups are active; cancellation releases slots and a later search completes.</td><td class="pass">Pass</td></tr>
+          <tr><td>Partial failures<span class="test-name">historySearchKeepsPartialResultsAndReportsOnlyCompleteFailure</span></td><td>Successful stories survive mixed outcomes; a wholly failed batch reports a general error.</td><td class="pass">Pass</td></tr>
+          <tr><td>Newest ordering<span class="test-name">newestHistoryResultsUsePublicationTimeInsteadOfVisitOrder</span></td><td>Publication time determines order when the history search selects “Newest.”</td><td class="pass">Pass</td></tr>
+          <tr><td>Top-stories pagination<span class="test-name">topStoriesKeepTheirTimeWindowWhenLoadingMore</span></td><td>The request limit increases from 200 to 400 while the original numeric time filter stays fixed.</td><td class="pass">Pass</td></tr>
+        </tbody></table></div>
+        <h3>Build and suite results from the implementation pass</h3>
+        <div class="table-wrap"><table><thead><tr><th>Check</th><th>Recorded outcome</th></tr></thead><tbody><tr><td><code>:core:compileCommonMainKotlinMetadata</code></td><td class="pass">Passed</td></tr><tr><td><code>:core:desktopTest</code></td><td>525 tests across 129 suites; zero failures, errors, or skips.</td></tr><tr><td><code>assembleDebug</code></td><td class="pass">Android debug build passed</td></tr><tr><td><code>git diff --check</code></td><td>No whitespace errors.</td></tr></tbody></table></div>
+        <p class="small muted">These are the results recorded when the code changes were completed, including the eight new tests. They are not a claim that a new full build was run while writing this report. Gradle used Android Studio’s bundled JBR runtime. No emulator verification, iOS build, or performance benchmark was performed for this cleanup.</p>
+      </section>
+
+      <section class="section" id="files">
+        <div class="eyebrow">08 / Reference</div><h2>Where the changes live</h2>
+        <p>All four files below are included in commit <code>6e653840b6153530620971f7a1029dfc9bd3b45c</code>. This report describes the search-related changes from that commit. Source links work when this report is kept in the repository’s <code>docs/reports</code> directory; the explanations and examples remain readable when the HTML file is shared on its own.</p>
+        <div class="source-list">
+          <div class="source"><a href="../../core/src/commonMain/kotlin/com/simon/harmonichackernews/presentation/StorySearchStore.kt"><strong>StorySearchStore.kt</strong></a><p>Request lifecycle, result state, cancellation, restoration, pagination, history concurrency, and error policy reuse.</p><p><code>core/src/commonMain/kotlin/com/simon/harmonichackernews/presentation/</code></p></div>
+          <div class="source"><a href="../../core/src/commonMain/kotlin/com/simon/harmonichackernews/StorySearchController.kt"><strong>StorySearchController.kt</strong></a><p>Newest-first history ordering, the renamed sorting helper, and a shorter title-match check.</p><p><code>core/src/commonMain/kotlin/com/simon/harmonichackernews/</code></p></div>
+          <div class="source"><a href="../../core/src/commonMain/kotlin/com/simon/harmonichackernews/utils/SearchRelevanceUtils.kt"><strong>SearchRelevanceUtils.kt</strong></a><p>The comparator builder chain, preserving relevance scoring and every tie-breaker.</p><p><code>core/src/commonMain/kotlin/com/simon/harmonichackernews/utils/</code></p></div>
+          <div class="source"><a href="../../core/src/commonTest/kotlin/com/simon/harmonichackernews/presentation/StorySearchStoreTest.kt"><strong>StorySearchStoreTest.kt</strong></a><p>Eight repeatable tests using fake repositories and controlled coroutine completion.</p><p><code>core/src/commonTest/kotlin/com/simon/harmonichackernews/presentation/</code></p></div>
+        </div>
+        <h3>A few terms used in this report</h3>
+        <p class="small"><strong>Coroutine:</strong> a unit of asynchronous work. <strong>Generation:</strong> a counter identifying which request is still current. <strong>Semaphore:</strong> a fixed set of permits that limits simultaneous work. <strong>Regression test:</strong> a repeatable check that a bug stays fixed or an existing behavior survives a refactor. <strong>StateFlow:</strong> the observable holder of the current search state.</p>
+      </section>
+    </main>
+  </div>
+  <footer class="footer"><div class="footline"><span>Harmonic for Hacker News · Search cleanup report · 05 September 2026</span><a href="#main">Back to top ↑</a></div></footer>
+</div>
+<script>
+  const disclosureState = new Map();
+  window.addEventListener('beforeprint', () => {
+    document.querySelectorAll('details').forEach(item => {
+      disclosureState.set(item, item.open);
+      item.open = true;
+    });
+  });
+  window.addEventListener('afterprint', () => {
+    disclosureState.forEach((wasOpen, item) => { item.open = wasOpen; });
+    disclosureState.clear();
+  });
+  document.getElementById('print-report').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>

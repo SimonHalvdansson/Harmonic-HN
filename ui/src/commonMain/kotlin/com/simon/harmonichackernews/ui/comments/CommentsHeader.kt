@@ -66,7 +66,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Platform-neutral comments header. The preview slot is implemented by shared Coil/KMPalette UI;
+ * Platform-neutral comments header. The preview slot uses shared Coil and Harmonic palette UI;
  * the host supplies only surrounding platform actions such as opening links.
  */
 @Composable

@@ -1,0 +1,254 @@
+[
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_harmonicQuantizer[palette1.webp]",
+    "medianNs": 43345.38054538055,
+    "minimumNs": 39567.92836792837,
+    "allocations": 52.002035002035
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_kmpaletteQuantizer[palette1.webp]",
+    "medianNs": 1221240.0,
+    "minimumNs": 491580.0,
+    "allocations": 480.25
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_harmonicQuantizer[palette3.webp]",
+    "medianNs": 26080.454660909323,
+    "minimumNs": 24699.161798323596,
+    "allocations": 51.001524003048004
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_kmpaletteQuantizer[palette3.webp]",
+    "medianNs": 1003064.0845070423,
+    "minimumNs": 857019.7183098592,
+    "allocations": 337.1267605633803
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_harmonicQuantizer[web_preview.webp]",
+    "medianNs": 44802.408602150535,
+    "minimumNs": 40919.397849462366,
+    "allocations": 51.00215053763441
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_kmpaletteQuantizer[web_preview.webp]",
+    "medianNs": 628216.6666666667,
+    "minimumNs": 380083.3333333333,
+    "allocations": 341.3333333333333
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_harmonicQuantizer[library_logo_kotlin.png]",
+    "medianNs": 20851.031578947368,
+    "minimumNs": 17386.273684210526,
+    "allocations": 42.001684210526314
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_kmpaletteQuantizer[library_logo_kotlin.png]",
+    "medianNs": 859377.8846153846,
+    "minimumNs": 501165.3846153846,
+    "allocations": 289.1730769230769
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_harmonicQuantizer[noise]",
+    "medianNs": 213589.453125,
+    "minimumNs": 204182.8125,
+    "allocations": 27.00390625
+  },
+  {
+    "run": "raw-1",
+    "name": "EMULATOR_kmpaletteQuantizer[noise]",
+    "medianNs": 2451496.153846154,
+    "minimumNs": 1370030.7692307692,
+    "allocations": 1047.3846153846155
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_kmpaletteColdExtraction[palette1.webp]",
+    "medianNs": 1931110.9589041094,
+    "minimumNs": 1631678.082191781,
+    "allocations": 604.1506849315068
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_harmonicColdExtraction[palette1.webp]",
+    "medianNs": 880612.1118012422,
+    "minimumNs": 594313.6645962733,
+    "allocations": 178.13664596273293
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_kmpaletteColdExtraction[palette3.webp]",
+    "medianNs": 1810019.2307692308,
+    "minimumNs": 1454713.4615384615,
+    "allocations": 458.1730769230769
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_harmonicColdExtraction[palette3.webp]",
+    "medianNs": 835851.4563106797,
+    "minimumNs": 564229.1262135922,
+    "allocations": 174.1359223300971
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_kmpaletteColdExtraction[web_preview.webp]",
+    "medianNs": 1910001.111111111,
+    "minimumNs": 1629292.2222222222,
+    "allocations": 465.14444444444445
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_harmonicColdExtraction[web_preview.webp]",
+    "medianNs": 819415.306122449,
+    "minimumNs": 604527.8911564626,
+    "allocations": 177.14965986394557
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_kmpaletteColdExtraction[library_logo_kotlin.png]",
+    "medianNs": 1828295.1612903227,
+    "minimumNs": 1556433.8709677418,
+    "allocations": 409.14516129032256
+  },
+  {
+    "run": "pipeline-1",
+    "name": "EMULATOR_harmonicColdExtraction[library_logo_kotlin.png]",
+    "medianNs": 959781.5533980583,
+    "minimumNs": 703947.572815534,
+    "allocations": 164.1359223300971
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicQuantizer[palette1.webp]",
+    "medianNs": 46427.62267343486,
+    "minimumNs": 42628.72250423012,
+    "allocations": 52.00211505922166
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteQuantizer[palette1.webp]",
+    "medianNs": 1167561.9047619049,
+    "minimumNs": 867702.380952381,
+    "allocations": 480.14285714285717
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicQuantizer[palette3.webp]",
+    "medianNs": 27165.6161971831,
+    "minimumNs": 23909.577464788734,
+    "allocations": 51.00176056338028
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteQuantizer[palette3.webp]",
+    "medianNs": 1011757.5757575757,
+    "minimumNs": 877679.7979797979,
+    "allocations": 337.1313131313131
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicQuantizer[web_preview.webp]",
+    "medianNs": 48344.24014178113,
+    "minimumNs": 43112.804607886574,
+    "allocations": 51.002215330084184
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteQuantizer[web_preview.webp]",
+    "medianNs": 1024348.1927710844,
+    "minimumNs": 942834.9397590362,
+    "allocations": 341.13253012048193
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicQuantizer[library_logo_kotlin.png]",
+    "medianNs": 19623.721881390593,
+    "minimumNs": 17624.74437627812,
+    "allocations": 42.0040899795501
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteQuantizer[library_logo_kotlin.png]",
+    "medianNs": 810460.0,
+    "minimumNs": 298793.3333333333,
+    "allocations": 289.3333333333333
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicQuantizer[noise]",
+    "medianNs": 228387.18820861678,
+    "minimumNs": 219717.68707482994,
+    "allocations": 27.00453514739229
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteQuantizer[noise]",
+    "medianNs": 2182646.153846154,
+    "minimumNs": 2080626.1538461538,
+    "allocations": 1047.2
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteColdExtraction[palette1.webp]",
+    "medianNs": 2093055.5555555555,
+    "minimumNs": 1834402.2222222222,
+    "allocations": 604.2
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicColdExtraction[palette1.webp]",
+    "medianNs": 795651.875,
+    "minimumNs": 592446.25,
+    "allocations": 178.175
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteColdExtraction[palette3.webp]",
+    "medianNs": 1766215.0684931506,
+    "minimumNs": 1524142.4657534247,
+    "allocations": 458.1232876712329
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicColdExtraction[palette3.webp]",
+    "medianNs": 769101.0869565217,
+    "minimumNs": 592299.1304347826,
+    "allocations": 174.1304347826087
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteColdExtraction[web_preview.webp]",
+    "medianNs": 1768667.0588235296,
+    "minimumNs": 1578611.7647058824,
+    "allocations": 465.1411764705882
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicColdExtraction[web_preview.webp]",
+    "medianNs": 858352.4096385542,
+    "minimumNs": 628406.0240963856,
+    "allocations": 177.16867469879517
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_kmpaletteColdExtraction[library_logo_kotlin.png]",
+    "medianNs": 1512727.2727272727,
+    "minimumNs": 1019190.9090909091,
+    "allocations": 409.1818181818182
+  },
+  {
+    "run": "repeat",
+    "name": "EMULATOR_harmonicColdExtraction[library_logo_kotlin.png]",
+    "medianNs": 964660.3174603174,
+    "minimumNs": 681982.5396825396,
+    "allocations": 164.15873015873015
+  }
+]

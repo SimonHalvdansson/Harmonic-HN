@@ -22,6 +22,7 @@ data class PreviewTintPalette(
 
 /** Platform-neutral color policy applied after a platform has extracted palette swatches. */
 object PreviewTintPolicy {
+    // Retain the existing cache tag: the replacement extractor produces the same tint values.
     private const val RESULT_VERSION = "worker-v4-kmpalette"
     private const val MIN_CHROMATIC_SOURCE_SATURATION = 0.05f
     private const val CARD_TINT_ALPHA_LIGHT = 0.24f

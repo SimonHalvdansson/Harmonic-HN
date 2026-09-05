@@ -154,7 +154,6 @@ kotlin {
         commonMain.dependencies {
             api(libs.compose.multiplatform.resources)
             api(libs.compose.multiplatform.ui)
-            api(libs.kmpalette.core)
             implementation(libs.compose.multiplatform.runtime)
         }
     }

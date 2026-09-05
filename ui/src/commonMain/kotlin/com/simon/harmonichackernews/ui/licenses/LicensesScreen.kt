@@ -279,7 +279,7 @@ private fun licenseIconResource(name: String): DrawableResource = when (name) {
     "Haze" -> Res.drawable.library_logo_haze
     "Coil" -> Res.drawable.library_logo_coil
     "Ksoup" -> Res.drawable.library_logo_ksoup
-    "KMPalette" -> Res.drawable.library_logo_kmpalette
+    "Palette algorithms" -> Res.drawable.library_logo_kmpalette
     "pdf.js" -> Res.drawable.library_logo_pdfjs
     "Readability" -> Res.drawable.library_logo_readability
     "Materialistic" -> Res.drawable.library_logo_materialistic
