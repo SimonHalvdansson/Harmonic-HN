@@ -817,13 +817,14 @@ fun <T> SegmentedSetting(
     selected: T,
     enabled: Boolean = true,
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
+    containerColor: Color = settingsItemBackgroundColor(),
     onSelected: (T) -> Unit,
 ) {
     val hasHeader = !title.isNullOrBlank() || !summary.isNullOrBlank()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(settingsItemBackgroundColor())
+            .background(containerColor)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,

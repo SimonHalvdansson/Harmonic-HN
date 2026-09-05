@@ -2,13 +2,13 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -17,11 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -33,10 +29,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
@@ -54,16 +54,25 @@ import kotlin.math.roundToInt
 private data class PalettePreviewSample(
     val drawable: DrawableResource,
     val title: String,
-    val meta: String,
+    val source: String,
 )
 
 private val PalettePreviewSamples = listOf(
-    PalettePreviewSample(Res.drawable.palette1, "Compiler release", "143 points"),
-    PalettePreviewSample(Res.drawable.palette2, "Design notes", "89 points"),
-    PalettePreviewSample(Res.drawable.palette3, "Database internals", "311 points"),
-    PalettePreviewSample(Res.drawable.palette4, "Ask HN", "54 comments"),
-    PalettePreviewSample(Res.drawable.palette5, "Launch write-up", "217 points"),
-    PalettePreviewSample(Res.drawable.web_preview, "Website preview", "example.com"),
+    PalettePreviewSample(
+        Res.drawable.palette1, "How machines learn to see", "technologyreview.com · 2h",
+    ),
+    PalettePreviewSample(
+        Res.drawable.palette2, "How New York’s skyline was built", "smithsonianmag.com · 4h",
+    ),
+    PalettePreviewSample(
+        Res.drawable.palette3, "Mapping buildings with 3D scans", "spectrum.ieee.org · 3h",
+    ),
+    PalettePreviewSample(
+        Res.drawable.palette4, "Rendering impossible architecture", "blender.org · 5h",
+    ),
+    PalettePreviewSample(
+        Res.drawable.palette5, "Photographing a rocket launch at night", "nasa.gov · 1h",
+    ),
 )
 
 @Composable
@@ -134,37 +143,17 @@ fun PaletteTintDialog(
                         text = "Palette source",
                         modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
                     )
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp).selectableGroup(),
-                    ) {
-                        listOf(
-                            PaletteTintPreferences.DEFAULT to "Muted",
-                            PaletteTintPreferences.VIBRANT to "Vibrant",
-                            PaletteTintPreferences.DOMINANT to "Dominant",
-                        ).forEach { option ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .defaultMinSize(minHeight = 40.dp)
-                                    .selectable(
-                                        selected = mode == option.first,
-                                        role = Role.RadioButton,
-                                        onClick = { persist(newMode = option.first) },
-                                    )
-                                    .padding(horizontal = 24.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                SettingsRadioButton(selected = mode == option.first)
-                                Text(
-                                    text = option.second,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    color = HarmonicTheme.colors.storyNormal,
-                                    fontFamily = ProductSansFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                )
-                            }
-                        }
+                    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                        SegmentedSetting(
+                            options = listOf(
+                                PaletteTintPreferences.DEFAULT to "Muted",
+                                PaletteTintPreferences.VIBRANT to "Vibrant",
+                                PaletteTintPreferences.DOMINANT to "Dominant",
+                            ),
+                            selected = mode,
+                            containerColor = Color.Transparent,
+                            onSelected = { persist(newMode = it) },
+                        )
                     }
                 }
                 item {
@@ -179,8 +168,7 @@ fun PaletteTintDialog(
                             value = strength.toFloat(),
                             valueRange = PaletteTintPreferences.MIN_STRENGTH.toFloat()..
                                 PaletteTintPreferences.MAX_STRENGTH.toFloat(),
-                            steps = 39,
-                            onValueChange = { persist(newStrength = (it / 5f).toInt() * 5) },
+                            onValueChange = { persist(newStrength = it.roundToInt()) },
                         )
                         PaletteAdjustment(
                             label = "Colorfulness",
@@ -188,9 +176,8 @@ fun PaletteTintDialog(
                             value = colorfulness.toFloat(),
                             valueRange = PaletteTintPreferences.MIN_COLORFULNESS.toFloat()..
                                 PaletteTintPreferences.MAX_COLORFULNESS.toFloat(),
-                            steps = 39,
                             onValueChange = {
-                                persist(newColorfulness = (it / 5f).toInt() * 5)
+                                persist(newColorfulness = it.roundToInt())
                             },
                         )
                         PaletteAdjustment(
@@ -199,8 +186,7 @@ fun PaletteTintDialog(
                             value = tone.toFloat(),
                             valueRange = PaletteTintPreferences.MIN_TONE.toFloat()..
                                 PaletteTintPreferences.MAX_TONE.toFloat(),
-                            steps = 39,
-                            onValueChange = { persist(newTone = it.toInt()) },
+                            onValueChange = { persist(newTone = it.roundToInt()) },
                         )
                     }
                 }
@@ -226,17 +212,15 @@ fun PaletteTintDialog(
                             animationSpec = resetAnimationSpec,
                         ) { progress, _ ->
                             val boundedProgress = progress.coerceIn(0f, 1f)
-                            strength = steppedPaletteValue(
+                            strength = interpolatedPaletteValue(
                                 startStrength,
                                 PaletteTintPreferences.DEFAULT_STRENGTH,
                                 boundedProgress,
-                                5,
                             )
-                            colorfulness = steppedPaletteValue(
+                            colorfulness = interpolatedPaletteValue(
                                 startColorfulness,
                                 PaletteTintPreferences.DEFAULT_COLORFULNESS,
                                 boundedProgress,
-                                5,
                             )
                             tone = (
                                 startTone +
@@ -257,13 +241,11 @@ fun PaletteTintDialog(
     )
 }
 
-private fun steppedPaletteValue(
+private fun interpolatedPaletteValue(
     start: Int,
     target: Int,
     progress: Float,
-    step: Int,
-): Int = ((start + (target - start) * progress).roundToInt().toFloat() / step)
-    .roundToInt() * step
+): Int = (start + (target - start) * progress).roundToInt()
 
 @Composable
 private fun PaletteSectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -283,7 +265,6 @@ private fun PaletteAdjustment(
     valueLabel: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
     onValueChange: (Float) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
@@ -306,9 +287,8 @@ private fun PaletteAdjustment(
         Slider(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
             valueRange = valueRange,
-            steps = steps,
         )
     }
 }
@@ -336,18 +316,20 @@ private fun PalettePreviewCard(
         label = "palette preview tint",
     )
 
-    Card(
-        modifier = modifier.width(136.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        border = BorderStroke(1.dp, HarmonicTheme.colors.storyNormal.copy(alpha = 0.14f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    // Match StoryItem's painted background: a Material Card inherits the dialog's tonal
+    // elevation and alters the base color when zero tint makes it equal to the theme surface.
+    Column(
+        modifier = modifier.width(160.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(cardColor)
+            .border(1.dp, HarmonicTheme.colors.outlineVariant, RoundedCornerShape(8.dp)),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Image(
                 painter = painterResource(sample.drawable),
                 contentDescription = null,
-                modifier = Modifier.fillMaxWidth().height(72.dp),
+                modifier = Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(6.dp)),
+                contentScale = ContentScale.Crop,
             )
             Text(
                 text = sample.title,
@@ -356,14 +338,20 @@ private fun PalettePreviewCard(
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                maxLines = 1,
+                lineHeight = 18.sp,
+                minLines = 2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = sample.meta,
+                text = sample.source,
+                modifier = Modifier.padding(top = 4.dp),
                 color = HarmonicTheme.colors.storyDisabled,
                 fontFamily = ProductSansFontFamily,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
