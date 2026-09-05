@@ -157,6 +157,7 @@ internal fun DesktopCommentsContent(
                     },
                     searchDialog = { settings ->
                         CommentsSearchDialog(
+                            preparing = host.controller.searchPreparing,
                             searchTerm = host.controller.searchQuery,
                             visibleComments = host.controller.searchResults,
                             settings = settings,

@@ -10,6 +10,7 @@ import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
+import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.navigation.StoryDestination
@@ -22,6 +23,12 @@ import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,6 +37,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
@@ -97,6 +107,7 @@ class StoriesFeatureRuntime(
     private val startStoryCache: (StoryCacheRequest) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
     storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
+    private val cacheDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val mutableEffects = MutableSharedFlow<StoriesRuntimeEffect>(extraBufferCapacity = 32)
     val effects: SharedFlow<StoriesRuntimeEffect> = mutableEffects.asSharedFlow()
@@ -115,7 +126,7 @@ class StoriesFeatureRuntime(
         sessionState = sessionState,
         clickedStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
         shouldHideClickedStories = { hideClicked },
-        hydrateCachedStory = hydrateCachedStory,
+        hydrateCachedStory = { false },
         shouldHideHydratedStory = { presenter.shouldHideStory(it, currentType) },
     )
     private val searchRuntime = StorySearchRuntime()
@@ -203,8 +214,10 @@ class StoriesFeatureRuntime(
     val canClearHistory: Boolean
         get() = currentType.isHistory && historyStore.size > 0
 
-    val cachedStoriesAvailable: Boolean
-        get() = hasCachedStories()
+    var cachedStoriesAvailable: Boolean = false
+        private set
+    private var feedPreparationJob: Job? = null
+    private var cacheAvailabilityJob: Job? = null
 
     init {
         configure(userSettings, loadContentFilters())
@@ -213,6 +226,12 @@ class StoriesFeatureRuntime(
         scope.launch { userSettings.changes.collect { reconcileSettings() } }
         scope.launch {
             accounts.accountState.drop(1).collect { refreshAccountState() }
+        }
+        cacheAvailabilityJob = scope.launch {
+            mainStore.state.map { it.failure }.distinctUntilChanged().collectLatest { failure ->
+                cachedStoriesAvailable = failure != null && withContext(cacheDispatcher) { hasCachedStories() }
+                emit(StoriesRuntimeEffect.StoryChanged())
+            }
         }
     }
 
@@ -933,10 +952,30 @@ class StoriesFeatureRuntime(
         changed()
     }
 
-    fun showCachedStories() = showCachedStories(loadCachedStories())
+    fun showCachedStories() {
+        val generation = beginGeneration()
+        val target = activeStore
+        target.beginLoad(refreshing = false, clearItems = false)
+        feedPreparationJob = scope.launch {
+            try {
+                val stories = withContext(cacheDispatcher) { loadCachedStories() }
+                if (!isCurrentActionContext(generation, target)) return@launch
+                feedPreparationJob = null
+                showCachedStories(stories)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                if (isCurrentActionContext(generation, target)) {
+                    target.fail(StoryLoadFailure.GENERAL)
+                    changed()
+                }
+            }
+        }
+    }
 
     fun clearActiveStories() {
         beginGeneration()
+        activeStore.cancelTransientLoads()
         activeStore.clear()
         activeStore.setPaginationEnabled(shouldUsePagination(currentType))
         activeStore.setVisibleStoryCount(initialVisibleCount(activeStore))
@@ -1004,6 +1043,8 @@ class StoriesFeatureRuntime(
     }
 
     fun dispose() {
+        feedPreparationJob?.cancel()
+        cacheAvailabilityJob?.cancel()
         presenter.dispatch(StoriesAction.CancelFeedLoads)
         presenter.clearStoryRowLoads()
         mainStore.cancelTransientLoads()
@@ -1061,12 +1102,19 @@ class StoriesFeatureRuntime(
 
     private fun applyFeedLoaded(effect: StoriesEffect.FeedLoaded) {
         if (!isCurrentFeed(effect.storyType, effect.generation)) return
-        refreshIndicatorShowing = false
-        rateLimited = false
-        val result = feedRuntime.applyInitial(activeStore, effect.storyType, effect.result)
-        if (result.loadVisibleStories) loadVisibleStories()
-        result.loadedStories.filter(Story::loaded).forEach(::prefetch)
-        changed()
+        val ids = when (val result = effect.result) {
+            is StoryFeedResult.ItemIds -> result.ids
+            is StoryFeedResult.Scraped -> result.page.itemIds
+            is StoryFeedResult.LinkDirectory -> emptyList()
+        }
+        prepareFeedCache(ids, effect.storyType, effect.generation) { cached ->
+            refreshIndicatorShowing = false
+            rateLimited = false
+            val result = feedRuntime.applyInitial(activeStore, effect.storyType, effect.result, cached)
+            if (result.loadVisibleStories) loadVisibleStories()
+            result.loadedStories.filter(Story::loaded).forEach(::prefetch)
+            changed()
+        }
     }
 
     private fun applyFeedFailed(effect: StoriesEffect.FeedFailed) {
@@ -1080,10 +1128,37 @@ class StoriesFeatureRuntime(
 
     private fun applyNextScrapedPage(effect: StoriesEffect.NextScrapedPageLoaded) {
         if (!isCurrentFeed(effect.storyType, effect.generation)) return
-        val application = feedRuntime.applyNextScrapedPage(activeStore, effect.storyType, effect.page)
-        if (application.loadVisibleStories) loadVisibleStories()
-        application.loadedStories.filter(Story::loaded).forEach(::prefetch)
-        changed()
+        prepareFeedCache(effect.page.itemIds, effect.storyType, effect.generation) { cached ->
+            val application = feedRuntime.applyNextScrapedPage(activeStore, effect.storyType, effect.page, cached)
+            if (application.loadVisibleStories) loadVisibleStories()
+            application.loadedStories.filter(Story::loaded).forEach(::prefetch)
+            changed()
+        }
+    }
+
+    private fun prepareFeedCache(
+        ids: List<Int>,
+        type: StoryType,
+        generation: Int,
+        apply: (Map<Int, Story>) -> Unit,
+    ) {
+        feedPreparationJob?.cancel()
+        val target = activeStore
+        val existing = target.stories.mapTo(mutableSetOf(), Story::id)
+        val missing = ids.filterNot(existing::contains)
+        feedPreparationJob = scope.launch {
+            // Only detached rows cross the dispatcher boundary. Live rows remain UI-owned.
+            val cached = withContext(cacheDispatcher) {
+                buildMap {
+                    for (id in missing) {
+                        coroutineContext.ensureActive()
+                        val story = Story("Loading...", id, false, false)
+                        if (hydrateCachedStory(story)) put(id, story)
+                    }
+                }
+            }
+            if (isCurrentFeed(type, generation) && activeStore === target) apply(cached)
+        }
     }
 
     private fun applyRowLoaded(effect: StoriesEffect.StoryRowLoaded) {
@@ -1351,6 +1426,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun beginGeneration(): Int {
+        feedPreparationJob?.cancel()
         presenter.dispatch(StoriesAction.CancelFeedLoads)
         val generation = presenter.beginStoryLoadGeneration()
         activeStore.clearPendingPage()

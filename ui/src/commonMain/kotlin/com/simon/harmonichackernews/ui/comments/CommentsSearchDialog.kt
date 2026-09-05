@@ -42,6 +42,7 @@ fun CommentsSearchDialog(
         GraphicsLayer?,
     ) -> Unit,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
+    preparing: Boolean = false,
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -68,6 +69,7 @@ fun CommentsSearchDialog(
                 onLinkLongClick = onLinkLongClick,
                 onReferenceLongClick = onReferenceLongClick,
                 requestFocus = true,
+                preparing = preparing,
             )
         },
         edgeToEdgeContent = true,
@@ -94,6 +96,7 @@ fun CommentsSearchContent(
         GraphicsLayer?,
     ) -> Unit,
     requestFocus: Boolean,
+    preparing: Boolean = false,
 ) {
     val itemStyle = remember(settings) {
         settings.toCommentItemStyle(CommentItemStyleContext.Search)
@@ -106,6 +109,8 @@ fun CommentsSearchContent(
         fontFamily = ProductSansFontFamily,
         onSearchTermChanged = onSearchTermChanged,
         requestFocus = requestFocus,
+        preparing = preparing,
+        collectLinks = settings.collectReferenceLinks,
     ) { comment ->
         CommentItem(
             comment = comment,

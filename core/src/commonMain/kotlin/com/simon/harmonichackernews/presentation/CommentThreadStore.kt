@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.presentation
 
-import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.CommentListDiff
 import com.simon.harmonichackernews.CommentThreadFilter
 import com.simon.harmonichackernews.data.Comment
@@ -49,6 +48,7 @@ data class PortableCommentThreadState(
     val commentsByOp: Boolean = false,
     val hasCommentsByOp: Boolean = false,
     val searchQuery: String = "",
+    val searchPreparing: Boolean = false,
     val searchResults: List<PortableCommentItem> = emptyList(),
     val searchResultIds: List<Int> = emptyList(),
     val visibleComments: List<PortableVisibleComment> = emptyList(),
@@ -241,7 +241,32 @@ class CommentThreadStore {
     }
 
     fun setSearchQuery(query: String) {
-        publish(searchQuery = query, rebuildSearch = true)
+        publishSearch(query)
+    }
+
+    internal fun setSearchPreparing(preparing: Boolean) {
+        mutableState.value = state.value.copy(searchPreparing = preparing)
+    }
+
+    internal fun installSearchIndex(
+        source: List<PortableCommentItem>,
+        index: Map<Int, SearchableCommentText>,
+    ) {
+        if (state.value.allComments !== source) return
+        searchableTextById.clear()
+        searchableTextById.putAll(index)
+        publishSearch(state.value.searchQuery, preparing = false)
+    }
+
+    private fun publishSearch(query: String, preparing: Boolean = state.value.searchPreparing) {
+        val previous = state.value
+        val ids = searchResults(query).map(Comment::id)
+        mutableState.value = previous.copy(
+            searchQuery = query,
+            searchPreparing = preparing,
+            searchResultIds = ids,
+            searchResults = snapshotIds(ids, previous.searchResults),
+        )
     }
 
     fun notifyCommentsChanged() {
@@ -302,13 +327,8 @@ class CommentThreadStore {
         return comments.filter { comment ->
             val source = comment.expandedAnchorText.orEmpty()
             val cached = searchableTextById[comment.id]
-            val searchableText = if (cached?.source == source) {
-                cached.text
-            } else {
-                Ksoup.parse(source).text().lowercase().also { text ->
-                    searchableTextById[comment.id] = SearchableCommentText(source, text)
-                }
-            }
+            val searchableText = cached?.takeIf { it.source == source }?.text
+                ?: return@filter false
             normalizedQuery in searchableText
         }
     }
@@ -355,6 +375,7 @@ class CommentThreadStore {
             commentsByOp = actualCommentsByOp,
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
+            searchPreparing = previous.searchPreparing,
             searchResults = searchSnapshots,
             searchResultIds = resultIds,
             visibleComments = visibleSnapshots,
@@ -489,7 +510,6 @@ class CommentThreadStore {
         return true
     }
 
-    private data class SearchableCommentText(val source: String, val text: String)
 
     private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
 
@@ -499,3 +519,5 @@ class CommentThreadStore {
         val hiddenReplyCount: Int,
     )
 }
+
+internal data class SearchableCommentText(val source: String, val text: String)

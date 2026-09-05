@@ -27,6 +27,9 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredUserSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Runnable
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.emptyFlow
@@ -42,6 +45,97 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoriesPresenterTest {
+    @Test
+    fun feedCacheIsPreparedOnWorkerBeforeApplyingRows() = runTest {
+        val worker = QueuedCacheDispatcher()
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val presenter = presenter(session, saved, backgroundScope,
+            RecordingFeedLoader(StoryFeedResult.ItemIds(listOf(2, 1))))
+        val hydrated = mutableListOf<Int>()
+        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, worker,
+            hydrate = { story ->
+                assertTrue(worker.executing)
+                hydrated += story.id
+                story.title = "Cached ${story.id}"
+                story.loaded = true
+                true
+            },
+        )
+        runtime.refresh(false)
+        runCurrent()
+        assertTrue(hydrated.isEmpty())
+        assertTrue(runtime.mainStories.isEmpty())
+        worker.runAll()
+        runCurrent()
+        assertEquals(listOf(2, 1), hydrated)
+        assertEquals(listOf("Cached 2", "Cached 1"), runtime.mainStories.map { it.title })
+    }
+
+    @Test
+    fun completedCacheReadCannotReplaceANewerFeedGeneration() = runTest {
+        val worker = QueuedCacheDispatcher()
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val presenter = presenter(session, saved, backgroundScope)
+        var reads = 0
+        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, worker,
+            cached = {
+                assertTrue(worker.executing)
+                reads++
+                listOf(Story("Old cached feed", 1, true, false))
+            },
+        )
+        runtime.showCachedStories()
+        runCurrent()
+        worker.runAll() // The old read is complete; its continuation has not reached the UI yet.
+        runtime.clearActiveStories()
+        runCurrent()
+        assertEquals(1, reads)
+        assertTrue(runtime.mainStories.isEmpty())
+        assertFalse(runtime.mainStore.state.value.loading)
+    }
+
+    private fun cacheRuntime(
+        scope: CoroutineScope,
+        session: StoriesSessionState,
+        saved: SavedItemsRepository,
+        presenter: StoriesPresenter,
+        worker: CoroutineDispatcher,
+        hydrate: (Story) -> Boolean = { false },
+        cached: () -> List<Story> = { emptyList() },
+    ) = StoriesFeatureRuntime(
+        scope = scope,
+        sessionState = session,
+        presenter = presenter,
+        savedItems = saved,
+        savedItemActions = SavedItemActionUseCase(saved, { 0L },
+            voteRequest = { _, _ -> error("Not used") },
+            favoriteRequest = { _, _ -> error("Not used") }),
+        historyStore = MemoryHistoryStore(),
+        accounts = MemoryAccounts(),
+        connectivity = AlwaysOnline,
+        userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
+        loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
+        commentMasterResolver = CommentMasterResolver(UnusedHackerNewsRepository),
+        nowMillis = { 1_000L },
+        hydrateCachedStory = hydrate,
+        loadCachedStories = cached,
+        cacheDispatcher = worker,
+    )
+
+    private class QueuedCacheDispatcher : CoroutineDispatcher() {
+        private val tasks = ArrayDeque<Runnable>()
+        var executing = false
+            private set
+        override fun dispatch(context: CoroutineContext, block: Runnable) { tasks.addLast(block) }
+        fun runAll() {
+            executing = true
+            try { while (tasks.isNotEmpty()) tasks.removeFirst().run() }
+            finally { executing = false }
+        }
+    }
+
     @Test
     fun featureRuntimeRetainsMainFeedAcrossSearchAndKeepsSearchResultsIsolated() = runTest {
         val session = StoriesSessionState()
@@ -184,6 +278,7 @@ class StoriesPresenterTest {
         session: StoriesSessionState,
         savedItems: SavedItemsRepository,
         scope: CoroutineScope,
+        feedLoader: StoryFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
     ) = StoriesPresenter(
         scope = scope,
         sessionState = session,
@@ -192,7 +287,7 @@ class StoriesPresenterTest {
         hackerNewsApi = UnusedHackerNewsApi,
         userItemsLoader = UnusedUserItemsLoader,
         savedItemsRepository = savedItems,
-        storyFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
+        storyFeedLoader = feedLoader,
         clickedStoryIds = { emptyList() },
         isStoryClicked = { false },
         shouldHideClickedStories = { false },

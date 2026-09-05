@@ -1021,19 +1021,35 @@ fun htmlAnnotatedString(
     linkColor: Color,
     linkListener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
-    val document = CommentHtmlDocumentCache.get(html)
-    val rendered = buildAnnotatedString {
-        document.body().childNodes().forEach { node ->
-            appendHtmlNode(node, linkColor, linkListener)
+    val prepared = CommentHtmlTextCache.get(html)
+    buildAnnotatedString {
+        append(prepared)
+        prepared.getStringAnnotations(COMMENT_URL_TAG, 0, prepared.length).forEach { link ->
+            addLink(
+                LinkAnnotation.Url(
+                    url = link.item,
+                    styles = TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                    linkInteractionListener = linkListener,
+                ),
+                link.start,
+                link.end,
+            )
         }
     }
-    rendered.trimmed()
 }.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+
+/** No theme, listener, mutable DOM, or screen references are retained in the prepared text. */
+internal fun prepareCommentHtml(html: String): AnnotatedString {
+    val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
+    return buildAnnotatedString {
+        document.body().childNodes().forEach { appendHtmlNode(it) }
+    }.trimmed()
+}
+
+private const val COMMENT_URL_TAG = "harmonic-comment-url"
 
 private fun AnnotatedString.Builder.appendHtmlNode(
     node: Node,
-    linkColor: Color,
-    linkListener: LinkInteractionListener,
 ) {
     when (node) {
         is TextNode -> append(node.getWholeText())
@@ -1048,29 +1064,16 @@ private fun AnnotatedString.Builder.appendHtmlNode(
             val start = length
             val style = htmlSpanStyle(tag)
             if (style == null) {
-                node.childNodes().forEach { child -> appendHtmlNode(child, linkColor, linkListener) }
+                node.childNodes().forEach { child -> appendHtmlNode(child) }
             } else {
                 pushStyle(style)
-                node.childNodes().forEach { child -> appendHtmlNode(child, linkColor, linkListener) }
+                node.childNodes().forEach { child -> appendHtmlNode(child) }
                 pop()
             }
             val end = length
             val url = node.attr("href").trim()
             if (tag == "a" && url.isNotEmpty() && start < end) {
-                addLink(
-                    LinkAnnotation.Url(
-                        url = url,
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = linkColor,
-                                textDecoration = TextDecoration.Underline,
-                            ),
-                        ),
-                        linkInteractionListener = linkListener,
-                    ),
-                    start,
-                    end,
-                )
+                addStringAnnotation(COMMENT_URL_TAG, url, start, end)
             }
         }
     }

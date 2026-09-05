@@ -192,6 +192,12 @@ fun CommentsScreen(
     )
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
+    com.simon.harmonichackernews.ui.content.PrefetchCommentContent(
+        listState = listState,
+        comments = remember(visibleComments) { visibleComments.map { it.comment } },
+        collectLinks = settings.collectReferenceLinks,
+        headerItems = 1,
+    )
     val density = LocalDensity.current
     val topInsetPx = WindowInsets.statusBars.getTop(density)
     val navigationTopOffsetPx = topInsetPx + if (reserveUpButtonInset) {

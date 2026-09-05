@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.network.CommentsPreloadRepository
 import com.simon.harmonichackernews.network.CommentThreadSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,6 +56,7 @@ class CommentsPreloadCoordinator(
 
     private val permits = Semaphore(maxConcurrentPreloads.coerceAtLeast(1))
     private val active = mutableMapOf<PreloadWorkKey, Job>()
+    private val started = mutableSetOf<PreloadWorkKey>()
     private var submitJob: Job? = null
     private var enabled: Boolean = false
     private var visibleStories: List<StoryListItemSnapshot> = emptyList()
@@ -88,11 +90,17 @@ class CommentsPreloadCoordinator(
         submitJob = null
         active.values.forEach(Job::cancel)
         active.clear()
+        started.clear()
     }
 
     private fun schedule() {
         submitJob?.cancel()
         if (!enabled) return
+        // Keep transfers that a comments screen may already be awaiting, but remove obsolete
+        // waiters immediately so the newest viewport gets the next available slot.
+        active.keys.filter { it !in started && !isVisible(it) }.forEach { key ->
+            active.remove(key)?.cancel()
+        }
         submitJob = scope.launch {
             delay(scrollSettleDelayMillis)
             if (!enabled || !preloadAllowed()) {
@@ -109,10 +117,11 @@ class CommentsPreloadCoordinator(
                     val workKey = PreloadWorkKey(story.id, source)
                     if (workKey in active) return@forEach
                     lateinit var job: Job
-                    job = scope.launch {
+                    job = scope.launch(start = CoroutineStart.LAZY) {
                         try {
                             permits.withPermit {
-                                if (!enabled || !preloadAllowed()) return@withPermit
+                                if (!enabled || !preloadAllowed() || !isVisible(workKey)) return@withPermit
+                                started.add(workKey)
                                 withContext(preloadDispatcher) {
                                     if (!isPrepared(source, story.id, story.kids, filteredUsers)) {
                                         preload(source, story.id, story.kids, filteredUsers)
@@ -120,14 +129,23 @@ class CommentsPreloadCoordinator(
                                 }
                             }
                         } finally {
-                            if (active[workKey] === job) active.remove(workKey)
+                            if (active[workKey] === job) {
+                                active.remove(workKey)
+                                started.remove(workKey)
+                            }
                         }
                     }
                     active[workKey] = job
+                    job.start()
                 }
             submitJob = null
         }
     }
+
+    private fun isVisible(key: PreloadWorkKey): Boolean = key.source == preloadSource() &&
+        visibleStories.any {
+            it.id == key.storyId && it.loaded && !it.isComment && it.descendantCount > 0
+        }
 
     private companion object {
         const val DEFAULT_MAX_CONCURRENT_PRELOADS = 2

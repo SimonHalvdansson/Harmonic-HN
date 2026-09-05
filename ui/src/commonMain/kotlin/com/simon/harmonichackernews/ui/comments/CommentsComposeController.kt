@@ -51,6 +51,7 @@ data class CommentsScreenState(
     val commentVoteLoadingAction: CommentMenuAction? = null,
     val downvotedCommentIds: Set<Int> = emptySet(),
     val searchQuery: String = "",
+    val searchPreparing: Boolean = false,
     val searchResults: List<PortableCommentItem> = emptyList(),
 )
 
@@ -112,6 +113,7 @@ class CommentsComposeController private constructor(
     val headerPreviewResource: StoryPreviewResourceState?
         get() = screenState.headerPreviewResource
     val searchQuery: String get() = screenState.searchQuery
+    val searchPreparing: Boolean get() = screenState.searchPreparing
     val searchResults: List<PortableCommentItem> get() = screenState.searchResults
     val contentInsetLeftPx: Int get() = screenState.contentInsetLeftPx
     val contentInsetRightPx: Int get() = screenState.contentInsetRightPx
@@ -411,6 +413,7 @@ class CommentsComposeController private constructor(
     fun showCommentSearch() {
         interactionStore.showCommentSearch()
         syncInteractionState()
+        listener.onSearchVisibilityChanged(true)
     }
 
     fun showCommentActions(
@@ -544,12 +547,14 @@ class CommentsComposeController private constructor(
     fun dismissCommentSearch() {
         interactionStore.dismissCommentSearch()
         syncInteractionState()
+        listener.onSearchVisibilityChanged(false)
         listener.onSearchQueryChanged("")
     }
 
     fun selectSearchResult(comment: PortableCommentItem) {
         interactionStore.dismissCommentSearch()
         syncInteractionState()
+        listener.onSearchVisibilityChanged(false)
         listener.onSearchQueryChanged("")
         listener.onSearchResultSelected(comment)
     }
@@ -813,6 +818,7 @@ class CommentsComposeController private constructor(
         fun onMoreAction(action: CommentsMoreAction)
         fun onSearchResultSelected(comment: PortableCommentItem)
         fun onSearchQueryChanged(query: String)
+        fun onSearchVisibilityChanged(visible: Boolean) {}
         fun onSortComments(sortType: String)
         fun onSheetAction(action: CommentsSheetAction)
         fun onCollapseSheetForWebsite()

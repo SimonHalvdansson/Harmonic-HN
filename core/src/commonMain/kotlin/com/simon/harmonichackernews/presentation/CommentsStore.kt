@@ -43,6 +43,7 @@ sealed interface CommentsIntent {
     data class MoreAction(val action: CommentsMoreAction) : CommentsIntent
     data class ExpandParents(val commentId: Int) : CommentsIntent
     data class SearchQuery(val query: String) : CommentsIntent
+    data class SearchActive(val active: Boolean) : CommentsIntent
     data class Sort(val sorting: String) : CommentsIntent
     data class SheetAction(val action: CommentsSheetAction) : CommentsIntent
     data class PollOption(val optionId: Int) : CommentsIntent
@@ -156,6 +157,7 @@ class CommentsStore internal constructor(
             is CommentsIntent.MoreAction -> runtime.more(intent.action)
             is CommentsIntent.ExpandParents -> runtime.expandParents(intent.commentId)
             is CommentsIntent.SearchQuery -> runtime.setSearchQuery(intent.query)
+            is CommentsIntent.SearchActive -> runtime.presenter.dispatch(CommentsAction.SetSearchActive(intent.active))
             is CommentsIntent.Sort -> runtime.setSorting(intent.sorting)
             is CommentsIntent.SheetAction -> runtime.sheet(intent.action)
             is CommentsIntent.PollOption -> runtime.votePollOption(intent.optionId)

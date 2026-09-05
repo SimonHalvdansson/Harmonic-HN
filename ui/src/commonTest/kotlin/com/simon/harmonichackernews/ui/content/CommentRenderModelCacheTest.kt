@@ -49,12 +49,12 @@ class CommentRenderModelCacheTest {
     fun oversizedSourcesAreParsedButNotRetained() {
         val oversized = "x".repeat(70 * 1024)
         CommentRenderModelCache.clearForTest()
-        CommentHtmlDocumentCache.clearForTest()
+        CommentHtmlTextCache.clearForTest()
 
         CommentRenderModelCache.get(999, oversized, false)
-        CommentHtmlDocumentCache.get(oversized)
+        CommentHtmlTextCache.get(oversized)
 
         assertEquals(0, CommentRenderModelCache.entryCountForTest())
-        assertEquals(0, CommentHtmlDocumentCache.entryCountForTest())
+        assertEquals(0, CommentHtmlTextCache.entryCountForTest())
     }
 }

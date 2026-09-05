@@ -53,6 +53,7 @@ fun AndroidCommentsSearchDialog(
         }
     }
     CommentsSearchDialog(
+        preparing = controller.searchPreparing,
         searchTerm = searchTerm,
         visibleComments = visibleComments,
         settings = settings,

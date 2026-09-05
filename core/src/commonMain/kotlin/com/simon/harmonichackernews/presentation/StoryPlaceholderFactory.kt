@@ -11,11 +11,13 @@ object StoryPlaceholderFactory {
         hideClicked: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> = itemIds.mapNotNullTo(mutableListOf()) { id ->
         if (hideClicked && id in clickedIds) return@mapNotNullTo null
-        Story("Loading...", id, false, id in clickedIds).also { story ->
+        (cachedStories[id] ?: Story("Loading...", id, false, id in clickedIds)).also { story ->
+            story.clicked = id in clickedIds
             story.isComment = id in commentIds
-            if (hydrateCachedStory(story) && shouldHideHydratedStory(story)) {
+            if ((id in cachedStories || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
                 return@mapNotNullTo null
             }
         }
@@ -29,6 +31,7 @@ object StoryPlaceholderFactory {
         hideClicked: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> {
         val existingIds = existingStories.mapTo(mutableSetOf(), Story::id)
         return create(
@@ -38,6 +41,7 @@ object StoryPlaceholderFactory {
             hideClicked = hideClicked,
             hydrateCachedStory = hydrateCachedStory,
             shouldHideHydratedStory = shouldHideHydratedStory,
+            cachedStories = cachedStories,
         )
     }
 
@@ -53,15 +57,17 @@ object StoryPlaceholderFactory {
         hideClicked: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> {
         val existingById = existingStories.associateBy(Story::id)
         return itemIds.mapNotNullTo(mutableListOf()) { id ->
             if (hideClicked && id in clickedIds) return@mapNotNullTo null
             existingById[id]?.also { story ->
                 story.isComment = id in commentIds
-            } ?: Story("Loading...", id, false, id in clickedIds).also { story ->
+            } ?: (cachedStories[id] ?: Story("Loading...", id, false, id in clickedIds)).also { story ->
+                story.clicked = id in clickedIds
                 story.isComment = id in commentIds
-                if (hydrateCachedStory(story) && shouldHideHydratedStory(story)) {
+                if ((id in cachedStories || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
                     return@mapNotNullTo null
                 }
             }

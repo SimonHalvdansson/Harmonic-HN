@@ -32,11 +32,12 @@ class StoryFeedRuntime(
         store: StoryListStore,
         storyType: StoryType,
         result: StoryFeedResult,
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): StoryFeedApplication {
         store.setShowingCached(false)
         return when (result) {
             is StoryFeedResult.ItemIds -> {
-                val stories = reconciledPlaceholders(store.stories, result.ids)
+                val stories = reconciledPlaceholders(store.stories, result.ids, cachedStories = cachedStories)
                 store.replace(stories)
                 StoryFeedApplication(true, loadVisibleStories = true, stories)
             }
@@ -53,6 +54,7 @@ class StoryFeedRuntime(
                         existingStories = store.stories,
                         itemIds = result.page.itemIds,
                         commentIds = result.page.commentIds.toSet(),
+                        cachedStories = cachedStories,
                     )
                     store.replace(
                         stories,
@@ -94,6 +96,7 @@ class StoryFeedRuntime(
         store: StoryListStore,
         storyType: StoryType,
         page: HackerNewsListPage,
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): StoryFeedApplication {
         if (storyType != scrapedStoryType) return StoryFeedApplication(false, false)
         nextPageLoading = false
@@ -106,6 +109,7 @@ class StoryFeedRuntime(
             hideClicked = shouldHideClickedStories(),
             hydrateCachedStory = hydrateCachedStory,
             shouldHideHydratedStory = shouldHideHydratedStory,
+            cachedStories = cachedStories,
         )
         store.mutateStories { addAll(newStories) }
         val canLoadMore = !page.nextPageUrl.isNullOrEmpty()
@@ -139,6 +143,7 @@ class StoryFeedRuntime(
         existingStories: List<Story>,
         itemIds: List<Int>,
         commentIds: Set<Int> = emptySet(),
+        cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> = StoryPlaceholderFactory.reconcile(
         existingStories = existingStories,
         itemIds = itemIds,
@@ -147,5 +152,6 @@ class StoryFeedRuntime(
         hideClicked = shouldHideClickedStories(),
         hydrateCachedStory = hydrateCachedStory,
         shouldHideHydratedStory = shouldHideHydratedStory,
+        cachedStories = cachedStories,
     )
 }

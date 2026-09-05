@@ -2,6 +2,10 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,6 +13,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CommentThreadStoreTest {
     @Test
     fun delayedPlaceholderCommentsCanBeHiddenWithoutRemovingTheirReplies() {
@@ -99,7 +104,7 @@ class CommentThreadStoreTest {
     }
 
     @Test
-    fun searchOnlyPublicationReusesUnchangedThreadCollections() {
+    fun searchOnlyPublicationReusesUnchangedThreadCollections() = runTest {
         val store = CommentThreadStore()
         store.reset(story = story())
         store.appendLoadedComments(
@@ -108,6 +113,8 @@ class CommentThreadStoreTest {
             sorting = "Default",
             collapseTopLevel = false,
         )
+        CommentSearchSession(backgroundScope, store, StandardTestDispatcher(testScheduler)).setActive(true)
+        runCurrent()
         val before = store.state.value
 
         store.setSearchQuery("comment")
@@ -171,7 +178,7 @@ class CommentThreadStoreTest {
     }
 
     @Test
-    fun searchUsesVisibleTextInsteadOfHtmlMarkup() {
+    fun searchUsesVisibleTextInsteadOfHtmlMarkup() = runTest {
         val store = CommentThreadStore()
         store.reset(story = story())
         store.appendLoadedComments(
@@ -184,7 +191,9 @@ class CommentThreadStoreTest {
             collapseTopLevel = false,
         )
 
+        CommentSearchSession(backgroundScope, store, StandardTestDispatcher(testScheduler)).setActive(true)
         store.setSearchQuery("kotlin multiplatform")
+        runCurrent()
 
         assertEquals(listOf(1), store.state.value.searchResults.map { it.comment.id })
         store.setSearchQuery("")

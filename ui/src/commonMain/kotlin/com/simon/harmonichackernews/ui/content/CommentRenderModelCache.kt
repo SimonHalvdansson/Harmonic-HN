@@ -1,8 +1,19 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.lazy.LazyListState
 import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Document
+import androidx.compose.ui.text.AnnotatedString
+import com.simon.harmonichackernews.presentation.PortableCommentItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlin.coroutines.coroutineContext
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import kotlin.math.min
 
@@ -38,15 +49,28 @@ internal object CommentRenderModelCache {
             return cached
         }
 
+        val model = prepare(expandedHtml, collectLinks)
+        install(commentId, source, collectLinks, model)
+        return model
+    }
+
+    fun peek(commentId: Int, source: String, collectLinks: Boolean): CommentRenderModel? =
+        entries[Key(commentId, source, collectLinks)]
+
+    fun prepare(expandedHtml: String?, collectLinks: Boolean): CommentRenderModel {
         val references = if (collectLinks) CollectedReferenceLinks.parse(expandedHtml) else null
         val blocks = references
             ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
             ?.contentBlocks
             ?: listOf(CollectedReferenceLinks.ContentBlock.text(expandedHtml))
-        val model = CommentRenderModel(references, blocks)
+        return CommentRenderModel(references, blocks)
+    }
+
+    fun install(commentId: Int, source: String, collectLinks: Boolean, model: CommentRenderModel) {
+        val key = Key(commentId, source, collectLinks)
+        if (key in entries) return
         removePriorRevisions(commentId, source)
         if (source.length <= MAX_CACHEABLE_SOURCE_CHARS) remember(key, model)
-        return model
     }
 
     private fun remember(key: Key, model: CommentRenderModel) {
@@ -132,33 +156,39 @@ private object CommentCollapsedPreviewCache {
     private data class PreviewKey(val commentId: Int, val sourcePrefix: String)
 }
 
-/** Parsed DOMs are style-neutral; link color and callbacks are applied when the text is built. */
-internal object CommentHtmlDocumentCache {
+/** UI-owned cache of immutable text; pure worker preparation never accesses these maps. */
+internal object CommentHtmlTextCache {
     private const val MAX_ENTRIES = 384
     private const val MAX_CACHEABLE_SOURCE_CHARS = 64 * 1024
     private const val MAX_TOTAL_WEIGHTED_CHARS = 2 * 1024 * 1024
-    private val entries = mutableMapOf<String, Document>()
+    private val entries = mutableMapOf<String, AnnotatedString>()
     private val order = ArrayDeque<String>()
     private var totalWeightedChars = 0
 
-    fun get(html: String): Document {
+    fun get(html: String): AnnotatedString {
         entries[html]?.let { cached ->
             order.remove(html)
             order.addLast(html)
             return cached
         }
-        val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
-        if (html.length > MAX_CACHEABLE_SOURCE_CHARS) return document
+        val text = prepareCommentHtml(html)
+        install(html, text)
+        return text
+    }
+
+    fun contains(html: String): Boolean = html in entries
+
+    fun install(html: String, text: AnnotatedString) {
+        if (html in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
         val weight = min(Int.MAX_VALUE / 2, html.length * 3)
         while (order.isNotEmpty() &&
             (order.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
         ) {
             remove(order.first())
         }
-        entries[html] = document
+        entries[html] = text
         order.addLast(html)
         totalWeightedChars += weight
-        return document
     }
 
     private fun remove(html: String) {
@@ -175,4 +205,50 @@ internal object CommentHtmlDocumentCache {
     }
 
     internal fun entryCountForTest(): Int = entries.size
+}
+
+/** Called from a UI coroutine. Only detached preparation runs on Default; installation stays here. */
+internal suspend fun prefetchCommentRenderModels(comments: List<PortableCommentItem>, collectLinks: Boolean) {
+    for (comment in comments) {
+        coroutineContext.ensureActive()
+        val source = comment.expandedAnchorText.orEmpty()
+        val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
+        val model = cached ?: withContext(Dispatchers.Default) {
+            CommentRenderModelCache.prepare(source, collectLinks)
+        }
+        // Read the mutable caches on their owning UI thread, then pass only strings to the worker.
+        val missing = model.contentBlocks.mapNotNull { it.bodyHtml }
+            .distinct().filterNot(CommentHtmlTextCache::contains)
+        if (missing.isEmpty()) {
+            CommentRenderModelCache.install(comment.id, source, collectLinks, model)
+            continue
+        }
+        val prepared = withContext(Dispatchers.Default) {
+            missing.associateWith { html ->
+                coroutineContext.ensureActive()
+                prepareCommentHtml(html)
+            }
+        }
+        CommentRenderModelCache.install(comment.id, source, collectLinks, model)
+        prepared.forEach { (html, text) -> CommentHtmlTextCache.install(html, text) }
+    }
+}
+
+@Composable
+internal fun PrefetchCommentContent(
+    listState: LazyListState,
+    comments: List<PortableCommentItem>,
+    collectLinks: Boolean,
+    headerItems: Int = 0,
+) {
+    LaunchedEffect(listState, comments, collectLinks) {
+        snapshotFlow {
+            val items = listState.layoutInfo.visibleItemsInfo
+            (items.firstOrNull()?.index ?: 0) to (items.lastOrNull()?.index ?: 0)
+        }.distinctUntilChanged().collectLatest { (first, last) ->
+            val start = (first - headerItems - 8).coerceIn(0, comments.size)
+            val end = (last - headerItems + 25).coerceIn(start, comments.size)
+            prefetchCommentRenderModels(comments.subList(start, end), collectLinks)
+        }
+    }
 }

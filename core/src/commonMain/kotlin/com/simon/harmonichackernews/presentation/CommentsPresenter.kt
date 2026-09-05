@@ -61,6 +61,7 @@ sealed interface CommentsAction {
     data object ShowCommentsByOp : CommentsAction
     data object ResetCommentsByOp : CommentsAction
     data class SetSearchQuery(val query: String) : CommentsAction
+    data class SetSearchActive(val active: Boolean) : CommentsAction
     data class BeginThreadLoad(val nowMillis: Long) : CommentsAction
     data class EvaluateUpdateAvailability(
         val nowMillis: Long,
@@ -181,6 +182,7 @@ class CommentsPresenter(
     private val threadPreparationDispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
 ) : Feature<CommentsAction, CommentsPresenterState, CommentsEffect> {
     val thread: CommentThreadStore = sessionState.commentThread
+    private val search = CommentSearchSession(scope, thread, threadPreparationDispatcher)
     private val mutableState = MutableStateFlow(
         CommentsPresenterState(
             thread = thread.state.value,
@@ -233,6 +235,7 @@ class CommentsPresenter(
             CommentsAction.ShowCommentsByOp -> thread.showCommentsByOp()
             CommentsAction.ResetCommentsByOp -> thread.resetCommentsByOp()
             is CommentsAction.SetSearchQuery -> thread.setSearchQuery(action.query)
+            is CommentsAction.SetSearchActive -> search.setActive(action.active)
             is CommentsAction.BeginThreadLoad -> publish(
                 lastLoadedMillis = action.nowMillis,
                 showUpdate = false,

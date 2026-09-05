@@ -60,6 +60,8 @@ class CommentsFeatureListener(
 
     override fun onSearchQueryChanged(query: String) =
         store.accept(CommentsIntent.SearchQuery(query))
+    override fun onSearchVisibilityChanged(visible: Boolean) =
+        store.accept(CommentsIntent.SearchActive(visible))
     override fun onSortComments(sortType: String) = store.accept(CommentsIntent.Sort(sortType))
     override fun onSheetAction(action: CommentsSheetAction) =
         store.accept(CommentsIntent.SheetAction(action))

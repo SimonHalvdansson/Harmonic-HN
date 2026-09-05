@@ -15,6 +15,61 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPreloadCoordinatorTest {
     @Test
+    fun latestViewportDropsQueuedWorkButRetainsAnAlreadyStartedTransfer() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val requested = mutableListOf<Int>()
+        val coordinator = CommentsPreloadCoordinator(
+            scope = backgroundScope,
+            loadFilteredUsers = { emptySet() },
+            isPrepared = { _, _, _, _ -> false },
+            preload = { _, id, _, _ ->
+                requested += id
+                if (id == 1) release.await()
+            },
+            maxConcurrentPreloads = 1,
+            scrollSettleDelayMillis = 0,
+            preloadDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        coordinator.setEnabled(true)
+        coordinator.updateVisibleStories(listOf(story(1), story(2), story(3)))
+        runCurrent()
+        assertEquals(listOf(1), requested)
+
+        coordinator.updateVisibleStories(listOf(story(4)))
+        runCurrent()
+        assertEquals(listOf(1), requested)
+        release.complete(Unit)
+        runCurrent()
+        assertEquals(listOf(1, 4), requested)
+    }
+
+    @Test
+    fun queuedWorkRechecksVisibilityEvenBeforeTheNewViewportSettles() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val requested = mutableListOf<Int>()
+        val coordinator = CommentsPreloadCoordinator(
+            scope = backgroundScope,
+            loadFilteredUsers = { emptySet() },
+            isPrepared = { _, _, _, _ -> false },
+            preload = { _, id, _, _ ->
+                requested += id
+                if (id == 1) release.await()
+            },
+            maxConcurrentPreloads = 1,
+            scrollSettleDelayMillis = 300,
+            preloadDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        coordinator.setEnabled(true)
+        coordinator.updateVisibleStories(listOf(story(1), story(2)))
+        advanceTimeBy(300)
+        runCurrent()
+        coordinator.updateVisibleStories(emptyList())
+        release.complete(Unit)
+        runCurrent()
+        assertEquals(listOf(1), requested)
+    }
+
+    @Test
     fun enabledCoordinatorPreloadsEligibleVisibleDiscussionsAfterScrollingSettles() = runTest {
         val requested = mutableListOf<Triple<Int, List<Int>, Set<String>>>()
         val dispatcher = StandardTestDispatcher(testScheduler)

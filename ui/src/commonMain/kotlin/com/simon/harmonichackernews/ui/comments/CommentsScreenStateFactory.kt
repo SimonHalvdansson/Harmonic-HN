@@ -58,6 +58,7 @@ object CommentsScreenStateFactory {
             commentVoteLoadingAction = state.commentVoteLoadingAction,
             downvotedCommentIds = state.downvotedCommentIds,
             searchQuery = thread.searchQuery,
+            searchPreparing = thread.searchPreparing,
             searchResults = thread.searchResults,
             visibleComments = thread.visibleComments,
         )

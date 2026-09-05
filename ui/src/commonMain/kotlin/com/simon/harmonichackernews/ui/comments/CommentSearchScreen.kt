@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -48,8 +49,12 @@ fun CommentSearchScreen(
     fontFamily: FontFamily,
     onSearchTermChanged: (String) -> Unit,
     requestFocus: Boolean,
+    preparing: Boolean = false,
+    collectLinks: Boolean = false,
     commentContent: @Composable (PortableCommentItem) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    com.simon.harmonichackernews.ui.content.PrefetchCommentContent(listState, visibleComments, collectLinks)
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     // Keep selection/composition state local to the field. On desktop, feeding the asynchronously
@@ -73,7 +78,7 @@ fun CommentSearchScreen(
 
     Column(Modifier.fillMaxWidth()) {
         Text(
-            text = "(${visibleComments.size} $matchLabel)",
+            text = if (preparing) "Searching…" else "(${visibleComments.size} $matchLabel)",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -105,6 +110,7 @@ fun CommentSearchScreen(
             singleLine = true,
         )
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
