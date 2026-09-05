@@ -130,7 +130,11 @@ fun CommentActionOverlay(
         dismissRequestVersion = dismissRequest,
     )
     val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
-    val sourceCapture = rememberGraphicsLayerSnapshot(source?.contentLayer, 0)
+    val sourceCapture = rememberGraphicsLayerSnapshot(
+        source?.contentLayer,
+        0,
+        downsampleOversizedLayer = true,
+    )
     val targetUserCapture = rememberGraphicsLayerSnapshot(targetUserLayer, snapshotRefreshKey)
     val targetBodyCapture = rememberGraphicsLayerSnapshot(targetBodyLayer, snapshotRefreshKey)
     val targetSupplementaryCapture = rememberGraphicsLayerSnapshot(
@@ -170,10 +174,10 @@ fun CommentActionOverlay(
             drawOverlayShadows = true
             withFrameNanos { }
         } else {
-            // Restored dialogs have no source layer, but suppression must still not precede draw.
+            // A restored dialog or failed capture uses a fade over the still-visible source row.
             hideTargetContent = false
             withFrameNanos { }
-            controller.setCommentActionSourceCovered(true)
+            controller.setCommentActionSourceCovered(false)
         }
         transformProgress.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
         if (transitionSource != null) {
@@ -326,7 +330,7 @@ fun CommentActionOverlay(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            val fallbackPresentation = if (source == null) {
+            val fallbackPresentation = if (transitionSource == null) {
                 Modifier.graphicsLayer {
                     val fallbackScale = 0.96f + 0.04f * progress
                     scaleX = fallbackScale * backScale

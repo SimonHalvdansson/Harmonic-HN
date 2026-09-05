@@ -9,6 +9,34 @@ import kotlin.test.assertTrue
 
 class GraphicsLayerSnapshotPolicyTest {
     @Test
+    fun keepsSmallCommentSnapshotsAtTheirOriginalResolution() {
+        val size = IntSize(1080, 1750)
+        assertEquals(size, boundedGraphicsLayerSnapshotSize(size))
+    }
+
+    @Test
+    fun boundsLongCommentSnapshotsAcrossTextSizesAndScreenResolutions() {
+        for (size in listOf(IntSize(1080, 2200), IntSize(1344, 2000), IntSize(1344, 20000))) {
+            val bounded = boundedGraphicsLayerSnapshotSize(size)!!
+            assertTrue(isGraphicsLayerSnapshotSizeSafe(bounded), "$size -> $bounded")
+            assertTrue(bounded.width < size.width)
+            assertTrue(bounded.height < size.height)
+            // Rounding may change each dimension by less than one pixel.
+            val scale = bounded.height.toDouble() / size.height
+            assertTrue(kotlin.math.abs(bounded.width - size.width * scale) < 1.0)
+        }
+    }
+
+    @Test
+    fun boundsExtremeAspectRatiosAndRejectsEmptyLayers() {
+        assertNull(boundedGraphicsLayerSnapshotSize(IntSize.Zero))
+        assertNull(boundedGraphicsLayerSnapshotSize(IntSize(-1, 100)))
+        for (size in listOf(IntSize(1, Int.MAX_VALUE), IntSize(Int.MAX_VALUE, 1), IntSize(Int.MAX_VALUE, Int.MAX_VALUE))) {
+            assertTrue(isGraphicsLayerSnapshotSizeSafe(boundedGraphicsLayerSnapshotSize(size)!!))
+        }
+    }
+
+    @Test
     fun acceptsAValidSnapshotAtTheByteLimit() {
         val size = IntSize(2048, 1024)
 
