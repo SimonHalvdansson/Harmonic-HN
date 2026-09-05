@@ -10,6 +10,28 @@ import kotlinx.serialization.json.jsonObject
 
 class AlgoliaCommentsParserTest {
     @Test
+    fun integerCoercionPreservesEachScalarIndependently() = runTest {
+        // Separate inputs ensure one unusual scalar cannot hide a fast-path error in another.
+        val cases = listOf(
+            "0" to 0, "42" to 42, "2147483647" to Int.MAX_VALUE,
+            "-1" to -1, "-2147483648" to Int.MIN_VALUE,
+            "2147483648" to 0, "4294967295" to 0, "4294967296" to 0,
+            "1e2" to 100, "1.0" to 1, "1.5" to 0,
+            "\"42\"" to 42, "\"1e2\"" to 0, "\"1.0\"" to 0,
+            "\"+42\"" to 42, "\"\\u0034\\u0032\"" to 42,
+            "null" to 0, "true" to 0, "{}" to 0, "[]" to 0,
+        )
+        for ((value, expected) in cases) {
+            val parsed = AlgoliaCommentsParser().parse(
+                """{"children":[{"id":$value,"parent_id":$value,"created_at_i":$value,"text":"kept"}]}""",
+            ).comments.single()
+            assertEquals(expected, parsed.id, value)
+            assertEquals(expected, parsed.parent, value)
+            assertEquals(expected, parsed.time, value)
+        }
+    }
+
+    @Test
     fun normalStringsAndNullsKeepQuotedNumbersDistinctFromNumbers() = runTest {
         val response = """{"children":[
           {"id":"1e2","text":"quoted exponent"},

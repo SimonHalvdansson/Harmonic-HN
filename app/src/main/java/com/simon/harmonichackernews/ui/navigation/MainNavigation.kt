@@ -46,6 +46,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -901,7 +903,8 @@ private fun MainNavigation(
         completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
         completedEditorPredictiveBack = editorPredictiveBack.completed,
         completedStoryPredictiveBack = completedPredictivePop,
-        modifier = Modifier.background(HarmonicTheme.colors.background),
+        modifier = Modifier.background(HarmonicTheme.colors.background)
+            .semantics { testTagsAsResourceId = true },
         basePredictiveModifier = settingsPredictiveBack.enterModifier
             .then(submissionsPredictiveBack.enterModifier)
             .then(editorPredictiveBack.enterModifier),

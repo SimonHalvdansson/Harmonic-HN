@@ -50,6 +50,52 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun cachedThreadDisplaysBeforeRankingAndIdenticalNetworkJsonStillReordersIt() = runTest {
+        val response = """{"id":42,"title":"Cached","children":[
+            {"id":7,"text":"One"},{"id":8,"text":"Two"}
+        ]}"""
+        val ranking = CompletableDeferred<Story?>()
+        val source = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int): Story? = ranking.await()
+            override suspend fun getComment(id: Int): Comment? = error("Not used")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
+        }
+        val presenter = CommentsPresenter(
+            backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(
+                FakeAlgoliaRepository(response), source,
+                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler)),
+            ),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        val effects = mutableListOf<CommentsEffect>()
+        backgroundScope.launch { presenter.effects.collect { effects += it } }
+        val story = Story("Loading", 42, false, false)
+        presenter.dispatch(
+            CommentsAction.LoadThread(
+                story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "default",
+                collapseTopLevel = false, previousResponse = response, restoreScrollFromCache = true,
+            ),
+        )
+        runCurrent()
+        assertEquals(listOf(7, 8), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertTrue(presenter.state.value.loaded)
+        assertFalse(ranking.isCompleted)
+        assertFalse(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().networkCompleted)
+
+        ranking.complete(Story().apply { id = 42; kids = intArrayOf(8, 7) })
+        runCurrent()
+        assertEquals(listOf(8, 7), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertEquals(listOf(8, 7), story.kids?.toList())
+        val applied = effects.filterIsInstance<CommentsEffect.ThreadApplied>().last()
+        assertTrue(applied.networkCompleted)
+        assertTrue(applied.contentApplied)
+        assertEquals(response, applied.responseToCache)
+        assertEquals(listOf(8, 7), applied.cacheSummary?.topLevelCommentIds)
+    }
+
+    @Test
     fun localTooShortFailureRequestsPageTextOnlyOnce() = runTest {
         val session = CommentsSessionState()
         val presenter = CommentsPresenter(

@@ -1,11 +1,17 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.parser.Parser
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.int
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -20,6 +26,17 @@ class AlgoliaFixtureParityTest {
             val parser = AlgoliaCommentsParser()
             val initial = parser.parse(payload)
             assertEquals(fixture.count, initial.comments.size, filename)
+            for (comment in initial.comments) {
+                val html = comment.text ?: continue
+                if (!html.contains("<a")) continue
+                val document = Ksoup.parse(html, Parser.htmlParser(), "")
+                document.select("a[href]").forEach { link ->
+                    val href = Ksoup.parse(link.attr("href")).text()
+                    val label = Ksoup.parse(link.text()).text()
+                    if (label.endsWith("...") && href.startsWith(label.dropLast(3))) link.text(href)
+                }
+                assertEquals(document.body().html(), comment.expandedAnchorText, "$filename: ${comment.id}")
+            }
             val ids = initial.comments.filter { it.depth == 0 }.map { it.id }.reversed()
             val filters = listOf(emptySet(), setOf(initial.comments.first().by.orEmpty()))
             for ((index, filteredUsers) in filters.withIndex()) {
@@ -27,7 +44,8 @@ class AlgoliaFixtureParityTest {
                 assertEquals(fixture.comments[index], digest(parsed.comments.map(::snapshot).toString()), filename)
                 val reused = Json.parseToJsonElement(assertNotNull(parsed.cacheSummary).encode(1))
                 val standalone = Json.parseToJsonElement(assertNotNull(JSONParser.compactAlgoliaStoryResponse(payload, 1)))
-                assertEquals(reused, standalone, filename)
+                assertEquals(ids, reused.jsonObject.getValue("kids").jsonArray.map { it.jsonPrimitive.int })
+                assertEquals(reused.jsonObject - "kids", standalone.jsonObject, filename)
                 assertEquals(fixture.summary, digest(standalone.toString()), filename)
             }
         }

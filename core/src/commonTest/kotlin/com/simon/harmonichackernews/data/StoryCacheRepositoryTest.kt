@@ -11,6 +11,27 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 
 class StoryCacheRepositoryTest {
     @Test
+    fun parsedSummaryRetainsRankedIdsWithoutOverwritingLiveOrdering() = runTest {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val repository = StoryCacheRepository(files, metadata)
+        val payload = """{"id":42,"title":"Cached","children":[
+            {"id":7,"text":"one"},{"id":8,"text":"two"}
+        ]}"""
+        val ids = mutableListOf(8, 7)
+        val parsed = AlgoliaCommentsParser().parse(payload, topLevelCommentIds = ids)
+        ids.reverse() // The parsed summary owns its ordering snapshot.
+        repository.storeStory(42, payload, 1_000, parsed.cacheSummary)
+        val reopened = Story().apply { id = 42 }
+        // Recreate the repository to exercise persistence rather than an in-memory ordering cache.
+        assertTrue(StoryCacheRepository(files, metadata).hydrateStory(reopened))
+        assertEquals(listOf(8, 7), reopened.kids?.toList())
+        val live = Story().apply { id = 42; kids = intArrayOf(7, 8, 9) }
+        assertTrue(repository.hydrateStory(live))
+        assertEquals(listOf(7, 8, 9), live.kids?.toList())
+    }
+
+    @Test
     fun parsedSummaryHydratesTheUnfilteredCommentCount() = runTest {
         val files = FakeFiles()
         val repository = StoryCacheRepository(files, FakeMetadata())

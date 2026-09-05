@@ -7,6 +7,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,7 +23,10 @@ class CommentsPreloadRepositoryTest {
         val repository = CommentsPreloadRepository(
             algolia = source,
             storeResponse = { storyId, response, summary ->
-                assertEquals(JSONParser.compactAlgoliaStoryResponse(response, storyId), assertNotNull(summary).encode(storyId))
+                assertEquals(listOf(7, 8), assertNotNull(summary).topLevelCommentIds)
+                val standalone = Json.parseToJsonElement(assertNotNull(JSONParser.compactAlgoliaStoryResponse(response, storyId)))
+                val retained = Json.parseToJsonElement(summary.encode(storyId))
+                assertEquals(standalone.jsonObject, retained.jsonObject - "kids")
                 stored += storyId to response
             },
             nowMillis = { 1_000L },

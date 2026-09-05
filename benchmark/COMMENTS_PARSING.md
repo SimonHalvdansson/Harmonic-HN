@@ -14,6 +14,36 @@ Fixture reads and parser construction happen outside measurement. Network, disk 
 screen rendering, and the rest of comment-screen preparation are excluded. Allocation
 counts are object allocations per operation, not bytes or retained heap.
 
+`CommentsPreparationBenchmark` adds two large-thread measurements:
+
+- `prepareLarge`: builds the initial thread snapshots using fresh parsed comments on every
+  iteration. JSON parsing is excluded from timing and allocation counts.
+- `parseAndPrepareLarge`: measures both stages together, including sorting, visibility,
+  anchor expansion, and immutable snapshots. It excludes UI rendering and network/cache I/O.
+
+Fresh comments are necessary: reusing comments would measure cached anchor text after the
+first iteration and hide the initial snapshot cost. These tests use the public store operations
+called by initial preparation; they exclude the final helper list copies and live-store commit.
+
+`HarmonicMacrobenchmark#commentsOpenLarge` measures the actual cached-content journey. Setup
+and measurement wait for a rendered `comment-row` test tag. The 550 ms pause still covers the
+navigation animation, but no longer ends measurement while only the cached title is visible.
+Use `-e comments.iterations 10` for a shorter run; the default remains 40. The
+`CommentsOpen.contentReadyFirstMs` metric measures the app's ready marker, not the first
+presented frame. Network ordering and emulator scheduling can affect this journey, so compare
+CPU microbenchmarks separately and preserve the traces alongside before/after results.
+
+Use the default `AndroidBenchmarkRunner` for microbenchmarks and build with the standard
+`AndroidJUnitRunner` for macrobenchmarks. The micro runner's isolation activity can time out
+during macrobenchmark teardown on the emulator, after metrics have been collected. The
+`benchmarkRunner` Gradle property selects the runner without changing source files.
+
+```powershell
+./gradlew.bat :benchmark:assembleBenchmarkBenchmark "-PbenchmarkRunner=androidx.test.runner.AndroidJUnitRunner"
+android install --apks=benchmark/build/outputs/apk/benchmarkBenchmark/benchmark-benchmarkBenchmark.apk --device=emulator-5554
+adb -s emulator-5554 shell am instrument -w -r -e class com.simon.harmonichackernews.benchmark.HarmonicMacrobenchmark#commentsOpenLarge -e comments.iterations 10 -e androidx.benchmark.suppressErrors EMULATOR com.simon.harmonichackernews.benchmark/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## Running on an emulator
 
 Use Android Studio's bundled JBR for Gradle. Inspect `adb devices -l` first and replace

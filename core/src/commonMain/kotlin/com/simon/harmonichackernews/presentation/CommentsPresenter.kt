@@ -447,7 +447,7 @@ class CommentsPresenter(
         val requestId = threadLoadSession.begin(storyId)
         publish(usingOfficialApiFallback = false)
         threadLoadJob = scope.launch {
-            var topLevelCommentIds = knownTopLevelCommentIds
+            val topLevelCommentIds = knownTopLevelCommentIds
             val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId,
@@ -492,19 +492,8 @@ class CommentsPresenter(
             val previousResponse = traced(TRACE_CACHE_READ, requestId) {
                 action.loadPreviousResponse?.invoke() ?: action.previousResponse
             }
-            if (
-                action.useAlgolia &&
-                previousResponse != null &&
-                topLevelCommentIds.isEmpty()
-            ) {
-                topLevelCommentIds = commentThreadRepository.resolveTopLevelCommentIds(
-                    storyId,
-                    topLevelCommentIds,
-                )
-                if (topLevelCommentIds.isNotEmpty()) {
-                    action.story.kids = topLevelCommentIds.toIntArray()
-                }
-            }
+            // Display cached content without awaiting a live ranking lookup. Hydrated summaries
+            // carry known IDs; legacy caches use Algolia order until the network result arrives.
             val alreadyAppliedResponse = previousResponse
             previousResponse?.let { cachedResponse ->
                 traced(TRACE_PARSE_CACHED_JSON, requestId) {
@@ -579,7 +568,9 @@ class CommentsPresenter(
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
                     if (alreadyAppliedResponse.isNullOrEmpty() ||
-                        alreadyAppliedResponse != result.response
+                        alreadyAppliedResponse != result.response ||
+                        (topLevelCommentIds.isEmpty() &&
+                            !result.parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
                     ) {
                         applyAlgoliaThread(
                             action = action,

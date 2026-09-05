@@ -15,9 +15,10 @@ import kotlinx.serialization.json.JsonElement
 class AlgoliaStorySummary internal constructor(
     private val metadata: JsonObject,
     private val descendants: Int,
+    val topLevelCommentIds: List<Int> = emptyList(),
 ) {
     fun encode(fallbackId: Int): String =
-        JSONParser.compactAlgoliaStoryFields(metadata, fallbackId, descendants)
+        JSONParser.compactAlgoliaStoryFields(metadata, fallbackId, descendants, topLevelCommentIds)
 }
 
 internal class AlgoliaItem<T>(val metadata: JsonObject, val children: T)

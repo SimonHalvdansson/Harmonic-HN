@@ -206,7 +206,12 @@ object JSONParser {
         }
     }
 
-    internal fun compactAlgoliaStoryFields(item: JSONObject, fallbackId: Int, descendants: Int): String {
+    internal fun compactAlgoliaStoryFields(
+        item: JSONObject,
+        fallbackId: Int,
+        descendants: Int,
+        topLevelCommentIds: List<Int> = emptyList(),
+    ): String {
         val summary = JSONObject()
         var id = item.optInt("id", fallbackId)
         if (id <= 0) {
@@ -221,6 +226,9 @@ object JSONParser {
         summary.put("points", item.optInt("points", 0))
         summary.put("created_at_i", item.optInt("created_at_i", 0))
         summary.put("descendants", descendants)
+        if (topLevelCommentIds.isNotEmpty()) {
+            summary.put("kids", JSONArray().apply { topLevelCommentIds.forEach { put(it) } })
+        }
         putNonNullString(summary, "url", item.optString("url", ""))
         putNonNullString(summary, "text", item.optString("text", ""))
 
@@ -315,6 +323,13 @@ object JSONParser {
             }
 
             story.id = id
+            // A live feed's ordering wins over older cached metadata. Legacy summaries simply
+            // omit kids; those threads can still open immediately in cached Algolia order.
+            if (story.kids?.isNotEmpty() != true) {
+                item.optJSONArray("kids")?.let { ids ->
+                    story.kids = IntArray(ids.length()) { ids.getInt(it) }
+                }
+            }
             story.time = item.optInt("created_at_i", item.optInt("time", story.time))
             story.score = item.optInt("points", item.optInt("score", story.score))
             story.by = item.optString("author", item.optString("by", story.by))

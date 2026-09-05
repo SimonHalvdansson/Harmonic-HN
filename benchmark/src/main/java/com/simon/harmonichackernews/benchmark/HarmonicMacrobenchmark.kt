@@ -10,6 +10,7 @@ import androidx.benchmark.macro.TraceSectionMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
 import org.junit.Rule
 import org.junit.Before
@@ -102,7 +103,8 @@ class HarmonicMacrobenchmark {
             // Fail instead of silently falling back to run-from-apk: this benchmark is intended
             // to measure the Comments journey with the generated profile installed.
             compilationMode = CompilationMode.Partial(BaselineProfileMode.Require),
-            iterations = 40,
+            iterations = InstrumentationRegistry.getArguments().getString("comments.iterations")
+                ?.toInt()?.also { require(it > 0) } ?: 40,
             setupBlock = {
                 pressHome()
                 startActivityAndWait()

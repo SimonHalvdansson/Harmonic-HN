@@ -118,6 +118,7 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     check(device.wait(Until.hasObject(By.text(fixture.title)), 30_000)) {
         "The ${fixture.intentValue} deterministic Comments fixture did not parse and render"
     }
+    awaitLoadedComments(fixture)
     device.waitForIdle()
     device.pressBack()
     check(device.wait(Until.gone(By.text(fixture.title)), 10_000)) {
@@ -135,8 +136,17 @@ internal fun MacrobenchmarkScope.openDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
 ) {
     device.executeShellCommand(commentsBenchmarkCommand(OpenCommentsBenchmarkAction, fixture))
+    // Include the complete destination animation, then wait for actual comment rows. The cached
+    // title can be visible while ordering, parsing, or snapshot preparation is still pending.
     SystemClock.sleep(550)
+    awaitLoadedComments(fixture)
     device.waitForIdle()
+}
+
+private fun MacrobenchmarkScope.awaitLoadedComments(fixture: CommentsBenchmarkFixture) {
+    check(device.wait(Until.hasObject(By.res("comment-row")), 30_000)) {
+        "The ${fixture.intentValue} fixture did not render any comment rows"
+    }
 }
 
 internal fun MacrobenchmarkScope.findFirstStoryCommentsButtonCenter(): Point {

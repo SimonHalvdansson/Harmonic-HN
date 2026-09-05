@@ -49,6 +49,9 @@ data class AlgoliaCommentsResponse(
     val cacheSummary: AlgoliaStorySummary? = null,
 ) {
     fun updateStoryInformation(story: Story, oldCommentCount: Int): Boolean {
+        cacheSummary?.topLevelCommentIds?.takeIf { it.isNotEmpty() }?.let {
+            story.kids = it.toIntArray()
+        }
         val changed = story.title.isNullOrEmpty() ||
             title != story.title ||
             points != story.score ||
@@ -160,7 +163,7 @@ class AlgoliaCommentsParser(
             url = payload.url,
             text = payload.text,
             id = payload.id,
-            cacheSummary = AlgoliaStorySummary(item.metadata, descendants),
+            cacheSummary = AlgoliaStorySummary(item.metadata, descendants, topLevelCommentIds.toList()),
         )
     }
 

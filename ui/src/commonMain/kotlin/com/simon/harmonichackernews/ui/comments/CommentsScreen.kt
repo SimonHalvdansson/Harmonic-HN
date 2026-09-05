@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -394,6 +395,7 @@ fun CommentsScreen(
                         item.comment.id == controller.getVisibleCommentActionId(),
                     showActionsOnClick = settings.swapLongPressTap,
                     modifier = Modifier
+                        .testTag("comment-row")
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .graphicsLayer(
                             alpha = if (suppressed && !keepActionSourceVisible) 0f else 1f,
