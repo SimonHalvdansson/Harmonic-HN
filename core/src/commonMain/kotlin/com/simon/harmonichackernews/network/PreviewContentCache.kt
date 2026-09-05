@@ -39,7 +39,7 @@ class PreviewContentCache(
             val cachedAt = store.getLong(previewImageMissTimeKey(entryId), 0L)
             val now = nowMillis()
             loaded = cachedAt > 0L && now >= cachedAt && now - cachedAt <= negativeImageTtlMillis
-            if (!loaded) invalidatePreviewImage(store, entryId)
+            if (!loaded && updateCacheOrder) invalidatePreviewImage(store, entryId)
         }
         if (updateCacheOrder && loaded) touch(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, entryId)
         return CachedPreviewImageUrl(loaded, imageUrl)

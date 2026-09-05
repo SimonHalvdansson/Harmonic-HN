@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.network.StoryPreviewResourceRequest
 import com.simon.harmonichackernews.network.StoryPreviewResourceRuntime
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.resolvedImageUrl
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.network.StoryResourceTintState
 import com.simon.harmonichackernews.settings.StoryPreviewMode
@@ -208,11 +209,11 @@ class StoryListResourceRuntime(
         val previewTint = tintFor(
             story,
             StoryResourceTintKind.PREVIEW_IMAGE,
-            previewState?.imageUrl ?: story.previewImageUrl,
+            previewState.resolvedImageUrl(story.previewImageUrl),
             baseColor,
             settings.paletteTintMode,
         )
-        val previewUrl = previewState?.imageUrl ?: story.previewImageUrl
+        val previewUrl = previewState.resolvedImageUrl(story.previewImageUrl)
         val previewFailed = previewState?.imageLoadFailed == true
         val previewAvailable = settings.previewImageMode != StoryPreviewMode.OFF &&
             !previewUrl.isNullOrEmpty() && !previewFailed

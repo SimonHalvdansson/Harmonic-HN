@@ -15,8 +15,17 @@ class StoryPreviewRepository(
     private val linkSummaries: LinkSummaryRepository,
     private val store: KeyValueStore,
     private val cache: PreviewContentCache = PreviewContentCache(),
+    override val imageFailures: PreviewImageFailureCache = PreviewImageFailureCache(store),
 ) : StoryPreviewResourceService {
     private val cacheMutex = Mutex()
+
+    override fun peekCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource? {
+        val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(request.pageUrl) ?: return null
+        val entryId = PreviewCachePolicy.previewEntryId(request.storyId, normalizedUrl)
+        // No LRU updates or summary hydration on the synchronous presentation path.
+        val image = cache.loadPreviewImage(store, entryId, updateCacheOrder = false)
+        return CachedStoryPreviewResource(image.loaded, image.imageUrl, null)
+    }
 
     override suspend fun readCached(
         request: StoryPreviewResourceRequest,
@@ -56,6 +65,8 @@ class StoryPreviewRepository(
         val entryId = PreviewCachePolicy.previewEntryId(storyId, normalizedUrl)
 
         if (forceRefresh) {
+            peekCached(StoryPreviewResourceRequest(storyId, normalizedUrl, true, false))
+                ?.imageUrl?.let { imageFailures.record(it, success = true) }
             cacheMutex.withLock { cache.invalidatePreviewImage(store, entryId) }
         }
         if (!forceRefresh) {
@@ -96,6 +107,7 @@ class StoryPreviewRepository(
         cacheMutex.withLock {
             store.clear()
             cache.reset()
+            imageFailures.onStoreCleared()
         }
     }
 
@@ -107,6 +119,7 @@ class StoryPreviewRepository(
         val image = cache.loadPreviewImage(store, entryId)
         val summary = if (requireSummary) cache.loadLinkSummary(store, normalizedUrl) else null
         when {
+            summary != null && image.loaded && image.imageUrl == null -> PreviewContent(null, summary)
             summary != null -> PreviewContent(summary.imageUrl.ifEmpty { image.imageUrl }, summary)
             !requireSummary && image.loaded -> PreviewContent(image.imageUrl, null)
             else -> null

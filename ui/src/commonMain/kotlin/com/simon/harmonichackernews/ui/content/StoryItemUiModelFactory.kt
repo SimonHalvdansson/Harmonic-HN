@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.resolvedImageUrl
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import kotlin.time.Clock
 
@@ -38,7 +39,7 @@ fun StoryItemResourcePresentation.withPreviewResource(
     }
     copy(
         summary = resource.summary?.description ?: summary,
-        previewImageUrl = resource.imageUrl ?: previewImageUrl,
+        previewImageUrl = resource.resolvedImageUrl(previewImageUrl),
         previewImageLoadFailed = resource.imageLoadFailed,
         previewImageTintArgb = currentPreviewTint?.tintColorArgb ?: previewImageTintArgb,
         faviconTintArgb = currentFaviconTint?.tintColorArgb ?: faviconTintArgb,

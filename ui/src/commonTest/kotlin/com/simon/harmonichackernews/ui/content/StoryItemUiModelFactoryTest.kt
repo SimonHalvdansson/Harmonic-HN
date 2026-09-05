@@ -6,9 +6,18 @@ import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StoryItemUiModelFactoryTest {
+    @Test
+    fun resolvedAbsenceDoesNotRestoreTheOldRowImage() {
+        val resource = StoryPreviewResourceState(1, "https://example.com", imageUrlResolved = true)
+        val old = StoryItemResourcePresentation(previewImageUrl = "https://example.com/old.png")
+        assertNull(old.withPreviewResource(resource).previewImageUrl)
+        assertEquals(old.previewImageUrl, old.withPreviewResource(resource.copy(imageUrlResolved = false)).previewImageUrl)
+    }
+
     @Test
     fun mapsPortableStoryFieldsAndResourceSnapshot() {
         val story = Story("A story", 42, true, false).apply {

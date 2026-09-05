@@ -6,6 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 data class StoryPreviewResourceRequest(
@@ -52,6 +53,10 @@ data class StoryPreviewResourceState(
     val faviconTint: StoryResourceTintState? = null,
 )
 
+/** A resolved absence must not fall back to a stale story/snapshot URL. */
+fun StoryPreviewResourceState?.resolvedImageUrl(fallback: String?): String? =
+    if (this?.imageUrlResolved == true) imageUrl else this?.imageUrl ?: fallback
+
 private fun StoryPreviewResourceState.withReconciledResources(
     chosenImageUrl: String?,
     imageResolutionEvidence: Boolean,
@@ -74,6 +79,8 @@ private fun StoryPreviewResourceState.withReconciledResources(
 }
 
 interface StoryPreviewResourceService {
+    val imageFailures: PreviewImageFailureCache? get() = null
+    fun peekCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource? = null
     suspend fun readCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource
     suspend fun load(request: StoryPreviewResourceRequest): PreviewContent
 }
@@ -91,6 +98,13 @@ class StoryPreviewResourceRuntime(
 
     private val jobs = mutableMapOf<Int, Job>()
     private val activeRequests = mutableMapOf<Int, StoryPreviewResourceRequest>()
+    private val imageFailureJob = service.imageFailures?.let { failures ->
+        scope.launch {
+            failures.changes.collect {
+                mutableStates.value.values.toList().forEach { update(it.withImageFailure()) }
+            }
+        }
+    }
 
     fun stateFor(storyId: Int): StoryPreviewResourceState? = mutableStates.value[storyId]
 
@@ -98,7 +112,7 @@ class StoryPreviewResourceRuntime(
         if (request.storyId <= 0 || request.pageUrl.isBlank()) return false
         var effectiveRequest = request
         var current = stateFor(request.storyId)?.takeIf { it.pageUrl == request.pageUrl }
-        current?.withKnown(request)?.let { reconciled ->
+        current?.withKnown(request)?.withImageFailure()?.let { reconciled ->
             if (reconciled != current) update(reconciled)
             current = reconciled
         }
@@ -118,7 +132,7 @@ class StoryPreviewResourceRuntime(
             return false
         }
 
-        val seeded = current ?: StoryPreviewResourceState(
+        var seeded = current ?: StoryPreviewResourceState(
             storyId = effectiveRequest.storyId,
             pageUrl = effectiveRequest.pageUrl,
             imageUrlResolved = effectiveRequest.imageUrlAlreadyResolved,
@@ -126,6 +140,8 @@ class StoryPreviewResourceRuntime(
             summaryResolved = effectiveRequest.knownSummary != null,
             summary = effectiveRequest.knownSummary,
         )
+        service.peekCached(effectiveRequest)?.let { seeded = seeded.withCached(it) }
+        seeded = seeded.withImageFailure()
         update(seeded.copy(loading = true, contentLoadFailed = false))
         val job = scope.launch {
             try {
@@ -133,7 +149,7 @@ class StoryPreviewResourceRuntime(
                 var next = (stateFor(effectiveRequest.storyId)
                     ?.takeIf { it.pageUrl == effectiveRequest.pageUrl }
                     ?: StoryPreviewResourceState(effectiveRequest.storyId, effectiveRequest.pageUrl))
-                    .withCached(cached)
+                    .withCached(cached).withImageFailure()
                 update(next)
 
                 if (!next.satisfies(effectiveRequest)) {
@@ -143,14 +159,15 @@ class StoryPreviewResourceRuntime(
                         return@launch
                     }
                     next = next.withReconciledResources(
-                        chosenImageUrl = loaded.imageUrl ?: next.imageUrl,
+                        chosenImageUrl = if (effectiveRequest.loadImage) loaded.imageUrl
+                            else loaded.imageUrl ?: next.imageUrl,
                         imageResolutionEvidence = effectiveRequest.loadImage,
                         chosenSummary = loaded.summary ?: next.summary,
                         summaryResolutionEvidence = effectiveRequest.loadSummary,
                         clearContentLoadFailure = true,
                     )
                 }
-                update(next.copy(loading = false))
+                update(next.copy(loading = false).withImageFailure())
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Throwable) {
@@ -160,8 +177,6 @@ class StoryPreviewResourceRuntime(
                 update(
                     failed.copy(
                         loading = false,
-                        imageUrlResolved = failed.imageUrlResolved || effectiveRequest.loadImage,
-                        summaryResolved = failed.summaryResolved || effectiveRequest.loadSummary,
                         contentLoadFailed = true,
                     ),
                 )
@@ -201,6 +216,7 @@ class StoryPreviewResourceRuntime(
         val current = stateFor(storyId)?.takeIf {
             it.pageUrl == pageUrl && it.imageUrl == imageUrl
         } ?: return
+        service.imageFailures?.record(imageUrl, success)
         update(
             current.copy(
                 imageLoading = false,
@@ -242,6 +258,7 @@ class StoryPreviewResourceRuntime(
     }
 
     fun dispose() {
+        imageFailureJob?.cancel()
         jobs.values.forEach { it.cancel() }
         jobs.clear()
         activeRequests.clear()
@@ -258,7 +275,8 @@ class StoryPreviewResourceRuntime(
     ): StoryPreviewResourceState {
         val summaryImage = cached.summary?.imageUrl?.takeIf(String::isNotEmpty)
         return withReconciledResources(
-            chosenImageUrl = summaryImage ?: cached.imageUrl ?: imageUrl,
+            chosenImageUrl = if (cached.imageUrlResolved && cached.imageUrl == null) null
+                else summaryImage ?: cached.imageUrl ?: imageUrl,
             imageResolutionEvidence = cached.imageUrlResolved || summaryImage != null,
             chosenSummary = cached.summary ?: summary,
             summaryResolutionEvidence = cached.summary != null,
@@ -271,7 +289,11 @@ class StoryPreviewResourceRuntime(
     ): StoryPreviewResourceState {
         val summaryImage = request.knownSummary?.imageUrl?.takeIf(String::isNotEmpty)
         return withReconciledResources(
-            chosenImageUrl = request.knownImageUrl ?: summaryImage ?: imageUrl,
+            chosenImageUrl = when {
+                imageUrlResolved && imageUrl == null -> null
+                request.imageUrlAlreadyResolved -> request.knownImageUrl
+                else -> request.knownImageUrl ?: summaryImage ?: imageUrl
+            },
             imageResolutionEvidence = request.imageUrlAlreadyResolved || summaryImage != null,
             chosenSummary = request.knownSummary ?: summary,
             summaryResolutionEvidence = request.knownSummary != null,
@@ -283,6 +305,16 @@ class StoryPreviewResourceRuntime(
         val currentStates = mutableStates.value
         if (currentStates[state.storyId] == state) return
         mutableStates.value = currentStates + (state.storyId to state)
+    }
+
+    private fun StoryPreviewResourceState.withImageFailure(): StoryPreviewResourceState {
+        val failures = service.imageFailures ?: return this
+        val failed = imageUrl?.let(failures::isFailed) == true
+        return if (failed == imageLoadFailed) this else copy(
+            imageLoadFailed = failed,
+            imageLoading = false,
+            imageLoaded = false,
+        )
     }
 
     private fun StoryPreviewResourceRequest.covers(

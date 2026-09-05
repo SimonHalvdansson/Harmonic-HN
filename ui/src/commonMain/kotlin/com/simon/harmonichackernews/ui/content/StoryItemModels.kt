@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.resolvedImageUrl
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
@@ -38,7 +39,7 @@ fun storyHeaderTintPresentation(
     val faviconUrl = runCatching {
         FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
     }.getOrNull()
-    val previewImageUrl = previewResource?.imageUrl ?: story.previewImageUrl
+    val previewImageUrl = previewResource.resolvedImageUrl(story.previewImageUrl)
     val previewFailed = previewResource?.imageLoadFailed == true
     val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
     val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
@@ -108,7 +109,7 @@ fun storyHeaderTintPresentation(
     val faviconUrl = runCatching {
         FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
     }.getOrNull()
-    val previewImageUrl = previewResource?.imageUrl ?: story.presentation.previewImage.url
+    val previewImageUrl = previewResource.resolvedImageUrl(story.presentation.previewImage.url)
     val previewFailed = previewResource?.imageLoadFailed == true
     val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
     val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
@@ -181,7 +182,7 @@ fun storyItemUiModel(
     val domain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
     val favicon = resolvedFaviconUrl(domain, story.url, settings.faviconProvider)
     val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-    val previewUrl = previewResource?.imageUrl ?: story.previewImageUrl
+    val previewUrl = previewResource.resolvedImageUrl(story.previewImageUrl)
     val currentPreviewTint = story.previewImageUrl == previewUrl &&
         StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode)
     val currentFaviconTint = story.faviconTintColorLoaded &&
@@ -239,7 +240,7 @@ fun storyItemUiModel(
     val favicon = resolvedFaviconUrl(domain, item.url, settings.faviconProvider)
     val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
     val presentation = item.presentation
-    val previewUrl = previewResource?.imageUrl ?: presentation.previewImage.url
+    val previewUrl = previewResource.resolvedImageUrl(presentation.previewImage.url)
     val previewTint = presentation.previewTint
     val faviconTint = presentation.faviconTint
     val currentPreviewTint = presentation.previewImage.url == previewUrl &&
@@ -319,7 +320,7 @@ fun rememberSubmissionStoryItemUiModel(
         onDispose { }
     }
     val currentPreviewState = previewState?.takeIf { it.pageUrl == story.url }
-    val previewUrl = currentPreviewState?.imageUrl ?: story.previewImageUrl
+    val previewUrl = currentPreviewState.resolvedImageUrl(story.previewImageUrl)
     val summary = currentPreviewState?.summary?.description
         ?: story.linkSummaryDescription
         ?: story.summary.orEmpty()
