@@ -19,6 +19,7 @@ interface WebPageExtractor<out T> {
 data class NitterLinkPreviewPreferences(
     val previewEnabled: Boolean,
     val redirectEnabled: Boolean,
+    val instanceUrl: String = NitterInstance.DEFAULT_URL,
 )
 
 enum class NitterLinkPreviewPhase {
@@ -75,7 +76,7 @@ class NitterLinkPreviewRuntime(
         val targetUrl = if (preferences.redirectEnabled &&
             NitterPreview.isConvertibleUrl(requestedUrl)
         ) {
-            NitterPreview.convertUrl(requestedUrl)
+            NitterPreview.convertUrl(requestedUrl, preferences.instanceUrl)
         } else {
             requestedUrl
         }
@@ -93,7 +94,7 @@ class NitterLinkPreviewRuntime(
         alreadyLoaded: Boolean,
         extractor: WebPageExtractor<NitterInfo>,
     ): Boolean {
-        if (alreadyLoaded || !preferences.previewEnabled || !NitterPreview.isNitterUrl(loadedUrl)) {
+        if (alreadyLoaded || !preferences.previewEnabled || !NitterPreview.isNitterUrl(loadedUrl, preferences.instanceUrl)) {
             return false
         }
         beginRead(loadedUrl.orEmpty(), extractor, initialDelayMillis = 0)
@@ -122,7 +123,7 @@ class NitterLinkPreviewRuntime(
     private fun shouldExtract(
         url: String?,
         preferences: NitterLinkPreviewPreferences,
-    ): Boolean = preferences.previewEnabled && NitterPreview.isNitterUrl(url)
+    ): Boolean = preferences.previewEnabled && NitterPreview.isNitterUrl(url, preferences.instanceUrl)
 
     private fun beginRead(
         targetUrl: String,
@@ -211,12 +212,12 @@ class NitterLinkPreviewRuntime(
     ): Boolean = mutableState.value.generation == generation &&
         mutableState.value.preview == null &&
         activeExtractor === extractor &&
-        NitterPreview.isNitterUrl(targetUrl)
+        mutableState.value.targetUrl == targetUrl
 
     private fun isExtractorAtTarget(
         extractor: WebPageExtractor<NitterInfo>,
         targetUrl: String,
-    ): Boolean = NitterPreview.isNitterUrl(extractor.currentUrl) &&
+    ): Boolean = NitterPreview.isSameInstance(extractor.currentUrl, targetUrl) &&
         NitterPreview.isSamePage(extractor.currentUrl, targetUrl)
 
     private fun retryDelay(attempt: Int): Long = retryDelaysMillis

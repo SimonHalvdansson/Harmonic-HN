@@ -16,6 +16,45 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class NitterLinkPreviewRuntimeTest {
     @Test
+    fun customInstanceRedirectsAndExtractsPreview() = runTest {
+        val target = "https://nitter.example.org/example/status/123"
+        val expected = NitterInfo().apply { text = "Custom instance" }
+        val extractor = FakeExtractor(target, listOf(expected))
+        val runtime = runtime(this)
+        val prefs = preferences(redirect = true).copy(instanceUrl = "https://nitter.example.org")
+        assertEquals(target, runtime.prepareLoad(X_URL, prefs, false, extractor))
+        assertFalse(runtime.onPageFinished(NITTER_URL, prefs, false, extractor))
+        assertTrue(runtime.onPageFinished(target, prefs, false, extractor))
+        runCurrent()
+        assertEquals(expected, runtime.state.value.preview)
+    }
+
+    @Test
+    fun customInstanceRespectsDisabledRedirectsAndPreviews() = runTest {
+        val extractor = FakeExtractor("https://nitter.example.org/example/status/123")
+        val runtime = runtime(this)
+        val prefs = preferences(redirect = false).copy(instanceUrl = "https://nitter.example.org")
+        assertEquals(X_URL, runtime.prepareLoad(X_URL, prefs, false, extractor))
+        assertFalse(runtime.state.value.loading)
+        assertEquals(extractor.currentUrl, runtime.prepareLoad(X_URL, prefs.copy(redirectEnabled = true, previewEnabled = false), false, extractor))
+        assertFalse(runtime.state.value.loading)
+        assertEquals(0, extractor.calls)
+    }
+
+    @Test
+    fun matchingStatusOnAnUnrelatedHostIsNotExtracted() = runTest {
+        val runtime = runtime(this)
+        val extractor = FakeExtractor("https://example.org/example/status/123", listOf(NitterInfo()))
+        val prefs = preferences(redirect = true).copy(instanceUrl = "https://nitter.example.org")
+        runtime.prepareLoad(X_URL, prefs, false, extractor)
+        advanceTimeBy(1000)
+        runCurrent()
+        assertEquals(0, extractor.calls)
+        assertNull(runtime.state.value.preview)
+        runtime.cancel()
+    }
+
+    @Test
     fun redirectsConvertibleUrlsAndWaitsForThePage() = runTest {
         val extractor = FakeExtractor(NITTER_URL)
         val runtime = runtime(this)

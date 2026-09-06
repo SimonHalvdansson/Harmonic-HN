@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.network.NitterInstance
 import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.flow.Flow
 
@@ -125,6 +126,7 @@ data class ReadingPreferences(
     val redirectNitter: Boolean,
     val archiveRedirectDomains: List<String>,
     val enabledLinkPreviews: Set<LinkPreviewType>,
+    val nitterInstanceUrl: String = NitterInstance.DEFAULT_URL,
 ) {
     val preloadMode: WebViewPreloadMode
         get() = WebViewPreloadMode.fromStored(preloadWebViewMode)

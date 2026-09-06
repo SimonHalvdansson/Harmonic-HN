@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.network.NitterInstance
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 
@@ -104,6 +105,12 @@ class StoredSettingsMutator(
 
     fun setReadingBoolean(preference: ReadingBooleanPreference, value: Boolean) {
         store.putBoolean(preference.storageKey, value)
+    }
+
+    fun setNitterInstanceUrl(value: String): Boolean {
+        val normalized = NitterInstance.normalize(value) ?: return false
+        store.putString(UserPreferenceKeys.NITTER_INSTANCE_URL, normalized)
+        return true
     }
 
     fun setLinkPreviewEnabled(type: LinkPreviewType, enabled: Boolean) {

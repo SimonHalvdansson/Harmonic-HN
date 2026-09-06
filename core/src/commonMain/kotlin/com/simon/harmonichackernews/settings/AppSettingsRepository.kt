@@ -151,6 +151,8 @@ class AppSettingsRepository(
     fun setReadingBoolean(preference: ReadingBooleanPreference, value: Boolean) =
         mutator.setReadingBoolean(preference, value)
 
+    fun setNitterInstanceUrl(value: String): Boolean = mutator.setNitterInstanceUrl(value)
+
     fun setLinkPreviewEnabled(type: LinkPreviewType, enabled: Boolean) =
         mutator.setLinkPreviewEnabled(type, enabled)
 

@@ -8,6 +8,25 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun nitterInstancePersistsAndInvalidEditsPreserveThePreviousValue() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals("https://nitter.net", repository.snapshot().reading.nitterInstanceUrl)
+        assertTrue(repository.setNitterInstanceUrl(" https://NITTER.EXAMPLE.ORG/ "))
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertFalse(repository.setNitterInstanceUrl("invalid"))
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertFalse(reopened.snapshot().reading.redirectNitter)
+        repository.setLinkPreviewEnabled(LinkPreviewType.TWITTER_X, true)
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertTrue(repository.setNitterInstanceUrl("https://nitter.net"))
+        assertEquals("https://nitter.net", reopened.snapshot().reading.nitterInstanceUrl)
+        store.putString(UserPreferenceKeys.NITTER_INSTANCE_URL, "invalid")
+        assertEquals("https://nitter.net", reopened.snapshot().reading.nitterInstanceUrl)
+    }
+
+    @Test
     fun storyLayoutResetRestoresLayoutDefaultsAndPreservesBehavior() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)

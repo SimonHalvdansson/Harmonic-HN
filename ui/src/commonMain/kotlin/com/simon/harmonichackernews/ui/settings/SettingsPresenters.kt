@@ -206,6 +206,7 @@ class WebLinksSettingsPresenter(
                 TextPreferences.MAX_READER_MODE_FONT_SIZE,
             externalBrowser = reading.externalBrowser,
             redirectNitter = reading.redirectNitter,
+            nitterInstanceUrl = reading.nitterInstanceUrl,
             archiveDomainCount = reading.archiveRedirectDomains.size,
             enabledLinkPreviews = reading.enabledLinkPreviews,
         )
@@ -221,6 +222,8 @@ class WebLinksSettingsPresenter(
     fun setReaderFont(value: AppFont) = repository.setReaderModeFont(value)
     fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         repository.setWebViewPreload(mode, minimumBattery)
+
+    fun setNitterInstanceUrl(value: String): Boolean = repository.setNitterInstanceUrl(value)
 
     fun setArchiveDomains(domains: List<String>) = repository.setArchiveRedirectDomains(domains)
     val snapshot: AppSettings get() = repository.snapshot()

@@ -513,6 +513,11 @@ fun WebLinksSettingsRoute(
             onItemsChanged = presenter::setArchiveDomains,
             onDismiss = { dialog = null },
         )
+        WebLinksSettingsDialog.NitterInstance -> NitterInstanceDialog(
+            initialValue = reading.nitterInstanceUrl,
+            onSave = presenter::setNitterInstanceUrl,
+            onDismiss = { dialog = null },
+        )
         WebLinksSettingsDialog.LinkPreviews -> LinkPreviewsSettingsDialog(
             enabledTypes = reading.enabledLinkPreviews,
             onEnabledChanged = presenter::setLinkPreview,

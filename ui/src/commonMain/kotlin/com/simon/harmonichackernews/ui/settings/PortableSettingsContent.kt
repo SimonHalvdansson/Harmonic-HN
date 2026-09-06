@@ -129,7 +129,8 @@ private fun PortableWebLinksSettings(
         onDialogRequested = { requested ->
             if (
                 requested == WebLinksSettingsDialog.ArchiveDomains ||
-                requested == WebLinksSettingsDialog.LinkPreviews
+                requested == WebLinksSettingsDialog.LinkPreviews ||
+                requested == WebLinksSettingsDialog.NitterInstance
             ) {
                 dialog = requested
             }
@@ -149,6 +150,13 @@ private fun PortableWebLinksSettings(
             parseInput = ArchiveRedirectPolicy::parseDomains,
             emptyInputError = "Enter a domain",
             onItemsChanged = presenter::setArchiveDomains,
+            onDismiss = { dialog = null },
+        )
+    }
+    if (dialog == WebLinksSettingsDialog.NitterInstance) {
+        NitterInstanceDialog(
+            initialValue = reading.nitterInstanceUrl,
+            onSave = presenter::setNitterInstanceUrl,
             onDismiss = { dialog = null },
         )
     }

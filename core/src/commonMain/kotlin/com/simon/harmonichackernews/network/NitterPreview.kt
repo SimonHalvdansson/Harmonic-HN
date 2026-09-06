@@ -76,8 +76,15 @@ object NitterPreview {
         return parseJavascriptResult(json)
     }
 
-    fun isNitterUrl(url: String?): Boolean =
-        url?.toNetworkUrlOrNull()?.host?.lowercase()?.removePrefix("www.") == "nitter.net"
+    fun isNitterUrl(url: String?, instanceUrl: String = NitterInstance.DEFAULT_URL): Boolean =
+        isSameInstance(url, NitterInstance.effectiveUrl(instanceUrl))
+
+    fun isSameInstance(url: String?, instanceUrl: String): Boolean {
+        val parsed = url?.toNetworkUrlOrNull()?.value ?: return false
+        val instance = instanceUrl.toNetworkUrlOrNull()?.value ?: return false
+        return normalizeHost(parsed.host) == normalizeHost(instance.host) &&
+            parsed.protocol == instance.protocol && parsed.port == instance.port
+    }
 
     fun isConvertibleUrl(url: String?): Boolean {
         val parsed = url?.toNetworkUrlOrNull() ?: return false
@@ -89,12 +96,18 @@ object NitterPreview {
         return statusPathPattern.matches(path)
     }
 
-    fun convertUrl(url: String): String {
+    fun convertUrl(url: String, instanceUrl: String = NitterInstance.DEFAULT_URL): String {
         val parsed = url.toNetworkUrlOrNull()
             ?: throw IllegalArgumentException("Invalid X/Twitter URL")
         require(isConvertibleUrl(url)) { "URL is not a supported X/Twitter status" }
-        val builder = parsed.newBuilder()
-        return builder.host("nitter.net").build().toString()
+        val instance = NitterInstance.effectiveUrl(instanceUrl).toNetworkUrl().value
+        return io.ktor.http.URLBuilder(parsed.value).apply {
+            protocol = instance.protocol
+            host = instance.host
+            port = instance.port
+            user = null
+            password = null
+        }.buildString()
     }
 
     fun statusId(url: String?): String? {

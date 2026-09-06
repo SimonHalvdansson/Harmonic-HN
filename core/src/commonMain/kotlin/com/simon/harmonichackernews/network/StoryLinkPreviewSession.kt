@@ -104,5 +104,6 @@ class StoryLinkPreviewSession(
     private fun nitterPreferences() = NitterLinkPreviewPreferences(
         previewEnabled = LinkPreviewType.TWITTER_X in readingPreferences.enabledLinkPreviews,
         redirectEnabled = readingPreferences.redirectNitter,
+        instanceUrl = readingPreferences.nitterInstanceUrl,
     )
 }

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.network.NitterInstance
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import kotlinx.coroutines.flow.Flow
@@ -76,6 +77,7 @@ object UserPreferenceKeys {
     const val READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size"
     const val EXTERNAL_BROWSER = "pref_external_browser"
     const val REDIRECT_NITTER = "pref_redirect_nitter"
+    const val NITTER_INSTANCE_URL = "pref_nitter_instance_url"
     const val ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains"
     const val BOOKMARKS_ENABLED = "pref_bookmarks_enabled"
     const val TRANSPARENT_STATUS_BAR = "pref_transparent_status_bar"
@@ -235,6 +237,9 @@ class StoredUserSettings(
                 ),
                 externalBrowser = boolean(UserPreferenceKeys.EXTERNAL_BROWSER, false),
                 redirectNitter = boolean(UserPreferenceKeys.REDIRECT_NITTER, false),
+                nitterInstanceUrl = NitterInstance.effectiveUrl(
+                    string(UserPreferenceKeys.NITTER_INSTANCE_URL, NitterInstance.DEFAULT_URL),
+                ),
                 archiveRedirectDomains = ArchiveRedirectPolicy.parseDomains(
                     string(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, ""),
                 ),

@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.resources.ic_cached
 import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_invert_colors
+import com.simon.harmonichackernews.resources.ic_link_preview_x
 import com.simon.harmonichackernews.resources.ic_preview
 import com.simon.harmonichackernews.resources.ic_open_in_browser
 import com.simon.harmonichackernews.resources.ic_shuffle
@@ -32,6 +33,7 @@ data class WebLinksSettingsUiState(
     val readerModeFontSizeRange: IntRange,
     val externalBrowser: Boolean,
     val redirectNitter: Boolean,
+    val nitterInstanceUrl: String,
     val archiveDomainCount: Int,
     val enabledLinkPreviews: Set<LinkPreviewType>,
 )
@@ -47,7 +49,7 @@ enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPrefere
     RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
 }
 
-enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews }
+enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews, NitterInstance }
 
 @Composable
 fun WebLinksSettingsScreen(
@@ -178,6 +180,14 @@ fun WebLinksSettingsScreen(
                     checked = state.redirectNitter,
                     setting = WebLinksBooleanSetting.RedirectNitter,
                     onBooleanChanged = onBooleanChanged,
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Nitter instance URL",
+                    summary = state.nitterInstanceUrl,
+                    icon = Res.drawable.ic_link_preview_x,
+                    enabled = state.redirectNitter,
+                    onClick = { onDialogRequested(WebLinksSettingsDialog.NitterInstance) },
                 )
                 SettingsDivider()
                 SettingRow(
