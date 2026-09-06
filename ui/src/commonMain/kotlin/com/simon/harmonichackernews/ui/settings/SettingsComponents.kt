@@ -817,6 +817,7 @@ fun <T> SegmentedSetting(
     selected: T,
     enabled: Boolean = true,
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
+    optionWeights: Map<T, Float> = emptyMap(),
     containerColor: Color = settingsItemBackgroundColor(),
     onSelected: (T) -> Unit,
 ) {
@@ -897,7 +898,7 @@ fun <T> SegmentedSetting(
                 val selectedBackground = HarmonicTheme.colors.secondaryContainer
                 Row(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(optionWeights[value] ?: 1f)
                         .height(
                             buttonHeight,
                         )

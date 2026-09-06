@@ -34,7 +34,6 @@ class StoryFeedRuntime(
         result: StoryFeedResult,
         cachedStories: Map<Int, Story> = emptyMap(),
     ): StoryFeedApplication {
-        store.setShowingCached(false)
         return when (result) {
             is StoryFeedResult.ItemIds -> {
                 val stories = reconciledPlaceholders(store.stories, result.ids, cachedStories = cachedStories)

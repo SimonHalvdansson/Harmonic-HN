@@ -33,6 +33,7 @@ import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -72,6 +73,7 @@ import com.simon.harmonichackernews.resources.ic_refresh
 import com.simon.harmonichackernews.resources.ic_search
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.presentation.StorySearchOption
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 data class StorySearchPresentationState(
@@ -361,6 +363,13 @@ fun StoryListStatus(
     onShowCached: () -> Unit,
 ) {
     var visibleEmptySavedListText by remember { mutableStateOf(state.emptySavedListText) }
+    val failureVisible = showFailure && (state.loadingFailed || state.serverError)
+    var retainedFailureState by remember { mutableStateOf(state) }
+    LaunchedEffect(failureVisible, state) {
+        if (failureVisible) retainedFailureState = state
+    }
+    // Keep the heading and cached action in the outgoing layout until it has fully collapsed.
+    val failureState = if (failureVisible) state else retainedFailureState
     LaunchedEffect(state.showEmptySavedList, state.emptySavedListText) {
         visibleEmptySavedListText = retainedEmptySavedListText(
             current = visibleEmptySavedListText,
@@ -386,9 +395,15 @@ fun StoryListStatus(
         }
     }
     AnimatedVisibility(
-        showFailure && (state.loadingFailed || state.serverError),
-        enter = fadeIn(tween(180)),
-        exit = fadeOut(tween(140)),
+        failureVisible,
+        enter = fadeIn(tween(180)) + expandVertically(
+            animationSpec = tween(220),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(tween(140)) + shrinkVertically(
+            animationSpec = tween(220),
+            shrinkTowards = Alignment.Top,
+        ),
         modifier = if (centerFailure) Modifier.fillMaxSize() else Modifier,
     ) {
         Column(
@@ -399,22 +414,30 @@ fun StoryListStatus(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (centerFailure) Arrangement.Center else Arrangement.Top,
         ) {
-            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(48.dp))
+            Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(48.dp), tint = normalColor)
             Text(
-                if (state.serverError) "Server error" else state.failureMessage,
+                if (failureState.serverError) "Server error" else failureState.failureMessage,
+                color = normalColor,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 modifier = Modifier.padding(top = 8.dp),
             )
             Column(
-                Modifier.padding(top = 8.dp),
+                Modifier.padding(
+                    top = 8.dp,
+                    bottom = if (failureState.showCachedAction && !searchMode) 12.dp else 0.dp,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(
                     onClick = onRetry,
-                    modifier = Modifier.height(56.dp),
+                    modifier = Modifier.height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HarmonicTheme.colors.overlayButton,
+                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                    ),
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_refresh),
@@ -429,10 +452,10 @@ fun StoryListStatus(
                         fontSize = 15.sp,
                     )
                 }
-                if (state.showCachedAction && !searchMode) {
+                if (failureState.showCachedAction && !searchMode) {
                     OutlinedButton(
                         onClick = onShowCached,
-                        modifier = Modifier.height(56.dp),
+                        modifier = Modifier.height(48.dp),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_library_books),

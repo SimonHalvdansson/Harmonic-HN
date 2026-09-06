@@ -154,6 +154,8 @@ data class AppearancePreferences(
     val lightTheme: String,
     val darkTheme: String,
     val accentPreset: String,
+    /** Saved font choice before a theme (such as Hacker) overrides content typography. */
+    val font: String = "googlesansflexrounded",
 )
 
 data class DebugPreferences(

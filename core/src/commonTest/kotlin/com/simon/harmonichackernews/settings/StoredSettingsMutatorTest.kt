@@ -158,6 +158,22 @@ class StoredSettingsMutatorTest {
     }
 
     @Test
+    fun quickThemePairsPreserveManualAppearanceMode() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        mutator.setFollowSystem(false)
+        mutator.setManualDark(true)
+
+        mutator.setThemePair("white", "amoled")
+
+        val appearance = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
+        assertFalse(appearance.followSystem)
+        assertTrue(appearance.manualDark)
+        assertEquals("white", appearance.lightTheme)
+        assertEquals("amoled", appearance.darkTheme)
+    }
+
+    @Test
     fun compoundUpdatesAreNormalizedInCommonCode() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)

@@ -102,7 +102,7 @@
         <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
         <item name="secondaryTextColor">@color/darkTextColorDefault</item>
         <item name="overlayButtonColor">?attr/colorSecondaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnSecondaryContainer</item>
+        <item name="overlayButtonContentColor">@android:color/white</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
         <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
         <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>

@@ -168,7 +168,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
         )
-        OutlinedButton(onClick = onRetry, modifier = Modifier.height(56.dp)) {
+        OutlinedButton(onClick = onRetry, modifier = Modifier.height(48.dp)) {
             Icon(painter = painterResource(Res.drawable.ic_refresh), contentDescription = null)
             Text(
                 text = "Retry",

@@ -170,7 +170,7 @@ fun WelcomeSettingsDialog(
                 }
                 item {
                     Text(
-                        text = if (styleChooser) "Style" else "Welcome to Harmonic",
+                        text = if (styleChooser) "Preset" else "Welcome to Harmonic",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = if (styleChooser) 0.dp else 12.dp),
@@ -186,7 +186,7 @@ fun WelcomeSettingsDialog(
                 item {
                     Text(
                         text = if (styleChooser) {
-                            "Choose a general style for the app. This changes the font, " +
+                            "Choose a preset for the app. This changes the font, " +
                                 "story preview images and palette tint."
                         } else {
                             "I hope you'll love the app and feel how much care was put " +

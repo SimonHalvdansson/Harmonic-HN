@@ -162,7 +162,7 @@ val SettingsCommentPreviewModel = CommentItemUiModel(
     author = "pg",
     age = "1h",
     body = "This reminds me of the old systems where the boring path was often the most durable one. " +
-        "The less hidden state there is, the easier it is to reason about." +
+        "The less hidden state there is, the easier it is to reason about [0]." +
         "<p>[0] <a href=\"https://example.com/reference\">https://example.com/reference</a></p>",
     referenceMarker = "[0]",
     referenceUrl = "https://example.com/reference",

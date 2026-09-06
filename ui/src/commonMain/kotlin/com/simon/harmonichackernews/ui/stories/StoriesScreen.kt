@@ -533,6 +533,7 @@ private fun StoriesList(
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
         Box(Modifier.fillMaxSize()) {
             LazyContentList(
+                contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
                 items = stories,
                 itemCount = visibleCount,
                 state = listState,

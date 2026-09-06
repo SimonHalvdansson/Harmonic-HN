@@ -26,6 +26,12 @@ data class StoryFeedRefreshPlan(
 object StoryFeedRefreshPolicy {
     const val STALE_AFTER_MILLIS: Long = 60L * 60L * 1_000L
 
+    fun shouldRefreshSelection(
+        selected: StoryType,
+        current: StoryType,
+        showingCached: Boolean,
+    ): Boolean = selected != StoryType.UNKNOWN && (selected != current || showingCached)
+
     fun plan(
         searching: Boolean,
         storyType: StoryType,

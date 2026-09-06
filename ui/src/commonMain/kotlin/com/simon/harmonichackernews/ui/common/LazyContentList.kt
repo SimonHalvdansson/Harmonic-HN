@@ -21,8 +21,9 @@ fun <T> LazyContentList(
     header: (@Composable () -> Unit)? = null,
     footerKey: Any = "shared-list-footer",
     footer: (@Composable () -> Unit)? = null,
+    contentGeneration: Int = 0,
     itemContent: @Composable LazyItemScope.(index: Int, item: T) -> Unit,
-) {
+) = androidx.compose.runtime.key(contentGeneration) {
     LazyColumn(
         state = state,
         modifier = modifier,

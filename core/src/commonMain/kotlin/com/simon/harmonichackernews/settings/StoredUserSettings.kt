@@ -293,6 +293,7 @@ class StoredUserSettings(
                 accentPreset = ThemePreferences.sanitizeAccent(
                     string(ThemePreferences.ACCENT_KEY, ThemePreferences.ACCENT_DEFAULT),
                 ),
+                font = configuredFont(),
             )
         }
 
@@ -336,8 +337,11 @@ class StoredUserSettings(
     private fun preferredFont(): String = if (theme() == "hacker") {
         "jetbrainsmono"
     } else {
-        TextPreferences.sanitizeFont(string(UserPreferenceKeys.FONT, "googlesansflexrounded"))
+        configuredFont()
     }
+
+    private fun configuredFont(): String =
+        TextPreferences.sanitizeFont(string(UserPreferenceKeys.FONT, "googlesansflexrounded"))
 
     private fun commentDepthMode(): String {
         if (store.contains(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS)) {

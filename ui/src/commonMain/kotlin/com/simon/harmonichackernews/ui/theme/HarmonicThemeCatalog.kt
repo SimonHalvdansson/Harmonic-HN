@@ -55,6 +55,8 @@ object HarmonicThemeCatalog {
         settingsSegment = Color(0xFF2B2E3A),
         storyCardBackground = Color(0xFF2B2E3A),
         onPrimary = Color(0xFFF6F6EF),
+        overlayButton = Color(0xFF99595E),
+        overlayButtonContent = Color.White,
     )
     private val gray = create(
         dark = true,

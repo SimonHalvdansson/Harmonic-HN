@@ -1,6 +1,11 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.CommentBooleanPreference
@@ -82,10 +87,12 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            CommentItem(
-                model = SettingsCommentPreviewModel,
-                style = state.toPreviewCommentItemStyle(),
-            )
+            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background)) {
+                CommentItem(
+                    model = SettingsCommentPreviewModel,
+                    style = state.toPreviewCommentItemStyle(),
+                )
+            }
         },
     ) {
         item {

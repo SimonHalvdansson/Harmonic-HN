@@ -874,9 +874,15 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(Res.drawable.ic_cloud_off), null, Modifier.size(40.dp))
+                Icon(
+                    painterResource(Res.drawable.ic_cloud_off),
+                    null,
+                    Modifier.size(40.dp),
+                    tint = HarmonicTheme.colors.textPrimary,
+                )
                 Text(
                     if (controller.loadingFailedServerError) "Loading failed" else "No internet connection",
+                    color = HarmonicTheme.colors.textPrimary,
                     modifier = Modifier.padding(top = 6.dp),
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -889,7 +895,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                     },
                     modifier = Modifier
                         .padding(top = 8.dp)
-                        .height(56.dp),
+                        .height(48.dp),
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_refresh),

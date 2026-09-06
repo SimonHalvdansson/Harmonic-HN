@@ -192,7 +192,6 @@ class StoredSettingsMutator(
                 ThemePreferences.DARK_KEY,
                 ThemePreferences.selectableDarkTheme(darkTheme),
             )
-            putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
         }
     }
 

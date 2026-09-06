@@ -12,6 +12,27 @@ import kotlin.test.assertTrue
 
 class StoryFeedRuntimeTest {
     @Test
+    fun rejectedFeedKeepsCachedLabelUntilAFeedIsApplied() {
+        val store = StoryListStore()
+        val runtime = runtime(StoriesSessionState())
+        store.replace(listOf(Story("Cached", 1, true, false)), showingCached = true)
+        store.beginLoad(refreshing = true)
+        val failed = runtime.applyInitial(
+            store, StoryType.TOP_STORIES, StoryFeedResult.LinkDirectory(emptyList()),
+        )
+        assertFalse(failed.applied)
+        assertTrue(store.state.value.showingCached)
+        assertEquals(listOf(1), store.stories.map(Story::id))
+
+        val loaded = runtime.applyInitial(
+            store, StoryType.TOP_STORIES, StoryFeedResult.ItemIds(listOf(2, 3)),
+        )
+        assertTrue(loaded.applied)
+        assertFalse(store.state.value.showingCached)
+        assertEquals(listOf(2, 3), store.stories.map(Story::id))
+    }
+
+    @Test
     fun backgroundPreparedRowsRespectCurrentHistoryFilteringAndRetainLiveRows() {
         val cached = Story("Cached", 1, true, false)
         val hidden = Story("Hidden", 2, true, false)

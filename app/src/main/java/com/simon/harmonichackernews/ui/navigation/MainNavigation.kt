@@ -212,6 +212,17 @@ class MainNavigationController internal constructor(
         private set
     private var adaptiveTwoPane = false
     private var adaptiveFoldable = false
+    private var externalStorySerial by mutableIntStateOf(
+        savedState?.getInt(STATE_EXTERNAL_STORY_SERIAL, -1) ?: -1,
+    )
+
+    internal fun markExternalStoryEntry() {
+        externalStorySerial = navigationState.state.value.storyRequest?.serial ?: -1
+    }
+
+    internal val isExternalStoryEntry: Boolean
+        get() = navigationState.state.value.currentDestination == MainDestination.STORY &&
+            navigationState.state.value.storyRequest?.serial == externalStorySerial
 
     init {
         navigationState.restore(restoredNavigation)
@@ -534,6 +545,7 @@ class MainNavigationController internal constructor(
 
     fun saveState(outState: Bundle) {
         storiesCoordinator?.onSaveInstanceState(outState)
+        outState.putInt(STATE_EXTERNAL_STORY_SERIAL, externalStorySerial)
         outState.putString(
             STATE_NAVIGATION_RESTORATION,
             MainNavigationRestorationCodec.encode(navigationState.restoration()),
@@ -549,6 +561,7 @@ class MainNavigationController internal constructor(
     }
 
     private companion object {
+        const val STATE_EXTERNAL_STORY_SERIAL = "main_navigation_external_story_serial"
         const val STATE_NAVIGATION_RESTORATION = "main_navigation_restoration_v2"
         const val STATE_REQUEST_SERIAL = "main_navigation_request_serial"
         const val STATE_STORY_ID = "main_navigation_story_id"
@@ -695,7 +708,9 @@ private fun MainNavigation(
     var observedStoryDepth by remember { mutableIntStateOf(storyRequests.size) }
 
     fun popMainBackStack() {
-        if (controller.navigationState.state.value.currentDestination == MainDestination.STORY) {
+        if (controller.isExternalStoryEntry) {
+            activity.finish()
+        } else if (controller.navigationState.state.value.currentDestination == MainDestination.STORY) {
             controller.detailRemovedFromBackStack()
         } else {
             activity.finish()
@@ -742,7 +757,11 @@ private fun MainNavigation(
     }
 
     PredictiveBackHandler(
-        enabled = navigationSnapshot.currentDestination == MainDestination.STORY,
+        // Let Android own the return-to-caller gesture at an external entry. Nested web/history
+        // navigation still consumes Back before reaching this boundary.
+        enabled = navigationSnapshot.currentDestination == MainDestination.STORY &&
+            (!controller.isExternalStoryEntry ||
+                controller.getCommentsCoordinator()?.handlesBackInternally() == true),
     ) { events ->
         val storySerialAtGestureStart = controller.navigationState.state.value.storyRequest?.serial
         fun popGestureStoryIfStillCurrent() {

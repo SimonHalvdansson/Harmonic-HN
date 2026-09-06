@@ -170,7 +170,7 @@ class StoryListStore(
             loading = !refreshing,
             refreshing = refreshing,
             failure = null,
-            showingCached = false,
+            showingCached = !clearItems && state.value.showingCached,
             loadedThroughIndex = if (clearItems) -1 else state.value.loadedThroughIndex,
             refreshItems = clearItems,
         )

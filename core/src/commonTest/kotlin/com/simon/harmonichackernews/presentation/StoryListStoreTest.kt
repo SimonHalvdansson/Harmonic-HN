@@ -10,6 +10,27 @@ import kotlin.test.assertTrue
 
 class StoryListStoreTest {
     @Test
+    fun cachedLabelFollowsRetainedContentUntilSuccessfulReplacement() {
+        val store = StoryListStore()
+        store.replace(listOf(story(1)), showingCached = true)
+        store.beginLoad(refreshing = true)
+        assertTrue(store.state.value.showingCached)
+        assertEquals(listOf(1), store.state.value.items.map { it.story.id })
+
+        store.fail(StoryLoadFailure.GENERAL)
+        assertTrue(store.state.value.showingCached)
+        store.beginLoad(refreshing = true)
+        store.replace(listOf(story(2)))
+        assertFalse(store.state.value.showingCached)
+        assertEquals(listOf(2), store.state.value.items.map { it.story.id })
+
+        store.replace(listOf(story(1)), showingCached = true)
+        store.beginLoad(refreshing = false, clearItems = true)
+        assertFalse(store.state.value.showingCached)
+        assertTrue(store.state.value.items.isEmpty())
+    }
+
+    @Test
     fun replacementPublishesAnImmutableSnapshotAndResetsTransientState() {
         val store = StoryListStore(pageSize = 2)
         store.setPaginationEnabled(true)

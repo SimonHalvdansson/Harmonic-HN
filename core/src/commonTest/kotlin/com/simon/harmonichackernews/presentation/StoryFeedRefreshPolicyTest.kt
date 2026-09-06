@@ -9,6 +9,22 @@ import kotlin.test.assertTrue
 
 class StoryFeedRefreshPolicyTest {
     @Test
+    fun selectingTheCurrentFeedReloadsCachedContentButKeepsLiveContent() {
+        assertTrue(StoryFeedRefreshPolicy.shouldRefreshSelection(
+            StoryType.TOP_STORIES, StoryType.TOP_STORIES, showingCached = true,
+        ))
+        assertFalse(StoryFeedRefreshPolicy.shouldRefreshSelection(
+            StoryType.TOP_STORIES, StoryType.TOP_STORIES, showingCached = false,
+        ))
+        assertTrue(StoryFeedRefreshPolicy.shouldRefreshSelection(
+            StoryType.NEW_STORIES, StoryType.TOP_STORIES, showingCached = false,
+        ))
+        assertFalse(StoryFeedRefreshPolicy.shouldRefreshSelection(
+            StoryType.UNKNOWN, StoryType.TOP_STORIES, showingCached = true,
+        ))
+    }
+
+    @Test
     fun everyStoryTypeRoutesToItsPortableFeedSource() {
         assertEquals(StoryFeedSource.ALGOLIA, plan(StoryType.LAST_24_HOURS).source)
         assertEquals(StoryFeedSource.BOOKMARKS, plan(StoryType.BOOKMARKS).source)

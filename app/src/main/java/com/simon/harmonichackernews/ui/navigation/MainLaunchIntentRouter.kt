@@ -26,7 +26,12 @@ internal class MainLaunchIntentRouter(
     fun route(intent: Intent?): Boolean = when (
         val result = launches.route(intent?.toLaunchRequest() ?: AppLaunchRequest.Unknown)
     ) {
-        AppLaunchResult.Routed -> true
+        AppLaunchResult.Routed -> {
+            if (Intent.ACTION_VIEW.equals(intent?.action, ignoreCase = true)) {
+                navigation.markExternalStoryEntry()
+            }
+            true
+        }
         AppLaunchResult.Ignored -> false
         is AppLaunchResult.Invalid -> {
             navigation.showMessage(result.message)

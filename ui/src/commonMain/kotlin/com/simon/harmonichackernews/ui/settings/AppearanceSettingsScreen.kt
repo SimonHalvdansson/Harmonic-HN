@@ -96,9 +96,9 @@ fun AppearanceSettingsScreen(
             }
         }
         item {
-            SettingsCategory("Style") {
+            SettingsCategory("Preset") {
                 SettingRow(
-                    title = "General style",
+                    title = "Preset",
                     icon = Res.drawable.ic_design_services,
                     onClick = { onDialogRequested(AppearanceSettingsDialog.Style) },
                 )

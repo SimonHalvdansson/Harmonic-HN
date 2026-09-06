@@ -215,7 +215,13 @@ class StoriesStore internal constructor(
         when (intent) {
             is StoriesIntent.SelectType -> {
                 val type = runtime.storyTypeAt(intent.index)
-                if (type != StoryType.UNKNOWN && type != runtime.currentType) {
+                if (
+                    StoryFeedRefreshPolicy.shouldRefreshSelection(
+                        selected = type,
+                        current = runtime.currentType,
+                        showingCached = state.value.mainList.showingCached,
+                    )
+                ) {
                     runtime.selectTypeAndRefresh(type)
                 }
             }

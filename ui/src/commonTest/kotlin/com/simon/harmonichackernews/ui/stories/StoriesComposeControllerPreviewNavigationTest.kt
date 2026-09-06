@@ -253,6 +253,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         )
         assertTrue(controller.tapToUpdateExitInProgress)
         assertEquals(0, controller.scrollToTopRequestVersion)
+        assertEquals(0, controller.mainListGeneration)
 
         controller.updateContent(
             StoriesScreenState(
@@ -263,6 +264,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertFalse(controller.tapToUpdateExitInProgress)
         assertFalse(controller.tapToUpdateRefreshStarted)
         assertEquals(1, controller.scrollToTopRequestVersion)
+        assertEquals(1, controller.mainListGeneration)
     }
 
     @Test
@@ -291,6 +293,26 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertFalse(controller.tapToUpdateExitInProgress)
         assertFalse(controller.tapToUpdateRefreshStarted)
         assertEquals(1, controller.scrollToTopRequestVersion)
+    }
+
+    @Test
+    fun cachedRefreshDiscardsOldRowLayersOnlyWhenContentSourceChanges() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val cached = StoriesScreenState(
+            mainStories = listOf(storySnapshot(1), storySnapshot(2)),
+            showingCached = true,
+        )
+        controller.updateContent(cached)
+        val cachedGeneration = controller.mainListGeneration
+        controller.updateContent(cached.copy(refreshing = true))
+        assertTrue(controller.showingCached)
+        assertEquals(cachedGeneration, controller.mainListGeneration)
+        controller.updateContent(cached.copy(loadingFailed = true))
+        assertEquals(cachedGeneration, controller.mainListGeneration)
+        controller.updateContent(cached.copy(refreshing = true))
+        controller.updateContent(StoriesScreenState(mainStories = listOf(storySnapshot(3))))
+        assertFalse(controller.showingCached)
+        assertEquals(cachedGeneration + 1, controller.mainListGeneration)
     }
 
     @Test

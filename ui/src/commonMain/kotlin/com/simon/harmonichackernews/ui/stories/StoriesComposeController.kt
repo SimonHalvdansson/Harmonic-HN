@@ -105,6 +105,10 @@ class StoriesComposeController private constructor(
     var pullToRefreshInProgress by mutableStateOf(false)
         private set
 
+    /** Recreate lazy item layers once a hidden Tap to update replacement has committed. */
+    var mainListGeneration by mutableIntStateOf(0)
+        private set
+
     val mainStories: List<StoryListItemSnapshot> get() = mainStoriesState
     val searchStories: List<StoryListItemSnapshot> get() = searchStoriesState
     val previewResources: Map<Int, StoryPreviewResourceState> get() = previewResourcesSnapshot
@@ -231,6 +235,13 @@ class StoriesComposeController private constructor(
         }
         val requestedRefreshCompleted = scrollToTopAfterRefresh &&
             refreshInProgressObserved && !normalized.refreshing
+        // A cached/live replacement must discard outgoing lazy row animation layers, which can
+        // otherwise remain visible through gaps between the replacement stories.
+        if (shellState.showingCached != normalized.showingCached ||
+            (requestedRefreshCompleted && tapToUpdateRefreshStarted)
+        ) {
+            mainListGeneration++
+        }
         val listsChanged = mainStoriesState != normalized.mainStories ||
             searchStoriesState != normalized.searchStories
         val interactionContentChanged = listsChanged ||

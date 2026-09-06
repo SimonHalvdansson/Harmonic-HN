@@ -30,6 +30,11 @@ import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
+import com.simon.harmonichackernews.ui.content.toStoryItemStyle
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
+import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 
 /**
  * Portable Data settings route. Hosts provide the counts and perform the genuinely platform
@@ -280,6 +285,8 @@ fun ThemeSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThemeChanged: () -> Unit,
+    resolvePreviewTheme: (String, Boolean, String) -> HarmonicThemePalette =
+        HarmonicThemeCatalog::resolve,
     dialogContent: @Composable (
         dialog: ThemeSettingsDialog,
         presenter: AppearanceSettingsPresenter,
@@ -311,7 +318,10 @@ fun ThemeSettingsRoute(
             applyThemeChange { presenter.setSpecialNighttime(value) }
         },
         onDialogRequested = { dialog = it },
-        previewPalette = ThemePreviewCatalog::preview,
+        resolvePreviewTheme = resolvePreviewTheme,
+        previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
+            StoryItemStyleContext(score = 53, commentCount = 18, clicked = false),
+        ).copy(preferredFont = settings.appearance.font),
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

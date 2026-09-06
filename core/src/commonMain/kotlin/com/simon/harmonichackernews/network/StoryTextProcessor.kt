@@ -23,8 +23,8 @@ object StoryTextProcessor {
                 .replace("<code>", "<pre><small>")
                 .replace("</code>", "</small></pre>")
         }
-        if (processed.contains("<pre>")) processed = escapePreBlockWhitespace(processed)
         if (processed.contains("pre>")) {
+            if (processed.contains("<pre>")) processed = escapePreBlockWhitespace(processed)
             processed = processed.replace("<pre>", "<div><tt>")
                 .replace("</pre>", "</tt></div>")
         }
@@ -47,12 +47,13 @@ object StoryTextProcessor {
     }
 
     private fun linkify(input: String): String {
-        if (!input.contains("http:") && !input.contains("https:")) return input
+        // Both supported URL schemes share this prefix; ordinary text needs only one scan.
+        if (!input.contains("http")) return input
         val output = StringBuilder(input.length)
         var endOfPreviousAnchor = 0
         anchorPattern.findAll(input).forEach { anchor ->
             output.append(linkifySegment(input.substring(endOfPreviousAnchor, anchor.range.first)))
-            output.append(anchor.value)
+            output.append(input, anchor.range.first, anchor.range.last + 1)
             endOfPreviousAnchor = anchor.range.last + 1
         }
         output.append(linkifySegment(input.substring(endOfPreviousAnchor)))

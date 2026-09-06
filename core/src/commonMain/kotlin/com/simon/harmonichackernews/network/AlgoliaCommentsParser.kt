@@ -95,7 +95,11 @@ data class AlgoliaCommentsResponse(
  * The returned shared comments are flattened in display order for direct screen consumption.
  */
 class AlgoliaCommentsParser(
-    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val json: Json = Json {
+        ignoreUnknownKeys = true
+        // These payloads use no @JsonNames aliases; avoid an extra lookup for each ignored field.
+        useAlternativeNames = false
+    },
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     suspend fun parsePrepared(

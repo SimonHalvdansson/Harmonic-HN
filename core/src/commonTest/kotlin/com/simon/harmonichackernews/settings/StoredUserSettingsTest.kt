@@ -9,6 +9,19 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun hackerOverridePreservesConfiguredFontForOtherThemePreviews() {
+        val settings = StoredUserSettings(
+            TestKeyValueStore(mapOf(UserPreferenceKeys.FONT to "productsans")),
+            emptyFlow(),
+            theme = { "hacker" },
+        )
+
+        assertEquals("jetbrainsmono", settings.story.font)
+        assertEquals("jetbrainsmono", settings.comments.font)
+        assertEquals("productsans", settings.appearance.font)
+    }
+
+    @Test
     fun themeSemanticsArePortable() {
         assertTrue(ThemePreferences.isAutomatic(ThemePreferences.DEFAULT))
         assertTrue(ThemePreferences.isAutomatic(ThemePreferences.MATERIAL_FIXED_AUTO))

@@ -3,22 +3,23 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,19 +30,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -49,18 +57,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.HarmonicDimens
+import com.simon.harmonichackernews.resources.ic_preview
 import com.simon.harmonichackernews.resources.ic_check
 import com.simon.harmonichackernews.resources.ic_dark_mode
-import com.simon.harmonichackernews.resources.ic_invert_colors
+import com.simon.harmonichackernews.resources.ic_light_mode
 import com.simon.harmonichackernews.resources.ic_nights_stay
 import com.simon.harmonichackernews.resources.ic_palette
+import com.simon.harmonichackernews.resources.ic_routine
 import com.simon.harmonichackernews.resources.ic_schedule
-import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.settings.AppearancePreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
+import com.simon.harmonichackernews.ui.content.StoryItem
+import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.ThemeAccentCatalog
 import org.jetbrains.compose.resources.painterResource
@@ -118,7 +133,7 @@ val ThemePairPresets = listOf(
     ),
     ThemePairPreset(
         label = "Hacker",
-        description = "HN by day, terminal by night",
+        description = "Newsprint and terminal",
         lightTheme = "hacker_news",
         darkTheme = "hacker",
     ),
@@ -161,59 +176,55 @@ fun ThemeSettingsScreen(
     onAccentSelected: (String) -> Unit,
     onSpecialNighttimeChanged: (Boolean) -> Unit,
     onDialogRequested: (ThemeSettingsDialog) -> Unit,
-    previewPalette: (theme: String, dark: Boolean, accentPreset: String) -> ThemePreviewPalette,
+    resolvePreviewTheme: (theme: String, dark: Boolean, accentPreset: String) -> HarmonicThemePalette,
+    previewStyle: StoryItemStyle,
     contentVersion: Int = 0,
 ) {
+    val previewPalette = { theme: String, dark: Boolean, accent: String ->
+        ThemePreviewCatalog.fromPalette(resolvePreviewTheme(theme, dark, accent))
+    }
     val lightPreview = previewPalette(state.lightTheme, false, state.accentPreset)
     val darkPreview = previewPalette(state.darkTheme, true, state.accentPreset)
-    val themeDefaultAccent = previewPalette(
-        state.lightTheme,
-        false,
+    val themeDefaultAccent = animatePreviewColor(previewPalette(
+        state.activeTheme,
+        ThemePreferences.isDark(state.activeTheme),
         ThemePreferences.ACCENT_DEFAULT,
-    ).accent
+    ).accent)
 
     SettingsPage(
         title = "Theme",
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,
+        pinnedContent = {
+            ThemeLivePreview(state, previewStyle, resolvePreviewTheme)
+        },
     ) {
         item {
-            ThemeLivePreview(
-                light = lightPreview,
-                dark = darkPreview,
-                activeTheme = state.activeTheme,
-                lightTheme = state.lightTheme,
-                darkTheme = state.darkTheme,
-                modifier = Modifier.padding(
-                    start = HarmonicDimens.settings_list_segment_horizontal_margin,
-                    top = 16.dp,
-                    end = HarmonicDimens.settings_list_segment_horizontal_margin,
-                ),
-            )
-        }
-        item {
             SettingsCategory("Appearance mode") {
-                SwitchSettingRow(
-                    title = "Use system light dark",
-                    icon = Res.drawable.ic_invert_colors,
-                    checked = state.followSystem,
-                    onCheckedChange = onFollowSystemChanged,
+                SegmentedSetting(
+                    options = listOf("light" to "Light", "system" to "Follow system", "dark" to "Dark"),
+                    optionIcons = mapOf(
+                        "light" to Res.drawable.ic_light_mode,
+                        "system" to Res.drawable.ic_routine,
+                        "dark" to Res.drawable.ic_dark_mode,
+                    ),
+                    buttonHeight = 56.dp,
+                    optionWeights = mapOf("light" to 3f, "system" to 4f, "dark" to 3f),
+                    selected = when {
+                        state.followSystem -> "system"
+                        state.manualDark -> "dark"
+                        else -> "light"
+                    },
+                    onSelected = { mode ->
+                        if (mode == "system") {
+                            onFollowSystemChanged(true)
+                        } else {
+                            onManualDarkChanged(mode == "dark")
+                            onFollowSystemChanged(false)
+                        }
+                    },
                 )
-                AnimatedVisibility(
-                    visible = !state.followSystem,
-                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                ) {
-                    Column {
-                        SettingsDivider()
-                        SegmentedSetting(
-                            options = listOf(false to "Light", true to "Dark"),
-                            selected = state.manualDark,
-                            onSelected = onManualDarkChanged,
-                        )
-                    }
-                }
             }
         }
         item {
@@ -296,157 +307,143 @@ fun ThemeSettingsScreen(
     }
 }
 
+/** Clip full-size rows while resolving each side's theme and content font independently. */
 @Composable
 private fun ThemeLivePreview(
-    light: ThemePreviewPalette,
-    dark: ThemePreviewPalette,
-    activeTheme: String,
-    lightTheme: String,
-    darkTheme: String,
+    state: ThemeSettingsUiState,
+    style: StoryItemStyle,
+    resolveTheme: (String, Boolean, String) -> HarmonicThemePalette,
+) {
+    val lightFraction by animateFloatAsState(
+        targetValue = when {
+            state.followSystem -> 0.5f
+            state.manualDark -> 0f
+            else -> 1f
+        },
+        animationSpec = tween(250),
+        label = "theme preview split",
+    )
+    // Font metrics can differ across the split. Share the height and align both sample buttons.
+    Box(Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
+        StoryThemePreview(
+            palette = resolveTheme(state.lightTheme, false, state.accentPreset),
+            style = style.copy(preferredFont = themePreviewFont(state.lightTheme, style.preferredFont)),
+            modifier = Modifier.clip(GenericShape { size, _ ->
+                lineTo(size.width * lightFraction, 0f)
+                lineTo(size.width * lightFraction, size.height)
+                lineTo(0f, size.height)
+                close()
+            }).then(if (state.manualDark && !state.followSystem) {
+                Modifier.clearAndSetSemantics {}
+            } else Modifier),
+        )
+        StoryThemePreview(
+            palette = resolveTheme(state.darkTheme, true, state.accentPreset),
+            style = style.copy(preferredFont = themePreviewFont(state.darkTheme, style.preferredFont)),
+            modifier = Modifier.clip(GenericShape { size, _ ->
+                moveTo(size.width * lightFraction, 0f)
+                lineTo(size.width, 0f)
+                lineTo(size.width, size.height)
+                lineTo(size.width * lightFraction, size.height)
+                close()
+            }).then(if (state.followSystem || !state.manualDark) {
+                Modifier.clearAndSetSemantics {}
+            } else Modifier),
+        )
+    }
+}
+
+private fun themePreviewFont(theme: String, configuredFont: String): String =
+    if (theme == "hacker") "jetbrainsmono" else configuredFont
+
+@Composable
+private fun StoryThemePreview(
+    palette: HarmonicThemePalette,
+    style: StoryItemStyle,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = settingsItemBackgroundColor(),
-        tonalElevation = 1.dp,
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
+    val preview = animateStoryPreviewPalette(palette)
+    // Extract against the destination palette, not every intermediate animation color. Keep the
+    // existing sample tint visible while extraction runs; unchanged tints need no transition.
+    val tintBase = palette.colors.storyCardBackground.toArgb()
+    val faviconTint = rememberPainterPaletteTint(
+        painter = painterResource(SettingsStoryPreviewModel.faviconFallback),
+        baseColorArgb = tintBase,
+        paletteTintConfigKey = style.paletteTintConfigKey,
+        enabled = style.tintCard,
+    )
+    var retainedFaviconTint by remember(style.paletteTintConfigKey) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(faviconTint) {
+        faviconTint?.let { retainedFaviconTint = it }
+    }
+    HarmonicTheme(preview.colors, preview.colorScheme, preview.dark) {
+        Column(
+            modifier = modifier.fillMaxWidth().fillMaxHeight().background(preview.colors.background)
+                .padding(vertical = 6.dp),
+        ) {
+            StoryItem(
+                model = SettingsStoryPreviewModel.copy(
+                    faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
+                ),
+                // Keep the preview visible above the controls even with large image settings.
+                style = style.copy(previewImageMode = StoryPreviewMode.OFF, showSummary = false),
+                animateChanges = false,
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Your theme pair",
-                        color = HarmonicTheme.colors.textPrimary,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                    )
-                    Text(
-                        text = "Stories update as you experiment",
-                        color = HarmonicTheme.colors.storyDisabled,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 13.sp,
-                    )
+                Button(
+                    onClick = {},
+                    modifier = Modifier.height(40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = preview.colors.overlayButton,
+                        contentColor = preview.colors.overlayButtonContent,
+                    ),
+                ) {
+                    Icon(painterResource(Res.drawable.ic_preview), null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Example", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
                 }
-                Icon(
-                    painter = painterResource(Res.drawable.ic_style),
-                    contentDescription = null,
-                    tint = HarmonicTheme.colors.drawable,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StoryThemePreview(
-                    label = "Light",
-                    palette = light,
-                    current = activeTheme == lightTheme,
-                    modifier = Modifier.weight(1f),
-                )
-                StoryThemePreview(
-                    label = "Dark",
-                    palette = dark,
-                    current = activeTheme == darkTheme,
-                    modifier = Modifier.weight(1f),
-                )
             }
         }
     }
 }
 
+/** Animate the colors consumed by StoryItem and the sample button without fading their opacity. */
 @Composable
-private fun StoryThemePreview(
-    label: String,
-    palette: ThemePreviewPalette,
-    current: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val borderWidth by animateDpAsState(
-        targetValue = if (current) 2.dp else 1.dp,
-        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
-        label = "theme preview border width",
+private fun animateStoryPreviewPalette(target: HarmonicThemePalette): HarmonicThemePalette {
+    val colors = target.colors
+    return target.copy(
+        colors = colors.copy(
+            background = animatePreviewColor(
+                if (target.dark) colors.background else colors.settingsPageBackground,
+            ),
+            storyNormal = animatePreviewColor(colors.storyNormal),
+            storyDisabled = animatePreviewColor(colors.storyDisabled),
+            storyCardBackground = animatePreviewColor(colors.storyCardBackground),
+            surfaceContainerHigh = animatePreviewColor(colors.surfaceContainerHigh),
+            surfaceContainerHighest = animatePreviewColor(colors.surfaceContainerHighest),
+            outlineVariant = animatePreviewColor(colors.outlineVariant),
+            drawable = animatePreviewColor(colors.drawable),
+            overlayButton = animatePreviewColor(colors.overlayButton),
+            overlayButtonContent = animatePreviewColor(colors.overlayButtonContent),
+        ),
+        colorScheme = target.colorScheme.copy(
+            primary = animatePreviewColor(target.colorScheme.primary),
+            onPrimary = animatePreviewColor(target.colorScheme.onPrimary),
+        ),
     )
-    val borderColor by animateColorAsState(
-        targetValue = if (current) palette.accent else palette.text.copy(alpha = 0.16f),
-        animationSpec = tween(durationMillis = ThemeSelectionAnimationDurationMillis),
-        label = "theme preview border color",
-    )
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(palette.background)
-            .border(
-                width = borderWidth,
-                color = borderColor,
-                shape = RoundedCornerShape(16.dp),
-            )
-            .padding(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f),
-                color = palette.text,
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-            )
-            AnimatedVisibility(
-                visible = current,
-                enter = fadeIn(tween(ThemeSelectionAnimationDurationMillis)) +
-                    scaleIn(tween(ThemeSelectionAnimationDurationMillis), initialScale = 0.75f),
-                exit = fadeOut(tween(ThemeSelectionAnimationDurationMillis)) +
-                    scaleOut(tween(ThemeSelectionAnimationDurationMillis), targetScale = 0.75f),
-            ) {
-                Text(
-                    text = "NOW",
-                    color = palette.accent,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 9.sp,
-                )
-            }
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(palette.surface)
-                .padding(9.dp),
-        ) {
-            Text(
-                text = "A better way to read the web",
-                color = palette.text,
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "128 points · 42 comments",
-                modifier = Modifier.padding(top = 5.dp),
-                color = palette.accent,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 9.sp,
-                maxLines = 1,
-            )
-            Box(
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .fillMaxWidth(0.72f)
-                    .height(3.dp)
-                    .background(palette.secondaryText.copy(alpha = 0.42f), CircleShape),
-            )
-        }
-    }
 }
+
+@Composable
+private fun animatePreviewColor(target: Color): Color = animateColorAsState(
+    targetValue = target,
+    // Compose interpolates Color values in OKLab and retargets from the current displayed color.
+    animationSpec = tween(250),
+    label = "theme preview color",
+).value
 
 @Composable
 private fun ThemePairPicker(
@@ -459,7 +456,7 @@ private fun ThemePairPicker(
         modifier = Modifier.fillMaxWidth().background(settingsItemBackgroundColor()),
     ) {
         Text(
-            text = "Apply both palettes and follow the system",
+            text = "Matching light and dark palettes",
             modifier = Modifier.padding(start = 20.dp, top = 14.dp, end = 20.dp),
             color = HarmonicTheme.colors.storyDisabled,
             fontFamily = ProductSansFontFamily,
@@ -471,8 +468,7 @@ private fun ThemePairPicker(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(pairs, key = { it.label }) { pair ->
-                val selected = state.followSystem &&
-                    state.lightTheme == pair.lightTheme && state.darkTheme == pair.darkTheme
+                val selected = state.lightTheme == pair.lightTheme && state.darkTheme == pair.darkTheme
                 PairPresetCard(
                     pair = pair,
                     selected = selected,

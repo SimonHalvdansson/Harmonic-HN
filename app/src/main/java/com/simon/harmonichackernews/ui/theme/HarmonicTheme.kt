@@ -23,6 +23,12 @@ fun HarmonicTheme(
 ) {
     val context = LocalContext.current
     val activeSelection = selection ?: context.harmonicAppComposition.appearance.selection()
+    val palette = harmonicThemePalette(context, activeSelection)
+    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark, content)
+}
+
+/** Resolve the same Android attributes for the app and isolated settings previews. */
+fun harmonicThemePalette(context: Context, activeSelection: ThemeSelection): HarmonicThemePalette {
     val canonical = HarmonicThemeCatalog.resolve(
         theme = activeSelection.theme,
         systemDark = activeSelection.dark,
@@ -74,15 +80,9 @@ fun HarmonicTheme(
         outlineVariant = colors.outlineVariant,
     )
 
-    val accented = ThemeAccentCatalog.apply(
+    return ThemeAccentCatalog.apply(
         canonical.copy(colors = colors, colorScheme = colorScheme),
         activeSelection.accentPreset,
-    )
-    HarmonicTheme(
-        colors = accented.colors,
-        colorScheme = accented.colorScheme,
-        darkTheme = accented.dark,
-        content = content,
     )
 }
 

@@ -30,27 +30,7 @@ object ThemeUtils {
      */
     private val defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
     fun setupTheme(activity: ComponentActivity) {
-        val theme = getPreferredTheme(activity)
-        when (theme) {
-            ThemePreferences.DEFAULT -> setMaterialAutoTheme(activity, dynamic = true)
-            ThemePreferences.MATERIAL_FIXED_AUTO -> setMaterialAutoTheme(activity, dynamic = false)
-
-            "darklight_daynight" -> activity.setTheme(R.style.AppThemeDarkLightDayNight)
-            "amoledwhite_daynight" -> activity.setTheme(R.style.AppThemeAmoledWhiteDayNight)
-            "material_dark" -> activity.setTheme(materialTheme(dynamic = true, dark = true))
-            ThemePreferences.MATERIAL_FIXED_DARK ->
-                activity.setTheme(materialTheme(dynamic = false, dark = true))
-            "amoled" -> activity.setTheme(R.style.AppThemeAmoledDark)
-            "hacker" -> activity.setTheme(R.style.AppThemeHacker)
-            "gray" -> activity.setTheme(R.style.AppThemeGray)
-            "light" -> activity.setTheme(R.style.AppThemeLight)
-            "hacker_news" -> activity.setTheme(R.style.AppThemeHackerNews)
-            "material_light" -> activity.setTheme(materialTheme(dynamic = true, dark = false))
-            ThemePreferences.MATERIAL_FIXED_LIGHT ->
-                activity.setTheme(materialTheme(dynamic = false, dark = false))
-            "white" -> activity.setTheme(R.style.AppThemeWhite)
-            "dark" -> activity.setTheme(R.style.AppTheme)
-        }
+        activity.setTheme(themeResource(getPreferredTheme(activity), uiModeNight(activity)))
 
         val window = activity.getWindow()
         val insetsController = WindowCompat.getInsetsController(window, window.getDecorView())
@@ -112,16 +92,26 @@ object ThemeUtils {
         return ctx.harmonicAppComposition.appearance.selection().theme
     }
 
-    private fun setMaterialAutoTheme(activity: ComponentActivity, dynamic: Boolean) {
-        val useDynamic = dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            activity.setTheme(
-                if (useDynamic) R.style.AppThemeMaterialDayNight
-                else R.style.AppThemeMaterialFixedDayNight,
-            )
-        } else {
-            activity.setTheme(materialTheme(useDynamic, uiModeNight(activity)))
-        }
+    fun themeResource(theme: String, systemDark: Boolean): Int = when (theme) {
+        ThemePreferences.DEFAULT -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            R.style.AppThemeMaterialFixedDayNight
+        } else materialTheme(dynamic = true, dark = systemDark)
+        ThemePreferences.MATERIAL_FIXED_AUTO -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            R.style.AppThemeMaterialFixedDayNight
+        } else materialTheme(dynamic = false, dark = systemDark)
+        "darklight_daynight" -> R.style.AppThemeDarkLightDayNight
+        "amoledwhite_daynight" -> R.style.AppThemeAmoledWhiteDayNight
+        "material_dark" -> materialTheme(dynamic = true, dark = true)
+        ThemePreferences.MATERIAL_FIXED_DARK -> materialTheme(dynamic = false, dark = true)
+        "amoled" -> R.style.AppThemeAmoledDark
+        "hacker" -> R.style.AppThemeHacker
+        "gray" -> R.style.AppThemeGray
+        "light" -> R.style.AppThemeLight
+        "hacker_news" -> R.style.AppThemeHackerNews
+        "material_light" -> materialTheme(dynamic = true, dark = false)
+        ThemePreferences.MATERIAL_FIXED_LIGHT -> materialTheme(dynamic = false, dark = false)
+        "white" -> R.style.AppThemeWhite
+        else -> R.style.AppTheme
     }
 
     private fun materialTheme(dynamic: Boolean, dark: Boolean): Int {
