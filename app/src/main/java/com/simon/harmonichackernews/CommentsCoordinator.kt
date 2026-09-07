@@ -126,6 +126,7 @@ class CommentsCoordinator(
     private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
     private var topInset = 0
+    private var predictiveBackInsetsFrozen = false
     private val commentsLoaded: Boolean
         get() = commentsStore.state.value.presenter.loaded
     private var appliedCommentsThemeVersion = -1L
@@ -433,6 +434,9 @@ class CommentsCoordinator(
                 v: View,
                 windowInsets: WindowInsetsCompat
             ): WindowInsetsCompat {
+                // AndroidView redispatches insets as the predictive-back surface moves/scales.
+                // Applying those transient values would relayout the live page on every frame.
+                if (predictiveBackInsetsFrozen) return windowInsets
                 val systemInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
                 topInset = systemInsets.top
                 updateBottomSheetMargin(systemInsets.bottom)
@@ -472,19 +476,27 @@ class CommentsCoordinator(
         }
     }
 
-    fun beginVisibleWebViewPredictiveBackScrollFreeze(): Boolean {
+    fun beginWebViewPredictiveBack(): Boolean {
         val session = viewSession ?: return false
-        if (session.composeController?.isWebsiteVisible() != true) return false
-        session.webViewController.beginPredictiveBackScrollFreeze()
+        if (!session.webViewController.hasWebView()) return false
+        // The loaded WebView also resizes when it is covered by the comments sheet.
+        predictiveBackInsetsFrozen = true
+        if (session.composeController?.isWebsiteVisible() == true) {
+            session.webViewController.beginPredictiveBackScrollFreeze()
+        }
         return true
     }
 
-    fun maintainVisibleWebViewPredictiveBackScrollFreeze() {
+    fun maintainWebViewPredictiveBack() {
         viewSession?.webViewController?.maintainPredictiveBackScrollFreeze()
     }
 
-    fun endVisibleWebViewPredictiveBackScrollFreeze() {
+    fun endWebViewPredictiveBack() {
         viewSession?.webViewController?.endPredictiveBackScrollFreeze()
+        if (!predictiveBackInsetsFrozen) return
+        predictiveBackInsetsFrozen = false
+        // Recompute from the settled host position instead of replaying a transformed inset.
+        attachedRoot?.let(ViewCompat::requestApplyInsets)
     }
 
     fun handlesBackInternally(): Boolean {
@@ -499,9 +511,7 @@ class CommentsCoordinator(
     }
 
     fun startInternalPredictiveBack(backEvent: BackEventCompat) {
-        if (composeController?.isWebsiteVisible() == true) {
-            webViewController?.beginPredictiveBackScrollFreeze()
-        }
+        beginWebViewPredictiveBack()
         backPressedCallback?.handleOnBackStarted(backEvent)
     }
 
@@ -514,7 +524,7 @@ class CommentsCoordinator(
         try {
             backPressedCallback?.handleOnBackCancelled()
         } finally {
-            webViewController?.endPredictiveBackScrollFreeze()
+            endWebViewPredictiveBack()
         }
     }
 
@@ -522,7 +532,7 @@ class CommentsCoordinator(
         try {
             backPressedCallback?.takeIf { it.isEnabled }?.handleOnBackPressed()
         } finally {
-            webViewController?.endPredictiveBackScrollFreeze()
+            endWebViewPredictiveBack()
         }
     }
 
@@ -812,6 +822,7 @@ class CommentsCoordinator(
     }
 
     private fun updateWebViewContainerPadding() {
+        if (predictiveBackInsetsFrozen) return
         val upButtonInset = if (
             integratedWebview &&
             !navigation.isAdaptiveTwoPane() &&
@@ -1147,6 +1158,7 @@ class CommentsCoordinator(
         session?.backPressedCallback = null
         session?.composeController = null
         viewSession = null
+        predictiveBackInsetsFrozen = false
         appliedStatusBarProtectionKnown = false
         destroyed = true
     }

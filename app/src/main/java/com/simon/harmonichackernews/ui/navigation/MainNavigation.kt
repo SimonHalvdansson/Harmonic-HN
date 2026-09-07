@@ -798,18 +798,18 @@ private fun MainNavigation(
                     val currentFrozenCoordinator = frozenWebViewCoordinator
                     if (currentFrozenCoordinator == null) {
                         controller.getCommentsCoordinator()
-                            ?.takeIf { it.beginVisibleWebViewPredictiveBackScrollFreeze() }
+                            ?.takeIf { it.beginWebViewPredictiveBack() }
                             ?.let { frozenWebViewCoordinator = it }
                     } else {
                         currentFrozenCoordinator
-                            .maintainVisibleWebViewPredictiveBackScrollFreeze()
+                            .maintainWebViewPredictiveBack()
                     }
                 }
                 popGestureStoryIfStillCurrent()
             } catch (_: CancellationException) {
                 // A cancelled two-pane gesture keeps the current detail selected.
             } finally {
-                frozenWebViewCoordinator?.endVisibleWebViewPredictiveBackScrollFreeze()
+                frozenWebViewCoordinator?.endWebViewPredictiveBack()
             }
             return@PredictiveBackHandler
         }
@@ -821,10 +821,10 @@ private fun MainNavigation(
                 val currentFrozenCoordinator = frozenWebViewCoordinator
                 if (currentFrozenCoordinator == null) {
                     controller.getCommentsCoordinator()
-                        ?.takeIf { it.beginVisibleWebViewPredictiveBackScrollFreeze() }
+                        ?.takeIf { it.beginWebViewPredictiveBack() }
                         ?.let { frozenWebViewCoordinator = it }
                 } else {
-                    currentFrozenCoordinator.maintainVisibleWebViewPredictiveBackScrollFreeze()
+                    currentFrozenCoordinator.maintainWebViewPredictiveBack()
                 }
                 val currentAnimation = animation
                     ?: DefaultActivityPredictiveBackAnimation(event).also {
@@ -855,7 +855,7 @@ private fun MainNavigation(
                 if (activeBackAnimation === animation) activeBackAnimation = null
             }
         } finally {
-            frozenWebViewCoordinator?.endVisibleWebViewPredictiveBackScrollFreeze()
+            frozenWebViewCoordinator?.endWebViewPredictiveBack()
         }
     }
 
