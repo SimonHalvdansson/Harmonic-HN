@@ -16,6 +16,8 @@ import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
 import com.simon.harmonichackernews.settings.CommentNavigationPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -23,6 +25,8 @@ class MainActivity : BaseActivity() {
     internal lateinit var navigationController: MainNavigationController
         private set
     private lateinit var launchIntentRouter: MainLaunchIntentRouter
+    private val mutableWindowEnterComplete = MutableStateFlow(false)
+    internal val windowEnterComplete = mutableWindowEnterComplete.asStateFlow()
 
     protected override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,7 +108,13 @@ class MainActivity : BaseActivity() {
 
     protected override fun onStart() {
         super.onStart()
+        mutableWindowEnterComplete.value = false
         navigationController.onStart()
+    }
+
+    override fun onEnterAnimationComplete() {
+        super.onEnterAnimationComplete()
+        mutableWindowEnterComplete.value = true
     }
 
     protected override fun onResume() {

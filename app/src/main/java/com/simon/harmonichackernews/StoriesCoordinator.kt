@@ -34,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class StoriesCoordinator(
@@ -115,11 +116,8 @@ class StoriesCoordinator(
             }
         }
         coroutineScope.launch {
-            storiesStore.state.collect { state ->
-                composeController?.updateContent(
-                    StoriesScreenStateFactory.create(state, storiesPlatformPresentation(state)),
-                )
-            }
+            combine(storiesStore.state, activity.windowEnterComplete) { _, _ -> Unit }
+                .collect { syncComposeState() }
         }
         storiesStore.start()
         initializeComposeUi()
@@ -203,8 +201,15 @@ class StoriesCoordinator(
     private fun syncComposeState() {
         val controller = composeController ?: return
         val state = storiesStore.state.value
+        val next = StoriesScreenStateFactory.create(state, storiesPlatformPresentation(state))
+        // Android fades its retained task snapshot over the live window on resume. Keep the
+        // header at the snapshot's position until that fade ends, then animate the new label.
+        // Feed loading and all other state continue to update during the window transition.
         controller.updateContent(
-            StoriesScreenStateFactory.create(state, storiesPlatformPresentation(state)),
+            if (activity.windowEnterComplete.value) next else next.copy(
+                showUpdate = controller.showUpdate,
+                lastUpdatedText = controller.lastUpdatedText,
+            ),
         )
     }
 
