@@ -9,10 +9,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
@@ -29,11 +33,11 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FloatingActionButton
@@ -63,13 +67,16 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -82,8 +89,10 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -99,6 +108,7 @@ import com.simon.harmonichackernews.presentation.validate
 
 private enum class EditorDialog {
     Information,
+    OriginalComment,
     Discard,
 }
 
@@ -147,6 +157,8 @@ fun EditorScreen(
     var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
     var discardConfirmed by rememberSaveable { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val previewScrollState = rememberScrollState()
 
     // Let the dialog leave composition before starting the editor's parent exit transition.
     LaunchedEffect(discardConfirmed) {
@@ -178,59 +190,9 @@ fun EditorScreen(
         .union(WindowInsets.displayCutout)
         .only(WindowInsetsSides.Bottom)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
-            .testTag("compose_editor_container")
-            .windowInsetsPadding(topAndSideInsets)
-            .padding(horizontal = 0.dp),
-    ) {
-        ComposeEditorTopBar(
-            type = type,
-            subtitle = if (isPost) null else postTitle ?: parentText,
-            onClose = ::requestClose,
-        )
-
-        if (type == EditorType.COMMENT_REPLY) {
-            ReplyPreview(
-                user = user.orEmpty(),
-                parentText = parentText.orEmpty(),
-                onOpenLink = onOpenLink,
-            )
-        }
-
-        if (isPost) {
-            KeepImeOpenDuringFieldHandoff {
-                PostFields(
-                    title = title,
-                    onTitleChange = { title = it },
-                    url = url,
-                    onUrlChange = { url = it },
-                    text = text,
-                    onTextChange = { text = it },
-                    onFieldFocusChange = { field, isFocused ->
-                        if (isFocused) {
-                            focusedPostField = field
-                        } else if (focusedPostField == field) {
-                            focusedPostField = null
-                        }
-                    },
-                    titleMaxLength = titleMaxLength,
-                    titleTooLong = titleTooLong,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        } else {
-            CommentField(
-                value = comment,
-                onValueChange = { comment = it },
-                reply = type == EditorType.COMMENT_REPLY,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        ComposeEditorBottomBar(
+    val editorActions: @Composable (Boolean) -> Unit = { compact ->
+        ComposeEditorActionBar(
+            compact = compact,
             submitEnabled = canSubmit,
             formattingEnabled = !isPost ||
                 focusedPostField == null ||
@@ -253,17 +215,105 @@ fun EditorScreen(
                 }
             },
         )
-
-        // Match the Views editor's animated inset spacer: as the IME reports each animation
-        // frame, the spacer changes height and the weighted editor content moves with it.
-        Spacer(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsBottomHeight(bottomInsets),
+    }
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(HarmonicTheme.colors.background)
+            .testTag("compose_editor_container")
+            .windowInsetsPadding(topAndSideInsets.union(bottomInsets)),
+    ) {
+        // Wide, short windows can keep all actions in one row and give the editor the height.
+        val compactToolbar = maxWidth >= 600.dp && maxHeight < 360.dp
+        val topBarHeight = if (compactToolbar) 48.dp else 72.dp
+        val density = LocalDensity.current
+        val preferredPreviewHeight = with(density) {
+            (LocalWindowInfo.current.containerSize.height / 3f)
+                .toDp().coerceIn(112.dp, 180.dp)
+        }
+        // Leave several lines for writing, including space for the field label and padding.
+        val reservedReplyHeight = with(density) { 96.sp.toDp() } + 48.dp
+        val previewHeight = replyPreviewHeight(
+            availableHeight = maxHeight - topBarHeight - if (compactToolbar) 0.dp else 94.dp,
+            preferredPreviewHeight = preferredPreviewHeight,
+            reservedReplyHeight = reservedReplyHeight,
+            minimumPreviewHeight = with(density) { 56.dp + 56.sp.toDp() },
         )
+        Column(Modifier.fillMaxSize()) {
+            ComposeEditorTopBar(
+                type = type,
+                subtitle = if (isPost) null else postTitle ?: parentText,
+                onClose = ::requestClose,
+                height = topBarHeight,
+                onOriginalComment = if (type == EditorType.COMMENT_REPLY && previewHeight == 0.dp) {
+                    {
+                        keyboardController?.hide()
+                        dialog = EditorDialog.OriginalComment
+                    }
+                } else null,
+                actions = { if (compactToolbar) editorActions(true) },
+            )
+            if (isPost) {
+                KeepImeOpenDuringFieldHandoff {
+                    PostFields(
+                        title = title,
+                        onTitleChange = { title = it },
+                        url = url,
+                        onUrlChange = { url = it },
+                        text = text,
+                        onTextChange = { text = it },
+                        onFieldFocusChange = { field, isFocused ->
+                            if (isFocused) {
+                                focusedPostField = field
+                            } else if (focusedPostField == field) {
+                                focusedPostField = null
+                            }
+                        },
+                        titleMaxLength = titleMaxLength,
+                        titleTooLong = titleTooLong,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                Column(Modifier.weight(1f).fillMaxWidth()) {
+                    if (type == EditorType.COMMENT_REPLY && previewHeight > 0.dp) {
+                        ReplyPreview(
+                            user = user.orEmpty(),
+                            parentText = parentText.orEmpty(),
+                            onOpenLink = onOpenLink,
+                            previewHeight = previewHeight,
+                            scrollState = previewScrollState,
+                        )
+                    }
+                    CommentField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        reply = type == EditorType.COMMENT_REPLY,
+                        compact = compactToolbar,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            if (!compactToolbar) editorActions(false)
+        }
     }
 
     when (dialog) {
+        EditorDialog.OriginalComment -> SettingsAlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text("Replying to ${user.orEmpty()}", fontFamily = ProductSansFontFamily) },
+            scrollableContent = true,
+            text = {
+                OriginalCommentText(
+                    parentText = parentText.orEmpty(),
+                    onOpenLink = onOpenLink,
+                    modifier = Modifier.padding(top = 16.dp).verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { dialog = null }) { Text("Back to reply") }
+            },
+        )
         EditorDialog.Information -> EditorMessageActionDialog(
             title = "Information",
             message = informationMessage(isPost),
@@ -345,6 +395,9 @@ private fun ComposeEditorTopBar(
     type: EditorType,
     subtitle: String?,
     onClose: () -> Unit,
+    height: Dp,
+    onOriginalComment: (() -> Unit)?,
+    actions: @Composable () -> Unit,
 ) {
     val title = when (type) {
         EditorType.TOP_LEVEL_COMMENT -> "Top level comment"
@@ -354,14 +407,14 @@ private fun ComposeEditorTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(height)
             .testTag("compose_editor_top_app_bar"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
             onClick = onClose,
             modifier = Modifier
-                .size(56.dp)
+                .size(height.coerceAtMost(56.dp))
                 .testTag("compose_editor_close"),
         ) {
             Icon(
@@ -401,6 +454,10 @@ private fun ComposeEditorTopBar(
                 )
             }
         }
+        if (onOriginalComment != null) {
+            TextButton(onClick = onOriginalComment) { Text("Original comment") }
+        }
+        actions()
     }
 }
 
@@ -409,30 +466,16 @@ private fun ReplyPreview(
     user: String,
     parentText: String,
     onOpenLink: (String) -> Unit,
+    previewHeight: Dp,
+    scrollState: ScrollState,
 ) {
     val density = LocalDensity.current
     val windowSize = LocalWindowInfo.current.containerSize
-    val windowHeight = windowSize.height
-    val previewHeight = with(density) {
-        (windowHeight / 3f).toDp().coerceIn(112.dp, 180.dp)
-    }
-    val linkColor = HarmonicTheme.colors.link
-    val linkListener = remember(onOpenLink) {
-        LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url) {
-                onOpenLink(annotation.url)
-            }
-        }
-    }
-    val formattedParent = remember(parentText, linkColor, linkListener) {
-        htmlAnnotatedString(parentText, linkColor, linkListener)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(previewHeight)
-            .verticalScroll(rememberScrollState())
+            .heightIn(max = previewHeight)
+            .verticalScroll(scrollState)
             .padding(bottom = 6.dp)
             .testTag("compose_editor_replying_scrollview"),
     ) {
@@ -457,19 +500,41 @@ private fun ReplyPreview(
                 style = includeFontPaddingStyle,
             )
         }
-        Text(
-            text = formattedParent,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 10.dp, end = 16.dp)
-                .testTag("compose_editor_replying_text"),
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 16.sp,
-            lineHeight = 20.sp,
-            style = includeFontPaddingStyle,
+        OriginalCommentText(
+            parentText = parentText,
+            onOpenLink = onOpenLink,
+            modifier = Modifier.padding(start = 16.dp, top = 10.dp, end = 16.dp),
         )
     }
+}
+
+@Composable
+private fun OriginalCommentText(
+    parentText: String,
+    onOpenLink: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val linkColor = HarmonicTheme.colors.link
+    val linkListener = remember(onOpenLink) {
+        LinkInteractionListener { annotation ->
+            if (annotation is LinkAnnotation.Url) {
+                onOpenLink(annotation.url)
+            }
+        }
+    }
+    val formattedParent = remember(parentText, linkColor, linkListener) {
+        htmlAnnotatedString(parentText, linkColor, linkListener)
+    }
+
+    Text(
+        text = formattedParent,
+        modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
+        color = HarmonicTheme.colors.storyNormal,
+        fontFamily = ProductSansFontFamily,
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
+        style = includeFontPaddingStyle,
+    )
 }
 
 @Composable
@@ -485,69 +550,81 @@ private fun PostFields(
     titleTooLong: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = title,
-            onValueChange = onTitleChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 8.dp, end = 16.dp)
-                .height(80.75.dp)
-                .onFocusChanged { onFieldFocusChange(PostEditorField.Title, it.isFocused) }
-                .testTag("compose_editor_title"),
-            label = { Text("Title") },
-            supportingText = {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (titleTooLong) {
-                        Text(
-                            text = "Title must be $titleMaxLength characters or less",
-                            modifier = Modifier.weight(1f),
-                        )
-                    } else {
-                        Spacer(Modifier.weight(1f))
+    val focusManager = LocalFocusManager.current
+    val nextField = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // Preserve the roomy form's field sizes; scroll the whole form when it no longer fits.
+        val textHeight = (maxHeight - 182.dp).coerceAtLeast(144.dp)
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = onTitleChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+                    .height(80.75.dp)
+                    .onFocusChanged { onFieldFocusChange(PostEditorField.Title, it.isFocused) }
+                    .testTag("compose_editor_title"),
+                label = { Text("Title") },
+                supportingText = {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        if (titleTooLong) {
+                            Text(
+                                text = "Title must be $titleMaxLength characters or less",
+                                modifier = Modifier.weight(1f),
+                            )
+                        } else {
+                            Spacer(Modifier.weight(1f))
+                        }
+                        Text("${title.text.length}/$titleMaxLength")
                     }
-                    Text("${title.text.length}/$titleMaxLength")
-                }
-            },
-            isError = titleTooLong,
-            textStyle = editorTextStyle,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-            ),
-            singleLine = true,
-            shape = editorFieldShape,
-        )
-        OutlinedTextField(
-            value = url,
-            onValueChange = onUrlChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 16.dp, end = 16.dp)
-                .height(61.25.dp)
-                .onFocusChanged { onFieldFocusChange(PostEditorField.Url, it.isFocused) }
-                .testTag("compose_editor_url"),
-            label = { Text("URL") },
-            textStyle = editorTextStyle,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            singleLine = true,
-            shape = editorFieldShape,
-        )
-        OutlinedTextField(
-            value = text,
-            onValueChange = onTextChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(start = 16.dp, top = 16.dp, end = 16.dp)
-                .onFocusChanged { onFieldFocusChange(PostEditorField.Text, it.isFocused) }
-                .testTag("compose_editor_text"),
-            label = { Text("Text") },
-            textStyle = editorTextStyle,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-            ),
-            shape = editorFieldShape,
-        )
+                },
+                isError = titleTooLong,
+                textStyle = editorTextStyle,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                ),
+                keyboardActions = nextField,
+                singleLine = true,
+                shape = editorFieldShape,
+            )
+            OutlinedTextField(
+                value = url,
+                onValueChange = onUrlChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                    .height(61.25.dp)
+                    .onFocusChanged { onFieldFocusChange(PostEditorField.Url, it.isFocused) }
+                    .testTag("compose_editor_url"),
+                label = { Text("URL") },
+                textStyle = editorTextStyle,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    imeAction = ImeAction.Next,
+                ),
+                keyboardActions = nextField,
+                singleLine = true,
+                shape = editorFieldShape,
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = onTextChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(textHeight + 16.dp)
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                    .onFocusChanged { onFieldFocusChange(PostEditorField.Text, it.isFocused) }
+                    .testTag("compose_editor_text"),
+                label = { Text("Text") },
+                textStyle = editorTextStyle,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                ),
+                shape = editorFieldShape,
+            )
+        }
     }
 }
 
@@ -556,6 +633,7 @@ private fun CommentField(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     reply: Boolean,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
@@ -563,7 +641,7 @@ private fun CommentField(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = if (reply) 12.dp else 8.dp, end = 16.dp)
+            .padding(start = 16.dp, top = if (compact) 0.dp else if (reply) 12.dp else 8.dp, end = 16.dp)
             .semantics {
                 contentDescription = if (reply) "Reply text" else "Comment text"
             }
@@ -578,7 +656,7 @@ private fun CommentField(
 }
 
 @Composable
-private fun ComposeEditorBottomBar(
+private fun ComposeEditorActionBar(
     submitEnabled: Boolean,
     formattingEnabled: Boolean,
     submitting: Boolean,
@@ -587,11 +665,15 @@ private fun ComposeEditorBottomBar(
     onInformation: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 12.dp)
+            .then(if (compact) Modifier else Modifier.fillMaxWidth())
+            .padding(
+                if (compact) PaddingValues(end = 8.dp)
+                else PaddingValues(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 12.dp),
+            )
             .testTag("compose_editor_bottom_toolbar_row"),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -599,11 +681,11 @@ private fun ComposeEditorBottomBar(
         Surface(
             modifier = Modifier
                 .width(160.dp)
-                .height(64.dp)
+                .height(if (compact) 48.dp else 64.dp)
                 .testTag("compose_editor_formatting_toolbar"),
             shape = RoundedCornerShape(32.dp),
-            color = HarmonicTheme.colors.settingsSegment,
-            shadowElevation = 4.dp,
+            color = if (compact) Color.Transparent else HarmonicTheme.colors.settingsSegment,
+            shadowElevation = if (compact) 0.dp else 4.dp,
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp),
@@ -633,7 +715,8 @@ private fun ComposeEditorBottomBar(
                 enabled = submitEnabled,
                 submitting = submitting,
                 onClick = onSubmit,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = if (compact) 0.dp else 12.dp),
+                compact = compact,
             )
         }
     }
@@ -691,6 +774,7 @@ private fun SubmitButton(
     submitting: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val colors = HarmonicTheme.colors
     val enabledBackground = colors.accent
@@ -709,14 +793,14 @@ private fun SubmitButton(
     )
     Box(
         modifier = modifier
-            .size(72.dp)
+            .size(if (compact) 48.dp else 72.dp)
             .testTag("compose_editor_submit_slot"),
         contentAlignment = Alignment.Center,
     ) {
         FloatingActionButton(
             onClick = { if (enabled && !submitting) onClick() },
             modifier = Modifier
-                .size(60.dp)
+                .size(if (compact) 44.dp else 60.dp)
                 .then(
                     if (enabled && !submitting) Modifier
                     else Modifier.semantics { disabled() },
