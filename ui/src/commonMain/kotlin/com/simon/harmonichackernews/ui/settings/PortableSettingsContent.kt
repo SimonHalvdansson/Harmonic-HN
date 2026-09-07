@@ -389,14 +389,13 @@ private fun PortableCommentsSettings(
             val mode = presenter.state().depthMode
             ThreadDepthIndicatorsDialog(
                 mode = mode,
-                indicatorColors = CommentDepthPaletteCatalog.colors(
+                indicatorColors = CommentDepthPaletteCatalog.previewColors(
                     mode,
                     selection.theme,
                     selection.dark,
                 ),
                 onModeSelected = {
                     presenter.setDepthIndicatorMode(it)
-                    dismiss()
                 },
                 onDismiss = dismiss,
             )

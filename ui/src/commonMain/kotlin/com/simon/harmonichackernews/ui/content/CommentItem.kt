@@ -83,6 +83,8 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
@@ -192,11 +194,16 @@ fun CommentItem(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment preview text size",
     )
+    val indicatorColor by animateColorAsState(
+        targetValue = commentDepthColor(style.depthIndicatorMode, 0, model.author),
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment preview indicator color",
+    )
     CommentSurface(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
         style = style,
         showIndicator = style.depthIndicatorMode != "none",
-        indicatorColor = CommentDepthColors.first(),
+        indicatorColor = indicatorColor,
         highlighted = false,
         onClick = {},
         onLongClick = {},
@@ -320,7 +327,7 @@ fun CommentItem(
     val showIndicator = !flattenHierarchy && style.depthIndicatorMode != "none" &&
         (effectiveDepth > 0 || showTopLevelIndicator)
     val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
-        .coerceAtLeast(0) % CommentDepthColors.size
+        .coerceAtLeast(0)
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val renderModel = remember(
         comment.id,
@@ -380,7 +387,7 @@ fun CommentItem(
             modifier = Modifier.fillMaxWidth(),
             style = style,
             showIndicator = showIndicator,
-            indicatorColor = CommentDepthColors[indicatorIndex],
+            indicatorColor = commentDepthColor(style.depthIndicatorMode, indicatorIndex, comment.by.orEmpty()),
             highlighted = highlighted,
             itemGeometry = itemGeometry,
             captureSource = captureActionSource || pendingActionSourceGesture != null,
@@ -1219,15 +1226,11 @@ private fun AnnotatedString.baseFontWeightAt(index: Int): FontWeight = spanStyle
 
 private const val SearchHighlightThreshold = 0.001f
 
-private val CommentDepthColors = listOf(
-    Color(0xff5e97f6),
-    Color(0xff9ccc65),
-    Color(0xffffb74d),
-    Color(0xffba68c8),
-    Color(0xff4dd0e1),
-    Color(0xffef5350),
-    Color(0xffffd54f),
-)
+@Composable
+private fun commentDepthColor(mode: String, depth: Int, author: String): Color {
+    val selection = LocalHarmonicUiDependencies.current.appearance.selection()
+    return CommentDepthPaletteCatalog.color(mode, selection.theme, selection.dark, depth, author)
+}
 
 private val animatedCommentTextStyle = TextStyle(
     textMotion = TextMotion.Animated,

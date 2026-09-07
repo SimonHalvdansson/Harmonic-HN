@@ -224,6 +224,15 @@ class StoredSettingsMutatorTest {
         )
         assertTrue(store.getBoolean(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH, false))
 
+        mutator.setCommentDepthIndicatorMode(CommentDepthPreferences.AUTHOR)
+        assertEquals(
+            CommentDepthPreferences.AUTHOR,
+            store.getString(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS),
+        )
+        assertEquals("Author", CommentDepthPreferences.modeLabel(CommentDepthPreferences.AUTHOR))
+        assertTrue(CommentDepthPreferences.shouldShowIndicators(CommentDepthPreferences.AUTHOR))
+        assertFalse(store.getBoolean(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH, true))
+
         mutator.setCommentDepthIndicatorMode("unsupported")
         assertEquals(
             CommentDepthPreferences.THEME_DEFAULT,

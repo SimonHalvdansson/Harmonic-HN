@@ -228,11 +228,12 @@ object CommentDepthPreferences {
     const val THEME_DEFAULT = "theme_default"
     const val MATERIAL_YOU = "material_you"
     const val COLORS = "colors"
+    const val AUTHOR = "author"
     const val MONOCHROME = "monochrome"
     const val NONE = "none"
 
     fun sanitizeMode(mode: String): String = when (mode) {
-        MATERIAL_YOU, COLORS, MONOCHROME, NONE -> mode
+        MATERIAL_YOU, COLORS, AUTHOR, MONOCHROME, NONE -> mode
         else -> THEME_DEFAULT
     }
 
@@ -241,6 +242,7 @@ object CommentDepthPreferences {
     fun modeLabel(mode: String): String = when (sanitizeMode(mode)) {
         MATERIAL_YOU -> "Material You"
         COLORS -> "Standard"
+        AUTHOR -> "Author"
         MONOCHROME -> "Monochrome"
         NONE -> "None"
         else -> "Theme default"

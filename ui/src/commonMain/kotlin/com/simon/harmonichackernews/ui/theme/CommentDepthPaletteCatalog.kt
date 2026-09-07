@@ -7,13 +7,9 @@ import kotlin.math.absoluteValue
 /** Canonical thread-depth colors and selection policy for every Compose host. */
 object CommentDepthPaletteCatalog {
     const val colorCount = 7
-    private val dark = listOf(
-        Color(0xFFFF959E), Color(0xFF3F51B5), Color(0xFFFF0266), Color(0xFF1EB980),
-        Color(0xFF00ACC1), Color(0xFF5D4037), Color(0xFFD32F2F),
-    )
-    private val light = listOf(
-        Color(0xFFA14010), Color(0xFF3F51B5), Color(0xFFFF0266), Color(0xFF1EB980),
-        Color(0xFF00ACC1), Color(0xFF5D4037), Color(0xFFD32F2F),
+    private val colors = listOf(
+        Color(0xFF5E97F6), Color(0xFF9CCC65), Color(0xFFFFB74D), Color(0xFFBA68C8),
+        Color(0xFF4DD0E1), Color(0xFFEF5350), Color(0xFFFFD54F),
     )
     private val material = listOf(
         Color(0xFF526A78), Color(0xFF7B94A2), Color(0xFF6D7F89), Color(0xFF8DA5B2),
@@ -26,10 +22,11 @@ object CommentDepthPaletteCatalog {
     ) {
         CommentDepthPreferences.MONOCHROME -> monochrome
         CommentDepthPreferences.MATERIAL_YOU -> material
-        CommentDepthPreferences.COLORS -> if (darkTheme) dark else light
+        CommentDepthPreferences.COLORS -> colors
+        CommentDepthPreferences.AUTHOR -> previewColors(mode, theme, darkTheme)
         CommentDepthPreferences.NONE -> emptyList()
         else -> if (theme?.startsWith("material") == true) material
-        else if (darkTheme) dark else light
+        else colors
     }
 
     fun color(
@@ -37,8 +34,36 @@ object CommentDepthPaletteCatalog {
         theme: String?,
         darkTheme: Boolean,
         depth: Int,
-    ): Color = colors(mode, theme, darkTheme).let { palette ->
-        if (palette.isEmpty()) Color.Transparent
+        author: String = "",
+    ): Color {
+        if (mode == CommentDepthPreferences.AUTHOR) return authorColor(author)
+        val palette = colors(mode, theme, darkTheme)
+        return if (palette.isEmpty()) Color.Transparent
         else palette[(depth % palette.size).absoluteValue]
     }
+
+    private fun authorColor(author: String): Color {
+        val hash = authorHash(author)
+        // 360 hues × 21 saturation levels × 17 lightness levels = 128,520 choices.
+        // Bound saturation to 50–70% and lightness to 46–62% to avoid muddy,
+        // neon, near-white, and near-black colors while keeping the mapping theme-independent.
+        return Color.hsl(
+            hue = (hash % 360u).toFloat(),
+            saturation = 0.50f + ((hash / 360u) % 21u).toFloat() / 100f,
+            lightness = 0.46f + ((hash / (360u * 21u)) % 17u).toFloat() / 100f,
+        )
+    }
+
+    // Fixed words keep the examples stable across recompositions and dialog openings.
+    private val previewAuthors = listOf("willow", "compass", "otter", "lantern", "pebble", "meadow", "saffron")
+
+    fun previewColors(mode: String, theme: String?, darkTheme: Boolean): List<Color> =
+        previewAuthors.mapIndexed { depth, author -> color(mode, theme, darkTheme, depth, author) }
+
+    // Explicit FNV-1a over UTF-16 code units keeps the mapping identical on every host.
+    // Unsigned arithmetic also handles overflow without negative palette indices.
+    private fun authorHash(author: String): UInt = author.fold(2166136261u) { hash, character ->
+        (hash xor character.code.toUInt()) * 16777619u
+    }
+
 }

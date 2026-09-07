@@ -25,7 +25,7 @@ fun AndroidThreadDepthIndicatorsDialog(
     val theme = ThemeUtils.getPreferredTheme(context)
     ThreadDepthIndicatorsDialog(
         mode = mode,
-        indicatorColors = CommentDepthPaletteCatalog.colors(
+        indicatorColors = CommentDepthPaletteCatalog.previewColors(
             mode = mode,
             theme = theme,
             darkTheme = ThemeUtils.isDarkMode(context, theme),

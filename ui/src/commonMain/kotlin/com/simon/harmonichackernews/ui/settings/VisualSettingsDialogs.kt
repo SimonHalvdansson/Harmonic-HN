@@ -129,6 +129,7 @@ fun ThreadDepthIndicatorsDialog(
         CommentDepthPreferences.THEME_DEFAULT,
         CommentDepthPreferences.MATERIAL_YOU,
         CommentDepthPreferences.COLORS,
+        CommentDepthPreferences.AUTHOR,
         CommentDepthPreferences.MONOCHROME,
         CommentDepthPreferences.NONE,
     )
