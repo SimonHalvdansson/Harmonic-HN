@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -84,8 +85,8 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 /**
- * The header is the first lazy item, scrolling is supplied by the LazyColumn, and every content
- * row retains the qualified `single_view_side_margin` used on phones, foldables, and tablets.
+ * The header and rows share a centered content column with the app-wide maximum width.
+ * The header is the first lazy item, so it scrolls with the submissions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,7 +201,7 @@ fun SubmissionsScreen(
 }
 
 @Composable
-private fun SubmissionsList(
+private fun BoxScope.SubmissionsList(
     userName: String,
     submissions: List<Story>,
     selectedFilter: SubmissionFilter,
@@ -223,7 +224,10 @@ private fun SubmissionsList(
     val sideMargin = 0.dp
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+            .fillMaxSize()
+            .align(Alignment.TopCenter),
         state = listState,
         contentPadding = PaddingValues(bottom = navigationBottom),
     ) {

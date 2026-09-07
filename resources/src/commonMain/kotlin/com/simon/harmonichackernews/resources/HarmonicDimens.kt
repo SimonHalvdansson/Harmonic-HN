@@ -4,6 +4,9 @@ import androidx.compose.ui.unit.dp
 
 /** Fixed layout tokens shared by every Compose target. */
 object HarmonicDimens {
+    /** Centered full-screen reading and editing content, including its inner side padding. */
+    val fullscreen_content_max_width = 720.dp
+
     val cache_stories_explanation_bottom_padding = 4.dp
     val cache_stories_explanation_top_padding = 4.dp
     val cache_stories_slider_top_padding = 4.dp

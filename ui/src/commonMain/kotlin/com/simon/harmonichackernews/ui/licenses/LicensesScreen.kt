@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.app.LicenseEntry
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.library_logo_androidx
@@ -128,7 +129,7 @@ fun LicensesScreen(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Column(
                     modifier = Modifier
-                        .widthIn(max = 720.dp)
+                        .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(LicenseCardShape)

@@ -253,48 +253,56 @@ fun EditorScreen(
                 } else null,
                 actions = { if (compactToolbar) editorActions(true) },
             )
-            if (isPost) {
-                KeepImeOpenDuringFieldHandoff {
-                    PostFields(
-                        title = title,
-                        onTitleChange = { title = it },
-                        url = url,
-                        onUrlChange = { url = it },
-                        text = text,
-                        onTextChange = { text = it },
-                        onFieldFocusChange = { field, isFocused ->
-                            if (isFocused) {
-                                focusedPostField = field
-                            } else if (focusedPostField == field) {
-                                focusedPostField = null
-                            }
-                        },
-                        titleMaxLength = titleMaxLength,
-                        titleTooLong = titleTooLong,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            } else {
-                Column(Modifier.weight(1f).fillMaxWidth()) {
-                    if (type == EditorType.COMMENT_REPLY && previewHeight > 0.dp) {
-                        ReplyPreview(
-                            user = user.orEmpty(),
-                            parentText = parentText.orEmpty(),
-                            onOpenLink = onOpenLink,
-                            previewHeight = previewHeight,
-                            scrollState = previewScrollState,
+            Column(
+                Modifier
+                    .weight(1f)
+                    .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally),
+            ) {
+                if (isPost) {
+                    KeepImeOpenDuringFieldHandoff {
+                        PostFields(
+                            title = title,
+                            onTitleChange = { title = it },
+                            url = url,
+                            onUrlChange = { url = it },
+                            text = text,
+                            onTextChange = { text = it },
+                            onFieldFocusChange = { field, isFocused ->
+                                if (isFocused) {
+                                    focusedPostField = field
+                                } else if (focusedPostField == field) {
+                                    focusedPostField = null
+                                }
+                            },
+                            titleMaxLength = titleMaxLength,
+                            titleTooLong = titleTooLong,
+                            modifier = Modifier.weight(1f),
                         )
                     }
-                    CommentField(
-                        value = comment,
-                        onValueChange = { comment = it },
-                        reply = type == EditorType.COMMENT_REPLY,
-                        compact = compactToolbar,
-                        modifier = Modifier.weight(1f),
-                    )
+                } else {
+                    Column(Modifier.weight(1f).fillMaxWidth()) {
+                        if (type == EditorType.COMMENT_REPLY && previewHeight > 0.dp) {
+                            ReplyPreview(
+                                user = user.orEmpty(),
+                                parentText = parentText.orEmpty(),
+                                onOpenLink = onOpenLink,
+                                previewHeight = previewHeight,
+                                scrollState = previewScrollState,
+                            )
+                        }
+                        CommentField(
+                            value = comment,
+                            onValueChange = { comment = it },
+                            reply = type == EditorType.COMMENT_REPLY,
+                            compact = compactToolbar,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
+                if (!compactToolbar) editorActions(false)
             }
-            if (!compactToolbar) editorActions(false)
         }
     }
 
