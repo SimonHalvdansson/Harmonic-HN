@@ -357,13 +357,7 @@ class CommentThreadStore {
         val displayedSnapshots = snapshotList(displayedComments, previous.displayedComments)
         val searchSnapshots = snapshotIds(resultIds, previous.searchResults)
         val visibleSnapshots = if (rebuildVisibility) {
-            buildVisibleComments(displayedComments).map { item ->
-                PortableVisibleComment(
-                    sourceIndex = item.sourceIndex,
-                    comment = portableItem(item.comment),
-                    hiddenReplyCount = item.hiddenReplyCount,
-                )
-            }
+            buildVisibleComments(displayedComments)
         } else {
             refreshVisibleSnapshots(previous.visibleComments)
         }
@@ -452,7 +446,7 @@ class CommentThreadStore {
         presentation = presentationSnapshot(),
     )
 
-    private fun buildVisibleComments(source: List<Comment>): List<MutableVisibleComment> {
+    private fun buildVisibleComments(source: List<Comment>): List<PortableVisibleComment> {
         if (source.size <= 1) return emptyList()
 
         val byId = HashMap<Int, Comment>(source.size)
@@ -462,6 +456,7 @@ class CommentThreadStore {
         // descendants do not repeatedly walk the same ancestor chain.
         val visibilityById = HashMap<Int, Boolean>(source.size)
         val visibleByIndex = BooleanArray(source.size)
+        var visibleCount = 0
         for (index in 1..<source.size) {
             val comment = source[index]
             val parent = byId[comment.parent]
@@ -472,6 +467,7 @@ class CommentThreadStore {
             }
             visibleByIndex[index] = visible
             visibilityById[comment.id] = visible
+            if (visible) visibleCount++
         }
 
         // Find the first following item at the same or a shallower depth for every comment in one
@@ -487,12 +483,12 @@ class CommentThreadStore {
             openAncestors[openCount++] = index
         }
 
-        val visibleComments = ArrayList<MutableVisibleComment>(source.size - 1)
+        val visibleComments = ArrayList<PortableVisibleComment>(visibleCount)
         for (index in 1..<source.size) {
             if (!visibleByIndex[index]) continue
-            visibleComments += MutableVisibleComment(
+            visibleComments += PortableVisibleComment(
                 sourceIndex = index,
-                comment = source[index],
+                comment = portableItem(source[index]),
                 hiddenReplyCount = subtreeEndExclusive[index] - index - 1,
             )
         }
@@ -512,12 +508,6 @@ class CommentThreadStore {
 
 
     private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
-
-    private data class MutableVisibleComment(
-        val sourceIndex: Int,
-        val comment: Comment,
-        val hiddenReplyCount: Int,
-    )
 }
 
 internal data class SearchableCommentText(val source: String, val text: String)
