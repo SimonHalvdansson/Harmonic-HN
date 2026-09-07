@@ -130,7 +130,7 @@ fun CommentsSettingsScreen(
                     onValueChange = { onTextSizeOffsetChanged(it.toInt()) },
                 )
                 SettingsDivider()
-                BooleanRow("Collect links in comments", Res.drawable.ic_link, state.collectLinks, CommentsBooleanSetting.CollectLinks, onBooleanChanged)
+                BooleanRow("Collect links", Res.drawable.ic_link, state.collectLinks, CommentsBooleanSetting.CollectLinks, onBooleanChanged)
                 SettingsDivider()
                 BooleanRow("Emphasize meta", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
                 SettingsDivider()
