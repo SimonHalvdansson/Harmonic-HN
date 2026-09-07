@@ -78,12 +78,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -99,6 +97,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -498,21 +497,6 @@ private fun StoriesList(
     val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
     val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
-    var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
-    val headerHeight = with(density) { headerHeightPx.toDp() }
-    val headerCollapsePx by remember(listState, headerHeightPx, stories) {
-        derivedStateOf {
-            calculateStoriesHeaderCollapsePx(
-                headerHeightPx = headerHeightPx,
-                firstVisibleItemIndex = listState.firstVisibleItemIndex,
-                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
-            ) { precedingIndex ->
-                stories.getOrNull(precedingIndex)
-                    ?.let { story -> controller.getAdjacentStoryPagingDistance(story.id) }
-                    ?: headerHeightPx
-            }
-        }
-    }
 
     LaunchedEffect(listState, searchMode) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
@@ -531,47 +515,64 @@ private fun StoriesList(
     }
 
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
-        Box(Modifier.fillMaxSize()) {
-            LazyContentList(
-                contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
-                items = stories,
-                itemCount = visibleCount,
-                state = listState,
-                key = { story -> story.id },
-                contentType = { story -> if (story.isComment) "comment" else "story" },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val progress = tapToUpdateExitProgress()
-                        alpha = 1f - progress
-                        translationY = -tapToUpdateExitOffsetPx * progress
-                    },
-                contentPadding = PaddingValues(
-                    start = startInset + safeStart,
-                    top = headerHeight,
-                    end = safeEnd,
-                    bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
-                ),
-                footerKey = "${if (searchMode) "search" else "main"}-load-more",
-                footer = if (controller.showLoadMore) {
-                    {
-                        Box(
-                            Modifier.fillMaxWidth().padding(20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (controller.loadMoreLoading) {
-                                HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
-                            } else {
-                                OutlinedButton(
-                                    onClick = controller.listener::onLoadMore,
-                                ) { Text("Load more") }
+        // Subcompose the list after measuring the animated header. Reporting its height through
+        // onGloballyPositioned makes the padding lag a frame and initially lays rows out at zero.
+        SubcomposeLayout(Modifier.fillMaxSize()) { constraints ->
+            val header = subcompose("header") {
+                StoriesHeader(
+                    controller = controller,
+                    searchMode = searchMode,
+                    tapToUpdateExitProgress = tapToUpdateExitProgress,
+                    suppressLastUpdated = controller.tapToUpdateRefreshStarted,
+                    filterColors = filterColors,
+                    extraCompactSelectedText = extraCompactSelectedText,
+                    compactSelectedText = compactSelectedText,
+                    showRefreshMenuItem = showRefreshMenuItem,
+                    showFailureStatus = !centerFailure,
+                )
+            }.single().measure(constraints.copy(minHeight = 0))
+            val headerHeight = header.height.toDp()
+            val list = subcompose("list") {
+                LazyContentList(
+                    contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
+                    items = stories,
+                    itemCount = visibleCount,
+                    state = listState,
+                    key = { story -> story.id },
+                    contentType = { story -> if (story.isComment) "comment" else "story" },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val progress = tapToUpdateExitProgress()
+                            alpha = 1f - progress
+                            translationY = -tapToUpdateExitOffsetPx * progress
+                        },
+                    contentPadding = PaddingValues(
+                        start = startInset + safeStart,
+                        top = headerHeight,
+                        end = safeEnd,
+                        bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
+                    ),
+                    footerKey = "${if (searchMode) "search" else "main"}-load-more",
+                    footer = if (controller.showLoadMore) {
+                        {
+                            Box(
+                                Modifier.fillMaxWidth().padding(20.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (controller.loadMoreLoading) {
+                                    HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
+                                } else {
+                                    OutlinedButton(
+                                        onClick = controller.listener::onLoadMore,
+                                    ) { Text("Load more") }
+                                }
                             }
                         }
-                    }
-                } else {
-                    null
-                },
-            ) { index, story ->
+                    } else {
+                        null
+                    },
+                ) { index, story ->
                     // Loaded stories often replace shorter skeletons in batches. Keep fades, but
                     // snap placement so neighboring rows never spring through each other.
                     val itemAnimationModifier = Modifier.animateItem(
@@ -774,35 +775,36 @@ private fun StoriesList(
                             },
                         )
                     }
-            }
-
-            StoriesHeader(
-                controller = controller,
-                searchMode = searchMode,
-                tapToUpdateExitProgress = tapToUpdateExitProgress,
-                suppressLastUpdated = controller.tapToUpdateRefreshStarted,
-                filterColors = filterColors,
-                extraCompactSelectedText = extraCompactSelectedText,
-                compactSelectedText = compactSelectedText,
-                showRefreshMenuItem = showRefreshMenuItem,
-                showFailureStatus = !centerFailure,
-                modifier = Modifier
-                    .zIndex(1f)
-                    .graphicsLayer(translationY = -headerCollapsePx.toFloat())
-                    .onGloballyPositioned { headerHeightPx = it.size.height },
-            )
-            if (centerFailure) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(2f),
-                ) {
-                    HeaderStatus(
-                        controller = controller,
-                        searchMode = searchMode,
-                        centerFailure = true,
-                    )
                 }
+            }.single().measure(constraints)
+            val failure = subcompose("failure") {
+                if (centerFailure) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .zIndex(2f),
+                    ) {
+                        HeaderStatus(
+                            controller = controller,
+                            searchMode = searchMode,
+                            centerFailure = true,
+                        )
+                    }
+                }
+            }.map { it.measure(constraints) }
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                list.placeRelative(0, 0)
+                val collapsePx = calculateStoriesHeaderCollapsePx(
+                    headerHeightPx = header.height,
+                    firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                    firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+                ) { precedingIndex ->
+                    stories.getOrNull(precedingIndex)
+                        ?.let { story -> controller.getAdjacentStoryPagingDistance(story.id) }
+                        ?: header.height
+                }
+                header.placeRelative(0, -collapsePx, zIndex = 1f)
+                failure.forEach { it.placeRelative(0, 0, zIndex = 2f) }
             }
         }
     }
