@@ -260,7 +260,7 @@ class CommentThreadStore {
 
     private fun publishSearch(query: String, preparing: Boolean = state.value.searchPreparing) {
         val previous = state.value
-        val ids = searchResults(query).map(Comment::id)
+        val ids = searchResultIds(query)
         mutableState.value = previous.copy(
             searchQuery = query,
             searchPreparing = preparing,
@@ -318,19 +318,28 @@ class CommentThreadStore {
         displayedComments.addAll(next)
     }
 
-    private fun searchResults(query: String): List<Comment> {
+    private fun searchResultIds(query: String): List<Int> {
+        if (allComments.size <= 1) return emptyList()
         val normalizedQuery = query.trim().lowercase()
-        val comments = allComments.drop(1).let { source ->
-            if (hideDelayedComments) source.filterNot { it.isDelayedPlaceholder() } else source
+        // Build only the IDs consumed by both callers, without copying or filtering the thread
+        // into intermediate lists on each query. Blank queries can reserve their maximum size.
+        val ids = if (normalizedQuery.isEmpty()) {
+            ArrayList<Int>(allComments.size - 1)
+        } else {
+            ArrayList<Int>()
         }
-        if (normalizedQuery.isEmpty()) return comments
-        return comments.filter { comment ->
-            val source = comment.expandedAnchorText.orEmpty()
-            val cached = searchableTextById[comment.id]
-            val searchableText = cached?.takeIf { it.source == source }?.text
-                ?: return@filter false
-            normalizedQuery in searchableText
+        for (index in 1..<allComments.size) {
+            val comment = allComments[index]
+            if (hideDelayedComments && comment.isDelayedPlaceholder()) continue
+            if (normalizedQuery.isNotEmpty()) {
+                val source = comment.expandedAnchorText.orEmpty()
+                val cached = searchableTextById[comment.id]
+                val searchableText = cached?.takeIf { it.source == source }?.text ?: continue
+                if (normalizedQuery !in searchableText) continue
+            }
+            ids.add(comment.id)
         }
+        return ids
     }
 
     private fun publish(
@@ -346,7 +355,7 @@ class CommentThreadStore {
         if (actualCommentsByOp != commentsByOp) rebuildDisplayedComments(commentsByOp = false)
         val previous = state.value
         val resultIds = if (rebuildSearch || searchQuery != previous.searchQuery) {
-            searchResults(searchQuery).map(Comment::id)
+            searchResultIds(searchQuery)
         } else {
             previous.searchResultIds
         }

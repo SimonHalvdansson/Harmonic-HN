@@ -201,6 +201,57 @@ class CommentThreadStoreTest {
     }
 
     @Test
+    fun searchPreservesOrderAndFilteringWithMissingOrStaleIndexEntries() {
+        val store = CommentThreadStore()
+        store.reset(story(), comment(99, -1, 0, "Kotlin header"))
+        store.appendLoadedComments(
+            story(),
+            listOf(
+                comment(9, -1, 0, " \n[delayed]\t "),
+                comment(7, -1, 0, "Kotlin first"),
+                comment(3, -1, 0, "Kotlin missing index"),
+                comment(11, -1, 0, "Kotlin changed text"),
+                comment(5, -1, 0, "Kotlin last"),
+            ),
+            sorting = "Default",
+            collapseTopLevel = true,
+        )
+        store.setSearchQuery("kotlin")
+        assertEquals(emptyList(), store.state.value.searchResultIds)
+
+        val source = store.state.value.allComments
+        store.installSearchIndex(source, source.filterNot { it.id == 3 }.associate { item ->
+            val html = item.expandedAnchorText.orEmpty()
+            item.id to if (item.id == 11) {
+                SearchableCommentText("Kotlin old text", "kotlin old text")
+            } else {
+                SearchableCommentText(html, html.lowercase())
+            }
+        })
+
+        for (hideDelayed in listOf(false, true)) {
+            store.setHideDelayedComments(hideDelayed)
+            val allIds = if (hideDelayed) listOf(7, 3, 11, 5) else listOf(9, 7, 3, 11, 5)
+            val delayedIds = if (hideDelayed) emptyList() else listOf(9)
+            for ((query, expected) in listOf(
+                "  KoTLiN\n" to listOf(7, 5),
+                "missing" to emptyList(),
+                "old text" to emptyList(),
+                "absent" to emptyList(),
+                "[delayed]" to delayedIds,
+                "" to allIds,
+                " \t\n" to allIds,
+            )) {
+                store.setSearchQuery(query)
+                val state = store.state.value
+                assertEquals(query, state.searchQuery)
+                assertEquals(expected, state.searchResultIds, "hideDelayed=$hideDelayed, query=$query")
+                assertEquals(expected, state.searchResults.map { it.id })
+            }
+        }
+    }
+
+    @Test
     fun replacingParsedCommentsPreservesExistingUiStateById() {
         val store = CommentThreadStore()
         store.reset(story = story())
