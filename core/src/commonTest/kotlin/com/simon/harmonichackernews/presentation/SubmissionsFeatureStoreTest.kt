@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
+import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.navigation.toDestination
 import kotlinx.coroutines.CompletableDeferred
@@ -56,7 +58,7 @@ class SubmissionsFeatureStoreTest {
         assertNull(store.start())
         runCurrent()
 
-        assertEquals(1, repository.submissionsRequests)
+        assertEquals(2, repository.submissionsRequests)
         assertTrue(store.state.value.loadedSuccessfully)
     }
 
@@ -84,7 +86,7 @@ class SubmissionsFeatureStoreTest {
         assertFalse(store.state.value.loading)
         assertFalse(store.state.value.loadedSuccessfully)
         assertEquals(SubmissionFilter.BOTH, store.state.value.filter)
-        assertEquals(1, repository.submissionsRequests)
+        assertEquals(2, repository.submissionsRequests)
     }
 
     @Test
@@ -105,7 +107,7 @@ class SubmissionsFeatureStoreTest {
         store.accept(SubmissionsIntent.LoadMore)
         runCurrent()
 
-        assertEquals(2, repository.submissionsRequests)
+        assertEquals(3, repository.submissionsRequests)
         assertTrue(store.state.value.loading)
 
         response.complete(listOf(story(1), story(2)))
@@ -194,9 +196,9 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int): List<Story> {
+        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return items.take(limit)
+            return page(items, limit, type)
         }
 
         override suspend fun search(url: String): List<Story> = error("Not used")
@@ -208,9 +210,9 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int): List<Story> {
+        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return response.await().take(limit)
+            return page(response.await(), limit, type)
         }
 
         override suspend fun search(url: String): List<Story> = error("Not used")
@@ -222,12 +224,12 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int): List<Story> {
+        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return if (submissionsRequests == 1) {
-                listOf(story(1))
+            return if (type != AlgoliaSubmissionType.BOTH) {
+                page(listOf(story(3), story(2)), limit, type)
             } else {
-                nextPage.await().take(limit)
+                page(nextPage.await(), limit, type)
             }
         }
 
@@ -244,8 +246,19 @@ class SubmissionsFeatureStoreTest {
     }
 
     private companion object {
+        fun page(items: List<Story>, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
+            val filtered = items.filter {
+                when (type) {
+                    AlgoliaSubmissionType.BOTH -> true
+                    AlgoliaSubmissionType.STORIES -> !it.isComment
+                    AlgoliaSubmissionType.COMMENTS -> it.isComment
+                }
+            }
+            return AlgoliaSubmissionsPage(filtered.take(limit), filtered.size > limit)
+        }
         fun story(id: Int) = Story().also {
             it.id = id
+            it.time = id
             it.loaded = true
         }
     }

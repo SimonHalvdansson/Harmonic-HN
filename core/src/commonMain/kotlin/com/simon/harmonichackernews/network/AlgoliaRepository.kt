@@ -9,8 +9,19 @@ import io.ktor.http.URLBuilder
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
+enum class AlgoliaSubmissionType { BOTH, STORIES, COMMENTS }
+
+data class AlgoliaSubmissionsPage(
+    val items: List<Story>,
+    val canLoadMore: Boolean,
+)
+
 interface AlgoliaRepository {
-    suspend fun getSubmissions(userName: String, limit: Int): List<Story>
+    suspend fun getSubmissions(
+        userName: String,
+        limit: Int,
+        type: AlgoliaSubmissionType = AlgoliaSubmissionType.BOTH,
+    ): AlgoliaSubmissionsPage
     suspend fun search(url: String): List<Story>
     suspend fun getItemJson(id: Int): String
 }
@@ -21,22 +32,36 @@ class KtorAlgoliaRepository(
 ) : AlgoliaRepository {
     constructor(client: HttpClient, json: Json = Json { ignoreUnknownKeys = true }) :
         this({ client }, json)
-    override suspend fun getSubmissions(userName: String, limit: Int): List<Story> {
+    override suspend fun getSubmissions(
+        userName: String,
+        limit: Int,
+        type: AlgoliaSubmissionType,
+    ): AlgoliaSubmissionsPage {
         require(userName.isNotBlank()) { "A username is required" }
         require(limit > 0) { "A positive result limit is required" }
         val url = URLBuilder("$ALGOLIA_API/search_by_date").apply {
-            parameters.append("tags", "author_$userName")
+            val tags = when (type) {
+                AlgoliaSubmissionType.BOTH -> "author_$userName"
+                AlgoliaSubmissionType.STORIES -> "author_$userName,(story,poll)"
+                AlgoliaSubmissionType.COMMENTS -> "author_$userName,comment"
+            }
+            parameters.append("tags", tags)
             parameters.append("hitsPerPage", limit.toString())
         }.buildString()
-        return search(url)
+        val response = searchResponse(url)
+        return AlgoliaSubmissionsPage(
+            items = response.hits.mapNotNull { it.toStory() },
+            canLoadMore = response.page + 1 < response.nbPages,
+        )
     }
 
-    override suspend fun search(url: String): List<Story> {
+    override suspend fun search(url: String): List<Story> =
+        searchResponse(url).hits.mapNotNull { it.toStory() }
+
+    private suspend fun searchResponse(url: String): AlgoliaSearchResponseDto {
         val body = client().getTextOrThrow(url)
         return try {
             json.decodeFromString<AlgoliaSearchResponseDto>(body)
-                .hits
-                .mapNotNull { it.toStory() }
         } catch (error: SerializationException) {
             throw ApiDecodingException("Invalid Algolia search response", error)
         } catch (error: IllegalArgumentException) {

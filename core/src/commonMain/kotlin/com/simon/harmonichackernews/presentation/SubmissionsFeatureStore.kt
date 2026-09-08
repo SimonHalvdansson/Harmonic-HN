@@ -78,14 +78,20 @@ class SubmissionsFeatureStore internal constructor(
             null
         }
         initialRestoration = restoration
-        if (!state.value.loadedSuccessfully && !state.value.loading) refresh()
+        if (!state.value.loading) loadJob = scope.launch { store.ensureLoaded() }
         return restoration
     }
 
     override fun accept(intent: SubmissionsIntent) {
         if (closed) return
         when (intent) {
-            is SubmissionsIntent.SelectFilter -> store.selectFilter(intent.filter)
+            is SubmissionsIntent.SelectFilter -> {
+                if (state.value.filter != intent.filter) {
+                    loadJob?.cancel()
+                    store.selectFilter(intent.filter)
+                    loadJob = scope.launch { store.ensureLoaded() }
+                }
+            }
             SubmissionsIntent.Refresh -> refresh()
             SubmissionsIntent.LoadMore -> loadMore()
             is SubmissionsIntent.OpenStoryLink -> openStoryLink(intent.story)

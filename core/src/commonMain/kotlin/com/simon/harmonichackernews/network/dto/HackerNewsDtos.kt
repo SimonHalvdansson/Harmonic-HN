@@ -35,6 +35,8 @@ data class HackerNewsUserDto(
 @Serializable
 data class AlgoliaSearchResponseDto(
     val hits: List<AlgoliaSearchHitDto> = emptyList(),
+    val page: Int = 0,
+    val nbPages: Int = 0,
 )
 
 @Serializable
