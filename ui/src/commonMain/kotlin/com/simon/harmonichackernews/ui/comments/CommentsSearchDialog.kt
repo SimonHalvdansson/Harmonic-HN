@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,30 +48,34 @@ fun CommentsSearchDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        modifier = Modifier
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = SearchDialogSizeDurationMillis,
-                    easing = FastOutSlowInEasing,
-                ),
-                alignment = Alignment.TopCenter,
-            )
-            .heightIn(max = maxDialogHeight),
+        modifier = Modifier.heightIn(max = maxDialogHeight),
         text = {
-            CommentsSearchContent(
-                searchTerm = searchTerm,
-                onSearchTermChanged = onSearchTermChanged,
-                visibleComments = visibleComments,
-                settings = settings,
-                storyAuthor = storyAuthor,
-                accountUser = accountUser,
-                onCommentSelected = onCommentSelected,
-                onOpenLink = onOpenLink,
-                onLinkLongClick = onLinkLongClick,
-                onReferenceLongClick = onReferenceLongClick,
-                requestFocus = true,
-                preparing = preparing,
-            )
+            // animateContentSize clips its bounds; keep it inside the elevated surface so
+            // the dialog's shadow can draw outside those bounds throughout resizing.
+            Box(
+                Modifier.animateContentSize(
+                    animationSpec = tween(
+                        durationMillis = SearchDialogSizeDurationMillis,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    alignment = Alignment.TopCenter,
+                ),
+            ) {
+                CommentsSearchContent(
+                    searchTerm = searchTerm,
+                    onSearchTermChanged = onSearchTermChanged,
+                    visibleComments = visibleComments,
+                    settings = settings,
+                    storyAuthor = storyAuthor,
+                    accountUser = accountUser,
+                    onCommentSelected = onCommentSelected,
+                    onOpenLink = onOpenLink,
+                    onLinkLongClick = onLinkLongClick,
+                    onReferenceLongClick = onReferenceLongClick,
+                    requestFocus = true,
+                    preparing = preparing,
+                )
+            }
         },
         edgeToEdgeContent = true,
         showButtons = false,

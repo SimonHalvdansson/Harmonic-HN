@@ -1080,13 +1080,19 @@ private fun MainNavigation(
                         DisposableEffect(coordinator) {
                             onDispose(coordinator::close)
                         }
-                        AndroidSubmissionsScreen(
-                            userName = coordinator.userName,
-                            store = coordinator.store,
-                            displaySettings = coordinator.displaySettings,
-                            initialScrollRestoration = coordinator.initialScrollRestoration,
-                            onBack = controller::closeSubmissions,
-                        )
+                        Box(Modifier.fillMaxSize()) {
+                            AndroidSubmissionsScreen(
+                                userName = coordinator.userName,
+                                store = coordinator.store,
+                                displaySettings = coordinator.displaySettings,
+                                initialScrollRestoration = coordinator.initialScrollRestoration,
+                                onBack = controller::closeSubmissions,
+                            )
+                            StatusBarProtection(
+                                color = paneStatusBarColor,
+                                statusBarHeight = statusBarHeight,
+                            )
+                        }
                     }
                 }
             }
@@ -1388,10 +1394,7 @@ private fun CommentsPane(
                         }
                     }
                 }
-                if (
-                    !commentsController.webViewFullscreen &&
-                    !commentsController.searchDialogVisible
-                ) {
+                if (!commentsController.webViewFullscreen) {
                     CommentNavigationControls(
                         controller = commentsController,
                         modifier = Modifier
