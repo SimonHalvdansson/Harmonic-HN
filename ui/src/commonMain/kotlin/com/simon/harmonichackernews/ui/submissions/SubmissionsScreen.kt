@@ -1,10 +1,33 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import org.jetbrains.compose.resources.DrawableResource
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ButtonDefaults
+import com.simon.harmonichackernews.ui.common.TextButton
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.foundation.layout.offset
 
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -86,7 +109,7 @@ import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 /**
  * The header and rows share a centered content column with the app-wide maximum width.
- * The header is the first lazy item, so it scrolls with the submissions.
+ * A retained header scrolls away with the rows and returns as soon as scrolling reverses.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,6 +191,7 @@ fun SubmissionsScreen(
             displaySettings = displaySettings,
             contentVersion = state.revision,
             listState = listState,
+            initiallyCollapsed = initialScrollRestoration?.appBarCollapsed == true,
             onIntent = onIntent,
             previewResources = previewResources,
             includeStatusBarInset = includeStatusBarInset,
@@ -213,6 +237,7 @@ private fun BoxScope.SubmissionsList(
     displaySettings: StoryDisplaySettings,
     contentVersion: Int,
     listState: LazyListState,
+    initiallyCollapsed: Boolean,
     onIntent: (SubmissionsIntent) -> Unit,
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean,
@@ -222,26 +247,63 @@ private fun BoxScope.SubmissionsList(
 ) {
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val sideMargin = 0.dp
+    val density = LocalDensity.current
+    var headerHeightPx by remember { mutableIntStateOf(0) }
+    var headerOffsetPx by remember { mutableFloatStateOf(0f) }
+    var headerRestored by remember { mutableStateOf(!initiallyCollapsed) }
+    val headerScroll = remember(listState) {
+        object : NestedScrollConnection {
+            private var revealing = false
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y != 0f) revealing = available.y > 0f
+                headerOffsetPx = (headerOffsetPx + available.y)
+                    .coerceIn(-headerHeightPx.toFloat(), 0f)
+                return Offset.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (headerOffsetPx < 0f && headerOffsetPx > -headerHeightPx) {
+                    val collapseLimit = if (listState.firstVisibleItemIndex == 0) {
+                        minOf(headerHeightPx, listState.firstVisibleItemScrollOffset)
+                    } else {
+                        headerHeightPx
+                    }
+                    val target = if (revealing || !listState.canScrollBackward) 0f
+                        else -collapseLimit.toFloat()
+                    animate(headerOffsetPx, target, animationSpec = tween(180)) { value, _ ->
+                        headerOffsetPx = value
+                    }
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+    // A jump to the top (including restoration) must not leave an empty header spacer.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, headerHeightPx)
+        }.collect { (index, offset, height) ->
+            if (!headerRestored && index > 0 && height > 0) {
+                headerOffsetPx = -height.toFloat()
+                headerRestored = true
+            } else if (index == 0) {
+                headerOffsetPx = headerOffsetPx.coerceAtLeast(-offset.toFloat())
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
             .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
             .fillMaxSize()
-            .align(Alignment.TopCenter),
+            .align(Alignment.TopCenter)
+            .nestedScroll(headerScroll),
         state = listState,
         contentPadding = PaddingValues(bottom = navigationBottom),
     ) {
         item(key = "header") {
-            SubmissionsHeader(
-                userName = userName,
-                selectedFilter = selectedFilter,
-                showFilter = showFilter,
-                compact = displaySettings.compactHeader,
-                sideMargin = sideMargin,
-                includeStatusBarInset = includeStatusBarInset,
-                reserveBackButtonSpace = reserveBackButtonSpace,
-                onFilterSelected = { onIntent(SubmissionsIntent.SelectFilter(it)) },
-            )
+            Spacer(Modifier.height(with(density) { headerHeightPx.toDp() }))
         }
 
         if (loadedSuccessfully && !loading && submissions.isEmpty()) {
@@ -342,17 +404,42 @@ private fun BoxScope.SubmissionsList(
             }
         }
 
-        if (canLoadMore) {
-            item(key = "load-more") {
+        item(key = "load-more") {
+            AnimatedVisibility(
+                visible = canLoadMore,
+                modifier = Modifier.animateItem(),
+                enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+            ) {
                 LoadMoreButton(
                     loading = loading,
                     onClick = { onIntent(SubmissionsIntent.LoadMore) },
                     modifier = Modifier
-                        .animateItem()
                         .padding(horizontal = sideMargin),
                 )
             }
         }
+    }
+    Box(
+        Modifier
+            .align(Alignment.TopCenter)
+            .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+            .fillMaxWidth()
+            .graphicsLayer { translationY = headerOffsetPx }
+            .nestedScroll(headerScroll)
+            .scrollable(listState, Orientation.Vertical, reverseDirection = true)
+            .onSizeChanged { headerHeightPx = it.height },
+    ) {
+        SubmissionsHeader(
+            userName = userName,
+            selectedFilter = selectedFilter,
+            showFilter = showFilter,
+            compact = displaySettings.compactHeader,
+            sideMargin = sideMargin,
+            includeStatusBarInset = includeStatusBarInset,
+            reserveBackButtonSpace = reserveBackButtonSpace,
+            onFilterSelected = { onIntent(SubmissionsIntent.SelectFilter(it)) },
+        )
     }
 }
 
@@ -463,7 +550,7 @@ private fun SubmissionFilterButton(
     )
 }
 
-/** Compose equivalent of `submissions_comment.xml` and its optional card wrapper. */
+/** Rounded submission cards; elevation follows the story-card preference. */
 @Composable
 private fun SubmissionCommentItem(
     story: Story,
@@ -474,23 +561,30 @@ private fun SubmissionCommentItem(
     onRepliesClick: () -> Unit,
 ) {
     val colors = HarmonicTheme.colors
+    val timeText = story.timeFormatted
+    // Relative times normally have no descenders; years and "just now" do.
+    // Center the visible Product Sans glyphs, with a font-scaled optical correction.
+    val timeOpticalOffset = with(LocalDensity.current) {
+        if (timeText.any { it in "gjpqy" }) (-1).sp.toDp() else 0.dp
+    }
     val commentMasterTitle = remember(story.commentMasterTitle, contentVersion) {
         story.commentMasterTitle
     }
     val cardStyle = displaySettings.cardStyle
+    val cardBackground = colors.surfaceContainerHigh
     val shape = RoundedCornerShape(8.dp)
     val container = Modifier
         .fillMaxWidth()
         .padding(
-            horizontal = if (cardStyle) 8.dp else 0.dp,
-            vertical = if (cardStyle) 4.dp else 0.dp,
+            horizontal = 8.dp,
+            vertical = 4.dp,
         )
         .shadow(if (cardStyle) 1.dp else 0.dp, shape, clip = false)
         .clip(shape)
-        .background(if (cardStyle) colors.surfaceContainerHigh else colors.background)
+        .background(cardBackground)
         .border(
             1.dp,
-            if (cardStyle) colors.commentDivider else Color.Transparent,
+            if (cardStyle) colors.outlineVariant else Color.Transparent,
             shape,
         )
 
@@ -499,7 +593,7 @@ private fun SubmissionCommentItem(
             start = 16.dp,
             top = 10.dp,
             end = 16.dp,
-            bottom = 10.dp,
+            bottom = 4.dp,
         ),
     ) {
         Row(
@@ -540,8 +634,7 @@ private fun SubmissionCommentItem(
                     style = legacyTextStyle,
                 )
             }
-            Text(
-                text = story.timeFormatted,
+            Box(
                 modifier = Modifier
                     .padding(start = 8.dp)
                     .defaultMinSize(minHeight = 22.dp)
@@ -552,20 +645,26 @@ private fun SubmissionCommentItem(
                         colors.submissionsCommentTimeOutline,
                         RoundedCornerShape(8.dp),
                     )
-                    .padding(start = 7.dp, top = 2.5.dp, end = 7.dp, bottom = 1.5.dp),
-                color = colors.storyDisabled,
-                fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                style = legacyTextStyle,
-            )
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = timeText,
+                    modifier = Modifier.offset(y = timeOpticalOffset),
+                    color = colors.storyDisabled,
+                    fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    style = legacyTextStyle,
+                )
+            }
         }
 
         SubmissionCommentBody(
             html = story.text.orEmpty(),
             preferredFont = displaySettings.font,
             textSize = displaySettings.commentTextSize,
-            background = if (cardStyle) colors.surfaceContainerHigh else colors.background,
+            background = cardBackground,
             onOpenLink = onOpenLink,
         )
 
@@ -573,20 +672,18 @@ private fun SubmissionCommentItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
         ) {
             SubmissionActionButton(
                 label = "Story",
                 icon = Res.drawable.ic_newspaper,
                 onClick = onStoryClick,
                 enabled = story.commentMasterId > 0 || story.parentId > 0,
-                modifier = Modifier.weight(1f),
             )
             SubmissionActionButton(
                 label = "Replies",
                 icon = Res.drawable.ic_reply,
                 onClick = onRepliesClick,
-                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -656,20 +753,20 @@ private fun SubmissionActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    OutlinedButton(
+    TextButton(
         onClick = onClick,
-        modifier = modifier.height(56.dp),
+        modifier = modifier.height(42.dp),
         enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(contentColor = HarmonicTheme.colors.accent),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = HarmonicTheme.colors.storyNormal,
+            modifier = Modifier.size(20.dp),
         )
         Text(
             text = label,
             modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.storyNormal,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
@@ -690,20 +787,24 @@ private fun LoadMoreButton(
             .height(56.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (loading) {
-            HarmonicLoadingIndicator(modifier = Modifier.size(32.dp))
-        } else {
-            OutlinedButton(
-                onClick = onClick,
-                modifier = Modifier.height(56.dp),
-            ) {
-                Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
-                Text(
-                    text = "Load more",
-                    modifier = Modifier.padding(start = 8.dp),
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                )
+        Crossfade(targetState = loading, label = "submissions load more") { isLoading ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (isLoading) {
+                    HarmonicLoadingIndicator(modifier = Modifier.size(32.dp))
+                } else {
+                    OutlinedButton(
+                        onClick = onClick,
+                        modifier = Modifier.height(56.dp),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
+                        Text(
+                            text = "Load more",
+                            modifier = Modifier.padding(start = 8.dp),
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
         }
     }

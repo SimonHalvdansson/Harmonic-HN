@@ -16,7 +16,7 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
     return Story().also { story ->
         story.id = id
         story.by = author
-        story.title = (if (isComment) storyTitle else title)
+        story.title = (if (isComment) "Comment by $author" else title)
             ?.takeUnless { it == "null" }
             ?: if (isComment) "Comment by $author" else null
         story.text = StoryTextProcessor.preprocessHtml(
@@ -27,7 +27,7 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
         story.descendants = commentCount ?: 0
         story.time = createdAt ?: 0
         story.parentId = parentId ?: 0
-        story.isLink = if (isComment) masterUrl != null else itemUrl != null
+        story.isLink = !isComment && itemUrl != null
         story.isComment = isComment
         if (isComment && (storyId ?: 0) > 0) {
             story.commentMasterId = storyId ?: 0

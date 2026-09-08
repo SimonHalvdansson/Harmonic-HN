@@ -56,6 +56,27 @@ class SubmissionsStoreTest {
     }
 
     @Test
+    fun finalSingleItemArrivesWithLoadingAndPaginationCleared() = runTest {
+        val repository = FakeRepository(listOf(item(3), item(2), item(1)))
+        val store = SubmissionsStore("simon", repository, pageSize = 4)
+        store.ensureLoaded()
+        store.selectFilter(SubmissionFilter.STORIES)
+        assertEquals(listOf(3, 2), store.ids())
+        val gate = CompletableDeferred<Unit>()
+        repository.gate = gate
+        val load = async { store.loadMore() }
+        runCurrent()
+        assertTrue(store.state.value.loading)
+        assertTrue(store.state.value.canLoadMore)
+        assertEquals(listOf(3, 2), store.ids())
+        gate.complete(Unit)
+        load.await()
+        assertEquals(listOf(3, 2, 1), store.ids())
+        assertFalse(store.state.value.loading)
+        assertFalse(store.state.value.canLoadMore)
+    }
+
+    @Test
     fun zeroStoriesHasNoPaginationEvenWithManyComments() = runTest {
         val repository = FakeRepository((20 downTo 1).map { item(it, comment = true) })
         val store = SubmissionsStore("simon", repository, pageSize = 4)

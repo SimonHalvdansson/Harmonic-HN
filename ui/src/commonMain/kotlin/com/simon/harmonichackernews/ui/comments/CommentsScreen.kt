@@ -207,7 +207,8 @@ fun CommentsScreen(
     }
     val statusBarInset = with(density) { topInsetPx.toDp() }
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomPadding = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp
+    val navigationVisible = settings.showNavigationBar && visibleComments.size > 1
+    val bottomPadding = navigationBottom + if (navigationVisible) 88.dp else 16.dp
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
     val itemStyle = remember(settings, animateComments) {
@@ -501,7 +502,7 @@ fun CommentsScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 16.dp,
-                    bottom = navigationBottom + if (settings.showNavigationBar) 88.dp else 16.dp,
+                    bottom = navigationBottom + if (navigationVisible) 88.dp else 16.dp,
                 ),
             enter = fadeIn(),
             exit = fadeOut(),
@@ -573,7 +574,7 @@ fun BoxScope.CommentNavigationControls(
         .asPaddingValues()
         .calculateBottomPadding()
     AnimatedVisibility(
-        visible = settings.showNavigationBar && controller.visibleComments.isNotEmpty(),
+        visible = settings.showNavigationBar && controller.visibleComments.size > 1,
         modifier = modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = navigationBottom),
