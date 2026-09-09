@@ -818,6 +818,7 @@ fun <T> SegmentedSetting(
     enabled: Boolean = true,
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
     optionWeights: Map<T, Float> = emptyMap(),
+    disabledOptions: Set<T> = emptySet(),
     containerColor: Color = settingsItemBackgroundColor(),
     onSelected: (T) -> Unit,
 ) {
@@ -872,6 +873,7 @@ fun <T> SegmentedSetting(
         ) {
             options.forEachIndexed { index, (value, label) ->
                 val isSelected = selected == value
+                val optionEnabled = enabled && value !in disabledOptions
                 val outerCorner = HarmonicDimens.compose_settings_segmented_button_corner_radius
                 val defaultInnerCorner = HarmonicDimens.compose_settings_segmented_button_inner_corner_radius
                 val pressedInnerCorner = HarmonicDimens.compose_settings_segmented_button_pressed_inner_corner_radius
@@ -899,6 +901,7 @@ fun <T> SegmentedSetting(
                 Row(
                     modifier = Modifier
                         .weight(optionWeights[value] ?: 1f)
+                        .alpha(if (value in disabledOptions) 0.38f else 1f)
                         .height(
                             buttonHeight,
                         )
@@ -922,7 +925,7 @@ fun <T> SegmentedSetting(
                         .clip(shape)
                         .selectable(
                             selected = isSelected,
-                            enabled = enabled,
+                            enabled = optionEnabled,
                             role = Role.RadioButton,
                             interactionSource = interactionSource,
                             onClick = { onSelected(value) },

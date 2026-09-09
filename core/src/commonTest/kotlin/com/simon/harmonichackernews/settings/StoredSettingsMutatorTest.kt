@@ -8,6 +8,67 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun legacyDisplayStylesResolveWithoutChangingOtherPreferences() {
+        val store = TestKeyValueStore()
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.STANDARD, settings.comments.displayStyle)
+        for ((stored, expected) in listOf(
+            "card" to DisplayStyle.RAISED,
+            "standard" to DisplayStyle.STANDARD,
+            "unknown" to DisplayStyle.STANDARD,
+            "raised" to DisplayStyle.RAISED,
+        )) {
+            store.putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, stored)
+            store.putString(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, stored)
+            assertEquals(expected, settings.story.displayStyle)
+            assertEquals(expected, settings.comments.displayStyle)
+        }
+    }
+
+    @Test
+    fun tintPromotesFlatStoriesAndLeavesCommentsIndependent() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "flat")
+        mutator.setCommentDisplayStyle(DisplayStyle.FLAT)
+        assertEquals(DisplayStyle.FLAT, settings.story.displayStyle)
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, true)
+        assertEquals("standard", store.getString(UserPreferenceKeys.STORY_DISPLAY_STYLE))
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.FLAT, settings.comments.displayStyle)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "flat")
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "raised")
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, true)
+        assertEquals(DisplayStyle.RAISED, settings.story.displayStyle)
+        // Imported preferences must obey the same rule before another write occurs.
+        store.putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, "flat")
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+    }
+
+    @Test
+    fun welcomePresetsSetBothStylesAndTintTogether() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "card")
+        mutator.setCommentDisplayStyle("card")
+        mutator.applyWelcomePreset(expressive = false)
+        assertEquals(DisplayStyle.FLAT, settings.story.displayStyle)
+        assertEquals(DisplayStyle.FLAT, settings.comments.displayStyle)
+        assertFalse(settings.story.tintCardUsingPreview)
+        mutator.applyWelcomePreset(expressive = true)
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.STANDARD, settings.comments.displayStyle)
+        assertTrue(settings.story.tintCardUsingPreview)
+    }
+
+    @Test
     fun nitterInstancePersistsAndInvalidEditsPreserveThePreviousValue() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

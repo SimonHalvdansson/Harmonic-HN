@@ -98,10 +98,10 @@ fun CommentActionOverlay(
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
-    val cardColor = if (settings.cardStyle) {
-        HarmonicTheme.colors.surfaceContainerHigh
+    val cardColor = if (settings.hasBackground) {
+        HarmonicTheme.colors.storyCardBackground
     } else {
-        HarmonicTheme.colors.background
+        HarmonicTheme.colors.settingsPageBackground
     }
     val source = state.sourceGeometry?.takeIf {
         it.contentLayer?.let { layer ->

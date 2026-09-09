@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
@@ -8,6 +9,24 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ItemStyleMappingsTest {
+    @Test
+    fun displayStylesPreserveIndependentFillAndElevation() {
+        for (displayStyle in DisplayStyle.entries) {
+            val story = storySettings().copy(displayStyle = displayStyle).toStoryItemStyle(
+                StoryItemStyleContext(score = 0, commentCount = 0, clicked = false),
+            )
+            val comments = commentSettings().copy(displayStyle = displayStyle).toCommentItemStyle(
+                CommentItemStyleContext.Thread(animateChanges = false),
+            )
+            assertEquals(displayStyle, story.displayStyle)
+            assertEquals(displayStyle, comments.displayStyle)
+            assertEquals(displayStyle != DisplayStyle.FLAT, story.hasBackground)
+            assertEquals(displayStyle != DisplayStyle.FLAT, comments.hasBackground)
+            assertEquals(displayStyle == DisplayStyle.RAISED, story.cardStyle)
+            assertEquals(displayStyle == DisplayStyle.RAISED, comments.cardStyle)
+        }
+    }
+
     @Test
     fun storyStyleCombinesDisplaySettingsWithScreenContext() {
         val settings = storySettings()
@@ -67,7 +86,7 @@ class ItemStyleMappingsTest {
                 name = "flat search result",
                 context = CommentItemStyleContext.Search,
                 expected = CommentItemStyle(
-                    cardStyle = true,
+                    displayStyle = DisplayStyle.RAISED,
                     showCardBorder = false,
                     textSize = 18.5f,
                     collectLinks = false,
@@ -100,7 +119,7 @@ class ItemStyleMappingsTest {
         showIndex = true,
         compactHeader = false,
         leftAlign = true,
-        cardStyle = false,
+        displayStyle = DisplayStyle.STANDARD,
         tintCardUsingPreview = true,
         paletteTintMode = "vibrant:0.75",
         grayOutClicked = true,
@@ -128,7 +147,7 @@ class ItemStyleMappingsTest {
         showIndex = showIndex,
         commentsOnLeft = true,
         tintCard = true,
-        cardStyle = false,
+        displayStyle = DisplayStyle.STANDARD,
         useHotnessIcon = useHotnessIcon,
         preferredFont = "serif",
         textSize = 17.5f,
@@ -153,7 +172,7 @@ class ItemStyleMappingsTest {
         isTablet = false,
         faviconProvider = "example",
         swapLongPressTap = false,
-        cardStyle = true,
+        displayStyle = DisplayStyle.RAISED,
         cardBorder = false,
         showDividers = true,
         highlightCommentMeta = false,
@@ -165,7 +184,7 @@ class ItemStyleMappingsTest {
     )
 
     private fun threadCommentStyle(animateChanges: Boolean) = CommentItemStyle(
-        cardStyle = true,
+        displayStyle = DisplayStyle.RAISED,
         showCardBorder = false,
         textSize = 18.5f,
         collectLinks = true,

@@ -378,7 +378,7 @@ private fun StoryThemePreview(
     }
     HarmonicTheme(preview.colors, preview.colorScheme, preview.dark) {
         Column(
-            modifier = modifier.fillMaxWidth().fillMaxHeight().background(preview.colors.background)
+            modifier = modifier.fillMaxWidth().fillMaxHeight().background(preview.colors.settingsPageBackground)
                 .padding(vertical = 6.dp),
         ) {
             StoryItem(
@@ -417,9 +417,7 @@ private fun animateStoryPreviewPalette(target: HarmonicThemePalette): HarmonicTh
     val colors = target.colors
     return target.copy(
         colors = colors.copy(
-            background = animatePreviewColor(
-                if (target.dark) colors.background else colors.settingsPageBackground,
-            ),
+            settingsPageBackground = animatePreviewColor(colors.settingsPageBackground),
             storyNormal = animatePreviewColor(colors.storyNormal),
             storyDisabled = animatePreviewColor(colors.storyDisabled),
             storyCardBackground = animatePreviewColor(colors.storyCardBackground),

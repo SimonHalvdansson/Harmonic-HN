@@ -79,21 +79,20 @@ class DataSettingsRuntime(
 
     fun clearHistory() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            service.clearHistory()?.let(::emitMessage)
+            service.clearHistory()
             refresh()
         }
     }
 
     fun clearPostCache() {
         scope.launch {
-            service.clearPostCache()?.let(::emitMessage)
+            service.clearPostCache()
             refresh()
         }
     }
 
     fun clearTintCache() {
         service.clearTintCache()
-        emitMessage(PresentationCopy.TINT_CACHE_CLEARED)
         refresh()
     }
 

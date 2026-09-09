@@ -9,14 +9,24 @@ class StoredSettingsMutator(
     private val store: KeyValueStore,
 ) {
     fun setStoryBoolean(preference: StoryBooleanPreference, value: Boolean) {
-        store.putBoolean(preference.storageKey, value)
+        store.update {
+            putBoolean(preference.storageKey, value)
+            if (preference == StoryBooleanPreference.TINT_CARD_USING_PREVIEW && value &&
+                DisplayStyle.fromStored(store.getString(UserPreferenceKeys.STORY_DISPLAY_STYLE)) == DisplayStyle.FLAT
+            ) {
+                putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, DisplayStyle.STANDARD.storedValue)
+            }
+        }
     }
 
     fun setStoryString(preference: StoryStringPreference, value: String) {
         when (preference) {
             StoryStringPreference.DISPLAY_STYLE -> store.putString(
                 UserPreferenceKeys.STORY_DISPLAY_STYLE,
-                sanitizeDisplayStyle(value),
+                DisplayStyle.forStories(
+                    value,
+                    store.getBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
+                ).storedValue,
             )
         }
     }
@@ -218,19 +228,20 @@ class StoredSettingsMutator(
     }
 
     fun applyWelcomePreset(expressive: Boolean) {
-        store.putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, expressive)
-        store.putString(
-            UserPreferenceKeys.FONT,
-            if (expressive) "googlesansflexrounded" else "productsans",
-        )
-        store.putString(
-            UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-            if (expressive) {
-                StoryPreviewMode.SMALL.storedValue
-            } else {
-                StoryPreviewMode.OFF.storedValue
-            },
-        )
+        store.update {
+            val style = if (expressive) DisplayStyle.STANDARD else DisplayStyle.FLAT
+            putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, style.storedValue)
+            putString(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, style.storedValue)
+            putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, expressive)
+            putString(
+                UserPreferenceKeys.FONT,
+                if (expressive) "googlesansflexrounded" else "productsans",
+            )
+            putString(
+                UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
+                if (expressive) StoryPreviewMode.SMALL.storedValue else StoryPreviewMode.OFF.storedValue,
+            )
+        }
     }
 
     fun setFont(font: String) {
@@ -314,11 +325,6 @@ class StoredSettingsMutator(
         PaletteTintPreferences.DEFAULT_COLORFULNESS,
         PaletteTintPreferences.DEFAULT_TONE,
     )
-
-    private fun sanitizeDisplayStyle(value: String): String = when (value) {
-        DisplayStylePreferences.CARD -> DisplayStylePreferences.CARD
-        else -> DisplayStylePreferences.STANDARD
-    }
 
     private fun serializeFloat(value: Float): String =
         if (value == value.toInt().toFloat()) value.toInt().toString() else value.toString()

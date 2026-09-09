@@ -1,4 +1,5 @@
 @file:OptIn(
+
     androidx.compose.material3.ExperimentalMaterial3Api::class,
     androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,
 )
@@ -8,6 +9,7 @@ package com.simon.harmonichackernews.ui.stories
 import org.jetbrains.compose.resources.DrawableResource
 
 
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
@@ -206,7 +208,7 @@ private fun StoryItemFormFactorPreview() {
                 showIndex = true,
                 commentsOnLeft = false,
                 tintCard = true,
-                cardStyle = false,
+                displayStyle = DisplayStyle.STANDARD,
                 useHotnessIcon = false,
                 preferredFont = "googlesansflexrounded",
                 textSize = TextPreferences.DEFAULT_STORY_TEXT_SIZE,

@@ -219,7 +219,7 @@ fun EditorScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(HarmonicTheme.colors.settingsPageBackground)
             .testTag("compose_editor_container")
             .windowInsetsPadding(topAndSideInsets.union(bottomInsets)),
     ) {

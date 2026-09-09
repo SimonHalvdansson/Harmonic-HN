@@ -17,7 +17,7 @@ internal fun StoriesSettingsUiState.toPreviewStoryItemStyle(): StoryItemStyle = 
     showIndex = showIndex,
     commentsOnLeft = leftAlignComments,
     tintCard = tint,
-    cardStyle = displayStyle == cardStyleValue,
+    displayStyle = DisplayStyle.fromStored(displayStyle),
     useHotnessIcon = hotnessEnabled,
     preferredFont = preferredFont,
     textSize = textSize,
@@ -26,7 +26,7 @@ internal fun StoriesSettingsUiState.toPreviewStoryItemStyle(): StoryItemStyle = 
 
 internal fun CommentsSettingsUiState.toPreviewCommentItemStyle(): CommentItemStyle =
     CommentItemStyle(
-        cardStyle = displayStyle == DisplayStyle.CARD,
+        displayStyle = displayStyle,
         showCardBorder = showBorder,
         textSize = textSize,
         collectLinks = collectLinks,

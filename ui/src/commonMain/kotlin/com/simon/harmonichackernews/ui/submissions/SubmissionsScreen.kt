@@ -176,7 +176,7 @@ fun SubmissionsScreen(
 
     val modifier = Modifier
         .fillMaxSize()
-        .background(HarmonicTheme.colors.background)
+        .background(HarmonicTheme.colors.settingsPageBackground)
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         SubmissionsList(
@@ -457,7 +457,7 @@ private fun SubmissionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.background)
+            .background(HarmonicTheme.colors.settingsPageBackground)
             .padding(horizontal = sideMargin)
             .padding(horizontal = 16.dp)
             .then(
@@ -571,7 +571,11 @@ private fun SubmissionCommentItem(
         story.commentMasterTitle
     }
     val cardStyle = displaySettings.cardStyle
-    val cardBackground = colors.surfaceContainerHigh
+    val cardBackground = if (displaySettings.hasBackground) {
+        colors.storyCardBackground
+    } else {
+        colors.settingsPageBackground
+    }
     val shape = RoundedCornerShape(8.dp)
     val container = Modifier
         .fillMaxWidth()

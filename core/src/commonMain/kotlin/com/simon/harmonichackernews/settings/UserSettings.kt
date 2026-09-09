@@ -41,7 +41,7 @@ data class StoryPreferences(
     val showIndex: Boolean,
     val compactHeader: Boolean,
     val leftAlign: Boolean,
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val tintCardUsingPreview: Boolean,
     val paletteTintConfigKey: String,
     val grayOutClicked: Boolean,
@@ -56,8 +56,8 @@ data class StoryPreferences(
     val preferredStoryType: String,
     val additionalFrontpages: Set<String>,
 ) {
-    val displayStyle: DisplayStyle
-        get() = if (cardStyle) DisplayStyle.CARD else DisplayStyle.STANDARD
+    val cardStyle: Boolean
+        get() = displayStyle == DisplayStyle.RAISED
     val fontChoice: AppFont
         get() = AppFont.fromStored(font)
 }
@@ -81,7 +81,7 @@ data class CommentPreferences(
     val theme: String?,
     val faviconProvider: String,
     val swapLongPressTap: Boolean,
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val cardBorder: Boolean,
     val showDividers: Boolean,
     val highlightMetadata: Boolean,
@@ -96,8 +96,8 @@ data class CommentPreferences(
     val smoothScroll: Boolean,
     val volumeNavigationMode: String,
 ) {
-    val displayStyle: DisplayStyle
-        get() = if (cardStyle) DisplayStyle.CARD else DisplayStyle.STANDARD
+    val cardStyle: Boolean
+        get() = displayStyle == DisplayStyle.RAISED
     val sortingPreference: CommentSortingPreference
         get() = CommentSortingPreference.fromStored(sorting)
     val volumeNavigation: CommentVolumeNavigationMode

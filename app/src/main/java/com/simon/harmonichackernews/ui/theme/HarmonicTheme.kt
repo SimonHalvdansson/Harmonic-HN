@@ -138,10 +138,11 @@ private fun harmonicColors(
             MaterialR.attr.colorSurfaceContainerHigh,
             fallbackScheme.surfaceContainerHigh,
         ),
-        storyCardBackground = context.colorAttribute(
-            R.attr.storyCardBackgroundColor,
-            fallback.storyCardBackground,
-        ),
+        storyCardBackground = if (canonical.dark) {
+            context.colorAttribute(R.attr.storyCardBackgroundColor, fallback.storyCardBackground)
+        } else {
+            resolveSettingsSurface(fallback.settingsItemBackground)
+        },
         surfaceContainerHighest = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHighest,
             fallbackScheme.surfaceContainerHighest,
@@ -174,10 +175,11 @@ private fun harmonicColors(
         drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface).let { color ->
             color.copy(alpha = color.alpha * 0.8f)
         },
-        popupMenuBackground = context.colorAttribute(
-            R.attr.popupMenuBackgroundColor,
-            fallbackScheme.surfaceContainerHigh,
-        ),
+        popupMenuBackground = if (canonical.dark) {
+            context.colorAttribute(R.attr.popupMenuBackgroundColor, fallback.popupMenuBackground)
+        } else {
+            resolveSettingsSurface(fallback.settingsItemBackground)
+        },
         settingsSegment = settingsSegment,
         settingsPageBackground = resolveSettingsSurface(fallback.settingsPageBackground),
         settingsItemBackground = resolveSettingsSurface(fallback.settingsItemBackground),

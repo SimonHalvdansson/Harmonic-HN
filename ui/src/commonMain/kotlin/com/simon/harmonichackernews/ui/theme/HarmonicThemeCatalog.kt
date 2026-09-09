@@ -348,7 +348,11 @@ object HarmonicThemeCatalog {
                 textSecondary = secondaryText,
                 link = secondary,
                 surfaceContainerHigh = surface,
-                storyCardBackground = storyCardBackground,
+                storyCardBackground = if (dark) {
+                    storyCardBackground
+                } else {
+                    settingsItemBackground ?: background
+                },
                 surfaceContainerHighest = surfaceHighest,
                 secondaryContainer = resolvedSecondaryContainer,
                 onSecondaryContainer = resolvedOnSecondaryContainer,
@@ -358,7 +362,7 @@ object HarmonicThemeCatalog {
                 commentDivider = divider,
                 commentCountIndicator = commentCountIndicator,
                 drawable = text.copy(alpha = text.alpha * 0.8f),
-                popupMenuBackground = popup,
+                popupMenuBackground = if (dark) popup else settingsItemBackground ?: background,
                 settingsSegment = settingsSegment,
                 settingsPageBackground = settingsPageBackground ?: if (dark) {
                     background

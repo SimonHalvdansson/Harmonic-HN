@@ -83,6 +83,7 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.presentation.PortableCommentItem
@@ -110,7 +111,7 @@ data class CommentItemUiModel(
 
 @Immutable
 data class CommentItemStyle(
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val showCardBorder: Boolean,
     val textSize: Float,
     val collectLinks: Boolean,
@@ -120,7 +121,10 @@ data class CommentItemStyle(
     val preferredFont: String,
     val animateChanges: Boolean = true,
     val transparentNonCardBackground: Boolean = false,
-)
+) {
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
+}
 
 private class CommentItemGeometry {
     var coordinates: LayoutCoordinates? = null
@@ -349,14 +353,14 @@ fun CommentItem(
         collapsedCommentPreview(comment.id, comment.text, textCollapsed)
     }
 
-    val top = if (style.cardStyle) {
+    val top = if (style.hasBackground) {
         if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
     } else if (effectiveDepth > 0 && !collapseParent) {
         10.dp
     } else {
         6.dp
     }
-    val bottom = if (style.cardStyle) 0.dp else 6.dp
+    val bottom = if (style.hasBackground) 0.dp else 6.dp
     val itemGeometry = remember { CommentItemGeometry() }
     var pendingActionSourceGesture by remember {
         mutableStateOf<CommentActionSourceGesture?>(null)
@@ -379,7 +383,7 @@ fun CommentItem(
     CommentItemLayout(
         modifier = modifier,
         effectiveDepth = effectiveDepth,
-        cardStyle = style.cardStyle,
+        cardStyle = style.hasBackground,
         topPadding = top,
         bottomPadding = bottom,
     ) {
@@ -647,15 +651,20 @@ private fun CommentSurface(
 ) {
     val colors = HarmonicTheme.colors
     val shapeRadius by animateDpAsState(
-        if (style.cardStyle) 8.dp else 0.dp,
+        if (style.hasBackground) 8.dp else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment corner radius",
     )
-    val shape = RoundedCornerShape(shapeRadius)
+    val shape = RoundedCornerShape(
+        topStart = if (showIndicator) 0.dp else shapeRadius,
+        topEnd = shapeRadius,
+        bottomEnd = shapeRadius,
+        bottomStart = if (showIndicator) 0.dp else shapeRadius,
+    )
     val baseBackground = when {
-        style.cardStyle -> colors.surfaceContainerHigh
+        style.hasBackground -> colors.storyCardBackground
         style.transparentNonCardBackground -> Color.Transparent
-        else -> colors.background
+        else -> colors.settingsPageBackground
     }
     val overlayAlpha = if (highlighted) {
         if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
@@ -667,7 +676,7 @@ private fun CommentSurface(
         label = "comment background",
     )
     val shadowPadding by animateDpAsState(
-        if (style.cardStyle) 4.dp else 0.dp,
+        if (style.hasBackground) 4.dp else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment card padding",
     )
@@ -687,36 +696,36 @@ private fun CommentSurface(
         label = "comment indicator",
     )
     val indicatorWidth by animateDpAsState(
-        if (showIndicator || style.cardStyle) {
-            if (style.cardStyle) 3.5.dp else 2.5.dp
+        if (showIndicator || style.hasBackground) {
+            if (style.hasBackground) 3.5.dp else 2.5.dp
         } else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment indicator width",
     )
     val indicatorMargin by animateDpAsState(
-        if (showIndicator || style.cardStyle) {
-            if (style.cardStyle) 4.dp else 8.dp
+        if (showIndicator || style.hasBackground) {
+            if (style.hasBackground) 4.dp else 8.dp
         } else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment indicator margin",
     )
     val contentStartPadding by animateDpAsState(
-        if (style.cardStyle) 4.5.dp else 5.dp,
+        if (style.hasBackground) 4.5.dp else 5.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment content start padding",
     )
     val contentEndPadding by animateDpAsState(
-        if (style.cardStyle) 8.dp else 4.dp,
+        if (style.hasBackground) 8.dp else 4.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment content end padding",
     )
     val contentVerticalPadding by animateDpAsState(
-        if (style.cardStyle) 7.dp else 5.dp,
+        if (style.hasBackground) 7.dp else 5.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment content vertical padding",
     )
     val dividerInset by animateDpAsState(
-        if (style.cardStyle) 8.dp else 4.dp,
+        if (style.hasBackground) 8.dp else 4.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment divider inset",
     )
@@ -732,7 +741,7 @@ private fun CommentSurface(
     )
     SideEffect {
         itemGeometry?.containerColor = background
-        itemGeometry?.containerCornerRadiusDp = if (style.cardStyle) 8f else 0f
+        itemGeometry?.containerCornerRadiusDp = if (style.hasBackground) 8f else 0f
         itemGeometry?.containerElevationDp = if (style.cardStyle) 1f else 0f
         itemGeometry?.containerBorderColor = colors.commentDivider
         itemGeometry?.containerBorderWidthDp =

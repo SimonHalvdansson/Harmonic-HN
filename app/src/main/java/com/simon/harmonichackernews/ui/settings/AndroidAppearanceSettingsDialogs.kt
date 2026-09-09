@@ -16,9 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 
@@ -90,10 +90,7 @@ fun AndroidWelcomeSettingsDialog(
     val storyPreferences = presenter.snapshot.story
     WelcomeSettingsDialog(
         styleChooser = styleChooser,
-        initialExpressive = !styleChooser ||
-            storyPreferences.font != "productsans" ||
-            storyPreferences.tintCardUsingPreview ||
-            storyPreferences.previewImageMode != StoryPreviewMode.OFF,
+        initialExpressive = !styleChooser || storyPreferences.displayStyle != DisplayStyle.FLAT,
         paletteTintConfigKey = storyPreferences.paletteTintConfigKey,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)

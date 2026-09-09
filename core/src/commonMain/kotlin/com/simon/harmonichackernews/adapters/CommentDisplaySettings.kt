@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.adapters
 
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -22,7 +23,7 @@ data class CommentDisplaySettings(
     val isTablet: Boolean,
     val faviconProvider: String,
     val swapLongPressTap: Boolean,
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val cardBorder: Boolean,
     val showDividers: Boolean,
     val highlightCommentMeta: Boolean,
@@ -32,6 +33,9 @@ data class CommentDisplaySettings(
     val showAdditionalSummaryInfo: Boolean,
     val enableSummaryBoldFormatting: Boolean,
 ) {
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
+
     companion object {
         fun from(
             preferences: CommentPreferences,
@@ -62,7 +66,7 @@ data class CommentDisplaySettings(
             isTablet = isTablet,
             faviconProvider = preferences.faviconProvider,
             swapLongPressTap = preferences.swapLongPressTap,
-            cardStyle = preferences.cardStyle,
+            displayStyle = preferences.displayStyle,
             cardBorder = preferences.cardBorder,
             showDividers = preferences.showDividers,
             highlightCommentMeta = preferences.highlightMetadata,

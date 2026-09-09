@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CachedStoryPreviewResource
 import com.simon.harmonichackernews.network.LinkSummary
@@ -141,7 +142,7 @@ class StoryListResourceRuntimeTest {
         showIndex = true,
         compactHeader = false,
         leftAlign = false,
-        cardStyle = true,
+        displayStyle = DisplayStyle.RAISED,
         tintCardUsingPreview = false,
         paletteTintMode = "default",
         grayOutClicked = true,

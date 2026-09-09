@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.TextPreferences
@@ -18,7 +19,7 @@ data class StoryDisplaySettings(
     val showIndex: Boolean,
     val compactHeader: Boolean,
     val leftAlign: Boolean,
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val tintCardUsingPreview: Boolean,
     val paletteTintMode: String,
     val grayOutClicked: Boolean,
@@ -27,6 +28,9 @@ data class StoryDisplaySettings(
     val font: String,
     val commentTextSize: Float,
 ) {
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
+
     fun withShowIndex(showIndex: Boolean): StoryDisplaySettings = copy(showIndex = showIndex)
 
     fun changesFrom(previous: StoryDisplaySettings): UpdateResult = UpdateResult(
@@ -58,7 +62,7 @@ data class StoryDisplaySettings(
             showIndex = preferences.showIndex,
             compactHeader = preferences.compactHeader,
             leftAlign = preferences.leftAlign,
-            cardStyle = preferences.cardStyle,
+            displayStyle = preferences.displayStyle,
             tintCardUsingPreview = preferences.tintCardUsingPreview,
             paletteTintMode = preferences.paletteTintConfigKey,
             grayOutClicked = preferences.grayOutClicked,

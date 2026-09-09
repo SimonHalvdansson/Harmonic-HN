@@ -303,7 +303,7 @@ fun SinglePaneNavigationScene(
                 }
                 .then(
                     if (storiesArePredictiveParent) {
-                        Modifier.background(HarmonicTheme.colors.background)
+                        Modifier.background(HarmonicTheme.colors.settingsPageBackground)
                     } else {
                         Modifier
                     },
@@ -404,7 +404,7 @@ fun SinglePaneNavigationScene(
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .background(HarmonicTheme.colors.background),
+                                .background(HarmonicTheme.colors.settingsPageBackground),
                         ) {
                             comments(layer.request)
                         }

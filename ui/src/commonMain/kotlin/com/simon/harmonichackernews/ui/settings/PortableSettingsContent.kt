@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -228,7 +229,7 @@ private fun PortableAppearanceSettings(
                 AppearanceSettingsDialog.Style -> {
                     WelcomeSettingsDialog(
                         styleChooser = true,
-                        initialExpressive = snapshot.story.cardStyle,
+                        initialExpressive = snapshot.story.displayStyle != DisplayStyle.FLAT,
                         paletteTintConfigKey = snapshot.story.paletteTintConfigKey,
                         onApplyPreset = { expressive ->
                             presenter.applyWelcomePreset(expressive)
@@ -357,7 +358,7 @@ private fun PortableStoriesSettings(
     StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = HarmonicTheme.colors.surfaceContainerHigh.toArgb(),
+            tintFallbackArgb = HarmonicTheme.colors.storyCardBackground.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,
@@ -485,7 +486,7 @@ fun PortableWelcomeDialog(
 ) {
     WelcomeSettingsDialog(
         styleChooser = false,
-        initialExpressive = app.settings.snapshot().story.cardStyle,
+        initialExpressive = app.settings.snapshot().story.displayStyle != DisplayStyle.FLAT,
         paletteTintConfigKey = app.settings.snapshot().story.paletteTintConfigKey,
         onApplyPreset = { expressive ->
             app.settings.applyWelcomePreset(expressive)

@@ -3,10 +3,10 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -32,7 +32,7 @@ class SettingsPreviewItemStylesTest {
                 showIndex = false,
                 commentsOnLeft = true,
                 tintCard = true,
-                cardStyle = true,
+                displayStyle = DisplayStyle.RAISED,
                 useHotnessIcon = true,
                 preferredFont = "serif",
                 textSize = 19f,
@@ -56,7 +56,7 @@ class SettingsPreviewItemStylesTest {
                 showIndex = true,
                 commentsOnLeft = true,
                 tintCard = true,
-                cardStyle = false,
+                displayStyle = DisplayStyle.STANDARD,
                 useHotnessIcon = false,
                 preferredFont = "serif",
                 textSize = 19f,
@@ -74,7 +74,7 @@ class SettingsPreviewItemStylesTest {
         val base = commentsState()
         val cases = listOf(
             base to CommentItemStyle(
-                cardStyle = true,
+                displayStyle = DisplayStyle.RAISED,
                 showCardBorder = true,
                 textSize = 18f,
                 collectLinks = true,
@@ -89,7 +89,7 @@ class SettingsPreviewItemStylesTest {
                 collectLinks = false,
                 emphasizeMetadata = true,
             ) to CommentItemStyle(
-                cardStyle = false,
+                displayStyle = DisplayStyle.STANDARD,
                 showCardBorder = false,
                 textSize = 18f,
                 collectLinks = false,
@@ -120,8 +120,6 @@ class SettingsPreviewItemStylesTest {
         leftAlignComments = true,
         tint = true,
         displayStyle = "card",
-        standardStyleValue = "standard",
-        cardStyleValue = "card",
         textSize = 19f,
         textSizeOffset = 3,
         minTextSizeOffset = -4,
@@ -141,7 +139,7 @@ class SettingsPreviewItemStylesTest {
     )
 
     private fun commentsState() = CommentsSettingsUiState(
-        displayStyle = DisplayStyle.CARD,
+        displayStyle = DisplayStyle.RAISED,
         showBorder = true,
         textSize = 18f,
         textSizeOffset = 2,

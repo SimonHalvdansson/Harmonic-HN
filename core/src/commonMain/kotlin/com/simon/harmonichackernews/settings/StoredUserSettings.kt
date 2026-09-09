@@ -118,7 +118,10 @@ class StoredUserSettings(
                 showIndex = boolean(UserPreferenceKeys.SHOW_INDEX, true),
                 compactHeader = boolean(UserPreferenceKeys.COMPACT_HEADER, false),
                 leftAlign = boolean(UserPreferenceKeys.LEFT_ALIGN, false),
-                cardStyle = string(UserPreferenceKeys.STORY_DISPLAY_STYLE, STANDARD) == CARD,
+                displayStyle = DisplayStyle.forStories(
+                    string(UserPreferenceKeys.STORY_DISPLAY_STYLE, STANDARD),
+                    boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
+                ),
                 tintCardUsingPreview =
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
@@ -173,7 +176,9 @@ class StoredUserSettings(
                     string(UserPreferenceKeys.FAVICON_PROVIDER, FaviconPreferences.GOOGLE),
                 ),
                 swapLongPressTap = boolean(UserPreferenceKeys.COMMENTS_SWAP_LONG, false),
-                cardStyle = string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD) == CARD,
+                displayStyle = DisplayStyle.fromStored(
+                    string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD),
+                ),
                 cardBorder = boolean(UserPreferenceKeys.COMMENT_CARD_BORDER, true),
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),
@@ -400,7 +405,6 @@ class StoredUserSettings(
 
     private companion object {
         const val STANDARD = "standard"
-        const val CARD = "card"
         const val TOP_STORIES = "Top Stories"
     }
 }

@@ -29,6 +29,7 @@ fun HarmonicDropdownMenu(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         containerColor = HarmonicTheme.colors.popupMenuBackground,
+        tonalElevation = 0.dp,
         content = content,
     )
 }

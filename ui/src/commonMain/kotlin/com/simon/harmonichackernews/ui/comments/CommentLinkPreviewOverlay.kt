@@ -150,7 +150,7 @@ fun CommentLinkPreviewOverlay(
         containerColor = previewContainerColor,
         sourceContainerColor = if (referenceRowSource) {
             state.sourceContainerColor
-                ?: HarmonicTheme.colors.background
+                ?: HarmonicTheme.colors.settingsPageBackground
         } else {
             previewContainerColor.copy(alpha = 0f)
         },

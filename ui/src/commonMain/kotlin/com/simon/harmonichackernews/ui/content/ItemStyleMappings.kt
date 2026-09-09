@@ -28,7 +28,7 @@ internal fun StoryDisplaySettings.toStoryItemStyle(
     showIndex = context.showIndex ?: showIndex,
     commentsOnLeft = leftAlign,
     tintCard = tintCardUsingPreview,
-    cardStyle = cardStyle,
+    displayStyle = displayStyle,
     useHotnessIcon = hotness > 0 && context.score + context.commentCount > hotness,
     preferredFont = font,
     textSize = storyTextSize,
@@ -45,7 +45,7 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
     context: CommentItemStyleContext,
 ): CommentItemStyle = when (context) {
     is CommentItemStyleContext.Thread -> CommentItemStyle(
-        cardStyle = cardStyle,
+        displayStyle = displayStyle,
         showCardBorder = cardBorder,
         textSize = preferredTextSize,
         collectLinks = collectReferenceLinks,
@@ -56,7 +56,7 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
         animateChanges = context.animateChanges,
     )
     CommentItemStyleContext.Search -> CommentItemStyle(
-        cardStyle = cardStyle,
+        displayStyle = displayStyle,
         showCardBorder = cardBorder,
         textSize = preferredTextSize,
         collectLinks = false,

@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 class TypedPreferenceValuesTest {
     @Test
     fun stableStoredValuesRoundTripAndUnknownValuesUseCompatibleDefaults() {
-        assertEquals(DisplayStyle.CARD, DisplayStyle.fromStored("card"))
+        assertEquals(DisplayStyle.RAISED, DisplayStyle.fromStored("card"))
         assertEquals(DisplayStyle.STANDARD, DisplayStyle.fromStored("unsupported"))
         assertEquals(
             CommentSortingPreference.REPLY_COUNT,

@@ -293,7 +293,7 @@ fun StoriesScreen(
         suppressSearchAutoFocus = controller.suppressSearchAutoFocus,
         predictiveBackActive = controller.predictiveBackActive,
         predictiveBackProgress = controller.predictiveBackProgress,
-        backgroundColor = HarmonicTheme.colors.background,
+        backgroundColor = HarmonicTheme.colors.settingsPageBackground,
         mainLayer = {
             StoriesList(
                 controller = controller,
@@ -627,6 +627,7 @@ private fun StoriesList(
                                 controller.updateStoryItemHeight(story.id, coordinates.size.height)
                             }
                             StoryLoadingItem(
+                                hasBackground = settings.hasBackground,
                                 modifier = itemHeightModifier,
                             )
                         } else {
@@ -672,10 +673,10 @@ private fun StoriesList(
                                     ),
                                 )
                             }
-                            val untintedStoryBackground = if (style.cardStyle) {
-                                HarmonicTheme.colors.surfaceContainerHigh
+                            val untintedStoryBackground = if (style.hasBackground) {
+                                HarmonicTheme.colors.storyCardBackground
                             } else {
-                                HarmonicTheme.colors.background
+                                HarmonicTheme.colors.settingsPageBackground
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
@@ -712,6 +713,7 @@ private fun StoriesList(
                                 style = style,
                                 modifier = itemModifier,
                                 listItem = true,
+                                pageBackground = HarmonicTheme.colors.settingsPageBackground,
                                 animateChanges = true,
                                 onLinkClick = { controller.listener.onLinkClick(story) },
                                 onLinkLongClick = {
@@ -915,7 +917,7 @@ private fun StoriesHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.background)
+            .background(HarmonicTheme.colors.settingsPageBackground)
             .padding(
                 top = topInset + topSpacing,
                 bottom = bottomSpacing,
@@ -1423,9 +1425,9 @@ private fun HeaderStatus(
 }
 
 @Composable
-private fun StoryLoadingItem(modifier: Modifier = Modifier) {
+private fun StoryLoadingItem(hasBackground: Boolean, modifier: Modifier = Modifier) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = if (hasBackground) HarmonicTheme.colors.storyCardBackground else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
@@ -1447,9 +1449,14 @@ private fun SavedCommentStoryItem(
 ) {
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
     Surface(
-        color = if (settings.cardStyle) MaterialTheme.colorScheme.surfaceContainerHigh else HarmonicTheme.colors.background,
+        color = if (settings.hasBackground) {
+            HarmonicTheme.colors.storyCardBackground
+        } else {
+            HarmonicTheme.colors.settingsPageBackground
+        },
         shape = RoundedCornerShape(8.dp),
-        tonalElevation = if (settings.cardStyle) 1.dp else 0.dp,
+        tonalElevation = 0.dp,
+        shadowElevation = if (settings.cardStyle) 1.dp else 0.dp,
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Column(Modifier.padding(14.dp)) {

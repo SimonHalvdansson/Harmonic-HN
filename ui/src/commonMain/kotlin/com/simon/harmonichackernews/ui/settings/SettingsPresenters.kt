@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AppFont
@@ -12,8 +13,6 @@ import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
-import com.simon.harmonichackernews.settings.DisplayStyle
-import com.simon.harmonichackernews.settings.DisplayStylePreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
@@ -49,13 +48,7 @@ class StoriesSettingsPresenter(
             showIndex = story.showIndex,
             leftAlignComments = story.leftAlign,
             tint = story.tintCardUsingPreview,
-            displayStyle = if (story.cardStyle) {
-                DisplayStylePreferences.CARD
-            } else {
-                DisplayStylePreferences.STANDARD
-            },
-            standardStyleValue = DisplayStylePreferences.STANDARD,
-            cardStyleValue = DisplayStylePreferences.CARD,
+            displayStyle = story.displayStyle.storedValue,
             textSize = story.storyTextSize,
             textSizeOffset = TextPreferences.storyTextSizeOffset(story.storyTextSize),
             minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,

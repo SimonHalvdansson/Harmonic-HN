@@ -174,7 +174,7 @@ fun CommentsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background),
+                .background(HarmonicTheme.colors.settingsPageBackground),
             contentAlignment = Alignment.Center,
         ) {
             HarmonicLoadingIndicator(Modifier.size(42.dp))
@@ -349,10 +349,10 @@ fun CommentsScreen(
         LazyContentList(
             items = visibleComments,
             key = { item -> item.comment.id },
-            contentType = { if (settings.cardStyle) "comment-card" else "comment" },
+            contentType = { if (settings.hasBackground) "comment-card" else "comment" },
             modifier = Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background)
+                .background(HarmonicTheme.colors.settingsPageBackground)
                 // Animated restoration starts from the visible header. If smooth scrolling is
                 // disabled, hide only the frame in which the saved position is applied directly.
                 .graphicsLayer {
@@ -438,10 +438,10 @@ fun CommentsScreen(
                             link = link,
                             sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
-                            sourceContainerColor = if (settings.cardStyle) {
-                                colors.surfaceContainerHigh
+                            sourceContainerColor = if (settings.hasBackground) {
+                                colors.storyCardBackground
                             } else {
-                                colors.background
+                                colors.settingsPageBackground
                             },
                             sourceContentLayer = sourceContentLayer,
                         )
@@ -680,7 +680,7 @@ fun EmptyCommentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
+            .background(HarmonicTheme.colors.settingsPageBackground),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

@@ -93,6 +93,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_drop_up
 import com.simon.harmonichackernews.resources.ic_comment
@@ -308,13 +309,16 @@ data class StoryItemStyle(
     val showIndex: Boolean,
     val commentsOnLeft: Boolean,
     val tintCard: Boolean,
-    val cardStyle: Boolean,
+    val displayStyle: DisplayStyle,
     val useHotnessIcon: Boolean,
     val preferredFont: String,
     val textSize: Float,
     val dimmed: Boolean = false,
     val paletteTintConfigKey: String = "default",
-)
+) {
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
+}
 
 val SettingsStoryPreviewModel = StoryItemUiModel(
     index = "3.",
@@ -352,6 +356,7 @@ fun StoryItem(
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
+    pageBackground: Color = HarmonicTheme.colors.settingsPageBackground,
 ) {
     val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(
@@ -424,8 +429,8 @@ fun StoryItem(
     }
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
-        style.cardStyle -> colors.surfaceContainerHigh
-        else -> colors.background
+        style.hasBackground -> colors.storyCardBackground
+        else -> pageBackground
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old
     // blend so an arriving preview/favicon tint does not flash into place.
@@ -524,7 +529,7 @@ fun StoryItem(
                     color = colors.outlineVariant,
                     shape = StoryCardShape,
                 )
-            style.tintCard -> Modifier
+            style.hasBackground || style.tintCard -> Modifier
                 .clip(StoryCardShape)
                 .background(background)
             else -> Modifier

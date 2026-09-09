@@ -93,7 +93,7 @@ fun WidgetConfigScreen(
 
     Column(
         Modifier.fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(HarmonicTheme.colors.settingsPageBackground)
             .windowInsetsPadding(WindowInsets.systemBars)
             .verticalScroll(rememberScrollState()),
     ) {

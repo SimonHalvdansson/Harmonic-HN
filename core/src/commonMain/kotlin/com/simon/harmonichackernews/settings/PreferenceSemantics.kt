@@ -172,17 +172,25 @@ object PaletteTintPreferences {
 }
 
 object DisplayStylePreferences {
+    const val FLAT = "flat"
     const val STANDARD = "standard"
+    const val RAISED = "raised"
+    /** Legacy stored value, read as Raised. */
     const val CARD = "card"
 }
 
 enum class DisplayStyle(val storedValue: String) {
+    FLAT(DisplayStylePreferences.FLAT),
     STANDARD(DisplayStylePreferences.STANDARD),
-    CARD(DisplayStylePreferences.CARD);
+    RAISED(DisplayStylePreferences.RAISED);
 
     companion object {
         fun fromStored(value: String?): DisplayStyle =
-            entries.firstOrNull { it.storedValue == value } ?: STANDARD
+            if (value == DisplayStylePreferences.CARD) RAISED
+            else entries.firstOrNull { it.storedValue == value } ?: STANDARD
+
+        fun forStories(value: String?, tintEnabled: Boolean): DisplayStyle =
+            fromStored(value).let { if (it == FLAT && tintEnabled) STANDARD else it }
     }
 }
 

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
@@ -25,8 +26,6 @@ data class StoriesSettingsUiState(
     val leftAlignComments: Boolean,
     val tint: Boolean,
     val displayStyle: String,
-    val standardStyleValue: String,
-    val cardStyleValue: String,
     val textSize: Float,
     val textSizeOffset: Int,
     val minTextSizeOffset: Int,
@@ -128,10 +127,12 @@ fun StoriesSettingsScreen(
                 SegmentedSetting(
                     title = "Display style",
                     options = listOf(
-                        state.standardStyleValue to "Standard",
-                        state.cardStyleValue to "Card",
+                        DisplayStyle.FLAT.storedValue to "Flat",
+                        DisplayStyle.STANDARD.storedValue to "Standard",
+                        DisplayStyle.RAISED.storedValue to "Raised",
                     ),
                     selected = state.displayStyle,
+                    disabledOptions = if (state.tint) setOf(DisplayStyle.FLAT.storedValue) else emptySet(),
                     onSelected = { onStringChanged(StoriesStringSetting.DisplayStyle, it) },
                 )
                 SettingsDivider()

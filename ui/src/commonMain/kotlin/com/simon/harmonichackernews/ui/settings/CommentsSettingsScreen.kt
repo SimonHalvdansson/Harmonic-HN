@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
@@ -12,7 +13,6 @@ import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 
@@ -87,7 +87,7 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background)) {
+            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.settingsPageBackground)) {
                 CommentItem(
                     model = SettingsCommentPreviewModel,
                     style = state.toPreviewCommentItemStyle(),
@@ -100,8 +100,9 @@ fun CommentsSettingsScreen(
                 SegmentedSetting(
                     title = "Display style",
                     options = listOf(
+                        DisplayStyle.FLAT.storedValue to "Flat",
                         DisplayStyle.STANDARD.storedValue to "Standard",
-                        DisplayStyle.CARD.storedValue to "Card",
+                        DisplayStyle.RAISED.storedValue to "Raised",
                     ),
                     selected = state.displayStyle.storedValue,
                     onSelected = { onDisplayStyleChanged(DisplayStyle.fromStored(it)) },
@@ -113,7 +114,7 @@ fun CommentsSettingsScreen(
                     state.showBorder,
                     CommentsBooleanSetting.Border,
                     onBooleanChanged,
-                    enabled = state.displayStyle == DisplayStyle.CARD,
+                    enabled = state.displayStyle == DisplayStyle.RAISED,
                 )
                 SettingsDivider()
                 SliderSetting(
