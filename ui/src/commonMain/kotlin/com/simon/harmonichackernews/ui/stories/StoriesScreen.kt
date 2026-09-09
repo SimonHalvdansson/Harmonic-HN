@@ -81,6 +81,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -91,6 +92,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -147,6 +149,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 
 private val StoriesEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private const val StoriesRowMotionDurationMillis = 350
 private val NoTapToUpdateExitProgress: () -> Float = { 0f }
 
 @Composable
@@ -221,19 +224,26 @@ fun StoriesScreen(
     }
 
     val scrollToTopRequestVersion = controller.scrollToTopRequestVersion
+    var appliedTopAnchorVersion by remember(mainState) { mutableIntStateOf(0) }
+    SideEffect {
+        if (scrollToTopRequestVersion != appliedTopAnchorVersion) {
+            appliedTopAnchorVersion = scrollToTopRequestVersion
+            if (mainState.firstVisibleItemIndex == 0 &&
+                mainState.firstVisibleItemScrollOffset == 0
+            ) {
+                // Keep the viewport at the top in the SAME measurement as the new keys.
+                // Retaining the old first key would briefly collapse the header when that
+                // story moves down the feed. Keeping the same index preserves row animations.
+                mainState.requestScrollToItem(0)
+            }
+        }
+    }
     LaunchedEffect(scrollToTopRequestVersion) {
         if (scrollToTopRequestVersion <= 0 || controller.mainStories.isEmpty()) {
             return@LaunchedEffect
         }
-        // Let the refreshed keyed items settle, then override Compose's retained key anchor.
-        withFrameNanos { }
-        mainState.scrollToItem(0)
-        // Reassert on the following frame in case the replacement list's measurement pass moved
-        // the old key anchor after the first scroll request.
-        withFrameNanos { }
-        if (mainState.firstVisibleItemIndex != 0 || mainState.firstVisibleItemScrollOffset != 0) {
-            mainState.scrollToItem(0)
-        }
+        // Menu refreshes can start partway down the feed; return with normal scroll motion.
+        mainState.animateScrollToItem(0)
     }
 
     val settleRequest = controller.predictiveBackSettleRequest
@@ -535,54 +545,55 @@ private fun StoriesList(
 
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
         Box(Modifier.fillMaxSize()) {
-            LazyContentList(
-                contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
-                items = stories,
-                itemCount = visibleCount,
-                state = listState,
-                key = { story -> story.id },
-                contentType = { story -> if (story.isComment) "comment" else "story" },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val progress = tapToUpdateExitProgress()
-                        alpha = if (headerHeight > 0.dp) 1f - progress else 0f
-                        translationY = -tapToUpdateExitOffsetPx * progress
-                    },
-                contentPadding = PaddingValues(
-                    start = startInset + safeStart,
-                    top = headerHeight,
-                    end = safeEnd,
-                    bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
-                ),
-                footerKey = "${if (searchMode) "search" else "main"}-load-more",
-                footer = if (controller.showLoadMore) {
-                    {
-                        Box(
-                            Modifier.fillMaxWidth().padding(20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (controller.loadMoreLoading) {
-                                HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
-                            } else {
-                                OutlinedButton(
-                                    onClick = controller.listener::onLoadMore,
-                                ) { Text("Load more") }
+            LookaheadScope {
+                LazyContentList(
+                    contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
+                    items = stories,
+                    itemCount = visibleCount,
+                    state = listState,
+                    key = { story -> story.id },
+                    contentType = { story -> if (story.isComment) "comment" else "story" },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val progress = tapToUpdateExitProgress()
+                            alpha = if (headerHeight > 0.dp) 1f - progress else 0f
+                            translationY = -tapToUpdateExitOffsetPx * progress
+                        },
+                    contentPadding = PaddingValues(
+                        start = startInset + safeStart,
+                        top = headerHeight,
+                        end = safeEnd,
+                        bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
+                    ),
+                    footerKey = "${if (searchMode) "search" else "main"}-load-more",
+                    footer = if (controller.showLoadMore) {
+                        {
+                            Box(
+                                Modifier.fillMaxWidth().padding(20.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (controller.loadMoreLoading) {
+                                    HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
+                                } else {
+                                    OutlinedButton(
+                                        onClick = controller.listener::onLoadMore,
+                                    ) { Text("Load more") }
+                                }
                             }
                         }
-                    }
-                } else {
-                    null
-                },
-            ) { index, story ->
-                    // Loaded stories often replace shorter skeletons in batches. Keep fades, but
-                    // snap placement so neighboring rows never spring through each other.
+                    } else {
+                        null
+                    },
+                ) { index, story ->
+                    // Lookahead gives placement and size transitions the same final geometry,
+                    // including when a short skeleton becomes a taller loaded story.
                     val itemAnimationModifier = Modifier.animateItem(
                         fadeInSpec = tween(
                             SavedListTransitionDurationMillis,
                             easing = StoriesEasing,
                         ),
-                        placementSpec = null,
+                        placementSpec = tween(StoriesRowMotionDurationMillis, easing = StoriesEasing),
                         // The parent list already fades for Tap to update. A second row exit would
                         // become visible after replacement, briefly resurrecting the old rows.
                         fadeOutSpec = if (suppressTapToUpdateRowExit) {
@@ -594,189 +605,196 @@ private fun StoriesList(
                             )
                         },
                     )
-                    if (story.isComment) {
-                        val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
-                            controller.updateStoryItemHeight(story.id, coordinates.size.height)
-                        }
-                        SavedCommentStoryItem(
-                            story = story,
-                            settings = settings,
-                            onStory = { controller.listener.onCommentStoryClick(story) },
-                            onReplies = { controller.listener.onCommentRepliesClick(story) },
-                            commentText = commentText,
-                            modifier = itemAnimationModifier.then(itemHeightModifier),
-                        )
-                    } else if (!story.loaded && !story.loadingFailed) {
-                        val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
-                            controller.updateStoryItemHeight(story.id, coordinates.size.height)
-                        }
-                        StoryLoadingItem(
-                            modifier = itemAnimationModifier.then(itemHeightModifier),
-                        )
-                    } else {
-                        val pagingAlpha = controller.storyPagingAlphaState(story.id)
-                        val suppressed = controller.isStorySuppressed(story.id)
-                        val keepPreviewSourceVisible =
-                            controller.shouldKeepStoryPreviewSourceVisible(story.id)
-                        var revealed by rememberSaveable(story.id) { mutableStateOf(false) }
-                        LaunchedEffect(story.id) { revealed = true }
-                        val revealAlpha by animateFloatAsState(
-                            targetValue = if (revealed) 1f else 0f,
-                            animationSpec = tween(220, easing = StoriesEasing),
-                            label = "loaded story reveal",
-                        )
-                        val storyRevision = controller.storyRevision(story.id)
-                        val previewResource = controller.previewResource(story.id)
-                            ?.takeIf { it.pageUrl == story.url }
-                        // Palette tints are resolved against the theme's card background. Retain
-                        // row-model caching normally, but rebuild when that base color changes.
-                        val model = remember(
-                            story,
-                            index,
-                            settings,
-                            storyRevision,
-                            previewResource,
-                            storyItemModelCacheKey,
-                        ) {
-                            storyItemModel(
+                    Box(
+                        itemAnimationModifier.animateContentSize(
+                            animationSpec = tween(StoriesRowMotionDurationMillis, easing = StoriesEasing),
+                        ),
+                    ) {
+                        if (story.isComment) {
+                            val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
+                                controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                            }
+                            SavedCommentStoryItem(
+                                story = story,
+                                settings = settings,
+                                onStory = { controller.listener.onCommentStoryClick(story) },
+                                onReplies = { controller.listener.onCommentRepliesClick(story) },
+                                commentText = commentText,
+                                modifier = itemHeightModifier,
+                            )
+                        } else if (!story.loaded && !story.loadingFailed) {
+                            val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
+                                controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                            }
+                            StoryLoadingItem(
+                                modifier = itemHeightModifier,
+                            )
+                        } else {
+                            val pagingAlpha = controller.storyPagingAlphaState(story.id)
+                            val suppressed = controller.isStorySuppressed(story.id)
+                            val keepPreviewSourceVisible =
+                                controller.shouldKeepStoryPreviewSourceVisible(story.id)
+                            var revealed by rememberSaveable(story.id) { mutableStateOf(false) }
+                            LaunchedEffect(story.id) { revealed = true }
+                            val revealAlpha by animateFloatAsState(
+                                targetValue = if (revealed) 1f else 0f,
+                                animationSpec = tween(220, easing = StoriesEasing),
+                                label = "loaded story reveal",
+                            )
+                            val storyRevision = controller.storyRevision(story.id)
+                            val previewResource = controller.previewResource(story.id)
+                                ?.takeIf { it.pageUrl == story.url }
+                            // Palette tints are resolved against the theme's card background. Retain
+                            // row-model caching normally, but rebuild when that base color changes.
+                            val model = remember(
                                 story,
                                 index,
                                 settings,
+                                storyRevision,
                                 previewResource,
-                                modelNowMillis,
-                            )
-                        }
-                        val style = remember(story, settings, storyRevision, model.summary) {
-                            settings.toStoryItemStyle(
-                                StoryItemStyleContext(
-                                    score = story.score,
-                                    commentCount = story.descendantCount,
-                                    clicked = story.clicked,
-                                    summaryAvailable = model.summary.isNotBlank(),
-                                ),
-                            )
-                        }
-                        val untintedStoryBackground = if (style.cardStyle) {
-                            HarmonicTheme.colors.surfaceContainerHigh
-                        } else {
-                            HarmonicTheme.colors.background
-                        }
-                        val storyTintBase = if (style.tintCard) {
-                            model.tintFallbackArgb
-                                ?: HarmonicTheme.colors.storyCardBackground.toArgb()
-                        } else {
-                            untintedStoryBackground.toArgb()
-                        }
-                        val itemModifier = itemAnimationModifier
-                            .graphicsLayer {
-                                alpha = if (keepPreviewSourceVisible) {
-                                    revealAlpha
-                                } else {
-                                    (if (suppressed) 0f else pagingAlpha.floatValue) * revealAlpha
-                                }
-                            }
-                        val returningPreviewSource =
-                            controller.visibleStoryPreviewId == story.id &&
-                                controller.storyPreviewDismissRequest != 0
-                        val sourceAccessoryAlpha by animateFloatAsState(
-                            targetValue = if (returningPreviewSource) 0f else 1f,
-                            animationSpec = if (returningPreviewSource) {
-                                snap()
-                            } else {
-                                tween(
-                                    durationMillis = 180,
-                                    delayMillis = 40,
-                                    easing = StoriesEasing,
-                                )
-                            },
-                            label = "story preview source accessories",
-                        )
-                        StoryItem(
-                            model = model,
-                            style = style,
-                            modifier = itemModifier,
-                            listItem = true,
-                            animateChanges = true,
-                            onLinkClick = { controller.listener.onLinkClick(story) },
-                            onLinkLongClick = {
-                                controller.listener.onStoryLongClick(
+                                storyItemModelCacheKey,
+                            ) {
+                                storyItemModel(
                                     story,
-                                    storyTintBase,
-                                )?.let { deck ->
-                                    controller.showStoryPreview(
-                                        if (style.tintCard) {
-                                            deck
-                                        } else {
-                                            deck.copy(
-                                                cardColors = List(deck.stories.size) {
-                                                    storyTintBase
-                                                },
-                                            )
-                                        },
-                                    )
+                                    index,
+                                    settings,
+                                    previewResource,
+                                    modelNowMillis,
+                                )
+                            }
+                            val style = remember(story, settings, storyRevision, model.summary) {
+                                settings.toStoryItemStyle(
+                                    StoryItemStyleContext(
+                                        score = story.score,
+                                        commentCount = story.descendantCount,
+                                        clicked = story.clicked,
+                                        summaryAvailable = model.summary.isNotBlank(),
+                                    ),
+                                )
+                            }
+                            val untintedStoryBackground = if (style.cardStyle) {
+                                HarmonicTheme.colors.surfaceContainerHigh
+                            } else {
+                                HarmonicTheme.colors.background
+                            }
+                            val storyTintBase = if (style.tintCard) {
+                                model.tintFallbackArgb
+                                    ?: HarmonicTheme.colors.storyCardBackground.toArgb()
+                            } else {
+                                untintedStoryBackground.toArgb()
+                            }
+                            val itemModifier = Modifier
+                                .graphicsLayer {
+                                    alpha = if (keepPreviewSourceVisible) {
+                                        revealAlpha
+                                    } else {
+                                        (if (suppressed) 0f else pagingAlpha.floatValue) * revealAlpha
+                                    }
                                 }
-                            },
-                            onCommentClick = { controller.listener.onCommentClick(story) },
-                            onGeometryChanged = { bounds, itemHeightPx ->
-                                controller.updateStoryItemHeight(story.id, itemHeightPx)
-                                controller.updateStoryBounds(story.id, bounds)
-                            },
-                            onPreviewSourceGeometryChanged = { geometry ->
-                                controller.updateStoryPreviewSourceGeometry(story.id, geometry)
-                            },
-                            capturePreviewSourceGeometry =
-                                controller.visibleStoryPreviewId == story.id,
-                            sourceAccessoryAlpha = sourceAccessoryAlpha,
-                            onPreviewLoadSuccess = {
-                                model.previewImageUrl?.let { imageUrl ->
-                                    controller.listener.onStoryPreviewImageLoaded(
-                                        story.id,
-                                        story.url.orEmpty(),
-                                        imageUrl,
+                            val returningPreviewSource =
+                                controller.visibleStoryPreviewId == story.id &&
+                                    controller.storyPreviewDismissRequest != 0
+                            val sourceAccessoryAlpha by animateFloatAsState(
+                                targetValue = if (returningPreviewSource) 0f else 1f,
+                                animationSpec = if (returningPreviewSource) {
+                                    snap()
+                                } else {
+                                    tween(
+                                        durationMillis = 180,
+                                        delayMillis = 40,
+                                        easing = StoriesEasing,
                                     )
-                                }
-                            },
-                            onPreviewLoadFailed = {
-                                model.previewImageUrl?.let { imageUrl ->
-                                    controller.listener.onStoryPreviewImageLoadFailed(
-                                        story.id,
-                                        story.url.orEmpty(),
-                                        imageUrl,
-                                    )
-                                }
-                            },
-                            onPreviewTintExtracted = { tintColor ->
-                                val sourceUrl = model.previewImageUrl
-                                val baseColor = model.tintFallbackArgb
-                                if (sourceUrl != null && baseColor != null) {
-                                    controller.listener.onStoryTintExtracted(
+                                },
+                                label = "story preview source accessories",
+                            )
+                            StoryItem(
+                                model = model,
+                                style = style,
+                                modifier = itemModifier,
+                                listItem = true,
+                                animateChanges = true,
+                                onLinkClick = { controller.listener.onLinkClick(story) },
+                                onLinkLongClick = {
+                                    controller.listener.onStoryLongClick(
                                         story,
-                                        sourceUrl,
-                                        baseColor,
-                                        style.paletteTintConfigKey,
-                                        tintColor,
-                                        false,
-                                    )
-                                    controller.invalidateStory(story.id)
-                                }
-                            },
-                            onFaviconTintExtracted = { tintColor ->
-                                val sourceUrl = model.faviconUrl
-                                val baseColor = model.tintFallbackArgb
-                                if (sourceUrl != null && baseColor != null) {
-                                    controller.listener.onStoryTintExtracted(
-                                        story,
-                                        sourceUrl,
-                                        baseColor,
-                                        style.paletteTintConfigKey,
-                                        tintColor,
-                                        true,
-                                    )
-                                    controller.invalidateStory(story.id)
-                                }
-                            },
-                        )
+                                        storyTintBase,
+                                    )?.let { deck ->
+                                        controller.showStoryPreview(
+                                            if (style.tintCard) {
+                                                deck
+                                            } else {
+                                                deck.copy(
+                                                    cardColors = List(deck.stories.size) {
+                                                        storyTintBase
+                                                    },
+                                                )
+                                            },
+                                        )
+                                    }
+                                },
+                                onCommentClick = { controller.listener.onCommentClick(story) },
+                                onGeometryChanged = { bounds, itemHeightPx ->
+                                    controller.updateStoryItemHeight(story.id, itemHeightPx)
+                                    controller.updateStoryBounds(story.id, bounds)
+                                },
+                                onPreviewSourceGeometryChanged = { geometry ->
+                                    controller.updateStoryPreviewSourceGeometry(story.id, geometry)
+                                },
+                                capturePreviewSourceGeometry =
+                                    controller.visibleStoryPreviewId == story.id,
+                                sourceAccessoryAlpha = sourceAccessoryAlpha,
+                                onPreviewLoadSuccess = {
+                                    model.previewImageUrl?.let { imageUrl ->
+                                        controller.listener.onStoryPreviewImageLoaded(
+                                            story.id,
+                                            story.url.orEmpty(),
+                                            imageUrl,
+                                        )
+                                    }
+                                },
+                                onPreviewLoadFailed = {
+                                    model.previewImageUrl?.let { imageUrl ->
+                                        controller.listener.onStoryPreviewImageLoadFailed(
+                                            story.id,
+                                            story.url.orEmpty(),
+                                            imageUrl,
+                                        )
+                                    }
+                                },
+                                onPreviewTintExtracted = { tintColor ->
+                                    val sourceUrl = model.previewImageUrl
+                                    val baseColor = model.tintFallbackArgb
+                                    if (sourceUrl != null && baseColor != null) {
+                                        controller.listener.onStoryTintExtracted(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                            false,
+                                        )
+                                        controller.invalidateStory(story.id)
+                                    }
+                                },
+                                onFaviconTintExtracted = { tintColor ->
+                                    val sourceUrl = model.faviconUrl
+                                    val baseColor = model.tintFallbackArgb
+                                    if (sourceUrl != null && baseColor != null) {
+                                        controller.listener.onStoryTintExtracted(
+                                            story,
+                                            sourceUrl,
+                                            baseColor,
+                                            style.paletteTintConfigKey,
+                                            tintColor,
+                                            true,
+                                        )
+                                        controller.invalidateStory(story.id)
+                                    }
+                                },
+                            )
+                        }
                     }
+                }
             }
 
             StoriesHeader(
