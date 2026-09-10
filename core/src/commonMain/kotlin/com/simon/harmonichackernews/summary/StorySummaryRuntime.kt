@@ -276,16 +276,18 @@ class StorySummaryRuntime(
 
     private fun fail(mode: StorySummaryMode, detail: String, elapsedMillis: Long) {
         val policyBlocked = mode == StorySummaryMode.LOCAL &&
-            detail.contains("ErrorCode 11", ignoreCase = true) &&
+            (detail.contains("[ErrorCode 4]", ignoreCase = true) ||
+                detail.contains("[ErrorCode 11]", ignoreCase = true)) &&
             detail.contains("policy check", ignoreCase = true)
         val prefix = when (mode) {
             StorySummaryMode.CLOUD -> "Failed to generate summary"
             StorySummaryMode.LOCAL -> "Failed to generate local summary"
         }
-        val message = if (policyBlocked) {
-            GEMINI_NANO_POLICY_BLOCKED_MESSAGE
-        } else {
-            "$prefix: $detail"
+        val message = when {
+            policyBlocked -> GEMINI_NANO_POLICY_BLOCKED_MESSAGE
+            mode == StorySummaryMode.LOCAL && detail == LOCAL_SUMMARY_ARTICLE_TOO_SHORT ->
+                LOCAL_SUMMARY_ARTICLE_TOO_SHORT
+            else -> "$prefix: $detail"
         }
         mutableState.value = mutableState.value.copy(
             text = message,
