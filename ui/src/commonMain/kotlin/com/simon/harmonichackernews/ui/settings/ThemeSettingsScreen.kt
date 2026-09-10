@@ -203,7 +203,7 @@ fun ThemeSettingsScreen(
         item {
             SettingsCategory("Appearance mode") {
                 SegmentedSetting(
-                    options = listOf("light" to "Light", "system" to "Follow system", "dark" to "Dark"),
+                    options = listOf("light" to "Light", "system" to "System", "dark" to "Dark"),
                     optionIcons = mapOf(
                         "light" to Res.drawable.ic_light_mode,
                         "system" to Res.drawable.ic_routine,
