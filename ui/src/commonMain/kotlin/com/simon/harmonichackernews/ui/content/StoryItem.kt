@@ -422,11 +422,11 @@ fun StoryItem(
         onFaviconTintExtracted?.invoke(tintColor)
     }
     val previewAvailable = style.previewImageMode != StoryPreviewMode.OFF && hasPreview
-    val tint = if (previewAvailable) {
-        (model.previewImageTintArgb ?: extractedPreviewTint)?.let(::Color)
-    } else {
-        (model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
-    }
+    // Discovering an image URL precedes decoding and palette extraction. Keep the favicon
+    // tint during that gap, then transition directly to the preview tint when it is ready.
+    val previewTint = (model.previewImageTintArgb ?: extractedPreviewTint)
+        .takeIf { previewAvailable }
+    val tint = (previewTint ?: model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.hasBackground -> colors.storyCardBackground

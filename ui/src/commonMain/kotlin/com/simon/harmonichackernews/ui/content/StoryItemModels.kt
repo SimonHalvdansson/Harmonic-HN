@@ -79,7 +79,7 @@ fun storyHeaderTintPresentation(
     }
     val initialTintKind = when {
         previewAvailable && previewTint != null -> StoryResourceTintKind.PREVIEW_IMAGE
-        !previewAvailable && faviconTint != null -> StoryResourceTintKind.FAVICON
+        faviconTint != null -> StoryResourceTintKind.FAVICON
         else -> null
     }
     return StoryHeaderTintPresentation(
@@ -152,7 +152,7 @@ fun storyHeaderTintPresentation(
     }
     val initialTintKind = when {
         previewAvailable && previewTint != null -> StoryResourceTintKind.PREVIEW_IMAGE
-        !previewAvailable && faviconTint != null -> StoryResourceTintKind.FAVICON
+        faviconTint != null -> StoryResourceTintKind.FAVICON
         else -> null
     }
     return StoryHeaderTintPresentation(
