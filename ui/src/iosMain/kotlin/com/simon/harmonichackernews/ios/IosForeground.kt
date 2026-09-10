@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.quanta
+import com.simon.harmonichackernews.resources.harmonic_app_icon
 import com.simon.harmonichackernews.ui.settings.PortableAppForeground
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import org.jetbrains.compose.resources.painterResource
@@ -23,7 +23,7 @@ internal fun BoxScope.IosAppForeground(
         scene = scene,
         navigation = navigation,
         storiesController = storiesController,
-        appIcon = painterResource(Res.drawable.quanta),
+        appIcon = painterResource(Res.drawable.harmonic_app_icon),
         captchaMessage = "The CAPTCHA handoff is not yet connected to the iOS in-app " +
             "browser. Open Hacker News in Safari to complete the challenge.",
     )

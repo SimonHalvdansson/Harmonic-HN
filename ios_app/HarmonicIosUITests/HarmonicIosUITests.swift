@@ -284,3 +284,120 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
     }
 }
+
+/// Presentation checks use the installed app's settings and do not reset its data.
+final class HarmonicIosPresentationTests: XCTestCase {
+    private var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launch()
+        let getStarted = app.buttons["Get started"]
+        if getStarted.waitForExistence(timeout: 3) { getStarted.tap() }
+        XCTAssertTrue(app.buttons["More options"].waitForExistence(timeout: 15))
+    }
+
+    private func keepScreenshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testWelcomeAndAboutBranding() throws {
+        app.buttons["More options"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["About"].waitForExistence(timeout: 10))
+        app.buttons["About"].tap()
+        XCTAssertTrue(app.images["Harmonic app icon"].waitForExistence(timeout: 10))
+        keepScreenshot("About Harmonic icon")
+
+        app.buttons["Navigate up"].tap()
+        XCTAssertTrue(app.buttons["Debug"].waitForExistence(timeout: 10))
+        app.buttons["Debug"].tap()
+        let welcome = app.buttons["Welcome dialog"]
+        for _ in 0..<4 where !welcome.isHittable { app.swipeUp() }
+        XCTAssertTrue(welcome.waitForExistence(timeout: 5))
+        let getStarted = app.buttons["Get started"]
+        // A tap during Compose's remaining scroll momentum can only stop the fling.
+        // Re-observe the dialog before tapping the row again.
+        for _ in 0..<3 {
+            welcome.tap()
+            if getStarted.waitForExistence(timeout: 2) { break }
+        }
+        XCTAssertTrue(getStarted.exists)
+        keepScreenshot("Welcome Harmonic icon")
+        // Relaunching dismisses the preview without applying a display preset.
+        app.terminate()
+        app.launch()
+    }
+
+    func testSubmissionsScrollingHeader() throws {
+        checkSubmissionsScrolling(storyIndex: 0)
+    }
+
+    func testSubmissionsScrollingHeaderOnAnotherProfile() throws {
+        checkSubmissionsScrolling(storyIndex: 1)
+    }
+
+    private func checkSubmissionsScrolling(storyIndex: Int) {
+        let comments = app.buttons.matching(
+            NSPredicate(format: "label MATCHES %@", "^[0-9]+$")
+        ).element(boundBy: storyIndex)
+        XCTAssertTrue(comments.waitForExistence(timeout: 15))
+        comments.tap()
+        XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 15))
+        app.buttons["User"].tap()
+        let submissions = app.buttons["Submissions"]
+        if !submissions.waitForExistence(timeout: 5) {
+            for _ in 0..<8 where !submissions.exists {
+                app.swipeUp()
+                if submissions.waitForExistence(timeout: 1) { break }
+            }
+        }
+        XCTAssertTrue(submissions.waitForExistence(timeout: 5))
+        submissions.tap()
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Stories"].waitForExistence(timeout: 15))
+        let backFrame = app.buttons["Back"].frame
+        let header = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Submissions by ")
+        ).firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        func statusAreaPixels() -> Data? {
+            let screenshot = app.screenshot().image
+            guard let image = screenshot.cgImage else { return nil }
+            let scale = CGFloat(image.width) / app.frame.width
+            // Avoid the clock and system icons; compare the safe area's background itself.
+            let strip = CGRect(x: 0, y: 0, width: 8 * scale, height: (backFrame.minY - 4) * scale)
+            guard let cropped = image.cropping(to: strip) else { return nil }
+            return UIImage(cgImage: cropped).pngData()
+        }
+        let statusArea = statusAreaPixels()
+        XCTAssertNotNil(statusArea)
+        func checkSafeArea() {
+            XCTAssertEqual(app.buttons["Back"].frame.minY, backFrame.minY, accuracy: 1)
+            // Offscreen Compose elements retain their un-clipped accessibility frames.
+            // Check rendered pixels so a correctly hidden header does not fail this test.
+            XCTAssertEqual(statusAreaPixels(), statusArea, "Scrolling must not paint over the status bar")
+        }
+        keepScreenshot("Submissions initial")
+        app.swipeUp()
+        checkSafeArea()
+        keepScreenshot("Submissions scrolled up")
+        app.swipeDown()
+        checkSafeArea()
+        keepScreenshot("Submissions reverse scroll")
+        app.swipeDown()
+        checkSafeArea()
+        keepScreenshot("Submissions overscroll")
+        // Gestures that start on the retained header must scroll the same surface.
+        header.swipeUp()
+        checkSafeArea()
+        keepScreenshot("Submissions header drag")
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 10))
+    }
+}

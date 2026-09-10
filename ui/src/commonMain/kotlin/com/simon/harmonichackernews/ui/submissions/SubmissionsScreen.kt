@@ -25,6 +25,10 @@ import androidx.compose.foundation.layout.offset
 
 import com.simon.harmonichackernews.resources.*
 
+import androidx.compose.foundation.OverscrollEffect
+import androidx.compose.foundation.overscroll
+import androidx.compose.foundation.rememberOverscrollEffect
+import androidx.compose.foundation.withoutVisualEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
@@ -75,6 +79,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -128,6 +133,7 @@ fun SubmissionsScreen(
 ) {
     val listState = rememberLazyListState()
     val hazeState = currentSharedHazeState()
+    val overscrollEffect = rememberOverscrollEffect()
     val currentOnIntent by rememberUpdatedState(onIntent)
     var pendingScrollRestoration by remember(initialScrollRestoration) {
         mutableStateOf(initialScrollRestoration)
@@ -179,26 +185,31 @@ fun SubmissionsScreen(
         .background(HarmonicTheme.colors.settingsPageBackground)
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
-        SubmissionsList(
-            userName = userName,
-            submissions = state.items,
-            selectedFilter = state.filter,
-            showFilter = state.hasUnfilteredItems,
-            canLoadMore = state.canLoadMore,
-            loadedSuccessfully = state.loadedSuccessfully,
-            loading = state.loading,
-            emptyText = state.emptyText,
-            displaySettings = displaySettings,
-            contentVersion = state.revision,
-            listState = listState,
-            initiallyCollapsed = initialScrollRestoration?.appBarCollapsed == true,
-            onIntent = onIntent,
-            previewResources = previewResources,
-            includeStatusBarInset = includeStatusBarInset,
-            reserveBackButtonSpace = reserveBackButtonSpace,
-            storyItemModel = storyItemModel,
-            onOpenLink = onOpenLink,
-        )
+        // Render bounce/stretch once around both layers so the header stays with the rows.
+        // Keep translated content inside the host's safe-area viewport on iOS.
+        Box(Modifier.fillMaxSize().clipToBounds().overscroll(overscrollEffect)) {
+            SubmissionsList(
+                overscrollEffect = overscrollEffect,
+                userName = userName,
+                submissions = state.items,
+                selectedFilter = state.filter,
+                showFilter = state.hasUnfilteredItems,
+                canLoadMore = state.canLoadMore,
+                loadedSuccessfully = state.loadedSuccessfully,
+                loading = state.loading,
+                emptyText = state.emptyText,
+                displaySettings = displaySettings,
+                contentVersion = state.revision,
+                listState = listState,
+                initiallyCollapsed = initialScrollRestoration?.appBarCollapsed == true,
+                onIntent = onIntent,
+                previewResources = previewResources,
+                includeStatusBarInset = includeStatusBarInset,
+                reserveBackButtonSpace = reserveBackButtonSpace,
+                storyItemModel = storyItemModel,
+                onOpenLink = onOpenLink,
+            )
+        }
 
         if (state.showInitialLoading) {
             HarmonicLoadingIndicator(
@@ -226,6 +237,7 @@ fun SubmissionsScreen(
 
 @Composable
 private fun BoxScope.SubmissionsList(
+    overscrollEffect: OverscrollEffect?,
     userName: String,
     submissions: List<Story>,
     selectedFilter: SubmissionFilter,
@@ -255,9 +267,14 @@ private fun BoxScope.SubmissionsList(
         object : NestedScrollConnection {
             private var revealing = false
 
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y != 0f) revealing = available.y > 0f
-                headerOffsetPx = (headerOffsetPx + available.y)
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // Follow the rows, not unconsumed input at an edge or on a short list.
+                if (consumed.y != 0f) revealing = consumed.y > 0f
+                headerOffsetPx = (headerOffsetPx + consumed.y)
                     .coerceIn(-headerHeightPx.toFloat(), 0f)
                 return Offset.Zero
             }
@@ -300,6 +317,7 @@ private fun BoxScope.SubmissionsList(
             .align(Alignment.TopCenter)
             .nestedScroll(headerScroll),
         state = listState,
+        overscrollEffect = overscrollEffect?.withoutVisualEffect(),
         contentPadding = PaddingValues(bottom = navigationBottom),
     ) {
         item(key = "header") {
@@ -427,7 +445,12 @@ private fun BoxScope.SubmissionsList(
             .fillMaxWidth()
             .graphicsLayer { translationY = headerOffsetPx }
             .nestedScroll(headerScroll)
-            .scrollable(listState, Orientation.Vertical, reverseDirection = true)
+            .scrollable(
+                state = listState,
+                orientation = Orientation.Vertical,
+                reverseDirection = true,
+                overscrollEffect = overscrollEffect,
+            )
             .onSizeChanged { headerHeightPx = it.height },
     ) {
         SubmissionsHeader(

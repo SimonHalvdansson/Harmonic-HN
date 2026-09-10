@@ -14,7 +14,7 @@ import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.quanta
+import com.simon.harmonichackernews.resources.harmonic_app_icon
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsDialogState
@@ -45,7 +45,7 @@ internal fun IosSettingsDetail(
     onBack: () -> Unit,
     onNavigate: (SettingsSection, Boolean) -> Unit,
 ) {
-    val appIcon = painterResource(Res.drawable.quanta)
+    val appIcon = painterResource(Res.drawable.harmonic_app_icon)
     PortableSettingsDetail(
         section = section,
         app = app,
