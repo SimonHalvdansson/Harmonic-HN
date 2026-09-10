@@ -147,10 +147,6 @@ fun PortableUserProfileDialog(
                     onDismiss()
                     scene.navigation.openSubmissions(effect.username)
                 }
-                is UserProfileSessionEffect.RequestNotificationPermission -> {
-                    session.notificationPermissionResult(granted = false)
-                    scene.userMessages.show("Reply notifications are currently Android-only")
-                }
                 is UserProfileSessionEffect.ComposeReportEmail -> {
                     val subject = "Reporting%20user%20${effect.username}"
                     scene.links.open("mailto:hn@ycombinator.com?subject=$subject")
@@ -180,17 +176,11 @@ fun PortableUserProfileDialog(
         tag = currentTag,
         blocked = runtimeState.blocked,
         ownProfile = runtimeState.ownProfile,
-        notificationsActive = runtimeState.notificationsActive,
-        notificationLoading = runtimeState.notificationLoading,
-        notificationStatus = runtimeState.notificationStatus,
         onDismiss = onDismiss,
         onRetry = session::retry,
         onOpenSubmissions = session::openSubmissions,
         onEditTag = { tagDialogOpen = true },
         onToggleBlocked = { session.toggleBlocked() },
-        onToggleNotifications = {
-            scene.userMessages.show("Reply notifications are currently Android-only")
-        },
         onReport = session::report,
         onOpenLink = { scene.links.open(it) },
     )

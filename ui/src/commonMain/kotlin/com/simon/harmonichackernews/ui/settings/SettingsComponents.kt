@@ -101,6 +101,7 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset),
     SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list),
     SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome),
+    SettingsListEntry(SettingsSection.Notifications, Res.drawable.ic_notifications),
     SettingsListEntry(SettingsSection.Data, Res.drawable.ic_data_table),
     SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api),
     SettingsListEntry(SettingsSection.About, Res.drawable.ic_info),
@@ -346,6 +347,7 @@ fun SettingsListScreen(
     selectedSection: SettingsSection,
     showSelection: Boolean,
     showDebugSettings: Boolean,
+    loggedIn: Boolean,
     onBack: () -> Unit,
     onSectionSelected: (SettingsSection) -> Unit,
     modifier: Modifier = Modifier,
@@ -354,7 +356,8 @@ fun SettingsListScreen(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
     val visibleEntries = MainSettingsEntries.filter {
-        it.section != SettingsSection.Debug || showDebugSettings
+        (it.section != SettingsSection.Debug || showDebugSettings) &&
+            (it.section != SettingsSection.Notifications || loggedIn)
     }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -393,7 +396,8 @@ fun SettingsListScreen(
                     visibleEntries.forEachIndexed { index, entry ->
                         val isSelected = selectedSection == entry.section ||
                             entry.section == SettingsSection.Appearance &&
-                            selectedSection == SettingsSection.Theme ||
+                            (selectedSection == SettingsSection.Theme ||
+                                selectedSection == SettingsSection.PaletteTint) ||
                             entry.section == SettingsSection.Debug &&
                             selectedSection == SettingsSection.DebugLinkPreviews ||
                             entry.section == SettingsSection.About &&

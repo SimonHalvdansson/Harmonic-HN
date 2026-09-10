@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -624,6 +625,7 @@ private fun IosSettingsShell(
     initialSection: SettingsSection?,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
+    val settingsAccountState by app.platform.accounts.accountState.collectAsState()
     val directive = remember(adaptiveInfo) { calculatePaneScaffoldDirective(adaptiveInfo) }
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val navigation = rememberSettingsNavigationStore(
@@ -651,6 +653,7 @@ private fun IosSettingsShell(
                     selectedSection = selectedSection,
                     showSelection = showSelection,
                     showDebugSettings = app.metadata.debugSettingsEnabled,
+                    loggedIn = settingsAccountState.accountOrNull != null,
                     onBack = onBack,
                     onSectionSelected = onSectionSelected,
                 )

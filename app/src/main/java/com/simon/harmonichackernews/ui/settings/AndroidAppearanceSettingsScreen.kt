@@ -60,7 +60,6 @@ fun AndroidAppearanceSettingsScreen(
                     styleChooser = true,
                     onDismiss = dismiss,
                 )
-                AppearanceSettingsDialog.PaletteTint -> AndroidPaletteTintDialog(onDismiss = dismiss)
             }
         },
     )

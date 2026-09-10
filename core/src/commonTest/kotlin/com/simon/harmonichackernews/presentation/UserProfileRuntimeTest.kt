@@ -35,10 +35,9 @@ class UserProfileRuntimeTest {
     }
 
     @Test
-    fun blockAndNotificationOutcomesUpdatePortableState() = runTest {
+    fun blockOutcomesUpdatePortableState() = runTest {
         val blocks = FakeBlocks()
-        val notifications = FakeNotifications()
-        val runtime = runtime(blocks = blocks, notifications = notifications)
+        val runtime = runtime(blocks = blocks)
 
         val blocked = runtime.toggleBlocked()
         assertEquals(true, blocked?.blocked)
@@ -49,61 +48,18 @@ class UserProfileRuntimeTest {
         val unblocked = runtime.toggleBlocked()
         assertEquals("Unblocked alice", unblocked?.message)
         assertFalse(runtime.state.value.blocked)
-
-        runtime.enableNotifications()
-        assertTrue(runtime.state.value.notificationsActive)
-        assertEquals("", runtime.state.value.notificationStatus)
-        assertEquals(
-            UserProfileNotificationOutcome.ENABLED,
-            runtime.state.value.notificationOutcome,
-        )
-
-        runtime.disableNotifications()
-        assertFalse(runtime.state.value.notificationsActive)
-        assertTrue(notifications.disabled)
-        assertEquals(
-            UserProfileNotificationOutcome.DISABLED,
-            runtime.state.value.notificationOutcome,
-        )
-
-        runtime.notificationPermissionDenied()
-        assertEquals("Notification permission denied.", runtime.state.value.notificationStatus)
-        assertEquals(
-            UserProfileNotificationOutcome.PERMISSION_DENIED,
-            runtime.state.value.notificationOutcome,
-        )
-    }
-
-    @Test
-    fun notificationFailureProducesStableOutcomeState() = runTest {
-        val runtime = runtime(notifications = FakeNotifications(enableSucceeds = false))
-
-        runtime.enableNotifications()
-
-        assertFalse(runtime.state.value.notificationLoading)
-        assertFalse(runtime.state.value.notificationsActive)
-        assertEquals(
-            "Could not activate reply notifications.",
-            runtime.state.value.notificationStatus,
-        )
-        assertEquals(
-            UserProfileNotificationOutcome.ENABLE_FAILED,
-            runtime.state.value.notificationOutcome,
-        )
     }
 
     private fun runtime(
         loader: UserProfileLoader = UserProfileLoader { user(it) },
         account: HackerNewsAccount? = null,
         blocks: FakeBlocks = FakeBlocks(),
-        notifications: FakeNotifications = FakeNotifications(),
     ) = UserProfileRuntime(
         username = "alice",
         monthNames = MONTHS,
         loader = loader,
         accounts = FakeAccounts(account),
         blocks = blocks,
-        notifications = notifications,
     )
 
     private fun user(id: String) = HackerNewsUserDto(
@@ -138,21 +94,6 @@ class UserProfileRuntimeTest {
         override fun setBlocked(username: String, blocked: Boolean): Boolean {
             if (blocked) this.blocked += username.lowercase() else this.blocked -= username.lowercase()
             return true
-        }
-    }
-
-    private class FakeNotifications(private val enableSucceeds: Boolean = true) :
-        UserProfileNotificationPort {
-        private var configured: String? = null
-        var disabled = false
-        override fun configuredUsername(): String? = configured
-        override suspend fun enable(username: String): Boolean {
-            if (enableSucceeds) configured = username
-            return enableSucceeds
-        }
-        override fun disable() {
-            disabled = true
-            configured = null
         }
     }
 

@@ -499,7 +499,7 @@ private fun ReplyPreview(
             Text(
                 text = "Replying to $user's comment:",
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                color = Color.White,
+                color = HarmonicTheme.colors.overlayButtonContent,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,

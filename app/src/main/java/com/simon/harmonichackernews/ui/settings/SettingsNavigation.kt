@@ -6,6 +6,7 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +45,7 @@ fun SettingsShell(
 ) {
     val context = LocalContext.current
     val dependencies = LocalHarmonicUiDependencies.current
+    val settingsAccountState by dependencies.platform.accounts.accountState.collectAsState()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
@@ -159,6 +161,7 @@ fun SettingsShell(
                 selectedSection = selectedSection,
                 showSelection = showSelection,
                 showDebugSettings = dependencies.metadata.debugSettingsEnabled,
+                loggedIn = settingsAccountState.accountOrNull != null,
                 onBack = onBack,
                 onSectionSelected = onSectionSelected,
             )
@@ -169,7 +172,11 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onNavigate = { target ->
-                        onNavigate(target, singlePane || target == SettingsSection.Theme)
+                        onNavigate(
+                            target,
+                            singlePane || target == SettingsSection.Theme ||
+                                target == SettingsSection.PaletteTint,
+                        )
                     },
                     onThemeChanged = onThemeChanged,
                 )
@@ -177,6 +184,15 @@ fun SettingsShell(
                     showNavigation = true,
                     onBack = onBack,
                     onThemeChanged = onThemeChanged,
+                )
+                SettingsSection.PaletteTint -> PaletteTintSettingsRoute(
+                    repository = dependencies.settings,
+                    showNavigation = true,
+                    onBack = onBack,
+                )
+                SettingsSection.Notifications -> AndroidNotificationsSettingsScreen(
+                    showNavigation = singlePane,
+                    onBack = onBack,
                 )
                 SettingsSection.Stories -> AndroidStoriesSettingsScreen(
                     showNavigation = singlePane,

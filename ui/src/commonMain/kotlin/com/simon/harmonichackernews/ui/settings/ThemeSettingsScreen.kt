@@ -132,10 +132,11 @@ val ThemePairPresets = listOf(
         darkTheme = "amoled",
     ),
     ThemePairPreset(
-        label = "Hacker",
-        description = "Newsprint and terminal",
+        label = "Hacker News",
+        description = "HN light, Material You dark",
         lightTheme = "hacker_news",
-        darkTheme = "hacker",
+        darkTheme = "material_dark",
+        materialYou = true,
     ),
 )
 
@@ -209,7 +210,7 @@ fun ThemeSettingsScreen(
                         "system" to Res.drawable.ic_routine,
                         "dark" to Res.drawable.ic_dark_mode,
                     ),
-                    buttonHeight = 56.dp,
+                    buttonHeight = 48.dp,
                     optionWeights = mapOf("light" to 3f, "system" to 4f, "dark" to 3f),
                     selected = when {
                         state.followSystem -> "system"

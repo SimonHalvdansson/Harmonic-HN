@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 
@@ -120,32 +119,5 @@ private fun WelcomeLauncherIcon() {
         modifier = Modifier
             .size(size)
             .clip(CircleShape),
-    )
-}
-
-
-@Composable
-fun AndroidPaletteTintDialog(
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val app = LocalHarmonicUiDependencies.current
-    val presenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
-    val paletteConfig = presenter.snapshot.story.paletteTintConfigKey
-    PaletteTintDialog(
-        initialMode = PaletteTintPreferences.sanitizeMode(paletteConfig),
-        initialStrength = PaletteTintPreferences.strength(paletteConfig),
-        initialColorfulness = PaletteTintPreferences.colorfulness(paletteConfig),
-        initialTone = PaletteTintPreferences.tone(paletteConfig),
-        onSettingsChanged = { mode, strength, colorfulness, tone ->
-            presenter.setPaletteTint(
-                mode,
-                strength,
-                colorfulness,
-                tone,
-            )
-        },
-        onReset = { presenter.clearPaletteTint() },
-        onDismiss = onDismiss,
     )
 }

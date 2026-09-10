@@ -24,7 +24,6 @@ import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.NighttimeSchedule
-import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
@@ -59,8 +58,20 @@ fun PortableSettingsDetail(
             appIcon,
             singlePane,
             onBack,
-        ) { target -> onNavigate(target, singlePane || target == SettingsSection.Theme) }
+        ) { target ->
+            onNavigate(
+                target,
+                singlePane || target == SettingsSection.Theme || target == SettingsSection.PaletteTint,
+            )
+        }
         SettingsSection.Theme -> PortableThemeSettings(app, true, onBack)
+        SettingsSection.PaletteTint -> PaletteTintSettingsRoute(app.settings, true, onBack)
+        SettingsSection.Notifications -> NotificationsSettingsRoute(
+            accounts = app.platform.accounts,
+            notifications = app.replyNotifications,
+            showNavigation = singlePane,
+            onBack = onBack,
+        )
         SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack)
         SettingsSection.Comments -> PortableCommentsSettings(app, singlePane, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(
@@ -245,20 +256,6 @@ private fun PortableAppearanceSettings(
                                 modifier = Modifier.size(72.dp),
                             )
                         },
-                    )
-                }
-                AppearanceSettingsDialog.PaletteTint -> {
-                    val config = presenter.snapshot.story.paletteTintConfigKey
-                    PaletteTintDialog(
-                        initialMode = PaletteTintPreferences.sanitizeMode(config),
-                        initialStrength = PaletteTintPreferences.strength(config),
-                        initialColorfulness = PaletteTintPreferences.colorfulness(config),
-                        initialTone = PaletteTintPreferences.tone(config),
-                        onSettingsChanged = { mode, strength, colorfulness, tone ->
-                            presenter.setPaletteTint(mode, strength, colorfulness, tone)
-                        },
-                        onReset = { presenter.clearPaletteTint() },
-                        onDismiss = dismiss,
                     )
                 }
             }

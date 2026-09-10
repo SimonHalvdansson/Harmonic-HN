@@ -25,7 +25,6 @@ import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.presentation.UserProfileBlockPort
 import com.simon.harmonichackernews.presentation.UserProfileLoader
-import com.simon.harmonichackernews.presentation.UserProfileNotificationPort
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
 import com.simon.harmonichackernews.presentation.UserProfileSession
 import com.simon.harmonichackernews.presentation.WebContentService
@@ -179,17 +178,6 @@ class HarmonicAppComposition(
             override fun setBlocked(username: String, blocked: Boolean): Boolean =
                 if (blocked) contentFilters.addUser(username) else contentFilters.removeUser(username)
         },
-        notifications = object : UserProfileNotificationPort {
-            override fun configuredUsername(): String? =
-                replyNotifications?.configuredUsername
-
-            override suspend fun enable(username: String): Boolean =
-                replyNotifications?.enable(username) is com.simon.harmonichackernews.network.ReplySubscriptionResult.Enabled
-
-            override fun disable() {
-                replyNotifications?.disable()
-            }
-        },
     )
 
     fun createUserProfileSession(
@@ -199,7 +187,6 @@ class HarmonicAppComposition(
     ): UserProfileSession = UserProfileSession(
         scope,
         createUserProfileRuntime(username, monthNames),
-        username,
     )
 
     fun createDataSettingsRuntime(

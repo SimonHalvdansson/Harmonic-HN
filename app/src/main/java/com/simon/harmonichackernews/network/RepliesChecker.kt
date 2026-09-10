@@ -140,11 +140,11 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
                 android.Manifest.permission.POST_NOTIFICATIONS,
             ) == PackageManager.PERMISSION_GRANTED
 
-    private companion object {
+    companion object {
         const val CHANNEL_ID = "reply_notifications"
-        const val NOTIFICATION_GROUP_KEY =
+        private const val NOTIFICATION_GROUP_KEY =
             "com.simon.harmonichackernews.REPLY_NOTIFICATIONS"
-        const val GROUP_NOTIFICATION_ID = ReplyNotificationPresentation.SUMMARY_NOTIFICATION_ID
-        const val JOB_ID = 98372
+        private const val GROUP_NOTIFICATION_ID = ReplyNotificationPresentation.SUMMARY_NOTIFICATION_ID
+        private const val JOB_ID = 98372
     }
 }

@@ -16,34 +16,16 @@ interface UserProfileBlockPort {
     fun setBlocked(username: String, blocked: Boolean): Boolean
 }
 
-interface UserProfileNotificationPort {
-    fun configuredUsername(): String?
-    suspend fun enable(username: String): Boolean
-    fun disable()
-}
-
 sealed interface UserProfileLoadState {
     data object Loading : UserProfileLoadState
     data class Loaded(val profile: UserProfilePresentation) : UserProfileLoadState
     data object Error : UserProfileLoadState
 }
 
-enum class UserProfileNotificationOutcome {
-    IDLE,
-    ENABLED,
-    DISABLED,
-    ENABLE_FAILED,
-    PERMISSION_DENIED,
-}
-
 data class UserProfileRuntimeState(
     val loadState: UserProfileLoadState = UserProfileLoadState.Loading,
     val blocked: Boolean = false,
     val ownProfile: Boolean = false,
-    val notificationsActive: Boolean = false,
-    val notificationLoading: Boolean = false,
-    val notificationStatus: String = "",
-    val notificationOutcome: UserProfileNotificationOutcome = UserProfileNotificationOutcome.IDLE,
     val blockOutcome: UserProfileBlockOutcome? = null,
 )
 
@@ -53,20 +35,18 @@ data class UserProfileBlockOutcome(
     val dismissProfile: Boolean,
 )
 
-/** Portable profile workflow; platform hosts retain permission, worker and intent side effects. */
+/** Portable profile workflow; platform hosts retain navigation and intent side effects. */
 class UserProfileRuntime(
     username: String,
     private val monthNames: List<String>,
     private val loader: UserProfileLoader,
     private val accounts: ObservableHackerNewsAccountRepository,
     private val blocks: UserProfileBlockPort,
-    private val notifications: UserProfileNotificationPort,
 ) {
     private val username = username.trim()
     private val mutableState = MutableStateFlow(
         UserProfileRuntimeState(
             blocked = blocks.isBlocked(this.username),
-            notificationsActive = matches(notifications.configuredUsername(), this.username),
         ),
     )
     val state: StateFlow<UserProfileRuntimeState> = mutableState.asStateFlow()
@@ -103,50 +83,6 @@ class UserProfileRuntime(
         )
         mutableState.value = mutableState.value.copy(blocked = nextBlocked, blockOutcome = outcome)
         return outcome
-    }
-
-    suspend fun enableNotifications() {
-        mutableState.value = mutableState.value.copy(
-            notificationLoading = true,
-            notificationStatus = "",
-            notificationOutcome = UserProfileNotificationOutcome.IDLE,
-        )
-        val enabled = try {
-            notifications.enable(username)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            false
-        }
-        val active = enabled && matches(notifications.configuredUsername(), username)
-        mutableState.value = mutableState.value.copy(
-            notificationsActive = active,
-            notificationLoading = false,
-            notificationStatus = if (active) "" else "Could not activate reply notifications.",
-            notificationOutcome = if (active) {
-                UserProfileNotificationOutcome.ENABLED
-            } else {
-                UserProfileNotificationOutcome.ENABLE_FAILED
-            },
-        )
-    }
-
-    fun disableNotifications() {
-        notifications.disable()
-        mutableState.value = mutableState.value.copy(
-            notificationsActive = false,
-            notificationLoading = false,
-            notificationStatus = "",
-            notificationOutcome = UserProfileNotificationOutcome.DISABLED,
-        )
-    }
-
-    fun notificationPermissionDenied() {
-        mutableState.value = mutableState.value.copy(
-            notificationLoading = false,
-            notificationStatus = "Notification permission denied.",
-            notificationOutcome = UserProfileNotificationOutcome.PERMISSION_DENIED,
-        )
     }
 
     private fun matches(first: String?, second: String?): Boolean =

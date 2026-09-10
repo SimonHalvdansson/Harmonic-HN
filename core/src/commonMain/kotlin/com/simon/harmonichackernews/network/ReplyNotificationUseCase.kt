@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.settings.ReplyNotificationFrequency
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.CancellationException
@@ -7,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 object ReplyNotificationKeys {
     const val USERNAME = "reply_notifications_username"
     const val LAST_SEEN_ITEM_ID = "reply_notifications_last_seen_item_id"
+    const val CHECK_FREQUENCY_MINUTES = "reply_notifications_check_frequency_minutes"
 }
 
 sealed interface ReplySubscriptionResult {
@@ -43,8 +45,8 @@ data class ReplyNotificationBatch(
 )
 
 data class ReplyNotificationSchedule(
-    val intervalMillis: Long = 30L * 60L * 1_000L,
-    val flexMillis: Long = 5L * 60L * 1_000L,
+    val intervalMillis: Long = ReplyNotificationFrequency.DEFAULT.intervalMillis,
+    val flexMillis: Long = maxOf(5L * 60L * 1_000L, intervalMillis / 20),
 )
 
 /** Host hooks for the operating system's scheduler and notification surface. */
@@ -100,6 +102,15 @@ class ReplyNotificationUseCase(
         get() = store.getString(ReplyNotificationKeys.USERNAME).orEmpty().trim()
 
     val isEnabled: Boolean get() = configuredUsername.isNotEmpty()
+
+    var checkFrequency: ReplyNotificationFrequency
+        get() = ReplyNotificationFrequency.fromMinutes(
+            store.getInt(
+                ReplyNotificationKeys.CHECK_FREQUENCY_MINUTES,
+                ReplyNotificationFrequency.DEFAULT.minutes,
+            ),
+        )
+        set(value) = store.putInt(ReplyNotificationKeys.CHECK_FREQUENCY_MINUTES, value.minutes)
 
     suspend fun enable(username: String?): ReplySubscriptionResult {
         val normalized = ReplyText.normalizeUsername(username)
@@ -173,10 +184,19 @@ class ReplyNotificationUseCase(
 class ReplyNotificationRuntime(
     private val useCase: ReplyNotificationUseCase,
     private val platform: ReplyNotificationPlatform,
-    private val schedule: ReplyNotificationSchedule = ReplyNotificationSchedule(),
 ) {
     val configuredUsername: String get() = useCase.configuredUsername
     val isEnabled: Boolean get() = useCase.isEnabled
+    val checkFrequency: ReplyNotificationFrequency get() = useCase.checkFrequency
+    private val schedule: ReplyNotificationSchedule
+        get() = ReplyNotificationSchedule(intervalMillis = checkFrequency.intervalMillis)
+
+    fun setCheckFrequency(frequency: ReplyNotificationFrequency) {
+        if (checkFrequency == frequency) return
+        useCase.checkFrequency = frequency
+        // Replace the existing periodic job without initializing a new reply checkpoint.
+        if (isEnabled) platform.scheduleChecks(schedule)
+    }
 
     suspend fun enable(username: String?): ReplySubscriptionResult =
         useCase.enable(username).also { result ->

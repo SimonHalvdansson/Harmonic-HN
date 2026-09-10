@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.StoryTypeSettingsPolicy
 import com.simon.harmonichackernews.format.DelimitedListPolicy
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
@@ -276,6 +277,32 @@ fun AppearanceSettingsRoute(
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }
+}
+
+@Composable
+fun PaletteTintSettingsRoute(
+    repository: AppSettingsRepository,
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+) {
+    val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
+    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val config = settings.story.paletteTintConfigKey
+    PaletteTintSettingsScreen(
+        initialMode = PaletteTintPreferences.sanitizeMode(config),
+        initialStrength = PaletteTintPreferences.strength(config),
+        initialColorfulness = PaletteTintPreferences.colorfulness(config),
+        initialTone = PaletteTintPreferences.tone(config),
+        previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
+            StoryItemStyleContext(score = 28, commentCount = 42, clicked = false),
+        ).copy(preferredFont = settings.appearance.font),
+        showNavigation = showNavigation,
+        onBack = onBack,
+        onSettingsChanged = { mode, strength, colorfulness, tone ->
+            presenter.setPaletteTint(mode, strength, colorfulness, tone)
+        },
+        onReset = { presenter.clearPaletteTint() },
+    )
 }
 
 @Composable

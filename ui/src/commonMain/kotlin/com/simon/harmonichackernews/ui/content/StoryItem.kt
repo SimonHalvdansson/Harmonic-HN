@@ -94,6 +94,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_drop_up
 import com.simon.harmonichackernews.resources.ic_comment
@@ -314,7 +315,7 @@ data class StoryItemStyle(
     val preferredFont: String,
     val textSize: Float,
     val dimmed: Boolean = false,
-    val paletteTintConfigKey: String = "default",
+    val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT

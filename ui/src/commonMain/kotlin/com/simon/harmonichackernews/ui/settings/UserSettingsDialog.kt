@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,15 +58,11 @@ fun UserSettingsDialog(
     tag: String,
     blocked: Boolean,
     ownProfile: Boolean,
-    notificationsActive: Boolean,
-    notificationLoading: Boolean,
-    notificationStatus: String,
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
     onOpenSubmissions: (String) -> Unit,
     onEditTag: () -> Unit,
     onToggleBlocked: (String) -> Unit,
-    onToggleNotifications: (String) -> Unit,
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit = {},
 ) {
@@ -102,13 +97,9 @@ fun UserSettingsDialog(
                                 tag = tag,
                                 blocked = blocked,
                                 ownProfile = ownProfile,
-                                notificationsActive = notificationsActive,
-                                notificationLoading = notificationLoading,
-                                notificationStatus = notificationStatus,
                                 onOpenSubmissions = onOpenSubmissions,
                                 onEditTag = onEditTag,
                                 onToggleBlocked = onToggleBlocked,
-                                onToggleNotifications = onToggleNotifications,
                                 onReport = onReport,
                                 onOpenLink = onOpenLink,
                             )
@@ -186,13 +177,9 @@ private fun UserLoadedContent(
     tag: String,
     blocked: Boolean,
     ownProfile: Boolean,
-    notificationsActive: Boolean,
-    notificationLoading: Boolean,
-    notificationStatus: String,
     onOpenSubmissions: (String) -> Unit,
     onEditTag: () -> Unit,
     onToggleBlocked: (String) -> Unit,
-    onToggleNotifications: (String) -> Unit,
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
@@ -236,44 +223,7 @@ private fun UserLoadedContent(
             )
         }
 
-        if (ownProfile) {
-            UserOutlinedAction(
-                label = if (notificationsActive) {
-                    "Deactivate notifications"
-                } else {
-                    "Activate notifications"
-                },
-                icon = Res.drawable.ic_notifications,
-                enabled = !notificationLoading,
-                onClick = { onToggleNotifications(user.id) },
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Text(
-                text = "Get notifications when someone replies to your comments or " +
-                    "comments on your stories.",
-                modifier = Modifier.padding(top = 6.dp),
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-            )
-            if (notificationLoading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                )
-            }
-            if (notificationStatus.isNotEmpty()) {
-                Text(
-                    text = notificationStatus,
-                    modifier = Modifier.padding(top = 6.dp),
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                )
-            }
-        } else {
+        if (!ownProfile) {
             UserTextAction(
                 label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
                 icon = Res.drawable.ic_sell,

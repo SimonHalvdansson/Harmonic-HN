@@ -83,9 +83,11 @@ object ThemePreferences {
 }
 
 object PaletteTintPreferences {
-    const val DEFAULT = "default"
+    // Preserve the stored value for existing Muted selections.
+    const val MUTED = "default"
     const val VIBRANT = "vibrant"
     const val DOMINANT = "dominant"
+    const val DEFAULT = DOMINANT
     const val MIN_STRENGTH = 0
     const val MAX_STRENGTH = 200
     const val MIN_COLORFULNESS = 0
@@ -97,6 +99,7 @@ object PaletteTintPreferences {
     const val DEFAULT_TONE = 0
 
     fun sanitizeMode(modeOrConfigKey: String?): String = when (modePart(modeOrConfigKey)) {
+        MUTED -> MUTED
         VIBRANT -> VIBRANT
         DOMINANT -> DOMINANT
         else -> DEFAULT
@@ -119,6 +122,7 @@ object PaletteTintPreferences {
         // Split once instead of independently tokenizing the same value for every field.
         val parts = modeOrConfigKey?.split('|')
         val mode = when (parts?.getOrNull(0)) {
+            MUTED -> MUTED
             VIBRANT -> VIBRANT
             DOMINANT -> DOMINANT
             else -> DEFAULT

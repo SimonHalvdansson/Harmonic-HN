@@ -13,6 +13,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
 
 /**
  * Multiplatform Coil image with optional multiplatform palette extraction.
@@ -29,7 +30,7 @@ fun NetworkImage(
     contentScale: ContentScale = ContentScale.Fit,
     crossfade: Boolean = false,
     tintBaseColorArgb: Int? = null,
-    paletteTintConfigKey: String = "default",
+    paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     extractTint: Boolean = false,
     onSuccess: () -> Unit = {},
     onImageAspectRatio: (Float) -> Unit = {},

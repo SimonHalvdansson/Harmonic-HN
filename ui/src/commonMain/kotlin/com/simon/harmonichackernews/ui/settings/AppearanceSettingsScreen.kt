@@ -28,7 +28,7 @@ enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPr
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
 }
-enum class AppearanceSettingsDialog { Theme, NighttimeRange, NighttimeTheme, Font, Style, PaletteTint }
+enum class AppearanceSettingsDialog { Theme, NighttimeRange, NighttimeTheme, Font, Style }
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -70,7 +70,7 @@ fun AppearanceSettingsScreen(
                     summary = state.paletteTintSummary,
                     icon = Res.drawable.ic_palette,
                     enabled = state.paletteTintEnabled,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.PaletteTint) },
+                    onClick = { onNavigate(SettingsSection.PaletteTint) },
                 )
                 if (state.showTransparentStatusBar) {
                     SettingsDivider()
