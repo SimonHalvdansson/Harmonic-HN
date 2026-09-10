@@ -126,6 +126,15 @@ fun MainDestinationLayers(
             }
         }
 
+        if (state.submissionsCoversBase) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(6.9f)
+                    .consumeAllPointerGestures(),
+            )
+        }
+
         AnimatedVisibility(
             visible = state.submissionsVisible,
             modifier = Modifier

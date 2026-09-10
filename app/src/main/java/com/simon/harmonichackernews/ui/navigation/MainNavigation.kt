@@ -381,7 +381,30 @@ class MainNavigationController internal constructor(
     }
 
     internal fun closeSubmissions() {
+        if (adaptiveTwoPane) {
+            while (
+                navigationState.state.value.currentDestination == MainDestination.STORY &&
+                navigationState.state.value.storyStackParentDestination == MainDestination.SUBMISSIONS
+            ) {
+                navigationState.detailRemovedFromBackStack()
+            }
+        }
         navigationState.closeSubmissions()
+    }
+
+    internal fun openSubmissionStory(destination: StoryDestination) {
+        if (!adaptiveTwoPane) {
+            openStory(destination)
+            return
+        }
+        // A new list selection replaces the whole detail history and starts at the top.
+        while (
+            navigationState.state.value.currentDestination == MainDestination.STORY &&
+            navigationState.state.value.storyStackParentDestination == MainDestination.SUBMISSIONS
+        ) {
+            navigationState.detailRemovedFromBackStack()
+        }
+        openStory(destination)
     }
 
     fun openCoulombGas() {
@@ -729,8 +752,25 @@ private fun MainNavigation(
 
     val storyRequest = navigationSnapshot.storyRequest
     val storyParentDestination = navigationSnapshot.storyParentDestination
+    val submissionsInTwoPane = isTwoPane && navigationSnapshot.submissionsRequest != null
+    val submissionsStoryRequest = storyRequest.takeIf {
+        navigationSnapshot.storyStackParentDestination == MainDestination.SUBMISSIONS
+    }
+    // Keep the main list's detail behind the separate submissions list/detail surface.
+    val baseStoryRequest = if (submissionsInTwoPane) {
+        navigationSnapshot.destinationStack
+            .takeWhile {
+                it !is MainNavigationEntry.Submissions ||
+                    it.request.serial != navigationSnapshot.submissionsRequest?.serial
+            }
+            .filterIsInstance<MainNavigationEntry.Story>()
+            .lastOrNull()?.request
+    } else {
+        storyRequest
+    }
     val usesTwoPaneStoryScene = isTwoPane &&
-        (storyRequest == null || storyParentDestination == MainDestination.STORIES)
+        (storyRequest == null || storyParentDestination == MainDestination.STORIES ||
+            submissionsInTwoPane)
     val paneStatusBarColor = HarmonicTheme.colors.settingsPageBackground
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -942,6 +982,7 @@ private fun MainNavigation(
         completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
         completedEditorPredictiveBack = editorPredictiveBack.completed,
         completedStoryPredictiveBack = completedPredictivePop,
+        submissionsInTwoPane = submissionsInTwoPane,
         modifier = Modifier.background(HarmonicTheme.colors.settingsPageBackground)
             .semantics { testTagsAsResourceId = true },
         basePredictiveModifier = settingsPredictiveBack.enterModifier
@@ -956,7 +997,7 @@ private fun MainNavigation(
                 },
             ),
         submissionsPredictiveModifier = submissionsPredictiveBack.exitModifier.then(
-            if (storyParentDestination == MainDestination.SUBMISSIONS) {
+            if (!submissionsInTwoPane && storyParentDestination == MainDestination.SUBMISSIONS) {
                 activeBackAnimation?.enterModifier ?: Modifier
             } else {
                 Modifier
@@ -966,7 +1007,7 @@ private fun MainNavigation(
         base = {
             if (usesTwoPaneStoryScene) {
                 MainNavigationScene(
-                    storyRequest = storyRequest,
+                    storyRequest = baseStoryRequest,
                     directive = directive,
                     paneProportion = paneProportion,
                     onBack = ::popMainBackStack,
@@ -1083,25 +1124,55 @@ private fun MainNavigation(
                                 userName = request.userName,
                                 scene = controller.scene,
                                 navigator = SubmissionsCoordinator.Navigator { destination ->
-                                    controller.openStory(destination)
+                                    controller.openSubmissionStory(destination)
                                 },
                             )
                         }
                         DisposableEffect(coordinator) {
                             onDispose(coordinator::close)
                         }
-                        Box(Modifier.fillMaxSize()) {
-                            AndroidSubmissionsScreen(
-                                userName = coordinator.userName,
-                                store = coordinator.store,
-                                displaySettings = coordinator.displaySettings,
-                                initialScrollRestoration = coordinator.initialScrollRestoration,
-                                onBack = controller::closeSubmissions,
+                        val submissionsContent: @Composable () -> Unit = {
+                            val startInset = if (isTwoPane && !isFoldable) {
+                                dimensionResource(R.dimen.extra_pane_padding)
+                            } else {
+                                0.dp
+                            }
+                            Box(Modifier.fillMaxSize().padding(start = startInset)) {
+                                AndroidSubmissionsScreen(
+                                    userName = coordinator.userName,
+                                    store = coordinator.store,
+                                    displaySettings = coordinator.displaySettings,
+                                    initialScrollRestoration = coordinator.initialScrollRestoration,
+                                    onBack = controller::closeSubmissions,
+                                )
+                                StatusBarProtection(
+                                    color = paneStatusBarColor,
+                                    statusBarHeight = statusBarHeight,
+                                )
+                            }
+                        }
+                        if (isTwoPane) {
+                            MainNavigationScene(
+                                storyRequest = submissionsStoryRequest,
+                                directive = directive,
+                                paneProportion = paneProportion,
+                                onBack = ::popMainBackStack,
+                                stories = submissionsContent,
+                                emptyDetail = { EmptyCommentsScreen() },
+                                modifier = Modifier.background(HarmonicTheme.colors.settingsPageBackground),
+                                comments = { detail ->
+                                    CommentsPane(
+                                        request = detail,
+                                        controller = controller,
+                                        showUpButton = false,
+                                        statusBarColor = statusBarColor,
+                                        statusBarHeight = statusBarHeight,
+                                        drawStatusBarProtection = true,
+                                    )
+                                },
                             )
-                            StatusBarProtection(
-                                color = paneStatusBarColor,
-                                statusBarHeight = statusBarHeight,
-                            )
+                        } else {
+                            submissionsContent()
                         }
                     }
                 }
