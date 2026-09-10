@@ -118,6 +118,7 @@ import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainCaptchaRequest
 import com.simon.harmonichackernews.navigation.MainDestination
+import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
 import com.simon.harmonichackernews.navigation.MainNavigationRestorationCodec
@@ -230,6 +231,7 @@ class MainNavigationController internal constructor(
 
     fun openStory(destination: StoryDestination) {
         if (
+            navigationState.state.value.currentDestination == MainDestination.STORY &&
             commentsCoordinator?.switchStoryViewIfMatching(
                 destination.storyId,
                 destination.showWebsite,
@@ -242,6 +244,7 @@ class MainNavigationController internal constructor(
 
     fun openLinkedStory(destination: StoryDestination) {
         if (
+            navigationState.state.value.currentDestination == MainDestination.STORY &&
             commentsCoordinator?.switchStoryViewIfMatching(
                 destination.storyId,
                 destination.showWebsite,
@@ -444,6 +447,12 @@ class MainNavigationController internal constructor(
         request: MainStoryRequest,
     ): CommentsCoordinator {
         val coordinator = commentsCoordinatorCache.getOrPut(request.serial) {
+            val stack = navigationState.state.value.destinationStack
+            val storyIndex = stack.indexOfFirst {
+                it is MainNavigationEntry.Story && it.request.serial == request.serial
+            }
+            val openedFromSubmissions =
+                stack.getOrNull(storyIndex - 1)?.destination == MainDestination.SUBMISSIONS
             Trace.beginSection("CommentsOpen.createCoordinator")
             try {
                 CommentsCoordinator(
@@ -452,6 +461,7 @@ class MainNavigationController internal constructor(
                     request.serial,
                     consumeCommentsSavedState(request.serial),
                     navigation = this,
+                    restorePreviousScrollProgress = !openedFromSubmissions,
                 )
             } finally {
                 Trace.endSection()

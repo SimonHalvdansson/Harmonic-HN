@@ -80,6 +80,7 @@ class CommentsCoordinator(
     internal val sessionKey: Int,
     savedInstanceState: Bundle?,
     private val navigation: MainNavigationController,
+    restorePreviousScrollProgress: Boolean = true,
     private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
     private val platformDependencies: CommentsPlatformDependencies =
         appComposition.commentsPlatformDependencies(),
@@ -92,7 +93,8 @@ class CommentsCoordinator(
     )
     private val restoringSession = sessionState.initialized
     private val scrollProgress = sessionState.scrollProgress
-    private var restoringStoredProgress = scrollProgress.initialized
+    private var restoringStoredProgress = scrollProgress.initialized &&
+        (restoringSession || restorePreviousScrollProgress)
     private var started = false
     private var destroyed = false
     private var contentReadyTraceOpen = true
