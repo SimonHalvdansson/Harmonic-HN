@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.background
@@ -77,10 +78,10 @@ internal fun IosSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background)
+                .background(HarmonicTheme.colors.settingsPageBackground)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(
-                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                        WindowInsetsSides.Horizontal,
                     ),
                 ),
         ) {
@@ -91,14 +92,16 @@ internal fun IosSubmissionsContent(
                 initialScrollRestoration = initialScrollRestoration,
                 previewService = app.previewResources,
                 tintStore = app.storyResourceTints,
-                includeStatusBarInset = false,
+                includeStatusBarInset = true,
                 reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
             )
+            IosStatusBarProtection(HarmonicTheme.colors.settingsPageBackground)
             TranslucentBackButton(
                 onClick = scene.navigation::closeSubmissions,
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .statusBarsPadding()
                     .padding(start = 16.dp, top = 4.dp)
                     .zIndex(101f),
             )

@@ -8,8 +8,8 @@ import kotlinx.coroutines.Dispatchers
  * Native services required by the shared application graph.
  *
  * Every production host must supply these facilities before it can construct the graph. Features
- * therefore never discover a missing core dependency after a screen has already opened. The two
- * facilities that are genuinely product-optional remain nullable values.
+ * therefore never discover a missing core dependency after a screen has already opened. Optional
+ * native facilities remain nullable values; hosts expose only the controls they support.
  */
 data class AppPlatformDependencies(
     val credentials: CredentialStore,
@@ -24,6 +24,7 @@ data class AppPlatformDependencies(
     val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val replyNotifications: ReplyNotificationPlatform? = null,
     val localSummary: LocalSummaryEngine? = null,
+    val textDocuments: TextDocumentService? = null,
 )
 
 /** Platform facilities used by the stories shell. */

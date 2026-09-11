@@ -38,6 +38,12 @@ data class WebLinksSettingsUiState(
     val enabledLinkPreviews: Set<LinkPreviewType>,
 )
 
+/** Hide controls for browser facilities the current host does not implement. */
+data class WebLinksSettingsCapabilities(
+    val adBlocking: Boolean = true,
+    val readerMode: Boolean = true,
+)
+
 enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {
     IntegratedWebView(ReadingBooleanPreference.INTEGRATED_WEB_VIEW),
     CloseWebViewOnBack(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK),
@@ -60,6 +66,7 @@ fun WebLinksSettingsScreen(
     onReaderFontSizeChanged: (Int) -> Unit,
     onDialogRequested: (WebLinksSettingsDialog) -> Unit,
     contentVersion: Int = 0,
+    capabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
 ) {
     val readerControlsEnabled = state.integratedWebView && state.readerModeEnabled
     SettingsPage(
@@ -105,62 +112,66 @@ fun WebLinksSettingsScreen(
                     onBooleanChanged = onBooleanChanged,
                     enabled = state.integratedWebView,
                 )
-                SettingsDivider()
-                BooleanSettingRow(
-                    title = "Block WebView ads",
-                    summary = "May cause some sites to stop working and has a small performance penalty",
-                    icon = Res.drawable.ic_block,
-                    checked = state.blockWebViewAds,
-                    setting = WebLinksBooleanSetting.BlockWebViewAds,
-                    onBooleanChanged = onBooleanChanged,
-                    enabled = state.integratedWebView,
-                )
+                if (capabilities.adBlocking) {
+                    SettingsDivider()
+                    BooleanSettingRow(
+                        title = "Block WebView ads",
+                        summary = "May cause some sites to stop working and has a small performance penalty",
+                        icon = Res.drawable.ic_block,
+                        checked = state.blockWebViewAds,
+                        setting = WebLinksBooleanSetting.BlockWebViewAds,
+                        onBooleanChanged = onBooleanChanged,
+                        enabled = state.integratedWebView,
+                    )
+                }
             }
         }
-        item {
-            SettingsCategory("Reader mode") {
-                BooleanSettingRow(
-                    title = "Enable reader mode",
-                    icon = Res.drawable.ic_chrome_reader_mode,
-                    checked = state.readerModeEnabled,
-                    setting = WebLinksBooleanSetting.ReaderModeEnabled,
-                    onBooleanChanged = onBooleanChanged,
-                    enabled = state.integratedWebView,
-                )
-                SettingsDivider()
-                BooleanSettingRow(
-                    title = "Reader mode on by default",
-                    icon = Res.drawable.ic_chrome_reader_mode,
-                    checked = state.readerModeDefault,
-                    setting = WebLinksBooleanSetting.ReaderModeDefault,
-                    onBooleanChanged = onBooleanChanged,
-                    enabled = readerControlsEnabled,
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Font",
-                    summary = state.readerModeFontLabel,
-                    icon = Res.drawable.ic_font_download,
-                    enabled = readerControlsEnabled,
-                    onClick = { onDialogRequested(WebLinksSettingsDialog.ReaderFont) },
-                )
-                SettingsDivider()
-                SliderSetting(
-                    title = "Text size",
-                    valueLabel = buildString {
-                        append("${state.readerModeFontSize}px")
-                        if (state.readerModeFontSize == state.readerModeFontSizeDefault) {
-                            append(" (default)")
-                        }
-                    },
-                    value = state.readerModeFontSize.toFloat(),
-                    valueRange = state.readerModeFontSizeRange.first.toFloat()..
-                        state.readerModeFontSizeRange.last.toFloat(),
-                    steps = state.readerModeFontSizeRange.last -
-                        state.readerModeFontSizeRange.first - 1,
-                    enabled = readerControlsEnabled,
-                    onValueChange = { onReaderFontSizeChanged(it.toInt()) },
-                )
+        if (capabilities.readerMode) {
+            item {
+                SettingsCategory("Reader mode") {
+                    BooleanSettingRow(
+                        title = "Enable reader mode",
+                        icon = Res.drawable.ic_chrome_reader_mode,
+                        checked = state.readerModeEnabled,
+                        setting = WebLinksBooleanSetting.ReaderModeEnabled,
+                        onBooleanChanged = onBooleanChanged,
+                        enabled = state.integratedWebView,
+                    )
+                    SettingsDivider()
+                    BooleanSettingRow(
+                        title = "Reader mode on by default",
+                        icon = Res.drawable.ic_chrome_reader_mode,
+                        checked = state.readerModeDefault,
+                        setting = WebLinksBooleanSetting.ReaderModeDefault,
+                        onBooleanChanged = onBooleanChanged,
+                        enabled = readerControlsEnabled,
+                    )
+                    SettingsDivider()
+                    SettingRow(
+                        title = "Font",
+                        summary = state.readerModeFontLabel,
+                        icon = Res.drawable.ic_font_download,
+                        enabled = readerControlsEnabled,
+                        onClick = { onDialogRequested(WebLinksSettingsDialog.ReaderFont) },
+                    )
+                    SettingsDivider()
+                    SliderSetting(
+                        title = "Text size",
+                        valueLabel = buildString {
+                            append("${state.readerModeFontSize}px")
+                            if (state.readerModeFontSize == state.readerModeFontSizeDefault) {
+                                append(" (default)")
+                            }
+                        },
+                        value = state.readerModeFontSize.toFloat(),
+                        valueRange = state.readerModeFontSizeRange.first.toFloat()..
+                            state.readerModeFontSizeRange.last.toFloat(),
+                        steps = state.readerModeFontSizeRange.last -
+                            state.readerModeFontSizeRange.first - 1,
+                        enabled = readerControlsEnabled,
+                        onValueChange = { onReaderFontSizeChanged(it.toInt()) },
+                    )
+                }
             }
         }
         item {

@@ -13,8 +13,7 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
-import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.harmonic_app_icon
+import com.simon.harmonichackernews.platform.TextDocumentCallback
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsDialogState
@@ -33,7 +32,7 @@ import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
-import org.jetbrains.compose.resources.painterResource
+import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
 import platform.UIKit.UIDevice
 
 @Composable
@@ -45,7 +44,7 @@ internal fun IosSettingsDetail(
     onBack: () -> Unit,
     onNavigate: (SettingsSection, Boolean) -> Unit,
 ) {
-    val appIcon = painterResource(Res.drawable.harmonic_app_icon)
+    val appIcon = rememberIosAppIconPainter()
     PortableSettingsDetail(
         section = section,
         app = app,
@@ -54,6 +53,7 @@ internal fun IosSettingsDetail(
         onBack = onBack,
         onNavigate = onNavigate,
         appIcon = appIcon,
+        webLinksCapabilities = WebLinksSettingsCapabilities(adBlocking = false, readerMode = false),
         aboutBody = "Harmonic is an open-source Hacker News client. " +
             "This iOS host uses the same Kotlin Multiplatform application logic and " +
             "Compose screens as the Android app, with iOS-native storage, links, and " +
@@ -172,13 +172,27 @@ private fun IosDataSettings(
         runtime.effects.collect { effect ->
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
-                    app.platform.sharing.share(effect.content, effect.filename)
-                    scene.userMessages.show("Choose Save to Files to export bookmarks")
+                    checkNotNull(app.platform.textDocuments).exportText(
+                        effect.filename,
+                        effect.content,
+                        object : TextDocumentCallback {
+                            override fun complete(content: String?, errorMessage: String?) {
+                                errorMessage?.let { scene.userMessages.show(it, UserMessageDuration.LONG) }
+                            }
+                        },
+                    )
                 }
                 DataSettingsRuntimeEffect.OpenImportDocument -> {
-                    scene.userMessages.show(
-                        "Bookmark import needs a Files picker and is not available in this build",
-                        UserMessageDuration.LONG,
+                    checkNotNull(app.platform.textDocuments).importText(
+                        object : TextDocumentCallback {
+                            override fun complete(content: String?, errorMessage: String?) {
+                                if (errorMessage != null) {
+                                    scene.userMessages.show(errorMessage, UserMessageDuration.LONG)
+                                } else if (content != null) {
+                                    runtime.importBookmarks(content)
+                                }
+                            }
+                        },
                     )
                 }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings ->

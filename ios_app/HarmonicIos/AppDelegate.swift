@@ -81,6 +81,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             connectivity: services.connectivity,
             timeFormatting: services.timeFormatting,
             appearance: services.appearance,
+            textDocuments: services.textDocuments,
             replyNotifications: nil,
             localSummary: nil,
             nativeLocalSummary: services.localSummary

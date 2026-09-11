@@ -51,6 +51,7 @@ fun PortableSettingsDetail(
     debugNotificationsMessage: String,
     aiSettings: @Composable () -> Unit,
     dataSettings: @Composable () -> Unit,
+    webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
 ) {
     when (section) {
         SettingsSection.Appearance -> PortableAppearanceSettings(
@@ -76,6 +77,7 @@ fun PortableSettingsDetail(
         SettingsSection.Comments -> PortableCommentsSettings(app, singlePane, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(
             app = app,
+            capabilities = webLinksCapabilities,
             showNavigation = singlePane,
             onBack = onBack,
         )
@@ -124,6 +126,7 @@ fun PortableSettingsDetail(
 @Composable
 private fun PortableWebLinksSettings(
     app: HarmonicAppComposition,
+    capabilities: WebLinksSettingsCapabilities,
     showNavigation: Boolean,
     onBack: () -> Unit,
 ) {
@@ -134,6 +137,7 @@ private fun PortableWebLinksSettings(
 
     WebLinksSettingsScreen(
         state = presenter.state(reading.readerFont.label, settings),
+        capabilities = capabilities,
         showNavigation = showNavigation,
         onBack = onBack,
         onBooleanChanged = presenter::setBoolean,

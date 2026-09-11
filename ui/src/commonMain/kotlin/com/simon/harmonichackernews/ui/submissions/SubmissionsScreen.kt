@@ -186,7 +186,7 @@ fun SubmissionsScreen(
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         // Render bounce/stretch once around both layers so the header stays with the rows.
-        // Keep translated content inside the host's safe-area viewport on iOS.
+        // Keep translated content inside the viewport, beneath the host's status-bar protection.
         Box(Modifier.fillMaxSize().clipToBounds().overscroll(overscrollEffect)) {
             SubmissionsList(
                 overscrollEffect = overscrollEffect,

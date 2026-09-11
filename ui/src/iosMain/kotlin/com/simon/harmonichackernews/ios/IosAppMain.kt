@@ -314,12 +314,12 @@ private fun IosAppContent(
     val navigation by scene.navigation.state.collectAsState()
     val density = LocalDensity.current
     val transitionOffsetPx = with(density) { 96.dp.roundToPx() }
-    val isTabletDevice = with(density) {
-        LocalWindowInfo.current.containerSize.width.toDp() >= 600.dp
-    }
+    val isTabletDevice = isIosTabletWindow()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val mainDirective = remember(adaptiveInfo) {
-        calculatePaneScaffoldDirective(adaptiveInfo).copy(
+    val mainDirective = remember(adaptiveInfo, isTabletDevice) {
+        val directive = calculatePaneScaffoldDirective(adaptiveInfo)
+        directive.copy(
+            maxHorizontalPartitions = if (isTabletDevice) directive.maxHorizontalPartitions else 1,
             horizontalPartitionSpacerSize = 16.dp,
         )
     }
@@ -626,7 +626,13 @@ private fun IosSettingsShell(
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
-    val directive = remember(adaptiveInfo) { calculatePaneScaffoldDirective(adaptiveInfo) }
+    val isTabletDevice = isIosTabletWindow()
+    val directive = remember(adaptiveInfo, isTabletDevice) {
+        val calculated = calculatePaneScaffoldDirective(adaptiveInfo)
+        calculated.copy(
+            maxHorizontalPartitions = if (isTabletDevice) calculated.maxHorizontalPartitions else 1,
+        )
+    }
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val navigation = rememberSettingsNavigationStore(
         initialSection = initialSection,
@@ -670,4 +676,11 @@ private fun IosSettingsShell(
             },
         )
     }
+}
+
+/** A wide phone in landscape still needs a single reading/settings pane. */
+@Composable
+private fun isIosTabletWindow(): Boolean {
+    val size = LocalWindowInfo.current.containerSize
+    return with(LocalDensity.current) { minOf(size.width, size.height).toDp() >= 600.dp }
 }
