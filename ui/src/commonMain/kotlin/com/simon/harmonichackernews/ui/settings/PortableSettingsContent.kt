@@ -144,6 +144,7 @@ private fun PortableWebLinksSettings(
         onReaderFontSizeChanged = presenter::setReaderFontSize,
         onDialogRequested = { requested ->
             if (
+                requested == WebLinksSettingsDialog.Preload ||
                 requested == WebLinksSettingsDialog.ArchiveDomains ||
                 requested == WebLinksSettingsDialog.LinkPreviews ||
                 requested == WebLinksSettingsDialog.NitterInstance
@@ -154,6 +155,14 @@ private fun PortableWebLinksSettings(
         contentVersion = settings.hashCode(),
     )
 
+    if (dialog == WebLinksSettingsDialog.Preload) {
+        PreloadWebViewDialog(
+            initialMode = reading.preloadMode,
+            initialBattery = reading.preloadWebViewMinimumBattery,
+            onSave = presenter::setPreload,
+            onDismiss = { dialog = null },
+        )
+    }
     if (dialog == WebLinksSettingsDialog.ArchiveDomains) {
         StringListEditorDialog(
             title = "Redirect to archive version",

@@ -18,6 +18,9 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -28,11 +31,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.delay
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSMutableURLRequest
 import platform.Foundation.NSURL
@@ -43,14 +50,19 @@ import platform.UIKit.systemBackgroundColor
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
 
-/** iOS-native browser retained for the lifetime of one comments destination. */
+/** Lightweight destination owner; the native browser is created only when loading is requested. */
 @OptIn(ExperimentalForeignApi::class)
 internal class IosCommentsWebView(initialUrl: String) {
     private val initialUrl = WebContentPolicy.validatedHttpUrl(initialUrl)
     private var loadedUrl: String? = null
     private var inverted = false
+    private var appearance = UIUserInterfaceStyle.UIUserInterfaceStyleLight
+    private var disposed = false
 
-    val view: WKWebView = WKWebView(
+    var view: WKWebView? by mutableStateOf(null)
+        private set
+
+    private fun createView(): WKWebView = WKWebView(
         frame = CGRectZero.readValue(),
         configuration = WKWebViewConfiguration().apply {
             websiteDataStore = platform.WebKit.WKWebsiteDataStore.defaultDataStore()
@@ -64,13 +76,29 @@ internal class IosCommentsWebView(initialUrl: String) {
         backgroundColor = UIColor.systemBackgroundColor
         scrollView.backgroundColor = UIColor.systemBackgroundColor
         accessibilityLabel = "Article web view"
+        overrideUserInterfaceStyle = appearance
     }
 
     fun ensureLoaded() {
         if (loadedUrl == null) initialUrl?.let(::load)
     }
 
+    suspend fun preloadAfterOpening(
+        firstDraw: Deferred<Unit>,
+        mode: String,
+        minimumBatteryPercent: Int,
+        environment: () -> WebPreloadEnvironment,
+    ) {
+        firstDraw.await()
+        // Match Android: hidden browser startup must not compete with the opening animation.
+        delay(ActivityNavigationTransitionDurationMillis.toLong())
+        if (WebContentPolicy.shouldPreload(mode, minimumBatteryPercent, environment())) {
+            ensureLoaded()
+        }
+    }
+
     fun load(url: String): Boolean {
+        if (disposed) return false
         val safeUrl = WebContentPolicy.validatedHttpUrl(url) ?: return false
         val nativeUrl = try {
             NSURL(string = safeUrl)
@@ -78,7 +106,8 @@ internal class IosCommentsWebView(initialUrl: String) {
             return false
         }
         return try {
-            view.loadRequest(NSMutableURLRequest.requestWithURL(URL = nativeUrl))
+            val browser = view ?: createView().also { view = it }
+            browser.loadRequest(NSMutableURLRequest.requestWithURL(URL = nativeUrl))
             loadedUrl = safeUrl
             true
         } catch (_: Exception) {
@@ -87,29 +116,31 @@ internal class IosCommentsWebView(initialUrl: String) {
     }
 
     fun reload() {
-        if (loadedUrl == null) ensureLoaded() else view.reload()
+        if (loadedUrl == null) ensureLoaded() else view?.reload()
     }
 
-    fun currentUrl(): String? = view.URL?.absoluteString ?: loadedUrl ?: initialUrl
+    fun currentUrl(): String? = view?.URL?.absoluteString ?: loadedUrl ?: initialUrl
 
-    fun canGoBack(): Boolean = view.canGoBack
+    fun canGoBack(): Boolean = view?.canGoBack == true
 
     fun goBack() {
-        if (view.canGoBack) view.goBack()
+        view?.takeIf { it.canGoBack }?.goBack()
     }
 
     fun updateAppearance(dark: Boolean, matchTheme: Boolean) {
-        view.overrideUserInterfaceStyle = if (matchTheme && dark) {
+        appearance = if (matchTheme && dark) {
             UIUserInterfaceStyle.UIUserInterfaceStyleDark
         } else {
             UIUserInterfaceStyle.UIUserInterfaceStyleLight
         }
+        view?.overrideUserInterfaceStyle = appearance
     }
 
     fun toggleInversion() {
+        val browser = view ?: return
         inverted = !inverted
         val filter = if (inverted) "invert(1) hue-rotate(180deg)" else "none"
-        view.evaluateJavaScript(
+        browser.evaluateJavaScript(
             "document.documentElement.style.filter='$filter';" +
                 "document.documentElement.style.backgroundColor='transparent';",
             completionHandler = null,
@@ -117,9 +148,13 @@ internal class IosCommentsWebView(initialUrl: String) {
     }
 
     fun dispose() {
-        view.stopLoading()
-        view.navigationDelegate = null
-        view.UIDelegate = null
+        disposed = true
+        view?.let {
+            it.stopLoading()
+            it.navigationDelegate = null
+            it.UIDelegate = null
+        }
+        view = null
     }
 }
 
@@ -155,6 +190,9 @@ internal fun IosCommentsScaffold(
         },
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+    LaunchedEffect(webView, controller.initialShowWebsite) {
+        if (controller.initialShowWebsite) webView.ensureLoaded()
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
@@ -168,6 +206,8 @@ internal fun IosCommentsScaffold(
         LaunchedEffect(sheetState, travelPx) {
             snapshotFlow { runCatching { sheetState.requireOffset() }.getOrNull() }
                 .collect { offset ->
+                    // A direct drag can reveal the article without issuing a sheet request.
+                    if (offset != null && offset > 0.5f) webView.ensureLoaded()
                     val expandedFraction = offset
                         ?.let { 1f - (it / travelPx) }
                         ?.coerceIn(0f, 1f)
@@ -208,11 +248,9 @@ internal fun IosCommentsScaffold(
                 }
             },
         ) {
-            UIKitView(
-                factory = {
-                    webView.ensureLoaded()
-                    webView.view
-                },
+            val browser = webView.view
+            if (browser != null) UIKitView(
+                factory = { browser },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = webViewTopInset),

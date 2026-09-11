@@ -24,6 +24,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +40,7 @@ import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
+import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
@@ -60,6 +62,7 @@ import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
+import kotlinx.coroutines.CompletableDeferred
 
 private class IosCommentsHost(
     val binding: CommentsFeatureBinding,
@@ -95,6 +98,26 @@ internal fun IosCommentsContent(
         }
     }
     val featureState by host.store.state.collectAsState()
+    val firstDraw = remember(host) { CompletableDeferred<Unit>() }
+    val reading = featureState.settings?.reading
+    LaunchedEffect(
+        host,
+        reading?.integratedWebView,
+        reading?.preloadWebViewMode,
+        reading?.preloadWebViewMinimumBattery,
+    ) {
+        if (reading == null || !reading.integratedWebView) return@LaunchedEffect
+        host.webView?.preloadAfterOpening(
+            firstDraw = firstDraw,
+            mode = reading.preloadWebViewMode,
+            minimumBatteryPercent = reading.preloadWebViewMinimumBattery,
+        ) {
+            WebPreloadEnvironment(
+                unmeteredConnection = app.platform.connectivity.isUnmetered(),
+                batteryPercent = app.platform.battery.batteryPercent(),
+            )
+        }
+    }
 
     SideEffect { onControllerChanged(host.controller) }
     DisposableEffect(host) {
@@ -204,7 +227,11 @@ internal fun IosCommentsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(background),
+                .background(background)
+                .drawWithContent {
+                    drawContent()
+                    firstDraw.complete(Unit)
+                },
         ) {
             val webView = host.webView
             if (host.controller.integratedWebView && webView != null) {

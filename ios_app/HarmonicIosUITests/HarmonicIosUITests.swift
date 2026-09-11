@@ -116,10 +116,12 @@ final class HarmonicIosUITests: XCTestCase {
 
     func testOpenArticleInEmbeddedWebView() throws {
         openFirstComments()
+        XCTAssertEqual(app.webViews.count, 0, "The article must remain hidden until requested")
         articleHeader.tap()
 
         let showComments = app.buttons["Show comments"]
         XCTAssertTrue(showComments.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Refresh website"].exists)
         XCTAssertTrue(app.buttons["Open in browser"].exists)
         XCTAssertFalse(app.buttons["Close article"].exists)
@@ -158,6 +160,40 @@ final class HarmonicIosUITests: XCTestCase {
         )
         keepScreenshot("System Share Sheet")
         app.swipeDown()
+    }
+
+    func testDragCommentsRevealsDeferredBrowser() throws {
+        openFirstComments()
+        XCTAssertEqual(app.webViews.count, 0)
+        let start = articleHeader.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Show comments"].tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+    }
+
+    func testPreloadPreferenceAndArticleOpening() throws {
+        openSettings()
+        app.buttons["Web and links"].tap()
+        let preload = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Preload websites")
+        ).firstMatch
+        XCTAssertTrue(preload.waitForExistence(timeout: 5))
+        preload.tap()
+        app.staticTexts["Always"].tap()
+        app.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Preload websites, Always")
+        ).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Navigate up"].tap()
+        app.buttons["Navigate up"].tap()
+        openFirstComments()
+        XCTAssertTrue(articleHeader.exists)
+        articleHeader.tap()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
     }
 
     func testSubmissionsKeepsBackButtonBelowStatusBar() throws {
