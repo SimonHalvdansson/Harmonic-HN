@@ -7,17 +7,19 @@ import com.simon.harmonichackernews.serialization.JsonObject
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import io.ktor.client.HttpClient
-import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.ktor.http.URLBuilder
+import io.ktor.utils.io.cancel
 import io.ktor.utils.io.readAvailable
+import kotlinx.io.Buffer
 import kotlinx.io.IOException
+import kotlinx.io.readByteArray
 import kotlin.time.Clock
 
 data class LinkSummary(
@@ -152,44 +154,41 @@ class KtorLinkSummaryRepository(
             )
         }
 
-    private suspend fun fetchText(url: String, accept: String): FetchedText {
-        val response = client().get(url) { header(HttpHeaders.Accept, accept) }
-        if (response.status.value !in 200..299) {
-            throw LinkPreviewException("The page returned HTTP ${response.status.value}")
+    private suspend fun fetchText(url: String, accept: String): FetchedText =
+        client().prepareGet(url) { header(HttpHeaders.Accept, accept) }.execute { response ->
+            val channel = response.bodyAsChannel()
+            try {
+                if (response.status.value !in 200..299) {
+                    throw LinkPreviewException("The page returned HTTP ${response.status.value}")
+                }
+                val contentType = LinkSummaryParser.normalizeContentType(
+                    response.headers[HttpHeaders.ContentType],
+                )
+                val finalUrl = response.call.request.url.toString()
+                // Images need only their headers. For text, retain the same bounded UTF-8 prefix,
+                // allocating for bytes actually received instead of reserving the whole budget.
+                val body = if (contentType.startsWith("image/", ignoreCase = true)) {
+                    ""
+                } else {
+                    val bytes = Buffer()
+                    val chunk = ByteArray(8 * 1024)
+                    while (bytes.size < MAX_RESPONSE_BYTES) {
+                        val read = channel.readAvailable(
+                            chunk,
+                            0,
+                            minOf(chunk.size, MAX_RESPONSE_BYTES - bytes.size.toInt()),
+                        )
+                        if (read == -1) break
+                        if (read > 0) bytes.write(chunk, 0, read)
+                    }
+                    bytes.readByteArray().decodeToString()
+                }
+                FetchedText(body = body, contentType = contentType, finalUrl = finalUrl)
+            } finally {
+                // Stop oversized bodies at the prefix limit and release every response path.
+                channel.cancel()
+            }
         }
-        val channel = response.bodyAsChannel()
-        val contentType = LinkSummaryParser.normalizeContentType(
-            response.headers[HttpHeaders.ContentType],
-        )
-        val finalUrl = response.call.request.url.toString()
-        if (contentType.startsWith("image/", ignoreCase = true)) {
-            channel.cancel(CancellationException("Direct image metadata resolved"))
-            return FetchedText(
-                body = "",
-                contentType = contentType,
-                finalUrl = finalUrl,
-            )
-        }
-        val bytes = ByteArray(MAX_RESPONSE_BYTES)
-        var size = 0
-        while (size < bytes.size) {
-            val read = channel.readAvailable(bytes, size, bytes.size - size)
-            if (read == -1) break
-            if (read == 0) continue
-            size += read
-        }
-        // Metadata normally lives in the document head. A bounded prefix is enough to produce a
-        // useful preview and avoids rejecting otherwise valid pages solely because their body is
-        // large. Stop the response as soon as the parsing budget is full.
-        if (size == bytes.size) {
-            channel.cancel(CancellationException("Link preview prefix is complete"))
-        }
-        return FetchedText(
-            body = bytes.decodeToString(0, size),
-            contentType = contentType,
-            finalUrl = finalUrl,
-        )
-    }
 
     private data class FetchedText(
         val body: String,

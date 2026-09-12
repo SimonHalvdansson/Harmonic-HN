@@ -24,13 +24,15 @@ object StableHash {
 
     fun sha256Hex(value: String): String {
         val source = value.encodeToByteArray()
-        val paddedSize = ((source.size + 9 + 63) / 64) * 64
-        val message = ByteArray(paddedSize)
-        source.copyInto(message)
-        message[source.size] = 0x80.toByte()
+        val fullChunkCount = source.size / 64
+        val remainingBytes = source.size % 64
+        // Read complete blocks directly from the input; only the final one or two need padding.
+        val tail = ByteArray(if (remainingBytes < 56) 64 else 128)
+        source.copyInto(tail, startIndex = fullChunkCount * 64)
+        tail[remainingBytes] = 0x80.toByte()
         val bitLength = source.size.toLong() * 8L
         for (index in 0 until 8) {
-            message[paddedSize - 1 - index] = (bitLength ushr (index * 8)).toByte()
+            tail[tail.lastIndex - index] = (bitLength ushr (index * 8)).toByte()
         }
 
         val hash = intArrayOf(
@@ -44,7 +46,13 @@ object StableHash {
             0x5be0cd19,
         )
         val words = IntArray(64)
-        for (chunkStart in message.indices step 64) {
+        for (chunkIndex in 0 until fullChunkCount + tail.size / 64) {
+            val message = if (chunkIndex < fullChunkCount) source else tail
+            val chunkStart = if (chunkIndex < fullChunkCount) {
+                chunkIndex * 64
+            } else {
+                (chunkIndex - fullChunkCount) * 64
+            }
             for (index in 0 until 16) {
                 val offset = chunkStart + index * 4
                 words[index] =
