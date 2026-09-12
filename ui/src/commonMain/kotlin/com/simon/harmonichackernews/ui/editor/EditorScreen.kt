@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
+import com.simon.harmonichackernews.ui.common.ScrollableTextDecorations
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -242,6 +243,7 @@ fun EditorScreen(
         Column(Modifier.fillMaxSize()) {
             ComposeEditorTopBar(
                 type = type,
+                user = user.orEmpty(),
                 subtitle = if (isPost) null else postTitle ?: parentText,
                 onClose = ::requestClose,
                 height = topBarHeight,
@@ -285,7 +287,6 @@ fun EditorScreen(
                     Column(Modifier.weight(1f).fillMaxWidth()) {
                         if (type == EditorType.COMMENT_REPLY && previewHeight > 0.dp) {
                             ReplyPreview(
-                                user = user.orEmpty(),
                                 parentText = parentText.orEmpty(),
                                 onOpenLink = onOpenLink,
                                 previewHeight = previewHeight,
@@ -401,6 +402,7 @@ private fun EditorMessageActionDialog(
 @Composable
 private fun ComposeEditorTopBar(
     type: EditorType,
+    user: String,
     subtitle: String?,
     onClose: () -> Unit,
     height: Dp,
@@ -409,7 +411,7 @@ private fun ComposeEditorTopBar(
 ) {
     val title = when (type) {
         EditorType.TOP_LEVEL_COMMENT -> "Top level comment"
-        EditorType.COMMENT_REPLY -> "Posting reply"
+        EditorType.COMMENT_REPLY -> "Replying to $user"
         EditorType.POST -> "New post"
     }
     Row(
@@ -471,47 +473,28 @@ private fun ComposeEditorTopBar(
 
 @Composable
 private fun ReplyPreview(
-    user: String,
     parentText: String,
     onOpenLink: (String) -> Unit,
     previewHeight: Dp,
     scrollState: ScrollState,
 ) {
-    val density = LocalDensity.current
-    val windowSize = LocalWindowInfo.current.containerSize
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = previewHeight)
-            .verticalScroll(scrollState)
-            .padding(bottom = 6.dp)
-            .testTag("compose_editor_replying_scrollview"),
+            .heightIn(max = previewHeight),
     ) {
-        Surface(
-            modifier = Modifier
-                .padding(start = 16.dp, top = 6.dp, end = 16.dp)
-                .widthIn(max = with(density) { windowSize.width.toDp() } - 32.dp)
-                .testTag("compose_editor_replying_header"),
-            shape = RoundedCornerShape(28.dp),
-            color = HarmonicTheme.colors.overlayButton,
-            shadowElevation = 10.dp,
-        ) {
-            Text(
-                text = "Replying to $user's comment:",
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                color = HarmonicTheme.colors.overlayButtonContent,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = includeFontPaddingStyle,
-            )
-        }
         OriginalCommentText(
             parentText = parentText,
             onOpenLink = onOpenLink,
-            modifier = Modifier.padding(start = 16.dp, top = 10.dp, end = 16.dp),
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .testTag("compose_editor_replying_scrollview")
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        ScrollableTextDecorations(
+            state = scrollState,
+            containerColor = HarmonicTheme.colors.settingsPageBackground,
+            modifier = Modifier.matchParentSize(),
         )
     }
 }
@@ -649,7 +632,7 @@ private fun CommentField(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = if (compact) 0.dp else if (reply) 12.dp else 8.dp, end = 16.dp)
+            .padding(start = 16.dp, top = if (compact) 0.dp else if (reply) 4.dp else 8.dp, end = 16.dp)
             .semantics {
                 contentDescription = if (reply) "Reply text" else "Comment text"
             }
