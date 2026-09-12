@@ -112,7 +112,7 @@ class CommentThreadRepository(
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
         cachedThread: PreparedCommentThread? = null,
-    ): AlgoliaCommentsResponse = algoliaCommentsParser.parsePrepared(
+    ): AlgoliaCommentsResponse = algoliaCommentsParser.parseForDisplay(
         response, topLevelCommentIds, filteredUsers, cachedThread,
     )
 

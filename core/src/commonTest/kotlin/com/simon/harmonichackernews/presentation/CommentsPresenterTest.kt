@@ -55,6 +55,61 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun firstThreadIsReadyWhileCachePersistenceIsStillSuspended() = runTest {
+        val response = """{"id":42,"title":"Fresh","children":[{"id":7,"author":"alice","text":"Hello"}]}"""
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher,
+            sourceDigest = { error("No cache comparison exists on first display") })
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope, session,
+            CommentThreadRepository(FakeAlgoliaRepository(response), UnusedHackerNewsRepository, parser),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = dispatcher,
+        )
+        val cacheStarted = CompletableDeferred<Unit>()
+        val allowCacheWrite = CompletableDeferred<Unit>()
+        val cacheFinished = CompletableDeferred<Unit>()
+        val repository = com.simon.harmonichackernews.data.StoryCacheRepository(
+            com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore(),
+            com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore(),
+        )
+        val runtime = CommentsFeatureRuntime(
+            backgroundScope, session, presenter,
+            storeCachedThread = { id, payload, summary ->
+                assertEquals("", assertNotNull(summary?.preparedThread).sourceDigest)
+                cacheStarted.complete(Unit)
+                allowCacheWrite.await()
+                assertTrue(repository.storeStory(id, payload, 1_000, summary))
+                cacheFinished.complete(Unit)
+            },
+            nowMillis = { 0L },
+        )
+        val effects = mutableListOf<CommentsRuntimeEffect.ThreadReady>()
+        backgroundScope.launch {
+            runtime.effects.filterIsInstance<CommentsRuntimeEffect.ThreadReady>().collect { effects += it }
+        }
+        val story = Story("Fresh", 42, true, false).apply { kids = intArrayOf(7) }
+        runtime.initialize(story, false, -1, "Default", restoring = false)
+        runCurrent()
+        presenter.dispatch(CommentsAction.LoadThread(
+            story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "Default",
+            collapseTopLevel = false, previousResponse = null, restoreScrollFromCache = false,
+        ))
+        runCurrent()
+        assertTrue(cacheStarted.isCompleted)
+        assertFalse(cacheFinished.isCompleted)
+        assertEquals(1, effects.size)
+        assertEquals("Hello", runtime.allComments.last().text)
+        assertTrue(presenter.state.value.loaded)
+        assertNull(repository.loadPreparedThread(42))
+        allowCacheWrite.complete(Unit)
+        runCurrent()
+        assertTrue(cacheFinished.isCompleted)
+        assertEquals(64, assertNotNull(repository.loadPreparedThread(42)).sourceDigest.length)
+    }
+
+    @Test
     fun preparedCacheDisplaysOfflineWithCurrentFiltersWithoutReadingRawJson() = runTest {
         val response = """{"id":42,"title":"Cached","children":[
             {"id":7,"author":"blocked","text":"One","extra_field":true},{"id":8,"text":"Two"}
@@ -714,45 +769,51 @@ class CommentsPresenterTest {
 
     @Test
     fun cachedThreadAppearsWhileItsPreloadIsStillDownloading() = runTest {
-        val response = """{"id":42,"title":"Cached","type":"story","children":[{"id":7,"author":"alice","text":"Ready"}]}"""
-        val networkResponse = CompletableDeferred<String>()
-        var networkRequests = 0
-        val source = object : AlgoliaRepository {
-            override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Unused")
-            override suspend fun search(url: String): List<Story> = error("Unused")
-            override suspend fun getItemJson(id: Int): String {
-                networkRequests++
-                return networkResponse.await()
+        for (usePreparedCache in listOf(false, true)) {
+            val response = """{"id":42,"title":"Cached","type":"story","children":[{"id":7,"author":"alice","text":"Ready"}]}"""
+            val networkResponse = CompletableDeferred<String>()
+            var networkRequests = 0
+            val source = object : AlgoliaRepository {
+                override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Unused")
+                override suspend fun search(url: String): List<Story> = error("Unused")
+                override suspend fun getItemJson(id: Int): String {
+                    networkRequests++
+                    return networkResponse.await()
+                }
             }
-        }
-        val parser = AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))
-        val preloads = CommentsPreloadRepository(algolia = source, parser = parser, nowMillis = { 0L })
-        backgroundScope.launch { preloads.preload(42, listOf(7)) }
-        runCurrent()
-        val presenter = CommentsPresenter(
-            backgroundScope, CommentsSessionState(),
-            CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads),
-            UnusedPollOptions, savedItemActions(), UnusedVotingService,
-        )
-        val effects = mutableListOf<CommentsEffect>()
-        backgroundScope.launch { presenter.effects.collect { effects += it } }
-        val story = Story("Loading", 42, false, false).also { it.kids = intArrayOf(7) }
-        presenter.dispatch(
-            CommentsAction.LoadThread(
-                story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "default",
-                collapseTopLevel = false, previousResponse = response, restoreScrollFromCache = true,
-            ),
-        )
-        runCurrent()
-        assertEquals("Cached", story.title)
-        assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
-        assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().restoreScroll)
-        assertFalse(networkResponse.isCompleted)
+            val parser = AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))
+            val preloads = CommentsPreloadRepository(algolia = source, parser = parser, nowMillis = { 0L })
+            backgroundScope.launch { preloads.preload(42, listOf(7)) }
+            runCurrent()
+            val presenter = CommentsPresenter(
+                backgroundScope, CommentsSessionState(),
+                CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            )
+            val effects = mutableListOf<CommentsEffect>()
+            backgroundScope.launch { presenter.effects.collect { effects += it } }
+            val story = Story("Loading", 42, false, false).also { it.kids = intArrayOf(7) }
+            presenter.dispatch(
+                CommentsAction.LoadThread(
+                    story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "default",
+                    collapseTopLevel = false, previousResponse = if (usePreparedCache) null else response,
+                    loadPreparedThread = { if (usePreparedCache) parser.prepare(response, listOf(7)) else null },
+                    restoreScrollFromCache = true,
+                ),
+            )
+            runCurrent()
+            assertEquals("Cached", story.title)
+            assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
+            assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().restoreScroll)
+            assertFalse(networkResponse.isCompleted)
 
-        networkResponse.complete(response)
-        runCurrent()
-        assertEquals(1, networkRequests)
-        assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().last().networkCompleted)
+            networkResponse.complete(response)
+            runCurrent()
+            assertEquals(1, networkRequests)
+            val completed = effects.filterIsInstance<CommentsEffect.ThreadApplied>().last()
+            assertTrue(completed.networkCompleted)
+            assertFalse(completed.contentApplied)
+        }
     }
 
     @Test

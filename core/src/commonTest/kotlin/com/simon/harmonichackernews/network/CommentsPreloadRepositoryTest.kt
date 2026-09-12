@@ -17,6 +17,35 @@ import kotlin.test.assertTrue
 
 class CommentsPreloadRepositoryTest {
     @Test
+    fun openingCanConsumePreloadBeforeHashingAndPersistenceFinish() = runTest {
+        val storeStarted = CompletableDeferred<Unit>()
+        val allowStore = CompletableDeferred<Unit>()
+        var stored = false
+        val repository = CommentsPreloadRepository(
+            algolia = RecordingAlgoliaRepository(RESPONSE),
+            parser = AlgoliaCommentsParser(sourceDigest = { error("Preload display must not hash") }),
+            storeResponse = { _, _, summary ->
+                assertEquals("", assertNotNull(summary?.preparedThread).sourceDigest)
+                storeStarted.complete(Unit)
+                allowStore.await()
+                stored = true
+            },
+            nowMillis = { 1_000L },
+        )
+        val preload = launch { repository.preload(42, listOf(7, 8)) }
+        storeStarted.await()
+        val consumed = assertNotNull(repository.takeOrAwait(42, listOf(7, 8)))
+        assertEquals(listOf(7, 8), consumed.parsed.comments.map { it.id })
+        assertFalse(stored)
+        // Navigating away cancels feed preloading, but an already published entry still persists.
+        preload.cancel()
+        assertFalse(preload.isCompleted)
+        allowStore.complete(Unit)
+        preload.join()
+        assertTrue(stored)
+    }
+
+    @Test
     fun downloadsParsesPersistsAndConsumesPreparedThread() = runTest {
         val source = RecordingAlgoliaRepository(RESPONSE)
         val stored = mutableListOf<Pair<Int, String>>()

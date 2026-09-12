@@ -18,6 +18,46 @@ class PreparedCommentThreadTest {
         {"id":10,"parent_id":42,"text":" null ","children":[{"id":11,"text":"Hidden below deleted parent"}]}
     ]}"""
 
+    @Test fun firstDisplayDefersDigestAndPersistenceKeepsNeutralContent() = runTest {
+        val displayParser = AlgoliaCommentsParser(sourceDigest = { error("First display must not hash") })
+        val displayed = displayParser.parseForDisplay(raw, listOf(8, 7), setOf("alice"))
+        val pending = assertNotNull(displayed.cacheSummary?.preparedThread)
+        assertEquals("", pending.sourceDigest)
+        assertFalse(pending.isCompatible())
+        assertEquals(listOf(8), displayed.comments.map { it.id })
+        for (encoding in PreparedCommentCodec.Encoding.entries) {
+            assertFailsWith<IllegalArgumentException> { PreparedCommentCodec.encode(pending, encoding) }
+        }
+        displayed.comments.single().text = "Presentation changed after parsing"
+
+        val repository = StoryCacheRepository(InMemoryStoryCacheFileStore(), InMemoryStoryCacheMetadataStore())
+        assertTrue(repository.storeStory(42, raw, 1_000, displayed.cacheSummary))
+        val stored = assertNotNull(repository.loadPreparedThread(42))
+        assertEquals(parser.prepare(raw, listOf(8, 7)), stored)
+        assertEquals("", pending.sourceDigest)
+        assertEquals(listOf(8, 7, 9), stored.restore().comments.map { it.id })
+
+        // A second response without a completed digest cannot be mistaken for a cache hit.
+        val updated = displayParser.parseForDisplay(raw.replace("A title", "Updated"), cachedThread = pending)
+        assertEquals("Updated [pdf]", updated.title)
+    }
+
+    @Test fun displayWithPreparedCacheStillHashesAndReusesOnlyMatchingContent() = runTest {
+        val cached = parser.prepare(raw)
+        var hashes = 0
+        val displayParser = AlgoliaCommentsParser(sourceDigest = {
+            hashes++
+            com.simon.harmonichackernews.network.StableHash.sha256Hex(it)
+        })
+        val unchanged = displayParser.parseForDisplay(raw, cachedThread = cached)
+        assertEquals(1, hashes)
+        assertSame(cached, unchanged.cacheSummary?.preparedThread)
+        val changed = raw.replace("A title", "Updated")
+        val updated = displayParser.parseForDisplay(changed, cachedThread = cached)
+        assertEquals(2, hashes)
+        assertEquals(parser.prepare(changed), updated.cacheSummary?.preparedThread)
+    }
+
     @Test fun unchangedResponseReusesPreparedContentWithFreshPresentation() = runTest {
         val prepared = parser.prepare(raw, listOf(8, 7))
         assertSame(prepared, parser.prepare(raw, listOf(8, 7), cachedThread = prepared))

@@ -583,17 +583,26 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
+                    // A joined preload may publish before its cache hash is ready. Only a screen
+                    // with an existing prepared cache needs to complete that comparison now.
+                    val pending = result.parsed.cacheSummary?.preparedThread
+                    val parsed = if (cachedPrepared != null && pending?.sourceDigest == "") {
+                        withContext(threadPreparationDispatcher) {
+                            result.parsed.copy(cacheSummary = pending.withSourceDigest(result.response).cacheSummary())
+                        }
+                    } else result.parsed
+                    if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
                     val sameResponse = if (cachedPrepared != null) {
-                        cachedPrepared.sourceDigest == result.parsed.cacheSummary?.preparedThread?.sourceDigest
+                        cachedPrepared.sourceDigest == parsed.cacheSummary?.preparedThread?.sourceDigest
                     } else previousResponse == result.response
                     if (cachedParsed == null || !sameResponse ||
                         (topLevelCommentIds.isEmpty() &&
-                            !result.parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
+                            !parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
                     ) {
                         applyAlgoliaThread(
                             action = action,
                             requestId = requestId,
-                            parsed = result.parsed,
+                            parsed = parsed,
                             networkCompleted = true,
                             responseToCache = result.response,
                             restoreScroll = false,

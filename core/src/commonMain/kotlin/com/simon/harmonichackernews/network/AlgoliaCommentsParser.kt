@@ -101,7 +101,23 @@ class AlgoliaCommentsParser(
         useAlternativeNames = false
     },
     private val parsingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val sourceDigest: (String) -> String = StableHash::sha256Hex,
 ) {
+    /** First display needs prepared text, but only an existing cache needs a hash comparison. */
+    suspend fun parseForDisplay(
+        response: String,
+        topLevelCommentIds: List<Int> = emptyList(),
+        filteredUsers: Set<String> = emptySet(),
+        cachedThread: PreparedCommentThread? = null,
+    ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
+        if (cachedThread?.isCompatible() == true) {
+            parsePrepared(response, topLevelCommentIds, filteredUsers, cachedThread)
+        } else {
+            PreparedCommentThread.fromParsed("", parse(response), topLevelCommentIds)
+                .restoreContent(topLevelCommentIds, filteredUsers)
+        }
+    }
+
     suspend fun parsePrepared(
         response: String,
         topLevelCommentIds: List<Int> = emptyList(),
@@ -119,7 +135,7 @@ class AlgoliaCommentsParser(
     ): PreparedCommentThread = withContext(parsingDispatcher) {
         // Hash on the parsing worker before decoding JSON or preparing HTML. Reuse only neutral
         // content: restore still applies today's ranking/filters and creates fresh mutable models.
-        val sourceDigest = StableHash.sha256Hex(response)
+        val sourceDigest = sourceDigest(response)
         if (cachedThread != null && cachedThread.sourceDigest == sourceDigest && cachedThread.isCompatible()) {
             return@withContext if (cachedThread.rankedIds == topLevelCommentIds) cachedThread
             else cachedThread.copy(rankedIds = topLevelCommentIds.toList())

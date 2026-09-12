@@ -16,6 +16,7 @@ object PreparedCommentCodec {
     }
 
     fun encode(thread: PreparedCommentThread, encoding: Encoding = Encoding.PROTOBUF): ByteArray {
+        require(thread.sourceDigest.length == 64) { "Prepared cache requires a source digest" }
         val payload = when (encoding) {
             Encoding.PROTOBUF -> ProtoBuf.encodeToByteArray(PreparedCommentThread.serializer(), thread)
             Encoding.JSON -> json.encodeToString(PreparedCommentThread.serializer(), thread).encodeToByteArray()

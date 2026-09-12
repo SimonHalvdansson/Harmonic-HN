@@ -43,8 +43,7 @@ class CommentsPreloadRepository(
         )
         return prepare(key) {
             val response = algolia.getItemJson(storyId)
-            val parsed = parser.parsePrepared(response, key.topLevelCommentIds, key.filteredUsers)
-            storeResponse(storyId, response, parsed.cacheSummary)
+            val parsed = parser.parseForDisplay(response, key.topLevelCommentIds, key.filteredUsers)
             PreloadedCommentsThread(
                 storyId = storyId,
                 topLevelCommentIds = key.topLevelCommentIds,
@@ -119,6 +118,17 @@ class CommentsPreloadRepository(
                     }
                 }
                 deferred.complete(loaded)
+                // An opening screen may consume the prepared content immediately. Persistence
+                // completes even if leaving the feed cancels its preload job after publication.
+                if (loaded is PreloadedCommentsThread) {
+                    try {
+                        storeResponse(loaded.storyId, loaded.response, loaded.parsed.cacheSummary)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // A failed disk cache must not discard successfully downloaded comments.
+                    }
+                }
             }
             cancellation?.let { throw it }
         }

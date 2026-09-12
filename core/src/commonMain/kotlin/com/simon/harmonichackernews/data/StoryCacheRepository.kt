@@ -224,7 +224,11 @@ class StoryCacheRepository(
         update.evictedStoryIds.forEach(::removeFiles)
         if (storyId in indexedStoryIdsSnapshot.orEmpty()) {
             parsedSummary?.preparedThread?.let { prepared ->
-                storePreparedThread(storyId, prepared.copy(rankedIds = parsedSummary.topLevelCommentIds.toList()))
+                // First display deliberately defers hashing. Complete the immutable cache entry
+                // here, under the same write ordering as its raw response, without parsing again.
+                storePreparedThread(storyId, prepared.withSourceDigest(payload).copy(
+                    rankedIds = parsedSummary.topLevelCommentIds.toList(),
+                ))
             }
         }
         recentStoryAvailability = null

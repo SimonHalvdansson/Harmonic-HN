@@ -670,9 +670,6 @@ class CommentsFeatureRuntime(
                 if (!presenter.isCurrentThreadLoad(effect.requestId, effect.storyId) ||
                     story?.id != effect.storyId
                 ) return
-                effect.responseToCache?.let { response ->
-                    storeCachedThread(effect.storyId, response, effect.cacheSummary)
-                }
                 if (effect.broadcastStoryUpdate) {
                     story?.let(publishStoryUpdate)
                 }
@@ -688,6 +685,11 @@ class CommentsFeatureRuntime(
                         ),
                     )
                     requestAutomaticSummaryIfEligible()
+                }
+                // Ready/state effects must reach the host without waiting for cache hashing or
+                // disk writes. Keep writes in this collector to preserve their existing order.
+                effect.responseToCache?.let { response ->
+                    storeCachedThread(effect.storyId, response, effect.cacheSummary)
                 }
             }
             is CommentsEffect.ThreadFailed -> {

@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
+import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.serialization.JsonObject
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
@@ -12,18 +13,32 @@ import kotlin.coroutines.coroutineContext
 data class PreparedCommentThread(
     val schemaVersion: Int,
     val textPreparationVersion: Int,
+    /** Empty only for freshly prepared display content; persistence supplies the digest. */
     val sourceDigest: String,
     val story: PreparedCommentStory,
     val comments: List<PreparedCommentRecord>,
     val summaryJson: String,
     val rankedIds: List<Int>,
 ) {
+    /** Complete identity only when persistence or an existing-cache comparison needs it. */
+    internal fun withSourceDigest(response: String): PreparedCommentThread =
+        if (sourceDigest.isEmpty()) copy(sourceDigest = StableHash.sha256Hex(response)) else this
+
     /** Applies today's filters/ranking and creates fresh mutable presentation state for each open. */
     suspend fun restore(
         topLevelCommentIds: List<Int> = rankedIds,
         filteredUsers: Set<String> = emptySet(),
     ): AlgoliaCommentsResponse {
-        require(isCompatible()) { "Incompatible prepared comment cache" }
+        require(sourceDigest.length == 64) { "Incompatible prepared comment cache" }
+        return restoreContent(topLevelCommentIds, filteredUsers)
+    }
+
+    /** Fresh neutral content can be displayed before its cache identity is computed. */
+    internal suspend fun restoreContent(
+        topLevelCommentIds: List<Int>,
+        filteredUsers: Set<String>,
+    ): AlgoliaCommentsResponse {
+        require(isContentCompatible()) { "Incompatible prepared comment cache" }
         val blocked = filteredUsers.mapNotNullTo(mutableSetOf()) {
             it.trim().lowercase().takeIf(String::isNotEmpty)
         }
@@ -80,9 +95,10 @@ data class PreparedCommentThread(
         )
     }
 
-    internal fun isCompatible(): Boolean {
+    internal fun isCompatible(): Boolean = sourceDigest.length == 64 && isContentCompatible()
+
+    private fun isContentCompatible(): Boolean {
         if (schemaVersion != SCHEMA_VERSION || textPreparationVersion != TEXT_PREPARATION_VERSION) return false
-        if (sourceDigest.length != 64) return false
         // Validate subtree boundaries before any indexed traversal. IDs may be absent/duplicated in
         // permissive API payloads; structural depth, rather than ID uniqueness, defines subtrees.
         val ancestors = IntArray(comments.size)
