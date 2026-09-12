@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
@@ -206,13 +207,15 @@ private fun UserLoadedContent(
             fontSize = 14.sp,
         )
         if (formattedAbout.isNotBlank()) {
-            Text(
-                text = formattedAbout,
-                color = HarmonicTheme.colors.storyDisabled,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-            )
+            SelectionContainer {
+                Text(
+                    text = formattedAbout,
+                    color = HarmonicTheme.colors.storyDisabled,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                )
+            }
         }
         if (user.hasSubmissions) {
             UserOutlinedAction(
