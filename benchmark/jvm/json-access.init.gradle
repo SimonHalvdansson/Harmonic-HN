@@ -1,0 +1,14 @@
+// Export the desktop runtime without adding benchmark dependencies to the app.
+gradle.projectsEvaluated {
+    def core = gradle.rootProject.project(':core')
+    core.tasks.register('jsonAccessBenchmarkClasspath') {
+        dependsOn core.tasks.named('desktopJar')
+        doLast {
+            def desktop = core.kotlin.targets.getByName('desktop').compilations.getByName('main')
+            def paths = [core.tasks.named('desktopJar').get().archiveFile.get().asFile.absolutePath]
+            paths.addAll(desktop.runtimeDependencyFiles.files.collect { it.absolutePath })
+            core.layout.buildDirectory.file('json-access-benchmark.classpath').get().asFile.text =
+                paths.join(File.pathSeparator)
+        }
+    }
+}

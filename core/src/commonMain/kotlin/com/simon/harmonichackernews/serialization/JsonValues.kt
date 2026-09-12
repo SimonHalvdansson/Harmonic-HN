@@ -10,8 +10,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
 /**
@@ -172,10 +170,10 @@ private fun JsonElement.asArray(): KotlinxJsonArray =
     asArrayOrNull() ?: throw JsonException("JSON value is not an array")
 
 private fun JsonElement?.asObjectOrNull(): KotlinxJsonObject? =
-    runCatching { this?.jsonObject }.getOrNull()
+    this as? KotlinxJsonObject
 
 private fun JsonElement?.asArrayOrNull(): KotlinxJsonArray? =
-    runCatching { this?.jsonArray }.getOrNull()
+    this as? KotlinxJsonArray
 
 private fun JsonElement?.optionalString(): String? {
     val primitive = this as? JsonPrimitive ?: return null
@@ -188,6 +186,7 @@ private fun JsonElement.requiredString(label: String): String =
 
 private fun JsonElement?.optionalInt(): Int? {
     val primitive = this as? JsonPrimitive ?: return null
+    if (primitive.content.isAsciiInteger()) primitive.content.toIntOrNull()?.let { return it }
     return primitive.intOrNull ?: primitive.content.toDoubleOrNull()?.toInt()
 }
 
@@ -196,7 +195,18 @@ private fun JsonElement.requiredInt(label: String): Int =
 
 private fun JsonElement?.optionalLong(): Long? {
     val primitive = this as? JsonPrimitive ?: return null
+    if (primitive.content.isAsciiInteger()) primitive.content.toLongOrNull()?.let { return it }
     return primitive.longOrNull ?: primitive.doubleOrNull?.toLong()
+}
+
+// Bypass the JSON numeric lexer only for ordinary integers. Other forms retain its coercions,
+// including the floating-point fallback for leading '+' and rejection of Unicode digits.
+private fun String.isAsciiInteger(): Boolean {
+    if (isEmpty()) return false
+    val start = if (this[0] == '-') 1 else 0
+    if (start == length) return false
+    for (index in start until length) if (this[index] !in '0'..'9') return false
+    return true
 }
 
 private fun JsonElement.requiredLong(label: String): Long =
@@ -218,13 +228,7 @@ private fun JsonElement.toJsonValue(): Any? = when (this) {
     JsonNull -> null
     is KotlinxJsonObject -> JsonObject(toMutableMap())
     is KotlinxJsonArray -> JsonArray(toMutableList())
-    is JsonPrimitive -> when {
-        isString -> content
-        booleanOrNull != null -> booleanOrNull
-        longOrNull != null -> longOrNull
-        doubleOrNull != null -> doubleOrNull
-        else -> content
-    }
+    is JsonPrimitive -> if (isString) content else booleanOrNull ?: longOrNull ?: doubleOrNull ?: content
 }
 
 private fun Any?.toJsonElement(): JsonElement = when (this) {
