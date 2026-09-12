@@ -1,5 +1,7 @@
 import XCTest
 import UIKit
+import WebKit
+import HarmonicKit
 
 final class HarmonicIosUITests: XCTestCase {
     private var app: XCUIApplication!
@@ -76,6 +78,147 @@ final class HarmonicIosUITests: XCTestCase {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+
+    func testProfileCommentsOpening() throws {
+        for mode in ["immediate", "after-draw", "after-draw", "immediate"] {
+            app.terminate()
+            app.launchEnvironment["HARMONIC_PROFILE_COMMENTS"] = mode
+            app.launch()
+            completeFirstRunIfNeeded()
+            openSettings()
+            let debug = app.buttons["Debug"]
+            for _ in 0..<4 where !debug.isHittable { app.swipeUp() }
+            XCTAssertTrue(debug.waitForExistence(timeout: 5))
+            debug.tap()
+            let sample = app.buttons["Link post"]
+            for _ in 0..<4 where !sample.isHittable { app.swipeUp() }
+            for _ in 0..<8 {
+                XCTAssertTrue(sample.waitForExistence(timeout: 5))
+                sample.tap()
+                XCTAssertTrue(app.buttons["Back"].firstMatch.waitForExistence(timeout: 15))
+                // Let the one-second in-app frame sampling finish before navigating away.
+                Thread.sleep(forTimeInterval: 1.2)
+                app.buttons["Back"].firstMatch.tap()
+                XCTAssertTrue(sample.waitForExistence(timeout: 10))
+            }
+        }
+    }
+
+    func testBrowserBackReturnsToStoriesOrCommentsPane() throws {
+        openFirstComments()
+        articleHeader.tap()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 15))
+        // The browser back button is in the bottom bar, to the left of refresh.
+        let refresh = app.buttons["Refresh website"]
+        let browserBack = app.buttons.matching(identifier: "Back").allElementsBoundByIndex.max { $0.frame.minY < $1.frame.minY }!
+        XCTAssertLessThan(browserBack.frame.midX, refresh.frame.midX)
+        browserBack.tap()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        } else {
+            XCTAssertFalse(articleHeader.waitForExistence(timeout: 2))
+        }
+        keepScreenshot("Browser back result")
+    }
+
+    func testIosWebSettingsHideUnsupportedBackPreference() throws {
+        openSettings()
+        app.buttons["Web and links"].tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Preload websites")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Go back to comments")).firstMatch.exists)
+        keepScreenshot("iOS web settings")
+    }
+
+    func testOfflineCachingDoesNotOfferWebsiteSnapshots() throws {
+        app.buttons["More options"].tap()
+        app.buttons["Cache stories"].tap()
+        XCTAssertTrue(app.staticTexts["Cache stories"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Download website content"].exists)
+        keepScreenshot("Comments-only offline caching")
+        app.buttons["Cancel"].tap()
+    }
+
+    private func openDebugSettings() {
+        openSettings()
+        let debug = app.buttons["Debug"]
+        for _ in 0..<4 where !debug.isHittable { app.swipeUp() }
+        XCTAssertTrue(debug.waitForExistence(timeout: 5))
+        debug.tap()
+        XCTAssertTrue(app.buttons["Link post"].waitForExistence(timeout: 5))
+    }
+
+    func testForegroundResumePreservesTapToUpdateAndNavigation() throws {
+        openDebugSettings()
+        let always = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Always show tap to refresh")).firstMatch
+        always.tap()
+        keepScreenshot("Tap-to-refresh debug preference enabled")
+        app.buttons["Navigate up"].tap()
+        app.buttons["Navigate up"].tap()
+        XCTAssertTrue(app.buttons["Tap to update"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Tap to update"].waitForExistence(timeout: 10))
+        app.buttons["Tap to update"].tap()
+        XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 15))
+        keepScreenshot("Resumed stories")
+    }
+
+    func testGithubPreviewLoadsInTheCommentsHeader() throws {
+        openDebugSettings()
+        app.buttons["Link previews"].tap()
+        let sample = app.descendants(matching: .any).matching(identifier: "Show HN: Ctxdiff").firstMatch
+        XCTAssertTrue(sample.waitForExistence(timeout: 15))
+        sample.tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 15))
+        // This header exists only after StoryLinkPreviewSession has populated repoInfo.
+        let repo = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "salmanzafar949 / ctxdiff")).firstMatch
+        for _ in 0..<5 where !repo.isHittable {
+            app.swipeUp()
+            if repo.waitForExistence(timeout: 3) { break }
+        }
+        XCTAssertTrue(repo.waitForExistence(timeout: 15))
+        keepScreenshot("GitHub preview in comments")
+        for _ in 0..<5 where !articleHeader.isHittable { app.swipeDown() }
+        articleHeader.tap()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
+    }
+
+    func testReadingPositionSurvivesClosingAndReopeningAStory() throws {
+        openDebugSettings()
+        let sample = app.buttons["Link post"]
+        sample.tap()
+        XCTAssertTrue(app.buttons["Back"].firstMatch.waitForExistence(timeout: 15))
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.app.staticTexts.allElementsBoundByIndex.contains { $0.label.count > 60 }
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 15), .completed)
+        app.swipeUp()
+        Thread.sleep(forTimeInterval: 1.5) // Let inertial scrolling settle before sampling the anchor.
+        keepScreenshot("Scrolled comments before restoration check")
+        let text = app.buttons.allElementsBoundByIndex.first {
+            $0.label.count > 20 && $0.isHittable && $0.frame.minY > 140 &&
+            $0.frame.minY < app.frame.height - 100
+        }
+        let anchor = try XCTUnwrap(text, "A comment should be visible after scrolling")
+        let label = anchor.label
+        let y = anchor.frame.minY
+        keepScreenshot("Reading position before closing")
+        app.buttons["Back"].firstMatch.tap()
+        XCTAssertTrue(sample.waitForExistence(timeout: 10))
+        sample.tap()
+        let restored = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", String(label.prefix(80)))).firstMatch
+        let position = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                restored.exists && restored.isHittable && abs(restored.frame.minY - y) < 30
+            }, object: nil
+        )
+        let restorationResult = XCTWaiter.wait(for: [position], timeout: 15)
+        keepScreenshot("Restored reading position")
+        XCTAssertEqual(restorationResult, .completed, "Expected y=\(y), actual y=\(restored.exists ? restored.frame.minY : -1)")
     }
 
     func testLaunchAndCompleteFirstRun() throws {
@@ -530,5 +673,129 @@ final class HarmonicIosSettingsTests: XCTestCase {
 
         debugLink()
         XCTAssertTrue(app.buttons["Remove bookmark"].waitForExistence(timeout: 10), "Cancelling must preserve bookmarks")
+    }
+}
+
+// WebKit needs a UIApplication host to launch its renderer. These checks run in the XCTest
+// runner application rather than the standalone Kotlin/Native command-line test executable.
+@MainActor
+final class HarmonicBrowserIntegrationTests: XCTestCase {
+    private func browserWithPage() async throws -> IosCommentsWebView {
+        let browser = IosCommentsWebView(
+            initialUrl: "https://example.com/first",
+            archiveDomains: { [] },
+            openExternal: { _ in }
+        )
+        browser.ensureLoaded()
+        let view = try XCTUnwrap(browser.view)
+        view.stopLoading()
+        view.loadHTMLString("<html><body><article>Original text</article></body></html>",
+                            baseURL: URL(string: "https://example.com/first"))
+        try await waitUntil { !browser.loading && browser.failure == nil }
+        return browser
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(15)
+        while !condition() && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertTrue(condition(), "Timed out waiting for WebKit")
+        if !condition() { throw NSError(domain: "BrowserTestTimeout", code: 1) }
+    }
+
+    func testRenderedPageTextUsesLiveDomAndPreservesQuotes() async throws {
+        let browser = try await browserWithPage()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        _ = try await view.evaluateJavaScript("document.body.innerText = 'Rendered article: \"hello\" ☃'; true")
+        let text: String? = try await withCheckedThrowingContinuation { continuation in
+            browser.readPageText(loadIfNeeded: false) { text, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: text) }
+            }
+        }
+        XCTAssertEqual(text, "Rendered article: \"hello\" ☃")
+        _ = try await view.evaluateJavaScript("document.body.innerText = 'a'.repeat(300000); true")
+        let bounded: String? = try await withCheckedThrowingContinuation { continuation in
+            browser.readPageText(loadIfNeeded: false) { text, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: text) }
+            }
+        }
+        XCTAssertEqual(bounded?.count, 256 * 1024)
+    }
+
+    func testBrowserHistoryIsTraversedWithinTheSameView() async throws {
+        let browser = IosCommentsWebView(
+            initialUrl: "https://example.com/?history=first",
+            archiveDomains: { [] }, openExternal: { _ in }
+        )
+        defer { browser.dispose() }
+        browser.ensureLoaded()
+        try await waitUntil { !browser.loading }
+        XCTAssertNil(browser.failure)
+        let view = try XCTUnwrap(browser.view)
+        let firstUrl = browser.currentUrl()
+        let initialBackCount = view.backForwardList.backList.count
+        // loadHTMLString replaces the current document; use two real navigations for history.
+        XCTAssertTrue(browser.load(url: "https://example.com/?history=second"))
+        try await waitUntil { browser.canGoBack() && !browser.loading }
+        XCTAssertNil(browser.failure)
+        XCTAssertTrue(browser.currentUrl()?.hasSuffix("history=second") == true)
+        browser.goBack()
+        try await waitUntil { browser.currentUrl() == firstUrl && !browser.loading }
+        XCTAssertTrue(view === browser.view)
+        XCTAssertEqual(view.backForwardList.backList.count, initialBackCount)
+    }
+
+    func testJavascriptDialogsReturnTheUsersResponse() async throws {
+        let browser = try await browserWithPage()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        let confirmation = Task { try await view.evaluateJavaScript("String(confirm('Continue?'))") as? String }
+        try await waitUntil { browser.dialog != nil }
+        XCTAssertEqual(browser.dialog?.message, "Continue?")
+        XCTAssertEqual(browser.dialog?.origin, "example.com")
+        browser.finishDialog(result: "")
+        let confirmed = try await confirmation.value
+        XCTAssertEqual(confirmed, "true")
+
+        let prompt = Task { try await view.evaluateJavaScript("String(prompt('Name?', 'original'))") as? String }
+        try await waitUntil { browser.dialog != nil }
+        XCTAssertEqual(browser.dialog?.defaultText, "original")
+        browser.finishDialog(result: "Harmonic")
+        let typed = try await prompt.value
+        XCTAssertEqual(typed, "Harmonic")
+    }
+
+    func testTargetBlankLoadsInTheExistingBrowser() async throws {
+        let browser = try await browserWithPage()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        _ = try await view.evaluateJavaScript("var a=document.createElement('a');a.href='https://example.invalid/popup';a.target='_blank';document.body.appendChild(a);a.click();true")
+        try await waitUntil { browser.currentUrl() == "https://example.invalid/popup" }
+        XCTAssertTrue(view === browser.view)
+    }
+
+    func testWebKitFailureRecoveryAndDelegateCleanup() async throws {
+        let browser = try await browserWithPage()
+        let view = try XCTUnwrap(browser.view)
+        defer { browser.dispose() }
+        view.navigationDelegate?.webView?(view, didFailProvisionalNavigation: nil,
+                                          withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotFindHost))
+        XCTAssertNotNil(browser.failure)
+        XCTAssertFalse(browser.loading)
+        XCTAssertEqual(browser.currentUrl(), "https://example.com/first")
+        browser.reload()
+        XCTAssertNil(browser.failure)
+        view.navigationDelegate?.webViewWebContentProcessDidTerminate?(view)
+        XCTAssertTrue(browser.loading)
+        view.navigationDelegate?.webViewWebContentProcessDidTerminate?(view)
+        XCTAssertEqual(browser.failure, "This website stopped responding")
+        browser.dispose()
+        XCTAssertNil(browser.view)
+        XCTAssertNil(view.navigationDelegate)
+        XCTAssertNil(view.uiDelegate)
     }
 }

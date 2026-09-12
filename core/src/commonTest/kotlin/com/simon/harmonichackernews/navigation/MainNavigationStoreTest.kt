@@ -8,6 +8,20 @@ import kotlin.test.assertTrue
 
 class MainNavigationStoreTest {
     @Test
+    fun browserExitCanReturnDirectlyToStoriesFromNestedDestinations() {
+        val store = MainNavigationStore()
+        store.openSettings("debug")
+        store.openStory(StoryRoute(42))
+        store.openLinkedStory(StoryRoute(43).toDestination())
+        store.returnToStories()
+        assertEquals(listOf(MainNavigationEntry.Stories), store.state.value.destinationStack)
+        assertNull(store.state.value.storyRequest)
+        assertEquals(MainDestination.STORIES, store.state.value.currentDestination)
+        store.returnToStories()
+        assertEquals(1, store.state.value.destinationStack.size)
+    }
+
+    @Test
     fun publishesEveryTransitionAsASnapshot() {
         val store = MainNavigationStore()
 

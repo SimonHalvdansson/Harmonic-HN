@@ -27,7 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.delay
+import kotlin.time.Clock
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.navigationevent.NavigationEventInfo
@@ -74,6 +79,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import platform.UIKit.UIViewController
 
+internal val LocalIosForeground = staticCompositionLocalOf { false }
+
 private data object IosApplicationBackInfo : NavigationEventInfo()
 
 private enum class IosBackVisualTarget { None, Story, Settings, Submissions, Editor }
@@ -95,14 +102,27 @@ class IosHarmonicApplication(
     private val scene = bootstrap.createScene()
     private var backHandler: () -> Boolean = { false }
     private var closed = false
+    private var foreground by mutableStateOf(false)
+
+    fun setForeground(active: Boolean) {
+        if (closed) return
+        foreground = active
+        if (active) refreshAppearance()
+    }
+
+    fun refreshAppearance() {
+        if (!closed) bootstrap.app.appearance.refreshSelection()
+    }
 
     fun makeViewController(): UIViewController = ComposeUIViewController {
-        IosApp(
-            bootstrap = bootstrap,
-            scene = scene,
-            appearance = appearance,
-            installBackHandler = { backHandler = it },
-        )
+        CompositionLocalProvider(LocalIosForeground provides foreground) {
+            IosApp(
+                bootstrap = bootstrap,
+                scene = scene,
+                appearance = appearance,
+                installBackHandler = { backHandler = it },
+            )
+        }
     }
 
     /** Returns true when the shared scene consumed the native back request. */
@@ -124,6 +144,15 @@ private fun IosApp(
     appearance: com.simon.harmonichackernews.platform.IosAppearanceController,
     installBackHandler: (() -> Boolean) -> Unit,
 ) {
+    val foreground = LocalIosForeground.current
+    LaunchedEffect(foreground, bootstrap.app) {
+        if (foreground) {
+            while (true) {
+                bootstrap.app.appearance.refreshSelection()
+                delay(60_000L - Clock.System.now().toEpochMilliseconds().mod(60_000))
+            }
+        }
+    }
     val navigation by scene.navigation.state.collectAsState()
     var storiesController by remember { mutableStateOf<StoriesComposeController?>(null) }
     var commentsController by remember { mutableStateOf<CommentsComposeController?>(null) }
@@ -366,7 +395,12 @@ private fun IosAppContent(
                     paneProportion = 0.4f,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = {
-                        IosStoriesContent(app, scene, onStoriesControllerChanged)
+                        IosStoriesContent(
+                            app, scene,
+                            visible = navigation.currentDestination == MainDestination.STORIES ||
+                                (isTwoPane && navigation.currentDestination == MainDestination.STORY),
+                            onControllerChanged = onStoriesControllerChanged,
+                        )
                     },
                     emptyDetail = { EmptyCommentsScreen() },
                     comments = { request ->
@@ -375,6 +409,7 @@ private fun IosAppContent(
                             scene = scene,
                             request = request,
                             isTablet = isTabletDevice,
+                            isTwoPane = isTwoPane,
                             showUpButton = false,
                             onControllerChanged = onCommentsControllerChanged,
                         )
@@ -395,7 +430,12 @@ private fun IosAppContent(
                         backVisualTarget == IosBackVisualTarget.Story
                     ) outgoingModifier else Modifier,
                     stories = {
-                        IosStoriesContent(app, scene, onStoriesControllerChanged)
+                        IosStoriesContent(
+                            app, scene,
+                            visible = navigation.currentDestination == MainDestination.STORIES ||
+                                (isTwoPane && navigation.currentDestination == MainDestination.STORY),
+                            onControllerChanged = onStoriesControllerChanged,
+                        )
                     },
                     comments = { request ->
                         IosCommentsContent(
@@ -403,6 +443,7 @@ private fun IosAppContent(
                             scene = scene,
                             request = request,
                             isTablet = isTabletDevice,
+                            isTwoPane = isTwoPane,
                             showUpButton = true,
                             onControllerChanged = onCommentsControllerChanged,
                         )
@@ -458,8 +499,10 @@ private fun Modifier.iosBackIncoming(progress: Float): Modifier =
 private fun IosStoriesContent(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
+    visible: Boolean,
     onControllerChanged: (StoriesComposeController?) -> Unit,
 ) {
+    val foreground = LocalIosForeground.current
     val scope = rememberCoroutineScope()
     val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
     val latestAppSettings by rememberUpdatedState(appSettings)
@@ -532,7 +575,6 @@ private fun IosStoriesContent(
     SideEffect { onControllerChanged(controller) }
     DisposableEffect(store) {
         store.start()
-        store.onStart()
         onDispose {
             onControllerChanged(null)
             store.onStop()
@@ -540,14 +582,22 @@ private fun IosStoriesContent(
             preloadCoordinator.dispose()
         }
     }
+    DisposableEffect(store, foreground, visible) {
+        if (foreground && visible) {
+            store.onStart()
+            store.onResume()
+        }
+        onDispose { store.onStop() }
+    }
     LaunchedEffect(
+        foreground, visible,
         preloadCoordinator,
         appSettings.comments.preloadCommentsMode,
         appSettings.comments.preloadCommentsMinimumBattery,
         appSettings.reading.useAlgoliaApi,
     ) {
         preloadCoordinator.setEnabled(
-            appSettings.comments.preloadCommentsFromStories,
+            foreground && visible && appSettings.comments.preloadCommentsFromStories,
         )
     }
     LaunchedEffect(state, controller) {
@@ -604,7 +654,11 @@ private fun IosStoriesContent(
         StoriesRoute(
             controller = controller,
             tintStore = app.storyResourceTints,
-            commentText = { AnnotatedString(it) },
+            commentText = { html ->
+                htmlAnnotatedString(html, colors.link) { link ->
+                    (link as? LinkAnnotation.Url)?.url?.let(scene.links::open)
+                }
+            },
             filterColors = filterColors,
             extraCompactSelectedText = false,
             compactSelectedText = false,

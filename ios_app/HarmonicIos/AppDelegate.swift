@@ -20,15 +20,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         let buildType = "release"
         let debugBuild = false
 #endif
+        let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
         let metadata = AppMetadata(
             name: "Harmonic",
             versionName: Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
             ) as? String ?? "1.0.0",
-            versionCode: 1,
-            buildNumber: Bundle.main.object(
-                forInfoDictionaryKey: "CFBundleVersion"
-            ) as? String ?? "1",
+            versionCode: Int32(clamping: Int(buildNumber) ?? 0),
+            buildNumber: buildNumber,
             buildType: buildType,
             debug: debugBuild,
             debugSettingsEnabled: debugBuild,
@@ -91,7 +90,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             content: harmonic.makeViewController()
         )
         services.appearance.attach(root)
-        let window = UIWindow(frame: UIScreen.main.bounds)
+        let window = HarmonicWindow(frame: UIScreen.main.bounds)
+        window.onSystemAppearanceChanged = { [weak harmonic] in harmonic?.refreshAppearance() }
         window.rootViewController = root
         self.window = window
         window.makeKeyAndVisible()
@@ -119,8 +119,33 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 #endif
     }
 
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        harmonic?.setForeground(active: true)
+    }
+
+    func applicationWillResignActive(_ application: UIApplication) {
+        harmonic?.setForeground(active: false)
+    }
+
+    func applicationSignificantTimeChange(_ application: UIApplication) {
+        harmonic?.refreshAppearance()
+    }
+
     func applicationWillTerminate(_ application: UIApplication) {
         harmonic?.close()
+    }
+}
+
+// Observe the window's inherited system style. The root controller deliberately overrides its
+// own style to implement Harmonic's explicit themes, so its traits aren't the system preference.
+final class HarmonicWindow: UIWindow {
+    var onSystemAppearanceChanged: (() -> Void)?
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
+            onSystemAppearanceChanged?()
+        }
     }
 }
 

@@ -389,7 +389,8 @@ fun BoxScope.StoryTapToUpdateButton(
                         controller.beginTapToUpdateExit()
                     }
                 },
-                modifier = Modifier.widthIn(min = 189.dp),
+                modifier = Modifier.widthIn(min = 189.dp)
+                    .semantics { contentDescription = "Tap to update" },
                 shape = shape,
                 containerColor = HarmonicTheme.colors.overlayButton,
                 contentColor = HarmonicTheme.colors.overlayButtonContent,

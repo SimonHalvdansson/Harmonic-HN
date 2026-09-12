@@ -85,6 +85,7 @@ fun CommentsHeader(
     previewPlatform: CommentsPreviewPlatform,
     includeStatusBarSpacer: Boolean = true,
     headerPreviewImageDisplayed: Boolean = false,
+    onBrowserBack: (() -> Unit)? = null,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -183,6 +184,7 @@ fun CommentsHeader(
                         1f
                     },
                     onAction = controller.listener::onSheetAction,
+                    onBrowserBack = onBrowserBack,
                 )
             }
 
@@ -351,6 +353,7 @@ private fun CommentsSheetControls(
     progress: Float,
     contentAlpha: Float,
     onAction: (CommentsSheetAction) -> Unit,
+    onBrowserBack: (() -> Unit)?,
 ) {
     val colors = HarmonicTheme.colors
     val collapsedProgress = progress.coerceIn(0f, 1f)
@@ -375,6 +378,9 @@ private fun CommentsSheetControls(
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onBrowserBack != null) {
+                SheetButtonSlot(Res.drawable.ic_arrow_back, "Back") { onBrowserBack() }
+            }
             SheetButtonSlot(Res.drawable.ic_refresh, "Refresh website") {
                 onAction(CommentsSheetAction.REFRESH)
             }

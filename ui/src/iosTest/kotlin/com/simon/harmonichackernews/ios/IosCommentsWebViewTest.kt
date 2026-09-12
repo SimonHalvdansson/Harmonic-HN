@@ -140,3 +140,32 @@ class IosCommentsWebViewTest {
         assertNull(browser.view)
     }
 }
+
+@OptIn(ExperimentalForeignApi::class)
+class IosBrowserIntegrationTest {
+    @Test
+    fun archiveRedirectsApplyWhenTheBrowserIsRequested() {
+        val original = "https://www.nytimes.com/2026/09/11/example.html"
+        val browser = IosCommentsWebView(original, archiveDomains = { listOf("nytimes.com") })
+        try {
+            assertNull(browser.view)
+            browser.ensureLoaded()
+            assertEquals(
+                com.simon.harmonichackernews.presentation.WebContentPolicy.resolveUrl(original, listOf("nytimes.com"))?.loadUrl,
+                browser.currentUrl(),
+            )
+            assertNotNull(browser.view?.navigationDelegate)
+            assertNotNull(browser.view?.UIDelegate)
+        } finally { browser.dispose() }
+    }
+
+    @Test
+    fun summaryExtractionDoesNotAllocateAnUnrequestedBrowser() {
+        val browser = IosCommentsWebView("https://example.com")
+        try {
+            kotlinx.coroutines.runBlocking { assertNull(browser.readPageText(loadIfNeeded = false)) }
+            assertNull(browser.view)
+        } finally { browser.dispose() }
+    }
+
+}

@@ -53,7 +53,11 @@ internal fun IosSettingsDetail(
         onBack = onBack,
         onNavigate = onNavigate,
         appIcon = appIcon,
-        webLinksCapabilities = WebLinksSettingsCapabilities(adBlocking = false, readerMode = false),
+        webLinksCapabilities = WebLinksSettingsCapabilities(
+            adBlocking = false,
+            readerMode = false,
+            closeWebViewOnBack = false,
+        ),
         aboutBody = "Harmonic is an open-source Hacker News client. " +
             "This iOS host uses the same Kotlin Multiplatform application logic and " +
             "Compose screens as the Android app, with iOS-native storage, links, and " +

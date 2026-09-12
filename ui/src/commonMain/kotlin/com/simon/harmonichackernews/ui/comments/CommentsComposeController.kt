@@ -799,6 +799,11 @@ class CommentsComposeController private constructor(
         initialScrollRestorationPending = false
     }
 
+    fun restoreReadingPosition(commentId: Int, topOffsetPx: Int) {
+        initialScrollRestorationPending = true
+        scrollToComment(commentId, topOffsetPx, false)
+    }
+
     interface Listener {
         fun onToggleComment(comment: PortableCommentItem, position: Int)
         fun onScrollPositionChanged(commentId: Int, offset: Int) {}

@@ -232,6 +232,10 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         closeRequest++
     }
 
+    fun returnToStories() {
+        backStack.removeAll { it.destination != MainDestination.STORIES }
+    }
+
     fun openSettings(sectionRoute: String?) {
         currentSettingsSectionRoute = sectionRoute
         MainSettingsRequest(++settingsRequestSerial, sectionRoute).also { request ->

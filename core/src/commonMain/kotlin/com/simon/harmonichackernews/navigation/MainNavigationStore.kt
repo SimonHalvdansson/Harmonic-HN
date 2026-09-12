@@ -79,6 +79,7 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     fun openStory(route: StoryRoute) = mutate { openStory(route) }
     fun openLinkedStory(destination: StoryDestination) = mutate { openLinkedStory(destination) }
     fun requestCloseStory() = mutate { requestCloseStory() }
+    fun returnToStories() = mutate { returnToStories() }
     fun openSettings(sectionRoute: String?) = mutate { openSettings(sectionRoute) }
     fun closeSettings() = mutate { closeSettings() }
     fun updateSettingsSection(route: String) = mutate { updateSettingsSection(route) }

@@ -19,6 +19,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainStoryRequest
@@ -47,7 +50,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
-import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
@@ -63,13 +65,42 @@ import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import com.simon.harmonichackernews.network.StoryLinkPreviewSession
+import com.simon.harmonichackernews.network.WebPageExtractor
+import com.simon.harmonichackernews.network.NitterPreview
+import com.simon.harmonichackernews.data.NitterInfo
 
 private class IosCommentsHost(
     val binding: CommentsFeatureBinding,
-    val webView: IosCommentsWebView?,
+    private val scope: CoroutineScope,
+    private val createBrowser: (String) -> IosCommentsWebView,
 ) {
     val store get() = binding.store
     val controller get() = binding.controller
+    var webView: IosCommentsWebView? by mutableStateOf(null)
+        private set
+    var previews: StoryLinkPreviewSession? = null
+
+    // ID-only routes learn their article URL when the story arrives. The holder is still cheap;
+    // creating it here does not allocate WKWebView or start loading the website.
+    fun prepareBrowser(): IosCommentsWebView? {
+        val url = WebContentPolicy.validatedHttpUrl(binding.story?.url) ?: return webView
+        return webView ?: createBrowser(url).also { webView = it }
+    }
+    private var summaryJob: Job? = null
+
+    fun summarize(loadIfNeeded: Boolean) {
+        summaryJob?.cancel()
+        summaryJob = scope.launch {
+            val text = if (controller.integratedWebView) prepareBrowser()?.readPageText(loadIfNeeded) else null
+            store.startSummary(text)
+        }
+    }
 }
 
 @Composable
@@ -78,30 +109,92 @@ internal fun IosCommentsContent(
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
     isTablet: Boolean,
+    isTwoPane: Boolean,
     showUpButton: Boolean,
     onControllerChanged: (CommentsComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
+    val openingProfile = remember(app, request.serial) {
+        IosCommentsOpeningProfile.create(app.metadata.debug, request.storyId)
+    }
     val host = remember(app, scene, request.serial, scope) {
         val binding = CommentsFeatureBinding.create(
             app = app,
             scene = scene,
             request = request,
             scope = scope,
+            canLoadArticleTextOnDemand = true,
+            performanceTrace = openingProfile?.trace
+                ?: com.simon.harmonichackernews.presentation.CommentsPerformanceTrace(),
         )
-        val initialState = checkNotNull(binding.store.state.value.story)
         IosCommentsHost(
             binding = binding,
-            webView = WebContentPolicy.validatedHttpUrl(initialState.url)?.let(::IosCommentsWebView),
+            createBrowser = { url ->
+                IosCommentsWebView(
+                    url,
+                    archiveDomains = { app.userSettings.reading.archiveRedirectDomains },
+                    openExternal = { scene.links.open(it, preferInApp = false) },
+                )
+            },
+            scope = scope,
         ).also { createdHost ->
-            binding.setBeforeWebsiteCollapse { createdHost.webView?.ensureLoaded() }
+            createdHost.prepareBrowser()
+            binding.setBeforeWebsiteCollapse { createdHost.prepareBrowser()?.ensureLoaded() }
+            openingProfile?.event("bindingReady")
         }
     }
     val featureState by host.store.state.collectAsState()
-    val firstDraw = remember(host) { CompletableDeferred<Unit>() }
+    LaunchedEffect(openingProfile) { openingProfile?.recordFrames() }
     val reading = featureState.settings?.reading
+    val foreground = LocalIosForeground.current
+    val navigation by scene.navigation.state.collectAsState()
+    LaunchedEffect(host, foreground, navigation.storyRequest?.serial) {
+        if (foreground && navigation.storyRequest?.serial == request.serial) host.store.onResume()
+    }
+    LaunchedEffect(host, featureState.story?.url) { host.prepareBrowser() }
+    LaunchedEffect(host, reading, host.webView) {
+        if (reading == null) return@LaunchedEffect
+        coroutineScope {
+            val session = app.createStoryLinkPreviewSession(
+                scope = this,
+                story = host.binding.story,
+                readingPreferences = reading,
+                onPreviewChanged = host.store::refreshStoryPresentation,
+            )
+            val extractor = object : WebPageExtractor<NitterInfo> {
+                override val currentUrl get() = host.webView?.currentUrl()
+                override suspend fun extract(): NitterInfo? = host.webView
+                    ?.evaluate(NitterPreview.extractionScript)
+                    ?.let { runCatching { NitterPreview.parseJavascriptResult(it) }.getOrNull() }
+            }
+            host.previews = session
+            host.webView?.prepareLoad = { session.prepareLoad(it, extractor) }
+            host.webView?.onPageFinished = { session.onPageFinished(it, extractor) }
+            host.webView?.onLoadFailed = session::offlineFallback
+            try {
+                firstDraw.await()
+                session.loadNetworkPreviews()
+                // DOM previews use the same browser only if it has already been requested or
+                // preloaded by the user's policy; a preview must not force hidden WKWebView startup.
+                host.webView?.let { browser ->
+                    if (browser.view != null) session.onPageFinished(browser.currentUrl(), extractor)
+                }
+                awaitCancellation()
+            } finally {
+                session.dispose()
+                if (host.previews === session) {
+                    host.previews = null
+                    host.webView?.prepareLoad = { it }
+                    host.webView?.onPageFinished = {}
+                    host.webView?.onLoadFailed = {}
+                }
+            }
+        }
+    }
     LaunchedEffect(
         host,
+        host.webView,
         reading?.integratedWebView,
         reading?.preloadWebViewMode,
         reading?.preloadWebViewMinimumBattery,
@@ -127,9 +220,12 @@ internal fun IosCommentsContent(
             host.binding.close()
         }
     }
+    val appearance by app.appearance.selections.collectAsState(app.appearance.selection())
+    LaunchedEffect(appearance, reading?.matchWebViewTheme, host, host.webView) {
+        host.webView?.updateAppearance(appearance.dark, reading?.matchWebViewTheme == true)
+    }
     LaunchedEffect(featureState, host.controller) {
-        CommentsScreenStateFactory.create(
-            featureState,
+        host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
                 readerModeAvailable = false,
@@ -138,17 +234,17 @@ internal fun IosCommentsContent(
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = 0,
             ),
-        )?.let { state ->
-            host.controller.updateContent(state)
-            host.webView?.updateAppearance(
-                dark = app.appearance.selection().dark,
-                matchTheme = featureState.settings?.reading?.matchWebViewTheme == true,
-            )
-        }
+        )
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
-            host.binding.handleEffect(effect, scene) { platformEffect ->
+            if (effect is com.simon.harmonichackernews.presentation.CommentsRuntimeEffect.ThreadReady) {
+                openingProfile?.event("threadReady")
+            }
+            host.binding.handleEffect(
+                effect, scene,
+                onSummaryPageTextRetry = { host.summarize(loadIfNeeded = true) },
+            ) { platformEffect ->
                 handleIosCommentsPlatformEffect(
                     platformEffect,
                     app,
@@ -162,6 +258,12 @@ internal fun IosCommentsContent(
         host.binding.updatePresentationCapabilities(isTablet)
     }
     LaunchedEffect(host) {
+        // LaunchedEffect often already runs after draw on iOS, but make that ordering explicit.
+        // Waiting for another frame delayed cached comments in simulator profiles; start as soon
+        // as this draw completes and overlap cache/network work with the opening transition.
+        if (openingProfile?.waitForFirstDraw != false) firstDraw.await()
+        if (openingProfile?.waitForAnotherFrame == true) androidx.compose.runtime.withFrameNanos { }
+        openingProfile?.event("loadInitial")
         host.binding.loadInitial()
     }
 
@@ -174,7 +276,12 @@ internal fun IosCommentsContent(
                 controller = host.controller,
                 reserveUpButtonInset = showFloatingUpButton,
                 headerContent = { settings ->
-                    IosCommentsHeader(app, scene, host.controller, settings)
+                    IosCommentsHeader(app, scene, host.controller, settings) {
+                        val browser = host.webView
+                        if (browser?.canGoBack() == true) browser.goBack()
+                        else if (isTwoPane) host.controller.requestExpandSheet()
+                        else scene.navigation.returnToStories()
+                    }
                 },
                 searchDialog = { settings ->
                     CommentsSearchDialog(
@@ -230,7 +337,7 @@ internal fun IosCommentsContent(
                 .background(background)
                 .drawWithContent {
                     drawContent()
-                    firstDraw.complete(Unit)
+                    if (firstDraw.complete(Unit)) openingProfile?.event("firstDraw")
                 },
         ) {
             val webView = host.webView
@@ -291,13 +398,13 @@ private fun handleIosCommentsPlatformEffect(
             app.platform.clipboard.copy(effect.label, effect.text)
             scene.userMessages.show("Text copied to clipboard")
         }
-        CommentsPlatformEffect.ReloadLinkPreviews -> Unit
-        CommentsPlatformEffect.Summarize -> host.store.startSummary(null)
+        CommentsPlatformEffect.ReloadLinkPreviews -> host.previews?.loadNetworkPreviews()
+        CommentsPlatformEffect.Summarize -> host.summarize(loadIfNeeded = false)
         is CommentsPlatformEffect.OpenStory -> scene.navigation.openStory(effect.destination)
         is CommentsPlatformEffect.OpenExternalLink -> {
             if (
                 effect.preferInApp && host.controller.integratedWebView &&
-                effect.url == host.controller.story.url && host.webView != null
+                effect.url == host.controller.story.url && host.prepareBrowser() != null
             ) {
                 host.controller.requestWebsite()
             } else {
@@ -325,6 +432,7 @@ private fun IosCommentsHeader(
     scene: HarmonicSceneComposition,
     controller: CommentsComposeController,
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
+    onBrowserBack: () -> Unit,
 ) {
     val colors = HarmonicTheme.colors
     val tintBase = colors.storyCardBackground.toArgb()
@@ -373,6 +481,7 @@ private fun IosCommentsHeader(
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
         includeStatusBarSpacer = true,
+        onBrowserBack = onBrowserBack,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             presentation.tint.previewImageAvailable,
         headerPreviewImage = { _, onTintLoaded ->

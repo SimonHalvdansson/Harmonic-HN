@@ -45,7 +45,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
-import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
@@ -104,8 +103,7 @@ internal fun DesktopCommentsContent(
         }
     }
     LaunchedEffect(featureState, host.controller, contentInsetRightPx) {
-        CommentsScreenStateFactory.create(
-            featureState,
+        host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
                 readerModeAvailable = false,
@@ -115,7 +113,7 @@ internal fun DesktopCommentsContent(
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = contentInsetRightPx,
             ),
-        )?.let(host.controller::updateContent)
+        )
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->

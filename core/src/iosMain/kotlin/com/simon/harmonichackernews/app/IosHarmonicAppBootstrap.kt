@@ -75,7 +75,8 @@ class IosHarmonicAppBootstrap(
             systemDark = runtime.systemDark,
             showCommentsUpButtonByDefault = true,
             storyCacheRepository = persistentStorage.storyCacheRepository,
-            articleSnapshotStore = persistentStorage.articleSnapshotStore,
+            // WKWebView cannot consume the stored snapshot format yet.
+            articleSnapshotStore = null,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels,
         ),

@@ -42,6 +42,7 @@ data class WebLinksSettingsUiState(
 data class WebLinksSettingsCapabilities(
     val adBlocking: Boolean = true,
     val readerMode: Boolean = true,
+    val closeWebViewOnBack: Boolean = true,
 )
 
 enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {
@@ -85,16 +86,18 @@ fun WebLinksSettingsScreen(
                     setting = WebLinksBooleanSetting.IntegratedWebView,
                     onBooleanChanged = onBooleanChanged,
                 )
-                SettingsDivider()
-                BooleanSettingRow(
-                    title = "Go back to comments",
-                    summary = "Back navigation closes integrated WebView",
-                    icon = Res.drawable.ic_arrow_back,
-                    checked = state.closeWebViewOnBack,
-                    setting = WebLinksBooleanSetting.CloseWebViewOnBack,
-                    onBooleanChanged = onBooleanChanged,
-                    enabled = state.integratedWebView,
-                )
+                if (capabilities.closeWebViewOnBack) {
+                    SettingsDivider()
+                    BooleanSettingRow(
+                        title = "Go back to comments",
+                        summary = "Back navigation closes integrated WebView",
+                        icon = Res.drawable.ic_arrow_back,
+                        checked = state.closeWebViewOnBack,
+                        setting = WebLinksBooleanSetting.CloseWebViewOnBack,
+                        onBooleanChanged = onBooleanChanged,
+                        enabled = state.integratedWebView,
+                    )
+                }
                 SettingsDivider()
                 SettingRow(
                     title = "Preload websites",

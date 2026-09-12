@@ -539,7 +539,7 @@ private fun OriginalCommentText(
         modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
         color = HarmonicTheme.colors.storyNormal,
         fontFamily = ProductSansFontFamily,
-        fontSize = 16.sp,
+        fontSize = 15.sp,
         lineHeight = 20.sp,
         style = includeFontPaddingStyle,
     )

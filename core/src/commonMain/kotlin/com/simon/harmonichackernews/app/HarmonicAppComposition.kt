@@ -116,6 +116,7 @@ class HarmonicAppComposition(
         linkSummaries = network.linkSummaryRepository,
         store = host.previewCacheStore,
     )
+    val supportsArticleSnapshots: Boolean = host.articleSnapshotStore != null
     val storyCache = StoryCacheService(
         repository = host.storyCacheRepository,
         articleSnapshots = ArticleSnapshotService(network.httpClient, host.articleSnapshotStore),
@@ -200,7 +201,12 @@ class HarmonicAppComposition(
             algoliaRepository = network.algoliaRepository,
             sink = storyCache,
         )
-        return StoryCacheRuntime(scope, useCase::execute)
+        return StoryCacheRuntime(scope, { request, onProgress ->
+            useCase.execute(
+                request.copy(cacheArticleSnapshots = request.cacheArticleSnapshots && supportsArticleSnapshots),
+                onProgress,
+            )
+        })
     }
 
     val localSummaryCanAttempt: Boolean
