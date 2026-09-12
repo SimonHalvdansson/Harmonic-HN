@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.data
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
+import com.fleeksoft.ksoup.select.Selector
 
 class Comment {
     var by: String? = null
@@ -60,7 +61,7 @@ class Comment {
         if (inputHtml.isNullOrEmpty() || !inputHtml.contains("<a")) return inputHtml
 
         val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
-        document.select("a[href]").forEach { link ->
+        document.select(AnchorTextSelector.anchorsWithHref).forEach { link ->
             val decodedLinkText = decodeAnchorPart(link.text())
             if (decodedLinkText.endsWith("...")) {
                 val decodedHref = decodeAnchorPart(link.attr("href"))
@@ -87,4 +88,9 @@ class Comment {
         if (value.isNotEmpty() && previousWasSpace) return Ksoup.parse(value).text()
         return value
     }
+}
+
+// Initialize only when a comment contains anchors; the evaluator is reusable across documents.
+private object AnchorTextSelector {
+    val anchorsWithHref = Selector.evaluatorOf("a[href]")
 }

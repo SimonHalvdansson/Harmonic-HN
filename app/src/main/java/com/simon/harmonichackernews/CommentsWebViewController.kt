@@ -81,7 +81,12 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -167,6 +172,7 @@ internal class CommentsWebViewController(
     private val adBlocklist = webContentRuntime.adBlocklist
     private var pendingSummaryCallback: PageTextCallback? = null
     private var lastPageFinishedGeneration = -1
+    private var cachedArticleJob: Job? = null
     private var customView: View? = null
     private var customViewCallback: CustomViewCallback? = null
     val isReaderModeAvailable: Boolean get() = webContentSession.readerState.available
@@ -182,6 +188,7 @@ internal class CommentsWebViewController(
         host: CommentsWebViewHost,
         progressIndicator: LinearProgressIndicator
     ) {
+        cancelCachedArticleLoad()
         this.progressIndicator?.animate()?.cancel()
         this.progressIndicator = progressIndicator
         progressIndicator.visibility = View.GONE
@@ -335,6 +342,7 @@ internal class CommentsWebViewController(
 
     fun goBackFromVisibleWebView() {
         val currentWebView = webView?.takeIf { it.canGoBack() } ?: return
+        cancelCachedArticleLoad()
         val currentDownloadButton = downloadButton
         if (currentDownloadButton?.isVisible == true && currentWebView.isGone) {
             currentWebView.isGone = false
@@ -373,6 +381,7 @@ internal class CommentsWebViewController(
     fun disableAdBlockAndReload() {
         isBlockingAds = false
         val currentWebView = webView ?: return
+        cancelCachedArticleLoad()
         currentWebView.reload()
 
         callbacks.showMessage(WebContentCopy.AD_BLOCK_DISABLED)
@@ -683,6 +692,7 @@ internal class CommentsWebViewController(
         if (view !== webView || hostGateway.context == null || !hostGateway.isAttached) {
             return
         }
+        cancelCachedArticleLoad()
 
         if (!isPdfViewerUrl(url)) {
             pdfWebViewSession.revokeBridge(view)
@@ -782,7 +792,9 @@ internal class CommentsWebViewController(
     }
 
     private fun finishWebViewLoadUi(view: WebView, generation: Int, completeProgress: Boolean) {
-        if (view !== webView || !webContentController.onLoadFinished(generation)) {
+        if (view !== webView || cachedArticleJob?.isActive == true ||
+            !webContentController.onLoadFinished(generation)
+        ) {
             return
         }
         webContentDriver.publish(
@@ -861,7 +873,8 @@ internal class CommentsWebViewController(
         if (!isCurrentWebViewCallback(currentWebView) ||
             currentWebView == null ||
             showingErrorPage ||
-            showingCachedArticlePage
+            showingCachedArticlePage ||
+            cachedArticleJob?.isActive == true
         ) {
             return
         }
@@ -871,16 +884,17 @@ internal class CommentsWebViewController(
             failingUrl = failingUrl,
             currentUrl = currentWebView.url?.takeUnless(::isErrorPageUrl),
         )
-        if (failure.tryCachedArticle
-            && loadCachedArticleSnapshot(currentWebView, failure.failedUrl)
-        ) {
-            return
+        fun showErrorPage() {
+            currentWebView.stopLoading()
+            finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
+            clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
+            webContentSession.showError(failure)
+            loadUrl(WebContentPagePolicy.errorPageUrl(errorPageType, WEB_CONTENT_URLS))
         }
-        currentWebView.stopLoading()
-        finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
-        clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
-        webContentSession.showError(failure)
-        loadUrl(WebContentPagePolicy.errorPageUrl(errorPageType, WEB_CONTENT_URLS))
+        if (failure.tryCachedArticle &&
+            loadCachedArticleSnapshot(currentWebView, failure.failedUrl, ::showErrorPage)
+        ) return
+        showErrorPage()
     }
 
     fun hideCustomView(notifyCallback: Boolean) {
@@ -1193,29 +1207,61 @@ internal class CommentsWebViewController(
         }
     }
 
-    private fun loadCachedArticleSnapshot(view: WebView?, failingUrl: String?): Boolean {
-        val context = hostGateway.context
+    /** Returns whether a fallback read was started; completion is tied to this page generation. */
+    private fun loadCachedArticleSnapshot(
+        view: WebView,
+        failingUrl: String?,
+        onMissing: () -> Unit,
+    ): Boolean {
         val currentStory = story
-        if (view == null || context == null || !hostGateway.isAttached ||
+        if (!isCurrentWebViewCallback(view) ||
             currentStory == null || !currentStory.isLink || currentStory.id <= 0
         ) return false
 
-        val html = storyCache.loadArticle(currentStory.id)
-            ?.takeUnless(String::isEmpty)
-            ?: return false
+        val storyId = currentStory.id
+        val storyUrl = currentStory.url
+        val generation = webContentLoad.state.generation
+        val job = coroutineScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
+            try {
+                view.stopLoading()
+                val snapshot = withContext(Dispatchers.IO) {
+                    val html = storyCache.loadArticle(storyId)?.takeUnless(String::isEmpty)
+                        ?: return@withContext null
+                    val baseUrl = WebContentPagePolicy.cachedArticleBaseUrl(
+                        storedSourceUrl = storyCache.articleUrl(storyId),
+                        failingUrl = failingUrl,
+                        storyUrl = storyUrl,
+                    ) ?: return@withContext null
+                    baseUrl to html
+                }
+                if (!isCurrentWebViewCallback(view) || generation != webContentLoad.state.generation ||
+                    showingErrorPage || showingCachedArticlePage
+                ) return@launch
 
-        val baseUrl = WebContentPagePolicy.cachedArticleBaseUrl(
-            storedSourceUrl = storyCache.articleUrl(currentStory.id),
-            failingUrl = failingUrl,
-            storyUrl = currentStory.url,
-        ) ?: return false
-
-        webContentSession.showCachedContent(failingUrl, baseUrl)
-        view.stopLoading()
-        clearWebViewHistoryOnNextFinish = true
-        callbacks.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
-        view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
+                // Rendering starts another page load; release ownership before its callbacks can
+                // cancel this job. Navigation/destruction during the read cancels it instead.
+                cachedArticleJob = null
+                if (snapshot == null) {
+                    onMissing()
+                } else {
+                    val (baseUrl, html) = snapshot
+                    webContentSession.showCachedContent(failingUrl, baseUrl)
+                    clearWebViewHistoryOnNextFinish = true
+                    callbacks.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
+                    view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
+                }
+            } finally {
+                if (cachedArticleJob === currentCoroutineContext()[Job]) cachedArticleJob = null
+            }
+        }
+        cachedArticleJob = job
+        job.start()
         return true
+    }
+
+    private fun cancelCachedArticleLoad() {
+        cachedArticleJob?.cancel()
+        cachedArticleJob = null
     }
 
     fun destroy() {
@@ -1223,6 +1269,7 @@ internal class CommentsWebViewController(
     }
 
     private fun destroy(rendererProcessGone: Boolean) {
+        cancelCachedArticleLoad()
         cancelProgressAnimator()
         pdfWebViewSession.release(webView, removeJavascriptInterface = !rendererProcessGone)
         webContentSession.reset()
@@ -1303,6 +1350,7 @@ internal class CommentsWebViewController(
     }
 
     fun clearViewReferences() {
+        cancelCachedArticleLoad()
         pdfWebViewSession.release(webView, removeJavascriptInterface = true)
         webView = null
         webViewContainer = null
@@ -1325,11 +1373,13 @@ internal class CommentsWebViewController(
         override fun load(url: String) = loadUrl(url)
 
         override fun reload() {
+            cancelCachedArticleLoad()
             webView?.reload()
         }
 
         override fun goBack(): Boolean {
             val view = webView?.takeIf { it.canGoBack() } ?: return false
+            cancelCachedArticleLoad()
             view.goBack()
             return true
         }
@@ -1409,7 +1459,7 @@ internal class CommentsWebViewController(
         override fun onPageCommitVisible(view: WebView?, url: String?) {
             super.onPageCommitVisible(view, url)
             val currentView = view
-            if (!isCurrentWebViewCallback(currentView) || currentView == null) {
+            if (!isCurrentWebViewCallback(currentView) || currentView == null || cachedArticleJob?.isActive == true) {
                 return
             }
             webContentController.onPageCommitVisible()
@@ -1419,7 +1469,9 @@ internal class CommentsWebViewController(
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
             val currentView = view
-            if (!isCurrentWebViewCallback(currentView) || currentView == null) {
+            // stopLoading can finish the failed native page while the cache read is suspended.
+            // Only the eventual cached/error page may publish readiness or start text extraction.
+            if (!isCurrentWebViewCallback(currentView) || currentView == null || cachedArticleJob?.isActive == true) {
                 return
             }
             val finishedGeneration = webContentLoad.state.generation

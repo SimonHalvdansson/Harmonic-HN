@@ -106,17 +106,26 @@ class AlgoliaCommentsParser(
         response: String,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
+        cachedThread: PreparedCommentThread? = null,
     ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
-        prepare(response, topLevelCommentIds).restore(topLevelCommentIds, filteredUsers)
+        prepare(response, topLevelCommentIds, cachedThread).restore(topLevelCommentIds, filteredUsers)
     }
 
     /** Prepare neutral content once; user filters are applied only when restoring presentation. */
     suspend fun prepare(
         response: String,
         topLevelCommentIds: List<Int> = emptyList(),
+        cachedThread: PreparedCommentThread? = null,
     ): PreparedCommentThread = withContext(parsingDispatcher) {
+        // Hash on the parsing worker before decoding JSON or preparing HTML. Reuse only neutral
+        // content: restore still applies today's ranking/filters and creates fresh mutable models.
+        val sourceDigest = StableHash.sha256Hex(response)
+        if (cachedThread != null && cachedThread.sourceDigest == sourceDigest && cachedThread.isCompatible()) {
+            return@withContext if (cachedThread.rankedIds == topLevelCommentIds) cachedThread
+            else cachedThread.copy(rankedIds = topLevelCommentIds.toList())
+        }
         // Keep canonical Algolia root order, allowing later live rankings to reorder whole subtrees.
-        PreparedCommentThread.fromParsed(response, parse(response), topLevelCommentIds)
+        PreparedCommentThread.fromParsed(sourceDigest, parse(response), topLevelCommentIds)
     }
 
     // Decode normal string fields directly. Unusual scalar types retain the legacy coercions

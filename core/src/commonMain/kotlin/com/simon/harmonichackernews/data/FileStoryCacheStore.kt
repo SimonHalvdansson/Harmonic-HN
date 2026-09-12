@@ -71,6 +71,12 @@ class FileStoryCacheStore(
         true
     }.getOrDefault(false)
 
+    override fun info(namespace: String, key: String): CacheFileInfo? = runCatching {
+        fileSystem.metadataOrNull(resolve(namespace, key))
+            ?.takeIf { it.isRegularFile }
+            ?.let { CacheFileInfo(key, it.size) }
+    }.getOrNull()
+
     override fun list(namespace: String): List<CacheFileInfo> = runCatching {
         val directory = directory(namespace)
         if (fileSystem.metadataOrNull(directory)?.isDirectory != true) {

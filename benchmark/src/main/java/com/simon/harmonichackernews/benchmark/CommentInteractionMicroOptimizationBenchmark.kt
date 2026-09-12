@@ -1,81 +1,217 @@
-package com.simon.harmonichackernews.presentation
+@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
 
+package com.simon.harmonichackernews.benchmark
+
+import androidx.benchmark.junit4.BenchmarkRule
+import androidx.benchmark.junit4.measureRepeated
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.CommentListDiff
 import com.simon.harmonichackernews.CommentThreadFilter
 import com.simon.harmonichackernews.data.Comment
-import com.simon.harmonichackernews.data.CommentPresentationSnapshot
-import com.simon.harmonichackernews.data.CommentSnapshot
-import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.presentation.CommentThreadStore
+import com.simon.harmonichackernews.presentation.PortableCommentItem
+import com.simon.harmonichackernews.presentation.PortableCommentThreadState
+import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.utils.CommentSorter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
 
-data class PortableCommentItem(
-    val comment: CommentSnapshot,
-    val presentation: CommentPresentationSnapshot,
-) {
-    val id: Int get() = comment.id
-    val by: String? get() = comment.author
-    val parent: Int get() = comment.parentId
-    val text: String? get() = comment.text
-    val time: Int get() = comment.createdAtEpochSeconds
-    val timeFormatted: String get() = ItemTimeFormatter.formatNow(time)
-    val kidsIds: List<Int> get() = comment.childIds
-    val expandedAnchorText: String? get() = comment.expandedAnchorText
-    val expanded: Boolean get() = presentation.expanded
-    val depth: Int get() = presentation.depth
-    val children: Int get() = presentation.childCount
-    val totalReplies: Int get() = presentation.totalReplies
-    val sortOrder: Int get() = presentation.sortOrder
+/** Paired full-store operations; the before store below freezes the original production code. */
+@RunWith(AndroidJUnit4::class)
+class CommentInteractionMicroOptimizationBenchmark {
+    @get:Rule val benchmarkRule = BenchmarkRule()
+    @Volatile private var result: Any? = null
+
+    @Test fun toggleComment10Before() = toggle(10, before = true)
+    @Test fun toggleComment10After() = toggle(10, before = false)
+    @Test fun toggleComment500Before() = toggle(500, before = true)
+    @Test fun toggleComment500After() = toggle(500, before = false)
+    @Test fun toggleFilteredComment500Before() = toggle(500, before = true, filtered = true)
+    @Test fun toggleFilteredComment500After() = toggle(500, before = false, filtered = true)
+    @Test fun hideShowDelayed500Before() = hideShow(before = true)
+    @Test fun hideShowDelayed500After() = hideShow(before = false)
+    @Test fun openComments500Before() = open(before = true)
+    @Test fun openComments500After() = open(before = false)
+    @Test fun preparedOpen500Before() = preparedOpen(before = true)
+    @Test fun preparedOpen500After() = preparedOpen(before = false)
+    @Test fun firstToggleAfterPreparedOpen500Before() = firstToggleAfterPreparedOpen(before = true)
+    @Test fun firstToggleAfterPreparedOpen500After() = firstToggleAfterPreparedOpen(before = false)
+
+    private fun toggle(count: Int, before: Boolean, filtered: Boolean = false) {
+        val original = beforeStore(count)
+        val optimized = afterStore(count)
+        original.setHideDelayedComments(filtered)
+        optimized.setHideDelayedComments(filtered)
+        assertEquals(original.state.value, optimized.state.value)
+        repeat(4) {
+            assertEquals(original.toggleExpanded(FIRST_ID), optimized.toggleExpanded(FIRST_ID))
+            assertEquals(original.state.value, optimized.state.value)
+        }
+        val operation: () -> Any = if (before) {
+            { original.toggleExpanded(FIRST_ID); original.state.value }
+        } else {
+            { optimized.toggleExpanded(FIRST_ID); optimized.state.value }
+        }
+        benchmarkRule.measureRepeated { result = operation() }
+    }
+
+    private fun hideShow(before: Boolean) {
+        val original = beforeStore(500)
+        val optimized = afterStore(500)
+        for (hide in listOf(true, false)) {
+            original.setHideDelayedComments(hide)
+            optimized.setHideDelayedComments(hide)
+            assertEquals(original.state.value, optimized.state.value)
+        }
+        var hide = false
+        val operation: () -> Any = if (before) {
+            { hide = !hide; original.setHideDelayedComments(hide); original.state.value }
+        } else {
+            { hide = !hide; optimized.setHideDelayedComments(hide); optimized.state.value }
+        }
+        benchmarkRule.measureRepeated { result = operation() }
+    }
+
+    private fun open(before: Boolean) {
+        assertEquals(beforeStore(500).state.value, afterStore(500).state.value)
+        val comments = comments(500)
+        val story = story()
+        val operation: () -> Any = if (before) {
+            {
+                BeforeCommentThreadStore().also {
+                    it.reset(story)
+                    it.appendLoadedComments(story, comments, CommentSorter.DEFAULT, false)
+                }.state.value
+            }
+        } else {
+            {
+                CommentThreadStore().also {
+                    it.reset(story)
+                    it.appendLoadedComments(story, comments, CommentSorter.DEFAULT, false)
+                }.state.value
+            }
+        }
+        benchmarkRule.measureRepeated { result = operation() }
+    }
+
+    private fun preparedOpen(before: Boolean) {
+        val fixture = comments(500)
+        val sourceStory = story()
+        assertEquals(
+            beforePreparedStore(fixture, sourceStory).state.value,
+            afterPreparedStore(fixture, sourceStory).state.value,
+        )
+        val operation: () -> Any = if (before) {
+            { beforePreparedStore(fixture, sourceStory).state.value }
+        } else {
+            { afterPreparedStore(fixture, sourceStory).state.value }
+        }
+        benchmarkRule.measureRepeated { result = operation() }
+    }
+
+    private fun firstToggleAfterPreparedOpen(before: Boolean) {
+        val sourceStory = story()
+        val original = beforePreparedStore(comments(500), sourceStory)
+        val optimized = afterPreparedStore(comments(500), sourceStory)
+        assertEquals(original.state.value, optimized.state.value)
+        assertEquals(original.toggleExpanded(FIRST_ID), optimized.toggleExpanded(FIRST_ID))
+        assertEquals(original.state.value, optimized.state.value)
+        // Each iteration starts with a newly committed prepared thread. This exercises the first
+        // user interaction, including any visibility work not retained across the preparation hop.
+        if (before) {
+            benchmarkRule.measureRepeated {
+                val store = runWithMeasurementDisabled {
+                    beforePreparedStore(comments(500), sourceStory)
+                }
+                store.toggleExpanded(FIRST_ID)
+                result = store.state.value
+            }
+        } else {
+            benchmarkRule.measureRepeated {
+                val store = runWithMeasurementDisabled {
+                    afterPreparedStore(comments(500), sourceStory)
+                }
+                store.toggleExpanded(FIRST_ID)
+                result = store.state.value
+            }
+        }
+    }
+
+    private fun beforePreparedStore(fixture: List<Comment>, sourceStory: Story) =
+        BeforeCommentThreadStore().also {
+            it.reset(sourceStory)
+            val prepared = it.prepareInitialParsedComments(sourceStory, fixture, CommentSorter.DEFAULT, false)
+            it.commitPreparedInitialComments(sourceStory, prepared)
+        }
+
+    private fun afterPreparedStore(fixture: List<Comment>, sourceStory: Story) =
+        CommentThreadStore().also {
+            it.reset(sourceStory)
+            val prepared = it.prepareInitialParsedComments(sourceStory, fixture, CommentSorter.DEFAULT, false)
+            it.commitPreparedInitialComments(sourceStory, prepared)
+        }
+
+    private fun beforeStore(count: Int) = BeforeCommentThreadStore().also {
+        val story = story()
+        it.reset(story)
+        it.appendLoadedComments(story, comments(count), CommentSorter.DEFAULT, false)
+    }
+
+    private fun afterStore(count: Int) = CommentThreadStore().also {
+        val story = story()
+        it.reset(story)
+        it.appendLoadedComments(story, comments(count), CommentSorter.DEFAULT, false)
+    }
+
+    private fun story() = Story("Interaction benchmark", 99, true, false).also { it.by = "op" }
+
+    private fun comments(count: Int): List<Comment> = List(count) { index ->
+        val groupIndex = index % 10
+        val depth = if (groupIndex == 0) 0 else (groupIndex - 1) % 3 + 1
+        Comment().also {
+            it.id = FIRST_ID + index
+            it.parent = when (depth) {
+                0 -> -1
+                1 -> FIRST_ID + index - groupIndex
+                else -> FIRST_ID + index - 1
+            }
+            it.depth = depth
+            it.expanded = groupIndex != 4
+            it.by = if (index % 19 == 0) "op" else "reader"
+            it.text = if (groupIndex == 1) " [delayed] " else "Comment $index with nested replies"
+        }
+    }
+
+    private companion object { const val FIRST_ID = 1_000_000 }
 }
 
-data class PortableVisibleComment(
-    val sourceIndex: Int,
-    val comment: PortableCommentItem,
-    val hiddenReplyCount: Int,
-)
-
-data class PortableCommentThreadState(
-    val story: StorySnapshot? = null,
-    val allComments: List<PortableCommentItem> = emptyList(),
-    val displayedComments: List<PortableCommentItem> = emptyList(),
-    val sorting: String = CommentSorter.DEFAULT,
-    val commentsByOp: Boolean = false,
-    val hasCommentsByOp: Boolean = false,
-    val searchQuery: String = "",
-    val searchPreparing: Boolean = false,
-    val searchResults: List<PortableCommentItem> = emptyList(),
-    val searchResultIds: List<Int> = emptyList(),
-    val visibleComments: List<PortableVisibleComment> = emptyList(),
-    val revision: Long = 0,
-)
-
-internal data class PreparedInitialCommentThread(
+// Frozen before implementation: includes publication and immutable snapshot work in both timings.
+private data class BeforePreparedInitialCommentThread(
     val allComments: List<Comment>,
     val displayedComments: List<Comment>,
     val state: PortableCommentThreadState,
-    val visibilityTopology: CommentThreadStore.CommentVisibilityTopology?,
 )
 
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
-class CommentThreadStore {
+private class BeforeCommentThreadStore {
     val allComments: MutableList<Comment> = mutableListOf()
     val displayedComments: MutableList<Comment> = mutableListOf()
 
     private val commentsById = mutableMapOf<Int, Comment>()
-    private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
+    private val searchableTextById = mutableMapOf<Int, BeforeSearchableCommentText>()
     private val portableItemsById = mutableMapOf<Int, PortableCommentItem>()
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
     private var hideDelayedComments = false
-    private var visibilityTopology: CommentVisibilityTopology? = null
-    private var previousVisibilityTopology: CommentVisibilityTopology? = null
 
     /** Source-compatible name for callers already migrated to immutable snapshots. */
     val portableState: StateFlow<PortableCommentThreadState> get() = state
@@ -130,29 +266,24 @@ class CommentThreadStore {
         parsedComments: List<Comment>,
         sorting: String,
         collapseTopLevel: Boolean,
-    ): PreparedInitialCommentThread {
-        val prepared = CommentThreadStore().also { store ->
+    ): BeforePreparedInitialCommentThread {
+        val prepared = BeforeCommentThreadStore().also { store ->
             store.hideDelayedComments = hideDelayedComments
             store.reset(story, allComments.firstOrNull() ?: Comment(), sorting)
             store.replaceParsedComments(story, parsedComments, sorting, collapseTopLevel)
         }
-        return PreparedInitialCommentThread(
+        return BeforePreparedInitialCommentThread(
             allComments = prepared.allComments.toList(),
             displayedComments = prepared.displayedComments.toList(),
             state = prepared.state.value,
-            visibilityTopology = prepared.visibilityTopology,
         )
     }
 
     /** Atomically installs a background-prepared initial thread into the live store. */
     internal fun commitPreparedInitialComments(
         story: Story?,
-        prepared: PreparedInitialCommentThread,
+        prepared: BeforePreparedInitialCommentThread,
     ) {
-        // Reuse the worker's structural work on the first expansion. The next visibility build
-        // still checks every source object, ID and depth in case they changed before commit.
-        visibilityTopology = prepared.visibilityTopology
-        previousVisibilityTopology = null
         allComments.clear()
         allComments.addAll(prepared.allComments)
         displayedComments.clear()
@@ -258,7 +389,7 @@ class CommentThreadStore {
 
     internal fun installSearchIndex(
         source: List<PortableCommentItem>,
-        index: Map<Int, SearchableCommentText>,
+        index: Map<Int, BeforeSearchableCommentText>,
     ) {
         if (state.value.allComments !== source) return
         searchableTextById.clear()
@@ -464,22 +595,10 @@ class CommentThreadStore {
     )
 
     private fun buildVisibleComments(source: List<Comment>): List<PortableVisibleComment> {
-        if (source.size <= 1) {
-            visibilityTopology = null
-            previousVisibilityTopology = null
-            return emptyList()
-        }
+        if (source.size <= 1) return emptyList()
 
-        // Keep the current and previous displayed variants so hiding/showing delayed comments can
-        // reuse both. Validate either entry before reuse: legacy comments can still be mutated.
-        val topology = visibilityTopology?.takeIf { it.matches(source) } ?: run {
-            val next = previousVisibilityTopology?.takeIf { it.matches(source) }
-                ?: CommentVisibilityTopology(source)
-            previousVisibilityTopology = visibilityTopology
-            visibilityTopology = next
-            next
-        }
-        val byId = topology.byId
+        val byId = HashMap<Int, Comment>(source.size)
+        source.forEach { comment -> byId[comment.id] = comment }
 
         // The flattened thread is in parent-before-child order. Cache each parent's visibility so
         // descendants do not repeatedly walk the same ancestor chain.
@@ -499,53 +618,29 @@ class CommentThreadStore {
             if (visible) visibleCount++
         }
 
+        // Find the first following item at the same or a shallower depth for every comment in one
+        // pass. Previously, each visible comment scanned the rest of its subtree independently.
+        val subtreeEndExclusive = IntArray(source.size) { source.size }
+        val openAncestors = IntArray(source.size)
+        var openCount = 0
+        for (index in 1..<source.size) {
+            val depth = source[index].depth
+            while (openCount > 0 && source[openAncestors[openCount - 1]].depth >= depth) {
+                subtreeEndExclusive[openAncestors[--openCount]] = index
+            }
+            openAncestors[openCount++] = index
+        }
+
         val visibleComments = ArrayList<PortableVisibleComment>(visibleCount)
         for (index in 1..<source.size) {
             if (!visibleByIndex[index]) continue
             visibleComments += PortableVisibleComment(
                 sourceIndex = index,
                 comment = portableItem(source[index]),
-                hiddenReplyCount = topology.subtreeEndExclusive[index] - index - 1,
+                hiddenReplyCount = subtreeEndExclusive[index] - index - 1,
             )
         }
         return visibleComments
-    }
-
-    internal class CommentVisibilityTopology(source: List<Comment>) {
-        private val comments = source.toList()
-        private val ids = IntArray(source.size)
-        private val depths = IntArray(source.size)
-        val byId = HashMap<Int, Comment>(source.size)
-        val subtreeEndExclusive = IntArray(source.size) { source.size }
-
-        init {
-            for (index in source.indices) {
-                val comment = source[index]
-                ids[index] = comment.id
-                depths[index] = comment.depth
-                byId[comment.id] = comment
-            }
-            val openAncestors = IntArray(source.size)
-            var openCount = 0
-            for (index in 1..<source.size) {
-                val depth = depths[index]
-                while (openCount > 0 && depths[openAncestors[openCount - 1]] >= depth) {
-                    subtreeEndExclusive[openAncestors[--openCount]] = index
-                }
-                openAncestors[openCount++] = index
-            }
-        }
-
-        fun matches(source: List<Comment>): Boolean {
-            if (source.size != comments.size) return false
-            for (index in source.indices) {
-                val comment = source[index]
-                if (comment !== comments[index] || comment.id != ids[index] ||
-                    comment.depth != depths[index]
-                ) return false
-            }
-            return true
-        }
     }
 
     private fun isVisible(comment: Comment, byId: Map<Int, Comment>): Boolean {
@@ -563,4 +658,4 @@ class CommentThreadStore {
     private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
 }
 
-internal data class SearchableCommentText(val source: String, val text: String)
+private data class BeforeSearchableCommentText(val source: String, val text: String)

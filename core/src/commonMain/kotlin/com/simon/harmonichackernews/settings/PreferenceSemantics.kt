@@ -23,21 +23,23 @@ object ThemePreferences {
     const val ACCENT_TEAL = "teal"
     const val ACCENT_ROSE = "rose"
 
-    fun isAutomatic(theme: String?): Boolean = theme in setOf(
+    fun isAutomatic(theme: String?): Boolean = when (theme) {
         DEFAULT,
         MATERIAL_FIXED_AUTO,
         "darklight_daynight",
-        "amoledwhite_daynight",
-    )
+        "amoledwhite_daynight" -> true
+        else -> false
+    }
 
-    fun isDark(theme: String?): Boolean = theme in setOf(
+    fun isDark(theme: String?): Boolean = when (theme) {
         "material_dark",
         MATERIAL_FIXED_DARK,
         "dark",
         "hacker",
         "amoled",
-        "gray",
-    )
+        "gray" -> true
+        else -> false
+    }
 
     fun selectableNighttimeTheme(theme: String?): String =
         theme?.takeIf(::isDark) ?: DEFAULT_NIGHTTIME

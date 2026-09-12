@@ -5,8 +5,11 @@ object CommentTextPolicy {
     private val adjacentParagraphs = Regex("</p>\\s*<p", RegexOption.IGNORE_CASE)
     private val adjacentDivisions = Regex("</div>\\s*<div", RegexOption.IGNORE_CASE)
 
-    fun preserveLegacyParagraphSpacing(html: String): String = html
-        .replace(paragraphStart, "<br><br>")
-        .replace(adjacentParagraphs, "</p><br><p")
-        .replace(adjacentDivisions, "</div><br><div")
+    fun preserveLegacyParagraphSpacing(html: String): String {
+        if ('<' !in html) return html
+        return html
+            .replace(paragraphStart, "<br><br>")
+            .replace(adjacentParagraphs, "</p><br><p")
+            .replace(adjacentDivisions, "</div><br><div")
+    }
 }

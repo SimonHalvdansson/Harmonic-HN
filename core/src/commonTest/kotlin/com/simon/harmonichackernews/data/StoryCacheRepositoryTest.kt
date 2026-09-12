@@ -117,6 +117,37 @@ class StoryCacheRepositoryTest {
     }
 
     @Test
+    fun articleLookupDoesNotScanTheCacheForHitsOrMisses() {
+        val files = FakeFiles()
+        val repository = StoryCacheRepository(files, FakeMetadata())
+        repeat(200) { index ->
+            files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "$index.html", "cached $index".encodeToByteArray())
+        }
+
+        assertEquals("cached 42", repository.loadArticle(42, 1_000))
+        assertNull(repository.loadArticle(999, 1_000))
+        assertEquals(2, files.infoCount)
+        assertEquals(0, files.listCount)
+        assertEquals(1, files.readTextCount)
+    }
+
+    @Test
+    fun oversizedArticleIsRemovedWithoutReadingItsContents() {
+        val files = FakeFiles()
+        val repository = StoryCacheRepository(files, FakeMetadata())
+        files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html", "oversized".encodeToByteArray())
+        files.reportedSizeBytes = ArticleSnapshotPolicy.MAX_BYTES + 1
+        repository.recordArticleMetadata(42, "https://example.com", null)
+
+        assertNull(repository.loadArticle(42, 1_000))
+        assertFalse(files.contains(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html"))
+        assertNull(repository.articleUrl(42))
+        assertNull(files.lastTouch)
+        assertEquals(0, files.readTextCount)
+        assertEquals(0, files.listCount)
+    }
+
+    @Test
     fun articleValidationCharsetAndClearAreSharedPolicies() {
         val files = FakeFiles()
         val metadata = FakeMetadata()
@@ -166,6 +197,9 @@ class StoryCacheRepositoryTest {
         var lastCharset: String? = null
         var lastTouch: Long? = null
         var readTextCount: Int = 0
+        var infoCount: Int = 0
+        var listCount: Int = 0
+        var reportedSizeBytes: Long? = null
 
         override fun read(namespace: String, key: String): ByteArray? = values[namespace to key]
 
@@ -183,9 +217,16 @@ class StoryCacheRepositoryTest {
         override fun remove(namespace: String, key: String): Boolean =
             values.remove(namespace to key) != null
 
-        override fun list(namespace: String): List<CacheFileInfo> = values
-            .filterKeys { it.first == namespace }
-            .map { (path, value) -> CacheFileInfo(path.second, value.size.toLong()) }
+        override fun info(namespace: String, key: String): CacheFileInfo? {
+            infoCount++
+            return values[namespace to key]?.let { CacheFileInfo(key, reportedSizeBytes ?: it.size.toLong()) }
+        }
+
+        override fun list(namespace: String): List<CacheFileInfo> {
+            listCount++
+            return values.filterKeys { it.first == namespace }
+                .map { (path, value) -> CacheFileInfo(path.second, value.size.toLong()) }
+        }
 
         override fun clear(namespace: String) {
             values.keys.filter { it.first == namespace }.forEach { values.remove(it) }

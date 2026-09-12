@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
-import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.serialization.JsonObject
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
@@ -108,7 +107,7 @@ data class PreparedCommentThread(
         const val TEXT_PREPARATION_VERSION = 1
 
         internal suspend fun fromParsed(
-            response: String,
+            sourceDigest: String,
             parsed: AlgoliaCommentsResponse,
             rankedIds: List<Int>,
         ): PreparedCommentThread {
@@ -132,7 +131,7 @@ data class PreparedCommentThread(
                 )
             }
             return PreparedCommentThread(
-                SCHEMA_VERSION, TEXT_PREPARATION_VERSION, StableHash.sha256Hex(response),
+                SCHEMA_VERSION, TEXT_PREPARATION_VERSION, sourceDigest,
                 PreparedCommentStory(
                     parsed.id, parsed.title, parsed.points, parsed.createdAtEpochSeconds,
                     parsed.type, parsed.author, parsed.storyId, parsed.parentId,

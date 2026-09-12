@@ -14,6 +14,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.ParametersBuilder
 import io.ktor.http.URLBuilder
+import io.ktor.http.URLDecodeException
+import io.ktor.http.URLParserException
 import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.http.formUrlEncode
@@ -42,6 +44,10 @@ class NetworkUrl private constructor(internal val value: Url) {
 
     fun resolve(relativeUrl: String): NetworkUrl? = try {
         NetworkUrl(URLBuilder(value).takeFrom(relativeUrl).build())
+    } catch (_: URLDecodeException) {
+        null
+    } catch (_: URLParserException) {
+        null
     } catch (_: IllegalArgumentException) {
         null
     }
@@ -73,6 +79,11 @@ class NetworkUrl private constructor(internal val value: Url) {
         fun parse(value: String): NetworkUrl = NetworkUrl(Url(value))
         fun parseOrNull(value: String?): NetworkUrl? = try {
             value?.let(::parse)
+        } catch (_: URLDecodeException) {
+            // Malformed percent escapes use a separate exception from invalid URL structure.
+            null
+        } catch (_: URLParserException) {
+            null
         } catch (_: IllegalArgumentException) {
             null
         }

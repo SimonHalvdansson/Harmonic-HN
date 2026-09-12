@@ -2,6 +2,10 @@ package com.simon.harmonichackernews.data
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -39,6 +43,35 @@ class CommentAnchorTextTest {
         assertEquals(legacyExpansion(comment.text), comment.expandedAnchorText)
         comment.text = null
         assertEquals(null, comment.expandedAnchorText)
+    }
+
+    @Test
+    fun anchorSelectionIsIndependentAcrossSequentialAndConcurrentDocuments() = runTest {
+        val documents = listOf(
+            "<a href='https://one.example/full'>https://one.example/...</a>",
+            "<a>missing href</a><a href=''>...</a><span href='https://skip.example'>skip</span>",
+            "<article><A HREF='https://two.example/full'>https://two.example/...</A></article>",
+            "<a href='https://three.example/full'>short title</a><a href=x>x...</a>",
+            "<a href=x><i>x...</i></a><p>tail",
+            "<a href='https://four.example/?a=1&amp;b=2'>https://four.example/...</a>",
+        )
+        val expected = documents.map(::legacyExpansion)
+        repeat(3) {
+            for (index in documents.indices.reversed()) {
+                assertEquals(expected[index], Comment().apply { text = documents[index] }.expandedAnchorText)
+            }
+        }
+        coroutineScope {
+            repeat(8) {
+                launch(Dispatchers.Default) {
+                    repeat(5) {
+                        for (index in documents.indices) {
+                            assertEquals(expected[index], Comment().apply { text = documents[index] }.expandedAnchorText)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun legacyExpansion(html: String?): String? {

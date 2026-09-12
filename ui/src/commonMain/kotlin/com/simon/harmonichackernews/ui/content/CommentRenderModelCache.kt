@@ -32,8 +32,7 @@ internal object CommentRenderModelCache {
     private const val MAX_ENTRIES = 192
     private const val MAX_CACHEABLE_SOURCE_CHARS = 64 * 1024
     private const val MAX_TOTAL_WEIGHTED_CHARS = 1024 * 1024
-    private val entries = mutableMapOf<Key, CommentRenderModel>()
-    private val order = ArrayDeque<Key>()
+    private val entries = CommentContentLruEntries<Key, CommentRenderModel>()
     private var totalWeightedChars = 0
 
     fun get(
@@ -44,8 +43,6 @@ internal object CommentRenderModelCache {
         val source = expandedHtml.orEmpty()
         val key = Key(commentId, source, collectLinks)
         entries[key]?.let { cached ->
-            order.remove(key)
-            order.addLast(key)
             return cached
         }
 
@@ -55,7 +52,7 @@ internal object CommentRenderModelCache {
     }
 
     fun peek(commentId: Int, source: String, collectLinks: Boolean): CommentRenderModel? =
-        entries[Key(commentId, source, collectLinks)]
+        entries.peek(Key(commentId, source, collectLinks))
 
     fun prepare(expandedHtml: String?, collectLinks: Boolean): CommentRenderModel {
         val references = if (collectLinks) CollectedReferenceLinks.parse(expandedHtml) else null
@@ -75,13 +72,12 @@ internal object CommentRenderModelCache {
 
     private fun remember(key: Key, model: CommentRenderModel) {
         val weight = key.source.length * 2
-        while (order.isNotEmpty() &&
-            (order.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
+        while (entries.isNotEmpty() &&
+            (entries.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
         ) {
-            remove(order.first())
+            remove(entries.oldestKey())
         }
-        entries[key] = model
-        order.addLast(key)
+        entries.install(key, model)
         totalWeightedChars += weight
     }
 
@@ -91,12 +87,10 @@ internal object CommentRenderModelCache {
 
     private fun remove(key: Key) {
         if (entries.remove(key) != null) totalWeightedChars -= key.source.length * 2
-        order.remove(key)
     }
 
     internal fun clearForTest() {
         entries.clear()
-        order.clear()
         totalWeightedChars = 0
     }
 
@@ -123,34 +117,29 @@ internal fun collapsedCommentPreview(
 private object CommentCollapsedPreviewCache {
     private const val MAX_ENTRIES = 192
     private const val MAX_TOTAL_KEY_CHARS = 48 * 1024
-    private val entries = mutableMapOf<PreviewKey, String>()
-    private val order = ArrayDeque<PreviewKey>()
+    private val entries = CommentContentLruEntries<PreviewKey, String>()
     private var totalKeyChars = 0
 
     fun get(commentId: Int, rawHtml: String, parse: (String) -> String): String {
         val sourcePrefix = rawHtml.take(240)
         val key = PreviewKey(commentId, sourcePrefix)
         entries[key]?.let { cached ->
-            order.remove(key)
-            order.addLast(key)
             return cached
         }
         entries.keys.filter { it.commentId == commentId }.forEach(::remove)
         val preview = parse(sourcePrefix).replace('\n', ' ').take(120)
-        while (order.isNotEmpty() &&
-            (order.size >= MAX_ENTRIES || totalKeyChars + sourcePrefix.length > MAX_TOTAL_KEY_CHARS)
+        while (entries.isNotEmpty() &&
+            (entries.size >= MAX_ENTRIES || totalKeyChars + sourcePrefix.length > MAX_TOTAL_KEY_CHARS)
         ) {
-            remove(order.first())
+            remove(entries.oldestKey())
         }
-        entries[key] = preview
-        order.addLast(key)
+        entries.install(key, preview)
         totalKeyChars += sourcePrefix.length
         return preview
     }
 
     private fun remove(key: PreviewKey) {
         if (entries.remove(key) != null) totalKeyChars -= key.sourcePrefix.length
-        order.remove(key)
     }
 
     private data class PreviewKey(val commentId: Int, val sourcePrefix: String)
@@ -161,14 +150,11 @@ internal object CommentHtmlTextCache {
     private const val MAX_ENTRIES = 384
     private const val MAX_CACHEABLE_SOURCE_CHARS = 64 * 1024
     private const val MAX_TOTAL_WEIGHTED_CHARS = 2 * 1024 * 1024
-    private val entries = mutableMapOf<String, AnnotatedString>()
-    private val order = ArrayDeque<String>()
+    private val entries = CommentContentLruEntries<String, AnnotatedString>()
     private var totalWeightedChars = 0
 
     fun get(html: String): AnnotatedString {
         entries[html]?.let { cached ->
-            order.remove(html)
-            order.addLast(html)
             return cached
         }
         val text = prepareCommentHtml(html)
@@ -181,13 +167,12 @@ internal object CommentHtmlTextCache {
     fun install(html: String, text: AnnotatedString) {
         if (html in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
         val weight = min(Int.MAX_VALUE / 2, html.length * 3)
-        while (order.isNotEmpty() &&
-            (order.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
+        while (entries.isNotEmpty() &&
+            (entries.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
         ) {
-            remove(order.first())
+            remove(entries.oldestKey())
         }
-        entries[html] = text
-        order.addLast(html)
+        entries.install(html, text)
         totalWeightedChars += weight
     }
 
@@ -195,12 +180,10 @@ internal object CommentHtmlTextCache {
         if (entries.remove(html) != null) {
             totalWeightedChars -= min(Int.MAX_VALUE / 2, html.length * 3)
         }
-        order.remove(html)
     }
 
     internal fun clearForTest() {
         entries.clear()
-        order.clear()
         totalWeightedChars = 0
     }
 

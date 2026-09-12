@@ -43,11 +43,13 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertSame
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,11 +57,13 @@ class CommentsPresenterTest {
     @Test
     fun preparedCacheDisplaysOfflineWithCurrentFiltersWithoutReadingRawJson() = runTest {
         val response = """{"id":42,"title":"Cached","children":[
-            {"id":7,"author":"blocked","text":"One"},{"id":8,"text":"Two"}
+            {"id":7,"author":"blocked","text":"One","extra_field":true},{"id":8,"text":"Two"}
         ]}"""
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
-        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
-        val prepared = parser.prepare(response, listOf(8, 7))
+        val prepared = AlgoliaCommentsParser(parsingDispatcher = dispatcher).prepare(response, listOf(8, 7))
+        // A fresh decode would reject extra_field. An unchanged network response must reuse the
+        // already prepared content before reaching the decoder, including through the presenter.
+        val parser = AlgoliaCommentsParser(Json { ignoreUnknownKeys = false }, dispatcher)
         val network = CompletableDeferred<String>()
         val algolia = object : AlgoliaRepository {
             override suspend fun getItemJson(id: Int): String = network.await()
@@ -89,6 +93,7 @@ class CommentsPresenterTest {
         assertTrue(effects.single().restoreScroll)
         network.complete(response)
         runCurrent()
+        assertNull(presenter.state.value.failure)
         assertFalse(effects.last().contentApplied)
         assertTrue(effects.last().networkCompleted)
         assertEquals(0, source.storyRequests)

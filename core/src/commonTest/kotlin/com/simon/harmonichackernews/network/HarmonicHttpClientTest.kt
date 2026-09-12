@@ -36,7 +36,8 @@ class HarmonicHttpClientTest {
         }
 
         advanceUntilIdle()
-        assertTrue(body.isClosedForRead)
+        // Cancelling SourceByteReadChannel(Buffer) need not exhaust its buffered bytes.
+        assertTrue(body.closedCause != null || body.isClosedForRead)
         client.close()
     }
 
@@ -52,7 +53,7 @@ class HarmonicHttpClientTest {
         }
 
         advanceUntilIdle()
-        assertTrue(body.isClosedForRead)
+        assertTrue(body.closedCause != null || body.isClosedForRead)
         client.close()
     }
 

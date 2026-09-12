@@ -573,6 +573,7 @@ class CommentsPresenter(
                 useAlgolia = action.useAlgolia,
                 filteredUsers = action.filteredUsers,
                 topLevelCommentIds = topLevelCommentIds,
+                cachedThread = cachedParsed?.cacheSummary?.preparedThread,
                 onAlgoliaFallback = {
                     if (threadLoadSession.isCurrent(requestId, storyId)) {
                         publish(usingOfficialApiFallback = true)

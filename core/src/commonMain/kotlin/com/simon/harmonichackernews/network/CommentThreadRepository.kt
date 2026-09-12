@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
@@ -47,6 +48,7 @@ class CommentThreadRepository(
         useAlgolia: Boolean,
         filteredUsers: Set<String> = emptySet(),
         topLevelCommentIds: List<Int> = emptyList(),
+        cachedThread: PreparedCommentThread? = null,
         onAlgoliaFallback: () -> Unit = {},
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
@@ -67,7 +69,7 @@ class CommentThreadRepository(
                 val orderedIds = resolvedIds?.await() ?: topLevelCommentIds
                 CommentThreadLoadResult.Algolia(
                     responseText,
-                    parseAlgolia(responseText, orderedIds, filteredUsers),
+                    parseAlgolia(responseText, orderedIds, filteredUsers, cachedThread),
                 )
             }
         } catch (error: CancellationException) {
@@ -109,7 +111,10 @@ class CommentThreadRepository(
         response: String,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
-    ): AlgoliaCommentsResponse = algoliaCommentsParser.parsePrepared(response, topLevelCommentIds, filteredUsers)
+        cachedThread: PreparedCommentThread? = null,
+    ): AlgoliaCommentsResponse = algoliaCommentsParser.parsePrepared(
+        response, topLevelCommentIds, filteredUsers, cachedThread,
+    )
 
     private fun Exception.shouldFallBackToOfficialApi(): Boolean =
         this is HttpRequestTimeoutException ||

@@ -60,18 +60,21 @@ object StoryTextProcessor {
         return output.toString()
     }
 
-    private fun linkifySegment(segment: String): String = urlPattern.replace(segment) { match ->
-        val url = match.value
-        var end = url.length
-        while (end > 0 && url[end - 1] in TRAILING_PUNCTUATION) end--
-        if (end > 0 && url[end - 1] == ')') {
+    private fun linkifySegment(segment: String): String {
+        if (segment.isEmpty()) return segment
+        return urlPattern.replace(segment) { match ->
+            val url = match.value
+            var end = url.length
+            while (end > 0 && url[end - 1] in TRAILING_PUNCTUATION) end--
+            if (end > 0 && url[end - 1] == ')') {
+                val core = url.substring(0, end)
+                if (core.count { it == ')' } > core.count { it == '(' }) end--
+            }
             val core = url.substring(0, end)
-            if (core.count { it == ')' } > core.count { it == '(' }) end--
+                .replace("&#x2F;", "/")
+                .replace("&#47;", "/")
+            "<a href=\"$core\">$core</a>${url.substring(end)}"
         }
-        val core = url.substring(0, end)
-            .replace("&#x2F;", "/")
-            .replace("&#47;", "/")
-        "<a href=\"$core\">$core</a>${url.substring(end)}"
     }
 
     private fun escapePreBlockWhitespace(input: String): String = buildString(input.length) {

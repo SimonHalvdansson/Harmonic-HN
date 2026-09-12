@@ -8,9 +8,31 @@ import kotlinx.io.files.Path
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FileStoryCacheStoreTest {
+    @Test
+    fun fileInfoReturnsSizeAndRejectsMissingFilesAndDirectories() {
+        val directory = createTempDirectory("harmonic-article-cache-")
+        try {
+            val store = FileStoryCacheStore(
+                root = Path(directory.toString()),
+                accessTimes = FileAccessTimeStore(InMemoryKeyValueStore()),
+            )
+            val namespace = StoryCacheKeys.ARTICLE_NAMESPACE
+            assertNull(store.info(namespace, "42.html"))
+            assertTrue(store.write(namespace, "42.html", "cached".encodeToByteArray()))
+            assertEquals(CacheFileInfo("42.html", 6), store.info(namespace, "42.html"))
+            assertNull(store.info(namespace, "43.html"))
+            Files.createDirectory(directory.resolve(namespace).resolve("44.html"))
+            assertNull(store.info(namespace, "44.html"))
+        } finally {
+            directory.toFile().deleteRecursively()
+        }
+    }
+
     @Test
     fun replacingPayloadPromotesACompleteTemporaryFileAndCleansItUp() {
         val directory = createTempDirectory("harmonic-story-cache-")

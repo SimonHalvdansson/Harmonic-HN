@@ -18,6 +18,42 @@ class PreparedCommentThreadTest {
         {"id":10,"parent_id":42,"text":" null ","children":[{"id":11,"text":"Hidden below deleted parent"}]}
     ]}"""
 
+    @Test fun unchangedResponseReusesPreparedContentWithFreshPresentation() = runTest {
+        val prepared = parser.prepare(raw, listOf(8, 7))
+        assertSame(prepared, parser.prepare(raw, listOf(8, 7), cachedThread = prepared))
+
+        val restored = parser.parsePrepared(raw, listOf(7, 8), setOf("child"), cachedThread = prepared)
+        val reused = assertNotNull(restored.cacheSummary?.preparedThread)
+        assertSame(prepared.comments, reused.comments)
+        assertEquals(listOf(7, 8), reused.rankedIds)
+        assertEquals(listOf(7, 8), restored.comments.map { it.id })
+        assertEquals(listOf(8, 7), prepared.rankedIds)
+
+        restored.comments.first().text = "Changed on screen"
+        val reopened = parser.parsePrepared(raw, listOf(8, 7), cachedThread = prepared)
+        assertEquals(listOf(8, 7, 9), reopened.comments.map { it.id })
+        assertNotEquals("Changed on screen", reopened.comments.first { it.id == 7 }.text)
+    }
+
+    @Test fun changedResponseAndIncompatibleCachesAreParsedAgain() = runTest {
+        val prepared = parser.prepare(raw)
+        val changed = raw.replace("A title", "Updated title")
+        val updated = parser.prepare(changed, cachedThread = prepared)
+        assertNotSame(prepared.comments, updated.comments)
+        assertEquals("Updated title [pdf]", updated.story.title)
+        assertEquals(parser.prepare(changed), updated)
+
+        for (invalid in listOf(
+            prepared.copy(schemaVersion = -1),
+            prepared.copy(textPreparationVersion = -1),
+            prepared.copy(comments = prepared.comments.map { it.copy(subtreeEndExclusive = 0) }),
+        )) {
+            val rebuilt = parser.prepare(raw, cachedThread = invalid)
+            assertNotSame(invalid, rebuilt)
+            assertEquals(prepared, rebuilt)
+        }
+    }
+
     @Test fun bothEncodingsPreserveContentAndCurrentPreferences() = runTest {
         val prepared = parser.prepare(raw, listOf(8, 7))
         for (encoding in PreparedCommentCodec.Encoding.entries) {

@@ -15,6 +15,8 @@ interface StoryCacheFileStore {
     fun readText(namespace: String, key: String, charsetName: String = "UTF-8"): String?
     fun write(namespace: String, key: String, value: ByteArray): Boolean
     fun remove(namespace: String, key: String): Boolean
+    /** Metadata for one file, without enumerating the namespace or reading its contents. */
+    fun info(namespace: String, key: String): CacheFileInfo?
     fun list(namespace: String): List<CacheFileInfo>
     fun clear(namespace: String)
     fun touch(namespace: String, key: String, modifiedAtMillis: Long)
@@ -68,6 +70,9 @@ class InMemoryStoryCacheFileStore : StoryCacheFileStore {
 
     override fun remove(namespace: String, key: String): Boolean =
         entries[namespace]?.remove(key) != null
+
+    override fun info(namespace: String, key: String): CacheFileInfo? =
+        entries[namespace]?.get(key)?.let { CacheFileInfo(key, it.value.size.toLong()) }
 
     override fun list(namespace: String): List<CacheFileInfo> = entries[namespace]
         ?.map { (key, entry) -> CacheFileInfo(key, entry.value.size.toLong()) }
@@ -354,7 +359,7 @@ class StoryCacheRepository(
     fun loadArticle(storyId: Int, nowMillis: Long): String? {
         if (storyId <= 0) return null
         val key = StoryCacheKeys.articleFile(storyId)
-        val file = files.list(StoryCacheKeys.ARTICLE_NAMESPACE).firstOrNull { it.key == key }
+        val file = files.info(StoryCacheKeys.ARTICLE_NAMESPACE, key)
             ?: return null
         if (!ArticleSnapshotPolicy.isValidSize(file.sizeBytes)) {
             removeArticle(storyId)

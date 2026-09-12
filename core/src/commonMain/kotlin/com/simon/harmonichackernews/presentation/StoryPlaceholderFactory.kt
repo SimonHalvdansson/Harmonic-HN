@@ -13,11 +13,13 @@ object StoryPlaceholderFactory {
         shouldHideHydratedStory: (Story) -> Boolean = { false },
         cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> = itemIds.mapNotNullTo(mutableListOf()) { id ->
-        if (hideClicked && id in clickedIds) return@mapNotNullTo null
-        (cachedStories[id] ?: Story("Loading...", id, false, id in clickedIds)).also { story ->
-            story.clicked = id in clickedIds
+        val clicked = id in clickedIds
+        if (hideClicked && clicked) return@mapNotNullTo null
+        val cachedStory = cachedStories[id]
+        (cachedStory ?: Story("Loading...", id, false, clicked)).also { story ->
+            story.clicked = clicked
             story.isComment = id in commentIds
-            if ((id in cachedStories || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
+            if ((cachedStory != null || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
                 return@mapNotNullTo null
             }
         }
