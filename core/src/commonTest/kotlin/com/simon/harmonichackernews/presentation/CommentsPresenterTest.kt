@@ -769,8 +769,13 @@ class CommentsPresenterTest {
 
     @Test
     fun cachedThreadAppearsWhileItsPreloadIsStillDownloading() = runTest {
-        for (usePreparedCache in listOf(false, true)) {
+        for ((usePreparedCache, changedResponse) in listOf(false, true).flatMap { prepared ->
+            listOf(false, true).map { changed -> prepared to changed }
+        }) {
             val response = """{"id":42,"title":"Cached","type":"story","children":[{"id":7,"author":"alice","text":"Ready"}]}"""
+            val liveResponse = if (changedResponse) {
+                """{"id":42,"title":"Updated","points":25,"type":"story","children":[{"id":7,"author":"alice","text":"Ready"},{"id":8,"author":"bob","text":"New reply"}]}"""
+            } else response
             val networkResponse = CompletableDeferred<String>()
             var networkRequests = 0
             val source = object : AlgoliaRepository {
@@ -792,7 +797,7 @@ class CommentsPresenterTest {
             )
             val effects = mutableListOf<CommentsEffect>()
             backgroundScope.launch { presenter.effects.collect { effects += it } }
-            val story = Story("Loading", 42, false, false).also { it.kids = intArrayOf(7) }
+            val story = Story("Feed title", 42, true, false).also { it.kids = intArrayOf(7) }
             presenter.dispatch(
                 CommentsAction.LoadThread(
                     story = story, useAlgolia = true, filteredUsers = emptySet(), sorting = "default",
@@ -805,14 +810,19 @@ class CommentsPresenterTest {
             assertEquals("Cached", story.title)
             assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
             assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().restoreScroll)
+            assertFalse(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().broadcastStoryUpdate)
             assertFalse(networkResponse.isCompleted)
 
-            networkResponse.complete(response)
+            networkResponse.complete(liveResponse)
             runCurrent()
             assertEquals(1, networkRequests)
             val completed = effects.filterIsInstance<CommentsEffect.ThreadApplied>().last()
             assertTrue(completed.networkCompleted)
-            assertFalse(completed.contentApplied)
+            assertEquals(changedResponse, completed.contentApplied)
+            assertTrue(completed.broadcastStoryUpdate)
+            assertEquals(if (changedResponse) "Updated" else "Cached", story.title)
+            assertEquals(if (changedResponse) 25 else 0, story.score)
+            assertEquals(if (changedResponse) 2 else 1, story.descendants)
         }
     }
 
@@ -875,7 +885,7 @@ class CommentsPresenterTest {
         assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.comment.id })
         assertTrue(applied.networkCompleted)
         assertEquals(null, applied.responseToCache)
-        assertFalse(applied.broadcastStoryUpdate)
+        assertTrue(applied.broadcastStoryUpdate)
     }
 
     @Test
@@ -923,6 +933,7 @@ class CommentsPresenterTest {
         assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.comment.id })
         assertTrue(applied.networkCompleted)
         assertFalse(applied.usedOfficialFallback)
+        assertTrue(applied.broadcastStoryUpdate)
     }
 
     @Test

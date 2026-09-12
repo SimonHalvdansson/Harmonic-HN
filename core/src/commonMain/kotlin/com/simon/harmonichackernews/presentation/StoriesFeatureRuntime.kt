@@ -1031,10 +1031,15 @@ class StoriesFeatureRuntime(
     }
 
     fun mergeExternalStoryUpdate(update: Story): Boolean {
-        val story = activeStories.firstOrNull { it.id == update.id } ?: return false
-        StoryRowMergePolicy.mergeSummaryFields(story, update)
-        publishStoryContentChanged(story)
-        return true
+        var matched = false
+        for (store in listOf(mainStore, searchStore)) {
+            val story = store.stories.firstOrNull { it.id == update.id } ?: continue
+            StoryRowMergePolicy.mergeSummaryFields(story, update)
+            store.contentChanged(story)
+            matched = true
+        }
+        if (matched) emit(StoriesRuntimeEffect.StoryChanged(update.id))
+        return matched
     }
 
     fun publishAllStoryContentChanged() {

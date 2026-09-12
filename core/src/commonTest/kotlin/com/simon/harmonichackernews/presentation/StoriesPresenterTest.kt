@@ -48,6 +48,50 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoriesPresenterTest {
     @Test
+    fun commentsUpdatesRefreshFeedAndSearchSnapshotsWhilePreservingRowState() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val presenter = presenter(session, saved, backgroundScope)
+        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, QueuedCacheDispatcher())
+        val feedStory = Story("Feed title", 42, true, true).apply {
+            score = 1
+            descendants = 2
+            previewImageUrl = "https://example.com/preview.png"
+        }
+        val searchStory = Story("Search title", 42, true, false)
+        val otherStory = Story("Unrelated", 43, true, false)
+        runtime.mainStore.replace(listOf(feedStory, otherStory))
+        runtime.openSearch()
+        runtime.searchStore.replace(listOf(searchStory))
+        val previousFeed = runtime.mainStore.state.value
+        val previousSearch = runtime.searchStore.state.value
+        val update = Story("Updated title", 42, true, false).apply {
+            score = 25
+            descendants = 8
+            time = 123
+            url = "https://example.com/updated"
+        }
+
+        assertTrue(runtime.mergeExternalStoryUpdate(update))
+
+        for (store in listOf(runtime.mainStore, runtime.searchStore)) {
+            val row = store.state.value.items.first()
+            assertEquals("Updated title", row.title)
+            assertEquals(25, row.score)
+            assertEquals(8, row.descendants)
+            assertEquals(123, row.time)
+            assertEquals(update.url, row.url)
+        }
+        assertEquals("Feed title", previousFeed.items.first().title)
+        assertEquals("Search title", previousSearch.items.first().title)
+        assertTrue(runtime.mainStore.state.value.items.first().clicked)
+        assertEquals(feedStory.previewImageUrl, runtime.mainStore.state.value.items.first().previewImageUrl)
+        assertTrue(runtime.mainStories.first() === feedStory)
+        assertEquals(previousFeed.items.last(), runtime.mainStore.state.value.items.last())
+        assertFalse(runtime.mergeExternalStoryUpdate(Story("Absent", 99, true, false)))
+    }
+
+    @Test
     fun feedCacheIsPreparedOnWorkerBeforeApplyingRows() = runTest {
         val worker = QueuedCacheDispatcher()
         val session = StoriesSessionState()

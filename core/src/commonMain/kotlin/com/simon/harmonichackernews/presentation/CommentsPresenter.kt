@@ -471,7 +471,7 @@ class CommentsPresenter(
                     networkCompleted = true,
                     responseToCache = null,
                     restoreScroll = action.restoreScrollFromCache,
-                    broadcastStoryUpdate = false,
+                    broadcastStoryUpdate = true,
                 )
                 return@launch
             }
@@ -606,7 +606,7 @@ class CommentsPresenter(
                             networkCompleted = true,
                             responseToCache = result.response,
                             restoreScroll = false,
-                            broadcastStoryUpdate = cachedParsed == null,
+                            broadcastStoryUpdate = true,
                         )
                     } else {
                         publish(loaded = true, refreshing = false, failure = null)
@@ -616,6 +616,9 @@ class CommentsPresenter(
                                 storyId = storyId,
                                 contentApplied = false,
                                 networkCompleted = true,
+                                // The network confirmed the cached header, which may still be
+                                // newer than the story retained by the feed.
+                                broadcastStoryUpdate = true,
                             ),
                         )
                     }
@@ -678,6 +681,7 @@ class CommentsPresenter(
                 contentApplied = true,
                 networkCompleted = true,
                 headerChanged = true,
+                broadcastStoryUpdate = true,
                 usedOfficialFallback = usedAsFallback,
             ),
         )
