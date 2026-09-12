@@ -21,5 +21,7 @@ object NitterInstance {
             if (url.port == url.protocol.defaultPort) "" else ":${url.port}"
     }
 
-    fun effectiveUrl(value: String): String = normalize(value) ?: DEFAULT_URL
+    fun effectiveUrl(value: String): String =
+        // Settings snapshots read this during startup, even when redirects are disabled.
+        if (value == DEFAULT_URL) DEFAULT_URL else normalize(value) ?: DEFAULT_URL
 }

@@ -16,6 +16,8 @@ parser.add_argument('--candidate-classpath', type=Path, required=True)
 parser.add_argument('--java-home', type=Path, default=Path('/Applications/Android Studio.app/Contents/jbr/Contents/Home'))
 parser.add_argument('--forks', type=int, default=4, help='Processes per implementation')
 parser.add_argument('--cases', help='Optional comma-separated case names')
+parser.add_argument('--harness', type=Path, default=Path(__file__).with_name('JsonAccessBenchmark.java'),
+                    help='Standalone Java harness using the same JSON sample format')
 parser.add_argument('--baseline-ref', help='Git revision of the baseline jar')
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
@@ -36,15 +38,16 @@ result = {
     },
     'runs': [],
 }
-result['sha256']['harness'] = hashlib.sha256(Path(__file__).with_name('JsonAccessBenchmark.java').read_bytes()).hexdigest()
+result['harness'] = args.harness.name
+result['sha256']['harness'] = hashlib.sha256(args.harness.read_bytes()).hexdigest()
 with tempfile.TemporaryDirectory(prefix='harmonic-json-benchmark-') as directory:
     subprocess.run([str(args.java_home / 'bin/javac'), '-cp', classpaths['baseline'],
-                    '-d', directory, str(Path(__file__).with_name('JsonAccessBenchmark.java'))], check=True)
+                    '-d', directory, str(args.harness)], check=True)
     for fork in range(args.forks):
         order = ('baseline', 'candidate') if fork % 2 == 0 else ('candidate', 'baseline')
         for version in order:
             command = [java, *result['jvmArgs'], '-cp', directory + os.pathsep + classpaths[version],
-                       'JsonAccessBenchmark', str(fork)]
+                       args.harness.stem, str(fork)]
             if args.cases:
                 command.append(args.cases)
             samples = []
