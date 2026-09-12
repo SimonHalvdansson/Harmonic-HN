@@ -151,7 +151,7 @@ private class CachedConnectivity(online: Boolean, unmetered: Boolean) {
     var unmetered = unmetered
 }
 
-private class BenchmarkSharedPreferencesStore(
+internal class BenchmarkSharedPreferencesStore(
     private val preferences: SharedPreferences,
 ) : KeyValueStore {
     override fun clear() = preferences.edit().clear().apply()

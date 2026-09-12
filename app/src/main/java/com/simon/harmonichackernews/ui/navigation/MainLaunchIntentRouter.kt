@@ -60,13 +60,12 @@ internal class MainLaunchIntentRouter(
         else -> AppLaunchRequest.Story(directStoryDestination())
     }
 
-    private fun Intent.directStoryDestination() =
-        (extras?.let(::Bundle) ?: Bundle()).let { arguments ->
-            decodedDestination<StoryDestination>() ?: if (
-                arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0
-            ) null
-            else arguments.toStoryDestinationOrNull()
-        }
+    private fun Intent.directStoryDestination(): StoryDestination? {
+        decodedDestination<StoryDestination>()?.let { return it }
+        val arguments = extras ?: return null
+        return if (arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0) null
+        else arguments.toStoryDestinationOrNull()
+    }
 
     private inline fun <reified T> Intent.decodedDestination(): T? =
         AppDestinationCodec.decode(getStringExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA)) as? T

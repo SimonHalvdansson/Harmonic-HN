@@ -30,12 +30,13 @@ object ThemeUtils {
      */
     private val defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
     fun setupTheme(activity: ComponentActivity) {
-        activity.setTheme(themeResource(getPreferredTheme(activity), uiModeNight(activity)))
+        val selection = activity.harmonicAppComposition.appearance.selection()
+        activity.setTheme(themeResource(selection.theme, uiModeNight(activity)))
 
         val window = activity.getWindow()
         val insetsController = WindowCompat.getInsetsController(window, window.getDecorView())
-        insetsController.setAppearanceLightStatusBars(!isDarkMode(activity))
-        insetsController.setAppearanceLightNavigationBars(!isDarkMode(activity))
+        insetsController.setAppearanceLightStatusBars(!selection.dark)
+        insetsController.setAppearanceLightNavigationBars(!selection.dark)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -43,7 +44,7 @@ object ThemeUtils {
             // All themes have nav bar color set to transparent so on API 29+ the system will draw
             // translucent scrim for us. However on older versions we need to set correct nav bar
             // color manually.
-            val navBarColor = if (isDarkMode(activity)) defaultDarkScrim else defaultLightScrim
+            val navBarColor = if (selection.dark) defaultDarkScrim else defaultLightScrim
             window.setNavigationBarColor(navBarColor)
         }
 

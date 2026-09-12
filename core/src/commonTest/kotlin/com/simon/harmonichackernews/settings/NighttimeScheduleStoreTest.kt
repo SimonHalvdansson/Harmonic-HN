@@ -84,6 +84,62 @@ class NighttimeScheduleStoreTest {
     }
 
     @Test
+    fun disabledNighttimeSelectionDoesNotReadScheduleOrClock() {
+        val settings = TestKeyValueStore(mapOf(ThemePreferences.KEY to "white"))
+        val unreadableSchedule = object : KeyValueStore by TestKeyValueStore() {
+            override fun getString(key: String, default: String?): String? =
+                error("Disabled nighttime mode must not read its schedule")
+        }
+        val runtime = AppearanceRuntime(
+            settings = settings,
+            scheduleStore = NighttimeScheduleStore(unreadableSchedule),
+            launchState = AppLaunchStateStore(TestKeyValueStore()),
+            settingsChanges = emptyFlow(),
+            appearanceChanges = emptyFlow(),
+            currentMinutesFromMidnight = { error("Disabled nighttime mode must not read the clock") },
+            systemDark = { false },
+        )
+
+        assertEquals("white", runtime.selection().theme)
+        assertEquals(false, runtime.selection().dark)
+    }
+
+    @Test
+    fun enablingNighttimeUsesCurrentClockAndScheduleWithoutCaching() {
+        val settings = TestKeyValueStore(mapOf(
+            ThemePreferences.KEY to "white",
+            ThemePreferences.NIGHTTIME_KEY to "gray",
+        ))
+        val schedules = NighttimeScheduleStore(TestKeyValueStore())
+        var minutes = 21 * 60
+        var clockReads = 0
+        val runtime = AppearanceRuntime(
+            settings = settings,
+            scheduleStore = schedules,
+            launchState = AppLaunchStateStore(TestKeyValueStore()),
+            settingsChanges = emptyFlow(),
+            appearanceChanges = emptyFlow(),
+            currentMinutesFromMidnight = { clockReads++; minutes },
+            systemDark = { false },
+        )
+
+        assertEquals("white", runtime.selection().theme)
+        assertEquals(0, clockReads)
+        settings.putBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, true)
+        assertEquals("gray", runtime.selection().theme)
+        schedules.save(NighttimeSchedule(fromHour = 22))
+        assertEquals("white", runtime.selection().theme)
+        minutes = 23 * 60
+        assertEquals("gray", runtime.selection().theme)
+        minutes = 6 * 60
+        assertEquals("white", runtime.selection().theme)
+        assertEquals(4, clockReads)
+        settings.putBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false)
+        assertEquals("white", runtime.selection().theme)
+        assertEquals(4, clockReads)
+    }
+
+    @Test
     fun manualAndScheduledSelectionsUseTheirDedicatedPalettes() {
         val manual = ThemeSelectionPolicy.select(
             configuredTheme = ThemePreferences.DEFAULT,

@@ -31,6 +31,7 @@ import com.simon.harmonichackernews.network.PreviewContent
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.network.StoryResourceTintState
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
@@ -204,7 +205,7 @@ class FaviconTintChainBenchmark {
             showIndex = true,
             compactHeader = false,
             leftAlign = false,
-            cardStyle = true,
+            displayStyle = DisplayStyle.RAISED,
             tintCardUsingPreview = true,
             paletteTintMode = configKey,
             grayOutClicked = true,

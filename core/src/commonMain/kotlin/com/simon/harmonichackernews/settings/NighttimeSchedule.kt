@@ -151,40 +151,42 @@ class AppearanceRuntime(
         }
     }.distinctUntilChanged()
 
-    fun selection(): ThemeSelection = ThemeSelectionPolicy.select(
-        configuredTheme = settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-        nighttimeTheme = settings.getString(
-            ThemePreferences.NIGHTTIME_KEY,
-            ThemePreferences.DEFAULT_NIGHTTIME,
-        ),
-        useSpecialNighttimeTheme = settings.getBoolean(
-            UserPreferenceKeys.SPECIAL_NIGHTTIME,
-            false,
-        ),
-        schedule = schedule,
-        currentMinutesFromMidnight = currentMinutesFromMidnight(),
-        systemDark = systemDark(),
-        followSystem = if (settings.contains(ThemePreferences.FOLLOW_SYSTEM_KEY)) {
-            settings.getBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
-        } else {
-            ThemePreferences.isAutomatic(
-                settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-            )
-        },
-        manualDark = if (settings.contains(ThemePreferences.MANUAL_DARK_KEY)) {
-            settings.getBoolean(ThemePreferences.MANUAL_DARK_KEY, false)
-        } else {
-            ThemePreferences.isDark(
-                settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-            )
-        },
-        lightTheme = settings.getString(ThemePreferences.LIGHT_KEY),
-        darkTheme = settings.getString(ThemePreferences.DARK_KEY),
-        accentPreset = settings.getString(
-            ThemePreferences.ACCENT_KEY,
-            ThemePreferences.ACCENT_DEFAULT,
-        ) ?: ThemePreferences.ACCENT_DEFAULT,
-    )
+    fun selection(): ThemeSelection {
+        val useSpecialNighttimeTheme = settings.getBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false)
+        return ThemeSelectionPolicy.select(
+            configuredTheme = settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+            nighttimeTheme = settings.getString(
+                ThemePreferences.NIGHTTIME_KEY,
+                ThemePreferences.DEFAULT_NIGHTTIME,
+            ),
+            useSpecialNighttimeTheme = useSpecialNighttimeTheme,
+            // The policy ignores these inputs when nighttime mode is off. Avoid loading its
+            // persisted schedule and asking the host to allocate a calendar on the default path.
+            schedule = if (useSpecialNighttimeTheme) schedule else UNUSED_NIGHTTIME_SCHEDULE,
+            currentMinutesFromMidnight = if (useSpecialNighttimeTheme) currentMinutesFromMidnight() else 0,
+            systemDark = systemDark(),
+            followSystem = if (settings.contains(ThemePreferences.FOLLOW_SYSTEM_KEY)) {
+                settings.getBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
+            } else {
+                ThemePreferences.isAutomatic(
+                    settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+                )
+            },
+            manualDark = if (settings.contains(ThemePreferences.MANUAL_DARK_KEY)) {
+                settings.getBoolean(ThemePreferences.MANUAL_DARK_KEY, false)
+            } else {
+                ThemePreferences.isDark(
+                    settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
+                )
+            },
+            lightTheme = settings.getString(ThemePreferences.LIGHT_KEY),
+            darkTheme = settings.getString(ThemePreferences.DARK_KEY),
+            accentPreset = settings.getString(
+                ThemePreferences.ACCENT_KEY,
+                ThemePreferences.ACCENT_DEFAULT,
+            ) ?: ThemePreferences.ACCENT_DEFAULT,
+        )
+    }
 
     fun saveSchedule(schedule: NighttimeSchedule) {
         scheduleStore.save(schedule)
@@ -197,4 +199,8 @@ class AppearanceRuntime(
     }
 
     fun markWelcomeShown() = launchState.markWelcomeDialogShown()
+
+    private companion object {
+        val UNUSED_NIGHTTIME_SCHEDULE = NighttimeSchedule()
+    }
 }

@@ -1,0 +1,597 @@
+{
+    "context": {
+        "build": {
+            "brand": "google",
+            "device": "emu64a16k",
+            "fingerprint": "google/sdk_gphone16k_arm64/emu64a16k:17/CE2A.260420.019/15611780:user/dev-keys",
+            "id": "CE2A.260420.019",
+            "model": "sdk_gphone16k_arm64",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 37
+            }
+        },
+        "cpuCoreCount": 4,
+        "cpuLocked": false,
+        "cpuMaxFreqHz": 2000,
+        "memTotalBytes": 4160389120,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 370399999,
+        "osCodenameAbbreviated": "REL",
+        "compilationMode": "speed",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "EMULATOR_nighttimeDisabledBefore",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 6791180420,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 4135.191383453484,
+                    "maximum": 5550.67263130793,
+                    "median": 4263.864744249914,
+                    "coefficientOfVariation": 0.045320053907071674,
+                    "runs": [
+                        4264.947391005836,
+                        4290.958633710951,
+                        4264.528964984552,
+                        4299.567670786131,
+                        4250.354016477858,
+                        4367.138345348438,
+                        4296.0185805012015,
+                        4332.362469962238,
+                        4262.3190439409545,
+                        4286.2241246138,
+                        4305.5913147957435,
+                        4290.527720562994,
+                        4291.219661860625,
+                        4235.3226484723655,
+                        4280.769052523172,
+                        4268.707432200481,
+                        4237.128475798147,
+                        4377.458462066598,
+                        4263.2005235152765,
+                        4247.904522828699,
+                        4308.893709234466,
+                        4273.011071060762,
+                        4198.780252317199,
+                        4215.537032269139,
+                        4225.2993048403705,
+                        4135.191383453484,
+                        4417.625,
+                        4265.955758668039,
+                        5550.67263130793,
+                        4200.8524716786815,
+                        4311.182286302781,
+                        4248.16198935805,
+                        4140.220949193272,
+                        4242.02926536217,
+                        4219.515276347408,
+                        4191.254720219705,
+                        4358.398772742877,
+                        4295.180012015105,
+                        4492.89821489873,
+                        4273.014632681085,
+                        4174.9788877445935,
+                        4266.613757294885,
+                        4245.490774116031,
+                        4215.358221764504,
+                        4195.468932372125,
+                        4162.631222107792,
+                        4202.381222107792,
+                        4180.716486440097,
+                        4229.9086852042565,
+                        4202.896155166495
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 39.002102643323035,
+                    "maximum": 39.002917953999315,
+                    "median": 39.002445932028834,
+                    "coefficientOfVariation": 8.472376027463191E-6,
+                    "runs": [
+                        39.002917953999315,
+                        39.002531754205286,
+                        39.002102643323035,
+                        39.00214555441126,
+                        39.002445932028834
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 79625,
+            "repeatIterations": 23304,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_nighttimeDisabledBefore_2026-09-12-04-56-57.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_nighttimeDisabledBefore-methodTracing-2026-09-12-04-56-56.trace"
+                }
+            ]
+        },
+        {
+            "name": "EMULATOR_themeReuseBefore",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 13944810049,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 12894.090605427975,
+                    "maximum": 16522.825330549756,
+                    "median": 13494.313917884483,
+                    "coefficientOfVariation": 0.04608848360876575,
+                    "runs": [
+                        13442.797494780792,
+                        13872.84857341684,
+                        13569.229923451636,
+                        13258.513013221991,
+                        13598.869311064718,
+                        13399.61155184412,
+                        13138.958524704245,
+                        13276.948503827418,
+                        13212.381071677106,
+                        13496.282672233821,
+                        13217.31621433542,
+                        13360.3745302714,
+                        13851.80347947112,
+                        13560.386221294364,
+                        13264.068615170494,
+                        13736.917188587335,
+                        13348.364648573417,
+                        13492.345163535143,
+                        13381.408072372999,
+                        15828.723034098817,
+                        16522.825330549756,
+                        13822.04244954767,
+                        13818.812386917189,
+                        13755.584551148226,
+                        14117.559638135004,
+                        13974.489770354907,
+                        13630.804871259568,
+                        13927.3543493389,
+                        13899.878218510787,
+                        13933.669589422409,
+                        13922.378844815588,
+                        13888.883089770356,
+                        13847.02519137091,
+                        13742.60027835769,
+                        13640.77369519833,
+                        13650.52776617954,
+                        13088.616423103687,
+                        13313.50605427975,
+                        13201.884759916493,
+                        12984.446764091857,
+                        13250.51036882394,
+                        13049.594015309673,
+                        13599.107028531664,
+                        12894.090605427975,
+                        12938.912038970077,
+                        13028.659290187892,
+                        13012.613082811413,
+                        13099.965205288796,
+                        13272.662908837856,
+                        13323.21391788448
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 153.0055671537926,
+                    "maximum": 153.00668058455116,
+                    "median": 153.00668058455116,
+                    "coefficientOfVariation": 3.1771920014243825E-6,
+                    "runs": [
+                        153.00668058455116,
+                        153.00668058455116,
+                        153.0055671537926,
+                        153.00654140570634,
+                        153.00668058455116
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 506014,
+            "repeatIterations": 7185,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_themeReuseBefore_2026-09-12-04-57-10.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_themeReuseBefore-methodTracing-2026-09-12-04-57-10.trace"
+                }
+            ]
+        },
+        {
+            "name": "EMULATOR_themeReuseAfter",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 6816838128,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 4046.6729992084324,
+                    "maximum": 5180.829812940049,
+                    "median": 4216.025059367579,
+                    "coefficientOfVariation": 0.03812181389317464,
+                    "runs": [
+                        4426.342540515769,
+                        4236.739490896971,
+                        4244.3375411406905,
+                        4203.177727784027,
+                        4239.608923884514,
+                        4321.025830104571,
+                        4315.503978669333,
+                        4294.77565304337,
+                        4472.125026038412,
+                        4506.766529183852,
+                        4381.592925884264,
+                        4198.6973711619385,
+                        4330.656584593592,
+                        4271.551139440903,
+                        4296.329250510353,
+                        4274.345915093947,
+                        4303.337082864642,
+                        4259.6429196350455,
+                        4224.904178644336,
+                        4192.566220889055,
+                        5180.829812940049,
+                        4260.719160104987,
+                        4180.281298171062,
+                        4149.009165520976,
+                        4168.807024121985,
+                        4128.9265925092695,
+                        4178.304128650585,
+                        4146.625796775403,
+                        4166.02787151606,
+                        4151.9688788901385,
+                        4261.298920968212,
+                        4197.982168895554,
+                        4195.275965504312,
+                        4169.831229429655,
+                        4088.2771736866225,
+                        4140.583093779944,
+                        4205.604507769862,
+                        4127.050077073699,
+                        4162.201974753156,
+                        4193.661542307212,
+                        4180.2430946131735,
+                        4046.6729992084324,
+                        4138.397616964546,
+                        4138.421947256593,
+                        4245.156855393076,
+                        4234.245052701745,
+                        4227.723284589426,
+                        4245.703662042245,
+                        4224.239303420406,
+                        4207.810815314752
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 39.002166395867185,
+                    "maximum": 39.002541348998044,
+                    "median": 39.00241636462109,
+                    "coefficientOfVariation": 4.36517594100036E-6,
+                    "runs": [
+                        39.00241636462109,
+                        39.00249968753906,
+                        39.002166395867185,
+                        39.002541348998044,
+                        39.002208057326165
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 62575,
+            "repeatIterations": 24003,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_themeReuseAfter_2026-09-12-04-57-18.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_themeReuseAfter-methodTracing-2026-09-12-04-57-17.trace"
+                }
+            ]
+        },
+        {
+            "name": "EMULATOR_launcherBundleBefore",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 3708336585,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 40.415458,
+                    "maximum": 45.708917,
+                    "median": 42.7835625,
+                    "coefficientOfVariation": 0.02702508278403925,
+                    "runs": [
+                        43.876833,
+                        43.652625,
+                        42.726959,
+                        43.005416,
+                        42.759542,
+                        43.984917,
+                        40.415458,
+                        42.411875,
+                        42.807583,
+                        42.75525,
+                        42.984834,
+                        43.911583,
+                        44.869,
+                        44.358458,
+                        43.702708,
+                        42.82325,
+                        42.433417,
+                        44.639875,
+                        43.593292,
+                        43.934666,
+                        44.19625,
+                        45.708917,
+                        43.977667,
+                        45.202541,
+                        44.406166,
+                        41.657666,
+                        42.299,
+                        40.94975,
+                        41.888542,
+                        43.261667,
+                        40.726084,
+                        42.391542,
+                        41.20725,
+                        42.506875,
+                        41.556459,
+                        41.775626,
+                        42.048542,
+                        41.693583,
+                        42.362417,
+                        41.619292,
+                        43.015125,
+                        41.278292,
+                        43.459459,
+                        42.5895,
+                        42.689417,
+                        42.75525,
+                        42.850959,
+                        43.315708,
+                        42.418,
+                        43.452625
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 2.000001,
+                    "maximum": 2.000008,
+                    "median": 2.000004,
+                    "coefficientOfVariation": 1.4404834361502015E-6,
+                    "runs": [
+                        2.000004,
+                        2.000008,
+                        2.000004,
+                        2.000001,
+                        2.000001
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 2327182,
+            "repeatIterations": 1000000,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_launcherBundleBefore_2026-09-12-04-57-22.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_launcherBundleBefore-methodTracing-2026-09-12-04-57-21.trace"
+                }
+            ]
+        },
+        {
+            "name": "EMULATOR_nighttimeDisabledAfter",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 7483348086,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 2290.09832,
+                    "maximum": 2617.915,
+                    "median": 2329.93542,
+                    "coefficientOfVariation": 0.025146441505774428,
+                    "runs": [
+                        2336.96084,
+                        2333.98584,
+                        2371.44584,
+                        2290.09832,
+                        2335.12834,
+                        2320.00916,
+                        2299.74334,
+                        2314.7225,
+                        2308.89916,
+                        2291.29834,
+                        2308.8775,
+                        2322.28166,
+                        2617.915,
+                        2578.435,
+                        2400.39334,
+                        2347.185,
+                        2296.96082,
+                        2314.97582,
+                        2308.96416,
+                        2307.61,
+                        2319.5875,
+                        2342.30918,
+                        2304.18,
+                        2314.44166,
+                        2351.06668,
+                        2319.42166,
+                        2343.49916,
+                        2338.47084,
+                        2323.675,
+                        2327.54832,
+                        2366.865,
+                        2347.82834,
+                        2359.12166,
+                        2316.25334,
+                        2309.44166,
+                        2335.58418,
+                        2334.91584,
+                        2362.71166,
+                        2331.38084,
+                        2348.63916,
+                        2334.3475,
+                        2328.49,
+                        2315.68168,
+                        2292.00166,
+                        2345.41584,
+                        2363.55666,
+                        2333.17832,
+                        2297.82166,
+                        2326.63334,
+                        2406.22168
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 29.00066,
+                    "maximum": 29.00084,
+                    "median": 29.00072,
+                    "coefficientOfVariation": 2.3589237702850978E-6,
+                    "runs": [
+                        29.0007,
+                        29.00066,
+                        29.00076,
+                        29.00084,
+                        29.00072
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 103963,
+            "repeatIterations": 50000,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_nighttimeDisabledAfter_2026-09-12-04-57-29.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_nighttimeDisabledAfter-methodTracing-2026-09-12-04-57-28.trace"
+                }
+            ]
+        },
+        {
+            "name": "EMULATOR_launcherBundleAfter",
+            "params": {},
+            "className": "com.simon.harmonichackernews.benchmark.StartupMicroOptimizationBenchmark",
+            "totalRunTimeNs": 1323183292,
+            "metrics": {
+                "timeNs": {
+                    "minimum": 5.599584,
+                    "maximum": 5.938542,
+                    "median": 5.7849795,
+                    "coefficientOfVariation": 0.013914807532658386,
+                    "runs": [
+                        5.822375,
+                        5.787167,
+                        5.814125,
+                        5.938542,
+                        5.742459,
+                        5.663292,
+                        5.919458,
+                        5.79575,
+                        5.711458,
+                        5.767541,
+                        5.816458,
+                        5.71425,
+                        5.913875,
+                        5.8425,
+                        5.690125,
+                        5.735292,
+                        5.76325,
+                        5.782792,
+                        5.755,
+                        5.833959,
+                        5.832083,
+                        5.772959,
+                        5.804375,
+                        5.898667,
+                        5.65825,
+                        5.70725,
+                        5.854333,
+                        5.855291,
+                        5.822084,
+                        5.855584,
+                        5.908333,
+                        5.658417,
+                        5.823417,
+                        5.648042,
+                        5.670167,
+                        5.848583,
+                        5.8825,
+                        5.797042,
+                        5.777375,
+                        5.888541,
+                        5.730334,
+                        5.823,
+                        5.776125,
+                        5.746375,
+                        5.647333,
+                        5.809667,
+                        5.599584,
+                        5.718041,
+                        5.781166,
+                        5.734417
+                    ]
+                },
+                "allocationCount": {
+                    "minimum": 2.0E-6,
+                    "maximum": 2.0E-6,
+                    "median": 2.0E-6,
+                    "coefficientOfVariation": 0.0,
+                    "runs": [
+                        2.0E-6,
+                        2.0E-6,
+                        2.0E-6,
+                        2.0E-6,
+                        2.0E-6
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 3254019,
+            "repeatIterations": 1000000,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_launcherBundleAfter_2026-09-12-04-57-31.perfetto-trace"
+                },
+                {
+                    "type": "MethodTrace",
+                    "label": "Method Trace",
+                    "filename": "StartupMicroOptimizationBenchmark_launcherBundleAfter-methodTracing-2026-09-12-04-57-31.trace"
+                }
+            ]
+        }
+    ]
+}
