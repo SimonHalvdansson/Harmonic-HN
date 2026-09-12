@@ -90,13 +90,12 @@ fun PredictiveBackDialog(
 
     Dialog(
         onDismissRequest = onDismissRequest,
-        properties = DialogProperties(
+        properties = platformDialogProperties(
             dismissOnBackPress = properties.dismissOnBackPress && !predictiveBackEnabled,
             dismissOnClickOutside = properties.dismissOnClickOutside,
             usePlatformDefaultWidth = properties.usePlatformDefaultWidth,
         ),
     ) {
-        PlatformDialogEdgeToEdge()
         // This must live inside the Dialog composition so Android registers it with the dialog's
         // OnBackPressedDispatcherOwner instead of the activity underneath.
         PlatformDialogPredictiveBackHandler(
@@ -148,8 +147,11 @@ fun PredictiveBackDialog(
 
 internal expect val platformDialogPredictiveBackSupported: Boolean
 
-@Composable
-internal expect fun PlatformDialogEdgeToEdge()
+internal expect fun platformDialogProperties(
+    dismissOnBackPress: Boolean,
+    dismissOnClickOutside: Boolean,
+    usePlatformDefaultWidth: Boolean,
+): DialogProperties
 
 @Composable
 internal expect fun PlatformDialogPredictiveBackHandler(

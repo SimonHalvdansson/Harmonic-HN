@@ -170,31 +170,33 @@ fun PortableUserProfileDialog(
             ),
         )
     }
-    UserSettingsDialog(
-        requestedUserName = userName,
-        state = state,
-        tag = currentTag,
-        blocked = runtimeState.blocked,
-        ownProfile = runtimeState.ownProfile,
-        onDismiss = onDismiss,
-        onRetry = session::retry,
-        onOpenSubmissions = session::openSubmissions,
-        onEditTag = { tagDialogOpen = true },
-        onToggleBlocked = { session.toggleBlocked() },
-        onReport = session::report,
-        onOpenLink = { scene.links.open(it) },
-    )
-
-    if (tagDialogOpen) {
-        UserTagRoute(
-            userName = userName,
-            currentTag = currentTag,
-            onDismiss = { tagDialogOpen = false },
-            onSaved = { saved ->
-                currentTag = saved
-                tagDialogOpen = false
-                onTagChanged()
-            },
+    SynchronizedSettingsDialogs {
+        UserSettingsDialog(
+            requestedUserName = userName,
+            state = state,
+            tag = currentTag,
+            blocked = runtimeState.blocked,
+            ownProfile = runtimeState.ownProfile,
+            onDismiss = onDismiss,
+            onRetry = session::retry,
+            onOpenSubmissions = session::openSubmissions,
+            onEditTag = { tagDialogOpen = true },
+            onToggleBlocked = { session.toggleBlocked() },
+            onReport = session::report,
+            onOpenLink = { scene.links.open(it) },
         )
+
+        if (tagDialogOpen) {
+            UserTagRoute(
+                userName = userName,
+                currentTag = currentTag,
+                onDismiss = { tagDialogOpen = false },
+                onSaved = { saved ->
+                    currentTag = saved
+                    tagDialogOpen = false
+                    onTagChanged()
+                },
+            )
+        }
     }
 }

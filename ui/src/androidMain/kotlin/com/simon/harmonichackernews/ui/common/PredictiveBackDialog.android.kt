@@ -7,8 +7,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.core.view.WindowCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collect
@@ -16,11 +16,19 @@ import kotlinx.coroutines.withContext
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = true
 
-@Composable
-internal actual fun PlatformDialogEdgeToEdge() {
-    val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
-    SideEffect { WindowCompat.setDecorFitsSystemWindows(dialogWindow, false) }
-}
+internal actual fun platformDialogProperties(
+    dismissOnBackPress: Boolean,
+    dismissOnClickOutside: Boolean,
+    usePlatformDefaultWidth: Boolean,
+): DialogProperties = DialogProperties(
+    dismissOnBackPress = dismissOnBackPress,
+    dismissOnClickOutside = dismissOnClickOutside,
+    usePlatformDefaultWidth = usePlatformDefaultWidth,
+    // Configure the Compose window itself before it is shown. Updating WindowCompat afterward
+    // leaves DialogLayout and the soft-input mode using the fitting-window behavior, so the
+    // window jumps to its resized bounds before Compose applies the animated IME insets.
+    decorFitsSystemWindows = false,
+)
 
 @Composable
 internal actual fun PlatformDialogPredictiveBackHandler(

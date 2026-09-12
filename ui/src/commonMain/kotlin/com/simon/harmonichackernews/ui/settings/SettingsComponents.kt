@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -40,7 +39,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -171,6 +169,7 @@ private fun SettingsAlertDialogLayout(
     scrollableContent: Boolean = false,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
+    val contentWindowInsets = synchronizedSettingsDialogInsets()
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -194,7 +193,7 @@ private fun SettingsAlertDialogLayout(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.ime))
+                .windowInsetsPadding(contentWindowInsets)
                 .padding(
                     horizontal = HarmonicDimens.compose_settings_dialog_horizontal_margin,
                     vertical = HarmonicDimens.compose_settings_dialog_vertical_margin,

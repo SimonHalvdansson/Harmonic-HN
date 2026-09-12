@@ -463,8 +463,12 @@ fun UserTagDialog(
     val focusRequester = remember { FocusRequester() }
     fun saveTag() = onSave(tag.trim())
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val textContent: @Composable () -> Unit = {
+        // Register this dialog's animated insets before focus can start opening the keyboard.
+        LaunchedEffect(Unit) {
+            androidx.compose.runtime.withFrameNanos { }
+            focusRequester.requestFocus()
+        }
         OutlinedTextField(
             value = tag,
             onValueChange = { tag = it },
