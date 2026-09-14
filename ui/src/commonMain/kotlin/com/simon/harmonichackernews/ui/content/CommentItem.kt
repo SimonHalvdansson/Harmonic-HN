@@ -1131,16 +1131,14 @@ private fun highlightSearchMatches(
 
     return buildAnnotatedString {
         append(body)
-        val haystack = body.text.lowercase()
-        val normalizedNeedle = needle.lowercase()
-        var start = haystack.indexOf(normalizedNeedle)
+        var start = body.text.indexOf(needle, ignoreCase = true)
         while (start >= 0) {
             addStyle(
                 SpanStyle(color = markedColor, fontWeight = FontWeight.Bold),
                 start,
-                start + normalizedNeedle.length,
+                start + needle.length,
             )
-            start = haystack.indexOf(normalizedNeedle, start + normalizedNeedle.length)
+            start = body.text.indexOf(needle, start + needle.length, ignoreCase = true)
         }
     }
 }
@@ -1169,14 +1167,13 @@ internal fun searchMatchEmphasis(
     val needle = searchTerm.trim()
     if (needle.isEmpty()) return emphasis
 
-    val haystack = text.lowercase()
-    val normalizedNeedle = needle.lowercase()
-    var start = haystack.indexOf(normalizedNeedle)
+    // Match in the original text: Unicode lowercasing can change its length and offsets.
+    var start = text.indexOf(needle, ignoreCase = true)
     while (start >= 0) {
-        for (index in start until start + normalizedNeedle.length) {
+        for (index in start until start + needle.length) {
             emphasis[index] = 1f
         }
-        start = haystack.indexOf(normalizedNeedle, start + normalizedNeedle.length)
+        start = text.indexOf(needle, start + needle.length, ignoreCase = true)
     }
     return emphasis
 }

@@ -97,7 +97,7 @@ fun LicensesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(colors.settingsPageBackground)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -133,7 +133,7 @@ fun LicensesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(LicenseCardShape)
-                        .background(colors.surfaceContainerHigh)
+                        .background(colors.settingsItemBackground)
                         .border(1.dp, colors.outlineVariant, LicenseCardShape),
                 ) {
                     LicenseHeader(platformTextStyle)

@@ -98,7 +98,7 @@ fun AboutScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(colors.settingsPageBackground)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,

@@ -19,4 +19,24 @@ class CommentSearchHighlightTest {
             searchMatchEmphasis("comment", "  "),
         )
     }
+
+    @Test
+    fun unicodeCaseExpansionBeforeMatchPreservesOriginalOffsets() {
+        assertContentEquals(
+            floatArrayOf(0f, 1f),
+            searchMatchEmphasis("İx", "x"),
+        )
+        assertContentEquals(
+            floatArrayOf(0f, 1f, 0f, 0f, 1f),
+            searchMatchEmphasis("İx İx", "x"),
+        )
+    }
+
+    @Test
+    fun unicodeCaseExpansionInQueryPreservesOriginalMatchLength() {
+        assertContentEquals(
+            floatArrayOf(1f, 1f, 1f),
+            searchMatchEmphasis("İiI", "İ"),
+        )
+    }
 }
