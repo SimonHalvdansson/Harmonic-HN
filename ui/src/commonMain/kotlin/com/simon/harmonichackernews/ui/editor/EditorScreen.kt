@@ -101,6 +101,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.platform.EditorDraftField
+import com.simon.harmonichackernews.platform.EditorDraftStorage
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorPolicy
 import com.simon.harmonichackernews.presentation.formatEditorCodeBlock
@@ -141,18 +143,28 @@ fun EditorScreen(
     onClose: () -> Unit,
     onSubmit: (EditorSubmission) -> Unit,
     onOpenLink: (String) -> Unit = {},
+    draftStorage: EditorDraftStorage? = null,
+    onDraftStorageFailure: (EditorDraftStorageFailure) -> Unit = {},
 ) {
     val titleMaxLength = EditorPolicy.TITLE_MAX_LENGTH
-    var title by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    var title by rememberSaveable(
+        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.TITLE, draftStorage, onDraftStorageFailure),
+    ) {
         mutableStateOf(TextFieldValue())
     }
-    var url by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    var url by rememberSaveable(
+        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.URL, draftStorage, onDraftStorageFailure),
+    ) {
         mutableStateOf(TextFieldValue())
     }
-    var text by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    var text by rememberSaveable(
+        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.TEXT, draftStorage, onDraftStorageFailure),
+    ) {
         mutableStateOf(TextFieldValue())
     }
-    var comment by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    var comment by rememberSaveable(
+        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.COMMENT, draftStorage, onDraftStorageFailure),
+    ) {
         mutableStateOf(TextFieldValue())
     }
     var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
