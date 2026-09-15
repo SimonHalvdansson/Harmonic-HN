@@ -88,9 +88,11 @@ class CommentsPreloadCoordinator(
     private fun cancelPendingWork() {
         submitJob?.cancel()
         submitJob = null
-        active.values.forEach(Job::cancel)
+        val pendingJobs = active.values.toList()
+        // A cancelled semaphore waiter can run its finally block before cancel returns.
         active.clear()
         started.clear()
+        pendingJobs.forEach(Job::cancel)
     }
 
     private fun schedule() {

@@ -259,9 +259,11 @@ class StoryPreviewResourceRuntime(
 
     fun dispose() {
         imageFailureJob?.cancel()
-        jobs.values.forEach { it.cancel() }
+        val pendingJobs = jobs.values.toList()
+        // Cancellation can run completion handlers immediately and remove entries from these maps.
         jobs.clear()
         activeRequests.clear()
+        pendingJobs.forEach { it.cancel() }
         mutableStates.value = emptyMap()
     }
 

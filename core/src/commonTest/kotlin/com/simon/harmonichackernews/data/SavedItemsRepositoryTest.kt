@@ -57,31 +57,54 @@ class SavedItemsRepositoryTest {
     }
 
     @Test
-    fun membershipCachePreservesDuplicateRemovalAndItemOrder() {
+    fun legacyBookmarkDuplicatesLoadOnceWithNewestDatesAndCanBeRemovedInOneAction() {
         val repository = SavedItemsRepository(
             TestKeyValueStore(
-                mapOf(SavedItemKeys.BOOKMARKS to "3q30-1q10-3q20-2q40"),
+                mapOf(SavedItemKeys.BOOKMARKS to "3q20-1q10-3q30-2q40"),
             ),
         )
 
         assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 3))
-        assertTrue(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 50))
-        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 3))
         assertEquals(
             listOf(
+                TimestampedItem(3, 30),
                 TimestampedItem(1, 10),
-                TimestampedItem(3, 20),
                 TimestampedItem(2, 40),
             ),
             repository.loadItems(SavedItemSource.BOOKMARKS),
         )
 
-        assertTrue(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 60))
+        assertEquals(
+            listOf(TimestampedItem(2, 40), TimestampedItem(3, 30), TimestampedItem(1, 10)),
+            repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
+        )
+
+        assertTrue(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 50))
         assertFalse(repository.contains(SavedItemSource.BOOKMARKS, 3))
+        assertFalse(repository.setMembership(SavedItemSource.BOOKMARKS, 3, false, 60))
         assertEquals(
             listOf(TimestampedItem(1, 10), TimestampedItem(2, 40)),
             repository.loadItems(SavedItemSource.BOOKMARKS),
         )
+    }
+
+    @Test
+    fun bookmarkSavesPersistAndPublishUniqueIdsWithNewestDates() = runTest {
+        val store = TestKeyValueStore()
+        val repository = SavedItemsRepository(store)
+        val change = async(start = CoroutineStart.UNDISPATCHED) { repository.changes.first() }
+
+        repository.saveItemsAtomic(
+            SavedItemSource.BOOKMARKS,
+            listOf(TimestampedItem(3, 10), TimestampedItem(2, 20), TimestampedItem(3, 30)),
+        )
+
+        val expected = listOf(TimestampedItem(3, 30), TimestampedItem(2, 20))
+        assertEquals(expected, repository.loadItems(SavedItemSource.BOOKMARKS))
+        assertEquals(expected, repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true))
+        assertEquals(expected, SavedItemsRepository(store).loadItems(SavedItemSource.BOOKMARKS))
+        assertEquals("3q30-2q20", store.getString(SavedItemKeys.BOOKMARKS))
+        assertEquals(SavedItemsChange(SavedItemSource.BOOKMARKS, listOf(3, 2), emptySet()), change.await())
     }
 
     @Test

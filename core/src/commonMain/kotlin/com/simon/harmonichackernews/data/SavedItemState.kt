@@ -74,6 +74,18 @@ object SavedItemCodec {
     fun encode(items: List<TimestampedItem>): String =
         items.joinToString("-") { "${it.id}q${it.created}" }
 
+    /** Keeps the newest timestamp for each ID without moving its first position in the list. */
+    internal fun deduplicate(items: List<TimestampedItem>): List<TimestampedItem> {
+        val newestById = linkedMapOf<Int, TimestampedItem>()
+        items.forEach { item ->
+            val previous = newestById[item.id]
+            if (previous == null || item.created > previous.created) {
+                newestById[item.id] = item
+            }
+        }
+        return newestById.values.toList()
+    }
+
     fun add(items: List<TimestampedItem>, id: Int, created: Long): List<TimestampedItem> =
         if (items.any { it.id == id }) items.toList() else items + TimestampedItem(id, created)
 

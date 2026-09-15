@@ -12,14 +12,15 @@ object BookmarkImportPolicy {
         current: List<TimestampedItem>,
         overwrite: Boolean,
     ): BookmarkImportResult? {
-        val imported = SavedItemCodec.decode(content, sortedByCreated = true)
+        val imported = SavedItemCodec.deduplicate(SavedItemCodec.decode(content, sortedByCreated = true))
         if (imported.isEmpty()) return null
         if (overwrite) return BookmarkImportResult(imported, imported.size)
 
-        val currentIds = current.mapTo(mutableSetOf(), TimestampedItem::id)
+        val existing = SavedItemCodec.deduplicate(current)
+        val currentIds = existing.mapTo(mutableSetOf(), TimestampedItem::id)
         val additions = imported.filter { currentIds.add(it.id) }
         return BookmarkImportResult(
-            items = current.toList() + additions,
+            items = existing + additions,
             importedCount = additions.size,
         )
     }

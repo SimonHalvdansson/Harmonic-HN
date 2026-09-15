@@ -4,16 +4,68 @@ import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.network.CommentThreadSource
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPreloadCoordinatorTest {
+    @Test
+    fun disablingCancelsRunningAndQueuedPreloadsWithImmediateCallbacks() =
+        assertCancelsRunningAndQueuedPreloads { it.setEnabled(false) }
+
+    @Test
+    fun disposingCancelsRunningAndQueuedPreloadsWithImmediateCallbacks() =
+        assertCancelsRunningAndQueuedPreloads { it.dispose() }
+
+    private fun assertCancelsRunningAndQueuedPreloads(stop: (CommentsPreloadCoordinator) -> Unit) = runTest {
+        val release = CompletableDeferred<Unit>()
+        val requested = mutableListOf<Int>()
+        val cancelled = mutableListOf<Int>()
+        val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        val coordinator = CommentsPreloadCoordinator(
+            scope = scope,
+            loadFilteredUsers = { emptySet() },
+            isPrepared = { _, _, _, _ -> false },
+            preload = { _, id, _, _ ->
+                requested += id
+                try {
+                    release.await()
+                } finally {
+                    cancelled += id
+                }
+            },
+            maxConcurrentPreloads = 2,
+            scrollSettleDelayMillis = 0,
+            // Workers dispatch separately; semaphore waiters still cancel immediately on the UI dispatcher.
+            preloadDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        coordinator.setEnabled(true)
+        coordinator.updateVisibleStories((1..5).map { story(it) })
+        runCurrent()
+        assertEquals(listOf(1, 2), requested)
+        val jobs = scope.coroutineContext.job.children.toList()
+        assertEquals(5, jobs.size)
+
+        stop(coordinator)
+        runCurrent()
+
+        assertTrue(jobs.all { it.isCancelled && it.isCompleted })
+        assertEquals(setOf(1, 2), cancelled.toSet())
+        release.complete(Unit)
+        runCurrent()
+        assertEquals(listOf(1, 2), requested)
+        coordinator.dispose()
+    }
+
     @Test
     fun latestViewportDropsQueuedWorkButRetainsAnAlreadyStartedTransfer() = runTest {
         val release = CompletableDeferred<Unit>()

@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.network
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -13,6 +15,37 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewResourceRuntimeTest {
+    @Test
+    fun disposeCancelsAllPendingRequestsWithImmediateCompletionCallbacks() = runTest {
+        val finish = CompletableDeferred<PreviewContent>()
+        val cancelled = mutableListOf<Int>()
+        val runtime = StoryPreviewResourceRuntime(
+            // Cancellation on Android's Main.immediate can complete a request before cancel returns.
+            scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
+            service = object : StoryPreviewResourceService {
+                override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                    CachedStoryPreviewResource(false, null, null)
+
+                override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent = try {
+                    finish.await()
+                } finally {
+                    cancelled += request.storyId
+                }
+            },
+        )
+        (1..3).forEach { runtime.request(request(storyId = it)) }
+        assertEquals(3, runtime.states.value.count { it.value.loading })
+
+        runtime.dispose()
+
+        assertEquals(listOf(1, 2, 3), cancelled)
+        assertTrue(runtime.states.value.isEmpty())
+        finish.complete(PreviewContent("https://example.com/late.png", null))
+        runCurrent()
+        assertTrue(runtime.states.value.isEmpty())
+        runtime.dispose()
+    }
+
     @Test
     fun cachedSummaryImageTakesPrecedenceOverCachedImageUrl() = runTest {
         val summary = LinkSummary(

@@ -6,6 +6,40 @@ import kotlin.test.assertNull
 
 class BookmarkImportPolicyTest {
     @Test
+    fun overwriteDeduplicatesIdsAndKeepsTheirNewestTimestamp() {
+        val result = requireNotNull(
+            BookmarkImportPolicy.apply(
+                content = "1q100-2q300-1q400-3q200-2q50-1q400",
+                current = listOf(TimestampedItem(9, 900)),
+                overwrite = true,
+            ),
+        )
+
+        assertEquals(
+            listOf(TimestampedItem(1, 400), TimestampedItem(2, 300), TimestampedItem(3, 200)),
+            result.items,
+        )
+        assertEquals(3, result.importedCount)
+    }
+
+    @Test
+    fun mergeRecoversExistingDuplicatesWithoutReplacingExistingBookmarksWithImportedDates() {
+        val result = requireNotNull(
+            BookmarkImportPolicy.apply(
+                content = "1q900-3q100-3q200",
+                current = listOf(TimestampedItem(2, 20), TimestampedItem(1, 10), TimestampedItem(2, 30)),
+                overwrite = false,
+            ),
+        )
+
+        assertEquals(
+            listOf(TimestampedItem(2, 30), TimestampedItem(1, 10), TimestampedItem(3, 200)),
+            result.items,
+        )
+        assertEquals(1, result.importedCount)
+    }
+
+    @Test
     fun overwriteUsesValidImportedItemsInNewestFirstOrder() {
         val result = requireNotNull(
             BookmarkImportPolicy.apply(

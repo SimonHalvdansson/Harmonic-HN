@@ -94,7 +94,7 @@ class SavedItemsRepository(
         return itemCache[key] ?: SavedItemCodec.decode(
             store.getString(itemKey(source)),
             sortedByCreated,
-        ).also { items ->
+        ).let { normalizeItems(source, it) }.also { items ->
             itemCache[key] = items
             itemIdsCache.getOrPut(source) {
                 items.mapTo(mutableSetOf(), TimestampedItem::id)
@@ -399,9 +399,13 @@ class SavedItemsRepository(
     }
 
     private fun writeItems(source: SavedItemSource, items: List<TimestampedItem>) {
-        store.putString(itemKey(source), SavedItemCodec.encode(items))
-        cacheItems(source, items)
+        val normalized = normalizeItems(source, items)
+        store.putString(itemKey(source), SavedItemCodec.encode(normalized))
+        cacheItems(source, normalized)
     }
+
+    private fun normalizeItems(source: SavedItemSource, items: List<TimestampedItem>): List<TimestampedItem> =
+        if (source == SavedItemSource.BOOKMARKS) SavedItemCodec.deduplicate(items) else items
 
     private fun cacheItems(source: SavedItemSource, items: List<TimestampedItem>) {
         val cachedItems = items.toList()
