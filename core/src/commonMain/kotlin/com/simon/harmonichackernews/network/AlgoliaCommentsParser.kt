@@ -14,6 +14,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -144,8 +145,9 @@ class AlgoliaCommentsParser(
         PreparedCommentThread.fromParsed(sourceDigest, parse(response), topLevelCommentIds)
     }
 
-    // Decode normal string fields directly. Unusual scalar types retain the legacy coercions
-    // through a second decode from the original input, never from a partly consumed decoder.
+    // Algolia emits integer IDs/timestamps. Decode them directly, defaulting null to zero.
+    // Only string fields use the flexible fallback. Comment integers use the same directly
+    // bound serializer in both decoders; unsupported numeric forms follow decodeInt semantics.
     private val fastJson = Json(json) {
         isLenient = false
         serializersModule = json.serializersModule.overwriteWith(SerializersModule {
@@ -286,16 +288,27 @@ private data class AlgoliaCommentPayload(
     @Contextual
     val author: String = "",
     @SerialName("parent_id")
-    @Serializable(with = FlexibleIntSerializer::class)
+    @Serializable(with = NullableDefaultIntSerializer::class)
     val parentId: Int = 0,
     @SerialName("created_at_i")
-    @Serializable(with = FlexibleIntSerializer::class)
+    @Serializable(with = NullableDefaultIntSerializer::class)
     val createdAt: Int = 0,
-    @Serializable(with = FlexibleIntSerializer::class)
+    @Serializable(with = NullableDefaultIntSerializer::class)
     val id: Int = 0,
     val children: List<AlgoliaCommentPayload> = emptyList(),
 ) {
     val descendants: Int = children.sumOf { 1 + it.descendants }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+private object NullableDefaultIntSerializer : KSerializer<Int> {
+    override val descriptor = Int.serializer().nullable.descriptor
+    override fun deserialize(decoder: Decoder): Int {
+        if (decoder.decodeNotNullMark()) return decoder.decodeInt()
+        decoder.decodeNull()
+        return 0
+    }
+    override fun serialize(encoder: Encoder, value: Int) = encoder.encodeInt(value)
 }
 
 private object NullableDefaultStringSerializer : KSerializer<String> {

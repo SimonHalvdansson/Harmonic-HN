@@ -10,16 +10,12 @@ import kotlinx.serialization.json.jsonObject
 
 class AlgoliaCommentsParserTest {
     @Test
-    fun integerCoercionPreservesEachScalarIndependently() = runTest {
-        // Separate inputs ensure one unusual scalar cannot hide a fast-path error in another.
+    fun integerFieldsDecodeOrdinaryValuesAndNulls() = runTest {
+        // Exercise every integer field independently of string fallback.
         val cases = listOf(
             "0" to 0, "42" to 42, "2147483647" to Int.MAX_VALUE,
             "-1" to -1, "-2147483648" to Int.MIN_VALUE,
-            "2147483648" to 0, "4294967295" to 0, "4294967296" to 0,
-            "1e2" to 100, "1.0" to 1, "1.5" to 0,
-            "\"42\"" to 42, "\"1e2\"" to 0, "\"1.0\"" to 0,
-            "\"+42\"" to 42, "\"\\u0034\\u0032\"" to 42,
-            "null" to 0, "true" to 0, "{}" to 0, "[]" to 0,
+            "null" to 0,
         )
         for ((value, expected) in cases) {
             val parsed = AlgoliaCommentsParser().parse(
@@ -32,19 +28,48 @@ class AlgoliaCommentsParserTest {
     }
 
     @Test
-    fun normalStringsAndNullsKeepQuotedNumbersDistinctFromNumbers() = runTest {
-        val response = """{"children":[
-          {"id":"1e2","text":"quoted exponent"},
-          {"id":"1.0","text":"quoted decimal"},
-          {"id":"123","text":"quoted integer"},
-          {"id":1e2,"text":"exponent"},
-          {"id":1.0,"text":"decimal"},
-          {"id":null,"author":null,"text":"null fields"},
-          {"id":7,"text":null}
-        ]}"""
-        val parsed = AlgoliaCommentsParser().parse(response)
-        assertEquals(listOf(0, 0, 123, 100, 1, 0), parsed.comments.map { it.id })
-        assertEquals("", parsed.comments.last().by)
+    fun missingAndNullIntegersDefaultToZero() = runTest {
+        val parsed = AlgoliaCommentsParser().parse(
+            """{"children":[
+              {"text":"missing"},
+              {"id":null,"parent_id":null,"created_at_i":null,"text":"null fields"},
+              {"id":42,"parent_id":10,"created_at_i":123,"text":"present"}
+            ]}""",
+        ).comments
+        assertEquals(listOf(0, 0, 42), parsed.map { it.id })
+        assertEquals(listOf(0, 0, 10), parsed.map { it.parent })
+        assertEquals(listOf(0, 0, 123), parsed.map { it.time })
+    }
+
+    @Test
+    fun lateStringFallbackPreservesDirectIntegersAndRestartsTheCompleteTree() = runTest {
+        val parsed = AlgoliaCommentsParser().parse(
+            """{"children":[
+              {"id":1,"text":"first","children":[{"id":2,"text":"child"}]},
+              {"id":3,"parent_id":null,"created_at_i":4,"author":123,"text":"last"}
+            ]}""",
+        )
+        assertEquals(listOf(1, 2, 3), parsed.comments.map { it.id })
+        assertEquals(listOf(0, 1, 0), parsed.comments.map { it.depth })
+        assertEquals(0, parsed.comments.last().parent)
+        assertEquals(4, parsed.comments.last().time)
+        assertEquals("123", parsed.comments.last().by)
+    }
+
+    @Test
+    fun invalidCommentIntegersFailInBothStringDecoders() = runTest {
+        for (field in listOf("id", "parent_id", "created_at_i")) {
+            for (value in listOf("2147483648", "-2147483649", "1.0", "1.5", "true", "{}", "[]")) {
+                // A numeric author forces string fallback before the integer is reached.
+                for (author in listOf("\"ordinary\"", "123")) {
+                    assertFailsWith<ApiDecodingException>("$field=$value, author=$author") {
+                        AlgoliaCommentsParser().parse(
+                            """{"children":[{"author":$author,"$field":$value,"text":"kept"}]}""",
+                        )
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -64,10 +89,10 @@ class AlgoliaCommentsParserTest {
     }
 
     @Test
-    fun unusualScalarsKeepLegacyCoercions() = runTest {
+    fun unusualStringScalarsAndRootMetadataKeepLegacyCoercions() = runTest {
         val response = """{"points":2.0,"title":123,"children":[
-          {"id":"42","parent_id":1e2,"created_at_i":3.0,"author":123,"text":456},
-          {"id":"1e2","parent_id":1.5,"created_at_i":2147483648,"author":false,"text":"kept"},
+          {"id":42,"parent_id":100,"created_at_i":3,"author":123,"text":456},
+          {"id":2,"parent_id":4,"created_at_i":5,"author":false,"text":"kept"},
           {"id":null,"parent_id":null,"created_at_i":null,"author":null,"text":"null fields"},
           {"text":{},"children":[{"text":"hidden"}]},
           {"text":false},{"text":null}
@@ -75,9 +100,9 @@ class AlgoliaCommentsParserTest {
         val parsed = AlgoliaCommentsParser().parse(response)
         assertEquals("123", parsed.title)
         assertEquals(2, parsed.points)
-        assertEquals(listOf(42, 0, 0), parsed.comments.map { it.id })
-        assertEquals(listOf(100, 0, 0), parsed.comments.map { it.parent })
-        assertEquals(listOf(3, 0, 0), parsed.comments.map { it.time })
+        assertEquals(listOf(42, 2, 0), parsed.comments.map { it.id })
+        assertEquals(listOf(100, 4, 0), parsed.comments.map { it.parent })
+        assertEquals(listOf(3, 5, 0), parsed.comments.map { it.time })
         assertEquals(listOf("123", "", ""), parsed.comments.map { it.by })
         assertEquals(listOf("456", "kept", "null fields"), parsed.comments.map { it.text })
     }
