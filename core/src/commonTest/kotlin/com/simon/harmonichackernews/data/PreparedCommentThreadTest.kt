@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.cache.ArticleSnapshotService
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.KtorHttpClient
+import com.simon.harmonichackernews.platform.Crc32
+import com.simon.harmonichackernews.platform.KotlinCrc32
 import com.simon.harmonichackernews.presentation.CommentThreadStore
 import com.simon.harmonichackernews.utils.CommentSorter
 import kotlinx.coroutines.test.runTest
@@ -130,6 +132,27 @@ class PreparedCommentThreadTest {
             assertNotEquals(first.comments.first().expandedAnchorText, cached.restore().comments.first().expandedAnchorText)
             assertEquals(prepared, cached)
         }
+    }
+
+    @Test fun repositoryUsesItsChecksumAdapterForPreparedWritesAndReads() = runTest {
+        val offsets = mutableListOf<Int>()
+        val checksum = Crc32 { bytes, start ->
+            offsets += start
+            KotlinCrc32.compute(bytes, start)
+        }
+        val files = InMemoryStoryCacheFileStore()
+        val repository = StoryCacheRepository(files, InMemoryStoryCacheMetadataStore(), crc32 = checksum)
+        val parsed = parser.parsePrepared(raw)
+        assertTrue(repository.storeStory(42, raw, 1_000, parsed.cacheSummary))
+        assertEquals(listOf(0), offsets)
+        val prepared = assertNotNull(repository.loadPreparedThread(42))
+        assertEquals(listOf(0, 5), offsets)
+        val stored = assertNotNull(files.read(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin"))
+        assertContentEquals(PreparedCommentCodec.encode(prepared), stored)
+        stored[stored.lastIndex] = (stored.last().toInt() xor 1).toByte()
+        assertTrue(files.write(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin", stored))
+        assertNull(repository.loadPreparedThread(42))
+        assertEquals(listOf(0, 5, 5), offsets)
     }
 
     @Test fun rejectsCorruptionVersionsAndInvalidSubtreeBoundaries() = runTest {

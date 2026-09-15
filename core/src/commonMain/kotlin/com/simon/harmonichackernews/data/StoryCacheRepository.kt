@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.JSONParser
+import com.simon.harmonichackernews.platform.Crc32
+import com.simon.harmonichackernews.platform.KotlinCrc32
 import kotlin.concurrent.Volatile
 
 data class CacheFileInfo(
@@ -170,6 +172,7 @@ class StoryCacheRepository(
     private val files: StoryCacheFileStore,
     private val metadata: StoryCacheMetadataStore,
     private val maximumStories: Int = DEFAULT_MAXIMUM_STORIES,
+    private val crc32: Crc32 = KotlinCrc32,
 ) {
     @Volatile
     private var recentStoryAvailability: RecentStoryAvailability? = null
@@ -244,13 +247,13 @@ class StoryCacheRepository(
     fun loadPreparedThread(storyId: Int): PreparedCommentThread? {
         if (!hasStoryPayload(storyId)) return null
         val bytes = files.read(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin") ?: return null
-        return PreparedCommentCodec.decode(bytes)?.takeIf { it.story.id == storyId }
+        return PreparedCommentCodec.decode(bytes, crc32)?.takeIf { it.story.id == storyId }
     }
 
     /** Called under StoryCacheService's write lock, after the corresponding raw JSON is stored. */
     internal fun storePreparedThread(storyId: Int, thread: PreparedCommentThread): Boolean {
         if (!hasStoryPayload(storyId) || thread.story.id != storyId) return false
-        val bytes = runCatching { PreparedCommentCodec.encode(thread) }.getOrNull() ?: return false
+        val bytes = runCatching { PreparedCommentCodec.encode(thread, crc32 = crc32) }.getOrNull() ?: return false
         return files.write(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin", bytes)
     }
 

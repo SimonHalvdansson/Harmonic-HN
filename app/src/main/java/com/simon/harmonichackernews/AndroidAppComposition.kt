@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.network.AndroidNetworkEnvironment
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies
+import com.simon.harmonichackernews.platform.AndroidCrc32
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.utils.ThemeUtils
@@ -38,6 +39,7 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             ),
         ),
         appDataStore = appDataStore,
+        crc32 = AndroidCrc32,
         fileAccessStore = AndroidKeyValueStore.named(
             context,
             StorageKeyPolicy.FILE_ACCESS_STORE,

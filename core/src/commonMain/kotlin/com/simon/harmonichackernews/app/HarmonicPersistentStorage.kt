@@ -8,6 +8,8 @@ import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.network.FileDownloadStore
 import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.platform.FileAccessTimeStore
+import com.simon.harmonichackernews.platform.Crc32
+import com.simon.harmonichackernews.platform.KotlinCrc32
 import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlin.time.Clock
 import kotlinx.io.files.Path
@@ -37,12 +39,14 @@ object HarmonicPersistentStorageFactory {
         roots: HarmonicStorageRoots,
         appDataStore: KeyValueStore,
         fileAccessStore: KeyValueStore,
+        crc32: Crc32 = KotlinCrc32,
         nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     ): HarmonicPersistentStorage {
         val accessTimes = FileAccessTimeStore(fileAccessStore)
         val storyCache = StoryCacheRepository(
             files = FileStoryCacheStore(roots.files, accessTimes),
             metadata = KeyValueStoryCacheMetadataStore(appDataStore),
+            crc32 = crc32,
         )
         return HarmonicPersistentStorage(
             storyCacheRepository = storyCache,
