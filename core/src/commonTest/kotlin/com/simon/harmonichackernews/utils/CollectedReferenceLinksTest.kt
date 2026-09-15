@@ -50,6 +50,42 @@ class CollectedReferenceLinksTest {
     }
 
     @Test
+    fun longCommaSeparatedInlineRunWithTrailingProseRemainsInCommentBody() {
+        val anchors = (1..64).joinToString(", ") { index ->
+            "<a href=\"https://example.com/$index\">Source $index</a>"
+        }
+        val html = "$anchors all support the same argument."
+
+        val result = CollectedReferenceLinks.parse(html)
+
+        assertFalse(result.hasLinks())
+        assertEquals(html, result.bodyHtml)
+    }
+
+    @Test
+    fun standaloneRunAfterInlineProseStillCollectsAcrossLineAndBlockBoundaries() {
+        val inlineHtml =
+            "<a href=\"https://example.com/inline\">Inline</a>, " +
+                "<a href=\"https://example.com/also-inline\">Also inline</a> remain in prose."
+        val standaloneHtml =
+            "<a href=\"https://example.com/first\">First</a>, " +
+                "<a href=\"https://example.com/second\">Second</a>"
+        for (boundary in listOf("<br>", "<p>References.</p>")) {
+            val result = CollectedReferenceLinks.parse(
+                "$inlineHtml$boundary$standaloneHtml<p>After.</p>",
+            )
+
+            assertEquals(
+                listOf("https://example.com/first", "https://example.com/second"),
+                result.links.map { it.url },
+            )
+            assertEquals("$inlineHtml$boundary<p>After.</p>", result.bodyHtml)
+            assertEquals(2, result.contentBlocks.count { it.isLink() })
+            assertTrue(result.hasInterleavedLinks())
+        }
+    }
+
+    @Test
     fun commaSeparatedTopLevelAnchorsAreCollectedAsSeparateLinks() {
         val html =
             "<a href=\"https:&#x2F;&#x2F;twitter.com&#x2F;cdngdev&#x2F;status&#x2F;2091909073038082139\" " +

@@ -78,7 +78,8 @@ object CollectedReferenceLinks {
         var start = 0
         while (start < nodes.size) {
             val firstAnchor = (nodes[start] as? Element)?.takeIf(::isAnchorTag)
-            if (firstAnchor == null) {
+            // Reject inline starts before parsing a run, avoiding repeated scans of its suffixes.
+            if (firstAnchor == null || !hasLineBoundaryBefore(nodes, start)) {
                 start++
                 continue
             }
@@ -103,7 +104,6 @@ object CollectedReferenceLinks {
 
             if (
                 links.size > 1 &&
-                hasLineBoundaryBefore(nodes, start) &&
                 hasLineBoundaryAfter(nodes, end)
             ) {
                 collectedNodes += CollectedNode(start, nodes[start], links)

@@ -206,9 +206,7 @@ internal data class SummaryMarkdownListItem(
 )
 
 internal fun summaryMarkdownListItems(markdown: String): List<SummaryMarkdownListItem>? {
-    val lines = compactSummaryMarkdownListSpacing(
-        markdown.stripMarkdownHtmlComments().trim().lines(),
-    ).filter(String::isNotBlank)
+    val lines = markdown.stripMarkdownHtmlComments().trim().lines().filter(String::isNotBlank)
     if (lines.isEmpty()) return null
     return lines.mapIndexed { index, sourceLine ->
         val line = sourceLine.trimStart().trimEnd()
@@ -334,18 +332,25 @@ internal fun summaryMarkdownAnnotatedString(
 }
 
 private fun compactSummaryMarkdownListSpacing(lines: List<String>): List<String> = buildList {
-    lines.forEachIndexed { index, line ->
+    var index = 0
+    var previous: String? = null
+    while (index < lines.size) {
+        val line = lines[index]
         if (line.isNotBlank()) {
             add(line)
-            return@forEachIndexed
+            previous = line
+            index++
+            continue
         }
-        val previous = lastOrNull { it.isNotBlank() }
-        val next = lines.asSequence().drop(index + 1).firstOrNull { it.isNotBlank() }
+        // Inspect each blank run once and retain its first original line when spacing survives.
+        do {
+            index++
+        } while (index < lines.size && lines[index].isBlank())
+        val next = lines.getOrNull(index)
         val compactListGap = previous?.isMarkdownListItem() == true &&
             next?.isMarkdownListItem() == true
         val compactHeadingGap = previous?.isMarkdownHeading() == true
-        val duplicateBlankLine = lastOrNull()?.isBlank() == true
-        if (!compactListGap && !compactHeadingGap && !duplicateBlankLine) add(line)
+        if (!compactListGap && !compactHeadingGap) add(line)
     }
 }
 

@@ -88,6 +88,32 @@ class SummaryMarkdownTest {
     }
 
     @Test
+    fun preservesParagraphGapsWhileCompactingMixedWhitespaceAroundListsAndHeadings() {
+        val rendered = summaryMarkdownAnnotatedString(
+            "Intro\n \t\n\t \n- First\n\t\n  \n- Second\n \t \nFollowing paragraph" +
+                "\n \n\t\n## Heading\n\t \n \nFinal paragraph",
+        )
+
+        assertEquals(
+            "Intro\n\n• First\n• Second\n\nFollowing paragraph\n\nHeading\nFinal paragraph",
+            rendered.text,
+        )
+    }
+
+    @Test
+    fun preservesSpacingAcrossLongParagraphAndListInput() {
+        val markdown = (1..256).joinToString("\n \t\n\t\n") { index ->
+            "Paragraph $index\n\t\n- First $index\n \n\t\n- Second $index"
+        }
+        val expected = (1..256).joinToString("\n\n") { index ->
+            "Paragraph $index\n\n• First $index\n• Second $index"
+        }
+
+        assertEquals(expected, summaryMarkdownAnnotatedString(markdown).text)
+        assertEquals(null, summaryMarkdownListItems(markdown))
+    }
+
+    @Test
     fun rendersGithubTasksFencesAlertsAndHtmlWithoutRawDelimiters() {
         val rendered = summaryMarkdownAnnotatedString(
             """
@@ -128,6 +154,20 @@ class SummaryMarkdownTest {
     @Test
     fun listLayoutRejectsMixedParagraphs() {
         assertEquals(null, summaryMarkdownListItems("- A list item\nFollowing paragraph"))
+    }
+
+    @Test
+    fun listLayoutIgnoresWhitespaceRunsAndKeepsAnIncompleteFinalMarker() {
+        val blankRun = " \t\n".repeat(256)
+
+        assertEquals(
+            listOf(
+                SummaryMarkdownListItem("• ", "First"),
+                SummaryMarkdownListItem("2. ", "Second"),
+                SummaryMarkdownListItem("• ", ""),
+            ),
+            summaryMarkdownListItems("- First\n${blankRun}2. Second\n${blankRun}-"),
+        )
     }
 
     @Test

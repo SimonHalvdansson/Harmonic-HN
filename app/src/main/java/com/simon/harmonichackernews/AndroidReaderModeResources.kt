@@ -20,6 +20,7 @@ import java.io.IOException
 /** Loads and caches the Android assets used by the portable reader-mode controller. */
 internal class AndroidReaderModeResources {
     private var cachedScript: String? = null
+    private val cachedFontEncodings = mutableMapOf<ReaderModeFontResource, String>()
 
     fun script(context: Context): String? {
         cachedScript?.let { return it }
@@ -44,11 +45,22 @@ internal class AndroidReaderModeResources {
         )
 
     private fun fontData(context: Context, font: String?): ReaderModeFontData? {
-        val resources = ReaderModeFontResourcePolicy.resolve(font) ?: return null
-        val regular = fontBase64(context, fontAsset(resources.regular))
-        val bold = fontBase64(context, fontAsset(resources.bold))
+        val resources = ReaderModeFontResourcePolicy.resolve(font)
+        // Bundled fonts are immutable. Retain only the selected pair and share an encoding when
+        // regular and bold resolve to the same asset, while retrying any unsuccessful reads.
+        cachedFontEncodings.keys.removeAll { it != resources?.regular && it != resources?.bold }
+        if (resources == null) return null
+        val regular = cachedFontBase64(context, resources.regular)
+        val bold = cachedFontBase64(context, resources.bold)
         if (regular.isEmpty() || bold.isEmpty()) return null
         return ReaderModeFontData(regular, bold)
+    }
+
+    private fun cachedFontBase64(context: Context, resource: ReaderModeFontResource): String {
+        cachedFontEncodings[resource]?.let { return it }
+        return fontBase64(context, fontAsset(resource)).also { encoded ->
+            if (encoded.isNotEmpty()) cachedFontEncodings[resource] = encoded
+        }
     }
 
     private fun fontAsset(resource: ReaderModeFontResource): String {
