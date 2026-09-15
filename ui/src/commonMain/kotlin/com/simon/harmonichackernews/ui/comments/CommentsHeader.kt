@@ -78,7 +78,6 @@ fun CommentsHeader(
     tintBaseColor: Int,
     initialTint: Int?,
     headerTopPadding: Dp,
-    actionHorizontalPadding: Dp,
     bookmarksEnabled: Boolean,
     lastRefreshedText: String?,
     textStyle: TextStyle,
@@ -318,7 +317,6 @@ fun CommentsHeader(
                                 settings = settings,
                                 contentVersion = contentVersion,
                                 bookmarksEnabled = bookmarksEnabled,
-                                actionHorizontalPadding = actionHorizontalPadding,
                             )
                         }
                     }

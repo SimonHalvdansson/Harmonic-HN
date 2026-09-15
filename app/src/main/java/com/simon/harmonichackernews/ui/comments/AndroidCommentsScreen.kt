@@ -232,7 +232,6 @@ private fun AndroidCommentsHeader(
         tintBaseColor = tintBaseColor,
         initialTint = tintPresentation.initialTintArgb,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),
-        actionHorizontalPadding = dimensionResource(R.dimen.comments_header_action_padding),
         bookmarksEnabled = dependencies.userSettings.general.bookmarksEnabled,
         lastRefreshedText = headerPresentation.lastRefreshedText,
         textStyle = legacyTextStyle,

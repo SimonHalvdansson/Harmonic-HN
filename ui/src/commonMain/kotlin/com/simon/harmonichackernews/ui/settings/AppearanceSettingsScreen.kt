@@ -1,5 +1,13 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import com.simon.harmonichackernews.settings.SplitOrientation
+import com.simon.harmonichackernews.settings.SplitRatioPreferences
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.Res
@@ -21,9 +29,14 @@ data class AppearanceSettingsUiState(
     val showTransparentStatusBar: Boolean,
     val transparentStatusBar: Boolean,
     val compactHeader: Boolean,
+    val showSplitRatio: Boolean = false,
+    val splitRatio: Float = 0.5f,
+    val splitOrientation: SplitOrientation = SplitOrientation.Portrait,
+    val allowSplitAdjustment: Boolean = false,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
+    AllowSplitAdjustment(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT),
     SpecialNighttime(AppearanceBooleanPreference.SPECIAL_NIGHTTIME),
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
@@ -39,7 +52,9 @@ fun AppearanceSettingsScreen(
     onBooleanChanged: (AppearanceBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (AppearanceSettingsDialog) -> Unit,
     contentVersion: Int = 0,
+    onSplitRatioChanged: (Float) -> Unit = {},
 ) {
+    var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
     SettingsPage(
         title = stringResource(Res.string.settings_section_appearance),
         showNavigation = showNavigation,
@@ -93,6 +108,36 @@ fun AppearanceSettingsScreen(
                         onBooleanChanged(AppearanceBooleanSetting.CompactHeader, it)
                     },
                 )
+            }
+        }
+        if (state.showSplitRatio) {
+            item {
+                SettingsCategory("Split ratio") {
+                    key(state.splitOrientation) {
+                        SliderSetting(
+                            title = when (state.splitOrientation) {
+                                SplitOrientation.Portrait -> "Portrait split ratio"
+                                SplitOrientation.Landscape -> "Landscape split ratio"
+                            },
+                            valueLabel = "${(sliderRatio * 100).roundToInt()} / ${(100 - sliderRatio * 100).roundToInt()}",
+                            value = sliderRatio,
+                            valueRange = SplitRatioPreferences.Range,
+                            steps = 0,
+                            onValueChange = { sliderRatio = it },
+                            onValueChangeFinished = { onSplitRatioChanged(sliderRatio) },
+                        )
+                    }
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Allow adjustments",
+                        icon = Res.drawable.ic_horizontal_split,
+                        summary = "Drag the handle between panes to resize them",
+                        checked = state.allowSplitAdjustment,
+                        onCheckedChange = {
+                            onBooleanChanged(AppearanceBooleanSetting.AllowSplitAdjustment, it)
+                        },
+                    )
+                }
             }
         }
         item {

@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,7 +82,11 @@ fun MainDestinationLayers(
                 )
                 .then(basePredictiveModifier),
         ) {
-            base()
+            CompositionLocalProvider(
+                LocalSplitPaneAnimationEnabled provides !state.baseSemanticsHidden,
+            ) {
+                base()
+            }
         }
 
         linkPreview?.let { content ->
@@ -122,7 +127,11 @@ fun MainDestinationLayers(
                 modifier = Modifier.fillMaxSize(),
                 contentModifier = settingsPredictiveModifier,
             ) {
-                settings()
+                CompositionLocalProvider(
+                    LocalSplitPaneAnimationEnabled provides !state.settingsSemanticsHidden,
+                ) {
+                    settings()
+                }
             }
         }
 
@@ -157,7 +166,11 @@ fun MainDestinationLayers(
                 modifier = Modifier.fillMaxSize(),
                 contentModifier = submissionsPredictiveModifier,
             ) {
-                submissions()
+                CompositionLocalProvider(
+                    LocalSplitPaneAnimationEnabled provides !state.submissionsSemanticsHidden,
+                ) {
+                    submissions()
+                }
             }
         }
 

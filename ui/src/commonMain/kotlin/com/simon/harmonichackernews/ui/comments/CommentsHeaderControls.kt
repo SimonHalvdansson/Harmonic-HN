@@ -21,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -64,7 +65,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -330,7 +330,7 @@ fun HeaderActions(
     settings: CommentDisplaySettings,
     contentVersion: Int,
     bookmarksEnabled: Boolean,
-    actionHorizontalPadding: Dp,
+
 ) {
     val story = controller.story
     val hasAccount = settings.hasAccountDetails
@@ -378,97 +378,101 @@ fun HeaderActions(
         if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsHeaderAction.BOOKMARK))
         if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsHeaderAction.SUMMARIZE, controller.storySummaryLoading))
     }
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = actionHorizontalPadding),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        actions.forEach { action ->
-            HeaderActionButton(action) {
-                controller.listener.onHeaderAction(action.action)
-            }
-        }
-        Box(
-            Modifier.size(CommentsHeaderActionButtonSize),
-            contentAlignment = Alignment.Center,
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val actionCount = actions.size + if (hasAccount) 2 else 3
+        val actionHorizontalPadding = commentActionPadding(maxWidth.value, actionCount).dp
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = actionHorizontalPadding),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalArrangement = Arrangement.Center,
         ) {
-            CommentsTooltip("Share") {
-                IconButton(
-                    onClick = { shareExpanded = true },
-                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_share),
-                        contentDescription = "Share",
-                        modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.drawable,
-                    )
+            actions.forEach { action ->
+                HeaderActionButton(action) {
+                    controller.listener.onHeaderAction(action.action)
                 }
             }
-            ShareMenu(
-                expanded = shareExpanded,
-                isLink = story.isLink,
-                onDismiss = { shareExpanded = false },
-                onAction = controller.listener::onShareAction,
-            )
-        }
-        if (!hasAccount) {
-            CommentsTooltip("Refresh") {
-                IconButton(
-                    onClick = {
-                        controller.beginHeaderRefresh()
-                        controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
-                    },
-                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_refresh),
-                        contentDescription = "Refresh",
-                        modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.drawable,
-                    )
+            Box(
+                Modifier.size(CommentsHeaderActionButtonSize),
+                contentAlignment = Alignment.Center,
+            ) {
+                CommentsTooltip("Share") {
+                    IconButton(
+                        onClick = { shareExpanded = true },
+                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_share),
+                            contentDescription = "Share",
+                            modifier = Modifier.size(24.dp),
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
+                }
+                ShareMenu(
+                    expanded = shareExpanded,
+                    isLink = story.isLink,
+                    onDismiss = { shareExpanded = false },
+                    onAction = controller.listener::onShareAction,
+                )
+            }
+            if (!hasAccount) {
+                CommentsTooltip("Refresh") {
+                    IconButton(
+                        onClick = {
+                            controller.beginHeaderRefresh()
+                            controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                        },
+                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_refresh),
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(24.dp),
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
                 }
             }
-        }
-        Box(
-            Modifier.size(CommentsHeaderActionButtonSize),
-            contentAlignment = Alignment.Center,
-        ) {
-            CommentsTooltip("More options") {
-                IconButton(
-                    onClick = {
+            Box(
+                Modifier.size(CommentsHeaderActionButtonSize),
+                contentAlignment = Alignment.Center,
+            ) {
+                CommentsTooltip("More options") {
+                    IconButton(
+                        onClick = {
+                            sortExpanded = false
+                            archiveExpanded = false
+                            moreExpanded = true
+                        },
+                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_more_vert),
+                            contentDescription = "More options",
+                            modifier = Modifier.size(24.dp),
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
+                }
+                MoreMenu(
+                    expanded = moreExpanded,
+                    sortExpanded = sortExpanded,
+                    archiveExpanded = archiveExpanded,
+                    controller = controller,
+                    settings = settings,
+                    bookmarksEnabled = bookmarksEnabled,
+                    contentVersion = contentVersion,
+                    onDismiss = dismissMenus,
+                    onSortExpanded = { sortExpanded = true },
+                    onArchiveExpanded = { archiveExpanded = true },
+                    onSubmenuBack = {
                         sortExpanded = false
                         archiveExpanded = false
-                        moreExpanded = true
                     },
-                    modifier = Modifier.size(CommentsHeaderActionButtonSize),
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_more_vert),
-                        contentDescription = "More options",
-                        modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.drawable,
-                    )
-                }
+                )
             }
-            MoreMenu(
-                expanded = moreExpanded,
-                sortExpanded = sortExpanded,
-                archiveExpanded = archiveExpanded,
-                controller = controller,
-                settings = settings,
-                bookmarksEnabled = bookmarksEnabled,
-                contentVersion = contentVersion,
-                onDismiss = dismissMenus,
-                onSortExpanded = { sortExpanded = true },
-                onArchiveExpanded = { archiveExpanded = true },
-                onSubmenuBack = {
-                    sortExpanded = false
-                    archiveExpanded = false
-                },
-            )
         }
     }
 }
@@ -969,4 +973,14 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
             HeaderStatusState.None -> Spacer(Modifier.height(0.dp))
         }
     }
+}
+
+/** Preserve roomy spacing when it fits, without forcing actions onto another row. */
+internal fun commentActionPadding(width: Float, actionCount: Int): Float {
+    val preferred = when {
+        width < 360f -> 0f
+        width < 600f -> 9f + (width - 360f) * (55f / 240f)
+        else -> (64f + (width - 600f) * (86f / 120f)).coerceAtMost(150f)
+    }
+    return preferred.coerceAtMost(((width - actionCount * 54f) / 2f).coerceAtLeast(0f))
 }

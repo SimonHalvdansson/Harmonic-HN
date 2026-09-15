@@ -977,6 +977,7 @@ fun SliderSetting(
     steps: Int,
     enabled: Boolean = true,
     onValueChange: (Float) -> Unit,
+    onValueChangeFinished: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -1012,6 +1013,7 @@ fun SliderSetting(
         Slider(
             value = value,
             onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
             valueRange = valueRange,

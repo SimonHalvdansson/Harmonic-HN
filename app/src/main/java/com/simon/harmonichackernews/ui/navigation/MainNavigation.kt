@@ -1010,6 +1010,7 @@ private fun MainNavigation(
                     storyRequest = baseStoryRequest,
                     directive = directive,
                     paneProportion = paneProportion,
+                    isFoldable = isFoldable,
                     onBack = ::popMainBackStack,
                     stories = {
                         StoriesPane(
@@ -1156,6 +1157,7 @@ private fun MainNavigation(
                                 storyRequest = submissionsStoryRequest,
                                 directive = directive,
                                 paneProportion = paneProportion,
+                                isFoldable = isFoldable,
                                 onBack = ::popMainBackStack,
                                 stories = submissionsContent,
                                 emptyDetail = { EmptyCommentsScreen() },

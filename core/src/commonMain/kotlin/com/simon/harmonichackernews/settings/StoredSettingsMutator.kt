@@ -164,6 +164,15 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, normalized.joinToString(","))
     }
 
+    fun setSplitRatio(orientation: SplitOrientation, value: Float) {
+        val ratio = SplitRatioPreferences.sanitize(value) ?: return
+        val key = when (orientation) {
+            SplitOrientation.Portrait -> UserPreferenceKeys.SPLIT_RATIO_PORTRAIT
+            SplitOrientation.Landscape -> UserPreferenceKeys.SPLIT_RATIO_LANDSCAPE
+        }
+        store.putFloat(key, ratio)
+    }
+
     fun setAppearanceBoolean(preference: AppearanceBooleanPreference, value: Boolean) {
         store.putBoolean(preference.storageKey, value)
     }

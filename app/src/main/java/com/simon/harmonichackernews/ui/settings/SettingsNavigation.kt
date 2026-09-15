@@ -135,6 +135,7 @@ fun SettingsShell(
     SettingsNavigationShell(
         navigation = navigation,
         directive = directive,
+        supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = if (isTwoPane && !isFoldable) {
             dimensionResource(R.dimen.settings_extra_pane_padding)

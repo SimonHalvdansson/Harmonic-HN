@@ -11,9 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
-import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -72,97 +70,94 @@ fun MainNavigationScene(
     comments: @Composable (MainStoryRequest) -> Unit,
     animateDetailVisibilityChanges: Boolean = false,
     modifier: Modifier = Modifier,
+    isFoldable: Boolean = false,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
-    val expansion = rememberPaneExpansionState(
-        anchors = remember(paneProportion) {
-            listOf(PaneExpansionAnchor.Proportion(paneProportion))
-        },
-        initialAnchoredIndex = 0,
-    )
-    val strategy = rememberListDetailSceneStrategy<NavKey>(
-        directive = directive,
-        paneExpansionState = expansion.takeIf { isTwoPane },
-    )
-    val backStack = remember {
-        mutableStateListOf<NavKey>(StoriesDestination).apply {
-            storyRequest?.let { add(CommentsDestination(it)) }
-        }
-    }
-    var animatedStorySerial by remember { mutableIntStateOf(-1) }
-    var emptyDetailAnimationVersion by remember { mutableIntStateOf(0) }
-    LaunchedEffect(storyRequest?.serial) {
-        val previousRequest = (backStack.lastOrNull() as? CommentsDestination)?.request
-        val animation = mainDetailPaneAnimation(
-            previousStorySerial = previousRequest?.serial,
-            nextStorySerial = storyRequest?.serial,
-            animateVisibilityChanges = animateDetailVisibilityChanges,
+    SplitPaneViewport(directive, paneProportion, modifier, isFoldable = isFoldable) { expansion ->
+        val strategy = rememberListDetailSceneStrategy<NavKey>(
+            directive = directive,
+            paneExpansionState = expansion.takeIf { isTwoPane },
         )
-        animatedStorySerial = animation.storySerial ?: -1
-        if (animation.animateEmptyDetail) {
-            emptyDetailAnimationVersion++
+        val backStack = remember {
+            mutableStateListOf<NavKey>(StoriesDestination).apply {
+                storyRequest?.let { add(CommentsDestination(it)) }
+            }
         }
-        if (storyRequest == null) {
-            if (backStack.lastOrNull() is CommentsDestination) backStack.removeLastOrNull()
-        } else if (backStack.lastOrNull() is CommentsDestination) {
-            backStack[backStack.lastIndex] = CommentsDestination(storyRequest)
-        } else {
-            backStack.add(CommentsDestination(storyRequest))
-        }
-    }
-    val provider = entryProvider<NavKey> {
-        entry<StoriesDestination>(
-            metadata = ListDetailSceneStrategy.listPane(
-                detailPlaceholder = {
-                    PaneDetailSwitchIn(
-                        contentKey = emptyDetailAnimationVersion,
-                        animate = emptyDetailAnimationVersion > 0,
-                        initialScale = 1.15f,
-                    ) {
-                        emptyDetail()
-                    }
-                },
-            ),
-        ) { stories() }
-        entry<CommentsDestination>(
-            metadata = ListDetailSceneStrategy.detailPane(),
-        ) { destination ->
-            if (!isTwoPane) {
-                comments(destination.request)
+        var animatedStorySerial by remember { mutableIntStateOf(-1) }
+        var emptyDetailAnimationVersion by remember { mutableIntStateOf(0) }
+        LaunchedEffect(storyRequest?.serial) {
+            val previousRequest = (backStack.lastOrNull() as? CommentsDestination)?.request
+            val animation = mainDetailPaneAnimation(
+                previousStorySerial = previousRequest?.serial,
+                nextStorySerial = storyRequest?.serial,
+                animateVisibilityChanges = animateDetailVisibilityChanges,
+            )
+            animatedStorySerial = animation.storySerial ?: -1
+            if (animation.animateEmptyDetail) {
+                emptyDetailAnimationVersion++
+            }
+            if (storyRequest == null) {
+                if (backStack.lastOrNull() is CommentsDestination) backStack.removeLastOrNull()
+            } else if (backStack.lastOrNull() is CommentsDestination) {
+                backStack[backStack.lastIndex] = CommentsDestination(storyRequest)
             } else {
-                PaneDetailSwitchIn(
-                    contentKey = destination.request.serial,
-                    animate = animatedStorySerial == destination.request.serial,
-                ) {
+                backStack.add(CommentsDestination(storyRequest))
+            }
+        }
+        val provider = entryProvider<NavKey> {
+            entry<StoriesDestination>(
+                metadata = ListDetailSceneStrategy.listPane(
+                    detailPlaceholder = {
+                        PaneDetailSwitchIn(
+                            contentKey = emptyDetailAnimationVersion,
+                            animate = emptyDetailAnimationVersion > 0,
+                            initialScale = 1.15f,
+                        ) {
+                            emptyDetail()
+                        }
+                    },
+                ),
+            ) { stories() }
+            entry<CommentsDestination>(
+                metadata = ListDetailSceneStrategy.detailPane(),
+            ) { destination ->
+                if (!isTwoPane) {
                     comments(destination.request)
+                } else {
+                    PaneDetailSwitchIn(
+                        contentKey = destination.request.serial,
+                        animate = animatedStorySerial == destination.request.serial,
+                    ) {
+                        comments(destination.request)
+                    }
                 }
             }
         }
+        val entries = rememberDecoratedNavEntries(
+            backStack = backStack,
+            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
+            entryProvider = provider,
+        )
+        val sceneState = rememberSceneState(
+            entries = entries,
+            sceneStrategies = listOf(strategy),
+            onBack = onBack,
+        )
+        val eventState = rememberNavigationEventState(SceneInfo(sceneState.currentScene))
+        val transitionOffsetPx = with(LocalDensity.current) {
+            ActivityNavigationTransitionOffset.roundToPx()
+        }
+        NavDisplay(
+            sceneState = sceneState,
+            navigationEventState = eventState,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = { activityNavigationOpenContentTransform(transitionOffsetPx) },
+            popTransitionSpec = { activityNavigationPopContentTransform(transitionOffsetPx) },
+            predictivePopTransitionSpec = {
+                activityNavigationPopContentTransform(transitionOffsetPx)
+            },
+        )
     }
-    val entries = rememberDecoratedNavEntries(
-        backStack = backStack,
-        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
-        entryProvider = provider,
-    )
-    val sceneState = rememberSceneState(
-        entries = entries,
-        sceneStrategies = listOf(strategy),
-        onBack = onBack,
-    )
-    val eventState = rememberNavigationEventState(SceneInfo(sceneState.currentScene))
-    val transitionOffsetPx = with(LocalDensity.current) {
-        ActivityNavigationTransitionOffset.roundToPx()
-    }
-    NavDisplay(
-        sceneState = sceneState,
-        navigationEventState = eventState,
-        modifier = modifier.fillMaxSize(),
-        transitionSpec = { activityNavigationOpenContentTransform(transitionOffsetPx) },
-        popTransitionSpec = { activityNavigationPopContentTransform(transitionOffsetPx) },
-        predictivePopTransitionSpec = {
-            activityNavigationPopContentTransform(transitionOffsetPx)
-        },
-    )
 }
 
 internal data class MainDetailPaneAnimation(

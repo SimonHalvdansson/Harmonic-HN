@@ -158,7 +158,16 @@ data class AppearancePreferences(
     val accentPreset: String,
     /** Saved font choice before a theme (such as Hacker) overrides content typography. */
     val font: String = "googlesansflexrounded",
-)
+    /** Null preserves the host’s original pane proportions until the user chooses a ratio. */
+    val portraitSplitRatio: Float? = null,
+    val landscapeSplitRatio: Float? = null,
+    val allowSplitAdjustment: Boolean = false,
+) {
+    fun splitRatio(orientation: SplitOrientation): Float? = when (orientation) {
+        SplitOrientation.Portrait -> portraitSplitRatio
+        SplitOrientation.Landscape -> landscapeSplitRatio
+    }
+}
 
 data class DebugPreferences(
     val alwaysShowTapToRefresh: Boolean,

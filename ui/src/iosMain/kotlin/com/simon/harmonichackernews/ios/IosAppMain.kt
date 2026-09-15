@@ -660,8 +660,6 @@ private fun IosStoriesContent(
                 }
             },
             filterColors = filterColors,
-            extraCompactSelectedText = false,
-            compactSelectedText = false,
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
         IosStatusBarProtection(HarmonicTheme.colors.background)
@@ -703,6 +701,7 @@ private fun IosSettingsShell(
         SettingsNavigationShell(
             navigation = navigation,
             directive = directive,
+            supportsTwoPane = isTabletDevice,
             isFoldable = false,
             tabletPaneHorizontalPadding = if (isTwoPane) 24.dp else 0.dp,
             onBackFromSettings = scene.navigation::closeSettings,

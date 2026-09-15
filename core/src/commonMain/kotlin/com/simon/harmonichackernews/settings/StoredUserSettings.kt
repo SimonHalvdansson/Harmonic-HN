@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.Flow
 
 /** Preference keys consumed by common settings snapshots. */
 object UserPreferenceKeys {
+    const val SPLIT_RATIO_PORTRAIT = "pref_split_ratio_portrait"
+    const val SPLIT_RATIO_LANDSCAPE = "pref_split_ratio_landscape"
+    const val ALLOW_SPLIT_ADJUSTMENT = "pref_allow_split_adjustment"
     const val SHOW_POINTS = "pref_show_points"
     const val COMPACT_POINTS = "pref_compact_points"
     const val INCLUDE_TOP_LEVEL_DOMAIN = "pref_include_top_level_domain"
@@ -304,6 +307,13 @@ class StoredUserSettings(
                     string(ThemePreferences.ACCENT_KEY, ThemePreferences.ACCENT_DEFAULT),
                 ),
                 font = configuredFont(),
+                portraitSplitRatio = SplitRatioPreferences.sanitize(
+                    store.getFloat(UserPreferenceKeys.SPLIT_RATIO_PORTRAIT, Float.NaN),
+                ),
+                landscapeSplitRatio = SplitRatioPreferences.sanitize(
+                    store.getFloat(UserPreferenceKeys.SPLIT_RATIO_LANDSCAPE, Float.NaN),
+                ),
+                allowSplitAdjustment = boolean(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT, false),
             )
         }
 

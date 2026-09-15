@@ -588,8 +588,6 @@ private fun DesktopStoriesContent(
             tintStore = app.storyResourceTints,
             commentText = { AnnotatedString(it) },
             filterColors = filterColors,
-            extraCompactSelectedText = false,
-            compactSelectedText = false,
             pullToRefreshEnabled = false,
             showRefreshMenuItem = true,
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
@@ -626,6 +624,7 @@ private fun DesktopSettingsShell(
         SettingsNavigationShell(
             navigation = navigation,
             directive = directive,
+            supportsTwoPane = true,
             isFoldable = false,
             tabletPaneHorizontalPadding = if (isTwoPane) {
                 DesktopWidePaneHorizontalPadding

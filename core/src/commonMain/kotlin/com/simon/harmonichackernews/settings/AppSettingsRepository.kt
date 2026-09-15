@@ -58,6 +58,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
 }
 
 enum class AppearanceBooleanPreference(internal val storageKey: String) {
+    ALLOW_SPLIT_ADJUSTMENT(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT),
     SPECIAL_NIGHTTIME(UserPreferenceKeys.SPECIAL_NIGHTTIME),
     TRANSPARENT_STATUS_BAR(UserPreferenceKeys.TRANSPARENT_STATUS_BAR),
     COMPACT_HEADER(UserPreferenceKeys.COMPACT_HEADER),
@@ -169,6 +170,9 @@ class AppSettingsRepository(
 
     fun setAppearanceBoolean(preference: AppearanceBooleanPreference, value: Boolean) =
         mutator.setAppearanceBoolean(preference, value)
+
+    fun setSplitRatio(orientation: SplitOrientation, value: Float) =
+        mutator.setSplitRatio(orientation, value)
 
     fun setTheme(value: String) = mutator.setTheme(value)
     fun setNighttimeTheme(value: String) = mutator.setNighttimeTheme(value)

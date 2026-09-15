@@ -339,7 +339,6 @@ private fun DesktopCommentsHeader(
         tintBaseColor = tintBase,
         initialTint = presentation.tint.initialTintArgb,
         headerTopPadding = 32.dp,
-        actionHorizontalPadding = 8.dp,
         bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
         lastRefreshedText = presentation.lastRefreshedText,
         textStyle = TextStyle.Default,

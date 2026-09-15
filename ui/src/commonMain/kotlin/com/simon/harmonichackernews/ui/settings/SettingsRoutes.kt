@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -12,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.StoryTypeSettingsPolicy
 import com.simon.harmonichackernews.format.DelimitedListPolicy
+import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -255,6 +257,7 @@ fun AppearanceSettingsRoute(
     var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val splitLayout = LocalSplitPaneLayout.current
     AppearanceSettingsScreen(
         state = presenter.state(
             settings = settings,
@@ -264,6 +267,11 @@ fun AppearanceSettingsRoute(
             ),
             fontLabel = settings.story.fontChoice.label,
             showTransparentStatusBar = labels.showTransparentStatusBar,
+        ).copy(
+            showSplitRatio = splitLayout.supportsTwoPane,
+            splitRatio = splitLayout.ratio,
+            splitOrientation = splitLayout.orientation,
+            allowSplitAdjustment = settings.appearance.allowSplitAdjustment,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
@@ -274,6 +282,12 @@ fun AppearanceSettingsRoute(
             }
         },
         onDialogRequested = { dialog = it },
+        onSplitRatioChanged = {
+            repository.setSplitRatio(
+                splitLayout.orientation,
+                SplitRatioPreferences.snapToCenter(it, splitLayout.isFoldable),
+            )
+        },
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

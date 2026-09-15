@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,6 +92,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
@@ -167,8 +170,6 @@ fun StoriesScreen(
     ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
-    extraCompactSelectedText: Boolean,
-    compactSelectedText: Boolean,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
@@ -309,8 +310,6 @@ fun StoriesScreen(
                 storyItemModel = storyItemModel,
                 commentText = commentText,
                 filterColors = filterColors,
-                extraCompactSelectedText = extraCompactSelectedText,
-                compactSelectedText = compactSelectedText,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
                 onVisibleStoriesChanged = onVisibleStoriesChanged,
@@ -329,8 +328,6 @@ fun StoriesScreen(
                 storyItemModel = storyItemModel,
                 commentText = commentText,
                 filterColors = filterColors,
-                extraCompactSelectedText = extraCompactSelectedText,
-                compactSelectedText = compactSelectedText,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
                 onVisibleStoriesChanged = {},
@@ -482,8 +479,6 @@ private fun StoriesList(
     ) -> StoryItemUiModel,
     commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
-    extraCompactSelectedText: Boolean,
-    compactSelectedText: Boolean,
     pullToRefreshEnabled: Boolean,
     showRefreshMenuItem: Boolean,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
@@ -607,7 +602,9 @@ private fun StoriesList(
                         },
                     )
                     Box(
-                        itemAnimationModifier.animateContentSize(
+                        // Constrain width before the size animator: content reflows immediately during
+                        // pane resizing, while loaded rows can still animate their height.
+                        itemAnimationModifier.fillMaxWidth().animateContentSize(
                             animationSpec = tween(StoriesRowMotionDurationMillis, easing = StoriesEasing),
                         ),
                     ) {
@@ -806,8 +803,6 @@ private fun StoriesList(
                 tapToUpdateExitProgress = tapToUpdateExitProgress,
                 suppressLastUpdated = controller.tapToUpdateRefreshStarted,
                 filterColors = filterColors,
-                extraCompactSelectedText = extraCompactSelectedText,
-                compactSelectedText = compactSelectedText,
                 showRefreshMenuItem = showRefreshMenuItem,
                 showFailureStatus = !centerFailure,
                 modifier = Modifier
@@ -896,8 +891,6 @@ private fun StoriesHeader(
     tapToUpdateExitProgress: () -> Float,
     suppressLastUpdated: Boolean,
     filterColors: HarmonicFilterButtonColors,
-    extraCompactSelectedText: Boolean,
-    compactSelectedText: Boolean,
     showRefreshMenuItem: Boolean,
     showFailureStatus: Boolean,
     modifier: Modifier = Modifier,
@@ -931,8 +924,6 @@ private fun StoriesHeader(
         } else {
             MainHeader(
                 controller = controller,
-                extraCompactSelectedText = extraCompactSelectedText,
-                compactSelectedText = compactSelectedText,
                 showRefreshMenuItem = showRefreshMenuItem,
                 modifier = Modifier.padding(start = sideStart, end = sideEnd),
             )
@@ -1134,8 +1125,6 @@ private fun StoriesHeader(
 @Composable
 private fun MainHeader(
     controller: StoriesComposeController,
-    extraCompactSelectedText: Boolean,
-    compactSelectedText: Boolean,
     showRefreshMenuItem: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1157,107 +1146,120 @@ private fun MainHeader(
     val settings = controller.displaySettings ?: return
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
     val density = LocalDensity.current
-    val selectedTextSize = with(density) {
-        when {
-            extraCompactSelectedText ->
-                (typography.storiesDropdownSelectedSize * 0.8f).dp.toSp()
-            compactSelectedText ->
-                typography.storiesDropdownCompactSelectedSize.dp.toSp()
-            else -> typography.storiesDropdownSelectedSize.dp.toSp()
-        }
+    val title = if (controller.showingCached) {
+        "Cached stories"
+    } else {
+        controller.typeLabels.getOrNull(controller.selectedTypeIndex) ?: "Stories"
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .combinedClickable(
-                        onClick = { typesExpanded = true },
-                        onLongClick = null,
-                    )
-                    .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = if (controller.showingCached) {
-                        "Cached stories"
-                    } else {
-                        controller.typeLabels.getOrNull(controller.selectedTypeIndex) ?: "Stories"
-                    },
-                    color = HarmonicTheme.colors.storyNormal,
+    val textMeasurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier.fillMaxWidth().height(56.dp)) {
+        val preferredSize = when {
+            maxWidth < 350.dp -> typography.storiesDropdownSelectedSize * 0.8f
+            maxWidth < 420.dp -> typography.storiesDropdownCompactSelectedSize
+            else -> typography.storiesDropdownSelectedSize
+        }
+        val minimumSize = typography.storiesDropdownSelectedSize * 0.65f
+        val titleWidth = with(density) {
+            textMeasurer.measure(
+                title,
+                TextStyle(
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
-                    fontSize = selectedTextSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Spacer(Modifier.width(40.dp))
-                Icon(
-                    painterResource(Res.drawable.ic_keyboard_arrow_down),
-                    contentDescription = "Choose story list",
-                    modifier = Modifier.size(24.dp),
-                    tint = HarmonicTheme.colors.drawable,
-                )
-            }
-            HarmonicDropdownMenu(
-                expanded = typesExpanded,
-                onDismiss = { typesExpanded = false },
-                modifier = Modifier.width(196.dp),
-            ) {
-                controller.typeLabels.forEachIndexed { index, label ->
-                    DropdownMenuItem(
-                        text = {
-                            HarmonicMenuText(
-                                text = label,
-                                color = HarmonicTheme.colors.storyNormal,
-                                fontFamily = typography.family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = typography.storiesDropdownItemSize.sp,
-                            )
-                        },
-                        onClick = {
-                            typesExpanded = false
-                            controller.listener.onTypeSelected(index)
-                        },
+                    fontSize = preferredSize.dp.toSp(),
+                    letterSpacing = 0.sp,
+                ),
+                softWrap = false,
+            ).size.width.toDp().value
+        }
+        // Leave a pixel-rounding margin, and use the same tracking for measuring and drawing.
+        val sizing = storyHeaderSizing(maxWidth.value, titleWidth + 1f, minimumSize / preferredSize)
+        val selectedTextSize = with(density) { (preferredSize * sizing.textScale).dp.toSp() }
+        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .combinedClickable(
+                            onClick = { typesExpanded = true },
+                            onLongClick = null,
+                        )
+                        .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        color = HarmonicTheme.colors.storyNormal,
+                        fontFamily = typography.family,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = selectedTextSize,
+                        letterSpacing = 0.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+                    )
+                    Spacer(Modifier.width(sizing.arrowGap.dp))
+                    Icon(
+                        painterResource(Res.drawable.ic_keyboard_arrow_down),
+                        contentDescription = "Choose story list",
+                        modifier = Modifier.size(24.dp),
+                        tint = HarmonicTheme.colors.drawable,
                     )
                 }
+                HarmonicDropdownMenu(
+                    expanded = typesExpanded,
+                    onDismiss = { typesExpanded = false },
+                    modifier = Modifier.width(196.dp),
+                ) {
+                    controller.typeLabels.forEachIndexed { index, label ->
+                        DropdownMenuItem(
+                            text = {
+                                HarmonicMenuText(
+                                    text = label,
+                                    color = HarmonicTheme.colors.storyNormal,
+                                    fontFamily = typography.family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = typography.storiesDropdownItemSize.sp,
+                                )
+                            },
+                            onClick = {
+                                typesExpanded = false
+                                controller.listener.onTypeSelected(index)
+                            },
+                        )
+                    }
+                }
             }
-        }
-        StoriesTooltip("Search") {
-            IconButton(
-                onClick = controller.listener::onOpenSearch,
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_search),
-                    "Search",
-                    tint = HarmonicTheme.colors.drawable,
-                )
-            }
-        }
-        Box {
-            StoriesTooltip("More options") {
+            if (!sizing.searchInMenu) StoriesTooltip("Search") {
                 IconButton(
-                    onClick = { moreExpanded = true },
+                    onClick = controller.listener::onOpenSearch,
                 ) {
                     Icon(
-                        painterResource(Res.drawable.ic_more_vert),
-                        "More options",
+                        painterResource(Res.drawable.ic_search),
+                        "Search",
                         tint = HarmonicTheme.colors.drawable,
                     )
                 }
             }
-            StoriesMoreMenu(
-                controller = controller,
-                expanded = moreExpanded,
-                showRefreshItem = showRefreshMenuItem,
-                dismiss = { moreExpanded = false },
-            )
+            Box {
+                StoriesTooltip("More options") {
+                    IconButton(
+                        onClick = { moreExpanded = true },
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_more_vert),
+                            "More options",
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
+                }
+                StoriesMoreMenu(
+                    controller = controller,
+                    expanded = moreExpanded,
+                    showRefreshItem = showRefreshMenuItem,
+                    showSearchItem = sizing.searchInMenu,
+                    dismiss = { moreExpanded = false },
+                )
+            }
         }
     }
 }
@@ -1325,6 +1327,7 @@ private fun StoriesMoreMenu(
     controller: StoriesComposeController,
     expanded: Boolean,
     showRefreshItem: Boolean,
+    showSearchItem: Boolean,
     dismiss: () -> Unit,
 ) {
     HarmonicDropdownMenu(
@@ -1332,6 +1335,15 @@ private fun StoriesMoreMenu(
         onDismiss = dismiss,
         modifier = Modifier.width(196.dp),
     ) {
+        if (showSearchItem) {
+            DropdownMenuItem(
+                text = { HarmonicMenuText("Search") },
+                onClick = {
+                    dismiss()
+                    controller.listener.onOpenSearch()
+                },
+            )
+        }
         if (showRefreshItem) {
             DropdownMenuItem(
                 text = { HarmonicMenuText("Refresh") },
@@ -1490,4 +1502,18 @@ private fun SavedCommentStoryItem(
             }
         }
     }
+}
+
+internal data class StoryHeaderSizing(val textScale: Float, val arrowGap: Float, val searchInMenu: Boolean)
+
+/** Spend spare space on the arrow gap first; move Search before truncating the list title. */
+internal fun storyHeaderSizing(width: Float, titleWidth: Float, minimumScale: Float): StoryHeaderSizing {
+    // Title padding, dropdown arrow, and two 48dp action targets.
+    val fixedWidth = 4f + 24f + 96f
+    val minimum = minimumScale.coerceIn(0f, 1f)
+    val searchInMenu = titleWidth * minimum + fixedWidth + 8f > width
+    val available = (width - fixedWidth + if (searchInMenu) 48f else 0f).coerceAtLeast(0f)
+    val scale = if (titleWidth > 0f) ((available - 8f) / titleWidth).coerceIn(minimum, 1f) else 1f
+    val gap = (available - titleWidth * scale).coerceIn(8f, 40f)
+    return StoryHeaderSizing(scale, gap, searchInMenu)
 }

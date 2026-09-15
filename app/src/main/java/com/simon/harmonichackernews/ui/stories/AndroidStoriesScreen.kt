@@ -107,7 +107,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import org.jetbrains.compose.resources.painterResource
-import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -180,9 +179,6 @@ internal fun AndroidStoriesScreen(
             runCatching { AnnotatedString.fromHtml(html) }.getOrElse { AnnotatedString(html) }
         },
         filterColors = rememberAndroidHarmonicFilterColors(),
-        extraCompactSelectedText =
-            booleanResource(R.bool.extra_compact_stories_dropdown_selected_text),
-        compactSelectedText = booleanResource(R.bool.compact_stories_dropdown_selected_text),
         onVisibleStoriesChanged = onVisibleStoriesChanged,
     )
 }
