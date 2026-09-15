@@ -381,6 +381,9 @@ fun HeaderActions(
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val actionCount = actions.size + if (hasAccount) 2 else 3
         val actionHorizontalPadding = commentActionPadding(maxWidth.value, actionCount).dp
+        val actionButtonModifier = Modifier
+            .width(commentActionButtonWidth(maxWidth.value, actionCount).dp)
+            .height(CommentsHeaderActionButtonSize)
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -389,18 +392,18 @@ fun HeaderActions(
             verticalArrangement = Arrangement.Center,
         ) {
             actions.forEach { action ->
-                HeaderActionButton(action) {
+                HeaderActionButton(action, actionButtonModifier) {
                     controller.listener.onHeaderAction(action.action)
                 }
             }
             Box(
-                Modifier.size(CommentsHeaderActionButtonSize),
+                actionButtonModifier,
                 contentAlignment = Alignment.Center,
             ) {
                 CommentsTooltip("Share") {
                     IconButton(
                         onClick = { shareExpanded = true },
-                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                        modifier = actionButtonModifier,
                     ) {
                         Icon(
                             painterResource(Res.drawable.ic_share),
@@ -424,7 +427,7 @@ fun HeaderActions(
                             controller.beginHeaderRefresh()
                             controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
                         },
-                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                        modifier = actionButtonModifier,
                     ) {
                         Icon(
                             painterResource(Res.drawable.ic_refresh),
@@ -436,7 +439,7 @@ fun HeaderActions(
                 }
             }
             Box(
-                Modifier.size(CommentsHeaderActionButtonSize),
+                actionButtonModifier,
                 contentAlignment = Alignment.Center,
             ) {
                 CommentsTooltip("More options") {
@@ -446,7 +449,7 @@ fun HeaderActions(
                             archiveExpanded = false
                             moreExpanded = true
                         },
-                        modifier = Modifier.size(CommentsHeaderActionButtonSize),
+                        modifier = actionButtonModifier,
                     ) {
                         Icon(
                             painterResource(Res.drawable.ic_more_vert),
@@ -495,13 +498,14 @@ private data class HeaderActionVisual(
 @Composable
 private fun HeaderActionButton(
     action: HeaderAction,
+    modifier: Modifier,
     onClick: () -> Unit,
 ) {
     CommentsTooltip(action.label) {
         IconButton(
             onClick = onClick,
             enabled = !action.loading,
-            modifier = Modifier.size(CommentsHeaderActionButtonSize),
+            modifier = modifier,
         ) {
             AnimatedContent(
                 targetState = HeaderActionVisual(action.icon, action.label, action.loading),
@@ -975,12 +979,16 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
     }
 }
 
-/** Preserve roomy spacing when it fits, without forcing actions onto another row. */
-internal fun commentActionPadding(width: Float, actionCount: Int): Float {
-    val preferred = when {
-        width < 360f -> 0f
-        width < 600f -> 9f + (width - 360f) * (55f / 240f)
-        else -> (64f + (width - 600f) * (86f / 120f)).coerceAtMost(150f)
+/** Reduce only the width when the normal targets would force another row. */
+internal fun commentActionButtonWidth(width: Float, actionCount: Int): Float =
+    if (width >= actionCount * CommentsHeaderActionButtonSize.value) {
+        CommentsHeaderActionButtonSize.value
+    } else {
+        48f
     }
-    return preferred.coerceAtMost(((width - actionCount * 54f) / 2f).coerceAtLeast(0f))
+
+/** Cap SpaceEvenly gaps at 24dp, centering the actions once they reach that spacing. */
+internal fun commentActionPadding(width: Float, actionCount: Int): Float {
+    val maxRowWidth = actionCount * CommentsHeaderActionButtonSize.value + (actionCount + 1) * 24f
+    return ((width - maxRowWidth) / 2f).coerceAtLeast(0f)
 }
