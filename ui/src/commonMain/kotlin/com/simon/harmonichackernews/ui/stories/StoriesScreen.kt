@@ -901,210 +901,210 @@ private fun StoriesHeader(
     val topSpacing = if (compact) 20.dp else 40.dp
     val bottomSpacing = if (compact) 4.dp else 8.dp
 
-    // Each optional section owns its transition. A second size animation on the whole header
-    // clips the loading indicator while growing, which reads as a curtain reveal.
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsPageBackground)
-            .padding(
-                top = topInset + topSpacing,
-                bottom = bottomSpacing,
-            ),
-    ) {
-        val sideStart = 16.dp + startInset + safeStart
-        val sideEnd = 16.dp + safeEnd
-        if (searchMode) {
-            SearchHeader(controller, sideStart, sideEnd)
-        } else {
-            MainHeader(
-                controller = controller,
-                showRefreshMenuItem = showRefreshMenuItem,
-                modifier = Modifier.padding(start = sideStart, end = sideEnd),
-            )
-        }
-
-        AnimatedVisibility(visible = !searchMode && controller.showSavedFilter) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = sideStart, top = 10.dp, end = sideEnd)
-                    .selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                SavedFilterButton(
-                    "Stories",
-                    Res.drawable.ic_newspaper,
-                    SavedItemFilter.STORIES,
-                    0,
-                    controller,
-                    filterColors,
-                    Modifier.weight(1f),
-                )
-                SavedFilterButton(
-                    "All",
-                    Res.drawable.ic_stacks,
-                    SavedItemFilter.BOTH,
-                    1,
-                    controller,
-                    filterColors,
-                    Modifier.weight(1f),
-                )
-                SavedFilterButton(
-                    "Comments",
-                    Res.drawable.ic_comment,
-                    SavedItemFilter.COMMENTS,
-                    2,
-                    controller,
-                    filterColors,
-                    Modifier.weight(1f),
-                )
-            }
-        }
-
-        AnimatedVisibility(visible = !searchMode && controller.showFrontDate) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = sideStart, top = 10.dp, end = sideEnd),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedButton(
-                    onClick = { controller.listener.onShiftFrontDate(-1) },
-                    enabled = controller.frontPreviousEnabled,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(56.dp),
-                ) {
-                    Icon(painterResource(Res.drawable.ic_chevron_left), "Previous front page day")
-                }
-                OutlinedButton(
-                    onClick = controller.listener::onPickFrontDate,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp)
-                        .height(56.dp),
-                ) {
-                    Icon(painterResource(Res.drawable.ic_calendar_today), null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(controller.frontDateLabel, maxLines = 1)
-                }
-                OutlinedButton(
-                    onClick = { controller.listener.onShiftFrontDate(1) },
-                    enabled = controller.frontNextEnabled,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(56.dp),
-                ) {
-                    Icon(painterResource(Res.drawable.ic_chevron_right), "Next front page day")
-                }
-            }
-        }
-
-        val lastUpdated = controller.lastUpdatedText.takeIf { !searchMode }
-        Box(
+    val sideStart = 16.dp + startInset + safeStart
+    val sideEnd = 16.dp + safeEnd
+    // Status content grows over rows retained by animateItem during their exit fade. Only the
+    // controls need an opaque surface; extending it behind the spinner wipes those rows away.
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = bottomSpacing)) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(
-                    animationSpec = tween(220, easing = StoriesEasing),
-                    alignment = Alignment.TopCenter,
-                ),
-            contentAlignment = Alignment.TopCenter,
+                .background(HarmonicTheme.colors.settingsPageBackground)
+                .padding(top = topInset + topSpacing),
         ) {
-            if (lastUpdated == null) {
-                Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = lastUpdated != null,
-                enter = fadeIn(tween(160, easing = StoriesEasing)),
-                exit = fadeOut(tween(120, easing = StoriesEasing)),
-            ) {
-                Text(
-                    text = lastUpdated.orEmpty(),
-                    color = HarmonicTheme.colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = sideStart, top = 4.dp, end = sideEnd)
-                        .graphicsLayer {
-                            val progress = tapToUpdateExitProgress()
-                            alpha = if (suppressLastUpdated) {
-                                0f
-                            } else {
-                                1f - progress
-                            }
-                            translationY = -8.dp.toPx() * progress
-                        },
-                    textAlign = TextAlign.Center,
+            if (searchMode) {
+                SearchHeader(controller, sideStart, sideEnd)
+            } else {
+                MainHeader(
+                    controller = controller,
+                    showRefreshMenuItem = showRefreshMenuItem,
+                    modifier = Modifier.padding(start = sideStart, end = sideEnd),
                 )
             }
-        }
 
-        AnimatedVisibility(
-            visible = !searchMode && controller.cacheProgressVisible,
-            enter = fadeIn(
-                tween(
-                    durationMillis = 180,
-                    delayMillis = 220,
-                    easing = StoriesEasing,
-                ),
-            ) + expandVertically(
-                animationSpec = tween(220, easing = StoriesEasing),
-            ),
-            exit = fadeOut(
-                tween(140, easing = StoriesEasing),
-            ) + shrinkVertically(
-                animationSpec = tween(
-                    durationMillis = 220,
-                    delayMillis = 140,
-                    easing = StoriesEasing,
-                ),
-            ),
-        ) {
-            Column(
+            AnimatedVisibility(visible = !searchMode && controller.showSavedFilter) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = sideStart, top = 10.dp, end = sideEnd)
+                        .selectableGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    SavedFilterButton(
+                        "Stories",
+                        Res.drawable.ic_newspaper,
+                        SavedItemFilter.STORIES,
+                        0,
+                        controller,
+                        filterColors,
+                        Modifier.weight(1f),
+                    )
+                    SavedFilterButton(
+                        "All",
+                        Res.drawable.ic_stacks,
+                        SavedItemFilter.BOTH,
+                        1,
+                        controller,
+                        filterColors,
+                        Modifier.weight(1f),
+                    )
+                    SavedFilterButton(
+                        "Comments",
+                        Res.drawable.ic_comment,
+                        SavedItemFilter.COMMENTS,
+                        2,
+                        controller,
+                        filterColors,
+                        Modifier.weight(1f),
+                    )
+                }
+            }
+
+            AnimatedVisibility(visible = !searchMode && controller.showFrontDate) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = sideStart, top = 10.dp, end = sideEnd),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { controller.listener.onShiftFrontDate(-1) },
+                        enabled = controller.frontPreviousEnabled,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(56.dp),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_chevron_left), "Previous front page day")
+                    }
+                    OutlinedButton(
+                        onClick = controller.listener::onPickFrontDate,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .height(56.dp),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_calendar_today), null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(controller.frontDateLabel, maxLines = 1)
+                    }
+                    OutlinedButton(
+                        onClick = { controller.listener.onShiftFrontDate(1) },
+                        enabled = controller.frontNextEnabled,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(56.dp),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_chevron_right), "Next front page day")
+                    }
+                }
+            }
+
+            val lastUpdated = controller.lastUpdatedText.takeIf { !searchMode }
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = sideStart, top = 8.dp, end = sideEnd),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                    .animateContentSize(
+                        animationSpec = tween(220, easing = StoriesEasing),
+                        alignment = Alignment.TopCenter,
+                    ),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                AnimatedContent(
-                    targetState = controller.cacheProgressStatus,
-                    transitionSpec = {
-                        fadeIn(
-                            tween(
-                                durationMillis = 120,
-                                delayMillis = 90,
-                                easing = StoriesEasing,
-                            ),
-                        ) togetherWith fadeOut(
-                            tween(90, easing = StoriesEasing),
-                        )
-                    },
-                    label = "story cache status",
-                ) { status ->
+                if (lastUpdated == null) {
+                    Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = lastUpdated != null,
+                    enter = fadeIn(tween(160, easing = StoriesEasing)),
+                    exit = fadeOut(tween(120, easing = StoriesEasing)),
+                ) {
                     Text(
-                        text = status,
+                        text = lastUpdated.orEmpty(),
                         color = HarmonicTheme.colors.storyDisabled,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = sideStart, top = 4.dp, end = sideEnd)
+                            .graphicsLayer {
+                                val progress = tapToUpdateExitProgress()
+                                alpha = if (suppressLastUpdated) {
+                                    0f
+                                } else {
+                                    1f - progress
+                                }
+                                translationY = -8.dp.toPx() * progress
+                            },
                         textAlign = TextAlign.Center,
                     )
                 }
-                val targetProgress =
-                    (controller.cacheProgress.toFloat() / controller.cacheProgressMax)
-                        .coerceIn(0f, 1f)
-                val animatedProgress by animateFloatAsState(
-                    targetValue = targetProgress,
-                    animationSpec = tween(300, easing = StoriesEasing),
-                    label = "story cache progress",
-                )
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
+
+            AnimatedVisibility(
+                visible = !searchMode && controller.cacheProgressVisible,
+                enter = fadeIn(
+                    tween(
+                        durationMillis = 180,
+                        delayMillis = 220,
+                        easing = StoriesEasing,
+                    ),
+                ) + expandVertically(
+                    animationSpec = tween(220, easing = StoriesEasing),
+                ),
+                exit = fadeOut(
+                    tween(140, easing = StoriesEasing),
+                ) + shrinkVertically(
+                    animationSpec = tween(
+                        durationMillis = 220,
+                        delayMillis = 140,
+                        easing = StoriesEasing,
+                    ),
+                ),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = sideStart, top = 8.dp, end = sideEnd),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    AnimatedContent(
+                        targetState = controller.cacheProgressStatus,
+                        transitionSpec = {
+                            fadeIn(
+                                tween(
+                                    durationMillis = 120,
+                                    delayMillis = 90,
+                                    easing = StoriesEasing,
+                                ),
+                            ) togetherWith fadeOut(
+                                tween(90, easing = StoriesEasing),
+                            )
+                        },
+                        label = "story cache status",
+                    ) { status ->
+                        Text(
+                            text = status,
+                            color = HarmonicTheme.colors.storyDisabled,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    val targetProgress =
+                        (controller.cacheProgress.toFloat() / controller.cacheProgressMax)
+                            .coerceIn(0f, 1f)
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = targetProgress,
+                        animationSpec = tween(300, easing = StoriesEasing),
+                        label = "story cache progress",
+                    )
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
         }
 
         Box(Modifier.padding(start = sideStart, end = sideEnd)) {
