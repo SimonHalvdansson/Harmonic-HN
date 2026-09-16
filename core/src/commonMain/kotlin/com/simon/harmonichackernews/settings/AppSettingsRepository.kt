@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.flow
 
 /** Typed story toggles accepted by [StoredSettingsMutator]. */
 enum class StoryBooleanPreference(internal val storageKey: String) {
+    OUTLINE(UserPreferenceKeys.STORY_OUTLINE),
     BORDERLESS_LARGE_IMAGE(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS),
     TINT_CARD_USING_PREVIEW(UserPreferenceKeys.TINT_CARD_USING_PREVIEW),
     COMPACT_VIEW(UserPreferenceKeys.COMPACT_VIEW),
@@ -28,7 +29,7 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
 enum class StoryStringPreference { DISPLAY_STYLE }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
-    CARD_BORDER(UserPreferenceKeys.COMMENT_CARD_BORDER),
+    OUTLINE(UserPreferenceKeys.COMMENT_OUTLINE),
     COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),
     HIGHLIGHT_METADATA(UserPreferenceKeys.HIGHLIGHT_COMMENT_META),
     SHOW_DIVIDERS(UserPreferenceKeys.COMMENT_DIVIDERS),

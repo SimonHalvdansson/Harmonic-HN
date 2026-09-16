@@ -27,6 +27,7 @@ data class StoryDisplaySettings(
     val faviconProvider: String,
     val font: String,
     val commentTextSize: Float,
+    val outline: Boolean = false,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -63,6 +64,7 @@ data class StoryDisplaySettings(
             compactHeader = preferences.compactHeader,
             leftAlign = preferences.leftAlign,
             displayStyle = preferences.displayStyle,
+            outline = preferences.outline,
             tintCardUsingPreview = preferences.tintCardUsingPreview,
             paletteTintMode = preferences.paletteTintConfigKey,
             grayOutClicked = preferences.grayOutClicked,

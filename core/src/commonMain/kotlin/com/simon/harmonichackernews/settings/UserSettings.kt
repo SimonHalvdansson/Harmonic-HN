@@ -55,6 +55,7 @@ data class StoryPreferences(
     val alwaysShowTapToRefresh: Boolean,
     val preferredStoryType: String,
     val additionalFrontpages: Set<String>,
+    val outline: Boolean = false,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED
@@ -82,7 +83,7 @@ data class CommentPreferences(
     val faviconProvider: String,
     val swapLongPressTap: Boolean,
     val displayStyle: DisplayStyle,
-    val cardBorder: Boolean,
+    val outline: Boolean,
     val showDividers: Boolean,
     val highlightMetadata: Boolean,
     val collectReferenceLinks: Boolean,

@@ -71,7 +71,7 @@ fun CommentFeedItem(
         .background(cardBackground)
         .border(
             1.dp,
-            if (cardStyle) colors.outlineVariant else Color.Transparent,
+            if (cardStyle && displaySettings.outline) colors.outlineVariant else Color.Transparent,
             shape,
         )
 

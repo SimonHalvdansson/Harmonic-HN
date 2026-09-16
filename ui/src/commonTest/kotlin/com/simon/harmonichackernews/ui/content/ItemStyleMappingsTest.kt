@@ -10,6 +10,21 @@ import kotlin.test.assertEquals
 
 class ItemStyleMappingsTest {
     @Test
+    fun storyOutlineDoesNotChangeFillOrElevation() {
+        for (displayStyle in DisplayStyle.entries) {
+            for (outline in listOf(false, true)) {
+                val style = storySettings().copy(
+                    displayStyle = displayStyle,
+                    outline = outline,
+                ).toStoryItemStyle(StoryItemStyleContext(0, 0, false))
+                assertEquals(outline, style.showOutline)
+                assertEquals(displayStyle == DisplayStyle.RAISED, style.cardStyle)
+                assertEquals(displayStyle != DisplayStyle.FLAT, style.hasBackground)
+            }
+        }
+    }
+
+    @Test
     fun displayStylesPreserveIndependentFillAndElevation() {
         for (displayStyle in DisplayStyle.entries) {
             val story = storySettings().copy(displayStyle = displayStyle).toStoryItemStyle(
@@ -87,7 +102,7 @@ class ItemStyleMappingsTest {
                 context = CommentItemStyleContext.Search,
                 expected = CommentItemStyle(
                     displayStyle = DisplayStyle.RAISED,
-                    showCardBorder = false,
+                    showOutline = false,
                     textSize = 18.5f,
                     collectLinks = false,
                     emphasizeMeta = false,
@@ -173,7 +188,7 @@ class ItemStyleMappingsTest {
         faviconProvider = "example",
         swapLongPressTap = false,
         displayStyle = DisplayStyle.RAISED,
-        cardBorder = false,
+        outline = false,
         showDividers = true,
         highlightCommentMeta = false,
         collectReferenceLinks = true,
@@ -185,7 +200,7 @@ class ItemStyleMappingsTest {
 
     private fun threadCommentStyle(animateChanges: Boolean) = CommentItemStyle(
         displayStyle = DisplayStyle.RAISED,
-        showCardBorder = false,
+        showOutline = false,
         textSize = 18.5f,
         collectLinks = true,
         emphasizeMeta = false,

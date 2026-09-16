@@ -8,6 +8,29 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun storyOutlinePersistsIndependentlyOfStyleAndCommentOutline() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(repository.snapshot().story.outline)
+        assertFalse(repository.snapshot().comments.outline)
+        repository.setStoryBoolean(StoryBooleanPreference.OUTLINE, true)
+        repository.setStoryString(StoryStringPreference.DISPLAY_STYLE, "raised")
+
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertTrue(reopened.snapshot().story.outline)
+        assertEquals(DisplayStyle.RAISED, reopened.snapshot().story.displayStyle)
+        assertFalse(reopened.snapshot().comments.outline)
+        assertTrue(
+            com.simon.harmonichackernews.presentation.StoryDisplaySettings
+                .from(reopened.snapshot().story).outline,
+        )
+        repository.setCommentBoolean(CommentBooleanPreference.OUTLINE, true)
+        repository.setStoryBoolean(StoryBooleanPreference.OUTLINE, false)
+        assertTrue(reopened.snapshot().comments.outline)
+        assertFalse(reopened.snapshot().story.outline)
+    }
+
+    @Test
     fun legacyDisplayStylesResolveWithoutChangingOtherPreferences() {
         val store = TestKeyValueStore()
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
@@ -94,6 +117,7 @@ class StoredSettingsMutatorTest {
 
         mutator.setStoryPreviewMode(StoryPreviewMode.MEDIUM)
         mutator.setStoryBoolean(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.OUTLINE, true)
         mutator.setStoryTextSize(TextPreferences.MAX_STORY_TEXT_SIZE)
         mutator.setStoryString(
             StoryStringPreference.DISPLAY_STYLE,
@@ -126,6 +150,7 @@ class StoredSettingsMutatorTest {
         assertFalse(story.borderlessLargePreviewImage)
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, story.storyTextSize)
         assertFalse(story.cardStyle)
+        assertFalse(story.outline)
         assertTrue(story.tintCardUsingPreview)
         assertFalse(story.compactView)
         assertFalse(story.showSummary)

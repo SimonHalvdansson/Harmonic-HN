@@ -16,6 +16,18 @@ import kotlin.test.assertEquals
 
 class SettingsPreviewItemStylesTest {
     @Test
+    fun storyPreviewAllowsRaisedWithoutOutline() {
+        for (outline in listOf(false, true)) {
+            val style = storiesState().copy(
+                displayStyle = "raised",
+                showOutline = outline,
+            ).toPreviewStoryItemStyle()
+            assertEquals(outline, style.showOutline)
+            assertEquals(true, style.cardStyle)
+        }
+    }
+
+    @Test
     fun storyPreviewStyleReflectsEachSettingsState() {
         val base = storiesState()
         val cases = listOf(
@@ -75,7 +87,7 @@ class SettingsPreviewItemStylesTest {
         val cases = listOf(
             base to CommentItemStyle(
                 displayStyle = DisplayStyle.RAISED,
-                showCardBorder = true,
+                showOutline = true,
                 textSize = 18f,
                 collectLinks = true,
                 emphasizeMeta = false,
@@ -85,12 +97,12 @@ class SettingsPreviewItemStylesTest {
             ),
             base.copy(
                 displayStyle = DisplayStyle.STANDARD,
-                showBorder = false,
+                showOutline = false,
                 collectLinks = false,
                 emphasizeMetadata = true,
             ) to CommentItemStyle(
                 displayStyle = DisplayStyle.STANDARD,
-                showCardBorder = false,
+                showOutline = false,
                 textSize = 18f,
                 collectLinks = false,
                 emphasizeMeta = true,
@@ -140,7 +152,7 @@ class SettingsPreviewItemStylesTest {
 
     private fun commentsState() = CommentsSettingsUiState(
         displayStyle = DisplayStyle.RAISED,
-        showBorder = true,
+        showOutline = true,
         textSize = 18f,
         textSizeOffset = 2,
         minTextSizeOffset = -4,

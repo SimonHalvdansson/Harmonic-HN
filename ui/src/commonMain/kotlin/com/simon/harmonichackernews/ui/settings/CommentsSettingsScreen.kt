@@ -18,7 +18,7 @@ import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 
 data class CommentsSettingsUiState(
     val displayStyle: DisplayStyle,
-    val showBorder: Boolean,
+    val showOutline: Boolean,
     val textSize: Float,
     val textSizeOffset: Int,
     val minTextSizeOffset: Int,
@@ -50,7 +50,7 @@ data class CommentsSettingsUiState(
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
-    Border(CommentBooleanPreference.CARD_BORDER),
+    Outline(CommentBooleanPreference.OUTLINE),
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
     EmphasizeMetadata(CommentBooleanPreference.HIGHLIGHT_METADATA),
     Dividers(CommentBooleanPreference.SHOW_DIVIDERS),
@@ -109,10 +109,10 @@ fun CommentsSettingsScreen(
                 )
                 SettingsDivider()
                 BooleanRow(
-                    "Border",
+                    "Outline",
                     Res.drawable.ic_select,
-                    state.showBorder,
-                    CommentsBooleanSetting.Border,
+                    state.showOutline,
+                    CommentsBooleanSetting.Outline,
                     onBooleanChanged,
                     enabled = state.displayStyle == DisplayStyle.RAISED,
                 )

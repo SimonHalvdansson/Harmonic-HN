@@ -45,10 +45,13 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -112,7 +115,7 @@ data class CommentItemUiModel(
 @Immutable
 data class CommentItemStyle(
     val displayStyle: DisplayStyle,
-    val showCardBorder: Boolean,
+    val showOutline: Boolean,
     val textSize: Float,
     val collectLinks: Boolean,
     val emphasizeMeta: Boolean,
@@ -685,10 +688,10 @@ private fun CommentSurface(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment card progress",
     )
-    val borderAlpha by animateFloatAsState(
-        if (style.cardStyle && style.showCardBorder) 1f else 0f,
+    val outlineAlpha by animateFloatAsState(
+        if (style.cardStyle && style.showOutline) 1f else 0f,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
-        label = "comment border",
+        label = "comment outline",
     )
     val indicatorAlpha by animateFloatAsState(
         if (showIndicator) 1f else 0f,
@@ -745,7 +748,7 @@ private fun CommentSurface(
         itemGeometry?.containerElevationDp = if (style.cardStyle) 1f else 0f
         itemGeometry?.containerBorderColor = colors.commentDivider
         itemGeometry?.containerBorderWidthDp =
-            if (style.cardStyle && style.showCardBorder) 1f else 0f
+            if (style.cardStyle && style.showOutline) 1f else 0f
     }
     val contentCaptureModifier = if (itemGeometry != null && captureSource) {
         Modifier.captureCommentActionSourceContent { itemGeometry.contentLayer = it }
@@ -767,11 +770,20 @@ private fun CommentSurface(
                     .shadow((cardProgress * 1f).dp, shape, clip = false)
                     .clip(shape)
                     .background(background)
-                    .border(
-                        1.dp,
-                        colors.commentDivider.copy(alpha = borderAlpha),
-                        shape,
-                    )
+                    .drawWithCache {
+                        val outline = shape.createOutline(size, layoutDirection, this)
+                        // The outer half is clipped by the surface shape. Draw before the
+                        // children so the depth indicator owns the full start edge, including
+                        // its top and bottom pixels, just as in the shared action transition.
+                        val stroke = Stroke(2.dp.toPx())
+                        onDrawBehind {
+                            drawOutline(
+                                outline,
+                                colors.commentDivider.copy(alpha = outlineAlpha),
+                                style = stroke,
+                            )
+                        }
+                    }
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),

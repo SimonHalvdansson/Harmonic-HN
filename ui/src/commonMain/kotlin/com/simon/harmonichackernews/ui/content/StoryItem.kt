@@ -316,6 +316,7 @@ data class StoryItemStyle(
     val textSize: Float,
     val dimmed: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
+    val showOutline: Boolean = false,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -386,6 +387,16 @@ fun StoryItem(
             label = "story card style",
         )
         animatedCardProgress
+    }
+    val outlineAlpha = if (listItem) {
+        if (style.cardStyle && style.showOutline) 1f else 0f
+    } else {
+        val animatedOutlineAlpha by animateFloatAsState(
+            targetValue = if (style.cardStyle && style.showOutline) 1f else 0f,
+            animationSpec = contentTween(),
+            label = "story outline",
+        )
+        animatedOutlineAlpha
     }
     var previewFailed by remember(model.previewImageUrl, model.previewImageLoadFailed) {
         mutableStateOf(model.previewImageLoadFailed)
@@ -527,7 +538,7 @@ fun StoryItem(
                 .background(background)
                 .border(
                     width = 1.dp,
-                    color = colors.outlineVariant,
+                    color = colors.outlineVariant.copy(alpha = outlineAlpha),
                     shape = StoryCardShape,
                 )
             style.hasBackground || style.tintCard -> Modifier
@@ -546,7 +557,7 @@ fun StoryItem(
             .background(background)
             .border(
                 width = 1.dp,
-                color = colors.outlineVariant.copy(alpha = cardProgress),
+                color = colors.outlineVariant.copy(alpha = outlineAlpha),
                 shape = StoryCardShape,
             )
     }

@@ -344,6 +344,7 @@ class StoredSettingsMutator(
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS,
             UserPreferenceKeys.STORY_TEXT_SIZE,
             UserPreferenceKeys.STORY_DISPLAY_STYLE,
+            UserPreferenceKeys.STORY_OUTLINE,
             UserPreferenceKeys.TINT_CARD_USING_PREVIEW,
             UserPreferenceKeys.COMPACT_VIEW,
             UserPreferenceKeys.SHOW_STORY_SUMMARY,
