@@ -90,7 +90,7 @@ class HarmonicPaletteEquivalenceTest {
 
 /** Current production path, including dispatch, sampling, readback, and tint selection. */
 @RunWith(Parameterized::class)
-class HarmonicPalettePipelineBenchmark(private val fixture: String) {
+class HarmonicPalettePipelineBenchmark(fixture: String) {
     @get:Rule val benchmarkRule = BenchmarkRule()
     private val image = loadPreviewFixture(fixture).asImage()
     private var sink: Any? = null

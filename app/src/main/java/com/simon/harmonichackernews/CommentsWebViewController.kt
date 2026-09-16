@@ -5,7 +5,6 @@ import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.Context
-import android.content.Context.DOWNLOAD_SERVICE
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -390,7 +389,7 @@ internal class CommentsWebViewController(
         if (webView == null) {
             initialize()
         }
-        val context = hostGateway.context ?: return
+        hostGateway.context ?: return
         val currentWebView = webView ?: return
         if (!hostGateway.isAttached) return
 
@@ -574,7 +573,6 @@ internal class CommentsWebViewController(
     }
 
     @SuppressLint("RequiresFeature", "SetJavaScriptEnabled")
-    @Suppress("deprecation")
     fun initialize() {
         if (initializedWebView) {
             return
@@ -675,7 +673,7 @@ internal class CommentsWebViewController(
         )
     }
 
-    private fun archiveRedirectUrl(context: Context, url: String?): String? =
+    private fun archiveRedirectUrl(url: String?): String? =
         WebContentPolicy.resolveUrl(url, readingPreferences.archiveRedirectDomains)
             ?.takeIf { it.archiveRedirected }
             ?.loadUrl
@@ -817,7 +815,7 @@ internal class CommentsWebViewController(
     }
 
     private fun showProgressIndicator(indicator: LinearProgressIndicator) {
-        if (progressIndicatorTargetVisible && indicator.visibility == View.VISIBLE) {
+        if (progressIndicatorTargetVisible && indicator.isVisible) {
             return
         }
 
@@ -967,7 +965,7 @@ internal class CommentsWebViewController(
         val targetWebView = webView ?: return
         if (context == null || !hostGateway.isAttached || targetUrl.isNullOrEmpty()) return
 
-        val archiveRedirectUrl = archiveRedirectUrl(context, targetUrl)
+        val archiveRedirectUrl = archiveRedirectUrl(targetUrl)
         if (archiveRedirectUrl != null) {
             targetUrl = archiveRedirectUrl
         }
@@ -1520,7 +1518,7 @@ internal class CommentsWebViewController(
                     val fallbackUrl = intent.getStringExtra("browser_fallback_url")
                     if (fallbackUrl != null) {
                         val archiveRedirectUrl =
-                            archiveRedirectUrl(context, fallbackUrl)
+                            archiveRedirectUrl(fallbackUrl)
                         loadUrl(if (archiveRedirectUrl != null) archiveRedirectUrl else fallbackUrl)
                         return true
                     } else {
@@ -1534,7 +1532,7 @@ internal class CommentsWebViewController(
                 }
             }
 
-            val archiveRedirectUrl = archiveRedirectUrl(view.context, url)
+            val archiveRedirectUrl = archiveRedirectUrl(url)
             if (archiveRedirectUrl != null) {
                 loadUrl(archiveRedirectUrl)
                 return true
@@ -1604,7 +1602,7 @@ internal class CommentsWebViewController(
             return true
         }
 
-        @Suppress("deprecation")
+        @Deprecated("Use onReceivedError(WebView, WebResourceRequest, WebResourceError) instead.")
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,

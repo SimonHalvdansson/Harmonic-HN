@@ -14,7 +14,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -43,7 +42,7 @@ internal class DefaultActivityPredictiveBackState internal constructor() {
  * Destination-specific back policy and any post-pop frame hold remain explicit parameters.
  */
 @Composable
-internal fun DefaultActivityPredictiveBackHandler(
+internal fun rememberDefaultActivityPredictiveBackState(
     requestKey: Any?,
     enabled: Boolean,
     completedFrameHoldCount: Int = 0,

@@ -89,6 +89,7 @@ kotlin {
 }
 
 val generateDesktopMetadata = tasks.register<WriteProperties>("generateDesktopMetadata") {
+    description = "Generates the desktop application's version metadata."
     destinationFile = layout.buildDirectory
         .file("generated/desktopMetadata/harmonic-desktop.properties")
         .get()
@@ -109,6 +110,7 @@ val desktopLocalAiSources = fileTree(desktopLocalAiSource) {
 }
 
 val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
+    description = "Configures CMake for the desktop local AI library."
     inputs.files(desktopLocalAiSources)
     outputs.file(desktopLocalAiBuild.map { it.file("CMakeCache.txt") })
     val source = desktopLocalAiSource.asFile.absolutePath
@@ -134,6 +136,7 @@ val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
 }
 
 val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
+    description = "Builds the desktop local AI shared library."
     dependsOn(configureDesktopLocalAi)
     inputs.files(desktopLocalAiSources)
     outputs.file(desktopLocalAiLibrary)
@@ -147,6 +150,7 @@ val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
 }
 
 val stageDesktopLocalAi = tasks.register<Sync>("stageDesktopLocalAi") {
+    description = "Stages the desktop local AI library as a packaged resource."
     dependsOn(buildDesktopLocalAi)
     from(desktopLocalAiLibrary)
     into(desktopLocalAiResources.map { it.dir("native") })
@@ -158,6 +162,7 @@ val macWebViewResources = layout.buildDirectory.dir("generated/macWebViewResourc
 val buildMacWebView = if (isMacDesktopBuild) {
     val outputFile = macWebViewOutput.get().asFile
     tasks.register<Exec>("buildMacWebView") {
+        description = "Builds the native macOS WebView library."
         inputs.file(macWebViewSource)
         outputs.file(outputFile)
         doFirst { outputFile.parentFile.mkdirs() }
@@ -178,6 +183,7 @@ val buildMacWebView = if (isMacDesktopBuild) {
     null
 }
 val stageMacWebView = tasks.register<Sync>("stageMacWebView") {
+    description = "Stages the native WebView library for macOS desktop builds."
     buildMacWebView?.let { nativeBuild -> dependsOn(nativeBuild) }
     if (isMacDesktopBuild) from(macWebViewOutput)
     into(macWebViewResources.map { it.dir("native") })
@@ -216,6 +222,7 @@ val desktopProjectJars = files(
 // Launch from a private snapshot so tests and Android builds cannot invalidate the open app.
 val desktopRunClasspathDirectory = layout.buildDirectory.dir("desktopRunClasspath")
 val prepareDesktopRunClasspath = tasks.register<Sync>("prepareDesktopRunClasspath") {
+    description = "Copies desktop project jars into a stable runtime classpath."
     from(desktopProjectJars)
     into(desktopRunClasspathDirectory)
 }

@@ -15,28 +15,76 @@ import com.simon.harmonichackernews.settings.PreviewTintPalette
 import kotlin.math.ceil
 import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.ResourceEnvironment
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.rememberResourceEnvironment
 
-/** Settings samples retain their original 112² area limit and nearest-neighbor scaling. */
+internal data class ResourcePreview(val image: ImageBitmap, val palette: PreviewTintPalette)
+
+private data class ResourcePreviewKey(val resource: DrawableResource, val environment: ResourceEnvironment)
+
+// Five bundled samples fit without retaining decoded images for every previous configuration.
+private val resourcePreviewCache = ResourcePreviewCache<ResourcePreviewKey, ResourcePreview>(maxEntries = 5)
+
+/** Shares a single worker decode between the settings thumbnail and its original 112² palette. */
 @Composable
-internal fun rememberResourceTintPalette(resource: DrawableResource): PreviewTintPalette? {
+internal fun rememberResourcePreview(resource: DrawableResource): ResourcePreview? {
     val environment = rememberResourceEnvironment()
-    var palette by remember(resource, environment) { mutableStateOf<PreviewTintPalette?>(null) }
-    LaunchedEffect(resource, environment) {
-        palette = try {
-            paletteExtractionRunner.run {
-                getDrawableResourceBytes(environment, resource).decodeToImageBitmap()
-                    .extractResourcePalette().toPreviewTintPalette()
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            null
+    val key = remember(resource, environment) { ResourcePreviewKey(resource, environment) }
+    var preview by remember(key) { mutableStateOf(resourcePreviewCache[key]) }
+    LaunchedEffect(key) {
+        preview = loadResourcePreview(key)
+    }
+    return preview
+}
+
+internal suspend fun preloadResourcePreview(resource: DrawableResource, environment: ResourceEnvironment) {
+    loadResourcePreview(ResourcePreviewKey(resource, environment))
+}
+
+private suspend fun loadResourcePreview(key: ResourcePreviewKey): ResourcePreview? = try {
+    resourcePreviewCache[key] ?: paletteExtractionRunner.run {
+        resourcePreviewCache.getOrLoad(key) {
+            val image = getDrawableResourceBytes(key.environment, key.resource).decodeToImageBitmap()
+            val palette = image.extractResourcePalette().toPreviewTintPalette()
+            image.prepareToDraw()
+            ResourcePreview(image, palette)
         }
     }
-    return palette
+} catch (error: CancellationException) {
+    throw error
+} catch (_: Exception) {
+    null
+}
+
+@Composable
+internal fun rememberResourceTintPalette(resource: DrawableResource): PreviewTintPalette? =
+    rememberResourcePreview(resource)?.palette
+
+/** Bounded completed results; concurrent requests share a load, cancelled/failed loads can retry. */
+internal class ResourcePreviewCache<K, V : Any>(private val maxEntries: Int) {
+    private val mutex = Mutex()
+    private val completed = MutableStateFlow<Map<K, V>>(emptyMap())
+
+    init {
+        require(maxEntries > 0)
+    }
+
+    operator fun get(key: K): V? = completed.value[key]
+
+    suspend fun getOrLoad(key: K, load: suspend () -> V): V = mutex.withLock {
+        completed.value[key]?.let { return@withLock it }
+        val result = load()
+        val entries = LinkedHashMap(completed.value)
+        entries[key] = result
+        while (entries.size > maxEntries) entries.remove(entries.keys.first())
+        completed.value = entries
+        result
+    }
 }
 
 internal fun resourcePaletteSampleDimensions(width: Int, height: Int): IntSize {

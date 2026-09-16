@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Platform-neutral visibility and accessibility state for the app's destination layers. */
 data class MainDestinationLayerState(

@@ -149,7 +149,7 @@ private class CoulombGasSimulation(size: IntSize) {
         }
     }
 
-    suspend fun step() {
+    fun step() {
         val confinement = -2f * ParticleCount
         repeat(ParticleCount) { index ->
             accelerationX[index] = confinement * x[index]

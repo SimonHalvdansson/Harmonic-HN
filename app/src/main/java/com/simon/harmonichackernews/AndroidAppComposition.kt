@@ -7,7 +7,6 @@ import com.simon.harmonichackernews.app.AppMetadata
 import com.simon.harmonichackernews.app.AppBootstrapPolicy
 import com.simon.harmonichackernews.app.HarmonicPersistentStorageFactory
 import com.simon.harmonichackernews.app.HarmonicStorageRoots
-import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.network.AndroidNetworkEnvironment
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies

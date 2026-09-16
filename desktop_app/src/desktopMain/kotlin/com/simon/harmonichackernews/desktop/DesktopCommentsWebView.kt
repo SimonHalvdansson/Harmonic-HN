@@ -98,7 +98,7 @@ internal interface DesktopBrowserHost {
 }
 
 internal class DesktopCommentsWebViewSession(
-    private val initialUrl: String,
+    initialUrl: String,
 ) {
     private var browserHost: DesktopBrowserHost? = null
 

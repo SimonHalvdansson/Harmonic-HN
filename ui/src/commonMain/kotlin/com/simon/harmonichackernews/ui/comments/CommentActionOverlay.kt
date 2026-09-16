@@ -208,7 +208,7 @@ fun CommentActionOverlay(
     }
     LaunchedEffect(dismissRequest) {
         if (dismissRequest == 0) return@LaunchedEffect
-        delay(CommentActionDismissFallbackDelayMillis)
+        delay(CommentActionDismissFallbackDelayMillis.milliseconds)
         if (
             !closingStarted &&
             controller.commentActionDismissRequest == dismissRequest

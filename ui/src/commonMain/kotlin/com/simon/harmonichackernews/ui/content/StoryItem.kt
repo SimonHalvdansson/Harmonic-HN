@@ -61,10 +61,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.ContentScale
@@ -294,6 +296,8 @@ data class StoryItemUiModel(
     val faviconTintArgb: Int? = null,
     val previewImageTintArgb: Int? = null,
     val tintFallbackArgb: Int? = null,
+    // Decoded off-thread by the caller; do not mutate pixels after publishing the model.
+    val previewImageBitmap: ImageBitmap? = null,
 )
 
 @Immutable
@@ -402,7 +406,7 @@ fun StoryItem(
         mutableStateOf(model.previewImageLoadFailed)
     }
     val hasPreview = !previewFailed &&
-        (model.previewImageUrl != null || model.previewImageFallback != null)
+        (model.previewImageUrl != null || model.previewImageFallback != null || model.previewImageBitmap != null)
     var animatedPreviewMode by remember { mutableStateOf(style.previewImageMode) }
     val mediumAccessoryFade = remember {
         Animatable(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
@@ -446,6 +450,7 @@ fun StoryItem(
     var extractedPreviewTint by remember(
         model.previewImageUrl,
         model.previewImageFallback,
+        model.previewImageBitmap,
         tintBaseColorArgb,
         style.paletteTintConfigKey,
     ) { mutableStateOf<Int?>(null) }
@@ -711,6 +716,7 @@ fun StoryItem(
                 val sharedPreviewImageKey = remember(
                     model.previewImageUrl,
                     model.previewImageFallback,
+                    model.previewImageBitmap,
                 ) { Any() }
                 val storyContentRow: @Composable (SharedTransitionScope?) -> Unit =
                     { sharedTransitionScope ->
@@ -1765,8 +1771,10 @@ private fun StoryPreviewImage(
             onError = { onLoadFailed() },
         )
     } else {
-        model.previewImageFallback?.let { fallback ->
-            val painter = painterResource(fallback)
+        val painter = model.previewImageBitmap?.let { bitmap ->
+            remember(bitmap) { BitmapPainter(bitmap) }
+        } ?: model.previewImageFallback?.let { painterResource(it) }
+        if (painter != null) {
             val extractedTint = rememberPainterPaletteTint(
                 painter = painter,
                 baseColorArgb = tintBaseColorArgb,

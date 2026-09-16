@@ -4,7 +4,6 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.HackerNewsLinks
-import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +26,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.modules.contextual
 import kotlinx.serialization.modules.overwriteWith
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.Serializable

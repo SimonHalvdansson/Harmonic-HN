@@ -120,7 +120,7 @@ class StoryRowLoadOrchestratorTest {
 
         override suspend fun getItem(id: Int): HackerNewsItemDto? {
             started++
-            return try {
+            try {
                 awaitCancellation()
             } finally {
                 cancelled++

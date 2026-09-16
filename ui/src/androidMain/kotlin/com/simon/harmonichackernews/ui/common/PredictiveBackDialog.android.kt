@@ -11,7 +11,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = true

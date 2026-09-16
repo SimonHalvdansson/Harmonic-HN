@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.core.graphics.createBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -42,7 +43,7 @@ class StoryTintTransitionTest {
         val originalLoader = SingletonImageLoader.get(context)
         val imageReady = CompletableDeferred<Unit>()
         val extractedTint = CompletableDeferred<Int>()
-        val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply {
+        val bitmap = createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply {
             eraseColor(android.graphics.Color.BLUE)
         }
         val pendingLoader = ImageLoader.Builder(context)

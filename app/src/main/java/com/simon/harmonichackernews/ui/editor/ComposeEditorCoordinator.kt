@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 /** Owns submission side effects while the editor itself is a MainActivity Compose destination.  */
 class ComposeEditorCoordinator(
-    private val activity: MainActivity,
+    activity: MainActivity,
     destination: EditorDestination,
     private val navigation: MainNavigationController,
     private val onFinished: () -> Unit,

@@ -1,3 +1,5 @@
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -198,13 +200,13 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 baselineProfile {
@@ -245,9 +247,20 @@ afterEvaluate {
             "com.google.mlkit"
     ] as Set<String>
     def forbiddenFossDependencies = fossReleaseRuntimeClasspath.map { configuration ->
-        configuration.resolvedConfiguration.resolvedArtifacts
-                .collect { artifact ->
-                    "${artifact.moduleVersion.id.group}:${artifact.name}:${artifact.moduleVersion.id.version}"
+        // Inspect coordinates without choosing among KMP Android secondary artifacts.
+        def resolutionResult = configuration.incoming.resolutionResult
+        def unresolvedDependency = resolutionResult.allDependencies.find {
+            it instanceof UnresolvedDependencyResult
+        }
+        if (unresolvedDependency != null) {
+            throw new GradleException(
+                    "Could not resolve FOSS dependency ${unresolvedDependency.requested.displayName}",
+                    unresolvedDependency.failure)
+        }
+        resolutionResult.allComponents
+                .findAll { component -> component.id instanceof ModuleComponentIdentifier }
+                .collect { component ->
+                    "${component.id.group}:${component.id.module}:${component.id.version}"
                 }
                 .findAll { dependency ->
                     forbiddenFossGroupPrefixes.any { prefix ->

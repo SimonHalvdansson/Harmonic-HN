@@ -4,7 +4,6 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class MainNavigationStoreTest {
     @Test

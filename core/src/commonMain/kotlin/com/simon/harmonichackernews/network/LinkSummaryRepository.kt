@@ -18,7 +18,6 @@ import io.ktor.http.URLBuilder
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.readAvailable
 import kotlinx.io.Buffer
-import kotlinx.io.IOException
 import kotlinx.io.readByteArray
 import kotlin.time.Clock
 
@@ -382,7 +381,7 @@ object LinkSummaryParser {
             } else {
                 firstNonEmpty(clean(item.optString("title")), fallbackTitle)
             }
-            if (title.isNullOrEmpty()) return null
+            if (title.isEmpty()) return null
             val metadata = buildHackerNewsMetadata(item, comment, author)
             val body = cleanHackerNewsText(item.optString("text"))
             val description = when {

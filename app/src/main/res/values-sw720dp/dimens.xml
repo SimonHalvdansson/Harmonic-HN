@@ -5,7 +5,6 @@
     <dimen name="extra_pane_padding">64dp</dimen>
     <dimen name="settings_extra_pane_padding">50dp</dimen>
     <dimen name="margin_between_panes">24dp</dimen>
-    <dimen name="comments_header_action_padding">150dp</dimen>
 
     <dimen name="comments_header_top_padding">32dp</dimen>
     <bool name="is_tablet">true</bool>

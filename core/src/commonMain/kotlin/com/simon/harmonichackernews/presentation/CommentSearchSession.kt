@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.coroutineContext
 
 /** Builds a search index only while search is open, using immutable thread content on a worker. */
 internal class CommentSearchSession(

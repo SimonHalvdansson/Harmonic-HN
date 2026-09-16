@@ -86,7 +86,7 @@ class AndroidAiSummaryApiKeyStore(context: Context) {
             legacyEncryptedPreferences.edit(commit = true) { remove(PREF_API_KEY) }
         }.onFailure { Log.w(TAG, "Unable to remove the legacy AI summary API key", it) }
         cachedApiKey = ""
-        return cleared
+        return true
     }
 
     private fun removeLegacyValue(legacyPreferences: SharedPreferences) {

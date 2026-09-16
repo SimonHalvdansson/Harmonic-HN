@@ -28,7 +28,6 @@ import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
 import com.simon.harmonichackernews.ui.navigation.DefaultActivityPredictiveBackAnimation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 

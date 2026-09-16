@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.settings
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent

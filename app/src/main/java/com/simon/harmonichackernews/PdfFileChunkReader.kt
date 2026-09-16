@@ -33,7 +33,7 @@ internal class PdfFileChunkReader(
     fun read(begin: Long, end: Long): ByteArray? {
         if (closed || begin < 0L || end <= begin) return null
         val length = end - begin
-        if (length <= 0L || length > maxChunkBytes.toLong() || length > Int.MAX_VALUE) return null
+        if (length > maxChunkBytes.toLong() || length > Int.MAX_VALUE) return null
 
         val source = openFile()
         if (end > source.length()) return null

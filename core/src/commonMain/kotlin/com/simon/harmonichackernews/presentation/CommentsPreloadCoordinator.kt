@@ -104,7 +104,7 @@ class CommentsPreloadCoordinator(
             active.remove(key)?.cancel()
         }
         submitJob = scope.launch {
-            delay(scrollSettleDelayMillis)
+            delay(scrollSettleDelayMillis.milliseconds)
             if (!enabled || !preloadAllowed()) {
                 submitJob = null
                 return@launch

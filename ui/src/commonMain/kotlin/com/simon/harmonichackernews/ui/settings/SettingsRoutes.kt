@@ -22,12 +22,10 @@ import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
-import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.UserTagsRepository
-import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.settings.DebugBooleanPreference
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy

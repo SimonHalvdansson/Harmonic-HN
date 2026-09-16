@@ -1,10 +1,10 @@
 #include <android/log.h>
 #include <jni.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <new>
-#include <string>
 #include <vector>
 
 #include "harmonic_llama_engine.h"
@@ -60,7 +60,7 @@ public:
         }
     }
 
-    const char * get() const {
+    [[nodiscard]] const char * get() const {
         return chars_;
     }
 
@@ -179,7 +179,7 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeLoad(
         if (!require_string(env, model_path, "The local model path is required")) {
             return JNI_FALSE;
         }
-        ScopedUtfChars path(env, model_path);
+        const ScopedUtfChars path(env, model_path);
         if (path.get() == nullptr) {
             return JNI_FALSE;
         }
@@ -202,15 +202,15 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeStart(
                 !require_string(env, response_prefix, "The local summary prefix is required")) {
             return JNI_FALSE;
         }
-        ScopedUtfChars system_chars(env, system_text);
+        const ScopedUtfChars system_chars(env, system_text);
         if (system_chars.get() == nullptr) {
             return JNI_FALSE;
         }
-        ScopedUtfChars user_chars(env, user_text);
+        const ScopedUtfChars user_chars(env, user_text);
         if (user_chars.get() == nullptr) {
             return JNI_FALSE;
         }
-        ScopedUtfChars prefix_chars(env, response_prefix);
+        const ScopedUtfChars prefix_chars(env, response_prefix);
         if (prefix_chars.get() == nullptr) {
             return JNI_FALSE;
         }

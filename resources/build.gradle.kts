@@ -121,6 +121,7 @@ plugins {
 }
 
 val generateAdblocklist = tasks.register<GenerateAdblocklistTask>("generateAdblocklist") {
+    description = "Generates the binary adblock host list for bundled resources."
     sourceFile.set(
         layout.projectDirectory.file("adblock/adblockserverlist.txt"),
     )
@@ -129,6 +130,7 @@ val generateAdblocklist = tasks.register<GenerateAdblocklistTask>("generateAdblo
 
 val verifyGeneratedAdblocklist =
     tasks.register<VerifyGeneratedAdblocklistTask>("verifyGeneratedAdblocklist") {
+        description = "Verifies the generated adblock list's format, ordering, and entry count."
         sourceFile.set(generateAdblocklist.flatMap { it.sourceFile })
         generatedResourcesDirectory.set(generateAdblocklist.flatMap { it.outputDirectory })
         dependsOn(generateAdblocklist)

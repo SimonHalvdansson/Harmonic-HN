@@ -10,6 +10,7 @@
 #include <thread>
 #include <vector>
 
+#include "ggml.h"
 #include "llama.h"
 
 namespace {
@@ -188,13 +189,13 @@ std::string apply_chat_template(
             {"system", system_prompt.c_str()},
             {"user", user_prompt.c_str()},
     };
-    int required = llama_chat_apply_template(
+    const int required = llama_chat_apply_template(
             chat_template, messages, 2, true, nullptr, 0);
     if (required <= 0) {
         return "System: " + system_prompt + "\nUser: " + user_prompt + "\nAssistant:";
     }
     std::vector<char> buffer(static_cast<size_t>(required) + 1);
-    int written = llama_chat_apply_template(
+    const int written = llama_chat_apply_template(
             chat_template, messages, 2, true, buffer.data(), required + 1);
     if (written <= 0) {
         return "System: " + system_prompt + "\nUser: " + user_prompt + "\nAssistant:";
@@ -229,9 +230,9 @@ bool decode_prompt(
         harmonic_llama_engine * engine,
         const std::vector<llama_token> & tokens) {
     for (size_t offset = 0; offset < tokens.size(); offset += kBatchSize) {
-        int count = static_cast<int>(std::min(
+        const int count = static_cast<int>(std::min(
                 static_cast<size_t>(kBatchSize), tokens.size() - offset));
-        llama_batch batch = llama_batch_get_one(
+        const llama_batch batch = llama_batch_get_one(
                 const_cast<llama_token *>(tokens.data() + offset), count);
         if (llama_decode(engine->context, batch) != 0) {
             set_error(engine, "Failed to process the summary input");
@@ -310,7 +311,7 @@ extern "C" int harmonic_llama_load(
         release_model(engine);
         clear_error(engine);
 
-        llama_model_params model_params = llama_model_default_params();
+        const llama_model_params model_params = llama_model_default_params();
         engine->model = llama_model_load_from_file(model_path, model_params);
         if (engine->model == nullptr) {
             set_error(engine, "Could not load the GGUF model");
@@ -332,7 +333,7 @@ extern "C" int harmonic_llama_load(
         }
 
         engine->vocab = llama_model_get_vocab(engine->model);
-        llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+        const llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
         engine->sampler = llama_sampler_chain_init(sampler_params);
         if (engine->sampler == nullptr) {
             set_error(engine, "Could not allocate the GGUF sampler");
@@ -390,7 +391,7 @@ extern "C" int harmonic_llama_start(
         std::string prompt = apply_chat_template(engine, system_prompt, user_prompt);
         prompt += response_prefix;
 
-        std::vector<llama_token> tokens = tokenize(engine, prompt);
+        const std::vector<llama_token> tokens = tokenize(engine, prompt);
         if (tokens.empty()) {
             set_error(engine, "Could not tokenize the summary input");
             return 0;
@@ -447,7 +448,7 @@ extern "C" harmonic_llama_next_result harmonic_llama_next(
                 }
                 return HARMONIC_LLAMA_NEXT_END;
             }
-            llama_batch batch = llama_batch_get_one(&token, 1);
+            const llama_batch batch = llama_batch_get_one(&token, 1);
             if (llama_decode(engine->context, batch) != 0) {
                 set_error(engine, "GGUF generation failed");
                 return HARMONIC_LLAMA_NEXT_ERROR;

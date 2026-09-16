@@ -5,7 +5,6 @@
     <dimen name="settings_extra_pane_padding">0dp</dimen>
     <dimen name="comments_header_top_padding">24dp</dimen>
     <dimen name="margin_between_panes">0dp</dimen>
-    <dimen name="comments_header_action_padding">0dp</dimen>
     <dimen name="widget_corner_radius">16dp</dimen>
     <dimen name="compose_settings_toolbar_height">64dp</dimen>
     <dimen name="detail_toolbar_navigation_height">56dp</dimen>

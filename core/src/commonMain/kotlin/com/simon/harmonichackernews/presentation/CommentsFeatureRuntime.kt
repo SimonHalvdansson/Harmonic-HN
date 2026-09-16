@@ -34,7 +34,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -855,5 +854,5 @@ class CommentsFeatureRuntime(
     }
 
     private val sorting: String
-        get() = thread.state.value.sorting.orEmpty()
+        get() = thread.state.value.sorting
 }

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,6 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,13 +41,18 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyle
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
+import com.simon.harmonichackernews.ui.content.rememberResourcePreview
+import com.simon.harmonichackernews.ui.content.preloadResourcePreview
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -74,6 +84,18 @@ private val PalettePreviewSamples = listOf(
     ),
 )
 
+/** Prepare bundled previews after Appearance has opened, before the palette page is requested. */
+@Composable
+internal fun PreloadPalettePreviewResources() {
+    val environment = rememberResourceEnvironment()
+    LaunchedEffect(environment) {
+        delay(ActivityNavigationTransitionDurationMillis.toLong())
+        for (sample in PalettePreviewSamples) {
+            preloadResourcePreview(requireNotNull(sample.previewImageFallback), environment)
+        }
+    }
+}
+
 @Composable
 fun PaletteTintSettingsScreen(
     initialMode: String,
@@ -88,12 +110,12 @@ fun PaletteTintSettingsScreen(
 ) {
     var mode by rememberSaveable { mutableStateOf(PaletteTintPreferences.sanitizeMode(initialMode)) }
     var strength by rememberSaveable {
-        mutableStateOf(PaletteTintPreferences.clampStrength(initialStrength))
+        mutableIntStateOf(PaletteTintPreferences.clampStrength(initialStrength))
     }
     var colorfulness by rememberSaveable {
-        mutableStateOf(PaletteTintPreferences.clampColorfulness(initialColorfulness))
+        mutableIntStateOf(PaletteTintPreferences.clampColorfulness(initialColorfulness))
     }
-    var tone by rememberSaveable { mutableStateOf(PaletteTintPreferences.clampTone(initialTone)) }
+    var tone by rememberSaveable { mutableIntStateOf(PaletteTintPreferences.clampTone(initialTone)) }
     val animationScope = rememberCoroutineScope()
     var resetAnimation by remember { mutableStateOf<Job?>(null) }
     val resetAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
@@ -226,9 +248,12 @@ fun PaletteTintSettingsScreen(
 private fun interpolatedPaletteValue(start: Int, target: Int, progress: Float): Int =
     (start + (target - start) * progress).roundToInt()
 
+private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
+
 @Composable
 private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) {
-    val palette = rememberResourceTintPalette(requireNotNull(model.previewImageFallback))
+    val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
+    val palette = preview?.palette
     val baseColor = HarmonicTheme.colors.storyCardBackground
     val tint = remember(palette, style.paletteTintConfigKey, baseColor) {
         PreviewTintPolicy.calculateCardTint(
@@ -237,12 +262,23 @@ private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) 
             style.paletteTintConfigKey,
         )
     }
+    val animatedTint by animateColorAsState(
+        targetValue = Color(tint),
+        animationSpec = contentTween(),
+        label = "palette settings sample tint",
+    )
     StoryItem(
-        model = model.copy(previewImageTintArgb = tint),
+        model = model.copy(
+            previewImageTintArgb = animatedTint.toArgb(),
+            // Reserve the thumbnail's layout while decoding without a blocking resource painter.
+            previewImageFallback = null,
+            previewImageBitmap = preview?.image ?: EmptyPalettePreviewImage,
+        ),
         // Keep the list compact and show the sample images even when feed previews are disabled.
         style = style.copy(previewImageMode = StoryPreviewMode.SMALL, showSummary = false),
         listItem = true,
-        animateChanges = true,
+        // Only tint changes here; avoid constructing animations for fixed text and row geometry.
+        animateChanges = false,
         pageBackground = settingsPageBackgroundColor(),
     )
 }

@@ -4,9 +4,9 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.serialization.JsonObject
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
-import kotlin.coroutines.coroutineContext
 
 /** Eager, user-independent content. Field order is part of the versioned ProtoBuf schema. */
 @Serializable
@@ -60,7 +60,7 @@ data class PreparedCommentThread(
             index = root
             val end = comments[root].subtreeEndExclusive
             while (index < end) {
-                coroutineContext.ensureActive()
+                currentCoroutineContext().ensureActive()
                 val record = comments[index]
                 if (blocked.isNotEmpty() && record.author.lowercase() in blocked) {
                     index = record.subtreeEndExclusive
@@ -138,7 +138,7 @@ data class PreparedCommentThread(
                 ancestors[count++] = index
             }
             val records = source.mapIndexed { index, comment ->
-                coroutineContext.ensureActive()
+                currentCoroutineContext().ensureActive()
                 val html = comment.text.orEmpty()
                 PreparedCommentRecord(
                     comment.id, comment.parent, comment.by.orEmpty(), comment.time,

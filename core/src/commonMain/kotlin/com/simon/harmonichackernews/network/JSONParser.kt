@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.network
 
-import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.serialization.json.Json
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
@@ -12,8 +11,6 @@ object JSONParser {
     const val ALGOLIA_ERROR_STRING: String = "{\"status\":404,\"error\":\"Not Found\"}"
     private val ALGOLIA_JSON = Json { ignoreUnknownKeys = true }
     private const val JSON_NULL_LITERAL = "null"
-    private val PDF_SUFFIXES = arrayOf<String>(" [pdf]", "[pdf]", " (pdf)", "(pdf)")
-    private val VIDEO_SUFFIXES = arrayOf<String>(" [video]", "[video]", " (video)", "(video)")
     private const val CACHED_STORY_SUMMARY_VERSION = 1
     private const val KEY_PREVIEW_IMAGE_URL = "preview_image_url"
     private const val KEY_PREVIEW_IMAGE_URL_LOADED = "preview_image_url_loaded"

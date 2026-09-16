@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.content.IntentSender
 import android.content.SharedPreferences
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.google.android.play.core.splitinstall.SplitInstallException
 import com.google.android.play.core.splitinstall.SplitInstallManager
@@ -558,9 +559,9 @@ private class LocalAiRuntimeManager {
         get() = requireNotNull(appContext).getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
 
     private fun setPendingModel(runtime: LocalModelRuntime, modelId: String) {
-        deliveryPreferences.edit()
-            .putString(KEY_PENDING_MODEL_PREFIX + runtime.name, modelId)
-            .apply()
+        deliveryPreferences.edit {
+            putString(KEY_PENDING_MODEL_PREFIX + runtime.name, modelId)
+        }
     }
 
     private fun getPendingModel(runtime: LocalModelRuntime): String {
@@ -570,9 +571,9 @@ private class LocalAiRuntimeManager {
     }
 
     private fun clearPendingModel(runtime: LocalModelRuntime) {
-        deliveryPreferences.edit()
-            .remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
-            .apply()
+        deliveryPreferences.edit {
+            remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
+        }
     }
 
     private fun isRuntimeInstalledWithoutInitialization(

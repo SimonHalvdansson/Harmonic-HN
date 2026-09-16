@@ -13,7 +13,6 @@ import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.harmonicAppComposition
-import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.ThemeSelection
 
 @Composable

@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.presentation.UserMessageStore
-import kotlinx.coroutines.flow.collect
 
 /** Renders the shared application message queue using the host's Material theme. */
 @Composable

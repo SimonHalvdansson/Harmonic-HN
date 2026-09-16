@@ -2,6 +2,9 @@ package com.simon.harmonichackernews
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
+import androidx.core.graphics.set
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
@@ -48,11 +51,11 @@ class IncompleteImageRetryTest {
                 val result = loader.execute(request())
                 assertTrue(result.toString(), result is SuccessResult)
                 assertEquals(1, client.requests)
-                assertEquals(Color.RED, (result as SuccessResult).image.toBitmap().getPixel(20, 63))
+                assertEquals(Color.RED, (result as SuccessResult).image.toBitmap()[20, 63])
                 val cached = loader.execute(request()) as SuccessResult
                 assertEquals(DataSource.DISK, cached.dataSource)
                 assertEquals(1, client.requests)
-                assertEquals(Color.RED, cached.image.toBitmap().getPixel(20, 63))
+                assertEquals(Color.RED, cached.image.toBitmap()[20, 63])
             } finally {
                 loader.shutdown()
             }
@@ -123,12 +126,12 @@ class IncompleteImageRetryTest {
             mkdir()
         }
         val cache = DiskCache.Builder().directory(directory.toOkioPath()).maxSizeBytes(1_048_576).build()
-        val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(64, 64, Bitmap.Config.ARGB_8888)
         val random = kotlin.random.Random(42)
         for (y in 0 until 64) for (x in 0 until 64) {
-            bitmap.setPixel(x, y, if (y == 63) Color.RED else Color.rgb(
+            bitmap[x, y] = if (y == 63) Color.RED else Color.rgb(
                 random.nextInt(256), random.nextInt(256), random.nextInt(256),
-            ))
+            )
         }
         val fullPng = ByteArrayOutputStream().use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)

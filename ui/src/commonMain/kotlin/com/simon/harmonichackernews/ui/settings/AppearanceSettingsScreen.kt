@@ -55,6 +55,7 @@ fun AppearanceSettingsScreen(
     onSplitRatioChanged: (Float) -> Unit = {},
 ) {
     var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
+    if (state.paletteTintEnabled) PreloadPalettePreviewResources()
     SettingsPage(
         title = stringResource(Res.string.settings_section_appearance),
         showNavigation = showNavigation,

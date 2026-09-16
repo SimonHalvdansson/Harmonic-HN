@@ -4,7 +4,6 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /**

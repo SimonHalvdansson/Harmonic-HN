@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -7,7 +7,6 @@ import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,7 +17,7 @@ import kotlinx.coroutines.launch
 
 /** Shared editor state/effect bridge; platform hosts only present native dialogs/navigation. */
 class EditorScreenSession(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val feature: EditorFeatureSession,
 ) {
     private val mutableSubmitting = MutableStateFlow(feature.isSubmitting)

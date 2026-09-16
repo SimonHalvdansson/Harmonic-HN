@@ -113,7 +113,7 @@ class CommentsPreloadCoordinatorTest {
         )
         coordinator.setEnabled(true)
         coordinator.updateVisibleStories(listOf(story(1), story(2)))
-        advanceTimeBy(300)
+        advanceTimeBy(300.milliseconds)
         runCurrent()
         coordinator.updateVisibleStories(emptyList())
         release.complete(Unit)
@@ -148,11 +148,11 @@ class CommentsPreloadCoordinatorTest {
             ),
         )
 
-        advanceTimeBy(299L)
+        advanceTimeBy(299L.milliseconds)
         runCurrent()
         assertEquals(emptyList(), requested)
 
-        advanceTimeBy(1L)
+        advanceTimeBy(1L.milliseconds)
         runCurrent()
         assertEquals(
             listOf(Triple(1, listOf(11, 12), setOf("blocked-user"))),
@@ -175,7 +175,7 @@ class CommentsPreloadCoordinatorTest {
         coordinator.setEnabled(true)
         coordinator.updateVisibleStories(listOf(story(1)))
         coordinator.setEnabled(false)
-        advanceTimeBy(300L)
+        advanceTimeBy(300L.milliseconds)
         runCurrent()
 
         assertEquals(emptyList(), requested)
@@ -197,13 +197,13 @@ class CommentsPreloadCoordinatorTest {
         coordinator.setEnabled(true)
 
         coordinator.updateVisibleStories(listOf(story(1)))
-        advanceTimeBy(100L)
+        advanceTimeBy(100L.milliseconds)
         runCurrent()
         assertEquals(emptyList(), requested)
 
         allowed = true
         coordinator.updateVisibleStories(listOf(story(1)))
-        advanceTimeBy(100L)
+        advanceTimeBy(100L.milliseconds)
         runCurrent()
         assertEquals(listOf(1), requested)
     }

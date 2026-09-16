@@ -39,7 +39,7 @@ class LocalSummarySettingsRuntime(
         }
         job = scope.launch {
             try {
-                val availability = checkNotNull(summary).availability()
+                val availability = summary.availability()
                 val nanoAvailable = availability.available && !availability.downloadableFallbackRequired
                 if (!nanoAvailable && models?.selectedModel?.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
                     models.selectFirstReadyOrClear()

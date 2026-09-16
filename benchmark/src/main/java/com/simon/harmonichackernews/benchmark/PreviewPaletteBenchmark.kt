@@ -76,7 +76,7 @@ class PreviewPaletteEquivalenceTest {
 
 /** Every iteration bypasses tint caches and exercises the current production sampler/extractor. */
 @RunWith(Parameterized::class)
-class PreviewPaletteBenchmark(private val fixture: String) {
+class PreviewPaletteBenchmark(fixture: String) {
     @get:Rule val benchmarkRule = BenchmarkRule()
     private val source = loadPreviewFixture(fixture)
     private val image = source.asImage()

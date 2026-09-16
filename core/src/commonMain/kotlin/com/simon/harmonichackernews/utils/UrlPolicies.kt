@@ -114,7 +114,7 @@ object ArchiveRedirectPolicy {
             val domain = normalizeDomain(configured)
             domain.isNotEmpty() && (host == domain || host.endsWith(".$domain"))
         }
-        return if (matches) "https://archive.is/newest/${percentEncode(url.orEmpty())}" else null
+        return if (matches) "https://archive.is/newest/${percentEncode(url)}" else null
     }
 
     private fun percentEncode(value: String): String = buildString {

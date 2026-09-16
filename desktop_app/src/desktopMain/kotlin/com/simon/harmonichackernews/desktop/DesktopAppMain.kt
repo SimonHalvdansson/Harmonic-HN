@@ -33,7 +33,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState

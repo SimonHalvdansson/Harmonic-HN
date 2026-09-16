@@ -25,7 +25,6 @@ import androidx.webkit.WebViewFeature
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.createCommentsStore
-import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
@@ -61,7 +60,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.simon.harmonichackernews.settings.UserSettings
 import java.util.concurrent.ConcurrentHashMap
@@ -445,7 +443,7 @@ class CommentsCoordinator(
                 updateBottomSheetMargin(systemInsets.bottom)
 
                 val cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
-                var contentPaddingLeft = 0
+                val contentPaddingLeft = 0
                 var contentPaddingRight = 0
                 if (AndroidDisplay.isTablet(activity.resources)) {
                     contentPaddingRight =
@@ -546,7 +544,7 @@ class CommentsCoordinator(
     }
 
     private fun initializeComposeUi() {
-        val currentStory = story ?: return
+        story ?: return
         val session = viewSession ?: return
         val platformCallbacks = object : CommentsFeatureListener.PlatformCallbacks {
             override fun isRestoringScroll() = restoringStoredProgress ||

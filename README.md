@@ -5,10 +5,10 @@
 A fully-featured, mature Hacker News client for Android with a focus on (material) design, polish, and customization.
 
 <p align="center">
-  <img src="google play/Screenshot_20260606_201906.png" width="80%"/>
+  <img src="google play/Screenshot_20260606_201906.png" width="80%" alt="Harmonic for Hacker News app"/>
 </p>
 
-Over nearly 6 years of development, Harmonic has been been accumulating features and relentlessly improving all of the hundreds of small interactions which make up the app. It is my main personal side project which I use daily and has over 100 000 downloads on Google Play. It is not meant as a display of the best code quality, but rather as the product of continuous iteration and pixel pushing.
+Over nearly 6 years of development, Harmonic has been accumulating features and relentlessly improving all of the hundreds of small interactions which make up the app. It is my main personal side project which I use daily and has over 100 000 downloads on Google Play. It is not meant as a display of the best code quality, but rather as the product of continuous iteration and pixel pushing.
 
 ## Features
 
@@ -24,7 +24,7 @@ If you would like to see a change in Harmonic, feel free to open an issue or cre
 
 ### AI-aided PRs
 
-Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work properly before before submitting a PR.
+Using your favorite LLM workflow to create PRs is completely fine - anything that gets the job done. As always, still build the app (this should be hassle-free) and try out your changes to make sure they work properly before submitting a PR.
 
 ### Code
 

@@ -92,7 +92,7 @@ data class AiBaseUrlUpdate(
 class AiSummarySettingsRepository(
     private val store: KeyValueStore,
     private val credentials: CredentialStore,
-    private val changes: Flow<Unit>,
+    changes: Flow<Unit>,
     private val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val credentialMutex = Mutex()

@@ -307,7 +307,7 @@ fun ReferenceCardContent(
                 imageExpanded = expanded
                 delay(
                     (ReferenceImageDurationMillis - ReferenceImageMetadataFadeInDurationMillis)
-                        .toLong(),
+                        .toLong().milliseconds,
                 )
                 metadataAlpha.animateTo(
                     1f,

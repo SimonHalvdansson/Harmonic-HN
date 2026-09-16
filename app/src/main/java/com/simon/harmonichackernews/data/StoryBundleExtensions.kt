@@ -7,7 +7,6 @@ import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryNavigationSeed
-import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 

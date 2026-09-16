@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.HackerNewsLinks

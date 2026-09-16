@@ -21,7 +21,6 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.MainDestination
-import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController

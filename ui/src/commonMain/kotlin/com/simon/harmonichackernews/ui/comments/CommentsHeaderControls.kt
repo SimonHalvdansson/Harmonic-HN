@@ -348,7 +348,7 @@ fun HeaderActions(
         if (!moreExpanded) {
             // Keep the submenu composed through DropdownMenu's exit animation. Resetting it in the
             // same frame briefly reveals the parent menu behind the fading popup.
-            delay(500)
+            delay(500.milliseconds)
             sortExpanded = false
             archiveExpanded = false
         }

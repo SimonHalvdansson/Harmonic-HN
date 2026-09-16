@@ -9,11 +9,11 @@ import com.fleeksoft.ksoup.Ksoup
 import androidx.compose.ui.text.AnnotatedString
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.coroutines.coroutineContext
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import kotlin.math.min
 
@@ -193,7 +193,7 @@ internal object CommentHtmlTextCache {
 /** Called from a UI coroutine. Only detached preparation runs on Default; installation stays here. */
 internal suspend fun prefetchCommentRenderModels(comments: List<PortableCommentItem>, collectLinks: Boolean) {
     for (comment in comments) {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val source = comment.expandedAnchorText.orEmpty()
         val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
         val model = cached ?: withContext(Dispatchers.Default) {

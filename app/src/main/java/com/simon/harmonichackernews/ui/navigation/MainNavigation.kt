@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -131,7 +130,6 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.ThemeUtils
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -907,7 +905,7 @@ private fun MainNavigation(
         controller.applySettingsChanges()
     }
 
-    val settingsPredictiveBack = DefaultActivityPredictiveBackHandler(
+    val settingsPredictiveBack = rememberDefaultActivityPredictiveBackState(
         requestKey = settingsRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.SETTINGS,
         completedFrameHoldCount = 3,
@@ -915,7 +913,7 @@ private fun MainNavigation(
     )
 
     val submissionsRequest = navigationSnapshot.submissionsRequest
-    val submissionsPredictiveBack = DefaultActivityPredictiveBackHandler(
+    val submissionsPredictiveBack = rememberDefaultActivityPredictiveBackState(
         requestKey = submissionsRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.SUBMISSIONS,
         onBack = controller::closeSubmissions,
@@ -925,7 +923,7 @@ private fun MainNavigation(
     var editorPredictiveBackEnabled by remember(editorRequest?.serial) {
         mutableStateOf(false)
     }
-    val editorPredictiveBack = DefaultActivityPredictiveBackHandler(
+    val editorPredictiveBack = rememberDefaultActivityPredictiveBackState(
         requestKey = editorRequest?.serial,
         enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR &&
             editorPredictiveBackEnabled,
@@ -933,7 +931,6 @@ private fun MainNavigation(
         onBack = controller::closeEditor,
     )
 
-    val coulombGasVisible = navigationSnapshot.coulombGasVisible
     PredictiveBackHandler(
         enabled = navigationSnapshot.currentDestination == MainDestination.IMMERSIVE,
     ) { events ->
