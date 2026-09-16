@@ -78,6 +78,7 @@ import com.simon.harmonichackernews.ui.comments.AndroidCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.comments.CommentNavigationControls
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
@@ -1422,8 +1423,7 @@ private fun CommentsPane(
                 val navigationBottom = WindowInsets.navigationBars
                     .asPaddingValues()
                     .calculateBottomPadding()
-                val sheetPeekHeight = navigationBottom +
-                    if (commentsController.displaySettings?.isTablet == true) 81.dp else 68.dp
+                val sheetPeekHeight = navigationBottom + CommentsSheetCollapsedHeight
                 val sheetTravelPx = with(LocalDensity.current) {
                     (maxHeight - sheetPeekHeight).toPx().coerceAtLeast(0f)
                 }

@@ -63,7 +63,7 @@ internal fun CommentsScaffold(
 ) {
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val peekHeight = navigationBottom + if (controller.displaySettings?.isTablet == true) 81.dp else 68.dp
+    val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
     val sheetState = rememberBottomSheetState(
         initialValue = if (controller.initialShowWebsite) {
             SheetValue.PartiallyExpanded

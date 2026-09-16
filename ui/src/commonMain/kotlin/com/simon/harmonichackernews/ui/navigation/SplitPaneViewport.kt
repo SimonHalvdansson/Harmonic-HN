@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
@@ -160,18 +163,23 @@ internal fun SplitPaneViewport(
     ) {
         Box(modifier.fillMaxSize().onSizeChanged { width = it.width }) {
             content(expansion)
-            if (twoPane && settings.appearance.allowSplitAdjustment) {
+            AnimatedVisibility(
+                visible = twoPane && settings.appearance.allowSplitAdjustment,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(200)),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset {
+                        IntOffset(
+                            splitHandleOffset(width, gap, animatedRatio.value, targetWidth),
+                            0,
+                        )
+                    },
+            ) {
                 key(orientation) {
                     // The visual grip is small; its 48dp touch target overlaps both sides of the gap.
                     Box(
                         modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .offset {
-                                IntOffset(
-                                    splitHandleOffset(width, gap, animatedRatio.value, targetWidth),
-                                    0,
-                                )
-                            }
                             .size(48.dp, 64.dp)
                             .semantics {
                                 contentDescription = "Adjust split ratio"

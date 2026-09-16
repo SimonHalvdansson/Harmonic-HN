@@ -45,6 +45,7 @@ import com.simon.harmonichackernews.presentation.CommentsSettingsState
 import com.simon.harmonichackernews.presentation.CommentsState
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
@@ -753,12 +754,7 @@ class CommentsCoordinator(
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {
-        val standardMargin = AndroidDisplay.dpToPxInt(
-            activity.resources, (if (AndroidDisplay.isTablet(
-                    activity.resources
-                )
-            ) 81 else 68).toFloat()
-        )
+        val standardMargin = AndroidDisplay.dpToPxInt(activity.resources, CommentsSheetCollapsedHeight.value)
 
         val params = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,

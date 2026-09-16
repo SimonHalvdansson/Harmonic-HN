@@ -1228,7 +1228,7 @@ fun MessageActionDialog(
                 color = HarmonicTheme.colors.textPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 20.sp,
             )
         },
         confirmButton = {

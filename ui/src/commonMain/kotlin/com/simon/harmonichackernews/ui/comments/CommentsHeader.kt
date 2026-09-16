@@ -361,9 +361,9 @@ private fun CommentsSheetControls(
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
-                .padding(top = 8.dp, bottom = 4.dp)
+                .padding(top = CommentsSheetHandleTopPadding, bottom = CommentsSheetHandleBottomPadding)
                 .align(Alignment.CenterHorizontally)
-                .size(width = 50.dp, height = 5.dp)
+                .size(width = 50.dp, height = CommentsSheetHandleHeight)
                 .clip(RoundedCornerShape(3.dp))
                 .background(colors.storyDisabled.copy(alpha = 0.6f)),
         )
@@ -371,7 +371,7 @@ private fun CommentsSheetControls(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((56f * collapsedProgress).dp)
+                .height(CommentsSheetButtonSize * collapsedProgress)
                 .graphicsLayer(alpha = actionAlpha * contentAlpha)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +436,7 @@ private fun SheetButtonContent(
     onClick: () -> Unit,
 ) {
     CommentsTooltip(description) {
-        IconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
+        IconButton(onClick = onClick, modifier = Modifier.size(CommentsSheetButtonSize)) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = description,

@@ -33,6 +33,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -460,11 +461,7 @@ internal fun IosCommentsScaffold(
     } else {
         0.dp
     }
-    val peekHeight = navigationBottom + if (controller.displaySettings?.isTablet == true) {
-        81.dp
-    } else {
-        72.dp
-    }
+    val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
     val sheetState = rememberBottomSheetState(
         initialValue = if (controller.initialShowWebsite) {
             SheetValue.PartiallyExpanded

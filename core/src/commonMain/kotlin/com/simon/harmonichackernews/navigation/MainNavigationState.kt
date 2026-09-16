@@ -362,7 +362,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     private fun pop(destination: MainDestination) {
-        if (currentDestination == destination && backStack.size > 1) backStack.removeLast()
+        if (currentDestination == destination && backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
 
     private fun restoreEntry(
