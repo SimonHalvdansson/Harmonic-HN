@@ -5,7 +5,6 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
-import com.simon.harmonichackernews.data.LinkPreviewInfo
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
@@ -25,36 +24,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 interface LinkPreviewRepository {
     suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData
 
-    /** Compatibility accessors retained for native callers and the generic link-summary loader. */
-    suspend fun getArxivInfo(url: String): ArxivInfo =
-        load(url = url, type = LinkPreviewType.ARXIV).requirePayload<LinkPreviewData.Arxiv>().value
-
     suspend fun getGitHubInfo(url: String): RepoInfo =
         load(url = url, type = LinkPreviewType.GITHUB_REPOSITORY)
             .requirePayload<LinkPreviewData.GitHub>().value
 
-    suspend fun getGitLabInfo(url: String): GitLabInfo =
-        load(url = url, type = LinkPreviewType.GITLAB_PROJECT)
-            .requirePayload<LinkPreviewData.GitLab>().value
-
-    suspend fun getHuggingFaceInfo(url: String): HuggingFaceModelInfo =
-        load(url = url, type = LinkPreviewType.HUGGING_FACE_MODEL)
-            .requirePayload<LinkPreviewData.HuggingFace>().value
-
-    suspend fun getOpenRouterInfo(url: String): OpenRouterModelInfo =
-        load(url = url, type = LinkPreviewType.OPENROUTER_MODEL)
-            .requirePayload<LinkPreviewData.OpenRouter>().value
-
-    suspend fun getStackExchangeInfo(url: String): StackExchangeInfo =
-        load(url = url, type = LinkPreviewType.STACK_EXCHANGE)
-            .requirePayload<LinkPreviewData.StackExchange>().value
-
     suspend fun getWikipediaInfo(url: String): WikipediaInfo =
         load(url = url, type = LinkPreviewType.WIKIPEDIA)
             .requirePayload<LinkPreviewData.Wikipedia>().value
-
-    suspend fun getRichInfo(type: LinkPreviewType, url: String): LinkPreviewInfo =
-        load(type, url).requirePayload<LinkPreviewData.Rich>().value
 
     suspend fun getArchiveUrl(url: String): String
 }

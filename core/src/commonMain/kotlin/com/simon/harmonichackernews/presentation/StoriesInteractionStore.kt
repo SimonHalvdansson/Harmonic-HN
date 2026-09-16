@@ -374,9 +374,6 @@ class StoriesInteractionStore(
     fun updateStoryItemHeight(storyId: Int, heightPx: Int): Boolean =
         updateStoryItemExtentValue(storyId, heightPx.coerceAtLeast(0))
 
-    fun updateStoryItemExtent(storyId: Int, extent: LayoutDistance): Boolean =
-        updateStoryItemExtentValue(storyId, extent.value)
-
     private fun updateStoryItemExtentValue(storyId: Int, extentValue: Int): Boolean {
         if (extentValue <= 0 || storyItemExtents[storyId]?.value == extentValue) return false
         storyItemExtents[storyId] = LayoutDistance(extentValue)

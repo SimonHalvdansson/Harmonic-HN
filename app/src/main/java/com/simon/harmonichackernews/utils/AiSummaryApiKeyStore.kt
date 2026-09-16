@@ -57,8 +57,6 @@ class AndroidAiSummaryApiKeyStore(context: Context) {
         return resolved
     }
 
-    fun hasApiKey(): Boolean = getApiKey().isNotEmpty()
-
     @Synchronized
     fun setApiKey(apiKey: String?): Boolean = try {
         val normalized = apiKey.orEmpty()

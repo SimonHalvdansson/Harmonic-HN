@@ -267,21 +267,6 @@ class StoryCacheRepository(
         return JSONParser.updateStoryWithCachedStorySummary(story, summary)
     }
 
-    fun savePreviewState(story: Story?): Boolean {
-        story ?: return false
-        if (story.id <= 0) return false
-        val key = StoryCacheKeys.storyFile(story.id)
-        val current = loadOrCreateSummary(story.id) ?: return false
-        val updated = JSONParser.updateCachedStorySummaryPreviewState(current, story)
-            ?.takeUnless { it == current }
-            ?: return false
-        return files.write(
-            StoryCacheKeys.SUMMARY_NAMESPACE,
-            key,
-            updated.encodeToByteArray(),
-        )
-    }
-
     fun recentStories(nowMillis: Long): List<Story> = recentEntries(nowMillis).mapNotNull { entry ->
         Story().apply { id = entry.storyId }.takeIf { hydrateStory(it) && !it.isComment }
     }

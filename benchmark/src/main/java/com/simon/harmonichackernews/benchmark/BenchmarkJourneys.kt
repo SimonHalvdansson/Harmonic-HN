@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.benchmark
 
 import android.content.Intent
-import android.graphics.Point
 import android.os.SystemClock
 import androidx.benchmark.macro.MacrobenchmarkScope
 import androidx.test.platform.app.InstrumentationRegistry
@@ -106,10 +105,6 @@ internal fun MacrobenchmarkScope.scrollStoryList(repetitions: Int = 4) {
     device.waitForIdle()
 }
 
-internal fun MacrobenchmarkScope.openFirstStoryComments() {
-    openStoryCommentsAt(findFirstStoryCommentsButtonCenter())
-}
-
 /** Seeds the fixed JSON through the app's real cache, verifies production parsing, then returns. */
 internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
@@ -157,33 +152,6 @@ private fun MacrobenchmarkScope.awaitLoadedComments(fixture: CommentsBenchmarkFi
     check(device.wait(Until.hasObject(By.res("comment-row")), 30_000)) {
         "The ${fixture.intentValue} fixture did not render any comment rows"
     }
-}
-
-internal fun MacrobenchmarkScope.findFirstStoryCommentsButtonCenter(): Point {
-    val firstRank = device.wait(
-        Until.findObject(By.text(StoryRankPattern)),
-        10_000,
-    ) ?: error("No visible ranked story was found")
-    val firstStoryY = firstRank.visibleBounds.centerY()
-    val commentsButton = device.findObjects(By.clickable(true))
-        .asSequence()
-        .filter { it.visibleBounds.centerX() >= device.displayWidth * 0.8f }
-        .filter { it.visibleBounds.centerY() >= firstStoryY }
-        .minByOrNull { it.visibleBounds.centerY() }
-        ?: error("No visible story comments button was found")
-    return Point(
-        commentsButton.visibleBounds.centerX(),
-        commentsButton.visibleBounds.centerY(),
-    )
-}
-
-internal fun MacrobenchmarkScope.openStoryCommentsAt(center: Point) {
-    device.click(center.x, center.y)
-    // FrameTimingMetric needs to include the complete 450 ms destination transition, while the
-    // app's staged cache work is intentionally running behind it. The trace-section metric verifies
-    // that this click created the Comments coordinator without querying accessibility mid-capture.
-    SystemClock.sleep(550)
-    device.waitForIdle()
 }
 
 internal fun MacrobenchmarkScope.scrollComments(repetitions: Int = 3) {

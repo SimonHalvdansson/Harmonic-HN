@@ -90,10 +90,6 @@ data class StoryListItemSnapshot(
         }
 
     fun loadedLinkPreviewType() = presentation.loadedLinkPreviewType()
-
-    fun hasLoadedLinkPreview(): Boolean = loadedLinkPreviewType() != null
-
-    fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
 }
 
 /** Native-safe list state with no mutable model references. */

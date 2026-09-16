@@ -522,12 +522,6 @@ class StoriesComposeController private constructor(
     fun showStoryPreview(deck: com.simon.harmonichackernews.presentation.StoryPreviewDeck) =
         showStoryPreview(deck.stories, deck.cardColors, deck.openedStoryId)
 
-    fun restoreStoryPreview(
-        stories: List<StoryListItemSnapshot>,
-        cardColors: IntArray,
-        openedStoryId: Int,
-    ) = showStoryPreview(stories, cardColors, openedStoryId)
-
     fun isStoryPreviewShowing(): Boolean = storyPreviewOverlay != null
 
     fun requestDismissStoryPreview() {

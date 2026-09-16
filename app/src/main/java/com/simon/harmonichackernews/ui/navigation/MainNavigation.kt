@@ -116,19 +116,14 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.EditorDestination
-import com.simon.harmonichackernews.navigation.MainEditorRequest
-import com.simon.harmonichackernews.navigation.MainCaptchaRequest
 import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationEntry
-import com.simon.harmonichackernews.navigation.MainFailureRequest
 import com.simon.harmonichackernews.navigation.MainNavigationRestoration
 import com.simon.harmonichackernews.navigation.MainNavigationRestorationCodec
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
-import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
-import com.simon.harmonichackernews.navigation.MainUserRequest
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.settings.AppLaunchDialog
@@ -452,10 +447,6 @@ class MainNavigationController internal constructor(
 
     internal fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
         storiesCoordinator?.updateVisibleStories(stories)
-    }
-
-    internal fun detachStoriesCoordinator(coordinator: StoriesCoordinator) {
-        if (storiesCoordinator === coordinator) storiesCoordinator = null
     }
 
     fun attachStoriesComposeController(controller: StoriesComposeController) {
@@ -1327,7 +1318,6 @@ private fun MainNavigation(
             )
         },
     )
-
 }
 
 @Composable

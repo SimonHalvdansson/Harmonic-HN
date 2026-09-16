@@ -25,24 +25,6 @@ object StoryPreviewTintState {
         isModeCurrent(story.faviconTintMode, paletteTintMode) &&
         story.faviconTintSourceUrl == sourceUrl
 
-    fun applyPreview(
-        story: Story?,
-        sourceUrl: String?,
-        baseColor: Int,
-        paletteTintMode: String?,
-        tintColor: Int,
-    ): Boolean {
-        if (story == null || sourceUrl.isNullOrEmpty() || story.previewImageUrl != sourceUrl) {
-            return false
-        }
-        story.previewImageTintColor = tintColor
-        story.previewImageTintColorLoaded = true
-        story.previewImageTintSourceUrl = sourceUrl
-        story.previewImageTintBaseColor = baseColor
-        story.previewImageTintMode = storedMode(paletteTintMode)
-        return true
-    }
-
     fun applyFavicon(
         story: Story?,
         sourceUrl: String?,
@@ -57,14 +39,6 @@ object StoryPreviewTintState {
         story.faviconTintBaseColor = baseColor
         story.faviconTintMode = storedMode(paletteTintMode)
         return true
-    }
-
-    fun clearPreview(story: Story?) {
-        if (story == null) return
-        story.previewImageTintColorLoaded = false
-        story.previewImageTintSourceUrl = null
-        story.previewImageTintBaseColor = 0
-        story.previewImageTintMode = null
     }
 
     fun isModeCurrent(storedModeValue: String?, paletteTintMode: String?): Boolean =

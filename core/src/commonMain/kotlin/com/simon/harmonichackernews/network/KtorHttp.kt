@@ -63,11 +63,6 @@ class NetworkUrl private constructor(internal val value: Url) {
             delegate.parameters.append(name, value.orEmpty())
         }
 
-        fun setQueryParameter(name: String, value: String?): Builder = apply {
-            delegate.parameters.remove(name)
-            delegate.parameters.append(name, value.orEmpty())
-        }
-
         fun addPathSegment(segment: String): Builder = apply {
             delegate.appendPathSegments(segment)
         }

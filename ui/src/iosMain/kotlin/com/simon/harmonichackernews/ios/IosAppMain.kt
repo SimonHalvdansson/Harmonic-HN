@@ -27,8 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.text.LinkAnnotation
-import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.delay
@@ -100,7 +98,6 @@ class IosHarmonicApplication(
         runtime = runtime,
     )
     private val scene = bootstrap.createScene()
-    private var backHandler: () -> Boolean = { false }
     private var closed = false
     private var foreground by mutableStateOf(false)
 
@@ -120,18 +117,13 @@ class IosHarmonicApplication(
                 bootstrap = bootstrap,
                 scene = scene,
                 appearance = appearance,
-                installBackHandler = { backHandler = it },
             )
         }
     }
 
-    /** Returns true when the shared scene consumed the native back request. */
-    fun requestBack(): Boolean = backHandler()
-
     fun close() {
         if (closed) return
         closed = true
-        backHandler = { false }
         scene.close()
         bootstrap.close()
     }
@@ -142,7 +134,6 @@ private fun IosApp(
     bootstrap: IosHarmonicAppBootstrap,
     scene: HarmonicSceneComposition,
     appearance: com.simon.harmonichackernews.platform.IosAppearanceController,
-    installBackHandler: (() -> Boolean) -> Unit,
 ) {
     val foreground = LocalIosForeground.current
     LaunchedEffect(foreground, bootstrap.app) {
@@ -176,17 +167,6 @@ private fun IosApp(
             AppLaunchDialog.WELCOME -> scene.navigation.showWelcomeDialog()
             AppLaunchDialog.CHANGELOG -> scene.navigation.showChangelogDialog()
             AppLaunchDialog.NONE -> Unit
-        }
-    }
-    SideEffect {
-        installBackHandler {
-            handleIosBack(
-                navigation = navigation,
-                scene = scene,
-                storiesController = storiesController,
-                commentsController = commentsController,
-                onEditorBackRequested = { editorBackRequestVersion++ },
-            )
         }
     }
     val canNavigateBack = canHandleIosBack(

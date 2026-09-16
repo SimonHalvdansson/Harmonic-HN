@@ -513,9 +513,6 @@ class CommentsFeatureRuntime(
         changed(refreshNavigation = true)
     }
 
-    fun requestCommentActions(comment: PortableCommentItem) =
-        presenter.dispatch(CommentsAction.RequestCommentActions(comment))
-
     fun votePollOption(optionId: Int) =
         presenter.dispatch(CommentsAction.VotePollOption(optionId))
 

@@ -408,12 +408,6 @@ private class BeforeCommentThreadStore {
         )
     }
 
-    fun notifyCommentsChanged() {
-        portableItemsById.clear()
-        rebuildDisplayedComments()
-        publish(rebuildSearch = true, rebuildVisibility = true)
-    }
-
     private fun prepareAndReplace(
         story: Story?,
         comments: MutableList<Comment>,
@@ -653,7 +647,6 @@ private class BeforeCommentThreadStore {
         }
         return true
     }
-
 
     private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
 }

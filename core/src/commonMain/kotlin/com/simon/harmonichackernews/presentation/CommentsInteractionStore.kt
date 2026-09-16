@@ -306,10 +306,6 @@ class CommentsInteractionStore(
         return true
     }
 
-    fun setCommentActionFavoriteLoading(commentId: Int, loading: Boolean) {
-        state = state.copy(commentActionFavoriteLoadingId = if (loading) commentId else -1)
-    }
-
     fun setCommentActionVoteLoading(commentId: Int, action: CommentMenuAction) {
         state = state.copy(
             commentActionVoteLoadingId = commentId,

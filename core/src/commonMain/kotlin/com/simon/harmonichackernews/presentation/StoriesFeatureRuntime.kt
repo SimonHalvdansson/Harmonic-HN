@@ -495,14 +495,9 @@ class StoriesFeatureRuntime(
         return true
     }
 
-    fun setSearchDraft(query: String) =
-        presenter.dispatch(StoriesAction.SetSearchDraft(query))
-
     fun submitSearch(query: String, resetResultLimit: Boolean = true) {
         presenter.dispatch(StoriesAction.Search(query, resetResultLimit))
     }
-
-    fun resetSearchOptions() = presenter.dispatch(StoriesAction.ResetSearchOptions)
 
     fun selectSearchOption(option: StorySearchOption, index: Int) {
         presenter.dispatch(
@@ -679,10 +674,6 @@ class StoriesFeatureRuntime(
                 !story.isComment && story.loaded && (!story.isLink || !story.url.isNullOrEmpty())
             }
         return candidates.takeIf { stories -> stories.any { it.id == openedStoryId } }.orEmpty()
-    }
-
-    fun previewStory(storyId: Int): Story? = activeStories.firstOrNull { story ->
-        story.id == storyId && (!story.isLink || !story.url.isNullOrEmpty())
     }
 
     fun activeStory(storyId: Int): Story? = activeStories.firstOrNull { it.id == storyId }
@@ -930,10 +921,6 @@ class StoriesFeatureRuntime(
         applySavedFilter()
     }
 
-    fun refreshBookmarks() {
-        if (currentType.isBookmarks && !searching) refresh(false)
-    }
-
     fun syncVisibleUserItemsWithCache() {
         if (!currentType.isUserItemList) return
         val snapshot = savedItems.loadSnapshot(currentUserItemSource())
@@ -1014,20 +1001,6 @@ class StoriesFeatureRuntime(
         }
         if (result != StoryHistorySyncResult.UNCHANGED) changed()
         return result
-    }
-
-    fun publishStoryChanged(story: Story? = null) = changed(story)
-
-    fun publishStoryContentChanged(story: Story? = null) {
-        when {
-            story == null -> activeStore.contentChanged()
-            story in mainStories -> mainStore.contentChanged(story)
-            story in searchStories -> searchStore.contentChanged(story)
-            else -> return
-        }
-        // The store snapshot was already published above. Emit the cross-feature update without
-        // rebuilding the same list snapshot a second time.
-        emit(StoriesRuntimeEffect.StoryChanged(story?.id))
     }
 
     fun mergeExternalStoryUpdate(update: Story): Boolean {

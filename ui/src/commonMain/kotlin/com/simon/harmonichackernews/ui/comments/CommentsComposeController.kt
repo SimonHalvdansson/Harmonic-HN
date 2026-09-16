@@ -267,10 +267,6 @@ class CommentsComposeController private constructor(
         contentVersion++
     }
 
-    fun updateHeaderPreviewSuppressed(suppressed: Boolean) {
-        headerPreviewSuppressed = suppressed
-    }
-
     fun updateHeaderMenuVisibility(visible: Boolean) {
         headerMenuVisible = visible
     }
@@ -516,31 +512,9 @@ class CommentsComposeController private constructor(
         sourceCoveredByCommentActionTransition = covered
     }
 
-    fun setCommentActionFavoriteLoading(commentId: Int, loading: Boolean) {
-        interactionStore.setCommentActionFavoriteLoading(commentId, loading)
-        syncInteractionState()
-        contentVersion++
-    }
-
-    fun setCommentActionVoteLoading(commentId: Int, action: CommentMenuAction) {
-        interactionStore.setCommentActionVoteLoading(commentId, action)
-        syncInteractionState()
-        contentVersion++
-    }
-
-    fun isCommentActionVoteLoading(commentId: Int): Boolean =
-        commentActionVoteLoadingId == commentId
-
-    fun isCommentActionDownvoted(commentId: Int): Boolean =
-        commentId in commentActionDownvotedIds
-
     fun finishCommentActionVote(commentId: Int, downvoted: Boolean) {
         interactionStore.finishCommentActionVote(commentId, downvoted)
         syncInteractionState()
-        contentVersion++
-    }
-
-    fun refreshCommentActionState() {
         contentVersion++
     }
 
@@ -699,11 +673,6 @@ class CommentsComposeController private constructor(
     fun requestDismissLinkPreview() {
         interactionStore.requestDismissLinkPreview()
         syncInteractionState()
-    }
-
-    fun coverLinkPreviewReferenceSource() {
-        if (!linkPreviewSourceIsReferenceRow) return
-        coverLinkPreviewSource()
     }
 
     fun coverLinkPreviewSource() {

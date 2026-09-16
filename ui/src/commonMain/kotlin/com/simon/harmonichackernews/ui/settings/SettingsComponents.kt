@@ -42,17 +42,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.simon.harmonichackernews.ui.common.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -785,21 +781,6 @@ fun SettingsDialogTextButton(
 }
 
 @Composable
-fun SettingsDialogOutlinedButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable RowScope.() -> Unit,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        content = content,
-    )
-}
-
-@Composable
 fun SettingsDivider() {
     Spacer(
         modifier = Modifier
@@ -1158,54 +1139,6 @@ fun MultiChoiceDialog(
 }
 
 @Composable
-fun ItemsDialog(
-    title: String,
-    options: List<String>,
-    onDismiss: () -> Unit,
-    onSelected: (Int) -> Unit,
-) {
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle(title) },
-        edgeToEdgeContent = true,
-        text = {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 480.dp),
-                contentPadding = PaddingValues(
-                    top = HarmonicDimens.compose_settings_dialog_item_top_padding,
-                ),
-            ) {
-                itemsIndexed(options) { index, option ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 48.dp)
-                            .clickable { onSelected(index) }
-                            .padding(horizontal = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = option,
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 16.sp,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
-}
-
-@Composable
 fun MessageActionDialog(
     title: String? = null,
     message: CharSequence,
@@ -1266,174 +1199,5 @@ fun SettingsDialogTitle(title: String) {
         fontWeight = FontWeight.Normal,
         fontSize = 24.sp,
         lineHeight = 30.sp,
-    )
-}
-
-@Composable
-fun EditableStringListDialog(
-    title: String,
-    subtitle: String,
-    inputLabel: String,
-    initialItems: List<String>,
-    emptyMessage: String,
-    suggestions: List<String> = emptyList(),
-    normalize: (String) -> String = String::trim,
-    onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit,
-) {
-    var items by remember(initialItems) { mutableStateOf(initialItems) }
-    var input by remember { mutableStateOf("") }
-
-    fun add(rawValue: String) {
-        val value = normalize(rawValue)
-        if (value.isNotBlank() && items.none { it.equals(value, ignoreCase = true) }) {
-            items = items + value
-            input = ""
-        }
-    }
-
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(
-                    text = subtitle,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { input = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(inputLabel) },
-                        singleLine = true,
-                    )
-                    SettingsDialogTextButton(
-                        onClick = { add(input) },
-                        enabled = input.isNotBlank(),
-                    ) {
-                        Text("Add")
-                    }
-                }
-
-                if (suggestions.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        suggestions.take(3).forEach { suggestion ->
-                            SettingsDialogTextButton(
-                                onClick = { add(suggestion) },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    text = suggestion,
-                                    fontSize = 11.sp,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (items.isEmpty()) {
-                    Text(
-                        text = emptyMessage,
-                        modifier = Modifier.padding(top = 18.dp),
-                        color = HarmonicTheme.colors.storyDisabled,
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    ) {
-                        items(items) { item ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = item,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                IconButton(
-                                    onClick = { items = items - item },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.ic_close),
-                                        contentDescription = "Remove $item",
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            SettingsDialogTextButton(onClick = { onSave(items) }) {
-                Text("Done")
-            }
-        },
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
-}
-
-@Composable
-fun TextEntryDialog(
-    title: String,
-    label: String,
-    initialValue: String,
-    allowEmpty: Boolean,
-    singleLine: Boolean = true,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-    onReset: (() -> Unit)? = null,
-) {
-    var value by remember(initialValue) { mutableStateOf(initialValue) }
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(label) },
-                singleLine = singleLine,
-                minLines = if (singleLine) 1 else 5,
-                maxLines = if (singleLine) 1 else 10,
-            )
-        },
-        confirmButton = {
-            SettingsDialogTextButton(
-                onClick = { onSave(value.trim()) },
-                enabled = allowEmpty || value.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        neutralButton = onReset?.let { reset ->
-            {
-                SettingsDialogTextButton(onClick = reset) {
-                    Text("Reset")
-                }
-            }
-        },
     )
 }

@@ -185,8 +185,6 @@ class Story : LinkPreviewState {
         return true
     }
 
-    fun hasExtraInfo(): Boolean = linkPreviewLoading || hasLoadedLinkPreview()
-
     fun hasLoadedLinkPreview(): Boolean = loadedLinkPreviewType() != null
 
     companion object {

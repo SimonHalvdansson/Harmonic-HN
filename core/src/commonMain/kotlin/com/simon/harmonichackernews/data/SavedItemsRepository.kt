@@ -184,12 +184,6 @@ class SavedItemsRepository(
         publish(source)
     }
 
-    suspend fun saveCommentIdsAtomic(source: SavedItemSource, ids: Set<Int>) =
-        mutationMutex.withLock {
-            saveCommentIds(source, ids)
-            advanceSourceEpoch(source, isComment = true)
-        }
-
     fun setCommentMembership(source: SavedItemSource, id: Int, present: Boolean): Boolean {
         val current = loadCommentIds(source)
         val updated = current.toMutableSet()
@@ -206,33 +200,6 @@ class SavedItemsRepository(
         setCommentMembership(source, id, present).also {
             advanceItemRevision(source, id, isComment = true)
         }
-    }
-
-    suspend fun updateCommentMembershipAtomic(
-        source: SavedItemSource,
-        id: Int,
-        present: Boolean,
-    ): SavedItemMembershipUpdate = mutationMutex.withLock {
-        val previous = id in loadCommentIds(source)
-        setCommentMembership(source, id, present)
-        SavedItemMembershipUpdate(
-            previous,
-            present,
-            advanceItemRevision(source, id, isComment = true),
-        )
-    }
-
-    suspend fun toggleCommentMembershipAtomic(
-        source: SavedItemSource,
-        id: Int,
-    ): SavedItemMembershipUpdate = mutationMutex.withLock {
-        val previous = id in loadCommentIds(source)
-        setCommentMembership(source, id, !previous)
-        SavedItemMembershipUpdate(
-            previous,
-            !previous,
-            advanceItemRevision(source, id, isComment = true),
-        )
     }
 
     suspend fun updateClassifiedMembershipAtomic(

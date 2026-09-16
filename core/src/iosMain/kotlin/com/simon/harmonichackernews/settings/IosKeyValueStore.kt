@@ -130,9 +130,6 @@ class IosKeyValueStore(
         changed()
     }
 
-    /** Call after the native host writes directly to the same defaults domain. */
-    fun notifyChanged() = changed()
-
     private fun changed() {
         mutableChanges.tryEmit(Unit)
     }

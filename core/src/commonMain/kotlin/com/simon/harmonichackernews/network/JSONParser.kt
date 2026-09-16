@@ -2,10 +2,6 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
-import com.simon.harmonichackernews.network.dto.applyTo
-import com.simon.harmonichackernews.network.dto.toComment
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import com.simon.harmonichackernews.serialization.JsonArray as JSONArray
 import com.simon.harmonichackernews.serialization.JsonException as JSONException
@@ -21,7 +17,6 @@ object JSONParser {
     private const val CACHED_STORY_SUMMARY_VERSION = 1
     private const val KEY_PREVIEW_IMAGE_URL = "preview_image_url"
     private const val KEY_PREVIEW_IMAGE_URL_LOADED = "preview_image_url_loaded"
-    private const val KEY_PREVIEW_IMAGE_LOAD_FAILED = "preview_image_load_failed"
     private const val KEY_PREVIEW_IMAGE_TINT_COLOR = "preview_image_tint_color"
     private const val KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED = "preview_image_tint_color_loaded"
     private const val KEY_PREVIEW_IMAGE_TINT_SOURCE_URL = "preview_image_tint_source_url"
@@ -46,142 +41,8 @@ object JSONParser {
         AlgoliaItemSerializer(AlgoliaChildrenCountSerializer, 0)
     }
 
-    private fun hasOnlyTwoTopLevelFields(jsonObject: JSONObject): Boolean {
-        return jsonObject.length() == 2
-    }
-
-    @Throws(JSONException::class)
-    fun updateStoryWithHNJson(response: String?, story: Story, isHistory: Boolean): Boolean {
-        if (response.isNullOrBlank() || JSON_NULL_LITERAL == response) return false
-        return try {
-            val item = ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response)
-            if (item.type != "comment" && item.title == null) return false
-            item.applyTo(story, preserveTime = isHistory)
-        } catch (_: SerializationException) {
-            false
-        } catch (_: IllegalArgumentException) {
-            false
-        }
-    }
-
-    @Throws(JSONException::class)
-    fun updateCommentMasterStoryWithHNJson(story: Story?, response: String?): Boolean {
-        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
-            return false
-        }
-
-        val jsonObject = JSONObject(response)
-        if (hasOnlyTwoTopLevelFields(jsonObject) || "comment" == jsonObject.optString("type", "")) {
-            return false
-        }
-
-        val id = jsonObject.optInt("id", 0)
-        if (id <= 0) {
-            return false
-        }
-
-        story.commentMasterId = id
-        story.commentMasterTitle = jsonObject.optString("title", story.commentMasterTitle)
-        story.commentMasterBy = jsonObject.optString("by", story.commentMasterBy)
-        story.commentMasterScore = jsonObject.optInt("score", story.commentMasterScore)
-        story.commentMasterTime = jsonObject.optInt("time", story.commentMasterTime)
-        story.commentMasterDescendants =
-            jsonObject.optInt("descendants", story.commentMasterDescendants)
-        val url = optStringOrNull(jsonObject, "url")
-        if (url != null) {
-            story.commentMasterUrl = url
-        } else {
-            story.commentMasterUrl = HackerNewsLinks.itemUrl(id)
-        }
-        story.commentMasterLoaded = true
-        return true
-    }
-
-    @Throws(JSONException::class)
-    fun updateStoryWithHNCommentJson(jsonObject: JSONObject, story: Story): Boolean {
-        if (jsonObject.has("deleted") && jsonObject.getBoolean("deleted")) {
-            return false
-        }
-
-        val by = jsonObject.getString("by")
-        val id = jsonObject.getInt("id")
-        val time = jsonObject.getInt("time")
-
-        // setting the score to -1 means it doesn't get shown
-        story.update(
-            by,
-            id,
-            0,
-            time,
-            "Comment by " + by
-        )
-
-        story.isComment = true
-        story.parentId = jsonObject.optInt("parent", 0)
-
-        if (jsonObject.has("kids")) {
-            val kidsJsonArray = jsonObject.getJSONArray("kids")
-            val kidCount = kidsJsonArray.length()
-            story.descendants = kidCount
-            val kids = IntArray(kidCount)
-
-            for (i in 0..<kidCount) {
-                kids[i] = kidsJsonArray.getInt(i)
-            }
-
-            story.kids = kids
-        } else {
-            story.descendants = 0
-        }
-
-        story.url = HackerNewsLinks.itemUrl(story.id)
-        story.isLink = false
-        val text = optStringOrNull(jsonObject, "text")
-        if (text != null) {
-            updateStoryText(story, text)
-        }
-
-        story.loaded = true
-        story.loadingFailed = false
-
-        return true
-    }
-
     fun updateTitleBadgeProperties(story: Story?) {
         StoryTextProcessor.applyTitleBadges(story)
-    }
-
-    fun updateStoryWithAlgoliaResponse(story: Story, response: String) {
-        try {
-            val item = JSONObject(response)
-
-            // count children in one go
-            val children = item.optJSONArray("children")
-            story.descendants = (if (children == null) 0 else children.length())
-
-            // timestamp, title, author, score—all with a single lookup each
-            story.time = item.optInt("created_at_i", story.time)
-            story.title = item.optString("title", story.title)
-            story.score = item.optInt("points", story.score)
-            story.by = item.optString("author", story.by)
-
-            // pull url once, trim it, then check for empty or literal "null"
-            val rawUrl = item.optString("url", "").trim { it <= ' ' }
-            val hasValidUrl =
-                !rawUrl.isEmpty() && !rawUrl.equals(JSON_NULL_LITERAL, ignoreCase = true)
-            story.isLink = hasValidUrl
-
-            // only set story.url once
-            if (hasValidUrl) {
-                story.url = rawUrl
-            } else {
-                story.url = HackerNewsLinks.itemUrl(story.id)
-            }
-
-            updateTitleBadgeProperties(story)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
     }
 
     fun compactAlgoliaStoryResponse(response: String?, fallbackId: Int): String? {
@@ -244,70 +105,6 @@ object JSONParser {
         copyFaviconTintSummaryFields(item, summary)
 
         return summary.toString()
-    }
-
-    fun updateCachedStorySummaryPreviewState(response: String?, story: Story?): String? {
-        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
-            return null
-        }
-
-        try {
-            val summary = JSONObject(response)
-            if (summary.optInt("id", story.id) != story.id) {
-                return null
-            }
-
-            if (story.previewImageUrlLoaded || !story.previewImageUrl.isNullOrEmpty()) {
-                summary.put(KEY_PREVIEW_IMAGE_URL_LOADED, true)
-                if (story.previewImageUrl.isNullOrEmpty()) {
-                    summary.remove(KEY_PREVIEW_IMAGE_URL)
-                } else {
-                    summary.put(KEY_PREVIEW_IMAGE_URL, story.previewImageUrl)
-                }
-            }
-            // Failure is request-local state and is no longer persisted on Story.
-            summary.remove(KEY_PREVIEW_IMAGE_LOAD_FAILED)
-
-            if (story.previewImageTintColorLoaded && !story.previewImageTintSourceUrl.isNullOrEmpty()) {
-                summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, true)
-                summary.put(KEY_PREVIEW_IMAGE_TINT_COLOR, story.previewImageTintColor)
-                summary.put(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL, story.previewImageTintSourceUrl)
-                summary.put(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR, story.previewImageTintBaseColor)
-                if (story.previewImageTintMode.isNullOrEmpty()) {
-                    summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE)
-                } else {
-                    summary.put(KEY_PREVIEW_IMAGE_TINT_MODE, story.previewImageTintMode)
-                }
-            } else {
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED)
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_COLOR)
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_SOURCE_URL)
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_BASE_COLOR)
-                summary.remove(KEY_PREVIEW_IMAGE_TINT_MODE)
-            }
-
-            if (story.faviconTintColorLoaded && !story.faviconTintSourceUrl.isNullOrEmpty()) {
-                summary.put(KEY_FAVICON_TINT_COLOR_LOADED, true)
-                summary.put(KEY_FAVICON_TINT_COLOR, story.faviconTintColor)
-                summary.put(KEY_FAVICON_TINT_SOURCE_URL, story.faviconTintSourceUrl)
-                summary.put(KEY_FAVICON_TINT_BASE_COLOR, story.faviconTintBaseColor)
-                if (story.faviconTintMode.isNullOrEmpty()) {
-                    summary.remove(KEY_FAVICON_TINT_MODE)
-                } else {
-                    summary.put(KEY_FAVICON_TINT_MODE, story.faviconTintMode)
-                }
-            } else {
-                summary.remove(KEY_FAVICON_TINT_COLOR_LOADED)
-                summary.remove(KEY_FAVICON_TINT_COLOR)
-                summary.remove(KEY_FAVICON_TINT_SOURCE_URL)
-                summary.remove(KEY_FAVICON_TINT_BASE_COLOR)
-                summary.remove(KEY_FAVICON_TINT_MODE)
-            }
-
-            return summary.toString()
-        } catch (e: JSONException) {
-            return null
-        }
     }
 
     fun updateStoryWithCachedStorySummary(story: Story?, response: String?): Boolean {
@@ -505,32 +302,4 @@ object JSONParser {
     }
 
     fun preprocessHtml(input: String?): String? = StoryTextProcessor.preprocessHtml(input)
-
-    // Official HN API parsing methods for fallback
-    fun updateStoryWithOfficialHNResponse(story: Story, response: String?): Boolean {
-        try {
-            if (response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
-                return false
-            }
-            return ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response.orEmpty()).applyTo(story)
-        } catch (e: SerializationException) {
-            e.printStackTrace()
-            return false
-        } catch (e: IllegalArgumentException) {
-            e.printStackTrace()
-            return false
-        }
-    }
-
-    @Throws(JSONException::class)
-    fun parseOfficialHNCommentResponse(response: String): Comment? {
-        return try {
-            ALGOLIA_JSON.decodeFromString<HackerNewsItemDto>(response).toComment()
-        } catch (error: SerializationException) {
-            throw JSONException("Invalid Hacker News comment JSON", error)
-        } catch (error: IllegalArgumentException) {
-            throw JSONException("Invalid Hacker News comment JSON", error)
-        }
-    }
-
 }

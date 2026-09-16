@@ -37,8 +37,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
-import androidx.annotation.NonNull
-import androidx.annotation.Nullable
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.webkit.WebSettingsCompat
@@ -72,13 +70,11 @@ import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
 import com.simon.harmonichackernews.utils.ThemeUtils
-import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.utils.HarmonicLog
 import java.io.ByteArrayInputStream
-import java.io.InputStream
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -921,14 +917,9 @@ internal class CommentsWebViewController(
         callbacks.setFullscreenSystemBarsHidden(false)
         callbacks.syncOnBackPressedCallbackEnabledState()
 
-
         if (notifyCallback && currentCustomViewCallback != null) {
             currentCustomViewCallback.onCustomViewHidden()
         }
-    }
-
-    fun loadStoryUrl() {
-        webContentController.load(story?.url, readingPreferences.archiveRedirectDomains)
     }
 
     private fun showCustomView(view: View, callback: CustomViewCallback) {

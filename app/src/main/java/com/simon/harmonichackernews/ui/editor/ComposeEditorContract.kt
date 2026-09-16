@@ -1,11 +1,5 @@
 package com.simon.harmonichackernews.ui.editor
 
-import android.content.Context
-import android.content.Intent
-import com.simon.harmonichackernews.MainActivity
-import com.simon.harmonichackernews.navigation.AppDestinationCodec
-import com.simon.harmonichackernews.navigation.EditorDestination
-
 /** Navigation contract for the Compose post/comment editor.  */
 object ComposeEditorContract {
     const val ACTION_OPEN_EDITOR = "com.simon.harmonichackernews.action.OPEN_EDITOR"
@@ -18,16 +12,4 @@ object ComposeEditorContract {
     const val TYPE_TOP_COMMENT = 0
     const val TYPE_COMMENT_REPLY = 1
     const val TYPE_POST = 2
-
-    fun createIntent(
-        context: Context,
-        destination: EditorDestination? = null,
-    ): Intent = Intent(context, MainActivity::class.java)
-        .setAction(ACTION_OPEN_EDITOR)
-        .apply {
-            destination?.let {
-                putExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA, AppDestinationCodec.encode(it))
-            }
-        }
-        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 }
