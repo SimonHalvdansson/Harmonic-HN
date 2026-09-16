@@ -29,7 +29,6 @@ import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
-import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import kotlinx.coroutines.launch
@@ -74,7 +73,13 @@ fun PortableSettingsDetail(
             onBack = onBack,
         )
         SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack)
-        SettingsSection.Comments -> PortableCommentsSettings(app, singlePane, onBack)
+        SettingsSection.Comments -> CommentsSettingsRoute(
+            repository = app.settings,
+            showNavigation = singlePane,
+            onBack = onBack,
+            onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+        )
+        SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(
             app = app,
             capabilities = webLinksCapabilities,
@@ -381,35 +386,6 @@ private fun PortableStoriesSettings(
         },
         faviconDialog = { selected, _, onSelected, dismiss ->
             FaviconProviderRoute(selected, onSelected, dismiss)
-        },
-    )
-}
-
-@Composable
-private fun PortableCommentsSettings(
-    app: HarmonicAppComposition,
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-) {
-    CommentsSettingsRoute(
-        repository = app.settings,
-        showNavigation = showNavigation,
-        onBack = onBack,
-        threadDepthDialog = { presenter, dismiss ->
-            val selection = app.appearance.selection()
-            val mode = presenter.state().depthMode
-            ThreadDepthIndicatorsDialog(
-                mode = mode,
-                indicatorColors = CommentDepthPaletteCatalog.previewColors(
-                    mode,
-                    selection.theme,
-                    selection.dark,
-                ),
-                onModeSelected = {
-                    presenter.setDepthIndicatorMode(it)
-                },
-                onDismiss = dismiss,
-            )
         },
     )
 }

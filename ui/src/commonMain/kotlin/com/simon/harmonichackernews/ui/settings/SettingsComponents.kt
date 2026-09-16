@@ -399,6 +399,8 @@ fun SettingsListScreen(
                                 selectedSection == SettingsSection.PaletteTint) ||
                             entry.section == SettingsSection.Debug &&
                             selectedSection == SettingsSection.DebugLinkPreviews ||
+                            entry.section == SettingsSection.Comments &&
+                            selectedSection == SettingsSection.ThreadDepth ||
                             entry.section == SettingsSection.About &&
                             selectedSection == SettingsSection.Licenses
                         SettingsNavigationRow(

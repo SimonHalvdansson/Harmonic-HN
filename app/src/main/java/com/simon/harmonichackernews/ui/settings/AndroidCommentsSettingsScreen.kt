@@ -4,11 +4,15 @@ import androidx.compose.runtime.Composable
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
-fun AndroidCommentsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
+fun AndroidCommentsSettingsScreen(
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onThreadDepthRequested: () -> Unit,
+) {
     CommentsSettingsRoute(
         repository = LocalHarmonicUiDependencies.current.settings,
         showNavigation = showNavigation,
         onBack = onBack,
-        threadDepthDialog = { _, dismiss -> AndroidThreadDepthIndicatorsDialog(dismiss) },
+        onThreadDepthRequested = onThreadDepthRequested,
     )
 }

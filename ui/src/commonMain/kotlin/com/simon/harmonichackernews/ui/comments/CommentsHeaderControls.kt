@@ -614,6 +614,8 @@ private fun MoreMenu(
         // Parent and submenu labels used to change the popup width mid-animation, shifting both
         // popup edges diagonally. A stable width keeps the anchor and transform origin fixed.
         modifier = Modifier.width(248.dp),
+        // Suppress the clipped opening shadow only for this comments overflow menu.
+        shadowElevation = 0.dp,
     ) {
         AnimatedContent(
             targetState = page,
@@ -861,12 +863,13 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
             else -> HeaderStatusState.None
         },
         transitionSpec = {
-            val exitFade = if (initialState == HeaderStatusState.Loading) {
-                fadeOut(tween(durationMillis = 90))
-            } else {
-                fadeOut()
-            }
-            (fadeIn() + expandVertically()).togetherWith(exitFade + shrinkVertically())
+            // One size animation moves the comments on every window size. Expanding each
+            // child as well made AnimatedContent chase a changing height and clip the spinner.
+            (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(90))).using(
+                SizeTransform(clip = false) { _, _ ->
+                    tween(260, easing = FastOutSlowInEasing)
+                },
+            )
         },
         label = "comments header status",
     ) { state ->

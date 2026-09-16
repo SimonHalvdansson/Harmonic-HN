@@ -35,4 +35,5 @@ internal fun CommentsSettingsUiState.toPreviewCommentItemStyle(): CommentItemSty
         depthIndicatorMode = depthMode,
         showDivider = showDividers,
         preferredFont = preferredFont,
+        animateChanges = animateChanges,
     )

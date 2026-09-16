@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -316,8 +315,6 @@ private fun LocalModelCard(
 ) {
     val presentation = row.presentation
     val shape = RoundedCornerShape(14.dp)
-    val darkTheme = HarmonicTheme.colors.background.luminance() <
-        HarmonicTheme.colors.onSurface.luminance()
     val backgroundColor by animateColorAsState(
         targetValue = if (presentation.selected) {
             MaterialTheme.colorScheme.secondaryContainer
@@ -420,8 +417,8 @@ private fun LocalModelCard(
                         )
                         LocalModelTag(
                             text = formatDecimalBytes(row.model.sizeBytes),
-                            background = MaterialTheme.colorScheme.secondaryContainer,
-                            foreground = MaterialTheme.colorScheme.onSecondaryContainer,
+                            background = MaterialTheme.colorScheme.primaryContainer,
+                            foreground = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),
@@ -437,16 +434,8 @@ private fun LocalModelCard(
                     ) {
                         LocalModelTag(
                             text = row.baseModelName.orEmpty(),
-                            background = if (darkTheme) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                HarmonicTheme.colors.settingsMainToggle
-                            },
-                            foreground = if (darkTheme) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                HarmonicTheme.colors.settingsMainToggleText
-                            },
+                            background = MaterialTheme.colorScheme.tertiaryContainer,
+                            foreground = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),

@@ -219,7 +219,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
             )
         }
         Text(
-            text = "($domain)",
+            text = domain.orEmpty(),
             color = colors.storyDisabled,
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
@@ -548,7 +548,8 @@ private fun PreviewInfoRow(
             .defaultMinSize(minHeight = 22.dp)
             .then(
                 if (onClick != null) {
-                    Modifier.combinedClickable(onClick = onClick, onLongClick = null)
+                    Modifier.clip(RoundedCornerShape(2.dp))
+                        .combinedClickable(onClick = onClick, onLongClick = null)
                 } else {
                     Modifier
                 },

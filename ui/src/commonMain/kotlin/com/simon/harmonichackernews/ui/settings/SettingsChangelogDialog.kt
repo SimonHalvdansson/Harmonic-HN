@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -36,8 +40,8 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private const val CHANGELOG_RESOURCE = "files/changelog.md"
 private const val FALLBACK_CHANGELOG = "Changelog unavailable."
-private val ChangelogBodyFontSize = 13.8.sp
-private val ChangelogBodyLineHeight = 20.sp
+private val ChangelogBodyFontSize = 14.sp
+private val ChangelogBodyLineHeight = 19.sp
 private var cachedChangelogMarkdown: String? = null
 
 @Composable
@@ -76,6 +80,7 @@ private fun ChangelogMarkdown(
     modifier: Modifier = Modifier,
 ) {
     val blocks = remember(markdown) { parseChangelogMarkdown(markdown) }
+    val firstHeadingIndex = blocks.indexOfFirst { it is ChangelogBlock.Heading }
     Column(
         modifier = modifier.padding(
             top = HarmonicDimens.compose_settings_changelog_content_top_padding,
@@ -85,17 +90,21 @@ private fun ChangelogMarkdown(
             if (index > 0) {
                 val previous = blocks[index - 1]
                 val spacing = when {
-                    block is ChangelogBlock.Heading ->
-                        HarmonicDimens.compose_settings_changelog_heading_spacing
-
-                    block is ChangelogBlock.Bullet && previous is ChangelogBlock.Bullet -> 0.dp
-                    else -> HarmonicDimens.compose_settings_changelog_block_spacing
+                    block is ChangelogBlock.Heading -> 16.dp
+                    block is ChangelogBlock.Bullet && previous is ChangelogBlock.Bullet -> 4.dp
+                    else -> 10.dp
                 }
                 Spacer(Modifier.height(spacing))
             }
 
             when (block) {
-                is ChangelogBlock.Heading -> ChangelogHeading(block.text)
+                is ChangelogBlock.Heading -> {
+                    if (index != firstHeadingIndex) {
+                        HorizontalDivider(color = HarmonicTheme.colors.outlineVariant)
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    ChangelogHeading(block.text, latest = index == firstHeadingIndex)
+                }
                 is ChangelogBlock.Paragraph -> ChangelogBodyText(block.text)
                 is ChangelogBlock.Bullet -> ChangelogBullet(block.text)
             }
@@ -104,17 +113,29 @@ private fun ChangelogMarkdown(
 }
 
 @Composable
-private fun ChangelogHeading(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.semantics { heading() },
-        color = HarmonicTheme.colors.textPrimary,
-        style = MaterialTheme.typography.headlineMedium.copy(
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
-        ),
-    )
-    HorizontalDivider(color = HarmonicTheme.colors.outlineVariant, thickness = 1.dp)
+private fun ChangelogHeading(text: String, latest: Boolean) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f).semantics { heading() },
+            color = HarmonicTheme.colors.textPrimary,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.SemiBold,
+            ),
+        )
+        if (latest) {
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "Latest",
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+    }
 }
 
 @Composable
@@ -134,12 +155,12 @@ private fun ChangelogBodyText(text: String) {
 private fun ChangelogBullet(text: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Box(
-            modifier = Modifier.width(HarmonicDimens.compose_settings_changelog_bullet_width),
-            contentAlignment = Alignment.TopCenter,
+            modifier = Modifier.width(12.dp).height(19.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            ChangelogBodyText("•")
+            Box(Modifier.size(4.dp).background(HarmonicTheme.colors.accent, CircleShape))
         }
-        Spacer(Modifier.width(HarmonicDimens.compose_settings_changelog_bullet_gap))
+        Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) { ChangelogBodyText(text) }
     }
 }

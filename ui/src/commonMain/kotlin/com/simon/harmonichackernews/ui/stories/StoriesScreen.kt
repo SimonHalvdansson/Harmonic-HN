@@ -11,9 +11,12 @@ import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -21,6 +24,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -1148,11 +1153,7 @@ private fun MainHeader(
     }
     val textMeasurer = rememberTextMeasurer()
     BoxWithConstraints(modifier.fillMaxWidth().height(56.dp)) {
-        val preferredSize = when {
-            maxWidth < 350.dp -> typography.storiesDropdownSelectedSize * 0.8f
-            maxWidth < 420.dp -> typography.storiesDropdownCompactSelectedSize
-            else -> typography.storiesDropdownSelectedSize
-        }
+        val preferredSize = typography.storiesDropdownSelectedSize
         val minimumSize = typography.storiesDropdownSelectedSize * 0.65f
         val titleWidth = with(density) {
             textMeasurer.measure(
@@ -1168,31 +1169,66 @@ private fun MainHeader(
         }
         // Leave a pixel-rounding margin, and use the same tracking for measuring and drawing.
         val sizing = storyHeaderSizing(maxWidth.value, titleWidth + 1f, minimumSize / preferredSize)
-        val selectedTextSize = with(density) { (preferredSize * sizing.textScale).dp.toSp() }
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        // Grow the hit/ripple bounds around the existing text origin.
+                        .offset(x = (-4).dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .combinedClickable(
                             onClick = { typesExpanded = true },
                             onLongClick = null,
                         )
-                        .padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+                        .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = title,
-                        color = HarmonicTheme.colors.storyNormal,
-                        fontFamily = typography.family,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = selectedTextSize,
-                        letterSpacing = 0.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false).semantics { heading() },
-                    )
-                    Spacer(Modifier.width(sizing.arrowGap.dp))
+                    AnimatedContent(
+                        targetState = Triple(title, sizing, controller.selectedTypeIndex),
+                        contentKey = { it.first },
+                        modifier = Modifier.weight(1f, fill = false),
+                        contentAlignment = Alignment.CenterStart,
+                        transitionSpec = {
+                            val direction = when {
+                                targetState.third > initialState.third -> 1
+                                targetState.third < initialState.third -> -1
+                                else -> 0
+                            }
+                            val travel = with(density) { 8.dp.roundToPx() } * direction
+                            val enter = fadeIn(tween(120, delayMillis = 310, easing = LinearEasing)) +
+                                slideInVertically(
+                                    tween(120, delayMillis = 310, easing = FastOutSlowInEasing),
+                                    initialOffsetY = { travel },
+                                )
+                            val exit = fadeOut(tween(90, easing = LinearEasing)) +
+                                slideOutVertically(
+                                    tween(90, easing = FastOutSlowInEasing),
+                                    targetOffsetY = { -travel },
+                                )
+                            (enter togetherWith exit)
+                                .using(SizeTransform(clip = false) { _, _ ->
+                                    tween(220, delayMillis = 90, easing = FastOutSlowInEasing)
+                                })
+                        },
+                        label = "story section title",
+                    ) { (visibleTitle, visibleSizing) ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = visibleTitle,
+                                color = HarmonicTheme.colors.storyNormal,
+                                fontFamily = typography.family,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = with(density) {
+                                    (preferredSize * visibleSizing.textScale).dp.toSp()
+                                },
+                                letterSpacing = 0.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+                            )
+                            Spacer(Modifier.width(visibleSizing.arrowGap.dp))
+                        }
+                    }
                     Icon(
                         painterResource(Res.drawable.ic_keyboard_arrow_down),
                         contentDescription = "Choose story list",
@@ -1470,14 +1506,15 @@ private fun SavedCommentStoryItem(
 
 internal data class StoryHeaderSizing(val textScale: Float, val arrowGap: Float, val searchInMenu: Boolean)
 
-/** Spend spare space on the arrow gap first; move Search before truncating the list title. */
+/** Prefer a 20dp caret gap, reducing it before shrinking the title or moving Search. */
 internal fun storyHeaderSizing(width: Float, titleWidth: Float, minimumScale: Float): StoryHeaderSizing {
     // Title padding, dropdown arrow, and two 48dp action targets.
-    val fixedWidth = 4f + 24f + 96f
+    val fixedWidth = 12f + 24f + 96f
+    val minimumGap = 4f
     val minimum = minimumScale.coerceIn(0f, 1f)
-    val searchInMenu = titleWidth * minimum + fixedWidth + 8f > width
+    val searchInMenu = titleWidth * minimum + fixedWidth + minimumGap > width
     val available = (width - fixedWidth + if (searchInMenu) 48f else 0f).coerceAtLeast(0f)
-    val scale = if (titleWidth > 0f) ((available - 8f) / titleWidth).coerceIn(minimum, 1f) else 1f
-    val gap = (available - titleWidth * scale).coerceIn(8f, 40f)
+    val scale = if (titleWidth > 0f) ((available - minimumGap) / titleWidth).coerceIn(minimum, 1f) else 1f
+    val gap = (available - titleWidth * scale).coerceIn(minimumGap, 20f)
     return StoryHeaderSizing(scale, gap, searchInMenu)
 }

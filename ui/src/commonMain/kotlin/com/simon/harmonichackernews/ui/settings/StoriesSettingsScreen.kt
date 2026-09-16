@@ -130,7 +130,7 @@ fun StoriesSettingsScreen(
                     title = "Display style",
                     options = listOf(
                         DisplayStyle.FLAT.storedValue to "Flat",
-                        DisplayStyle.STANDARD.storedValue to "Standard",
+                        DisplayStyle.STANDARD.storedValue to "Filled",
                         DisplayStyle.RAISED.storedValue to "Raised",
                     ),
                     selected = state.displayStyle,

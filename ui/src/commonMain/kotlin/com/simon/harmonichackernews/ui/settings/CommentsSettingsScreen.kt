@@ -68,7 +68,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
 
-enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, ThreadDepth, Preload }
+enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, Preload }
 
 @Composable
 fun CommentsSettingsScreen(
@@ -79,6 +79,7 @@ fun CommentsSettingsScreen(
     onTextSizeOffsetChanged: (Int) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
+    onThreadDepthRequested: () -> Unit,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -101,7 +102,7 @@ fun CommentsSettingsScreen(
                     title = "Display style",
                     options = listOf(
                         DisplayStyle.FLAT.storedValue to "Flat",
-                        DisplayStyle.STANDARD.storedValue to "Standard",
+                        DisplayStyle.STANDARD.storedValue to "Filled",
                         DisplayStyle.RAISED.storedValue to "Raised",
                     ),
                     selected = state.displayStyle.storedValue,
@@ -139,7 +140,7 @@ fun CommentsSettingsScreen(
                     title = "Thread depth indicators",
                     summary = state.depthModeLabel,
                     icon = Res.drawable.ic_palette,
-                    onClick = { onDialogRequested(CommentsSettingsDialog.ThreadDepth) },
+                    onClick = onThreadDepthRequested,
                 )
                 SettingsDivider()
                 BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)

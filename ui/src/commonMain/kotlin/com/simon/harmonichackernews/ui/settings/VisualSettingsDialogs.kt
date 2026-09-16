@@ -1,30 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,9 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
-import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -108,99 +95,6 @@ fun FaviconProviderDialog(
                         SettingsRadioButton(
                             selected = provider.value == selected,
                             modifier = Modifier.padding(start = 12.dp),
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        showButtons = false,
-    )
-}
-
-@Composable
-fun ThreadDepthIndicatorsDialog(
-    mode: String,
-    indicatorColors: List<Color>,
-    onModeSelected: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val modes = listOf(
-        CommentDepthPreferences.THEME_DEFAULT,
-        CommentDepthPreferences.MATERIAL_YOU,
-        CommentDepthPreferences.COLORS,
-        CommentDepthPreferences.AUTHOR,
-        CommentDepthPreferences.MONOCHROME,
-        CommentDepthPreferences.NONE,
-    )
-
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle("Thread depth indicators") },
-        edgeToEdgeContent = true,
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp),
-                contentPadding = PaddingValues(bottom = 8.dp),
-            ) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 8.dp),
-                    ) {
-                        repeat(CommentDepthPaletteCatalog.colorCount) { index ->
-                            val color = indicatorColors.getOrNull(index) ?: Color.Transparent
-                            val indicatorColor by animateColorAsState(
-                                targetValue = color,
-                                label = "thread depth color",
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(40.dp)
-                                    .padding(start = (12 * index).dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(3.dp)
-                                        .background(indicatorColor),
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    text = "Comment ${index + 1}",
-                                    color = HarmonicTheme.colors.storyNormal,
-                                    fontFamily = ProductSansFontFamily,
-                                    fontSize = 15.sp,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                items(modes, key = { it }) { option ->
-                    val selected = CommentDepthPreferences.sanitizeMode(mode) == option
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 48.dp)
-                            .selectable(
-                                selected = selected,
-                                role = Role.RadioButton,
-                                onClick = { onModeSelected(option) },
-                            )
-                            .padding(horizontal = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SettingsRadioButton(selected = selected)
-                        Text(
-                            text = CommentDepthPreferences.modeLabel(option),
-                            modifier = Modifier.padding(start = 4.dp),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 16.sp,
                         )
                     }
                 }

@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,7 +47,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +91,32 @@ private const val COMMENT_NAVIGATION_SPEED_STEP = 50
 private const val COMMENTS_CACHE_AHEAD_FRACTION = 2f
 private const val COMMENTS_CACHE_BEHIND_FRACTION = 0.5f
 private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
+private const val COMMENT_PLACEMENT_DURATION_MILLIS = 220
+
+/** Only structural list changes need placement motion; animated row/header sizes already move it. */
+@Composable
+private fun rememberCommentPlacementAnimation(
+    visibleComments: List<PortableVisibleComment>,
+    enabled: Boolean,
+): Boolean {
+    val visibleIds = remember(visibleComments) { visibleComments.map { it.comment.id } }
+    var previousIds by remember { mutableStateOf(visibleIds) }
+    var animating by remember { mutableStateOf(false) }
+    val visibilityChanged = previousIds != visibleIds && previousIds.isNotEmpty() && visibleIds.isNotEmpty()
+    LaunchedEffect(visibleIds, enabled) {
+        val animateChange = enabled && visibilityChanged
+        previousIds = visibleIds
+        animating = animateChange
+        if (animateChange) {
+            // Leave time for the next lazy-list measure to start the placement tween. Using the
+            // animation clock (rather than delay) respects the device's animation duration scale.
+            Animatable(0f).animateTo(1f, tween(COMMENT_PLACEMENT_DURATION_MILLIS + 100))
+            animating = false
+        }
+    }
+    // Enable on the composition that receives the changed list, before its first measure.
+    return enabled && (visibilityChanged || animating)
+}
 
 internal fun commentScrollTopOffset(
     requestedTopOffsetPx: Int,
@@ -192,6 +221,7 @@ fun CommentsScreen(
     )
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
+    val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
     com.simon.harmonichackernews.ui.content.PrefetchCommentContent(
         listState = listState,
         comments = remember(visibleComments) { visibleComments.map { it.comment } },
@@ -406,10 +436,16 @@ fun CommentsScreen(
                         .graphicsLayer(
                             alpha = if (suppressed && !keepActionSourceVisible) 0f else 1f,
                         )
-                        // Header previews and comment bodies already animate their height. A
-                        // second placement spring makes rows lag behind those changing bounds,
-                        // overlapping the header when a cached thread reopens.
-                        .then(if (animateComments) Modifier.animateItem(placementSpec = null) else Modifier),
+                        // A subtree entering/leaving the list needs sibling placement motion.
+                        // Otherwise follow animated header/body bounds directly without a second
+                        // spring making rows lag behind the header when cached threads reopen.
+                        .then(if (animateComments) Modifier.animateItem(
+                            placementSpec = if (animateCommentPlacement) {
+                                tween(COMMENT_PLACEMENT_DURATION_MILLIS)
+                            } else {
+                                null
+                            },
+                        ) else Modifier),
                     onToggleExpanded = { sourceBounds ->
                         if (settings.swapLongPressTap) {
                             controller.showCommentActions(item.comment, sourceBounds)

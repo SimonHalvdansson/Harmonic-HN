@@ -31,7 +31,7 @@ object HarmonicDimens {
     val compose_settings_changelog_bullet_width = 18.dp
     val compose_settings_changelog_content_top_padding = 16.dp
     val compose_settings_changelog_heading_spacing = 24.dp
-    val compose_settings_changelog_max_height = 584.dp
+    val compose_settings_changelog_max_height = 680.dp
     val compose_settings_dialog_action_vertical_padding = 14.dp
     val compose_settings_dialog_content_padding = 24.dp
     val compose_settings_dialog_horizontal_margin = 35.dp

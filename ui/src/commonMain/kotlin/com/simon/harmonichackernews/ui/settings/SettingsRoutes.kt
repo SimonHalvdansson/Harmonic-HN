@@ -457,10 +457,7 @@ fun CommentsSettingsRoute(
     repository: AppSettingsRepository,
     showNavigation: Boolean,
     onBack: () -> Unit,
-    threadDepthDialog: @Composable (
-        presenter: CommentsSettingsPresenter,
-        onDismiss: () -> Unit,
-    ) -> Unit,
+    onThreadDepthRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
@@ -474,6 +471,7 @@ fun CommentsSettingsRoute(
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },
+        onThreadDepthRequested = onThreadDepthRequested,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {
@@ -496,7 +494,6 @@ fun CommentsSettingsRoute(
             { dialog = null },
             presenter::setVolumeNavigation,
         )
-        CommentsSettingsDialog.ThreadDepth -> threadDepthDialog(presenter) { dialog = null }
         CommentsSettingsDialog.Preload -> PreloadCommentsDialog(
             initialMode = settings.comments.commentsPreloadMode,
             initialBattery = settings.comments.preloadCommentsMinimumBattery,

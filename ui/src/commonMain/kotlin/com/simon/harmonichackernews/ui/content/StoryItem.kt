@@ -11,7 +11,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDp
@@ -44,6 +43,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -403,7 +403,44 @@ fun StoryItem(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null)
-    val mediumPreview = style.previewImageMode == StoryPreviewMode.MEDIUM
+    var animatedPreviewMode by remember { mutableStateOf(style.previewImageMode) }
+    val mediumAccessoryFade = remember {
+        Animatable(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
+    }
+    val animatePreviewMode = animate && hasPreview && !listItem
+    val renderedPreviewMode = if (animatePreviewMode) animatedPreviewMode else style.previewImageMode
+    val renderedStyle = if (renderedPreviewMode == style.previewImageMode) {
+        style
+    } else {
+        style.copy(previewImageMode = renderedPreviewMode)
+    }
+    LaunchedEffect(style.previewImageMode, animatePreviewMode) {
+        val targetMode = style.previewImageMode
+        if (
+            animatePreviewMode && renderedPreviewMode == StoryPreviewMode.MEDIUM &&
+            targetMode == StoryPreviewMode.SMALL
+        ) {
+            // Start the image transition and outgoing badge fade together.
+            animatedPreviewMode = targetMode
+            mediumAccessoryFade.animateTo(0f, tween(75, easing = ContentMotionEasing))
+        } else {
+            animatedPreviewMode = targetMode
+            val targetAlpha = if (targetMode == StoryPreviewMode.MEDIUM) 1f else 0f
+            if (animatePreviewMode) {
+                mediumAccessoryFade.animateTo(
+                    targetAlpha,
+                    tween(
+                        durationMillis = 75,
+                        delayMillis = if (targetMode == StoryPreviewMode.MEDIUM) 105 else 0,
+                        easing = ContentMotionEasing,
+                    ),
+                )
+            } else {
+                mediumAccessoryFade.snapTo(targetAlpha)
+            }
+        }
+    }
+    val mediumPreview = renderedPreviewMode == StoryPreviewMode.MEDIUM
     val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
@@ -433,7 +470,7 @@ fun StoryItem(
         extractedFaviconTint = tintColor
         onFaviconTintExtracted?.invoke(tintColor)
     }
-    val previewAvailable = style.previewImageMode != StoryPreviewMode.OFF && hasPreview
+    val previewAvailable = renderedPreviewMode != StoryPreviewMode.OFF && hasPreview
     // Discovering an image URL precedes decoding and palette extraction. Keep the favicon
     // tint during that gap, then transition directly to the preview tint when it is ready.
     val previewTint = (model.previewImageTintArgb ?: extractedPreviewTint)
@@ -465,11 +502,11 @@ fun StoryItem(
     }
     val previewImageCornerRadiusPx = with(density) {
         when {
-            style.previewImageMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
-            style.previewImageMode == StoryPreviewMode.MEDIUM && style.borderlessLargeImage ->
+            renderedPreviewMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
+            renderedPreviewMode == StoryPreviewMode.MEDIUM && style.borderlessLargeImage ->
                 0f
-            style.previewImageMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
-            style.previewImageMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
+            renderedPreviewMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
+            renderedPreviewMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
                 8.dp.toPx()
             else -> 0f
         }
@@ -494,7 +531,7 @@ fun StoryItem(
                 // the list. The last pager-driven list delta can land after the page settles; a
                 // one-shot snapshot would then make the dismiss transform end at the old position.
                 if (capturePreviewSourceGeometry) {
-                    itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+                    itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
                         ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
                 }
             }
@@ -512,7 +549,7 @@ fun StoryItem(
                 ?.let { bounds ->
                     onGeometryChanged?.invoke(bounds, itemGeometry.itemHeightPx)
                 }
-            itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+            itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
                 ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
             onLinkLongClick?.invoke()
             sourceCaptureRequested = false
@@ -520,13 +557,13 @@ fun StoryItem(
     }
     LaunchedEffect(
         capturePreviewSourceGeometry,
-        style.previewImageMode,
+        renderedPreviewMode,
         style.showSummary,
         style.compact,
         hasPreview,
     ) {
         if (capturePreviewSourceGeometry) {
-            itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+            itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
                 ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
         }
     }
@@ -575,20 +612,12 @@ fun StoryItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(geometryModifier)
-                    .then(cardDecorationModifier)
-                    .then(
-                        if (animate) {
-                            Modifier.animateContentSize(
-                                animationSpec = contentTween(),
-                                alignment = Alignment.TopStart,
-                            )
-                        } else {
-                            Modifier
-                        },
-                    ),
+                    // The children already animate their measured sizes. A second size
+                    // animation here trails those measurements and clips the moving content.
+                    .then(cardDecorationModifier),
             ) {
                 StoryVisibility(
-                    visible = style.previewImageMode == StoryPreviewMode.LARGE && hasPreview,
+                    visible = renderedPreviewMode == StoryPreviewMode.LARGE && hasPreview,
                     animate = animate,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
@@ -654,20 +683,11 @@ fun StoryItem(
                 val animatedRailWidth = targetRailWidth?.let { width ->
                     if (animate && hasPreview && !listItem) {
                         val railModeTransition = updateTransition(
-                            targetState = style.previewImageMode,
+                            targetState = renderedPreviewMode,
                             label = "story preview rail mode",
                         )
                         val animatedWidth by railModeTransition.animateDp(
-                            transitionSpec = {
-                                if (
-                                    initialState == StoryPreviewMode.MEDIUM &&
-                                    targetState == StoryPreviewMode.SMALL
-                                ) {
-                                    snap()
-                                } else {
-                                    contentTween()
-                                }
-                            },
+                            transitionSpec = { contentTween() },
                             label = "story metric rail width",
                         ) { mode ->
                             if (mode == StoryPreviewMode.MEDIUM) {
@@ -701,22 +721,6 @@ fun StoryItem(
                                 targetState = mediumPreview,
                                 label = "story preview image mode",
                             )
-                            val animatedMediumAlpha by previewModeTransition.animateFloat(
-                                transitionSpec = {
-                                    if (!initialState && targetState) {
-                                        tween(
-                                            durationMillis = 75,
-                                            delayMillis = 105,
-                                            easing = ContentMotionEasing,
-                                        )
-                                    } else {
-                                        snap()
-                                    }
-                                },
-                                label = "medium story accessories",
-                            ) { isMedium ->
-                                if (isMedium) 1f else 0f
-                            }
                             val animatedSmallAlpha by previewModeTransition.animateFloat(
                                 transitionSpec = {
                                     if (initialState && !targetState) {
@@ -733,7 +737,7 @@ fun StoryItem(
                             ) { isMedium ->
                                 if (isMedium) 0f else 1f
                             }
-                            mediumAccessoryAlpha = animatedMediumAlpha
+                            mediumAccessoryAlpha = mediumAccessoryFade.value
                             smallAccessoryAlpha = animatedSmallAlpha
                         } else {
                             mediumAccessoryAlpha = 1f
@@ -752,7 +756,7 @@ fun StoryItem(
                                     ) {
                                         StoryMediumPreviewRail(
                                             model = model,
-                                            style = style,
+                                            style = renderedStyle,
                                             typography = typography,
                                             hasPreview = hasPreview,
                                             dimAlpha = dimAlpha,
@@ -782,7 +786,7 @@ fun StoryItem(
                                     ) {
                                         StoryCommentRail(
                                             model = model,
-                                            style = style,
+                                            style = renderedStyle,
                                             typography = typography,
                                             dimAlpha = dimAlpha,
                                             onClick = onCommentClick,
@@ -806,7 +810,7 @@ fun StoryItem(
                             {
                                 StoryMediumPreviewRail(
                                     model = model,
-                                    style = style,
+                                    style = renderedStyle,
                                     typography = typography,
                                     hasPreview = hasPreview,
                                     dimAlpha = dimAlpha,
@@ -831,7 +835,7 @@ fun StoryItem(
                             {
                                 StoryCommentRail(
                                     model = model,
-                                    style = style,
+                                    style = renderedStyle,
                                     typography = typography,
                                     dimAlpha = dimAlpha,
                                     onClick = onCommentClick,
@@ -861,10 +865,10 @@ fun StoryItem(
                         ) {
                             StoryMainContent(
                                 model = model,
-                                style = style,
+                                style = renderedStyle,
                                 typography = typography,
                                 hasSmallPreview = hasPreview &&
-                                    style.previewImageMode == StoryPreviewMode.SMALL,
+                                    renderedPreviewMode == StoryPreviewMode.SMALL,
                                 dimAlpha = dimAlpha,
                                 onLinkClick = onLinkClick,
                                 onLinkLongClick = trackedLinkLongClick,
@@ -921,6 +925,16 @@ private fun StoryContentRow(
     } else {
         0f
     }
+    val minimumHeight = if (animateChanges) {
+        val animatedHeight by animateDpAsState(
+            targetValue = contentMinHeight,
+            animationSpec = contentTween(),
+            label = "story content minimum height",
+        )
+        animatedHeight
+    } else {
+        contentMinHeight
+    }
     Layout(
         modifier = Modifier.fillMaxWidth(),
         content = {
@@ -930,7 +944,7 @@ private fun StoryContentRow(
     ) { measurables, constraints ->
         val minimumRowHeight = maxOf(
             constraints.minHeight,
-            contentMinHeight.roundToPx(),
+            minimumHeight.roundToPx(),
         ).coerceAtMost(constraints.maxHeight)
         val railWidthPx = railWidth
             ?.roundToPx()
@@ -1069,10 +1083,12 @@ private fun StoryMediumPreviewRail(
     Box(
         modifier = modifier
             .then(if (hasPreview) Modifier.fillMaxSize() else Modifier.fillMaxHeight())
-            .clickable(
-                enabled = onClick != null,
-                onClickLabel = "Open comments",
-            ) { onClick?.invoke() }
+            .then(
+                if (!hasPreview) Modifier.clickable(
+                    enabled = onClick != null,
+                    onClickLabel = "Open comments",
+                ) { onClick?.invoke() } else Modifier,
+            )
             .padding(railPadding),
         contentAlignment = if (hasPreview) Alignment.Center else Alignment.CenterEnd,
     ) {
@@ -1088,7 +1104,11 @@ private fun StoryMediumPreviewRail(
                             bottomEnd = imageEndRadius,
                             bottomStart = imageStartRadius,
                         ),
-                    ),
+                    )
+                    .clickable(
+                        enabled = onClick != null,
+                        onClickLabel = "Open comments",
+                    ) { onClick?.invoke() },
             ) {
                 StoryPreviewImage(
                     model = model,
@@ -1125,6 +1145,9 @@ private fun StoryMediumPreviewRail(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)
+                        // Keep the outgoing pills intact while the image rail narrows.
+                        // Their short fade completes before the image reaches small size.
+                        .wrapContentWidth(Alignment.End, unbounded = true)
                         .renderOverSharedStoryPreviewImage(sharedTransitionScope)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,

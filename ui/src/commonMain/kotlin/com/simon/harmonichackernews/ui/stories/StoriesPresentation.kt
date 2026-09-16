@@ -3,7 +3,9 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,6 +40,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -55,6 +58,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
@@ -221,6 +226,12 @@ fun StorySearchHeader(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val colorScheme = MaterialTheme.colorScheme
+    val searchContainerColor = if (colorScheme.surface.luminance() > 0.5f) {
+        colorScheme.onSurface.copy(alpha = 0.04f).compositeOver(colorScheme.surfaceContainerHighest)
+    } else {
+        colorScheme.surfaceContainerHighest
+    }
     LaunchedEffect(state.active, state.suppressAutoFocus) {
         if (state.active && !state.suppressAutoFocus) {
             focusRequester.requestFocus()
@@ -249,6 +260,8 @@ fun StorySearchHeader(
                 }),
                 shape = RoundedCornerShape(32.dp),
                 colors = TextFieldDefaults.colors(
+                    focusedContainerColor = searchContainerColor,
+                    unfocusedContainerColor = searchContainerColor,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
@@ -299,11 +312,33 @@ private fun SearchOptionChip(
     onSelected: (Int) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box(Modifier.animateContentSize(tween(220))) {
+    Box {
         FilterChip(
             selected = false,
             onClick = { expanded = true },
-            label = { Text(label) },
+            label = {
+                // Resize the label inside the chip so its border follows every frame. Resizing
+                // an outer box instead clips a fully sized chip at the old trailing edge.
+                AnimatedContent(
+                    targetState = label,
+                    transitionSpec = {
+                        (fadeIn(tween(60, delayMillis = 140)) togetherWith fadeOut(tween(35)))
+                            .using(SizeTransform(clip = false) { initialSize, targetSize ->
+                                // Let a long outgoing label disappear before the surface contracts;
+                                // reveal the incoming label only once its complete width is ready.
+                                if (targetSize.width < initialSize.width) {
+                                    tween(105, delayMillis = 35)
+                                } else {
+                                    tween(140)
+                                }
+                            })
+                    },
+                    contentAlignment = Alignment.CenterStart,
+                    label = "search filter label",
+                ) { visibleLabel ->
+                    Text(visibleLabel, maxLines = 1, softWrap = false)
+                }
+            },
             border = BorderStroke(1.dp, iconColor),
         )
         DropdownMenu(

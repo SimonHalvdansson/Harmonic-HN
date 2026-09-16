@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.content
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -21,6 +23,7 @@ fun HarmonicDropdownMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    shadowElevation: Dp = MenuDefaults.ShadowElevation,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     DropdownMenu(
@@ -30,6 +33,7 @@ fun HarmonicDropdownMenu(
         shape = RoundedCornerShape(16.dp),
         containerColor = HarmonicTheme.colors.popupMenuBackground,
         tonalElevation = 0.dp,
+        shadowElevation = shadowElevation,
         content = content,
     )
 }

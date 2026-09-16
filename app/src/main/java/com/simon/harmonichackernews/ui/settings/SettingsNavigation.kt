@@ -202,6 +202,11 @@ fun SettingsShell(
                 SettingsSection.Comments -> AndroidCommentsSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+                )
+                SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
+                    repository = dependencies.settings,
+                    onBack = onBack,
                 )
                 SettingsSection.WebLinks -> WebLinksSettingsRoute(
                     repository = dependencies.settings,

@@ -8,6 +8,7 @@
     <string name="settings_section_palette_tint">Palette tint</string>
     <string name="settings_section_stories">Stories</string>
     <string name="settings_section_comments">Comments</string>
+    <string name="settings_section_thread_depth">Thread depth indicators</string>
     <string name="settings_section_web_links">Web and links</string>
     <string name="settings_section_filters_tags">Filters and tags</string>
     <string name="settings_section_ai_summary">AI summarization</string>

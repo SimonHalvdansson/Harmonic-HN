@@ -335,6 +335,11 @@ fun CommentItem(
         (effectiveDepth > 0 || showTopLevelIndicator)
     val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
         .coerceAtLeast(0)
+    val indicatorColor by animateColorAsState(
+        targetValue = commentDepthColor(style.depthIndicatorMode, indicatorIndex, comment.by.orEmpty()),
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "runtime comment indicator color",
+    )
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
     val renderModel = remember(
         comment.id,
@@ -394,7 +399,7 @@ fun CommentItem(
             modifier = Modifier.fillMaxWidth(),
             style = style,
             showIndicator = showIndicator,
-            indicatorColor = commentDepthColor(style.depthIndicatorMode, indicatorIndex, comment.by.orEmpty()),
+            indicatorColor = indicatorColor,
             highlighted = highlighted,
             itemGeometry = itemGeometry,
             captureSource = captureActionSource || pendingActionSourceGesture != null,

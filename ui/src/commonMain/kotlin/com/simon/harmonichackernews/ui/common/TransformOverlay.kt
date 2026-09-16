@@ -401,7 +401,9 @@ fun TransformOverlay(
                     zIndex = sharedHazeSourceZIndex ?: 0f,
                 ),
         ) {
-        if (visualContainer != null && visualContainer.width > 0f && visualContainer.height > 0f) {
+        // Until capture completes the live source is still visible. Painting an opaque
+        // container over it here would hide its text and thumbnail for the capture frame.
+        if (targetReady && visualContainer != null && visualContainer.width > 0f && visualContainer.height > 0f) {
             Box(
                 Modifier
                     .absoluteOffset {
@@ -479,6 +481,7 @@ fun TransformOverlay(
                                 backTranslationY + verticalSwipeVisualOffset
                             }
                             alpha = when {
+                                !targetReady -> 0f
                                 sourceBounds == null -> progress
                                 preserveContentAspectRatio -> 1f
                                 sourceSnapshotRequired ->
