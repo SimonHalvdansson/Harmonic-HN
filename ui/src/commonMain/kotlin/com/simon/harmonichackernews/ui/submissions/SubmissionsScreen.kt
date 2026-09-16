@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -9,8 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.ButtonDefaults
-import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.geometry.Offset
@@ -32,7 +32,6 @@ import androidx.compose.foundation.withoutVisualEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +43,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,7 +55,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
@@ -73,26 +70,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
@@ -103,14 +90,13 @@ import com.simon.harmonichackernews.presentation.SubmissionFilter
 import com.simon.harmonichackernews.presentation.SubmissionsIntent
 import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
-import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import com.simon.harmonichackernews.ui.content.CommentFeedItem
 import com.simon.harmonichackernews.ui.content.StoryItem
 import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
 import com.simon.harmonichackernews.ui.content.StoryItemUiModel
 import com.simon.harmonichackernews.ui.content.toStoryItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 /**
  * The header and rows share a centered content column with the app-wide maximum width.
@@ -346,10 +332,12 @@ private fun BoxScope.SubmissionsList(
                     .padding(horizontal = sideMargin),
             ) {
                 if (story.isComment) {
-                    SubmissionCommentItem(
-                        story = story,
+                    CommentFeedItem(
+                        commentMasterTitle = story.commentMasterTitle,
+                        timeText = story.timeFormatted,
+                        html = story.text.orEmpty(),
+                        canOpenStory = story.commentMasterId > 0 || story.parentId > 0,
                         displaySettings = displaySettings,
-                        contentVersion = contentVersion,
                         onOpenLink = onOpenLink,
                         onStoryClick = { onIntent(SubmissionsIntent.OpenCommentMaster(story)) },
                         onRepliesClick = { onIntent(SubmissionsIntent.OpenCommentReplies(story)) },
@@ -532,7 +520,7 @@ private fun SubmissionsHeader(
                     modifier = Modifier.weight(1f),
                 )
                 SubmissionFilterButton(
-                    label = "Both",
+                    label = "All",
                     icon = Res.drawable.ic_stacks,
                     selected = selectedFilter == SubmissionFilter.BOTH,
                     position = 1,
@@ -571,234 +559,6 @@ private fun SubmissionFilterButton(
         onClick = onClick,
         modifier = modifier,
     )
-}
-
-/** Rounded submission cards; elevation follows the story-card preference. */
-@Composable
-private fun SubmissionCommentItem(
-    story: Story,
-    displaySettings: StoryDisplaySettings,
-    contentVersion: Int,
-    onOpenLink: (String) -> Unit,
-    onStoryClick: () -> Unit,
-    onRepliesClick: () -> Unit,
-) {
-    val colors = HarmonicTheme.colors
-    val timeText = story.timeFormatted
-    // Relative times normally have no descenders; years and "just now" do.
-    // Center the visible Product Sans glyphs, with a font-scaled optical correction.
-    val timeOpticalOffset = with(LocalDensity.current) {
-        if (timeText.any { it in "gjpqy" }) (-1).sp.toDp() else 0.dp
-    }
-    val commentMasterTitle = remember(story.commentMasterTitle, contentVersion) {
-        story.commentMasterTitle
-    }
-    val cardStyle = displaySettings.cardStyle
-    val cardBackground = if (displaySettings.hasBackground) {
-        colors.storyCardBackground
-    } else {
-        colors.settingsPageBackground
-    }
-    val shape = RoundedCornerShape(8.dp)
-    val container = Modifier
-        .fillMaxWidth()
-        .padding(
-            horizontal = 8.dp,
-            vertical = 4.dp,
-        )
-        .shadow(if (cardStyle) 1.dp else 0.dp, shape, clip = false)
-        .clip(shape)
-        .background(cardBackground)
-        .border(
-            1.dp,
-            if (cardStyle) colors.outlineVariant else Color.Transparent,
-            shape,
-        )
-
-    Column(
-        modifier = container.padding(
-            start = 16.dp,
-            top = 10.dp,
-            end = 16.dp,
-            bottom = 4.dp,
-        ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 4.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            if (commentMasterTitle.isNullOrBlank()) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "On",
-                        color = colors.storyDisabled,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        style = legacyTextStyle,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 6.dp)
-                            .size(width = 150.dp, height = 17.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(colors.surfaceContainerHighest),
-                    )
-                }
-            } else {
-                Text(
-                    text = "On \"$commentMasterTitle\"",
-                    modifier = Modifier.weight(1f),
-                    color = colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    style = legacyTextStyle,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .defaultMinSize(minHeight = 22.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.submissionsCommentTimeBackground)
-                    .border(
-                        1.dp,
-                        colors.submissionsCommentTimeOutline,
-                        RoundedCornerShape(8.dp),
-                    )
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = timeText,
-                    modifier = Modifier.offset(y = timeOpticalOffset),
-                    color = colors.storyDisabled,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    style = legacyTextStyle,
-                )
-            }
-        }
-
-        SubmissionCommentBody(
-            html = story.text.orEmpty(),
-            preferredFont = displaySettings.font,
-            textSize = displaySettings.commentTextSize,
-            background = cardBackground,
-            onOpenLink = onOpenLink,
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-        ) {
-            SubmissionActionButton(
-                label = "Story",
-                icon = Res.drawable.ic_newspaper,
-                onClick = onStoryClick,
-                enabled = story.commentMasterId > 0 || story.parentId > 0,
-            )
-            SubmissionActionButton(
-                label = "Replies",
-                icon = Res.drawable.ic_reply,
-                onClick = onRepliesClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SubmissionCommentBody(
-    html: String,
-    preferredFont: String,
-    textSize: Float,
-    background: Color,
-    onOpenLink: (String) -> Unit,
-) {
-    val linkColor = HarmonicTheme.colors.link
-    val linkListener = remember(onOpenLink) {
-        LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url) {
-                onOpenLink(annotation.url)
-            }
-        }
-    }
-    val formatted = remember(html, linkColor, linkListener) {
-        htmlAnnotatedString(
-            HtmlTextUtils.expandShortenedAnchorText(html).orEmpty(),
-            linkColor,
-            linkListener,
-        )
-    }
-    val typography = com.simon.harmonichackernews.ui.content.rememberContentTypography(
-        preferredFont = preferredFont,
-        commentTextSize = textSize,
-    )
-    var truncated by remember(formatted) { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = formatted,
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = typography.family,
-            fontSize = typography.commentTextSize.sp,
-            maxLines = 16,
-            overflow = TextOverflow.Ellipsis,
-            style = legacyTextStyle,
-            onTextLayout = { truncated = it.hasVisualOverflow },
-        )
-        if (truncated) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(16.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, background),
-                        ),
-                    ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SubmissionActionButton(
-    label: String,
-    icon: DrawableResource,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    TextButton(
-        onClick = onClick,
-        modifier = modifier.height(42.dp),
-        enabled = enabled,
-        colors = ButtonDefaults.textButtonColors(contentColor = HarmonicTheme.colors.accent),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-        )
-        Text(
-            text = label,
-            modifier = Modifier.padding(start = 8.dp),
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-        )
-    }
 }
 
 @Composable

@@ -34,6 +34,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 baseline-profile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 
 [libraries]
+latex-renderer = "io.github.huarangmeng:latex-renderer:1.5.4"
 androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
 androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0"
 androidx-appcompat = "androidx.appcompat:appcompat:1.8.0"

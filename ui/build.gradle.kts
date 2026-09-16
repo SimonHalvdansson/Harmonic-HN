@@ -54,6 +54,7 @@ kotlin {
             implementation(libs.haze)
             implementation(libs.haze.blur)
             implementation(libs.ksoup)
+            implementation(libs.latex.renderer)
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)
             implementation(libs.androidx.material3.adaptive.navigation3)

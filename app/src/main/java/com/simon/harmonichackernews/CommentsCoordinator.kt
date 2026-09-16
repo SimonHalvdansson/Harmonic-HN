@@ -548,7 +548,8 @@ class CommentsCoordinator(
         val currentStory = story ?: return
         val session = viewSession ?: return
         val platformCallbacks = object : CommentsFeatureListener.PlatformCallbacks {
-            override fun isRestoringScroll() = restoringStoredProgress
+            override fun isRestoringScroll() = restoringStoredProgress ||
+                composeController?.initialScrollRestorationPending == true
             override fun canHandleCommentAction() = isActive && composeController != null
             override fun onCommentActionOverlayVisibilityChanged() {
                 syncOnBackPressedCallbackEnabledState()
@@ -615,7 +616,7 @@ class CommentsCoordinator(
         if (controller == null || story == null) {
             return
         }
-        if (!restoringStoredProgress) {
+        if (!restoringStoredProgress && !controller.initialScrollRestorationPending) {
             commentsStore.captureCollapsedComments()
         }
         renderCommentsState(commentsStore.state.value)
@@ -1102,11 +1103,12 @@ class CommentsCoordinator(
         val controller = composeController
         if (controller != null && restoration != null) {
             syncComposeState()
-            controller.scrollToComment(
+            controller.restoreReadingPosition(
                 commentId = restoration.commentId,
                 topOffsetPx = restoration.offset,
-                animate = true,
             )
+        } else {
+            controller?.completeInitialScrollRestoration()
         }
     }
 

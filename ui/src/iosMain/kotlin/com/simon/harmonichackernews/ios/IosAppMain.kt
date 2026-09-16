@@ -654,11 +654,6 @@ private fun IosStoriesContent(
         StoriesRoute(
             controller = controller,
             tintStore = app.storyResourceTints,
-            commentText = { html ->
-                htmlAnnotatedString(html, colors.link) { link ->
-                    (link as? LinkAnnotation.Url)?.url?.let(scene.links::open)
-                }
-            },
             filterColors = filterColors,
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )

@@ -10,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,13 +82,21 @@ fun UserSettingsDialog(
                 ),
             ) {
                 item {
-                    Text(
-                        text = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName,
-                        color = HarmonicTheme.colors.storyNormal,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_account_circle),
+                            contentDescription = null,
+                            tint = HarmonicTheme.colors.storyNormal,
+                            modifier = Modifier.padding(end = 8.dp).size(28.dp),
+                        )
+                        Text(
+                            text = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName,
+                            color = HarmonicTheme.colors.storyNormal,
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 28.sp,
+                        )
+                    }
                 }
                 item {
                     AnimatedContent(targetState = state, label = "user content") { current ->

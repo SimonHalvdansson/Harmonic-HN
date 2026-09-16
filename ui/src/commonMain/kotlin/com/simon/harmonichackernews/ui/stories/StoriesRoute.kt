@@ -4,7 +4,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.AnnotatedString
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.storyItemUiModel
@@ -17,7 +16,6 @@ fun StoriesRoute(
     mainListState: LazyListState = rememberLazyListState(),
     showTapToUpdateButton: Boolean = true,
     tintStore: StoryResourceTintStore,
-    commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
@@ -40,7 +38,6 @@ fun StoriesRoute(
                 nowMillis,
             )
         },
-        commentText = commentText,
         filterColors = filterColors,
         pullToRefreshEnabled = pullToRefreshEnabled,
         showRefreshMenuItem = showRefreshMenuItem,

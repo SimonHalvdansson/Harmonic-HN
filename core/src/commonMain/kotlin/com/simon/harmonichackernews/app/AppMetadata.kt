@@ -36,6 +36,8 @@ object CommonLicenseCatalog {
         LicenseEntry("Haze", "Chris Banes", "Apache License 2.0", "https://github.com/chrisbanes/haze"),
         LicenseEntry("Coil", "Coil contributors", "Apache License 2.0", "https://coil-kt.github.io/coil/"),
         LicenseEntry("Ksoup", "FleekSoft", "MIT License", "https://github.com/fleeksoft/ksoup"),
+        LicenseEntry("Compose LaTeX", "huarangmeng", "MIT License", "https://github.com/huarangmeng/latex"),
+        LicenseEntry("KaTeX math fonts", "KaTeX contributors", "MIT License", "https://github.com/KaTeX/KaTeX"),
         LicenseEntry("Palette algorithms", "Android Open Source Project and KMPalette contributors", "Apache License 2.0", "https://github.com/jordond/kmpalette"),
         LicenseEntry("pdf.js", "Mozilla", "Apache License 2.0", "https://mozilla.github.io/pdf.js/"),
         LicenseEntry("Readability", "Mozilla", "Apache License 2.0", "https://github.com/mozilla/readability"),

@@ -175,9 +175,6 @@ internal fun AndroidStoriesScreen(
         mainListState = mainListState,
         showTapToUpdateButton = false,
         tintStore = tintStore,
-        commentText = { html ->
-            runCatching { AnnotatedString.fromHtml(html) }.getOrElse { AnnotatedString(html) }
-        },
         filterColors = rememberAndroidHarmonicFilterColors(),
         onVisibleStoriesChanged = onVisibleStoriesChanged,
     )

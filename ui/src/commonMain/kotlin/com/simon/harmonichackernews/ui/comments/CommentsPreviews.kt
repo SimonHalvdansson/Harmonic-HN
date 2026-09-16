@@ -729,13 +729,13 @@ private fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplayS
     }
     Column {
         PreviewHeader("Abstract:")
-        PreviewBody(
+        com.simon.harmonichackernews.ui.content.MathPreviewText(
             text = info.arxivAbstract.orEmpty(),
-            topPadding = 0.dp,
-            bottomPadding = 0.dp,
+            color = HarmonicTheme.colors.storyNormal,
             fontFamily = typography.family,
-            fontSize = abstractTextSize,
-            lineHeight = 18f,
+            fontSize = abstractTextSize.sp,
+            lineHeight = 18.sp,
+            style = platform.textStyle,
         )
         PreviewInfoRow(Res.drawable.ic_calendar_today, runCatching(info::formatDate).getOrNull())
         PreviewInfoRow(

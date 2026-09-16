@@ -353,8 +353,7 @@ fun CommentsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.settingsPageBackground)
-                // Animated restoration starts from the visible header. If smooth scrolling is
-                // disabled, hide only the frame in which the saved position is applied directly.
+                // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
                     alpha = if (
                         controller.initialScrollRestorationPending &&
@@ -407,7 +406,10 @@ fun CommentsScreen(
                         .graphicsLayer(
                             alpha = if (suppressed && !keepActionSourceVisible) 0f else 1f,
                         )
-                        .then(if (animateComments) Modifier.animateItem() else Modifier),
+                        // Header previews and comment bodies already animate their height. A
+                        // second placement spring makes rows lag behind those changing bounds,
+                        // overlapping the header when a cached thread reopens.
+                        .then(if (animateComments) Modifier.animateItem(placementSpec = null) else Modifier),
                     onToggleExpanded = { sourceBounds ->
                         if (settings.swapLongPressTap) {
                             controller.showCommentActions(item.comment, sourceBounds)

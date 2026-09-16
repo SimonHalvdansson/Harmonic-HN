@@ -168,7 +168,6 @@ fun StoriesScreen(
         StoryPreviewResourceState?,
         Long,
     ) -> StoryItemUiModel,
-    commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
@@ -308,7 +307,6 @@ fun StoriesScreen(
                 suppressTapToUpdateRowExit = suppressTapToUpdateRowExit,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
-                commentText = commentText,
                 filterColors = filterColors,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
@@ -326,7 +324,6 @@ fun StoriesScreen(
                 suppressTapToUpdateRowExit = false,
                 storyItemModelCacheKey = storyItemModelCacheKey,
                 storyItemModel = storyItemModel,
-                commentText = commentText,
                 filterColors = filterColors,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
@@ -477,7 +474,6 @@ private fun StoriesList(
         StoryPreviewResourceState?,
         Long,
     ) -> StoryItemUiModel,
-    commentText: (String) -> AnnotatedString,
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean,
     showRefreshMenuItem: Boolean,
@@ -617,7 +613,6 @@ private fun StoriesList(
                                 settings = settings,
                                 onStory = { controller.listener.onCommentStoryClick(story) },
                                 onReplies = { controller.listener.onCommentRepliesClick(story) },
-                                commentText = commentText,
                                 modifier = itemHeightModifier,
                             )
                         } else if (!story.loaded && !story.loadingFailed) {
@@ -947,7 +942,7 @@ private fun StoriesHeader(
                     Modifier.weight(1f),
                 )
                 SavedFilterButton(
-                    "Both",
+                    "All",
                     Res.drawable.ic_stacks,
                     SavedItemFilter.BOTH,
                     1,
@@ -1457,51 +1452,20 @@ private fun SavedCommentStoryItem(
     settings: StoryDisplaySettings,
     onStory: () -> Unit,
     onReplies: () -> Unit,
-    commentText: (String) -> AnnotatedString,
     modifier: Modifier = Modifier,
 ) {
-    val typography = rememberContentTypography(settings.font, settings.storyTextSize)
-    Surface(
-        color = if (settings.hasBackground) {
-            HarmonicTheme.colors.storyCardBackground
-        } else {
-            HarmonicTheme.colors.settingsPageBackground
-        },
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = if (settings.cardStyle) 1.dp else 0.dp,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Text(
-                text = "On “${story.presentation.commentMaster?.title ?: "Loading story…"}”",
-                fontFamily = typography.family,
-                fontWeight = FontWeight.Bold,
-                fontSize = typography.storyTitleSize.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.combinedClickable(onClick = onStory, onLongClick = null),
-            )
-            Text(
-                text = commentText(story.text.orEmpty()),
-                fontFamily = typography.family,
-                fontSize = settings.commentTextSize.sp,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                OutlinedButton(onClick = onStory) { Text("Story") }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = onReplies) {
-                    Icon(painterResource(Res.drawable.ic_comment), null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Replies")
-                }
-            }
-        }
-    }
+    val links = com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies.current.links
+    com.simon.harmonichackernews.ui.content.CommentFeedItem(
+        commentMasterTitle = story.presentation.commentMaster?.title,
+        timeText = story.timeFormatted,
+        html = story.text.orEmpty(),
+        canOpenStory = story.commentMasterId > 0 || story.parentId > 0,
+        displaySettings = settings,
+        onOpenLink = remember(links) { { url -> links.open(url).let { } } },
+        onStoryClick = onStory,
+        onRepliesClick = onReplies,
+        modifier = modifier,
+    )
 }
 
 internal data class StoryHeaderSizing(val textScale: Float, val arrowGap: Float, val searchInMenu: Boolean)

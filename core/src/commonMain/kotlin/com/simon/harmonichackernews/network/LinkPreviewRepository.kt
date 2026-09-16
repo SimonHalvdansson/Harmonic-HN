@@ -84,12 +84,10 @@ internal suspend fun HttpClient.loadArxivInfo(url: String): ArxivInfo = coroutin
     val endpoint = URLBuilder("https://export.arxiv.org/api/query").apply {
         parameters.append("id_list", arxivId)
     }.buildString()
-    val htmlUrl = async {
+    val abstractPage = async {
         try {
             withTimeoutOrNull(ARXIV_HTML_PROBE_TIMEOUT_MILLIS) {
-                LinkPreviewParsers.parseArxivHtmlUrl(
-                    getTextOrThrow("https://arxiv.org/abs/$arxivId"),
-                )
+                getTextOrThrow("https://arxiv.org/abs/$arxivId")
             }
         } catch (error: CancellationException) {
             throw error
@@ -97,9 +95,19 @@ internal suspend fun HttpClient.loadArxivInfo(url: String): ArxivInfo = coroutin
             null
         }
     }
-    val info = LinkPreviewParsers.parseArxiv(getTextOrThrow(endpoint), arxivId)
+    // The API can fail or return an empty entry while the public abstract page is available.
+    // Reuse the page we already fetch for the HTML button instead of discarding the preview.
+    val apiInfo = try {
+        LinkPreviewParsers.parseArxiv(getTextOrThrow(endpoint), arxivId)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        null
+    }
+    val page = abstractPage.await()
+    val info = apiInfo ?: page?.let { LinkPreviewParsers.parseArxivAbstractPage(it, arxivId) }
         ?: throw LinkPreviewException("ArXiv data not found")
-    info.htmlUrl = htmlUrl.await()
+    info.htmlUrl = page?.let(LinkPreviewParsers::parseArxivHtmlUrl)
     info
 }
 
@@ -341,6 +349,34 @@ object LinkPreviewParsers {
             this.authors = authors.toTypedArray()
             this.primaryCategory = primaryCategory
             this.secondaryCategories = secondaryCategories.toTypedArray()
+            this.publishedDate = publishedDate
+            arxivID = arxivId
+        }
+    }
+
+    fun parseArxivAbstractPage(response: String, arxivId: String): ArxivInfo? {
+        val document = Ksoup.parse(response)
+        fun citation(name: String) = document.selectFirst("meta[name=citation_$name]")
+            ?.attr("content").orEmpty().trim()
+        // Do not mistake an error page (or a redirect to another paper) for this article.
+        if (citation("arxiv_id").substringBefore('v') != arxivId.substringBefore('v')) return null
+        val abstractText = citation("abstract")
+        val authors = document.select(".authors a").map { it.text() }.filter(String::isNotBlank)
+        val publishedDate = citation("date").replace('/', '-')
+        val categoryPattern = Regex("\\(([^()]+)\\)")
+        fun categories(text: String) = categoryPattern.findAll(text)
+            .map { it.groupValues[1] }.filter(ArxivResolver::isArxivSubject).toList()
+        val primaryCategory = categories(document.selectFirst(".primary-subject")?.text().orEmpty())
+            .firstOrNull() ?: return null
+        if (abstractText.isBlank() || authors.isEmpty() ||
+            !Regex("\\d{4}-\\d{2}-\\d{2}").matches(publishedDate)
+        ) return null
+        return ArxivInfo().apply {
+            arxivAbstract = abstractText
+            this.authors = authors.toTypedArray()
+            this.primaryCategory = primaryCategory
+            secondaryCategories = categories(document.selectFirst(".subjects")?.text().orEmpty())
+                .filter { it != primaryCategory }.distinct().toTypedArray()
             this.publishedDate = publishedDate
             arxivID = arxivId
         }

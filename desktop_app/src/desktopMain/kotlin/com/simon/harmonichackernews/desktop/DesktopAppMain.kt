@@ -586,7 +586,6 @@ private fun DesktopStoriesContent(
         StoriesRoute(
             controller = controller,
             tintStore = app.storyResourceTints,
-            commentText = { AnnotatedString(it) },
             filterColors = filterColors,
             pullToRefreshEnabled = false,
             showRefreshMenuItem = true,

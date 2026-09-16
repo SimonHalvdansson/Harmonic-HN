@@ -48,6 +48,8 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.library_logo_androidx
 import com.simon.harmonichackernews.resources.library_logo_coil
 import com.simon.harmonichackernews.resources.library_logo_compose_multiplatform
+import com.simon.harmonichackernews.resources.library_logo_compose_latex
+import com.simon.harmonichackernews.resources.library_logo_katex
 import com.simon.harmonichackernews.resources.library_logo_coroutines
 import com.simon.harmonichackernews.resources.library_logo_ggml
 import com.simon.harmonichackernews.resources.library_logo_haze
@@ -79,6 +81,7 @@ private val InsetLicenseIcons = setOf(
     "kotlinx.coroutines",
     "ML Kit GenAI APIs",
     "llama.cpp",
+    "KaTeX math fonts",
 )
 
 @Composable
@@ -259,8 +262,18 @@ private fun LicenseIcon(license: LicenseEntryUi) {
             .background(Color.White),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(licenseIconResource(license.name)),
+        val icon = licenseIconResource(license.name)
+        if (icon == null) {
+            // License attribution must remain accessible even before a project logo is added.
+            Text(
+                text = license.name.take(1).uppercase(),
+                color = Color(0xff303030),
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+            )
+        } else Image(
+            painter = painterResource(icon),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
@@ -270,7 +283,7 @@ private fun LicenseIcon(license: LicenseEntryUi) {
     }
 }
 
-private fun licenseIconResource(name: String): DrawableResource = when (name) {
+internal fun licenseIconResource(name: String): DrawableResource? = when (name) {
     "AndroidX" -> Res.drawable.library_logo_androidx
     "Material Components for Android" -> Res.drawable.library_logo_material_components
     "Kotlin standard library" -> Res.drawable.library_logo_kotlin
@@ -280,6 +293,8 @@ private fun licenseIconResource(name: String): DrawableResource = when (name) {
     "Haze" -> Res.drawable.library_logo_haze
     "Coil" -> Res.drawable.library_logo_coil
     "Ksoup" -> Res.drawable.library_logo_ksoup
+    "Compose LaTeX" -> Res.drawable.library_logo_compose_latex
+    "KaTeX math fonts" -> Res.drawable.library_logo_katex
     "Palette algorithms" -> Res.drawable.library_logo_kmpalette
     "pdf.js" -> Res.drawable.library_logo_pdfjs
     "Readability" -> Res.drawable.library_logo_readability
@@ -288,5 +303,5 @@ private fun licenseIconResource(name: String): DrawableResource = when (name) {
     "LiteRT-LM" -> Res.drawable.library_logo_litert_lm
     "llama.cpp" -> Res.drawable.library_logo_llama_cpp
     "ggml" -> Res.drawable.library_logo_ggml
-    else -> error("Missing library icon for $name")
+    else -> null
 }

@@ -11,6 +11,11 @@ General tips:
   `desktop_app/` is the ready, unreleased desktop application host.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
+- Keep generated build logs, benchmark output, diagnostic captures, and temporary research or
+  asset-source notes outside the repository (use the system temporary directory or the task's
+  visualization directory). Do not add standalone documentation artifacts unless requested or
+  required by the project. Before finishing, inspect `git status --short` and remove any incidental
+  files you created so they cannot be accidentally committed; preserve pre-existing user files.
 - Run focused KMP tests for portable changes. `:core:desktopTest` and
   `:ui:desktopTest` execute their respective `commonTest` suites on the desktop JVM target.
 - When adding features or bug fixes, ensure the app compiles with the debug build check below.
