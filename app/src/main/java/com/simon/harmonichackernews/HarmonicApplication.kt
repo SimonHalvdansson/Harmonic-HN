@@ -4,6 +4,9 @@ import android.app.Application
 import android.content.Context
 import androidx.annotation.MainThread
 import androidx.work.Configuration
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.request.allowPartialImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
-class HarmonicApplication : Application(), Configuration.Provider {
+class HarmonicApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
     private val localAiSupport: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
     private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var deferredServicesStarted = false
@@ -23,6 +26,11 @@ class HarmonicApplication : Application(), Configuration.Provider {
         super.attachBaseContext(base)
         localAiSupport.install(this)
     }
+
+    override fun newImageLoader(context: Context): ImageLoader = ImageLoader.Builder(context)
+        .allowPartialImage(false)
+        .components { add(IncompleteImageRetryInterceptor()) }
+        .build()
 
     /** Called after the initial UI is drawn; background-only launches don't need AI warm-up. */
     @MainThread
