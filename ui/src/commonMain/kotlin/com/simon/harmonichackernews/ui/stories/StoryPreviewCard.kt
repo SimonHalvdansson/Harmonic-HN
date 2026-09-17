@@ -377,7 +377,7 @@ fun StoryPreviewCard(
                     Column(Modifier.fillMaxWidth()) {
                         HorizontalDivider(
                             modifier = Modifier.padding(top = 10.dp),
-                            color = HarmonicTheme.colors.commentDivider.copy(alpha = 0.45f),
+                            color = HarmonicTheme.colors.storyNormal.copy(alpha = 0.35f),
                         )
                         Row(
                             modifier = Modifier

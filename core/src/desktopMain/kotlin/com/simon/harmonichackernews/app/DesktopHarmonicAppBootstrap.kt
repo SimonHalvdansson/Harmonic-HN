@@ -325,6 +325,6 @@ private data object DesktopClipboardService : ClipboardService {
 
 private data object DesktopShareService : ShareService {
     override fun share(text: String, title: String?) {
-        DesktopClipboardService.copy(title ?: "Shared from Harmonic", text)
+        DesktopClipboardService.copy(title.orEmpty(), text)
     }
 }
