@@ -6,6 +6,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableFloatStateOf
 import com.simon.harmonichackernews.settings.SplitOrientation
+import com.simon.harmonichackernews.settings.ExtraSidePadding
 import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
@@ -33,6 +34,8 @@ data class AppearanceSettingsUiState(
     val splitRatio: Float = 0.5f,
     val splitOrientation: SplitOrientation = SplitOrientation.Portrait,
     val allowSplitAdjustment: Boolean = false,
+    val showExtraSidePadding: Boolean = false,
+    val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
@@ -53,6 +56,7 @@ fun AppearanceSettingsScreen(
     onDialogRequested: (AppearanceSettingsDialog) -> Unit,
     contentVersion: Int = 0,
     onSplitRatioChanged: (Float) -> Unit = {},
+    onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
 ) {
     var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
     if (state.paletteTintEnabled) PreloadPalettePreviewResources()
@@ -138,6 +142,19 @@ fun AppearanceSettingsScreen(
                             onBooleanChanged(AppearanceBooleanSetting.AllowSplitAdjustment, it)
                         },
                     )
+                    if (state.showExtraSidePadding) {
+                        SettingsDivider()
+                        SegmentedSetting(
+                            title = "Extra side padding",
+                            options = listOf(
+                                ExtraSidePadding.None to "None",
+                                ExtraSidePadding.Small to "Small",
+                                ExtraSidePadding.Standard to "Standard",
+                            ),
+                            selected = state.extraSidePadding,
+                            onSelected = onExtraSidePaddingChanged,
+                        )
+                    }
                 }
             }
         }

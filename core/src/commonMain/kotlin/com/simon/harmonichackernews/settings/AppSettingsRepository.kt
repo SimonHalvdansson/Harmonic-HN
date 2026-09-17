@@ -175,6 +175,8 @@ class AppSettingsRepository(
     fun setSplitRatio(orientation: SplitOrientation, value: Float) =
         mutator.setSplitRatio(orientation, value)
 
+    fun setExtraSidePadding(value: ExtraSidePadding) = mutator.setExtraSidePadding(value)
+
     fun setTheme(value: String) = mutator.setTheme(value)
     fun setNighttimeTheme(value: String) = mutator.setNighttimeTheme(value)
     fun setFollowSystemTheme(value: Boolean) = mutator.setFollowSystem(value)

@@ -58,6 +58,9 @@ class StoriesCoordinator(
         ),
     )
     private var appSettings = appComposition.settings.snapshot()
+    private var splitStoriesContentPaddingStart: Int =
+        (resources.getDimensionPixelSize(R.dimen.extra_pane_padding) *
+            appSettings.appearance.extraSidePadding.fraction).toInt()
     private val commentsPreloadCoordinator = CommentsPreloadCoordinator(
         preloads = appComposition.commentsPreloads,
         loadFilteredUsers = { appComposition.contentFilters.load().users },
@@ -241,8 +244,11 @@ class StoriesCoordinator(
         }
     }
 
-    private val splitStoriesContentPaddingStart: Int
-        get() = resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
+    fun setExtraSidePadding(paddingPx: Int) {
+        if (splitStoriesContentPaddingStart == paddingPx) return
+        splitStoriesContentPaddingStart = paddingPx
+        syncComposeState()
+    }
 
     private fun setupLinkSummaryBackCallback() {
         if (linkSummaryBackCallback != null) {

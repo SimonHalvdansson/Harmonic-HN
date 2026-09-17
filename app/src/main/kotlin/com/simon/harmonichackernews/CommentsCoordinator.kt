@@ -119,6 +119,11 @@ class CommentsCoordinator(
         get() = viewSession?.composeController
     private var commentsContentInsetLeft = 0
     private var commentsContentInsetRight = 0
+    private var webViewInsetLeft = 0
+    private var webViewInsetRight = 0
+    private var extraSidePadding =
+        (activity.resources.getDimensionPixelSize(R.dimen.extra_pane_padding) *
+            appComposition.settings.snapshot().appearance.extraSidePadding.fraction).toInt()
     private var hostRestoration by sessionState::hostRestoration
     private var showWebsite by sessionState::showWebsite
     private var integratedWebview = true
@@ -434,16 +439,13 @@ class CommentsCoordinator(
                 updateBottomSheetMargin(systemInsets.bottom)
 
                 val cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
-                val contentPaddingLeft = 0
-                var contentPaddingRight = 0
-                if (AndroidDisplay.isTablet(activity.resources)) {
-                    contentPaddingRight =
-                        activity.resources.getDimensionPixelSize(R.dimen.extra_pane_padding)
-                }
-                val leftPadding = max(max(cutoutInsets.left, systemInsets.left), contentPaddingLeft)
-                val rightPadding =
-                    max(max(cutoutInsets.right, systemInsets.right), contentPaddingRight)
-                setCommentsContentSideInsets(leftPadding, rightPadding)
+                // The website fills the pane; only comments get the tablet reading gutter.
+                webViewInsetLeft = max(cutoutInsets.left, systemInsets.left)
+                webViewInsetRight = max(cutoutInsets.right, systemInsets.right)
+                setCommentsContentSideInsets(
+                    webViewInsetLeft,
+                    max(webViewInsetRight, extraSidePadding),
+                )
                 updateWebViewContainerPadding()
 
                 return windowInsets
@@ -791,9 +793,9 @@ class CommentsCoordinator(
             0
         }
         webViewController?.setContainerPadding(
-            commentsContentInsetLeft,
+            webViewInsetLeft,
             topInset + upButtonInset,
-            commentsContentInsetRight,
+            webViewInsetRight,
             0,
         )
     }
@@ -843,6 +845,12 @@ class CommentsCoordinator(
 
     fun onConfigurationChanged(newConfig: Configuration) {
         if (isActive) refreshPresentationCapabilities()
+    }
+
+    fun setExtraSidePadding(paddingPx: Int) {
+        if (extraSidePadding == paddingPx) return
+        extraSidePadding = paddingPx
+        setCommentsContentSideInsets(webViewInsetLeft, max(webViewInsetRight, extraSidePadding))
     }
 
     private fun setCommentsContentSideInsets(leftInset: Int, rightInset: Int) {

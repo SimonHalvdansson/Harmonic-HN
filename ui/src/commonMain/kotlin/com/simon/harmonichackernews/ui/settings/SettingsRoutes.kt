@@ -230,6 +230,7 @@ fun DebugSettingsRoute(
 data class AppearanceRouteLabels(
     val showTransparentStatusBar: Boolean,
     val materialYouAvailable: Boolean = true,
+    val showExtraSidePadding: Boolean = false,
 )
 
 data class ThemeRouteLabels(
@@ -270,6 +271,8 @@ fun AppearanceSettingsRoute(
             splitRatio = splitLayout.ratio,
             splitOrientation = splitLayout.orientation,
             allowSplitAdjustment = settings.appearance.allowSplitAdjustment,
+            showExtraSidePadding = labels.showExtraSidePadding,
+            extraSidePadding = settings.appearance.extraSidePadding,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
@@ -286,6 +289,7 @@ fun AppearanceSettingsRoute(
                 SplitRatioPreferences.snapToCenter(it, splitLayout.isFoldable),
             )
         },
+        onExtraSidePaddingChanged = repository::setExtraSidePadding,
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

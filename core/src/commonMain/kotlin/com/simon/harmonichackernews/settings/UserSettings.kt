@@ -153,6 +153,7 @@ data class AppearancePreferences(
     val portraitSplitRatio: Float? = null,
     val landscapeSplitRatio: Float? = null,
     val allowSplitAdjustment: Boolean = false,
+    val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
 ) {
     fun splitRatio(orientation: SplitOrientation): Float? = when (orientation) {
         SplitOrientation.Portrait -> portraitSplitRatio

@@ -177,6 +177,10 @@ class StoredSettingsMutator(
         store.putBoolean(preference.storageKey, value)
     }
 
+    fun setExtraSidePadding(value: ExtraSidePadding) {
+        store.putString(UserPreferenceKeys.EXTRA_SIDE_PADDING, value.storedValue)
+    }
+
     fun setTheme(value: String) {
         store.update {
             putString(ThemePreferences.KEY, value)

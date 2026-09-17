@@ -411,6 +411,10 @@ class MainNavigationController internal constructor(
 
     fun getCommentsCoordinator(): CommentsCoordinator? = commentsCoordinator
 
+    fun setStoriesExtraSidePadding(paddingPx: Int) {
+        storiesCoordinator?.setExtraSidePadding(paddingPx)
+    }
+
     fun isAdaptiveTwoPane(): Boolean = adaptiveTwoPane
 
     fun isAdaptiveFoldable(): Boolean = adaptiveFoldable
@@ -1122,11 +1126,7 @@ private fun MainNavigation(
                             onDispose(coordinator::close)
                         }
                         val submissionsContent: @Composable () -> Unit = {
-                            val startInset = if (isTwoPane && !isFoldable) {
-                                dimensionResource(R.dimen.extra_pane_padding)
-                            } else {
-                                0.dp
-                            }
+                            val startInset = animatedExtraPanePadding(isTwoPane && !isFoldable)
                             Box(Modifier.fillMaxSize().padding(start = startInset)) {
                                 AndroidSubmissionsScreen(
                                     userName = coordinator.userName,
@@ -1324,6 +1324,9 @@ private fun StoriesPane(
     statusBarHeight: Dp = 0.dp,
     drawStatusBarProtection: Boolean = false,
 ) {
+    val extraPadding = animatedExtraPanePadding()
+    val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }
+    SideEffect { controller.setStoriesExtraSidePadding(extraPaddingPx) }
     Box(Modifier.fillMaxSize()) {
         val storiesController = controller.storiesComposeController
         val mainListState = rememberLazyListState()
@@ -1381,6 +1384,9 @@ private fun CommentsPane(
     val activeCoordinator = remember(controller, activity, request.serial) {
         controller.retainCommentsCoordinator(activity, request)
     }
+    val extraPadding = animatedExtraPanePadding()
+    val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }
+    SideEffect { activeCoordinator.setExtraSidePadding(extraPaddingPx) }
     SideEffect { controller.attachCommentsCoordinator(activeCoordinator) }
     DisposableEffect(controller, activeCoordinator, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->

@@ -19,13 +19,12 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.about.AndroidAboutScreen
 import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
 import com.simon.harmonichackernews.ui.navigation.DefaultActivityPredictiveBackAnimation
+import com.simon.harmonichackernews.ui.navigation.animatedExtraPanePadding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -136,11 +135,7 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
-        tabletPaneHorizontalPadding = if (isTwoPane && !isFoldable) {
-            dimensionResource(R.dimen.settings_extra_pane_padding)
-        } else {
-            0.dp
-        },
+        tabletPaneHorizontalPadding = animatedExtraPanePadding(isTwoPane && !isFoldable),
         onBackFromSettings = onBackFromSettings,
         onSectionChanged = onSectionChanged,
         modifier = modifier,

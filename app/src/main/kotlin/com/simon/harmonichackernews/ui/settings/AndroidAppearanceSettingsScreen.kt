@@ -31,6 +31,7 @@ fun AndroidAppearanceSettingsScreen(
         labels = AppearanceRouteLabels(
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
             materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+            showExtraSidePadding = LocalConfiguration.current.smallestScreenWidthDp >= 720,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
