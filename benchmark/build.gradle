@@ -1,0 +1,55 @@
+plugins {
+    alias(libs.plugins.android.test)
+    alias(libs.plugins.baseline.profile)
+}
+
+android {
+    namespace = "com.simon.harmonichackernews.benchmark"
+    compileSdk = 37
+    targetProjectPath = ":app"
+
+    defaultConfig {
+        minSdk = 26
+        targetSdk = 37
+        testInstrumentationRunner = providers.gradleProperty("benchmarkRunner")
+                .getOrElse("androidx.benchmark.junit4.AndroidBenchmarkRunner")
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
+                "EMULATOR"
+    }
+
+    buildTypes {
+        benchmark {
+            debuggable = false
+            matchingFallbacks.add("release")
+        }
+    }
+}
+
+baselineProfile {
+    useConnectedDevices = true
+    skipBenchmarksOnEmulator = false
+}
+
+// The baseline-profile plugin creates benchmark<BuildType> variants after the DSL above.
+// Microbenchmarks execute inside this APK, so those variants must also be non-debuggable.
+androidComponents {
+    finalizeDsl { extension ->
+        extension.buildTypes.configureEach {
+            if (name.startsWith("benchmark")) debuggable = false
+        }
+    }
+}
+
+dependencies {
+    implementation(project(":core"))
+    implementation(project(":resources"))
+    implementation(project(":ui"))
+    implementation(libs.coil)
+    implementation(libs.compose.multiplatform.ui)
+    implementation(libs.ksoup)
+    implementation(libs.androidx.benchmark.junit4)
+    implementation(libs.androidx.benchmark.macro.junit4)
+    implementation(libs.androidx.test.ext.junit)
+    implementation(libs.androidx.test.runner)
+    implementation(libs.androidx.test.uiautomator)
+}

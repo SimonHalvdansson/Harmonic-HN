@@ -5,7 +5,6 @@
     <color name="colorAccent">#FF959E</color>
 
     <color name="statusBarColor">@color/background</color>
-    <color name="statusBarColorTransparent">@android:color/transparent</color>
 
     <color name="grayStatusBarColor">@color/grayBackground</color>
 
@@ -49,7 +48,6 @@
     <color name="hackerNewsAccentDark">#B34700</color>
     <color name="hackerNewsAccentContainer">#FFD5B8</color>
     <color name="hackerNewsOverlayButton">#BF5724</color>
-    <color name="hackerNewsTextSelectionHighlight">#66FF6600</color>
     <color name="hackerNewsSurfaceContainer">#EEEBD9</color>
     <color name="hackerNewsStoryColorNormal">#222222</color>
     <color name="hackerNewsStoryColorDisabled">#828282</color>
@@ -69,68 +67,24 @@
     <color name="hackerTextColor">#00FF00</color>
     <color name="hackerTextColorDisabled">#9900FF00</color>
     <color name="hackerDividerColor">#6600FF00</color>
-    <color name="hackerTextSelectionHighlight">#6600FF00</color>
 
-    <color name="commentIndentIndicatorColor1">#FF959E</color>
-    <color name="commentIndentIndicatorColor2">#3f51b5</color>
-    <color name="commentIndentIndicatorColor3">#ff0266</color>
-    <color name="commentIndentIndicatorColor4">#1EB980</color>
-    <color name="commentIndentIndicatorColor5">#00acc1</color>
-    <color name="commentIndentIndicatorColor6">#5d4037</color>
-    <color name="commentIndentIndicatorColor7">#d32f2f</color>
-
-    <color name="commentIndentIndicatorColor1light">#a14010</color>
-    <color name="commentIndentIndicatorColor2light">#3f51b5</color>
-    <color name="commentIndentIndicatorColor3light">#ff0266</color>
-    <color name="commentIndentIndicatorColor4light">#1EB980</color>
-    <color name="commentIndentIndicatorColor5light">#00acc1</color>
-    <color name="commentIndentIndicatorColor6light">#5d4037</color>
-    <color name="commentIndentIndicatorColor7light">#d32f2f</color>
-
-    <color name="commentIndentIndicatorColorMonochrome">#888</color>
-
-    <color name="material_you_900">#001E2C</color>
-    <color name="material_you_50">#E0F3FF</color>
-    <color name="material_you_primary_200">#B0C6FF</color>
-    <color name="material_you_600">#00668B</color>
-    <color name="material_you_secondary_100">#D1E5F4</color>
-    <color name="material_you_secondary_900">#091E28</color>
-    <color name="material_you_secondary_800">#20333D</color>
-    <color name="material_you_secondary_40">#4E616C</color>
-    <color name="material_you_secondary_70">#9AAEBB</color>
-
-    <color name="material_you_third_400">#8094A0</color>
-    <color name="material_you_third_700">#374955</color>
-
-    <color name="material_you_neutral_10">#FCFCFF</color>
     <color name="material_you_neutral_50">#F0F0F3</color>
-    <color name="material_you_neutral_100">#E1E3E5</color>
-    <color name="material_you_neutral_800">#2E3133</color>
     <color name="material_you_neutral_900">#191C1E</color>
 
-    <!-- Hard coded from system reference -->
-    <color name="material_you_neutral_variant20">#2A3136</color>
-    <color name="material_you_neutral_variant95">#EBF1F8</color>
+    <color name="material_fixed_surface_light">#FFFBFE</color>
+    <color name="material_fixed_surface_dark">#1C1B1F</color>
 
-    <color name="material_you_primary60">#219BCC</color>
-    <color name="material_you_secondary60">#8094A0</color>
-    <color name="material_you_tertiary30">#484264</color>
-    <color name="material_you_tertiary50">#787296</color>
-    <color name="material_you_neutral_variant50">#70777C</color>
-
-    <color name="settings_header_selected_material_light">#D9DEE2</color>
+    <color name="settings_header_selected_dark">#343744</color>
     <color name="settings_main_toggle_light">#C6E9D8</color>
     <color name="settings_main_toggle_white">#C6E9D8</color>
     <color name="settings_main_toggle_text_dark">#FFD9DC</color>
-    <color name="settings_main_toggle_text_material_dark">#D6CFF5</color>
     <color name="settings_main_toggle_text_amoled">#DADCE2</color>
     <color name="settings_main_toggle_text_gray">#D4D5DA</color>
     <color name="settings_main_toggle_text_light">#245B46</color>
-    <color name="settings_main_toggle_text_material_light">#294778</color>
     <color name="settings_main_toggle_text_hacker_news">#7A3100</color>
     <color name="settings_header_selected_light">#EAE6D2</color>
     <color name="settings_header_selected_white">#E1E3E5</color>
-    <color name="settings_header_selected_black">#151619</color>
+    <color name="settings_header_selected_black">#0D0F11</color>
     <color name="settings_segment_dark">#2B2E3A</color>
     <color name="settings_segment_amoled">#000000</color>
     <color name="settings_segment_gray">#202124</color>
@@ -138,14 +92,6 @@
     <color name="settings_segment_light">#F0EEDC</color>
     <color name="settings_segment_hacker_news">#F2EEDF</color>
     <color name="settings_segment_white">#F2F4F7</color>
-
-    <color name="material_you_thread_depth_1">@color/material_you_600</color>
-    <color name="material_you_thread_depth_2">@color/material_you_secondary60</color>
-    <color name="material_you_thread_depth_3">@color/material_you_tertiary50</color>
-    <color name="material_you_thread_depth_4">@color/material_you_primary60</color>
-    <color name="material_you_thread_depth_5">@color/material_you_secondary_70</color>
-    <color name="material_you_thread_depth_6">@color/material_you_tertiary30</color>
-    <color name="material_you_thread_depth_7">@color/material_you_neutral_variant50</color>
 
     <color name="splash_screen_background">@color/material_you_neutral_50</color>
 

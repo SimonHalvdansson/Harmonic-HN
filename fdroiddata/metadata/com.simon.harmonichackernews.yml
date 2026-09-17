@@ -39,9 +39,10 @@ Builds:
 AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a552f88ec6
 
 MaintainerNotes: |-
-  The upstream release tree contains Play/GitHub release artifacts under app/release;
-  remove them before scanner/build. The Foojay toolchain resolver is removed because
-  the buildserver installs JDK 21 directly.
+  The v2.4 release tree contains Play/GitHub release artifacts under app/release;
+  keep the removal rule for that historical build. Current sources no longer track
+  those artifacts. The Foojay toolchain resolver is removed because the buildserver
+  installs JDK 21 directly.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v.*

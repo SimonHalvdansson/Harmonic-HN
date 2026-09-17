@@ -1,0 +1,158 @@
+package com.simon.harmonichackernews.network
+
+import com.simon.harmonichackernews.data.NitterInfo
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class NitterLinkPreviewRuntimeTest {
+    @Test
+    fun customInstanceRedirectsAndExtractsPreview() = runTest {
+        val target = "https://nitter.example.org/example/status/123"
+        val expected = NitterInfo(text = "Custom instance")
+        val extractor = FakeExtractor(target, listOf(expected))
+        val runtime = runtime(this)
+        val prefs = preferences(redirect = true).copy(instanceUrl = "https://nitter.example.org")
+        assertEquals(target, runtime.prepareLoad(X_URL, prefs, false, extractor))
+        assertFalse(runtime.onPageFinished(NITTER_URL, prefs, false, extractor))
+        assertTrue(runtime.onPageFinished(target, prefs, false, extractor))
+        runCurrent()
+        assertEquals(expected, runtime.state.value.preview)
+    }
+
+    @Test
+    fun customInstanceRespectsDisabledRedirectsAndPreviews() = runTest {
+        val extractor = FakeExtractor("https://nitter.example.org/example/status/123")
+        val runtime = runtime(this)
+        val prefs = preferences(redirect = false).copy(instanceUrl = "https://nitter.example.org")
+        assertEquals(X_URL, runtime.prepareLoad(X_URL, prefs, false, extractor))
+        assertFalse(runtime.state.value.loading)
+        assertEquals(extractor.currentUrl, runtime.prepareLoad(X_URL, prefs.copy(redirectEnabled = true, previewEnabled = false), false, extractor))
+        assertFalse(runtime.state.value.loading)
+        assertEquals(0, extractor.calls)
+    }
+
+    @Test
+    fun matchingStatusOnAnUnrelatedHostIsNotExtracted() = runTest {
+        val runtime = runtime(this)
+        val extractor = FakeExtractor("https://example.org/example/status/123", listOf(NitterInfo()))
+        val prefs = preferences(redirect = true).copy(instanceUrl = "https://nitter.example.org")
+        runtime.prepareLoad(X_URL, prefs, false, extractor)
+        advanceTimeBy(1000)
+        runCurrent()
+        assertEquals(0, extractor.calls)
+        assertNull(runtime.state.value.preview)
+        runtime.cancel()
+    }
+
+    @Test
+    fun redirectsConvertibleUrlsAndWaitsForThePage() = runTest {
+        val extractor = FakeExtractor(NITTER_URL)
+        val runtime = runtime(this)
+
+        val target = runtime.prepareLoad(
+            requestedUrl = X_URL,
+            preferences = preferences(redirect = true),
+            alreadyLoaded = false,
+            extractor = extractor,
+        )
+
+        assertEquals(NITTER_URL, target)
+        assertEquals(NitterLinkPreviewPhase.WAITING_FOR_PAGE, runtime.state.value.phase)
+        assertTrue(runtime.state.value.loading)
+        assertTrue(runtime.shouldInitializeWebPage(X_URL, preferences(redirect = false)))
+
+        advanceTimeBy(499L)
+        runCurrent()
+        assertEquals(0, extractor.calls)
+        advanceTimeBy(1L)
+        runCurrent()
+        assertEquals(1, extractor.calls)
+        runtime.cancel()
+    }
+
+    @Test
+    fun pageFinishedReadsImmediatelyAndRetriesFailures() = runTest {
+        val expected = NitterInfo(text = "Loaded")
+        val extractor = FakeExtractor(NITTER_URL, listOf(null, expected))
+        val runtime = runtime(this)
+
+        assertTrue(runtime.onPageFinished(
+            loadedUrl = NITTER_URL,
+            preferences = preferences(redirect = false),
+            alreadyLoaded = false,
+            extractor = extractor,
+        ))
+        runCurrent()
+        assertEquals(NitterLinkPreviewPhase.RETRY_WAIT, runtime.state.value.phase)
+
+        advanceTimeBy(100L)
+        runCurrent()
+
+        assertEquals(expected, runtime.state.value.preview)
+        assertEquals(NitterLinkPreviewPhase.FINISHED, runtime.state.value.phase)
+        assertFalse(runtime.state.value.loading)
+        assertEquals(2, extractor.calls)
+    }
+
+    @Test
+    fun cancellationInvalidatesAnOutstandingExtractionGeneration() = runTest {
+        val result = CompletableDeferred<NitterInfo?>()
+        val extractor = object : WebPageExtractor<NitterInfo> {
+            override val currentUrl = NITTER_URL
+            override suspend fun extract(): NitterInfo? = result.await()
+        }
+        val runtime = runtime(this)
+        runtime.onPageFinished(
+            loadedUrl = NITTER_URL,
+            preferences = preferences(redirect = false),
+            alreadyLoaded = false,
+            extractor = extractor,
+        )
+        runCurrent()
+        val activeGeneration = runtime.state.value.generation
+
+        runtime.cancel()
+        result.complete(NitterInfo())
+        runCurrent()
+
+        assertEquals(NitterLinkPreviewPhase.IDLE, runtime.state.value.phase)
+        assertTrue(runtime.state.value.generation > activeGeneration)
+        assertNull(runtime.state.value.preview)
+    }
+
+    private fun runtime(scope: CoroutineScope) = NitterLinkPreviewRuntime(
+        scope = scope,
+        maxAttempts = 3,
+        pageLoadTimeoutMillis = 500L,
+        htmlReadTimeoutMillis = 250L,
+        retryDelaysMillis = listOf(100L, 200L),
+    )
+
+    private fun preferences(redirect: Boolean) = NitterLinkPreviewPreferences(
+        previewEnabled = true,
+        redirectEnabled = redirect,
+    )
+
+    private class FakeExtractor(
+        override val currentUrl: String?,
+        private val responses: List<NitterInfo?> = emptyList(),
+    ) : WebPageExtractor<NitterInfo> {
+        var calls = 0
+        override suspend fun extract(): NitterInfo? = responses.getOrNull(calls++)
+    }
+
+    private companion object {
+        const val X_URL = "https://x.com/example/status/123"
+        const val NITTER_URL = "https://nitter.net/example/status/123"
+    }
+}

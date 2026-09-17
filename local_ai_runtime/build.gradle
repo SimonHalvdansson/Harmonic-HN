@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
@@ -20,8 +21,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     buildTypes {
@@ -40,6 +41,16 @@ android {
             matchingFallbacks.add("release")
         }
 
+        benchmark {
+            initWith(release)
+            matchingFallbacks.add("release")
+        }
+        nonMinifiedBenchmark {
+            initWith(benchmark)
+            matchingFallbacks.add("benchmark")
+            matchingFallbacks.add("release")
+        }
+
         fossRelease {
             initWith(release)
             matchingFallbacks.add("release")
@@ -53,19 +64,19 @@ android {
 
     sourceSets {
         debugLLM {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         debugLLMFast {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         playRelease {
-            java.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
     }
 
     externalNativeBuild {
         cmake {
-            path = file("../app/src/main/cpp/CMakeLists.txt")
+            path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
@@ -79,12 +90,14 @@ androidComponents {
 
 kotlin {
     compilerOptions {
-        languageVersion = KotlinVersion.KOTLIN_2_0
+        languageVersion = KotlinVersion.KOTLIN_2_4
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
 dependencies {
     implementation project(":app")
+    implementation project(":core")
     debugLLMImplementation(libs.litertlm)
     debugLLMFastImplementation(libs.litertlm)
     playReleaseImplementation(libs.litertlm)

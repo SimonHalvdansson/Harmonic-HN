@@ -1,0 +1,248 @@
+{
+  "id": 990000001,
+  "title": "Deterministic Comments benchmark fixture",
+  "author": "benchmark_author",
+  "points": 314,
+  "created_at_i": 1779000000,
+  "type": "story",
+  "text": "<p>A fixed offline thread used by the Comments macrobenchmark. The benchmark writes this exact JSON to the app cache and exercises the production parser.</p>",
+  "children": [
+    {
+      "id": 990000011,
+      "parent_id": 990000001,
+      "author": "parser_observer",
+      "created_at_i": 1779000060,
+      "text": "<p>The first comment is intentionally substantial because it is visible during the opening transition. It contains <strong>bold text</strong>, <em>emphasis</em>, and <a href=\"https://example.com/benchmark/first\">a stable link target</a>. The second sentence wraps across several lines so text shaping and layout have realistic work.</p><p>A second paragraph exercises the same paragraph spacing used by live Hacker News comments. It also mentions deterministic profiling, frame deadlines, cached input, and repeatable rendering without relying on the network.</p>",
+      "children": [
+        {
+          "id": 990000012,
+          "parent_id": 990000011,
+          "author": "nested_reply",
+          "created_at_i": 1779000120,
+          "text": "<p>This nested reply is visible near the top and includes <a href=\"https://example.com/benchmark/reply-one\">one child link</a> plus enough prose to wrap onto another line.</p>",
+          "children": []
+        },
+        {
+          "id": 990000013,
+          "parent_id": 990000011,
+          "author": "second_nested_reply",
+          "created_at_i": 1779000180,
+          "text": "<p>A sibling reply keeps the first subtree representative of an expanded discussion and gives the lazy list another distinct HTML body.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000021,
+      "parent_id": 990000001,
+      "author": "reference_collector",
+      "created_at_i": 1779000240,
+      "text": "<p>This comment exercises reference-link collection in a deterministic form. The prose before the references is long enough to remain a separate content block and to require normal Compose text measurement.</p><p>[1] <a href=\"https://example.com/reference/alpha\">Alpha source with a descriptive title</a></p><p>[2] <a href=\"https://example.org/reference/beta\">Beta source from another host</a></p>",
+      "children": [
+        {
+          "id": 990000022,
+          "parent_id": 990000021,
+          "author": "reference_reply",
+          "created_at_i": 1779000300,
+          "text": "<p>The references above should become separate rows while this reply remains an ordinary comment body.</p>",
+          "children": []
+        },
+        {
+          "id": 990000023,
+          "parent_id": 990000021,
+          "author": "reference_reply_two",
+          "created_at_i": 1779000360,
+          "text": "<p>Keeping every URL and body unique prevents the HTML cache from turning the fixture into an unrealistically cheap repeated-input test.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000031,
+      "parent_id": 990000001,
+      "author": "formatting_tester",
+      "created_at_i": 1779000420,
+      "text": "<p>Formatting coverage includes <strong>strong</strong>, <em>italic</em>, <u>underlined</u>, and <s>struck text</s>. A line break follows.<br>After the break, the comment continues with stable content and a <a href=\"https://example.net/formatting\">formatting reference</a>.</p>",
+      "children": [
+        {
+          "id": 990000032,
+          "parent_id": 990000031,
+          "author": "formatting_reply",
+          "created_at_i": 1779000480,
+          "text": "<p>This child has <strong>nested <em>styles</em></strong> so span ranges are not all flat.</p>",
+          "children": []
+        },
+        {
+          "id": 990000033,
+          "parent_id": 990000031,
+          "author": "third_level_parent",
+          "created_at_i": 1779000540,
+          "text": "<p>This reply owns one deeper descendant to exercise indentation and ancestor visibility.</p>",
+          "children": [
+            {
+              "id": 990000034,
+              "parent_id": 990000033,
+              "author": "third_level_reply",
+              "created_at_i": 1779000600,
+              "text": "<p>A deterministic third-level reply with short but unique text.</p>",
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 990000041,
+      "parent_id": 990000001,
+      "author": "long_form_reader",
+      "created_at_i": 1779000660,
+      "text": "<p>This is the longest top-level entry in the fixed thread. It deliberately repeats no complete paragraph from another comment, while still resembling an ordinary technical discussion. Opening a comment screen requires state publication, lazy-list composition, HTML conversion, font resolution, text shaping, measurement, placement, and drawing. Moving work away from the main thread only helps when the worker does not consume the same limited CPU budget during the transition. The benchmark exists to distinguish a true reduction from work that was merely moved or delayed.</p><p>The final sentence includes <a href=\"https://example.com/benchmark/long-form\">a unique long-form link</a> and enough trailing prose to create another wrapped line at phone width.</p>",
+      "children": [
+        {
+          "id": 990000042,
+          "parent_id": 990000041,
+          "author": "long_form_reply",
+          "created_at_i": 1779000720,
+          "text": "<p>A response to the long-form comment adds another measured text node without duplicating its source string.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000051,
+      "parent_id": 990000001,
+      "author": "layout_engineer",
+      "created_at_i": 1779000780,
+      "text": "<p>Stable layout input is important: changing authors, ages, nesting, links, or body lengths can otherwise alter both composition and text measurement between benchmark runs.</p>",
+      "children": [
+        {
+          "id": 990000052,
+          "parent_id": 990000051,
+          "author": "layout_reply",
+          "created_at_i": 1779000840,
+          "text": "<p>This fixture therefore fixes all those values and remains entirely offline.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000061,
+      "parent_id": 990000001,
+      "author": "cache_inspector",
+      "created_at_i": 1779000900,
+      "text": "<p>The measured path reads this payload from Harmonic's persistent story cache. The same bytes are parsed on every cold benchmark iteration, making parser cost reproducible.</p><p>[1] <a href=\"https://cache.example.com/design\">Cache design note</a></p>",
+      "children": [
+        {
+          "id": 990000062,
+          "parent_id": 990000061,
+          "author": "cache_reply",
+          "created_at_i": 1779000960,
+          "text": "<p>Cache seeding happens in setup, outside the measured trace.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000071,
+      "parent_id": 990000001,
+      "author": "compose_profiler",
+      "created_at_i": 1779001020,
+      "text": "<p>Compose tracing can separate recomposition, measurement, layout, and drawing. App trace sections add boundaries for cache reading, JSON parsing, state publication, and the first non-empty Comments state.</p>",
+      "children": [
+        {
+          "id": 990000072,
+          "parent_id": 990000071,
+          "author": "compose_reply",
+          "created_at_i": 1779001080,
+          "text": "<p>Those boundaries make the next optimization decision evidence-based.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000081,
+      "parent_id": 990000001,
+      "author": "scroll_tester",
+      "created_at_i": 1779001140,
+      "text": "<p>Comments below the initial viewport keep the fixture useful for baseline-profile scrolling. This body has a distinct <a href=\"https://example.com/scroll/eight\">scroll target</a>.</p>",
+      "children": [
+        {
+          "id": 990000082,
+          "parent_id": 990000081,
+          "author": "scroll_reply",
+          "created_at_i": 1779001200,
+          "text": "<p>Scrolling composes this reply later rather than during the first open.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000091,
+      "parent_id": 990000001,
+      "author": "thread_participant_nine",
+      "created_at_i": 1779001260,
+      "text": "<p>Ninth top-level comment with unique words about deterministic workloads, repeatable traces, and bounded experiments.</p>",
+      "children": [
+        {
+          "id": 990000092,
+          "parent_id": 990000091,
+          "author": "thread_reply_nine",
+          "created_at_i": 1779001320,
+          "text": "<p>Ninth reply with another unique body and no external dependency.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000101,
+      "parent_id": 990000001,
+      "author": "thread_participant_ten",
+      "created_at_i": 1779001380,
+      "text": "<p>Tenth top-level comment. The exact content is less important than preserving its identity, length, hierarchy, and HTML across every benchmark condition.</p>",
+      "children": [
+        {
+          "id": 990000102,
+          "parent_id": 990000101,
+          "author": "thread_reply_ten",
+          "created_at_i": 1779001440,
+          "text": "<p>Tenth reply includes <a href=\"https://example.org/reply/ten\">a unique reply link</a>.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000111,
+      "parent_id": 990000001,
+      "author": "thread_participant_eleven",
+      "created_at_i": 1779001500,
+      "text": "<p>Eleventh top-level comment provides additional content for later lazy-list composition and profile collection.</p>",
+      "children": [
+        {
+          "id": 990000112,
+          "parent_id": 990000111,
+          "author": "thread_reply_eleven",
+          "created_at_i": 1779001560,
+          "text": "<p>Eleventh reply remains stable across every run.</p>",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": 990000121,
+      "parent_id": 990000001,
+      "author": "thread_participant_twelve",
+      "created_at_i": 1779001620,
+      "text": "<p>Twelfth and final top-level comment closes the deterministic thread with a normal paragraph and <a href=\"https://example.net/final\">one final link</a>.</p>",
+      "children": [
+        {
+          "id": 990000122,
+          "parent_id": 990000121,
+          "author": "thread_reply_twelve",
+          "created_at_i": 1779001680,
+          "text": "<p>The final nested reply makes the total comment count fixed and easy to validate.</p>",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

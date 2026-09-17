@@ -1,0 +1,309 @@
+package com.simon.harmonichackernews.network
+
+import com.simon.harmonichackernews.data.LinkPreviewInfo
+import com.simon.harmonichackernews.data.LinkPreviewType
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class RichLinkPreviewParsersTest {
+    @Test
+    fun parsesEveryGitHubShape() {
+        val cases = listOf(
+            LinkPreviewType.GITHUB_ISSUE to GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_ISSUE,
+                "octo",
+                "project",
+                identifier = "12",
+            ),
+            LinkPreviewType.GITHUB_PULL_REQUEST to GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_PULL_REQUEST,
+                "octo",
+                "project",
+                identifier = "13",
+            ),
+            LinkPreviewType.GITHUB_FILE to GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_FILE,
+                "octo",
+                "project",
+                ref = "main",
+                filePath = "README.md",
+            ),
+            LinkPreviewType.GITHUB_RELEASE to GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_RELEASE,
+                "octo",
+                "project",
+                identifier = "v1.0",
+            ),
+            LinkPreviewType.GITHUB_DISCUSSION to GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_DISCUSSION,
+                "octo",
+                "project",
+                identifier = "14",
+            ),
+        )
+        val responses = mapOf(
+            LinkPreviewType.GITHUB_ISSUE to
+                """{"title":"Issue title","body":"Markdown body","state":"open","comments":2,"user":{"login":"octocat"}}""",
+            LinkPreviewType.GITHUB_PULL_REQUEST to
+                """{"title":"Pull title","body":"Markdown body","state":"closed","merged":true,"additions":10,"deletions":2,"changed_files":3,"commits":4,"user":{"login":"octocat"}}""",
+            LinkPreviewType.GITHUB_FILE to
+                """{"name":"README.md","path":"README.md","type":"file","size":2048,"sha":"1234567890abcdef","download_url":"https://example.com/file"}""",
+            LinkPreviewType.GITHUB_RELEASE to
+                """{"name":"","tag_name":"v1.0","body":"## Version 1\n\n<a><img src=\"https://images.example/release.png\"></a>\n\nRelease notes","prerelease":false,"draft":false,"assets":[{}],"author":{"login":"octocat"}}""",
+            LinkPreviewType.GITHUB_DISCUSSION to
+                """{"title":"Discussion title","body":"Discussion body","comments":5,"category":{"name":"Ideas"},"user":{"login":"octocat"}}""",
+        )
+
+        cases.forEach { (type, target) ->
+            val result = GitHubLinkPreview.parseGitHub(
+                type,
+                responses.getValue(type),
+                target,
+                "https://github.com/octo/project",
+            )
+            assertEquals(type, result.type)
+            assertTrue(result.title.isNotBlank())
+            assertTrue(result.details.isNotEmpty())
+            when (type) {
+                LinkPreviewType.GITHUB_ISSUE -> assertEquals(
+                    "2 comments",
+                    result.details.single { it.label == "Comments" }.displayText,
+                )
+                LinkPreviewType.GITHUB_RELEASE -> {
+                    assertEquals("Version 1", result.title)
+                    assertEquals("GitHub release · octo / project · v1.0", result.subtitle)
+                    assertEquals("https://images.example/release.png", result.imageUrl)
+                }
+                LinkPreviewType.GITHUB_DISCUSSION -> assertEquals(
+                    "5 comments",
+                    result.details.single { it.label == "Comments" }.displayText,
+                )
+                else -> Unit
+            }
+        }
+    }
+
+    @Test
+    fun parsesGitHubPageMetadataWithoutProviderTitleSuffix() {
+        val result = GitHubLinkPreview.parseGitHubPage(
+            type = LinkPreviewType.GITHUB_ISSUE,
+            response = """
+                <html><head>
+                  <meta property="og:title" content="[Community Help Needed] Google Play: no longer allowing our Open Collective donation link · Issue #21656 · ankidroid/Anki-Android">
+                  <meta property="og:description" content="Last updated: 2026-08-29; Google Ticket Number: #9-2777000041594">
+                  <meta property="og:author:username" content="david-allison">
+                </head></html>
+            """.trimIndent(),
+            target = GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_ISSUE,
+                "ankidroid",
+                "Anki-Android",
+                identifier = "21656",
+            ),
+            url = "https://github.com/ankidroid/Anki-Android/issues/21656",
+        )
+
+        assertEquals(
+            "[Community Help Needed] Google Play: no longer allowing our Open Collective donation link",
+            result.title,
+        )
+        assertEquals("ankidroid / Anki-Android · #21656", result.subtitle)
+        assertEquals("david-allison", result.details.single().value)
+    }
+
+    @Test
+    fun parsesGitHubReleasePageImageAndProminentReleaseLabel() {
+        val result = GitHubLinkPreview.parseGitHubPage(
+            type = LinkPreviewType.GITHUB_RELEASE,
+            response = """
+                <html><head>
+                  <meta property="og:title" content="Release Audacity-4.0.0 · audacity/audacity">
+                  <meta property="og:image" content="https://images.example/audacity.png">
+                </head></html>
+            """.trimIndent(),
+            target = GitHubPreviewTarget(
+                LinkPreviewType.GITHUB_RELEASE,
+                "audacity",
+                "audacity",
+                identifier = "Audacity-4.0.0",
+            ),
+            url = "https://github.com/audacity/audacity/releases/tag/Audacity-4.0.0",
+        )
+
+        assertEquals("Audacity-4.0.0", result.title)
+        assertEquals("GitHub release · audacity / audacity", result.subtitle)
+        assertEquals("https://images.example/audacity.png", result.imageUrl)
+        assertEquals("Release", result.details.first().value)
+    }
+
+    @Test
+    fun parsesEveryHuggingFaceShape() {
+        val cases = listOf(
+            Triple(
+                LinkPreviewType.HUGGING_FACE_DATASET,
+                HuggingFacePreviewTarget(LinkPreviewType.HUGGING_FACE_DATASET, "owner", "data"),
+                """{"id":"owner/data","description":"Dataset","downloads":123,"likes":4,"tags":["format:json","size_categories:1K<n<10K"]}""",
+            ),
+            Triple(
+                LinkPreviewType.HUGGING_FACE_SPACE,
+                HuggingFacePreviewTarget(LinkPreviewType.HUGGING_FACE_SPACE, "owner", "space"),
+                """{"id":"owner/space","sdk":"gradio","likes":8,"cardData":{"title":"Space title","short_description":"A demo"},"runtime":{"stage":"RUNNING","hardware":{"current":"cpu-basic"}}}""",
+            ),
+            Triple(
+                LinkPreviewType.HUGGING_FACE_PAPER,
+                HuggingFacePreviewTarget(LinkPreviewType.HUGGING_FACE_PAPER, name = "2608.00001"),
+                """{"id":"2608.00001","title":"Paper title","summary":"Abstract","upvotes":9,"authors":[{"name":"Ada"}]}""",
+            ),
+            Triple(
+                LinkPreviewType.HUGGING_FACE_COLLECTION,
+                HuggingFacePreviewTarget(LinkPreviewType.HUGGING_FACE_COLLECTION, "owner", "collection"),
+                """{"title":"Collection title","description":"Models","items":[{}],"owner":{"fullname":"Owner","followerCount":7}}""",
+            ),
+        )
+
+        cases.forEach { (type, target, response) ->
+            val result = HuggingFaceLinkPreview.parseHuggingFace(
+                type,
+                response,
+                target,
+                "https://huggingface.co/example",
+            )
+            assertEquals(type, result.type)
+            assertTrue(result.title.isNotBlank())
+            assertTrue(result.details.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun parsesStructuredServiceAndSocialResponses() {
+        val results = listOf(
+            StatusPageLinkPreview.parseStatusPage(
+                """{"page":{"name":"Example Status"},"incident":{"name":"API unavailable","status":"resolved","impact":"major","incident_updates":[{"body":"Recovered"}]}}""",
+                "https://example.statuspage.io/incidents/abc",
+            ),
+            CrossrefLinkPreview.parseCrossref(
+                """{"message":{"title":["Article title"],"container-title":["Journal"],"author":[{"given":"Ada","family":"Lovelace"}],"published":{"date-parts":[[2026,8,18]]},"type":"journal-article","publisher":"Publisher","is-referenced-by-count":12}}""",
+                "10.1000/example",
+                "https://doi.org/10.1000/example",
+            ),
+            UsgsLinkPreview.parseUsgs(
+                """{"properties":{"title":"M 7.0 - Example","place":"Example","mag":7.0,"sig":700,"tsunami":1,"status":"reviewed","type":"earthquake"},"geometry":{"coordinates":[1.0,2.0,12.5]}}""",
+                "us123",
+                "https://earthquake.usgs.gov/earthquakes/eventpage/us123",
+            ),
+            SubstackLinkPreview.parseSubstackPage(
+                """<html><head><meta property="og:title" content="RSS article"><meta property="og:description" content="Writer's short summary"><meta property="og:image" content="https://example.com/cover.png"><script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":"RSS article","datePublished":"2026-08-08T12:00:00Z","publisher":{"@type":"Organization","name":"Example Publication"}}</script></head><body><div class="dt-post-body"><div class="available-content"><p>Writer&#8217;s longer opening paragraph. It has a second sentence.</p><p>This should not appear.</p></div></div></body></html>""",
+                "https://writer.substack.com/p/rss-article",
+                SubstackLinkPreview.parseSubstackChannelImage(
+                    """<?xml version="1.0"?><rss><channel><title>Example Publication</title><image><url>https://writer.substack.com/img/substack.png</url><title>Example Publication</title><link>https://writer.substack.com</link></image>""",
+                ),
+            ),
+            MastodonLinkPreview.parseMastodon(
+                """{"content":"<p>This is <strong>the actual post</strong>.</p><p>Second paragraph &amp; link.</p>","spoiler_text":"A brief warning","account":{"display_name":"Ada","username":"ada","acct":"ada@example.social","avatar":"https://example.social/avatar.png"},"replies_count":1,"reblogs_count":2,"favourites_count":3}""",
+                "https://example.social/@ada/1",
+            ),
+            BlueskyLinkPreview.parseBluesky(
+                """{"thread":{"post":{"author":{"displayName":"Ada","handle":"ada.bsky.social"},"record":{"text":"Structured post text","createdAt":"2026-08-18T12:00:00Z"},"replyCount":1,"repostCount":2,"likeCount":3,"quoteCount":4}}}""",
+                "https://bsky.app/profile/ada.bsky.social/post/abc",
+            ),
+            RedditLinkPreview.parseOEmbed(
+                LinkPreviewType.REDDIT_POST,
+                """{"title":"Reddit title","author_name":"u/ada","provider_name":"Reddit","html":"<blockquote>This must not be parsed</blockquote>"}""",
+                "https://reddit.com/r/example/comments/abc/title",
+            ),
+        )
+
+        assertEquals(
+            setOf(
+                LinkPreviewType.STATUS_PAGE,
+                LinkPreviewType.CROSSREF_ARTICLE,
+                LinkPreviewType.USGS_EARTHQUAKE,
+                LinkPreviewType.SUBSTACK_ARTICLE,
+                LinkPreviewType.MASTODON_POST,
+                LinkPreviewType.BLUESKY_POST,
+                LinkPreviewType.REDDIT_POST,
+            ),
+            results.map { it.type }.toSet(),
+        )
+        val substack = results.singleType(LinkPreviewType.SUBSTACK_ARTICLE)
+        assertEquals("Example Publication", substack.title)
+        assertEquals("RSS article", substack.subtitle)
+        assertEquals("https://writer.substack.com/img/substack.png", substack.imageUrl)
+        assertEquals(
+            "Writer’s longer opening paragraph. It has a second sentence.",
+            substack.description,
+        )
+        assertEquals(1, substack.details.size)
+        assertEquals("Published", substack.details.single().label)
+        assertEquals("Aug 8, 2026", substack.details.single().displayText)
+        assertTrue(substack.details.none { it.label == "Publication" })
+        assertEquals(
+            "Content warning: A brief warning\n\nThis is the actual post. Second paragraph & link.",
+            results.singleType(LinkPreviewType.MASTODON_POST).description,
+        )
+        assertTrue(
+            results.singleType(LinkPreviewType.MASTODON_POST).details.none { it.label == "Language" },
+        )
+        assertNull(results.singleType(LinkPreviewType.REDDIT_POST).description)
+    }
+
+    @Test
+    fun parsesEveryPackageRegistryShape() {
+        val cases = listOf(
+            Triple(
+                LinkPreviewType.NPM_PACKAGE,
+                PackagePreviewTarget(LinkPreviewType.NPM_PACKAGE, "example"),
+                """{"name":"example","version":"1.2.3","description":"npm package","license":"MIT","dependencies":{"one":"1"},"author":{"name":"Ada"}}""",
+            ),
+            Triple(
+                LinkPreviewType.PYPI_PACKAGE,
+                PackagePreviewTarget(LinkPreviewType.PYPI_PACKAGE, "example"),
+                """{"info":{"name":"example","version":"1.2.3","summary":"PyPI package","license_expression":"MIT","author":"Ada","requires_python":">=3.11"}}""",
+            ),
+            Triple(
+                LinkPreviewType.CRATES_PACKAGE,
+                PackagePreviewTarget(LinkPreviewType.CRATES_PACKAGE, "example"),
+                """{"crate":{"name":"example","newest_version":"1.2.3","description":"Rust crate","downloads":100,"recent_downloads":20,"repository":"https://github.com/example/project"}}""",
+            ),
+            Triple(
+                LinkPreviewType.GO_PACKAGE,
+                PackagePreviewTarget(LinkPreviewType.GO_PACKAGE, "example.org/mod/pkg"),
+                """{"modulePath":"example.org/mod","version":"v1.2.3","isLatest":true,"isStandardLibrary":false,"path":"example.org/mod/pkg","name":"pkg","synopsis":"Go package","isRedistributable":true}""",
+            ),
+            Triple(
+                LinkPreviewType.HOMEBREW_PACKAGE,
+                PackagePreviewTarget(LinkPreviewType.HOMEBREW_PACKAGE, "example", "formula"),
+                """{"name":"example","desc":"Homebrew formula","homepage":"https://example.com","license":"MIT","versions":{"stable":"1.2.3"},"dependencies":["one"],"analytics":{"install":{"30d":{"example":42}}}}""",
+            ),
+        )
+
+        val results = cases.map { (type, target, response) ->
+            PackageLinkPreview.parsePackage(
+                type,
+                response,
+                target,
+                "https://example.com/package",
+            )
+        }
+
+        assertEquals(cases.map { it.first }, results.map { it.type })
+        assertTrue(results.all { it.title.isNotBlank() && it.details.isNotEmpty() })
+    }
+
+    @Test
+    fun wikipediaParserKeepsTheCanonicalArticleTitle() {
+        val result = requireNotNull(
+            LinkPreviewParsers.parseWikipedia(
+                """{"query":{"pages":{"123":{"title":"Kotlin (programming language)","extract":"<p>Kotlin is a programming language.</p>"}}}}""",
+            ),
+        )
+
+        assertEquals("Kotlin (programming language)", result.title)
+        assertTrue(result.summary.orEmpty().contains("Kotlin is a programming language"))
+    }
+
+    private fun List<LinkPreviewInfo>.singleType(type: LinkPreviewType): LinkPreviewInfo =
+        single { it.type == type }
+}

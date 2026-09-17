@@ -1,0 +1,74 @@
+package com.simon.harmonichackernews.network
+
+import com.simon.harmonichackernews.settings.TestKeyValueStore
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class PreviewContentCacheTest {
+    @Test
+    fun negativeImageHitsAndLruEvictionPersistAcrossCacheInstances() {
+        val store = TestKeyValueStore()
+        val cache = cache(maxDiskEntries = 2)
+
+        cache.savePreviewImage(store, "1", null)
+        cache.savePreviewImage(store, "2", "https://example.com/two.png")
+        assertTrue(cache.loadPreviewImage(store, "1").loaded)
+        cache.savePreviewImage(store, "3", "https://example.com/three.png")
+
+        assertFalse(cache.loadPreviewImage(store, "2").loaded)
+        assertTrue(cache.loadPreviewImage(store, "1", updateCacheOrder = false).loaded)
+        assertNull(cache.loadPreviewImage(store, "1", updateCacheOrder = false).imageUrl)
+        assertEquals(
+            "https://example.com/three.png",
+            cache().loadPreviewImage(store, "3", updateCacheOrder = false).imageUrl,
+        )
+    }
+
+    @Test
+    fun linkSummaryUsesSharedCodecAndStablePersistentKey() {
+        val store = TestKeyValueStore()
+        val summary = LinkSummary(
+            title = "A shared cache",
+            siteName = "Example",
+            imageUrl = "https://example.com/image.png",
+        )
+
+        cache().saveLinkSummary(store, "https://example.com/article", summary)
+
+        assertEquals(
+            summary,
+            cache().loadLinkSummary(store, "https://example.com/article"),
+        )
+        assertTrue(store.contains(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "hash:https://example.com/article"))
+    }
+
+    @Test
+    fun confirmedNegativeImageHitExpiresAndCanBeFetchedAgain() {
+        val store = TestKeyValueStore()
+        var now = 1_000L
+        val cache = cache(negativeImageTtlMillis = 50L, nowMillis = { now })
+
+        cache.savePreviewImage(store, "1", null)
+        assertTrue(cache.loadPreviewImage(store, "1").loaded)
+
+        now = 1_051L
+
+        assertFalse(cache.loadPreviewImage(store, "1").loaded)
+        assertFalse(store.contains(PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX + "1"))
+    }
+
+    private fun cache(
+        maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
+        negativeImageTtlMillis: Long = 6L * 60L * 60L * 1_000L,
+        nowMillis: () -> Long = { 1_000L },
+    ) =
+        PreviewContentCache(
+            stableHash = { "hash:$it" },
+            maxDiskEntries = maxDiskEntries,
+            negativeImageTtlMillis = negativeImageTtlMillis,
+            nowMillis = nowMillis,
+        )
+}

@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@drawable/widget_background"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:ignore="HardcodedText">
+
+    <!-- Static sample copy used only by the launcher's widget picker preview. -->
 
     <LinearLayout
         android:id="@+id/widget_header"
@@ -13,16 +17,16 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="14dp"
-        android:paddingEnd="8dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="8dp"
         android:paddingTop="10dp"
         android:paddingBottom="6dp">
 
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:layout_marginEnd="8dp"
-            android:contentDescription="Harmonic app icon"
+            android:layout_marginRight="8dp"
+            android:contentDescription="@string/widget_app_icon_content_description"
             android:src="@mipmap/ic_launcher" />
 
         <TextView
@@ -31,7 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:fontFamily="@font/product_sans"
-            android:text="Top Stories"
+            android:text="@string/widget_top_stories"
             android:textColor="@color/widget_title"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -40,7 +44,7 @@
             android:id="@+id/widget_updated_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
+            android:layout_marginRight="2dp"
             android:textColor="@color/widget_secondary_text"
             android:textSize="11sp" />
 
@@ -56,7 +60,7 @@
                 android:src="@drawable/ic_refresh_widget"
                 app:tint="@color/widget_title"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Refresh" />
+                android:contentDescription="@string/widget_refresh_content_description" />
 
             <ProgressBar
                 android:id="@+id/widget_refresh_progress"
@@ -74,18 +78,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
         <TextView
             android:layout_width="20dp"
-            android:layout_marginStart="-1dp"
+            android:layout_marginLeft="-1dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
+            android:layout_marginRight="2dp"
             android:layout_marginTop="1dp"
-            android:gravity="end"
+            android:gravity="right"
             android:text="1."
             android:textColor="@color/widget_story_index"
             android:textSize="14sp" />
@@ -95,7 +99,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingStart="4dp">
+            android:paddingLeft="4dp">
 
             <TextView
                 android:layout_width="match_parent"
@@ -123,18 +127,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
         <TextView
             android:layout_width="20dp"
-            android:layout_marginStart="-1dp"
+            android:layout_marginLeft="-1dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
+            android:layout_marginRight="2dp"
             android:layout_marginTop="1dp"
-            android:gravity="end"
+            android:gravity="right"
             android:text="2."
             android:textColor="@color/widget_story_index"
             android:textSize="14sp" />
@@ -144,7 +148,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingStart="4dp">
+            android:paddingLeft="4dp">
 
             <TextView
                 android:layout_width="match_parent"
@@ -172,18 +176,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
         <TextView
             android:layout_width="20dp"
-            android:layout_marginStart="-1dp"
+            android:layout_marginLeft="-1dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
+            android:layout_marginRight="2dp"
             android:layout_marginTop="1dp"
-            android:gravity="end"
+            android:gravity="right"
             android:text="3."
             android:textColor="@color/widget_story_index"
             android:textSize="14sp" />
@@ -193,7 +197,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingStart="4dp">
+            android:paddingLeft="4dp">
 
             <TextView
                 android:layout_width="match_parent"

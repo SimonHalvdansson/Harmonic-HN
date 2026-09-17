@@ -1,0 +1,363 @@
+package com.simon.harmonichackernews.settings
+
+import com.simon.harmonichackernews.data.LinkPreviewType
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class StoredSettingsMutatorTest {
+    @Test
+    fun unslopCanBeEnabledAndUsedAsStartingPageThenDisabled() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        val label = com.simon.harmonichackernews.StoryType.UNSLOP.label
+        repository.setAdditionalFrontpages(setOf(label))
+        repository.setPreferredStoryType(label)
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(setOf(label), reopened.snapshot().story.additionalFrontpages)
+        assertEquals(label, reopened.snapshot().story.preferredStoryType)
+        assertTrue(label in com.simon.harmonichackernews.StoryTypeSettingsPolicy.startingPageLabels(setOf(label)))
+        assertTrue(com.simon.harmonichackernews.StoryType.UNSLOP in
+            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(setOf(label), false))
+        repository.setAdditionalFrontpages(emptySet())
+        assertEquals("Top Stories", reopened.snapshot().story.preferredStoryType)
+        assertFalse(com.simon.harmonichackernews.StoryType.UNSLOP in
+            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(emptySet(), false))
+    }
+
+    @Test
+    fun storyOutlinePersistsIndependentlyOfStyleAndCommentOutline() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(repository.snapshot().story.outline)
+        assertFalse(repository.snapshot().comments.outline)
+        repository.setStoryBoolean(StoryBooleanPreference.OUTLINE, true)
+        repository.setStoryString(StoryStringPreference.DISPLAY_STYLE, "raised")
+
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertTrue(reopened.snapshot().story.outline)
+        assertEquals(DisplayStyle.RAISED, reopened.snapshot().story.displayStyle)
+        assertFalse(reopened.snapshot().comments.outline)
+        assertTrue(
+            com.simon.harmonichackernews.presentation.StoryDisplaySettings
+                .from(reopened.snapshot().story).outline,
+        )
+        repository.setCommentBoolean(CommentBooleanPreference.OUTLINE, true)
+        repository.setStoryBoolean(StoryBooleanPreference.OUTLINE, false)
+        assertTrue(reopened.snapshot().comments.outline)
+        assertFalse(reopened.snapshot().story.outline)
+    }
+
+    @Test
+    fun legacyDisplayStylesResolveWithoutChangingOtherPreferences() {
+        val store = TestKeyValueStore()
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.STANDARD, settings.comments.displayStyle)
+        for ((stored, expected) in listOf(
+            "card" to DisplayStyle.RAISED,
+            "standard" to DisplayStyle.STANDARD,
+            "unknown" to DisplayStyle.STANDARD,
+            "raised" to DisplayStyle.RAISED,
+        )) {
+            store.putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, stored)
+            store.putString(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, stored)
+            assertEquals(expected, settings.story.displayStyle)
+            assertEquals(expected, settings.comments.displayStyle)
+        }
+    }
+
+    @Test
+    fun tintPromotesFlatStoriesAndLeavesCommentsIndependent() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "flat")
+        mutator.setCommentDisplayStyle(DisplayStyle.FLAT)
+        assertEquals(DisplayStyle.FLAT, settings.story.displayStyle)
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, true)
+        assertEquals("standard", store.getString(UserPreferenceKeys.STORY_DISPLAY_STYLE))
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.FLAT, settings.comments.displayStyle)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "flat")
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "raised")
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, true)
+        assertEquals(DisplayStyle.RAISED, settings.story.displayStyle)
+        // Imported preferences must obey the same rule before another write occurs.
+        store.putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, "flat")
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+    }
+
+    @Test
+    fun welcomePresetsSetBothStylesAndTintTogether() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "card")
+        mutator.setCommentDisplayStyle("card")
+        mutator.applyWelcomePreset(expressive = false)
+        assertEquals(DisplayStyle.FLAT, settings.story.displayStyle)
+        assertEquals(DisplayStyle.FLAT, settings.comments.displayStyle)
+        assertFalse(settings.story.tintCardUsingPreview)
+        mutator.applyWelcomePreset(expressive = true)
+        assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
+        assertEquals(DisplayStyle.STANDARD, settings.comments.displayStyle)
+        assertTrue(settings.story.tintCardUsingPreview)
+    }
+
+    @Test
+    fun nitterInstancePersistsAndInvalidEditsPreserveThePreviousValue() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals("https://nitter.net", repository.snapshot().reading.nitterInstanceUrl)
+        assertTrue(repository.setNitterInstanceUrl(" https://NITTER.EXAMPLE.ORG/ "))
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertFalse(repository.setNitterInstanceUrl("invalid"))
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertFalse(reopened.snapshot().reading.redirectNitter)
+        repository.setLinkPreviewEnabled(LinkPreviewType.TWITTER_X, true)
+        assertEquals("https://nitter.example.org", reopened.snapshot().reading.nitterInstanceUrl)
+        assertTrue(repository.setNitterInstanceUrl("https://nitter.net"))
+        assertEquals("https://nitter.net", reopened.snapshot().reading.nitterInstanceUrl)
+        store.putString(UserPreferenceKeys.NITTER_INSTANCE_URL, "invalid")
+        assertEquals("https://nitter.net", reopened.snapshot().reading.nitterInstanceUrl)
+    }
+
+    @Test
+    fun storyLayoutResetRestoresLayoutDefaultsAndPreservesBehavior() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setStoryPreviewMode(StoryPreviewMode.MEDIUM)
+        mutator.setStoryBoolean(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.OUTLINE, true)
+        mutator.setStoryTextSize(TextPreferences.MAX_STORY_TEXT_SIZE)
+        mutator.setStoryString(
+            StoryStringPreference.DISPLAY_STYLE,
+            DisplayStylePreferences.CARD,
+        )
+        mutator.setStoryBoolean(StoryBooleanPreference.TINT_CARD_USING_PREVIEW, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.COMPACT_VIEW, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_SUMMARY, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_THUMBNAILS, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.COMPACT_POINTS, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_COMMENTS_COUNT, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_INDEX, false)
+        mutator.setStoryBoolean(StoryBooleanPreference.LEFT_ALIGN, true)
+        mutator.setHotness(300)
+
+        mutator.setStoryBoolean(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.PAGINATION, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.HIDE_CLICKED, true)
+        mutator.setStoryBoolean(StoryBooleanPreference.GRAY_OUT_CLICKED, false)
+        mutator.setPreferredStoryType("best")
+        mutator.setAdditionalFrontpages(setOf(AdditionalFrontpagePreferences.FRONT))
+        mutator.setFaviconProvider(FaviconPreferences.DUCK_DUCK_GO)
+
+        mutator.resetStoryLayout()
+
+        val story = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).story
+        assertEquals(StoryPreviewMode.SMALL, story.previewImageMode)
+        assertFalse(story.borderlessLargePreviewImage)
+        assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, story.storyTextSize)
+        assertFalse(story.cardStyle)
+        assertFalse(story.outline)
+        assertTrue(story.tintCardUsingPreview)
+        assertFalse(story.compactView)
+        assertFalse(story.showSummary)
+        assertTrue(story.thumbnails)
+        assertTrue(story.showPoints)
+        assertFalse(story.compactPoints)
+        assertTrue(story.includeTopLevelDomain)
+        assertTrue(story.showCommentsCount)
+        assertTrue(story.showIndex)
+        assertFalse(story.leftAlign)
+        assertEquals(-1, story.hotness)
+
+        assertTrue(story.alwaysOpenComments)
+        assertTrue(story.pagination)
+        assertTrue(story.hideClicked)
+        assertFalse(story.grayOutClicked)
+        assertEquals("best", story.preferredStoryType)
+        assertEquals(setOf(AdditionalFrontpagePreferences.FRONT), story.additionalFrontpages)
+        assertEquals(FaviconPreferences.DUCK_DUCK_GO, story.faviconProvider)
+    }
+
+    @Test
+    fun linkPreviewUpdatesUseIndependentKeysAndEnableNitterRedirectForX() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setLinkPreviewEnabled(LinkPreviewType.GITHUB_ISSUE, false)
+        mutator.setLinkPreviewEnabled(LinkPreviewType.TWITTER_X, true)
+
+        assertFalse(
+            store.getBoolean(LinkPreviewType.GITHUB_ISSUE.preferenceKey, true),
+        )
+        assertTrue(
+            store.getBoolean(LinkPreviewType.TWITTER_X.preferenceKey, false),
+        )
+        assertTrue(store.getBoolean(UserPreferenceKeys.REDIRECT_NITTER, false))
+    }
+
+    @Test
+    fun typedStoryAndReadingUpdatesPreserveExistingKeysAndSanitizeValues() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        mutator.setStoryPreviewMode(StoryPreviewMode.MEDIUM)
+        assertEquals(
+            StoryPreviewMode.MEDIUM.storedValue,
+            store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE),
+        )
+        mutator.setStoryTextSize(999f)
+        mutator.setAdditionalFrontpages(setOf("Front", "unsupported"))
+        mutator.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, true)
+        mutator.setReaderModeFontSize(999)
+
+        assertFalse(store.getBoolean(UserPreferenceKeys.SHOW_POINTS, true))
+        assertEquals(StoryPreviewMode.MEDIUM.storedValue, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
+        assertEquals("20.5", store.getString(UserPreferenceKeys.STORY_TEXT_SIZE))
+        assertEquals(setOf(AdditionalFrontpagePreferences.FRONT), store.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES))
+        assertTrue(store.getBoolean(UserPreferenceKeys.READER_MODE_DEFAULT, false))
+        assertEquals(24, store.getInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, -1))
+    }
+
+    @Test
+    fun typedAppearanceAndCommentUpdatesExposeRawChoices() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setCommentBoolean(CommentBooleanPreference.HEADER_TINT, false)
+        mutator.setCommentBoolean(CommentBooleanPreference.SHOW_UP_BUTTON, true)
+        mutator.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, true)
+        mutator.setTheme("gray")
+        mutator.setNighttimeTheme("material_daynight")
+        mutator.setCommentSorting(CommentSortingPreference.NEWEST_FIRST)
+        mutator.setCommentsProvider(CommentsProvider.OFFICIAL)
+        mutator.setCommentsVolumeNavigation(CommentVolumeNavigationMode.ALL)
+        mutator.setReaderModeFont(AppFont.GEORGIA)
+        mutator.setWebViewPreload(WebViewPreloadMode.WIFI_ONLY, 45)
+        mutator.setCommentsPreload(WebViewPreloadMode.ALWAYS, 30)
+
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(settings.comments.headerTintEnabled)
+        assertTrue(settings.comments.showUpButton)
+        assertTrue(settings.general.specialNighttimeTheme)
+        assertEquals("gray", settings.appearance.theme)
+        assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
+        assertEquals(CommentSortingPreference.NEWEST_FIRST, settings.comments.sorting)
+        assertEquals(CommentsProvider.OFFICIAL, settings.reading.commentsProvider)
+        assertEquals(CommentVolumeNavigationMode.ALL, settings.comments.volumeNavigationMode)
+        assertEquals(AppFont.GEORGIA, settings.reading.readerModeFont)
+        assertEquals(WebViewPreloadMode.WIFI_ONLY, settings.reading.preloadWebViewMode)
+        assertEquals(WebViewPreloadMode.ALWAYS, settings.comments.preloadCommentsMode)
+        assertEquals(30, settings.comments.preloadCommentsMinimumBattery)
+    }
+
+    @Test
+    fun structuredThemeChoicesRoundTripAndSanitize() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setThemePair("white", "amoled")
+        mutator.setManualDark(true)
+        mutator.setAccentPreset(ThemePreferences.ACCENT_TEAL)
+
+        val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
+        assertTrue(settings.followSystem)
+        assertTrue(settings.manualDark)
+        assertEquals("white", settings.lightTheme)
+        assertEquals("amoled", settings.darkTheme)
+        assertEquals(ThemePreferences.ACCENT_TEAL, settings.accentPreset)
+    }
+
+    @Test
+    fun quickThemePairsPreserveManualAppearanceMode() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+        mutator.setFollowSystem(false)
+        mutator.setManualDark(true)
+
+        mutator.setThemePair("white", "amoled")
+
+        val appearance = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
+        assertFalse(appearance.followSystem)
+        assertTrue(appearance.manualDark)
+        assertEquals("white", appearance.lightTheme)
+        assertEquals("amoled", appearance.darkTheme)
+    }
+
+    @Test
+    fun compoundUpdatesAreNormalizedInCommonCode() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setWebViewPreload("unsupported", 500)
+        mutator.setArchiveRedirectDomains(listOf("https://Example.com/path", "example.com"))
+        mutator.setCommentsProvider("unsupported")
+        mutator.setCommentsVolumeNavigation("unsupported")
+        mutator.applyWelcomePreset(expressive = false)
+
+        assertEquals(WebViewPreferences.PRELOAD_NEVER, store.getString(UserPreferenceKeys.PRELOAD_WEBVIEW))
+        assertEquals(100, store.getInt(UserPreferenceKeys.PRELOAD_WEBVIEW_MINIMUM_BATTERY, -1))
+        assertEquals("example.com", store.getString(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS))
+        assertEquals("algolia", store.getString(UserPreferenceKeys.COMMENTS_PROVIDER))
+        assertEquals("disabled", store.getString(UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION))
+        assertEquals("productsans", store.getString(UserPreferenceKeys.FONT))
+        assertEquals(StoryPreviewMode.OFF.storedValue, store.getString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE))
+    }
+
+    @Test
+    fun commentDepthModeKeepsLegacyBooleanInSync() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        mutator.setCommentDepthIndicatorMode(CommentDepthPreferences.MONOCHROME)
+        assertEquals(
+            CommentDepthPreferences.MONOCHROME,
+            store.getString(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS),
+        )
+        assertTrue(store.getBoolean(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH, false))
+
+        mutator.setCommentDepthIndicatorMode(CommentDepthPreferences.AUTHOR)
+        assertEquals(
+            CommentDepthPreferences.AUTHOR,
+            store.getString(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS),
+        )
+        assertEquals("Author", CommentDepthPreferences.modeLabel(CommentDepthPreferences.AUTHOR))
+        assertTrue(CommentDepthPreferences.shouldShowIndicators(CommentDepthPreferences.AUTHOR))
+        assertFalse(store.getBoolean(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH, true))
+
+        mutator.setCommentDepthIndicatorMode("unsupported")
+        assertEquals(
+            CommentDepthPreferences.THEME_DEFAULT,
+            store.getString(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS),
+        )
+        assertFalse(store.getBoolean(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH, true))
+    }
+
+    @Test
+    fun paletteWritesAreSanitizedAndReportCacheInvalidation() {
+        val store = TestKeyValueStore()
+        val mutator = StoredSettingsMutator(store)
+
+        assertTrue(mutator.setPaletteTint("unknown", 400, -1, 80))
+        assertEquals(PaletteTintPreferences.DEFAULT, store.getString(UserPreferenceKeys.PALETTE_TINT_MODE))
+        assertEquals(200, store.getInt(UserPreferenceKeys.PALETTE_TINT_STRENGTH, -1))
+        assertEquals(0, store.getInt(UserPreferenceKeys.PALETTE_TINT_COLORFULNESS, -1))
+        assertEquals(20, store.getInt(UserPreferenceKeys.PALETTE_TINT_TONE, -1))
+        assertFalse(mutator.setPaletteTint("unknown", 400, -1, 80))
+        assertTrue(mutator.clearPaletteTint())
+        assertFalse(mutator.clearPaletteTint())
+    }
+}

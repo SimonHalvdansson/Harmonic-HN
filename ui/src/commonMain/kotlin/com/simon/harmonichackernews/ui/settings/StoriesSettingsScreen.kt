@@ -1,0 +1,260 @@
+package com.simon.harmonichackernews.ui.settings
+
+import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.StoryBooleanPreference
+import com.simon.harmonichackernews.settings.StoryPreviewMode
+import com.simon.harmonichackernews.ui.content.StoryItem
+import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+
+data class StoriesSettingsUiState(
+    val previewModel: StoryItemUiModel,
+    val previewImageMode: StoryPreviewMode,
+    val borderlessLargeImage: Boolean,
+    val compact: Boolean,
+    val showSummary: Boolean,
+    val showThumbnails: Boolean,
+    val showPoints: Boolean,
+    val compactPoints: Boolean,
+    val includeTopLevelDomain: Boolean,
+    val showComments: Boolean,
+    val showIndex: Boolean,
+    val leftAlignComments: Boolean,
+    val tint: Boolean,
+    val displayStyle: String,
+    val textSize: Float,
+    val textSizeOffset: Int,
+    val minTextSizeOffset: Int,
+    val maxTextSizeOffset: Int,
+    val hotnessEnabled: Boolean,
+    val hotnessLabel: String,
+    val preferredFont: String,
+    val paletteTintConfigKey: String,
+    val startingPage: String,
+    val additionalFrontpagesSummary: String,
+    val alwaysOpenComments: Boolean,
+    val pagination: Boolean,
+    val hideClicked: Boolean,
+    val grayOutClicked: Boolean,
+    val faviconProvider: String,
+    val faviconIcon: Painter,
+    val showOutline: Boolean = false,
+)
+
+enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
+    Outline(StoryBooleanPreference.OUTLINE),
+    BorderlessLargeImage(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE),
+    Tint(StoryBooleanPreference.TINT_CARD_USING_PREVIEW),
+    Compact(StoryBooleanPreference.COMPACT_VIEW),
+    ShowSummary(StoryBooleanPreference.SHOW_SUMMARY),
+    ShowThumbnails(StoryBooleanPreference.SHOW_THUMBNAILS),
+    ShowPoints(StoryBooleanPreference.SHOW_POINTS),
+    CompactPoints(StoryBooleanPreference.COMPACT_POINTS),
+    IncludeTopLevelDomain(StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN),
+    ShowComments(StoryBooleanPreference.SHOW_COMMENTS_COUNT),
+    ShowIndex(StoryBooleanPreference.SHOW_INDEX),
+    LeftAlignComments(StoryBooleanPreference.LEFT_ALIGN),
+    AlwaysOpenComments(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS),
+    Pagination(StoryBooleanPreference.PAGINATION),
+    HideClicked(StoryBooleanPreference.HIDE_CLICKED),
+    GrayOutClicked(StoryBooleanPreference.GRAY_OUT_CLICKED),
+}
+
+enum class StoriesStringSetting { DisplayStyle }
+enum class StoriesSettingsDialog { Hotness, StartingPage, AdditionalFrontpages, FaviconProvider }
+
+@Composable
+fun StoriesSettingsScreen(
+    state: StoriesSettingsUiState,
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onBooleanChanged: (StoriesBooleanSetting, Boolean) -> Unit,
+    onPreviewImageModeChanged: (StoryPreviewMode) -> Unit,
+    onStringChanged: (StoriesStringSetting, String) -> Unit,
+    onTextSizeOffsetChanged: (Int) -> Unit,
+    onResetLayout: () -> Unit,
+    onDialogRequested: (StoriesSettingsDialog) -> Unit,
+    contentVersion: Int = 0,
+) {
+    SettingsPage(
+        title = stringResource(Res.string.settings_section_stories),
+        showNavigation = showNavigation,
+        onBack = onBack,
+        contentVersion = contentVersion,
+        pinnedContent = {
+            StoryItem(
+                model = state.previewModel,
+                style = state.toPreviewStoryItemStyle(),
+            )
+        },
+    ) {
+        item {
+            SettingsCategory("Layout") {
+                SegmentedSetting(
+                    title = "Preview image",
+                    options = listOf(
+                        StoryPreviewMode.OFF to "Off",
+                        StoryPreviewMode.SMALL to "Small",
+                        StoryPreviewMode.MEDIUM to "Medium",
+                        StoryPreviewMode.LARGE to "Large",
+                    ),
+                    selected = state.previewImageMode,
+                    onSelected = onPreviewImageModeChanged,
+                )
+                SettingsDivider()
+                BooleanRow(
+                    "Borderless image",
+                    Res.drawable.ic_fullscreen,
+                    state.borderlessLargeImage,
+                    StoriesBooleanSetting.BorderlessLargeImage,
+                    onBooleanChanged,
+                    enabled = state.previewImageMode == StoryPreviewMode.MEDIUM ||
+                        state.previewImageMode == StoryPreviewMode.LARGE,
+                )
+                SettingsDivider()
+                SliderSetting(
+                    title = "Text size",
+                    valueLabel = formatOffset(state.textSizeOffset),
+                    value = state.textSizeOffset.toFloat(),
+                    valueRange = state.minTextSizeOffset.toFloat()..
+                        state.maxTextSizeOffset.toFloat(),
+                    steps = state.maxTextSizeOffset - state.minTextSizeOffset - 1,
+                    onValueChange = { onTextSizeOffsetChanged(it.toInt()) },
+                )
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "Display style",
+                    options = listOf(
+                        DisplayStyle.FLAT.storedValue to "Flat",
+                        DisplayStyle.STANDARD.storedValue to "Filled",
+                        DisplayStyle.RAISED.storedValue to "Raised",
+                    ),
+                    selected = state.displayStyle,
+                    disabledOptions = if (state.tint) setOf(DisplayStyle.FLAT.storedValue) else emptySet(),
+                    onSelected = { onStringChanged(StoriesStringSetting.DisplayStyle, it) },
+                )
+                SettingsDivider()
+                BooleanRow(
+                    "Outline",
+                    Res.drawable.ic_select,
+                    state.showOutline,
+                    StoriesBooleanSetting.Outline,
+                    onBooleanChanged,
+                    enabled = state.displayStyle == DisplayStyle.RAISED.storedValue,
+                )
+                SettingsDivider()
+                BooleanRow("Tint", Res.drawable.ic_palette, state.tint, StoriesBooleanSetting.Tint, onBooleanChanged, summary = "Uses preview or favicon")
+                SettingsDivider()
+                BooleanRow("Compact layout", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
+                SettingsDivider()
+                BooleanRow("Summary", Res.drawable.ic_subject, state.showSummary, StoriesBooleanSetting.ShowSummary, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow("Thumbnails", Res.drawable.ic_public, state.showThumbnails, StoriesBooleanSetting.ShowThumbnails, onBooleanChanged, enabled = !state.compact)
+                SettingsDivider()
+                BooleanRow("Points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
+                SettingsDivider()
+                BooleanRow(
+                    "Compact points",
+                    Res.drawable.ic_thumb_up,
+                    state.compactPoints,
+                    StoriesBooleanSetting.CompactPoints,
+                    onBooleanChanged,
+                    enabled = !state.compact &&
+                        state.showPoints &&
+                        state.previewImageMode != StoryPreviewMode.MEDIUM,
+                )
+                SettingsDivider()
+                BooleanRow("Include top level domain", Res.drawable.ic_public, state.includeTopLevelDomain, StoriesBooleanSetting.IncludeTopLevelDomain, onBooleanChanged, enabled = !state.compact)
+                SettingsDivider()
+                BooleanRow("Comment count", Res.drawable.ic_comment, state.showComments, StoriesBooleanSetting.ShowComments, onBooleanChanged, enabled = !state.compact)
+                SettingsDivider()
+                BooleanRow("Show story indices", Res.drawable.ic_format_list_numbered, state.showIndex, StoriesBooleanSetting.ShowIndex, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow(
+                    "Left align comments button",
+                    Res.drawable.ic_pan_tool,
+                    state.leftAlignComments,
+                    StoriesBooleanSetting.LeftAlignComments,
+                    onBooleanChanged,
+                    enabled = state.previewImageMode != StoryPreviewMode.MEDIUM,
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Highlight hot stories",
+                    summary = state.hotnessLabel,
+                    icon = Res.drawable.ic_whatshot,
+                    onClick = { onDialogRequested(StoriesSettingsDialog.Hotness) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Reset",
+                    icon = Res.drawable.ic_refresh,
+                    onClick = onResetLayout,
+                )
+            }
+        }
+        item {
+            SettingsCategory("Behavior") {
+                DialogRow("Starting page", state.startingPage, Res.drawable.ic_bookmark, StoriesSettingsDialog.StartingPage, onDialogRequested)
+                SettingsDivider()
+                DialogRow("Additional frontpages", state.additionalFrontpagesSummary, Res.drawable.ic_library_books, StoriesSettingsDialog.AdditionalFrontpages, onDialogRequested)
+                SettingsDivider()
+                BooleanRow("Always open comments", Res.drawable.ic_keyboard_double_arrow_right, state.alwaysOpenComments, StoriesBooleanSetting.AlwaysOpenComments, onBooleanChanged, summary = "Clicking a story takes you directly to the comments view")
+                SettingsDivider()
+                BooleanRow("Use pagination", Res.drawable.ic_swipe_vertical, state.pagination, StoriesBooleanSetting.Pagination, onBooleanChanged, summary = "Load 30 stories at a time")
+                SettingsDivider()
+                BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideClicked, StoriesBooleanSetting.HideClicked, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.grayOutClicked, StoriesBooleanSetting.GrayOutClicked, onBooleanChanged, enabled = !state.hideClicked)
+                SettingsDivider()
+                SettingRow(
+                    title = "Favicon provider",
+                    summary = state.faviconProvider,
+                    icon = null,
+                    iconPainter = state.faviconIcon,
+                    iconTint = Color.Unspecified,
+                    enabled = !state.compact && state.showThumbnails,
+                    onClick = { onDialogRequested(StoriesSettingsDialog.FaviconProvider) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BooleanRow(
+    title: String,
+    icon: org.jetbrains.compose.resources.DrawableResource,
+    checked: Boolean,
+    setting: StoriesBooleanSetting,
+    onChanged: (StoriesBooleanSetting, Boolean) -> Unit,
+    summary: String? = null,
+    enabled: Boolean = true,
+) = SwitchSettingRow(
+    title = title,
+    summary = summary,
+    icon = icon,
+    checked = checked,
+    enabled = enabled,
+    onCheckedChange = { onChanged(setting, it) },
+)
+
+@Composable
+private fun DialogRow(
+    title: String,
+    summary: String,
+    icon: org.jetbrains.compose.resources.DrawableResource,
+    dialog: StoriesSettingsDialog,
+    onDialogRequested: (StoriesSettingsDialog) -> Unit,
+) = SettingRow(
+    title = title,
+    summary = summary,
+    icon = icon,
+    onClick = { onDialogRequested(dialog) },
+)
+
+private fun formatOffset(offset: Int): String = if (offset >= 0) "+$offset" else "$offset"

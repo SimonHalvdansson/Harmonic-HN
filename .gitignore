@@ -2,7 +2,13 @@
 /local.properties
 
 # IntelliJ/Android Studio
-.idea/
+/.idea/*
+!/.idea/codeStyles/
+/.idea/codeStyles/*
+!/.idea/codeStyles/Project.xml
+!/.idea/inspectionProfiles/
+/.idea/inspectionProfiles/*
+!/.idea/inspectionProfiles/Project_Default.xml
 *.iml
 misc.xml
 deploymentTargetDropDown.xml
@@ -17,3 +23,12 @@ deploymentTargetDropDown.xml
 
 # kotlin
 .kotlin/
+
+# Local diagnostics and benchmark results
+/artifacts/
+/artefacts/
+/.playwright-mcp/
+/benchmark/results/
+/app/release/
+/docs/reports/
+/docs/performance/*.json

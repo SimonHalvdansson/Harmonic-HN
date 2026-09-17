@@ -18,4 +18,9 @@ dependencyResolutionManagement {
 
 include ':app'
 include ':local_ai_runtime'
+include ':resources'
+include ':core'
+include ':ui'
+include ':desktop_app'
+include ':benchmark'
 rootProject.name = "Harmonic Hacker News"

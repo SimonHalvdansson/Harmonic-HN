@@ -1,0 +1,106 @@
+package com.simon.harmonichackernews.presentation
+
+import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
+import com.simon.harmonichackernews.platform.HackerNewsAccount
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
+import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class UserProfileRuntimeTest {
+    @Test
+    fun loadRetryAndAccountComparisonAreOwnedByRuntime() = runTest {
+        var attempts = 0
+        val runtime = runtime(
+            loader = UserProfileLoader {
+                attempts++
+                if (attempts == 1) error("offline") else user("Alice")
+            },
+            account = HackerNewsAccount("alice", "secret"),
+        )
+
+        runtime.load()
+        assertIs<UserProfileLoadState.Error>(runtime.state.value.loadState)
+
+        runtime.retry()
+        val loaded = assertIs<UserProfileLoadState.Loaded>(runtime.state.value.loadState)
+        assertEquals("Alice", loaded.profile.id)
+        assertTrue(runtime.state.value.ownProfile)
+    }
+
+    @Test
+    fun blockOutcomesUpdatePortableState() = runTest {
+        val blocks = FakeBlocks()
+        val runtime = runtime(blocks = blocks)
+
+        val blocked = runtime.toggleBlocked()
+        assertEquals(true, blocked?.blocked)
+        assertEquals(true, blocked?.dismissProfile)
+        assertTrue(runtime.state.value.blocked)
+        assertEquals(blocked, runtime.state.value.blockOutcome)
+
+        val unblocked = runtime.toggleBlocked()
+        assertEquals("Unblocked alice", unblocked?.message)
+        assertFalse(runtime.state.value.blocked)
+    }
+
+    private fun runtime(
+        loader: UserProfileLoader = UserProfileLoader { user(it) },
+        account: HackerNewsAccount? = null,
+        blocks: FakeBlocks = FakeBlocks(),
+    ) = UserProfileRuntime(
+        username = "alice",
+        monthNames = MONTHS,
+        loader = loader,
+        accounts = FakeAccounts(account),
+        blocks = blocks,
+    )
+
+    private fun user(id: String) = HackerNewsUserDto(
+        id = id,
+        created = 1_169_856_000L,
+        karma = 10,
+    )
+
+    private class FakeAccounts(private var account: HackerNewsAccount?) :
+        ObservableHackerNewsAccountRepository {
+        private val mutableState = MutableStateFlow<HackerNewsAccountState>(account.toState())
+        override val accountState: StateFlow<HackerNewsAccountState> = mutableState
+
+        override suspend fun saveAccount(account: HackerNewsAccount): Boolean {
+            this.account = account
+            mutableState.value = account.toState()
+            return true
+        }
+        override suspend fun clearAccount(): Boolean {
+            account = null
+            mutableState.value = HackerNewsAccountState.LoggedOut
+            return true
+        }
+
+        private fun HackerNewsAccount?.toState(): HackerNewsAccountState =
+            this?.let(HackerNewsAccountState::LoggedIn) ?: HackerNewsAccountState.LoggedOut
+    }
+
+    private class FakeBlocks : UserProfileBlockPort {
+        private val blocked = mutableSetOf<String>()
+        override fun isBlocked(username: String): Boolean = username.lowercase() in blocked
+        override fun setBlocked(username: String, blocked: Boolean): Boolean {
+            if (blocked) this.blocked += username.lowercase() else this.blocked -= username.lowercase()
+            return true
+        }
+    }
+
+    private companion object {
+        val MONTHS = listOf(
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        )
+    }
+}

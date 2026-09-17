@@ -1,0 +1,342 @@
+package com.simon.harmonichackernews.network
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+data class StoryPreviewResourceRequest(
+    val storyId: Int,
+    val pageUrl: String,
+    val loadImage: Boolean,
+    val loadSummary: Boolean,
+    val knownImageUrl: String? = null,
+    val imageUrlAlreadyResolved: Boolean = knownImageUrl != null,
+    val knownSummary: LinkSummary? = null,
+)
+
+data class CachedStoryPreviewResource(
+    val imageUrlResolved: Boolean,
+    val imageUrl: String?,
+    val summary: LinkSummary?,
+)
+
+enum class StoryResourceTintKind {
+    PREVIEW_IMAGE,
+    FAVICON,
+}
+
+data class StoryResourceTintState(
+    val sourceUrl: String,
+    val baseColorArgb: Int,
+    val paletteConfigKey: String,
+    val tintColorArgb: Int,
+)
+
+data class StoryPreviewResourceState(
+    val storyId: Int,
+    val pageUrl: String,
+    val loading: Boolean = false,
+    val imageUrlResolved: Boolean = false,
+    val imageUrl: String? = null,
+    val summaryResolved: Boolean = false,
+    val summary: LinkSummary? = null,
+    val contentLoadFailed: Boolean = false,
+    val imageLoading: Boolean = false,
+    val imageLoaded: Boolean = false,
+    val imageLoadFailed: Boolean = false,
+    val previewTint: StoryResourceTintState? = null,
+    val faviconTint: StoryResourceTintState? = null,
+)
+
+/** A resolved absence must not fall back to a stale story/snapshot URL. */
+fun StoryPreviewResourceState?.resolvedImageUrl(fallback: String?): String? =
+    if (this?.imageUrlResolved == true) imageUrl else this?.imageUrl ?: fallback
+
+private fun StoryPreviewResourceState.withReconciledResources(
+    chosenImageUrl: String?,
+    imageResolutionEvidence: Boolean,
+    chosenSummary: LinkSummary?,
+    summaryResolutionEvidence: Boolean,
+    clearContentLoadFailure: Boolean,
+): StoryPreviewResourceState {
+    val imageChanged = chosenImageUrl != imageUrl
+    return copy(
+        imageUrlResolved = imageUrlResolved || imageResolutionEvidence,
+        imageUrl = chosenImageUrl,
+        summaryResolved = summaryResolved || summaryResolutionEvidence,
+        summary = chosenSummary,
+        contentLoadFailed = if (clearContentLoadFailure) false else contentLoadFailed,
+        imageLoading = if (imageChanged) false else imageLoading,
+        imageLoaded = if (imageChanged) false else imageLoaded,
+        imageLoadFailed = if (imageChanged) false else imageLoadFailed,
+        previewTint = if (imageChanged) null else previewTint,
+    )
+}
+
+interface StoryPreviewResourceService {
+    val imageFailures: PreviewImageFailureCache? get() = null
+    fun peekCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource? = null
+    suspend fun readCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource
+    suspend fun load(request: StoryPreviewResourceRequest): PreviewContent
+}
+
+/**
+ * Owns preview-content request, cache hydration, image loading, failures, and resource tints
+ * without mutating the shared Story model.
+ */
+class StoryPreviewResourceRuntime(
+    private val scope: CoroutineScope,
+    private val service: StoryPreviewResourceService,
+) {
+    private val mutableStates = MutableStateFlow<Map<Int, StoryPreviewResourceState>>(emptyMap())
+    val states: StateFlow<Map<Int, StoryPreviewResourceState>> = mutableStates.asStateFlow()
+
+    private val jobs = mutableMapOf<Int, Job>()
+    private val activeRequests = mutableMapOf<Int, StoryPreviewResourceRequest>()
+    private val imageFailureJob = service.imageFailures?.let { failures ->
+        scope.launch {
+            failures.changes.collect {
+                mutableStates.value.values.toList().forEach { update(it.withImageFailure()) }
+            }
+        }
+    }
+
+    fun stateFor(storyId: Int): StoryPreviewResourceState? = mutableStates.value[storyId]
+
+    fun request(request: StoryPreviewResourceRequest): Boolean {
+        if (request.storyId <= 0 || request.pageUrl.isBlank()) return false
+        var effectiveRequest = request
+        var current = stateFor(request.storyId)?.takeIf { it.pageUrl == request.pageUrl }
+        current?.withKnown(request)?.withImageFailure()?.let { reconciled ->
+            if (reconciled != current) update(reconciled)
+            current = reconciled
+        }
+        val activeJob = jobs[request.storyId]
+        if (activeJob?.isActive == true) {
+            val activeRequest = activeRequests[request.storyId]
+            if (current != null && activeRequest?.covers(request) == true) return false
+            effectiveRequest = request.mergedWith(activeRequest)
+            activeJob.cancel()
+            jobs.remove(request.storyId)
+            activeRequests.remove(request.storyId)
+            current = stateFor(request.storyId)?.takeIf {
+                it.pageUrl == effectiveRequest.pageUrl
+            }
+        }
+        if (current != null && current.satisfies(effectiveRequest) && !current.contentLoadFailed) {
+            return false
+        }
+
+        var seeded = current ?: StoryPreviewResourceState(
+            storyId = effectiveRequest.storyId,
+            pageUrl = effectiveRequest.pageUrl,
+            imageUrlResolved = effectiveRequest.imageUrlAlreadyResolved,
+            imageUrl = effectiveRequest.knownImageUrl,
+            summaryResolved = effectiveRequest.knownSummary != null,
+            summary = effectiveRequest.knownSummary,
+        )
+        service.peekCached(effectiveRequest)?.let { seeded = seeded.withCached(it) }
+        seeded = seeded.withImageFailure()
+        update(seeded.copy(loading = true, contentLoadFailed = false))
+        val job = scope.launch {
+            try {
+                val cached = service.readCached(effectiveRequest)
+                var next = (stateFor(effectiveRequest.storyId)
+                    ?.takeIf { it.pageUrl == effectiveRequest.pageUrl }
+                    ?: StoryPreviewResourceState(effectiveRequest.storyId, effectiveRequest.pageUrl))
+                    .withCached(cached).withImageFailure()
+                update(next)
+
+                if (!next.satisfies(effectiveRequest)) {
+                    val loaded = service.load(effectiveRequest)
+                    if (loaded.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
+                        update(next.copy(loading = false, contentLoadFailed = true))
+                        return@launch
+                    }
+                    next = next.withReconciledResources(
+                        chosenImageUrl = if (effectiveRequest.loadImage) loaded.imageUrl
+                            else loaded.imageUrl ?: next.imageUrl,
+                        imageResolutionEvidence = effectiveRequest.loadImage,
+                        chosenSummary = loaded.summary ?: next.summary,
+                        summaryResolutionEvidence = effectiveRequest.loadSummary,
+                        clearContentLoadFailure = true,
+                    )
+                }
+                update(next.copy(loading = false).withImageFailure())
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                val failed = stateFor(effectiveRequest.storyId)
+                    ?.takeIf { it.pageUrl == effectiveRequest.pageUrl }
+                    ?: StoryPreviewResourceState(effectiveRequest.storyId, effectiveRequest.pageUrl)
+                update(
+                    failed.copy(
+                        loading = false,
+                        contentLoadFailed = true,
+                    ),
+                )
+            }
+        }
+        jobs[effectiveRequest.storyId] = job
+        activeRequests[effectiveRequest.storyId] = effectiveRequest
+        job.invokeOnCompletion {
+            if (jobs[effectiveRequest.storyId] === job) {
+                jobs.remove(effectiveRequest.storyId)
+                activeRequests.remove(effectiveRequest.storyId)
+            }
+        }
+        return true
+    }
+
+    fun beginImageLoad(storyId: Int, pageUrl: String, imageUrl: String): Boolean {
+        val current = stateFor(storyId)?.takeIf {
+            it.pageUrl == pageUrl && it.imageUrl == imageUrl
+        } ?: return false
+        if (current.imageLoading || current.imageLoaded || current.imageLoadFailed) return false
+        update(
+            current.copy(
+                imageLoading = true,
+                imageLoadFailed = false,
+            ),
+        )
+        return true
+    }
+
+    fun completeImageLoad(
+        storyId: Int,
+        pageUrl: String,
+        imageUrl: String,
+        success: Boolean,
+    ) {
+        val current = stateFor(storyId)?.takeIf {
+            it.pageUrl == pageUrl && it.imageUrl == imageUrl
+        } ?: return
+        service.imageFailures?.record(imageUrl, success)
+        update(
+            current.copy(
+                imageLoading = false,
+                imageLoaded = success,
+                imageLoadFailed = !success,
+            ),
+        )
+    }
+
+    fun recordTint(
+        storyId: Int,
+        pageUrl: String,
+        kind: StoryResourceTintKind,
+        tint: StoryResourceTintState,
+    ): Boolean {
+        val current = stateFor(storyId)?.takeIf { it.pageUrl == pageUrl }
+            ?: StoryPreviewResourceState(storyId = storyId, pageUrl = pageUrl)
+        if (kind == StoryResourceTintKind.PREVIEW_IMAGE && current.imageUrl != tint.sourceUrl) {
+            return false
+        }
+        update(
+            when (kind) {
+                StoryResourceTintKind.PREVIEW_IMAGE -> current.copy(
+                    previewTint = tint,
+                    imageLoading = false,
+                    imageLoaded = true,
+                    imageLoadFailed = false,
+                )
+                StoryResourceTintKind.FAVICON -> current.copy(faviconTint = tint)
+            },
+        )
+        return true
+    }
+
+    fun remove(storyId: Int) {
+        jobs.remove(storyId)?.cancel()
+        activeRequests.remove(storyId)
+        if (storyId in mutableStates.value) mutableStates.value -= storyId
+    }
+
+    fun dispose() {
+        imageFailureJob?.cancel()
+        val pendingJobs = jobs.values.toList()
+        // Cancellation can run completion handlers immediately and remove entries from these maps.
+        jobs.clear()
+        activeRequests.clear()
+        pendingJobs.forEach { it.cancel() }
+        mutableStates.value = emptyMap()
+    }
+
+    private fun StoryPreviewResourceState.satisfies(
+        request: StoryPreviewResourceRequest,
+    ): Boolean = (!request.loadImage || imageUrlResolved) &&
+        (!request.loadSummary || summaryResolved)
+
+    private fun StoryPreviewResourceState.withCached(
+        cached: CachedStoryPreviewResource,
+    ): StoryPreviewResourceState {
+        val summaryImage = cached.summary?.imageUrl?.takeIf(String::isNotEmpty)
+        return withReconciledResources(
+            chosenImageUrl = if (cached.imageUrlResolved && cached.imageUrl == null) null
+                else summaryImage ?: cached.imageUrl ?: imageUrl,
+            imageResolutionEvidence = cached.imageUrlResolved || summaryImage != null,
+            chosenSummary = cached.summary ?: summary,
+            summaryResolutionEvidence = cached.summary != null,
+            clearContentLoadFailure = true,
+        )
+    }
+
+    private fun StoryPreviewResourceState.withKnown(
+        request: StoryPreviewResourceRequest,
+    ): StoryPreviewResourceState {
+        val summaryImage = request.knownSummary?.imageUrl?.takeIf(String::isNotEmpty)
+        return withReconciledResources(
+            chosenImageUrl = when {
+                imageUrlResolved && imageUrl == null -> null
+                request.imageUrlAlreadyResolved -> request.knownImageUrl
+                else -> request.knownImageUrl ?: summaryImage ?: imageUrl
+            },
+            imageResolutionEvidence = request.imageUrlAlreadyResolved || summaryImage != null,
+            chosenSummary = request.knownSummary ?: summary,
+            summaryResolutionEvidence = request.knownSummary != null,
+            clearContentLoadFailure = false,
+        )
+    }
+
+    private fun update(state: StoryPreviewResourceState) {
+        val currentStates = mutableStates.value
+        if (currentStates[state.storyId] == state) return
+        mutableStates.value = currentStates + (state.storyId to state)
+    }
+
+    private fun StoryPreviewResourceState.withImageFailure(): StoryPreviewResourceState {
+        val failures = service.imageFailures ?: return this
+        val failed = imageUrl?.let(failures::isFailed) == true
+        return if (failed == imageLoadFailed) this else copy(
+            imageLoadFailed = failed,
+            imageLoading = false,
+            imageLoaded = false,
+        )
+    }
+
+    private fun StoryPreviewResourceRequest.covers(
+        other: StoryPreviewResourceRequest,
+    ): Boolean = pageUrl == other.pageUrl &&
+        (!other.loadImage || loadImage) &&
+        (!other.loadSummary || loadSummary) &&
+        (!other.imageUrlAlreadyResolved || imageUrlAlreadyResolved) &&
+        (other.knownImageUrl == null || other.knownImageUrl == knownImageUrl) &&
+        (other.knownSummary == null || other.knownSummary == knownSummary)
+
+    private fun StoryPreviewResourceRequest.mergedWith(
+        other: StoryPreviewResourceRequest?,
+    ): StoryPreviewResourceRequest {
+        if (other == null || pageUrl != other.pageUrl) return this
+        return copy(
+            loadImage = loadImage || other.loadImage,
+            loadSummary = loadSummary || other.loadSummary,
+            knownImageUrl = knownImageUrl ?: other.knownImageUrl,
+            imageUrlAlreadyResolved = imageUrlAlreadyResolved || other.imageUrlAlreadyResolved,
+            knownSummary = knownSummary ?: other.knownSummary,
+        )
+    }
+}

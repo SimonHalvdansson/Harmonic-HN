@@ -1,0 +1,662 @@
+package com.simon.harmonichackernews.ui.common
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sign
+
+/**
+ * Shared container-transform shell for modal previews and action cards.
+ *
+ * The container and its destination content deliberately use separate transforms. A tiny inline
+ * link can therefore expand into a card without squeezing the completed card's image, text, and
+ * buttons into the source bounds. Destination content keeps its measured size, travels with the
+ * container, and is progressively revealed by the moving shape. Image-only previews can opt back
+ * into content scaling because the image itself is the shared element.
+ */
+@Composable
+fun TransformOverlay(
+    contentKey: Any,
+    sourceBounds: Rect?,
+    dismissRequestVersion: Int,
+    predictiveBackProgress: Float,
+    predictiveBackEdge: Int,
+    maxWidth: Dp,
+    horizontalPadding: Dp,
+    verticalPadding: Dp,
+    targetCornerRadius: Dp,
+    sourceCornerRadius: Dp = 0.dp,
+    containerColor: Color,
+    sourceContainerColor: Color = Color.Transparent,
+    sourceBorderColor: Color = Color.Transparent,
+    sourceBorderWidth: Dp = 0.dp,
+    sourceAnchorSize: Dp? = null,
+    shadowElevation: Dp = 8.dp,
+    scaleContentWithContainer: Boolean = false,
+    preserveContentAspectRatio: Boolean = false,
+    keepContentOpaqueWithSource: Boolean = false,
+    consumeAllGestures: Boolean = true,
+    verticalSwipeDismissEnabled: Boolean = false,
+    sourceContentLayer: GraphicsLayer? = null,
+    sharedHazeSourceZIndex: Float? = null,
+    onSourceReadyToCover: (() -> Unit)? = null,
+    onDismissRequest: () -> Unit,
+    onDismissAnimationFinished: () -> Unit,
+    onScrimAlphaChanged: (Float) -> Unit = {},
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val sharedHazeState = if (sharedHazeSourceZIndex != null) {
+        currentSharedHazeState()
+    } else {
+        null
+    }
+    val transformProgress = remember(contentKey) { Animatable(0f) }
+    var verticalSwipeOffset by remember(contentKey) { mutableFloatStateOf(0f) }
+    var verticalSwipeSettleTarget by remember(contentKey) { mutableStateOf<Float?>(null) }
+    var rootBounds by remember(contentKey) { mutableStateOf(Rect.Zero) }
+    var targetBounds by remember(contentKey) { mutableStateOf<Rect?>(null) }
+    var dismissalFinished by remember(contentKey) { mutableStateOf(false) }
+    var sourceHandoffComplete by remember(contentKey) { mutableStateOf(false) }
+    var sourceSnapshot by remember(contentKey, sourceContentLayer) {
+        mutableStateOf<ImageBitmap?>(null)
+    }
+    var sourceSnapshotResolved by remember(contentKey, sourceContentLayer) {
+        mutableStateOf(sourceContentLayer == null)
+    }
+    val sourceSnapshotRequired = sourceSnapshot != null
+    val sourceSnapshotReady = sourceSnapshotResolved
+    val targetReady = targetBounds != null && rootBounds.width > 0f && rootBounds.height > 0f &&
+        sourceSnapshotReady
+    val currentDismissRequestVersion by rememberUpdatedState(dismissRequestVersion)
+    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+
+    LaunchedEffect(verticalSwipeSettleTarget) {
+        val target = verticalSwipeSettleTarget ?: return@LaunchedEffect
+        Animatable(verticalSwipeOffset).animateTo(
+            targetValue = target,
+            animationSpec = tween(220, easing = FastOutSlowInEasing),
+        ) {
+            verticalSwipeOffset = value
+        }
+        verticalSwipeSettleTarget = null
+    }
+
+    LaunchedEffect(contentKey, sourceContentLayer) {
+        val layer = sourceContentLayer ?: return@LaunchedEffect
+        withFrameNanos { }
+        if (layer.isSnapshotCaptureSafe()) {
+            sourceSnapshot = try {
+                layer.toImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
+        }
+        sourceSnapshotResolved = true
+    }
+
+    // A single effect owns both directions. Changing the dismiss request cancels an in-flight
+    // opening animation and reverses from its current value without a blank handoff frame.
+    LaunchedEffect(contentKey, targetReady, dismissRequestVersion) {
+        if (!targetReady) return@LaunchedEffect
+        if (!sourceHandoffComplete && sourceSnapshot != null && onSourceReadyToCover != null) {
+            sourceHandoffComplete = true
+            // Give the captured source a complete draw frame before suppressing the live row.
+            // Some asynchronously painted children (notably favicons) otherwise leave a single
+            // empty frame between the live source and its moving snapshot.
+            withFrameNanos { }
+            withFrameNanos { }
+            onSourceReadyToCover()
+            withFrameNanos { }
+        }
+        if (dismissRequestVersion > 0) {
+            transformProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(280, easing = FastOutSlowInEasing),
+            )
+            if (!dismissalFinished) {
+                dismissalFinished = true
+                onDismissAnimationFinished()
+            }
+        } else {
+            transformProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(280, easing = FastOutSlowInEasing),
+            )
+        }
+    }
+
+    val progress = transformProgress.value.coerceIn(0f, 1f)
+    // Keep tracking the finger at full size. After release, the regular container transform
+    // unwinds this displacement while returning the preview to its captured source bounds.
+    val verticalSwipeVisualOffset = verticalSwipeOffset * progress
+    val verticalSwipeProgress = verticalSwipeDismissProgress(
+        offsetY = verticalSwipeVisualOffset,
+        viewportHeight = rootBounds.height,
+    )
+    val verticalSwipeScale = 1f - 0.06f * verticalSwipeProgress
+    // A committed predictive gesture is still at full strength when the close morph starts, then
+    // must unwind to identity with that morph so its source bounds are restored exactly.
+    val predictiveVisualProgress = predictiveBackVisualProgress(
+        predictiveBackProgress = predictiveBackProgress,
+        transformProgress = progress,
+    )
+    val backDirection = if (predictiveBackEdge == 1) -1f else 1f
+    val backTranslationX =
+        with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
+    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
+    val backScale = 1f - 0.1f * predictiveVisualProgress
+    val rootOffset = rootBounds.topLeft
+    val localTarget = targetBounds?.translate(-rootOffset.x, -rootOffset.y)
+    val localViewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
+    val localSource = sourceBounds
+        ?.translate(-rootOffset.x, -rootOffset.y)
+        ?.intersectionOrNull(localViewport)
+    val anchorSizePx = sourceAnchorSize?.let { with(density) { it.toPx() } }
+    val transitionSource = when {
+        localSource == null -> localTarget?.scaledAboutCenter(0.96f)
+        anchorSizePx != null -> Rect(
+            left = localSource.center.x - anchorSizePx / 2f,
+            top = localSource.center.y - anchorSizePx / 2f,
+            right = localSource.center.x + anchorSizePx / 2f,
+            bottom = localSource.center.y + anchorSizePx / 2f,
+        )
+        else -> localSource
+    }
+    val container = if (transitionSource != null && localTarget != null) {
+        lerpRect(transitionSource, localTarget, progress)
+    } else {
+        localTarget
+    }
+    val visualContainer = container
+        ?.transformedForPredictiveBack(
+            scale = backScale,
+            pivotFractionX = if (backDirection > 0f) 0f else 1f,
+            translation = Offset(backTranslationX, backTranslationY),
+        )
+        ?.scaledAboutCenter(verticalSwipeScale)
+        ?.translate(0f, verticalSwipeVisualOffset)
+    val sourceRadiusPx = with(density) { sourceCornerRadius.toPx() }
+    val targetRadiusPx = with(density) { targetCornerRadius.toPx() }
+    val containerRadiusPx = sourceRadiusPx + (targetRadiusPx - sourceRadiusPx) * progress
+    val visualRadiusPx = containerRadiusPx * backScale * verticalSwipeScale
+    val movingShape = RoundedCornerShape(with(density) { visualRadiusPx.toDp() })
+    val inlineSource = sourceAnchorSize != null
+    val containerRevealProgress = if (inlineSource) {
+        ((progress - 0.16f) / 0.84f).coerceIn(0f, 1f)
+    } else {
+        progress
+    }
+    val movingColor = lerp(sourceContainerColor, containerColor, containerRevealProgress)
+    val movingBorderColor = sourceBorderColor.copy(
+        alpha = sourceBorderColor.alpha * (1f - progress),
+    )
+    val movingBorderWidth = sourceBorderWidth * (1f - progress)
+    val inlineContainerAlpha = if (inlineSource) {
+        ((progress - 0.18f) / 0.42f).coerceIn(0f, 1f)
+    } else {
+        1f
+    }
+    val movingAlpha = when {
+        sourceBounds == null -> progress
+        inlineSource -> inlineContainerAlpha
+        else -> 1f
+    }
+    val shadowProgress = if (inlineSource) {
+        ((progress - 0.32f) / 0.68f).coerceIn(0f, 1f)
+    } else {
+        progress
+    }
+    val movingElevation =
+        (shadowElevation.value * shadowProgress * backScale * verticalSwipeScale).dp
+    val scrimAlpha = 0.32f * progress *
+        (1f - 0.55f * predictiveVisualProgress) *
+        (1f - verticalSwipeProgress)
+    SideEffect { onScrimAlphaChanged(scrimAlpha) }
+    val gestureBlocker = if (consumeAllGestures) Modifier.consumeAllPointerGestures() else Modifier
+    val contentMorphScaleX = if (
+        scaleContentWithContainer && localTarget != null && localTarget.width > 0f &&
+        container != null
+    ) {
+        container.width / localTarget.width
+    } else {
+        1f
+    }
+    val contentMorphScaleY = if (
+        scaleContentWithContainer && localTarget != null && localTarget.height > 0f &&
+        container != null
+    ) {
+        container.height / localTarget.height
+    } else {
+        1f
+    }
+    val aspectRatioCorrection = aspectPreservingCropCorrection(
+        scaleX = contentMorphScaleX,
+        scaleY = contentMorphScaleY,
+    )
+    val verticalSwipeGesture = if (verticalSwipeDismissEnabled) {
+        Modifier.pointerInput(contentKey) {
+            awaitEachGesture {
+                val down = awaitFirstDown(
+                    requireUnconsumed = false,
+                    pass = PointerEventPass.Initial,
+                )
+                if (
+                    transformProgress.value < 0.99f ||
+                    currentDismissRequestVersion != 0 ||
+                    verticalSwipeSettleTarget != null
+                ) {
+                    return@awaitEachGesture
+                }
+
+                val velocityTracker = VelocityTracker()
+                velocityTracker.addPosition(down.uptimeMillis, down.position)
+                var previousPosition = down.position
+                var accumulatedDrag = Offset.Zero
+                var draggingVertically = false
+
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val delta = change.position - previousPosition
+                    previousPosition = change.position
+                    velocityTracker.addPosition(change.uptimeMillis, change.position)
+
+                    if (!change.pressed) {
+                        if (draggingVertically) change.consume()
+                        break
+                    }
+
+                    if (!draggingVertically) {
+                        accumulatedDrag += delta
+                        if (
+                            abs(accumulatedDrag.x) > viewConfiguration.touchSlop &&
+                            abs(accumulatedDrag.x) > abs(accumulatedDrag.y)
+                        ) {
+                            return@awaitEachGesture
+                        }
+                        if (
+                            abs(accumulatedDrag.y) > viewConfiguration.touchSlop &&
+                            abs(accumulatedDrag.y) > abs(accumulatedDrag.x)
+                        ) {
+                            draggingVertically = true
+                            verticalSwipeOffset = accumulatedDrag.y -
+                                viewConfiguration.touchSlop * accumulatedDrag.y.sign
+                            change.consume()
+                        }
+                    } else {
+                        verticalSwipeOffset += delta.y
+                        change.consume()
+                    }
+                }
+
+                if (!draggingVertically) return@awaitEachGesture
+
+                val velocityY = velocityTracker.calculateVelocity().y
+                val dismissDistance = min(
+                    rootBounds.height * 0.18f,
+                    120.dp.toPx(),
+                )
+                val dismissVelocity = 1000.dp.toPx()
+                if (
+                    shouldDismissVerticalSwipe(
+                        offsetY = verticalSwipeOffset,
+                        velocityY = velocityY,
+                        dismissDistancePx = dismissDistance,
+                        velocityThresholdPx = dismissVelocity,
+                    )
+                ) {
+                    currentOnDismissRequest()
+                } else {
+                    verticalSwipeSettleTarget = 0f
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { rootBounds = it.boundsInWindow() }
+            .then(verticalSwipeGesture),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Color.Black.copy(alpha = scrimAlpha),
+                )
+                .then(gestureBlocker)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismissRequest,
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .sharedHazeSource(
+                    hazeState = sharedHazeState,
+                    zIndex = sharedHazeSourceZIndex ?: 0f,
+                ),
+        ) {
+        // Until capture completes the live source is still visible. Painting an opaque
+        // container over it here would hide its text and thumbnail for the capture frame.
+        if (targetReady && visualContainer != null && visualContainer.width > 0f && visualContainer.height > 0f) {
+            Box(
+                Modifier
+                    .absoluteOffset {
+                        IntOffset(
+                            visualContainer.left.roundToInt(),
+                            visualContainer.top.roundToInt(),
+                        )
+                    }
+                    .requiredSize(
+                        with(density) { visualContainer.width.coerceAtLeast(1f).toDp() },
+                        with(density) { visualContainer.height.coerceAtLeast(1f).toDp() },
+                    )
+                    .graphicsLayer(alpha = movingAlpha)
+                    .shadow(movingElevation, movingShape, clip = false)
+                    .clip(movingShape)
+                    .background(movingColor)
+                    .then(
+                        if (movingBorderWidth > 0.dp) {
+                            Modifier.border(movingBorderWidth, movingBorderColor, movingShape)
+                        } else {
+                            Modifier
+                        },
+                    ),
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    val bounds = visualContainer
+                    if (bounds == null || bounds.width <= 0f || bounds.height <= 0f) {
+                        return@drawWithContent
+                    }
+                    clipPath(roundedRectPath(bounds, visualRadiusPx)) {
+                        this@drawWithContent.drawContent()
+                    }
+                },
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = maxWidth)
+                        .fillMaxWidth()
+                        .onGloballyPositioned { targetBounds = it.boundsInWindow() }
+                        .graphicsLayer {
+                            val target = localTarget
+                            val current = container
+                            scaleX = contentMorphScaleX * backScale * verticalSwipeScale
+                            scaleY = contentMorphScaleY * backScale * verticalSwipeScale
+                            translationX = if (target != null && current != null) {
+                                val sharedTranslation = if (scaleContentWithContainer) {
+                                    current.center.x - target.center.x
+                                } else {
+                                    current.left - target.left
+                                }
+                                sharedTranslation + backTranslationX
+                            } else {
+                                backTranslationX
+                            }
+                            translationY = if (target != null && current != null) {
+                                val sharedTranslation = if (scaleContentWithContainer) {
+                                    current.center.y - target.center.y
+                                } else {
+                                    current.top - target.top
+                                }
+                                sharedTranslation + backTranslationY + verticalSwipeVisualOffset
+                            } else {
+                                backTranslationY + verticalSwipeVisualOffset
+                            }
+                            alpha = when {
+                                !targetReady -> 0f
+                                sourceBounds == null -> progress
+                                preserveContentAspectRatio -> 1f
+                                sourceSnapshotRequired ->
+                                    ((progress - 0.12f) / 0.58f).coerceIn(0f, 1f)
+                                inlineSource ->
+                                    ((progress - 0.28f) / 0.54f).coerceIn(0f, 1f)
+                                keepContentOpaqueWithSource -> 1f
+                                else -> ((progress - 0.06f) / 0.64f).coerceIn(0f, 1f)
+                            }
+                            transformOrigin = if (predictiveVisualProgress > 0f) {
+                                TransformOrigin(
+                                    pivotFractionX = if (backDirection > 0f) 0f else 1f,
+                                    pivotFractionY = 0.5f,
+                                )
+                            } else {
+                                TransformOrigin.Center
+                            }
+                        }
+                        .then(gestureBlocker)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
+                ) {
+                    if (preserveContentAspectRatio) {
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = aspectRatioCorrection.scaleX
+                                scaleY = aspectRatioCorrection.scaleY
+                            },
+                        ) {
+                            content()
+                        }
+                    } else {
+                        content()
+                    }
+                }
+            }
+        }
+
+        sourceSnapshot?.let { snapshot ->
+            val snapshotAlpha = ((0.62f - progress) / 0.62f).coerceIn(0f, 1f)
+            if (snapshotAlpha > 0f && visualContainer != null) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    clipPath(roundedRectPath(visualContainer, visualRadiusPx)) {
+                        if (preserveContentAspectRatio) {
+                            val snapshotScale = max(
+                                visualContainer.width / snapshot.width,
+                                visualContainer.height / snapshot.height,
+                            )
+                            val destinationWidth = snapshot.width * snapshotScale
+                            val destinationHeight = snapshot.height * snapshotScale
+                            drawImage(
+                                image = snapshot,
+                                dstOffset = IntOffset(
+                                    x = (visualContainer.center.x - destinationWidth / 2f)
+                                        .roundToInt(),
+                                    y = (visualContainer.center.y - destinationHeight / 2f)
+                                        .roundToInt(),
+                                ),
+                                dstSize = IntSize(
+                                    width = destinationWidth.roundToInt().coerceAtLeast(1),
+                                    height = destinationHeight.roundToInt().coerceAtLeast(1),
+                                ),
+                                alpha = snapshotAlpha,
+                            )
+                        } else {
+                            drawImage(
+                                image = snapshot,
+                                topLeft = visualContainer.topLeft,
+                                alpha = snapshotAlpha,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+}
+
+/** Records a source composable without changing its live rendering. */
+@Composable
+internal fun Modifier.captureSharedTransformSourceContent(
+    onLayerChanged: (GraphicsLayer) -> Unit,
+): Modifier {
+    val layer = rememberGraphicsLayer()
+    SideEffect { onLayerChanged(layer) }
+    return drawWithContent snapshot@{
+        layer.record { this@snapshot.drawContent() }
+        drawLayer(layer)
+    }
+}
+
+internal fun Rect.transformedForPredictiveBack(
+    scale: Float,
+    pivotFractionX: Float,
+    translation: Offset,
+    pivotBounds: Rect = this,
+): Rect {
+    val pivot = Offset(
+        x = pivotBounds.left + pivotBounds.width * pivotFractionX,
+        y = pivotBounds.center.y,
+    )
+    return Rect(
+        left = pivot.x + (left - pivot.x) * scale + translation.x,
+        top = pivot.y + (top - pivot.y) * scale + translation.y,
+        right = pivot.x + (right - pivot.x) * scale + translation.x,
+        bottom = pivot.y + (bottom - pivot.y) * scale + translation.y,
+    )
+}
+
+internal fun predictiveBackVisualProgress(
+    predictiveBackProgress: Float,
+    transformProgress: Float = 1f,
+): Float {
+    val normalized = predictiveBackProgress.coerceIn(0f, 1f)
+    val eased = 1f - (1f - normalized) * (1f - normalized)
+    return eased * transformProgress.coerceIn(0f, 1f)
+}
+
+/**
+ * Target bounds must describe the fully displayed dialog. Bounds read below a predictive-back
+ * graphics layer already contain its scale and translation; accepting them during the gesture
+ * makes a dismissal overlay apply that transform for a second time.
+ */
+internal fun shouldUpdateRestingTargetGeometry(
+    predictiveBackProgress: Float,
+    dismissRequestVersion: Int,
+): Boolean = predictiveBackProgress <= 0f && dismissRequestVersion == 0
+
+internal data class ContentAspectRatioCorrection(
+    val scaleX: Float,
+    val scaleY: Float,
+)
+
+/** Counteracts a non-uniform container transform so its content is center-cropped, not stretched. */
+internal fun aspectPreservingCropCorrection(
+    scaleX: Float,
+    scaleY: Float,
+): ContentAspectRatioCorrection {
+    if (scaleX <= 0f || scaleY <= 0f) return ContentAspectRatioCorrection(1f, 1f)
+    val uniformScale = max(scaleX, scaleY)
+    return ContentAspectRatioCorrection(
+        scaleX = uniformScale / scaleX,
+        scaleY = uniformScale / scaleY,
+    )
+}
+
+private fun Rect.scaledAboutCenter(scale: Float): Rect = Rect(
+    left = center.x - width * scale / 2f,
+    top = center.y - height * scale / 2f,
+    right = center.x + width * scale / 2f,
+    bottom = center.y + height * scale / 2f,
+)
+
+internal fun verticalSwipeDismissProgress(offsetY: Float, viewportHeight: Float): Float {
+    if (viewportHeight <= 0f) return 0f
+    return (abs(offsetY) / (viewportHeight * 0.35f)).coerceIn(0f, 1f)
+}
+
+internal fun shouldDismissVerticalSwipe(
+    offsetY: Float,
+    velocityY: Float,
+    dismissDistancePx: Float,
+    velocityThresholdPx: Float,
+): Boolean = abs(offsetY) >= dismissDistancePx || abs(velocityY) >= velocityThresholdPx
+
+private fun Rect.intersectionOrNull(other: Rect): Rect? {
+    val intersection = Rect(
+        left = max(left, other.left),
+        top = max(top, other.top),
+        right = min(right, other.right),
+        bottom = min(bottom, other.bottom),
+    )
+    return intersection.takeIf { it.width > 0f && it.height > 0f }
+}

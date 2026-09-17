@@ -1,69 +1,10 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-
-import groovy.transform.CompileStatic
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-
-@CacheableTask
-@CompileStatic
-abstract class GenerateAdblocklistTask extends DefaultTask {
-    @InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
-    abstract RegularFileProperty getSourceFile()
-
-    @OutputDirectory
-    abstract DirectoryProperty getOutputDirectory()
-
-    @TaskAction
-    void generate() {
-        long[] hashes = new long[131_920]
-        int count = 0
-        BufferedReader reader = Files.newBufferedReader(
-                sourceFile.get().asFile.toPath(), StandardCharsets.UTF_8)
-        try {
-            String host
-            while ((host = reader.readLine()) != null) {
-                if (count == hashes.length) {
-                    hashes = Arrays.copyOf(hashes, hashes.length * 2)
-                }
-                long hash = 0xcbf29ce484222325L
-                for (int i = 0; i < host.length(); i++) {
-                    hash ^= (long) host.charAt(i)
-                    hash *= 0x100000001b3L
-                }
-                hashes[count++] = hash
-            }
-        } finally {
-            reader.close()
-        }
-
-        Arrays.sort(hashes, 0, count)
-        for (int i = 1; i < count; i++) {
-            if (hashes[i - 1] == hashes[i]) {
-                throw new GradleException(
-                        "Ad host hash collision detected at sorted index ${i}")
-            }
-        }
-
-        File outputFile = outputDirectory.file("raw/adblockserverlist.bin").get().asFile
-        Files.createDirectories(outputFile.parentFile.toPath())
-        DataOutputStream output = new DataOutputStream(new BufferedOutputStream(
-                Files.newOutputStream(outputFile.toPath())))
-        try {
-            output.writeInt(0x48414431) // HAD1
-            output.writeInt(count)
-            for (int i = 0; i < count; i++) {
-                output.writeLong(hashes[i])
-            }
-        } finally {
-            output.close()
-        }
-    }
-}
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.baseline.profile)
 }
 
 android {
@@ -76,9 +17,10 @@ android {
         applicationId = "com.simon.harmonichackernews"
         minSdk = 26
         targetSdk = 37
-        versionCode = 80
-        versionName = "3.1.2"
+        versionCode = providers.gradleProperty("harmonic.versionCode").get().toInteger()
+        versionName = providers.gradleProperty("harmonic.versionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "false"
 
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
@@ -87,8 +29,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     buildTypes {
@@ -101,25 +43,53 @@ android {
             )
         }
 
+        debug {
+            applicationIdSuffix = ".compose"
+            resValue "string", "app_name", "Harmonic Compose"
+            buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "true"
+        }
+
         debugFast {
             initWith(release)
+
+            applicationIdSuffix = ".compose"
+            resValue "string", "app_name", "Harmonic Compose"
 
             signingConfig = signingConfigs.debug
 
             debuggable = false
             minifyEnabled = false
             shrinkResources = false
+            buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "true"
 
             matchingFallbacks.add("release")
         }
 
         debugLLM {
             initWith(debug)
+            buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "true"
             matchingFallbacks.add("debug")
         }
 
         debugLLMFast {
             initWith(debugFast)
+            buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "true"
+            matchingFallbacks.add("release")
+        }
+
+        benchmark {
+            initWith(release)
+
+            applicationIdSuffix = ".compose.benchmark"
+            resValue "string", "app_name", "Harmonic Benchmark"
+
+            signingConfig = signingConfigs.debug
+            debuggable = false
+            // Opt in for startup comparisons that also measure release DEX layout optimization.
+            minifyEnabled = providers.gradleProperty("harmonic.benchmark.minify")
+                    .map { it.toBoolean() }.getOrElse(false)
+            shrinkResources = minifyEnabled
+            proguardFiles "benchmark-rules.pro"
             matchingFallbacks.add("release")
         }
 
@@ -136,101 +106,132 @@ android {
 
     sourceSets {
         debug {
-            java.srcDirs += "src/foss/java"
-            res.srcDirs += "src/foss/res"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         debugFast {
-            java.srcDirs += "src/foss/java"
-            res.srcDirs += "src/foss/res"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         debugLLM {
-            java.srcDirs += "src/play/java"
-            res.srcDirs += "src/play/res"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         debugLLMFast {
-            java.srcDirs += "src/play/java"
-            res.srcDirs += "src/play/res"
+            kotlin.srcDirs += "src/play/kotlin"
+        }
+        benchmark {
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         fossRelease {
-            java.srcDirs += "src/foss/java"
-            res.srcDirs += "src/foss/res"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         playRelease {
-            java.srcDirs += "src/play/java"
-            res.srcDirs += "src/play/res"
+            kotlin.srcDirs += "src/play/kotlin"
         }
     }
 
     buildFeatures {
         buildConfig = true
+        compose = true
         resValues = true
-        viewBinding = true
     }
 
-}
-
-def generateAdblocklist = tasks.register("generateAdblocklist", GenerateAdblocklistTask) {
-    sourceFile.set(layout.projectDirectory.file("adblock/adblockserverlist.txt"))
-    outputDirectory.set(layout.buildDirectory.dir("generated/res/adblocklist"))
 }
 
 androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
         variantBuilder.enable = false
     }
-
-    onVariants(selector().all()) { variant ->
-        variant.sources.res.addGeneratedSourceDirectory(generateAdblocklist) {
-            it.outputDirectory
-        }
-    }
 }
 
 kotlin {
     compilerOptions {
-        languageVersion = KotlinVersion.KOTLIN_2_0
-        // Optional: Set jvmTarget
-        // jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        languageVersion = KotlinVersion.KOTLIN_2_4
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
 dependencies {
+    implementation(project(":resources"))
+    implementation(project(":core"))
+    implementation(project(":ui"))
+
     implementation(libs.bundles.androidx.lifecycle)
 
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
-    implementation(libs.androidx.cardview)
     implementation(libs.androidx.core)
-    implementation(libs.androidx.fragment)
-    implementation(libs.androidx.palette)
     implementation(libs.androidx.preference)
+    // Read-only compatibility bridge for credentials written before the direct-Keystore vault.
     implementation(libs.androidx.security)
-    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity)
-    implementation(libs.bundles.androidx.window)
-    implementation(libs.androidx.startup)
-    implementation(libs.androidx.viewpager2)
 
     implementation(libs.materialui)
 
-    implementation(libs.volley)
-    implementation(libs.bundles.okhttp)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
     implementation(libs.coil)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
-    implementation(libs.jsoup)
     debugLLMImplementation(libs.mlkit.genai.summarization)
+    debugLLMImplementation(libs.mlkit.genai.prompt)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)
+    debugLLMFastImplementation(libs.mlkit.genai.prompt)
     debugLLMFastImplementation(libs.play.feature.delivery)
     playReleaseImplementation(libs.mlkit.genai.summarization)
+    playReleaseImplementation(libs.mlkit.genai.prompt)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
+    implementation(libs.androidx.profileinstaller)
 
-    implementation(libs.markwon.core)
-    implementation(libs.markwon.ext.latex)
-    implementation(libs.markwon.inline.parser)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.material3.adaptive)
+    implementation(libs.androidx.material3.adaptive.layout)
+    implementation(libs.androidx.material3.adaptive.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
+    automaticGenerationDuringBuild = false
+    variants {
+        benchmark {
+            from(project(":benchmark"))
+        }
+    }
+}
+
+tasks.register("installBenchmarkBaselineProfile", Copy) {
+    dependsOn(":benchmark:collectNonMinifiedBenchmarkBaselineProfile")
+    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
+        include("*-baseline-prof-*.txt")
+        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
+        rename { "baseline-prof.txt" }
+    }
+    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
+        include("*-startup-prof-*.txt")
+        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
+        rename { "startup-prof.txt" }
+        into("baselineProfiles")
+    }
+    into(layout.projectDirectory.dir("src/main"))
 }
 
 afterEvaluate {
@@ -244,9 +245,20 @@ afterEvaluate {
             "com.google.mlkit"
     ] as Set<String>
     def forbiddenFossDependencies = fossReleaseRuntimeClasspath.map { configuration ->
-        configuration.resolvedConfiguration.resolvedArtifacts
-                .collect { artifact ->
-                    "${artifact.moduleVersion.id.group}:${artifact.name}:${artifact.moduleVersion.id.version}"
+        // Inspect coordinates without choosing among KMP Android secondary artifacts.
+        def resolutionResult = configuration.incoming.resolutionResult
+        def unresolvedDependency = resolutionResult.allDependencies.find {
+            it instanceof UnresolvedDependencyResult
+        }
+        if (unresolvedDependency != null) {
+            throw new GradleException(
+                    "Could not resolve FOSS dependency ${unresolvedDependency.requested.displayName}",
+                    unresolvedDependency.failure)
+        }
+        resolutionResult.allComponents
+                .findAll { component -> component.id instanceof ModuleComponentIdentifier }
+                .collect { component ->
+                    "${component.id.group}:${component.id.module}:${component.id.version}"
                 }
                 .findAll { dependency ->
                     forbiddenFossGroupPrefixes.any { prefix ->
