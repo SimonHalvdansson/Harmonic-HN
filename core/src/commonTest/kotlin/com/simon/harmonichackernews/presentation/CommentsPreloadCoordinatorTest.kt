@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.network.CommentThreadSource

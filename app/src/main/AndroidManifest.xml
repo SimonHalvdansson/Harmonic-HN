@@ -55,7 +55,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|uiMode"
             android:launchMode="singleTask"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
@@ -102,7 +102,7 @@
 
         <activity
             android:name=".widget.WidgetConfigActivity"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|uiMode"
             android:exported="true" />
 
         <receiver

@@ -142,7 +142,7 @@ fun AppearanceSettingsScreen(
             }
         }
         item {
-            SettingsCategory("Preset") {
+            SettingsCategory("Other") {
                 SettingRow(
                     title = "Preset",
                     icon = Res.drawable.ic_design_services,

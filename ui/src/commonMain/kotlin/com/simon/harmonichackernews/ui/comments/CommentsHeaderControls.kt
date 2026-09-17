@@ -2,6 +2,8 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -614,8 +616,6 @@ private fun MoreMenu(
         // Parent and submenu labels used to change the popup width mid-animation, shifting both
         // popup edges diagonally. A stable width keeps the anchor and transform origin fixed.
         modifier = Modifier.width(248.dp),
-        // Suppress the clipped opening shadow only for this comments overflow menu.
-        shadowElevation = 0.dp,
     ) {
         AnimatedContent(
             targetState = page,

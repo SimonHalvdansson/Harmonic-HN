@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import com.simon.harmonichackernews.ui.common.ScrollableTextDecorations
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
@@ -75,6 +77,7 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentMenuAction
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -101,7 +104,15 @@ fun CommentActionOverlay(
     } else {
         HarmonicTheme.colors.settingsPageBackground
     }
-    val source = state.sourceGeometry?.takeIf {
+    // Geometry belongs to the opening gesture, but its colors must follow the live row's theme.
+    val source = state.sourceGeometry?.copy(
+        containerColor = commentSurfaceColor(
+            cardColor,
+            HarmonicTheme.colors.storyNormal,
+            highlighted = controller.highlightedCommentId == comment.id,
+        ),
+        containerBorderColor = HarmonicTheme.colors.commentDivider,
+    )?.takeIf {
         it.contentLayer?.let { layer ->
             !layer.isReleased && layer.size.width > 0 && layer.size.height > 0
         } == true
@@ -127,10 +138,12 @@ fun CommentActionOverlay(
         predictiveBackProgress = controller.commentActionPredictiveBackProgress,
         dismissRequestVersion = dismissRequest,
     )
-    val snapshotRefreshKey = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
+    val dismissCaptureVersion = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
+    val snapshotRefreshKey = HarmonicTheme.colors to dismissCaptureVersion
     val sourceCapture = rememberGraphicsLayerSnapshot(
         source?.contentLayer,
-        0,
+        // Re-record the returning row as well as the dialog: its text/depth colors may have changed.
+        snapshotRefreshKey,
         downsampleOversizedLayer = true,
     )
     val targetUserCapture = rememberGraphicsLayerSnapshot(targetUserLayer, snapshotRefreshKey)
@@ -139,13 +152,13 @@ fun CommentActionOverlay(
         targetSupplementaryLayer,
         snapshotRefreshKey,
     )
-    val snapshotsUnavailable = sourceCapture.isUnavailable(0) ||
+    val snapshotsUnavailable = sourceCapture.isUnavailable(snapshotRefreshKey) ||
         targetUserCapture.isUnavailable(snapshotRefreshKey) ||
         targetBodyCapture.isUnavailable(snapshotRefreshKey) ||
         targetSupplementaryCapture.isUnavailable(snapshotRefreshKey)
     val transitionSource = source?.takeUnless { snapshotsUnavailable }
     val snapshotsReady = transitionSource != null &&
-        sourceCapture.isCurrent(0) &&
+        sourceCapture.isCurrent(snapshotRefreshKey) &&
         targetContainer != null &&
         targetUserBounds != null &&
         targetBodyBounds != null &&

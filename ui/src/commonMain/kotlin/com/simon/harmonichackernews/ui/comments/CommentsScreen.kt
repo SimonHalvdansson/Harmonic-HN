@@ -53,11 +53,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -413,6 +415,8 @@ fun CommentsScreen(
                 val suppressed = item.comment.id in controller.suppressedCommentIds
                 val keepActionSourceVisible =
                     controller.shouldKeepCommentActionSourceVisible(item.comment.id)
+                val suppressRow = suppressed && !keepActionSourceVisible
+                val hiddenRowLayer = if (suppressRow) rememberGraphicsLayer() else null
                 val suppressedReferenceUrl =
                     controller.suppressedReferenceUrlForComment(item.comment.id)
                 CommentItem(
@@ -432,9 +436,15 @@ fun CommentsScreen(
                     modifier = Modifier
                         .testTag("comment-row")
                         .padding(start = contentInsetStart, end = contentInsetEnd)
-                        .graphicsLayer(
-                            alpha = if (suppressed && !keepActionSourceVisible) 0f else 1f,
-                        )
+                        .drawWithContent {
+                            if (hiddenRowLayer != null) {
+                                // Keep nested transition captures up to date while the row is
+                                // hidden. An alpha-zero ancestor can skip their draw entirely.
+                                hiddenRowLayer.record { this@drawWithContent.drawContent() }
+                            } else {
+                                drawContent()
+                            }
+                        }
                         // A subtree entering/leaving the list needs sibling placement motion.
                         // Otherwise follow animated header/body bounds directly without a second
                         // spring making rows lag behind the header when cached threads reopen.

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.animateBounds

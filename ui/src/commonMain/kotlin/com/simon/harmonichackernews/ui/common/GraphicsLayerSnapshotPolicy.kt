@@ -65,17 +65,17 @@ internal fun boundedGraphicsLayerSnapshotSize(size: IntSize): IntSize? {
 
 internal data class GraphicsLayerSnapshot(
     val image: ImageBitmap? = null,
-    val refreshKey: Int? = null,
-    val resolvedKey: Int? = null,
+    val refreshKey: Any? = null,
+    val resolvedKey: Any? = null,
 ) {
-    fun isCurrent(key: Int): Boolean = image != null && refreshKey == key
-    fun isUnavailable(key: Int): Boolean = resolvedKey == key && !isCurrent(key)
+    fun isCurrent(key: Any): Boolean = image != null && refreshKey == key
+    fun isUnavailable(key: Any): Boolean = resolvedKey == key && !isCurrent(key)
 }
 
 @Composable
 internal fun rememberGraphicsLayerSnapshot(
     layer: GraphicsLayer?,
-    refreshKey: Int,
+    refreshKey: Any,
     downsampleOversizedLayer: Boolean = false,
 ): GraphicsLayerSnapshot {
     val boundedLayer = if (downsampleOversizedLayer) rememberGraphicsLayer() else null
@@ -86,7 +86,9 @@ internal fun rememberGraphicsLayerSnapshot(
     var snapshot by remember(layer) { mutableStateOf(GraphicsLayerSnapshot()) }
     LaunchedEffect(layer, refreshKey, downsampleOversizedLayer) {
         val currentLayer = layer ?: return@LaunchedEffect
-        // The layer is published at composition time and recorded during draw.
+        // Frame callbacks resume before drawing. Cross a complete frame so a newly composed
+        // theme is recorded before readback, rather than capturing the previous display list.
+        withFrameNanos { }
         withFrameNanos { }
         val captureSize = if (downsampleOversizedLayer) {
             boundedGraphicsLayerSnapshotSize(currentLayer.size)

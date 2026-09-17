@@ -45,10 +45,13 @@ data class HarmonicColors(
 private val LocalHarmonicColors = staticCompositionLocalOf<HarmonicColors> {
     error("HarmonicTheme is not present")
 }
+private val LocalHarmonicDarkTheme = staticCompositionLocalOf { false }
 
 object HarmonicTheme {
     val colors: HarmonicColors
         @Composable get() = LocalHarmonicColors.current
+    val isDark: Boolean
+        @Composable get() = LocalHarmonicDarkTheme.current
 }
 
 /** Platform-neutral entry point for a palette resolved by an Android, iOS, or desktop shell. */
@@ -59,7 +62,10 @@ fun HarmonicTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalHarmonicColors provides colors) {
+    CompositionLocalProvider(
+        LocalHarmonicColors provides colors,
+        LocalHarmonicDarkTheme provides darkTheme,
+    ) {
         MaterialTheme(colorScheme = colorScheme) {
             CompositionLocalProvider(
                 LocalRippleConfiguration provides RippleConfiguration(

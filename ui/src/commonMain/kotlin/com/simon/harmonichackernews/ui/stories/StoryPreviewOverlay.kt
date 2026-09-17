@@ -65,7 +65,7 @@ private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
 private const val DismissFallbackDelayMillis = 460L
 private const val ScrollWheelGestureIdleMillis = 100L
-private const val PreviewPagerSnapPositionalThreshold = 0.18f
+private const val PreviewPagerSnapPositionalThreshold = 0.10f
 
 internal enum class StoryPreviewOpeningDecision {
     Animate,
@@ -134,12 +134,13 @@ fun StoryPreviewOverlay(
     )
     val pagerFlingBehavior = PagerDefaults.flingBehavior(
         state = pagerState,
-        // Keep the pager's own velocity/settling strategy as the single source of truth. A quarter
-        // page is enough for a deliberate drag, while shorter releases return immediately unless
+        // Keep the pager's own velocity/settling strategy as the single source of truth. A short
+        // deliberate drag advances the page, while shorter releases return immediately unless
         // the built-in fling velocity commits them.
         snapPositionalThreshold = PreviewPagerSnapPositionalThreshold,
     )
     val currentStory = state.stories[pagerState.currentPage]
+    val currentCardColor = rememberStoryPreviewCardColor(controller, currentStory)
     val pagerSettlingScope = rememberCoroutineScope()
     var scrollWheelGestureReady by remember(state) { mutableStateOf(true) }
     var scrollWheelResetJob by remember(state) { mutableStateOf<Job?>(null) }
@@ -637,6 +638,9 @@ fun StoryPreviewOverlay(
                 contentAlignment = Alignment.Center,
             ) {
                 val currentPage = page == pagerState.currentPage
+                val cardColor = if (currentPage) currentCardColor else {
+                    rememberStoryPreviewCardColor(controller, state.stories[page])
+                }
                 val cardModifier = Modifier
                     .widthIn(
                         max = if (tablet) {
@@ -685,7 +689,7 @@ fun StoryPreviewOverlay(
                         cardContent(
                             state.stories[page],
                             page,
-                            Color(state.cardBackgrounds[page].value),
+                            cardColor,
                             cardModifier,
                         )
                     }
@@ -693,7 +697,7 @@ fun StoryPreviewOverlay(
                     cardContent(
                         state.stories[page],
                         page,
-                        Color(state.cardBackgrounds[page].value),
+                        cardColor,
                         cardModifier,
                     )
                 }
@@ -701,7 +705,7 @@ fun StoryPreviewOverlay(
         }
         StoryPreviewTransitionOverlay(
             transition = sharedTransition,
-            color = Color(state.cardBackgrounds[pagerState.currentPage].value),
+            color = currentCardColor,
         )
     }
 }

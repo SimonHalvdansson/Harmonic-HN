@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews.widget
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.widget.WidgetConfigScreen
@@ -24,7 +27,9 @@ object WidgetConfigComposeHost {
             id = R.id.widget_config_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                HarmonicTheme {
+                val appearance = activity.harmonicAppComposition.appearance
+                val selection by appearance.selections.collectAsState(initial = appearance.selection())
+                HarmonicTheme(selection = selection) {
                     WidgetConfigScreen(initialConfiguration, listener::onConfirm)
                 }
             }

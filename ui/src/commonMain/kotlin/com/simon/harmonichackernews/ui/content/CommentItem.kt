@@ -129,6 +129,13 @@ data class CommentItemStyle(
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 }
 
+internal fun commentSurfaceColor(baseBackground: Color, textColor: Color, highlighted: Boolean): Color {
+    val overlayAlpha = if (highlighted) {
+        if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
+    } else 0f
+    return textColor.copy(alpha = overlayAlpha).compositeOver(baseBackground)
+}
+
 private class CommentItemGeometry {
     var coordinates: LayoutCoordinates? = null
     var contentLayer: GraphicsLayer? = null
@@ -674,10 +681,7 @@ private fun CommentSurface(
         style.transparentNonCardBackground -> Color.Transparent
         else -> colors.settingsPageBackground
     }
-    val overlayAlpha = if (highlighted) {
-        if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
-    } else 0f
-    val targetBackground = colors.storyNormal.copy(alpha = overlayAlpha).compositeOver(baseBackground)
+    val targetBackground = commentSurfaceColor(baseBackground, colors.storyNormal, highlighted)
     val background by animateColorAsState(
         targetValue = targetBackground,
         animationSpec = if (style.animateChanges) contentTween() else snap(),

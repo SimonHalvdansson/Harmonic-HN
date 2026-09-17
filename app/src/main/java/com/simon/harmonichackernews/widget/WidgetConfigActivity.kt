@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import com.simon.harmonichackernews.harmonicAppComposition
@@ -32,6 +33,12 @@ class WidgetConfigActivity : ComponentActivity() {
         }
 
         setupComposeUi()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        setupTheme(this)
+        harmonicAppComposition.appearance.refreshSelection()
     }
 
     private fun setupComposeUi() {
