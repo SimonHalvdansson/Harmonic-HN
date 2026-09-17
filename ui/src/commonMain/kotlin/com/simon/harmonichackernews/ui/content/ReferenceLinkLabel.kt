@@ -16,7 +16,8 @@ import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
 internal fun shouldResolveReferenceLinkTitle(url: String): Boolean =
     LinkSummaryParser.hackerNewsItemId(url) != null ||
         LinkSummaryParser.isYoutubeVideoUrl(url) ||
-        LinkPreviewUrls.isWikipediaUrl(url)
+        LinkPreviewUrls.isWikipediaUrl(url) ||
+        LinkPreviewUrls.isArxivUrl(url)
 
 /** Resolves supported reference links to useful source titles. */
 @Composable

@@ -26,6 +26,68 @@ import kotlinx.io.IOException
 
 class LinkSummaryRepositoryTest {
     @Test
+    fun arxivReferencesResolveCitationTitlesWithoutDownloadingPdfs() = runTest {
+        val cases = listOf(
+            "https://arxiv.org/abs/1706.03762" to "1706.03762",
+            "https://arxiv.org/pdf/1706.03762v7.pdf#page=2" to "1706.03762v7",
+            "https://arxiv.org/html/1706.03762v7?source=hn#S1" to "1706.03762v7",
+            "http://arxiv.org/pdf/hep-th/9901001v2.pdf" to "hep-th/9901001v2",
+            "https://arxiv.org/abs/math.GT/0309136" to "math.GT/0309136",
+        )
+        for ((url, id) in cases) {
+            var requests = 0
+            val client = HttpClient(MockEngine { request ->
+                requests++
+                assertEquals("https://arxiv.org/abs/$id", request.url.toString())
+                respond(
+                    """<html><head>
+                        <title>[$id] Title with unwanted identifier</title>
+                        <meta name="citation_arxiv_id" content="${id.substringBefore('v')}">
+                        <meta name="citation_title" content="  Attention &amp; Learning
+                          Across Domains  ">
+                        <meta name="citation_author" content="Author One">
+                        <meta name="citation_author" content="Author Two">
+                        <meta name="citation_date" content="2017/06/12">
+                        <meta name="citation_abstract" content="Paper summary.">
+                    </head></html>""",
+                    headers = headersOf(HttpHeaders.ContentType, "text/html"),
+                )
+            })
+            try {
+                val summary = KtorLinkSummaryRepository(client).load(url, "Original label")
+                assertEquals("Attention & Learning Across Domains", summary.title)
+                assertEquals("arXiv", summary.siteName)
+                assertEquals("Author One, Author Two", summary.author)
+                assertEquals("2017-06-12", summary.publishedTime)
+                assertEquals("Paper summary.", summary.description)
+                assertEquals(url, summary.finalUrl)
+                assertEquals(1, requests)
+            } finally {
+                client.close()
+            }
+        }
+    }
+
+    @Test
+    fun arxivErrorPagesAndMissingTitlesDoNotReplaceReferenceLabels() = runTest {
+        for (html in listOf(
+            "<title>Service unavailable</title>",
+            """<meta name="citation_arxiv_id" content="1706.03762">""",
+            """<meta name="citation_arxiv_id" content="1706.00001">
+                <meta name="citation_title" content="Another paper">""",
+        )) {
+            val client = HttpClient(MockEngine { respond(html) })
+            try {
+                assertFailsWith<LinkPreviewException> {
+                    KtorLinkSummaryRepository(client).load("https://arxiv.org/abs/1706.03762")
+                }
+            } finally {
+                client.close()
+            }
+        }
+    }
+
+    @Test
     fun loadingAndParsingUseTheConfiguredBackgroundDispatcher() = runTest {
         val dispatcher = RecordingDispatcher(Dispatchers.Default)
         val client = HttpClient(MockEngine {

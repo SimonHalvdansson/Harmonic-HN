@@ -11,16 +11,17 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal object ArxivLinkPreview {
-    fun isArxivUrl(url: String?): Boolean = url != null && arxivUrlRegex.matches(url)
+    fun isArxivUrl(url: String?): Boolean = arxivId(url) != null
 
-    fun arxivId(url: String?): String? = url
-        ?.takeIf(::isArxivUrl)
-        ?.substringAfterLast('/')
-        ?.removeSuffix(".pdf")
+    fun arxivId(url: String?): String? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.scheme != "http" && parsed.scheme != "https") return null
+        if (!parsed.host.equals("arxiv.org", ignoreCase = true)) return null
+        return arxivPathRegex.matchEntire(parsed.encodedPath)?.groupValues?.get(1)
+    }
 
-    private val arxivUrlRegex = Regex(
-        "^https?://arxiv\\.org/(abs|pdf)/((\\d{4}\\.\\d{4,5}(v\\d+)?)|" +
-            "([a-z\\-]+/\\d{2}\\d{4}))(\\.pdf)?$",
+    private val arxivPathRegex = Regex(
+        "/(?:abs|pdf|html)/((?:\\d{4}\\.\\d{4,5}|[a-zA-Z.-]+/\\d{7})(?:v\\d+)?)(?:\\.pdf)?",
     )
 
     fun parseArxiv(response: String, arxivId: String): ArxivInfo? {

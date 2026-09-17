@@ -96,6 +96,16 @@ class KtorLinkSummaryRepository(
                 ) ?: throw LinkPreviewException("Hacker News did not return this item")
             }
 
+            LinkPreviewUrls.arxivId(normalizedUrl)?.let { arxivId ->
+                // PDF and HTML references share the small abstract page's citation metadata.
+                val response = fetchText("https://arxiv.org/abs/$arxivId", "text/html")
+                return@withContext LinkSummaryParser.extractArxiv(
+                    response.body,
+                    arxivId,
+                    normalizedUrl,
+                ) ?: throw LinkPreviewException("arXiv did not return this paper's title")
+            }
+
             if (LinkPreviewUrls.isWikipediaUrl(normalizedUrl)) {
                 val wikipedia = linkPreviews.getWikipediaInfo(normalizedUrl)
                 val description = LinkPreviewParsers.firstWikipediaParagraph(wikipedia.summary)
@@ -215,6 +225,25 @@ object LinkSummaryParser {
         RegexOption.IGNORE_CASE,
     )
     private val whitespacePattern = Regex("\\s+")
+
+    internal fun extractArxiv(html: String, arxivId: String, pageUrl: String): LinkSummary? {
+        val document = Ksoup.parse(html)
+        fun citation(name: String) = clean(
+            document.selectFirst("meta[name=citation_$name]")?.attr("content"),
+        )
+        if (citation("arxiv_id").substringBefore('v') != arxivId.substringBefore('v')) return null
+        val title = citation("title").takeIf(String::isNotBlank) ?: return null
+        return LinkSummary(
+            title = title,
+            siteName = "arXiv",
+            author = document.select("meta[name=citation_author]")
+                .map { clean(it.attr("content")) }.filter(String::isNotBlank).joinToString(", "),
+            publishedTime = citation("date").replace('/', '-'),
+            contentType = "text/html",
+            description = truncate(citation("abstract"), MAX_DESCRIPTION_CHARS),
+            finalUrl = pageUrl,
+        )
+    }
 
     fun buildYoutubeOEmbedUrl(pageUrl: String?): String? {
         if (!isYoutubeVideoUrl(pageUrl)) return null

@@ -14,6 +14,21 @@ class ReferenceLinkLabelTest {
     }
 
     @Test
+    fun resolvesArxivPaperReferencesButNotOtherArxivPages() {
+        listOf(
+            "https://arxiv.org/abs/1706.03762",
+            "https://arxiv.org/pdf/1706.03762v7.pdf#page=2",
+            "https://arxiv.org/html/1706.03762v7?source=hn#S1",
+            "http://arxiv.org/abs/hep-th/9901001v2",
+        ).forEach { assertTrue(shouldResolveReferenceLinkTitle(it), it) }
+        listOf(
+            "https://arxiv.org/list/cs.AI/recent",
+            "https://arxiv.org/abs/not-a-paper",
+            "https://arxiv.org.example.com/abs/1706.03762",
+        ).forEach { assertFalse(shouldResolveReferenceLinkTitle(it), it) }
+    }
+
+    @Test
     fun malformedSearchTemplateUsesTheFallbackLabelWithoutThrowing() {
         // The query from the story-opening crash log contains an unescaped search-template token.
         val query = "You%20are%20Google%20Search%20from%202004.%20Given%20a%20search%20request," +
