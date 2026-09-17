@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
-import com.simon.harmonichackernews.utils.ArxivResolver
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 
@@ -43,14 +42,14 @@ data class StoryPresentationSnapshot(
     val summary: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
     val pollOptions: List<PollOptionSnapshot> = emptyList(),
-    override val repoInfo: RepoInfoSnapshot? = null,
-    override val gitLabInfo: GitLabInfoSnapshot? = null,
-    override val huggingFaceInfo: HuggingFaceModelInfoSnapshot? = null,
-    override val openRouterInfo: OpenRouterModelInfoSnapshot? = null,
-    override val stackExchangeInfo: StackExchangeInfoSnapshot? = null,
-    override val arxivInfo: ArxivInfoSnapshot? = null,
-    override val wikiInfo: WikipediaInfoSnapshot? = null,
-    override val nitterInfo: NitterInfoSnapshot? = null,
+    override val repoInfo: RepoInfo? = null,
+    override val gitLabInfo: GitLabInfo? = null,
+    override val huggingFaceInfo: HuggingFaceModelInfo? = null,
+    override val openRouterInfo: OpenRouterModelInfo? = null,
+    override val stackExchangeInfo: StackExchangeInfo? = null,
+    override val arxivInfo: ArxivInfo? = null,
+    override val wikiInfo: WikipediaInfo? = null,
+    override val nitterInfo: NitterInfo? = null,
     override val linkPreviewInfo: LinkPreviewInfo? = null,
     val linkPreviewLoading: Boolean = false,
 ) : LinkPreviewState
@@ -62,188 +61,6 @@ data class PollOptionSnapshot(
     val text: String?,
     val points: Int,
     val id: Int,
-)
-
-@Serializable
-data class RepoInfoSnapshot(
-    val name: String?,
-    val owner: String?,
-    val avatarUrl: String? = null,
-    val about: String?,
-    val website: String?,
-    val license: String?,
-    val language: String?,
-    val stars: Int,
-    val watching: Int,
-    val forks: Int,
-) {
-    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
-    fun formatWatching(): String = "${LinkPreviewFormatUtils.kFormat(watching)} watching"
-    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
-    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
-}
-
-@Serializable
-data class GitLabInfoSnapshot(
-    val name: String?,
-    val namespace: String?,
-    val description: String?,
-    val website: String?,
-    val language: String?,
-    val visibility: String?,
-    val stars: Int,
-    val forks: Int,
-) {
-    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
-    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
-    fun formatVisibility(): String? = visibility?.replaceFirstChar { it.uppercase() }
-    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
-}
-
-@Serializable
-data class HuggingFaceModelInfoSnapshot(
-    val author: String?,
-    val name: String?,
-    val website: String?,
-    val logoUrl: String?,
-    val pipelineTag: String?,
-    val libraryName: String?,
-    val quantization: String?,
-    val licenseName: String?,
-    val lastModified: String?,
-    val likes: Long,
-    val downloads: Long,
-    val parameterCount: Long,
-) {
-    private fun model() = HuggingFaceModelInfo().also {
-        it.author = author
-        it.name = name
-        it.website = website
-        it.logoUrl = logoUrl
-        it.pipelineTag = pipelineTag
-        it.libraryName = libraryName
-        it.quantization = quantization
-        it.licenseName = licenseName
-        it.lastModified = lastModified
-        it.likes = likes
-        it.downloads = downloads
-        it.parameterCount = parameterCount
-    }
-
-    fun formatCapability(): String = model().formatCapability()
-    fun formatLikes(): String = model().formatLikes()
-    fun formatDownloads(): String = model().formatDownloads()
-    fun formatParameters(): String? = model().formatParameters()
-    fun formatLicense(): String? = model().formatLicense()
-    fun formatUpdated(): String? = model().formatUpdated()
-    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
-}
-
-@Serializable
-data class OpenRouterModelInfoSnapshot(
-    val provider: String?,
-    val name: String?,
-    val website: String?,
-    val providerIconUrl: String?,
-    val description: String?,
-    val promptPricePerToken: String?,
-    val completionPricePerToken: String?,
-    val contextLength: Long,
-    val maxCompletionTokens: Long,
-    val inputModalities: List<String>,
-    val outputModalities: List<String>,
-    val knowledgeCutoff: String?,
-) {
-    private fun model() = OpenRouterModelInfo().also {
-        it.provider = provider
-        it.name = name
-        it.website = website
-        it.providerIconUrl = providerIconUrl
-        it.description = description
-        it.promptPricePerToken = promptPricePerToken
-        it.completionPricePerToken = completionPricePerToken
-        it.contextLength = contextLength
-        it.maxCompletionTokens = maxCompletionTokens
-        it.inputModalities = inputModalities
-        it.outputModalities = outputModalities
-        it.knowledgeCutoff = knowledgeCutoff
-    }
-
-    fun formatPromptPrice(): String? = model().formatPromptPrice()
-    fun formatCompletionPrice(): String? = model().formatCompletionPrice()
-    fun formatContext(): String? = model().formatContext()
-    fun formatMaxOutput(): String? = model().formatMaxOutput()
-    fun formatModalities(): String? = model().formatModalities()
-    fun formatKnowledgeCutoff(): String? = model().formatKnowledgeCutoff()
-}
-
-@Serializable
-data class StackExchangeInfoSnapshot(
-    val title: String?,
-    val author: String?,
-    val questionText: String?,
-    val tags: List<String?>,
-    val site: String?,
-    val score: Int,
-    val answerCount: Int,
-    val viewCount: Int,
-    val isAnswered: Boolean,
-    val hasAcceptedAnswer: Boolean,
-) {
-    fun formatScore(): String = LinkPreviewFormatUtils.formatCount(score, "point", "points")
-    fun formatAnswerCount(): String =
-        LinkPreviewFormatUtils.formatCount(answerCount, "answer", "answers")
-    fun formatViewCount(): String = LinkPreviewFormatUtils.formatCount(viewCount, "view", "views")
-    fun formatAnswerState(): String = when {
-        hasAcceptedAnswer -> "Accepted answer"
-        isAnswered -> "Answered"
-        else -> "Unanswered"
-    }
-    fun formatTags(): String? = tags.takeIf(List<String?>::isNotEmpty)?.joinToString(", ")
-    fun formatBy(): String? = questionText ?: author?.let { "$it on $site" } ?: site
-    fun formatAuthor(): String? = author ?: site
-}
-
-@Serializable
-data class ArxivInfoSnapshot(
-    val arxivAbstract: String?,
-    val authors: List<String?>,
-    val primaryCategory: String?,
-    val arxivID: String?,
-    val secondaryCategories: List<String?>,
-    val publishedDate: String?,
-    val htmlUrl: String? = null,
-) {
-    fun concatNames(): String = authors.joinToString(", ")
-    fun formatDate(): String = publishedDate.orEmpty().take(10)
-    fun formatSubjects(): String = buildString {
-        append(ArxivResolver.resolveFull(primaryCategory))
-        secondaryCategories.forEach { append("; "); append(ArxivResolver.resolveFull(it)) }
-    }
-    val pDFURL: String get() = "https://arxiv.org/pdf/$arxivID.pdf"
-}
-
-@Serializable data class WikipediaInfoSnapshot(
-    val summary: String?,
-    val title: String? = null,
-)
-
-@Serializable
-data class NitterInfoSnapshot(
-    val text: String?,
-    val userName: String?,
-    val userTag: String?,
-    val date: String?,
-    val replyCount: String?,
-    val reposts: String?,
-    val likes: String?,
-    val imgSrc: String?,
-    val hasVideo: Boolean,
-    val beforeUserName: String?,
-    val beforeUserTag: String?,
-    val beforeText: String?,
-    val beforeDate: String?,
-    val beforeImgSrc: String?,
 )
 
 @Serializable
@@ -312,108 +129,6 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
     parentId = parentId,
 )
 
-private fun RepoInfo.toSnapshot(): RepoInfoSnapshot = RepoInfoSnapshot(
-    name = name,
-    owner = owner,
-    avatarUrl = avatarUrl,
-    about = about,
-    website = website,
-    license = license,
-    language = language,
-    stars = stars,
-    watching = watching,
-    forks = forks,
-)
-
-private fun GitLabInfo.toSnapshot(): GitLabInfoSnapshot = GitLabInfoSnapshot(
-    name = name,
-    namespace = namespace,
-    description = description,
-    website = website,
-    language = language,
-    visibility = visibility,
-    stars = stars,
-    forks = forks,
-)
-
-private fun HuggingFaceModelInfo.toSnapshot(): HuggingFaceModelInfoSnapshot =
-    HuggingFaceModelInfoSnapshot(
-        author = author,
-        name = name,
-        website = website,
-        logoUrl = logoUrl,
-        pipelineTag = pipelineTag,
-        libraryName = libraryName,
-        quantization = quantization,
-        licenseName = licenseName,
-        lastModified = lastModified,
-        likes = likes,
-        downloads = downloads,
-        parameterCount = parameterCount,
-    )
-
-private fun OpenRouterModelInfo.toSnapshot(): OpenRouterModelInfoSnapshot =
-    OpenRouterModelInfoSnapshot(
-        provider = provider,
-        name = name,
-        website = website,
-        providerIconUrl = providerIconUrl,
-        description = description,
-        promptPricePerToken = promptPricePerToken,
-        completionPricePerToken = completionPricePerToken,
-        contextLength = contextLength,
-        maxCompletionTokens = maxCompletionTokens,
-        inputModalities = inputModalities,
-        outputModalities = outputModalities,
-        knowledgeCutoff = knowledgeCutoff,
-    )
-
-private fun StackExchangeInfo.toSnapshot(): StackExchangeInfoSnapshot =
-    StackExchangeInfoSnapshot(
-        title = title,
-        author = author,
-        questionText = questionText,
-        tags = tags?.toList().orEmpty(),
-        site = site,
-        score = score,
-        answerCount = answerCount,
-        viewCount = viewCount,
-        isAnswered = isAnswered,
-        hasAcceptedAnswer = hasAcceptedAnswer,
-    )
-
-private fun ArxivInfo.toSnapshot(): ArxivInfoSnapshot = ArxivInfoSnapshot(
-    arxivAbstract = arxivAbstract,
-    authors = authors.toList(),
-    primaryCategory = primaryCategory,
-    arxivID = arxivID,
-    secondaryCategories = secondaryCategories.toList(),
-    publishedDate = publishedDate,
-    htmlUrl = htmlUrl,
-)
-
-private fun WikipediaInfo.toSnapshot(): WikipediaInfoSnapshot = WikipediaInfoSnapshot(
-    summary = summary,
-    title = title,
-)
-
-private fun NitterInfo.toSnapshot(): NitterInfoSnapshot = NitterInfoSnapshot(
-    text = text,
-    userName = userName,
-    userTag = userTag,
-    date = date,
-    replyCount = replyCount,
-    reposts = reposts,
-    likes = likes,
-    imgSrc = imgSrc,
-    hasVideo = hasVideo,
-    beforeUserName = beforeUserName,
-    beforeUserTag = beforeUserTag,
-    beforeText = beforeText,
-    beforeDate = beforeDate,
-    beforeImgSrc = beforeImgSrc,
-)
-
 fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationSnapshot(
     loaded = loaded,
     clicked = clicked,
@@ -461,14 +176,14 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     pollOptions = pollOptionArrayList.orEmpty().map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)
     },
-    repoInfo = repoInfo?.toSnapshot(),
-    gitLabInfo = gitLabInfo?.toSnapshot(),
-    huggingFaceInfo = huggingFaceInfo?.toSnapshot(),
-    openRouterInfo = openRouterInfo?.toSnapshot(),
-    stackExchangeInfo = stackExchangeInfo?.toSnapshot(),
-    arxivInfo = arxivInfo?.toSnapshot(),
-    wikiInfo = wikiInfo?.toSnapshot(),
-    nitterInfo = nitterInfo?.toSnapshot(),
+    repoInfo = repoInfo,
+    gitLabInfo = gitLabInfo,
+    huggingFaceInfo = huggingFaceInfo,
+    openRouterInfo = openRouterInfo,
+    stackExchangeInfo = stackExchangeInfo,
+    arxivInfo = arxivInfo,
+    wikiInfo = wikiInfo,
+    nitterInfo = nitterInfo,
     linkPreviewInfo = linkPreviewInfo,
     linkPreviewLoading = linkPreviewLoading,
 )

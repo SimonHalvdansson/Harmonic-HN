@@ -64,6 +64,19 @@ class HuggingFaceLinkPreviewTest {
     }
 
     @Test
+    fun fallsBackToStandardLicenseWhenCustomNameIsMissing() {
+        val info = LinkPreviewParsers.parseHuggingFace(
+            """{"id":"example/model","cardData":{"license":"mit"}}""",
+        )
+
+        assertEquals("mit", info.licenseName)
+        assertEquals("Mit license", info.formatLicense())
+        assertNull(info.pipelineTag)
+        assertNull(info.libraryName)
+        assertNull(info.lastModified)
+    }
+
+    @Test
     fun fallsBackToAnotherRepositoryImageWhenNoLogoExists() {
         val info = LinkPreviewParsers.parseHuggingFace(
             """

@@ -11,26 +11,6 @@ import kotlin.test.assertTrue
 
 class ScreenOrchestratorsTest {
     @Test
-    fun storySearchOptionsMapToTypedPresenterActions() {
-        assertEquals(
-            StoriesAction.SelectSearchSort(2),
-            StoriesUiOrchestrator.searchOption(StorySearchOption.SORT, 2),
-        )
-        assertEquals(
-            StoriesAction.SelectSearchDateRange(1),
-            StoriesUiOrchestrator.searchOption(StorySearchOption.DATE, 1),
-        )
-        assertEquals(
-            StoriesAction.SelectSearchMinimumPoints(3),
-            StoriesUiOrchestrator.searchOption(StorySearchOption.POINTS, 3),
-        )
-        assertEquals(
-            StoriesAction.SelectSearchMinimumComments(4),
-            StoriesUiOrchestrator.searchOption(StorySearchOption.COMMENTS, 4),
-        )
-    }
-
-    @Test
     fun storyMenusBecomePlatformEffects() {
         assertEquals(
             StoriesPlatformEffect.OpenSettings,

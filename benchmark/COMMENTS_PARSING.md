@@ -2,8 +2,6 @@
 
 ## Prepared comment cache
 
-Physical Pixel measurements and tradeoffs: [PREPARED_CACHE_RESULTS.md](PREPARED_CACHE_RESULTS.md).
-
 `PreparedCommentsBenchmark` compares the retained raw-JSON parser with the prepared cache on
 the same device and in the same APK. `rawReadMedium/Large`, `jsonReadMedium/Large`, and
 `protobufReadMedium/Large` include production filesystem reads, decoding, filtering, sorting,
@@ -27,7 +25,7 @@ adb -s PIXEL_SERIAL shell cmd package compile -m speed -f com.simon.harmonichack
 adb -s PIXEL_SERIAL shell am instrument -w -r -e class com.simon.harmonichackernews.benchmark.PreparedCommentsBenchmark com.simon.harmonichackernews.benchmark/androidx.benchmark.junit4.AndroidBenchmarkRunner
 ```
 
-Repeat the suite, saving `com.simon.harmonichackernews.benchmark-benchmarkData.json` after each
+Repeat the suite, saving `com.simon.harmonichackernews.benchmark-benchmarkData.json` outside the repository after each
 run. Compare pooled timing/allocation medians and inspect individual runs for drift. AndroidX's
 separate method-tracing phase is not a timed sample. Never suppress `DEBUGGABLE` or
 `NOT-AOT-COMPILED`. On physical devices, record and temporarily enable staying awake while
@@ -104,7 +102,7 @@ android install --apks=app/build/outputs/apk/benchmark/app-benchmark.apk --devic
 android install --apks=benchmark/build/outputs/apk/benchmarkBenchmark/benchmark-benchmarkBenchmark.apk --device=emulator-5554
 adb -s emulator-5554 shell cmd package compile -m speed -f com.simon.harmonichackernews.benchmark
 adb -s emulator-5554 shell am instrument -w -r -e class com.simon.harmonichackernews.benchmark.CommentsParsingBenchmark -e androidx.benchmark.suppressErrors EMULATOR -e androidx.benchmark.output.enable true com.simon.harmonichackernews.benchmark/androidx.benchmark.junit4.AndroidBenchmarkRunner
-adb -s emulator-5554 pull /sdcard/Android/media/com.simon.harmonichackernews.benchmark/com.simon.harmonichackernews.benchmark-benchmarkData.json
+adb -s emulator-5554 pull /sdcard/Android/media/com.simon.harmonichackernews.benchmark/com.simon.harmonichackernews.benchmark-benchmarkData.json "$env:TEMP/comments-benchmark.json"
 ```
 
 Reapply `speed` compilation after each APK installation. The benchmark build config

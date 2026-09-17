@@ -16,14 +16,19 @@ parser.add_argument('--candidate-classpath', type=Path, required=True)
 parser.add_argument('--java-home', type=Path, default=Path('/Applications/Android Studio.app/Contents/jbr/Contents/Home'))
 parser.add_argument('--forks', type=int, default=4, help='Processes per implementation')
 parser.add_argument('--cases', help='Optional comma-separated case names')
-parser.add_argument('--harness', type=Path, default=Path(__file__).with_name('JsonAccessBenchmark.java'),
-                    help='Standalone Java harness using the same JSON sample format')
+parser.add_argument('--harness', type=Path, default=Path(__file__).with_name('JsonAccessBenchmark.kt'),
+                    help='Standalone Kotlin object with a @JvmStatic main and JSON sample output')
+parser.add_argument('--kotlin-compiler-classpath', type=Path,
+                    help='Compiler classpath exported by the init script; defaults to the candidate directory')
 parser.add_argument('--baseline-ref', help='Git revision of the baseline jar')
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 classpaths = {name: path.read_text().strip() for name, path in (
     ('baseline', args.baseline_classpath), ('candidate', args.candidate_classpath))}
 java = str(args.java_home / 'bin/java')
+compiler_classpath_file = args.kotlin_compiler_classpath or args.candidate_classpath.with_name(
+    'json-access-benchmark-compiler.classpath')
+compiler_classpath = compiler_classpath_file.read_text().strip()
 result = {
     'platform': platform.platform(),
     'java': subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT, text=True).strip(),
@@ -41,8 +46,9 @@ result = {
 result['harness'] = args.harness.name
 result['sha256']['harness'] = hashlib.sha256(args.harness.read_bytes()).hexdigest()
 with tempfile.TemporaryDirectory(prefix='harmonic-json-benchmark-') as directory:
-    subprocess.run([str(args.java_home / 'bin/javac'), '-cp', classpaths['baseline'],
-                    '-d', directory, str(args.harness)], check=True)
+    subprocess.run([java, '-cp', compiler_classpath, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
+                    '-no-stdlib', '-no-reflect', '-jvm-target', '11',
+                    '-classpath', classpaths['baseline'], '-d', directory, str(args.harness)], check=True)
     for fork in range(args.forks):
         order = ('baseline', 'candidate') if fork % 2 == 0 else ('candidate', 'baseline')
         for version in order:

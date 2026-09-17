@@ -1,5 +1,3 @@
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier
-import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -108,25 +106,25 @@ android {
 
     sourceSets {
         debug {
-            kotlin.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         debugFast {
-            kotlin.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         debugLLM {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         debugLLMFast {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         benchmark {
-            kotlin.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         fossRelease {
-            kotlin.srcDirs += "src/foss/java"
+            kotlin.srcDirs += "src/foss/kotlin"
         }
         playRelease {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
     }
 

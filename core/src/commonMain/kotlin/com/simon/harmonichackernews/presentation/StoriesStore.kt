@@ -125,7 +125,6 @@ sealed interface StoriesIntent {
 class StoriesStore internal constructor(
     private val scope: CoroutineScope,
     private val sessionState: StoriesSessionState,
-    private val presenter: StoriesPresenter,
     private val runtime: StoriesFeatureRuntime,
     private val storyCache: StoryCacheRuntime,
     private val observeSavedItems: suspend (suspend (SavedItemSource) -> Unit) -> Unit,
@@ -165,7 +164,7 @@ class StoriesStore internal constructor(
                 publish()
             }
         }
-        jobs += scope.launch { presenter.state.collect { publish() } }
+        jobs += scope.launch { runtime.searchOptions.state.collect { publish() } }
         jobs += scope.launch { runtime.mainStore.state.collect { publish() } }
         jobs += scope.launch { runtime.searchStore.state.collect { publish() } }
         jobs += scope.launch {
@@ -186,7 +185,7 @@ class StoriesStore internal constructor(
         if (restoring) {
             when {
                 runtime.shouldRefreshRestoredState() -> runtime.refresh(false)
-                !presenter.state.value.searching -> runtime.resumeRetainedLoads()
+                !runtime.searching -> runtime.resumeRetainedLoads()
             }
         } else {
             runtime.refresh(false)
@@ -309,7 +308,6 @@ class StoriesStore internal constructor(
     }
 
     private fun snapshot(): StoriesState {
-        val presenterState = presenter.state.value
         val searchState = runtime.searchOptions.state.value
         val frontDate = runtime.frontPageDay
         val previewActions = runtime.previewActionState.value
@@ -324,7 +322,7 @@ class StoriesStore internal constructor(
             selectedTypeIndex = runtime.selectedStoryTypeIndex(),
             currentType = runtime.currentType,
             searching = runtime.searching,
-            searchDraft = presenterState.searchDraft,
+            searchDraft = sessionState.lastSearch,
             search = StoriesSearchSnapshot(
                 sortLabel = runtime.searchOptions.sortLabel,
                 dateLabel = runtime.searchOptions.dateRangeLabel,
@@ -334,7 +332,7 @@ class StoriesStore internal constructor(
                 loading = searchState.loading,
             ),
             refreshIndicatorShowing = runtime.refreshIndicatorShowing,
-            updateAvailable = presenterState.updateAvailable,
+            updateAvailable = sessionState.updateButtonShowing,
             loadingFailedRateLimited = runtime.loadingFailedRateLimited,
             online = runtime.online,
             userItemsInitialLoadInProgress = runtime.isUserItemsInitialLoadInProgress,

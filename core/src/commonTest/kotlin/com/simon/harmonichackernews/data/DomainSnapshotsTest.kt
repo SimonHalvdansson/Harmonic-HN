@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 class DomainSnapshotsTest {
     @Test
@@ -57,29 +58,29 @@ class DomainSnapshotsTest {
     }
 
     @Test
-    fun commentsHeaderEnrichmentIsDeepCopiedIntoImmutablePresentation() {
+    fun snapshotsRetainImmutablePreviewsWhenStoryEnrichmentIsReplaced() {
         val option = PollOption().apply {
             id = 5
             text = "Kotlin"
             points = 12
             loaded = true
         }
-        val repo = RepoInfo().apply {
-            name = "harmonic"
-            owner = "simon"
-            avatarUrl = "https://avatars.githubusercontent.com/u/1?v=4"
-            stars = 99
-        }
-        val huggingFace = HuggingFaceModelInfo().apply {
-            name = "Kimi-K3"
-            logoUrl = "https://huggingface.co/example/logo.png"
-            likes = 10_810
-        }
-        val openRouter = OpenRouterModelInfo().apply {
-            provider = "OpenAI"
-            name = "GPT-5.6 Sol"
-            contextLength = 1_050_000
-        }
+        val repo = RepoInfo(
+            name = "harmonic",
+            owner = "simon",
+            avatarUrl = "https://avatars.githubusercontent.com/u/1?v=4",
+            stars = 99,
+        )
+        val huggingFace = HuggingFaceModelInfo(
+            name = "Kimi-K3",
+            logoUrl = "https://huggingface.co/example/logo.png",
+            likes = 10_810,
+        )
+        val openRouter = OpenRouterModelInfo(
+            provider = "OpenAI",
+            name = "GPT-5.6 Sol",
+            contextLength = 1_050_000,
+        )
         val story = Story().apply {
             id = 42
             pollOptionArrayList = arrayListOf(option)
@@ -90,11 +91,12 @@ class DomainSnapshotsTest {
 
         val snapshot = story.presentationSnapshot()
         option.text = "Changed"
-        repo.name = "changed"
-        repo.avatarUrl = "https://example.com/changed.png"
-        huggingFace.name = "changed"
-        huggingFace.logoUrl = "https://example.com/changed.png"
-        openRouter.name = "changed"
+        assertSame(repo, snapshot.repoInfo)
+        assertSame(huggingFace, snapshot.huggingFaceInfo)
+        assertSame(openRouter, snapshot.openRouterInfo)
+        story.repoInfo = repo.copy(name = "changed", avatarUrl = "https://example.com/changed.png")
+        story.huggingFaceInfo = huggingFace.copy(name = "changed")
+        story.openRouterInfo = openRouter.copy(name = "changed")
         story.pollOptionArrayList = null
         story.repoInfo = null
         story.huggingFaceInfo = null
@@ -118,105 +120,107 @@ class DomainSnapshotsTest {
     }
 
     @Test
-    fun linkPreviewModelsMapEveryFieldIntoNamedSnapshots() {
+    fun canonicalPreviewValuesSurvivePresentationSerialization() {
         val story = Story().apply {
-            repoInfo = RepoInfo().apply {
-                name = "repo"
-                owner = "owner"
-                avatarUrl = "https://example.com/avatar.png"
-                about = "about"
-                website = "https://example.com/repo"
-                license = "Apache-2.0"
-                language = "Kotlin"
-                stars = 1
-                watching = 2
-                forks = 3
-            }
-            gitLabInfo = GitLabInfo().apply {
-                name = "project"
-                namespace = "group/project"
-                description = "description"
-                website = "https://example.com/project"
-                language = "Swift"
-                visibility = "public"
-                stars = 4
-                forks = 5
-            }
-            huggingFaceInfo = HuggingFaceModelInfo().apply {
-                author = "model-author"
-                name = "model"
-                website = "https://example.com/model"
-                logoUrl = "https://example.com/model.png"
-                pipelineTag = "text-generation"
-                libraryName = "transformers"
-                quantization = "Q4"
-                licenseName = "mit"
-                lastModified = "2026-08-30"
-                likes = 6
-                downloads = 7
-                parameterCount = 8
-            }
-            openRouterInfo = OpenRouterModelInfo().apply {
-                provider = "provider"
-                name = "router-model"
-                website = "https://example.com/router-model"
-                providerIconUrl = "https://example.com/provider.png"
-                description = "router description"
-                promptPricePerToken = "0.000001"
-                completionPricePerToken = "0.000002"
-                contextLength = 9
-                maxCompletionTokens = 10
-                inputModalities = listOf("text", "image")
-                outputModalities = listOf("text")
-                knowledgeCutoff = "2025-01"
-            }
-            stackExchangeInfo = StackExchangeInfo().apply {
-                title = "Question"
-                author = "question-author"
-                questionText = "question text"
-                tags = arrayOf("kotlin", null)
-                site = "Stack Overflow"
-                score = 11
-                answerCount = 12
-                viewCount = 13
-                isAnswered = true
-                hasAcceptedAnswer = false
-            }
-            arxivInfo = ArxivInfo().apply {
-                arxivAbstract = "abstract"
-                authors = arrayOf("First Author", null)
-                primaryCategory = "cs.SE"
-                arxivID = "2608.12345"
-                secondaryCategories = arrayOf("cs.AI", null)
-                publishedDate = "2026-08-30"
-                htmlUrl = "https://arxiv.org/html/2608.12345"
-            }
-            wikiInfo = WikipediaInfo().apply {
-                title = "Article title"
-                summary = "Article summary"
-            }
-            nitterInfo = NitterInfo().apply {
-                text = "post"
-                userName = "User"
-                userTag = "@user"
-                date = "today"
-                replyCount = "14"
-                reposts = "15"
-                likes = "16"
-                imgSrc = "https://example.com/post.png"
-                hasVideo = true
-                beforeUserName = "Quoted User"
-                beforeUserTag = "@quoted"
-                beforeText = "quoted post"
-                beforeDate = "yesterday"
-                beforeImgSrc = "https://example.com/quoted.png"
-            }
+            repoInfo = RepoInfo(
+                name = "repo",
+                owner = "owner",
+                avatarUrl = "https://example.com/avatar.png",
+                about = "about",
+                website = "https://example.com/repo",
+                license = "Apache-2.0",
+                language = "Kotlin",
+                stars = 1,
+                watching = 2,
+                forks = 3,
+            )
+            gitLabInfo = GitLabInfo(
+                name = "project",
+                namespace = "group/project",
+                description = "description",
+                website = "https://example.com/project",
+                language = "Swift",
+                visibility = "public",
+                stars = 4,
+                forks = 5,
+            )
+            huggingFaceInfo = HuggingFaceModelInfo(
+                author = "model-author",
+                name = "model",
+                website = "https://example.com/model",
+                logoUrl = "https://example.com/model.png",
+                pipelineTag = "text-generation",
+                libraryName = "transformers",
+                quantization = "Q4",
+                licenseName = "mit",
+                lastModified = "2026-08-30",
+                likes = 6,
+                downloads = 7,
+                parameterCount = 8,
+            )
+            openRouterInfo = OpenRouterModelInfo(
+                provider = "provider",
+                name = "router-model",
+                website = "https://example.com/router-model",
+                providerIconUrl = "https://example.com/provider.png",
+                description = "router description",
+                promptPricePerToken = "0.000001",
+                completionPricePerToken = "0.000002",
+                contextLength = 9,
+                maxCompletionTokens = 10,
+                inputModalities = listOf("text", "image"),
+                outputModalities = listOf("text"),
+                knowledgeCutoff = "2025-01",
+            )
+            stackExchangeInfo = StackExchangeInfo(
+                title = "Question",
+                author = "question-author",
+                questionText = "question text",
+                tags = listOf("kotlin", null),
+                site = "Stack Overflow",
+                score = 11,
+                answerCount = 12,
+                viewCount = 13,
+                isAnswered = true,
+                hasAcceptedAnswer = false,
+            )
+            arxivInfo = ArxivInfo(
+                arxivAbstract = "abstract",
+                authors = listOf("First Author", null),
+                primaryCategory = "cs.SE",
+                arxivID = "2608.12345",
+                secondaryCategories = listOf("cs.AI", null),
+                publishedDate = "2026-08-30",
+                htmlUrl = "https://arxiv.org/html/2608.12345",
+            )
+            wikiInfo = WikipediaInfo(
+                title = "Article title",
+                summary = "Article summary",
+            )
+            nitterInfo = NitterInfo(
+                text = "post",
+                userName = "User",
+                userTag = "@user",
+                date = "today",
+                replyCount = "14",
+                reposts = "15",
+                likes = "16",
+                imgSrc = "https://example.com/post.png",
+                hasVideo = true,
+                beforeUserName = "Quoted User",
+                beforeUserTag = "@quoted",
+                beforeText = "quoted post",
+                beforeDate = "yesterday",
+                beforeImgSrc = "https://example.com/quoted.png",
+            )
         }
 
-        val snapshot = story.presentationSnapshot()
+        val snapshot = Json.decodeFromString<StoryPresentationSnapshot>(
+            Json.encodeToString(story.presentationSnapshot()),
+        )
 
         assertEquals(
-            RepoInfoSnapshot(
+            RepoInfo(
                 name = "repo",
                 owner = "owner",
                 avatarUrl = "https://example.com/avatar.png",
@@ -231,7 +235,7 @@ class DomainSnapshotsTest {
             snapshot.repoInfo,
         )
         assertEquals(
-            GitLabInfoSnapshot(
+            GitLabInfo(
                 name = "project",
                 namespace = "group/project",
                 description = "description",
@@ -244,7 +248,7 @@ class DomainSnapshotsTest {
             snapshot.gitLabInfo,
         )
         assertEquals(
-            HuggingFaceModelInfoSnapshot(
+            HuggingFaceModelInfo(
                 author = "model-author",
                 name = "model",
                 website = "https://example.com/model",
@@ -261,7 +265,7 @@ class DomainSnapshotsTest {
             snapshot.huggingFaceInfo,
         )
         assertEquals(
-            OpenRouterModelInfoSnapshot(
+            OpenRouterModelInfo(
                 provider = "provider",
                 name = "router-model",
                 website = "https://example.com/router-model",
@@ -278,7 +282,7 @@ class DomainSnapshotsTest {
             snapshot.openRouterInfo,
         )
         assertEquals(
-            StackExchangeInfoSnapshot(
+            StackExchangeInfo(
                 title = "Question",
                 author = "question-author",
                 questionText = "question text",
@@ -293,7 +297,7 @@ class DomainSnapshotsTest {
             snapshot.stackExchangeInfo,
         )
         assertEquals(
-            ArxivInfoSnapshot(
+            ArxivInfo(
                 arxivAbstract = "abstract",
                 authors = listOf("First Author", null),
                 primaryCategory = "cs.SE",
@@ -305,14 +309,14 @@ class DomainSnapshotsTest {
             snapshot.arxivInfo,
         )
         assertEquals(
-            WikipediaInfoSnapshot(
+            WikipediaInfo(
                 summary = "Article summary",
                 title = "Article title",
             ),
             snapshot.wikiInfo,
         )
         assertEquals(
-            NitterInfoSnapshot(
+            NitterInfo(
                 text = "post",
                 userName = "User",
                 userTag = "@user",
@@ -330,6 +334,42 @@ class DomainSnapshotsTest {
             ),
             snapshot.nitterInfo,
         )
+    }
+
+    @Test
+    fun presentationDecodesPreviouslySerializedProviderSnapshots() {
+        // The old snapshot classes wrote these same field names and array values.
+        val json = """
+            {
+              "repoInfo": {
+                "name": "repo", "owner": "owner", "about": null,
+                "website": null, "license": null, "language": "Kotlin",
+                "stars": 12, "watching": 0, "forks": 2
+              },
+              "arxivInfo": {
+                "arxivAbstract": "abstract", "authors": ["Author", null],
+                "primaryCategory": "cs.SE", "arxivID": "2608.12345",
+                "secondaryCategories": [], "publishedDate": "2026-08-30"
+              },
+              "stackExchangeInfo": {
+                "title": "Question", "author": null, "questionText": null,
+                "tags": ["kotlin", null], "site": "Stack Overflow",
+                "score": 0, "answerCount": 0, "viewCount": 0,
+                "isAnswered": false, "hasAcceptedAnswer": false
+              }
+            }
+        """.trimIndent()
+
+        val presentation = Json.decodeFromString<StoryPresentationSnapshot>(json)
+
+        assertEquals(
+            RepoInfo(name = "repo", owner = "owner", language = "Kotlin", stars = 12, forks = 2),
+            presentation.repoInfo,
+        )
+        assertEquals(listOf("Author", null), presentation.arxivInfo?.authors)
+        assertEquals(listOf("kotlin", null), presentation.stackExchangeInfo?.tags)
+        assertEquals("12 stars", presentation.repoInfo?.formatStars())
+        assertNull(presentation.arxivInfo?.htmlUrl)
     }
 
     @Test

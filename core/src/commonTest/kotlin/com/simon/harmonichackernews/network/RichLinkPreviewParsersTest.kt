@@ -57,7 +57,7 @@ class RichLinkPreviewParsersTest {
         )
 
         cases.forEach { (type, target) ->
-            val result = RichLinkPreviewParsers.parseGitHub(
+            val result = GitHubLinkPreview.parseGitHub(
                 type,
                 responses.getValue(type),
                 target,
@@ -87,7 +87,7 @@ class RichLinkPreviewParsersTest {
 
     @Test
     fun parsesGitHubPageMetadataWithoutProviderTitleSuffix() {
-        val result = RichLinkPreviewParsers.parseGitHubPage(
+        val result = GitHubLinkPreview.parseGitHubPage(
             type = LinkPreviewType.GITHUB_ISSUE,
             response = """
                 <html><head>
@@ -115,7 +115,7 @@ class RichLinkPreviewParsersTest {
 
     @Test
     fun parsesGitHubReleasePageImageAndProminentReleaseLabel() {
-        val result = RichLinkPreviewParsers.parseGitHubPage(
+        val result = GitHubLinkPreview.parseGitHubPage(
             type = LinkPreviewType.GITHUB_RELEASE,
             response = """
                 <html><head>
@@ -164,7 +164,7 @@ class RichLinkPreviewParsersTest {
         )
 
         cases.forEach { (type, target, response) ->
-            val result = RichLinkPreviewParsers.parseHuggingFace(
+            val result = HuggingFaceLinkPreview.parseHuggingFace(
                 type,
                 response,
                 target,
@@ -179,36 +179,36 @@ class RichLinkPreviewParsersTest {
     @Test
     fun parsesStructuredServiceAndSocialResponses() {
         val results = listOf(
-            RichLinkPreviewParsers.parseStatusPage(
+            StatusPageLinkPreview.parseStatusPage(
                 """{"page":{"name":"Example Status"},"incident":{"name":"API unavailable","status":"resolved","impact":"major","incident_updates":[{"body":"Recovered"}]}}""",
                 "https://example.statuspage.io/incidents/abc",
             ),
-            RichLinkPreviewParsers.parseCrossref(
+            CrossrefLinkPreview.parseCrossref(
                 """{"message":{"title":["Article title"],"container-title":["Journal"],"author":[{"given":"Ada","family":"Lovelace"}],"published":{"date-parts":[[2026,8,18]]},"type":"journal-article","publisher":"Publisher","is-referenced-by-count":12}}""",
                 "10.1000/example",
                 "https://doi.org/10.1000/example",
             ),
-            RichLinkPreviewParsers.parseUsgs(
+            UsgsLinkPreview.parseUsgs(
                 """{"properties":{"title":"M 7.0 - Example","place":"Example","mag":7.0,"sig":700,"tsunami":1,"status":"reviewed","type":"earthquake"},"geometry":{"coordinates":[1.0,2.0,12.5]}}""",
                 "us123",
                 "https://earthquake.usgs.gov/earthquakes/eventpage/us123",
             ),
-            RichLinkPreviewParsers.parseSubstackPage(
+            SubstackLinkPreview.parseSubstackPage(
                 """<html><head><meta property="og:title" content="RSS article"><meta property="og:description" content="Writer's short summary"><meta property="og:image" content="https://example.com/cover.png"><script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":"RSS article","datePublished":"2026-08-08T12:00:00Z","publisher":{"@type":"Organization","name":"Example Publication"}}</script></head><body><div class="dt-post-body"><div class="available-content"><p>Writer&#8217;s longer opening paragraph. It has a second sentence.</p><p>This should not appear.</p></div></div></body></html>""",
                 "https://writer.substack.com/p/rss-article",
-                RichLinkPreviewParsers.parseSubstackChannelImage(
+                SubstackLinkPreview.parseSubstackChannelImage(
                     """<?xml version="1.0"?><rss><channel><title>Example Publication</title><image><url>https://writer.substack.com/img/substack.png</url><title>Example Publication</title><link>https://writer.substack.com</link></image>""",
                 ),
             ),
-            RichLinkPreviewParsers.parseMastodon(
+            MastodonLinkPreview.parseMastodon(
                 """{"content":"<p>This is <strong>the actual post</strong>.</p><p>Second paragraph &amp; link.</p>","spoiler_text":"A brief warning","account":{"display_name":"Ada","username":"ada","acct":"ada@example.social","avatar":"https://example.social/avatar.png"},"replies_count":1,"reblogs_count":2,"favourites_count":3}""",
                 "https://example.social/@ada/1",
             ),
-            RichLinkPreviewParsers.parseBluesky(
+            BlueskyLinkPreview.parseBluesky(
                 """{"thread":{"post":{"author":{"displayName":"Ada","handle":"ada.bsky.social"},"record":{"text":"Structured post text","createdAt":"2026-08-18T12:00:00Z"},"replyCount":1,"repostCount":2,"likeCount":3,"quoteCount":4}}}""",
                 "https://bsky.app/profile/ada.bsky.social/post/abc",
             ),
-            RichLinkPreviewParsers.parseOEmbed(
+            RedditLinkPreview.parseOEmbed(
                 LinkPreviewType.REDDIT_POST,
                 """{"title":"Reddit title","author_name":"u/ada","provider_name":"Reddit","html":"<blockquote>This must not be parsed</blockquote>"}""",
                 "https://reddit.com/r/example/comments/abc/title",
@@ -280,7 +280,7 @@ class RichLinkPreviewParsersTest {
         )
 
         val results = cases.map { (type, target, response) ->
-            RichLinkPreviewParsers.parsePackage(
+            PackageLinkPreview.parsePackage(
                 type,
                 response,
                 target,

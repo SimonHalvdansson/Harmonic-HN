@@ -267,13 +267,6 @@ sealed interface StoriesPlatformEffect {
 }
 
 object StoriesUiOrchestrator {
-    fun searchOption(kind: StorySearchOption, index: Int): StoriesAction = when (kind) {
-        StorySearchOption.SORT -> StoriesAction.SelectSearchSort(index)
-        StorySearchOption.DATE -> StoriesAction.SelectSearchDateRange(index)
-        StorySearchOption.POINTS -> StoriesAction.SelectSearchMinimumPoints(index)
-        StorySearchOption.COMMENTS -> StoriesAction.SelectSearchMinimumComments(index)
-    }
-
     fun menu(action: StoriesMenuAction, accountUser: String?): StoriesPlatformEffect? = when (action) {
         StoriesMenuAction.SETTINGS -> StoriesPlatformEffect.OpenSettings
         StoriesMenuAction.ACCOUNT -> if (accountUser.isNullOrBlank()) {

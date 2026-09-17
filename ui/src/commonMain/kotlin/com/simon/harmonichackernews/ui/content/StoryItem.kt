@@ -10,10 +10,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,7 +23,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,7 +50,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,21 +58,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
@@ -92,9 +76,6 @@ import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.resources.Res
@@ -107,7 +88,6 @@ import com.simon.harmonichackernews.resources.web_preview
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
-import com.simon.harmonichackernews.ui.stories.captureStoryPreviewSourceContent
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
@@ -121,13 +101,9 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
-private const val ContentAnimationDuration = 220
-private const val DimmedStoryAlpha = 0.6f
 private const val StoryMetricPillDimStrength = 0.75f
 private const val ClickedNoImageMetricPillAlpha = 0.8f
-private val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private val StoryCardShape = RoundedCornerShape(8.dp)
-private val MediumPreviewImageRailWidth = 132.dp
 private val MediumPreviewImageMinimumHeight = 104.dp
 private val StoryMetricPillShape = RoundedCornerShape(50)
 private val StoryMetricPillHeight = 25.dp
@@ -156,91 +132,6 @@ private fun StoryVisibility(
     } else if (visible) {
         Box(modifier = modifier, propagateMinConstraints = true) { content() }
     }
-}
-
-private class StoryItemGeometry {
-    var coordinates: LayoutCoordinates? = null
-    var itemHeightPx: Int = 0
-    var largeImageCoordinates: LayoutCoordinates? = null
-    var smallImageCoordinates: LayoutCoordinates? = null
-    var titleCoordinates: LayoutCoordinates? = null
-    var summaryCoordinates: LayoutCoordinates? = null
-    var metaCoordinates: LayoutCoordinates? = null
-    var indexCoordinates: LayoutCoordinates? = null
-    var commentsCoordinates: LayoutCoordinates? = null
-    var largeImageLayer: GraphicsLayer? = null
-    var smallImageLayer: GraphicsLayer? = null
-    var titleLayer: GraphicsLayer? = null
-    var summaryLayer: GraphicsLayer? = null
-    var metaLayer: GraphicsLayer? = null
-    var indexLayer: GraphicsLayer? = null
-    var commentsLayer: GraphicsLayer? = null
-
-    fun snapshot(
-        style: StoryItemStyle,
-        hasPreview: Boolean,
-        imageCornerRadiusPx: Float,
-    ): StoryPreviewSourceGeometry? {
-        val containerBounds = coordinates.windowBoundsOrNull() ?: return null
-        val imageCoordinates = when {
-            !hasPreview || style.previewImageMode == StoryPreviewMode.OFF -> null
-            style.previewImageMode == StoryPreviewMode.LARGE -> largeImageCoordinates
-            else -> smallImageCoordinates
-        }
-        val imageLayer = when {
-            !hasPreview || style.previewImageMode == StoryPreviewMode.OFF -> null
-            style.previewImageMode == StoryPreviewMode.LARGE -> largeImageLayer
-            else -> smallImageLayer
-        }
-        return StoryPreviewSourceGeometry(
-            container = containerBounds,
-            containerElevationDp = if (style.cardStyle) 1f else 0f,
-            image = imageCoordinates.windowBoundsOrNull(),
-            title = titleCoordinates.windowBoundsOrNull(),
-            summary = summaryCoordinates
-                .takeIf { style.showSummary }
-                .windowBoundsOrNull(),
-            meta = metaCoordinates
-                .takeIf { !style.compact }
-                .windowBoundsOrNull(),
-            index = indexCoordinates.windowBoundsOrNull(),
-            comments = commentsCoordinates.windowBoundsOrNull(),
-            imageCornerRadiusPx = imageCornerRadiusPx,
-            imageLayer = imageLayer?.takeUnless(GraphicsLayer::isReleased),
-            titleLayer = titleLayer?.takeUnless(GraphicsLayer::isReleased),
-            summaryLayer = summaryLayer?.takeUnless(GraphicsLayer::isReleased),
-            metaLayer = metaLayer?.takeUnless(GraphicsLayer::isReleased),
-            indexLayer = indexLayer?.takeUnless(GraphicsLayer::isReleased),
-            commentsLayer = commentsLayer?.takeUnless(GraphicsLayer::isReleased),
-        )
-    }
-}
-
-private fun LayoutCoordinates?.windowBoundsOrNull(): Rect? =
-    this
-        ?.takeIf(LayoutCoordinates::isAttached)
-        ?.let { coordinates ->
-            val topLeft = coordinates.positionInWindow()
-            Rect(
-                offset = topLeft,
-                size = androidx.compose.ui.geometry.Size(
-                    coordinates.size.width.toFloat(),
-                    coordinates.size.height.toFloat(),
-                ),
-            )
-        }
-        ?.takeIf { it.width > 0f && it.height > 0f }
-
-@Composable
-private fun Modifier.captureStoryPreviewElement(
-    enabled: Boolean,
-    onPositioned: (LayoutCoordinates) -> Unit,
-    onLayerChanged: (GraphicsLayer) -> Unit,
-): Modifier = if (enabled) {
-    onGloballyPositioned(onPositioned)
-        .captureStoryPreviewSourceContent(onLayerChanged)
-} else {
-    this
 }
 
 @Composable
@@ -370,208 +261,44 @@ fun StoryItem(
         storyTextSize = style.textSize,
     )
     val animate = animateChanges
-    val dimAlpha = if (animate) {
-        val animatedDimAlpha by animateFloatAsState(
-            targetValue = if (style.dimmed) DimmedStoryAlpha else 1f,
-            animationSpec = tween(180),
-            label = "story dim alpha",
-        )
-        animatedDimAlpha
-    } else if (style.dimmed) {
-        DimmedStoryAlpha
-    } else {
-        1f
-    }
-    val cardProgress = if (listItem) {
-        if (style.cardStyle) 1f else 0f
-    } else {
-        val animatedCardProgress by animateFloatAsState(
-            targetValue = if (style.cardStyle) 1f else 0f,
-            animationSpec = contentTween(),
-            label = "story card style",
-        )
-        animatedCardProgress
-    }
-    val outlineAlpha = if (listItem) {
-        if (style.cardStyle && style.showOutline) 1f else 0f
-    } else {
-        val animatedOutlineAlpha by animateFloatAsState(
-            targetValue = if (style.cardStyle && style.showOutline) 1f else 0f,
-            animationSpec = contentTween(),
-            label = "story outline",
-        )
-        animatedOutlineAlpha
-    }
-    var previewFailed by remember(model.previewImageUrl, model.previewImageLoadFailed) {
-        mutableStateOf(model.previewImageLoadFailed)
-    }
-    val hasPreview = !previewFailed &&
-        (model.previewImageUrl != null || model.previewImageFallback != null || model.previewImageBitmap != null)
-    var animatedPreviewMode by remember { mutableStateOf(style.previewImageMode) }
-    val mediumAccessoryFade = remember {
-        Animatable(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
-    }
-    val animatePreviewMode = animate && hasPreview && !listItem
-    val renderedPreviewMode = if (animatePreviewMode) animatedPreviewMode else style.previewImageMode
-    val renderedStyle = if (renderedPreviewMode == style.previewImageMode) {
-        style
-    } else {
-        style.copy(previewImageMode = renderedPreviewMode)
-    }
-    LaunchedEffect(style.previewImageMode, animatePreviewMode) {
-        val targetMode = style.previewImageMode
-        if (
-            animatePreviewMode && renderedPreviewMode == StoryPreviewMode.MEDIUM &&
-            targetMode == StoryPreviewMode.SMALL
-        ) {
-            // Start the image transition and outgoing badge fade together.
-            animatedPreviewMode = targetMode
-            mediumAccessoryFade.animateTo(0f, tween(75, easing = ContentMotionEasing))
-        } else {
-            animatedPreviewMode = targetMode
-            val targetAlpha = if (targetMode == StoryPreviewMode.MEDIUM) 1f else 0f
-            if (animatePreviewMode) {
-                mediumAccessoryFade.animateTo(
-                    targetAlpha,
-                    tween(
-                        durationMillis = 75,
-                        delayMillis = if (targetMode == StoryPreviewMode.MEDIUM) 105 else 0,
-                        easing = ContentMotionEasing,
-                    ),
-                )
-            } else {
-                mediumAccessoryFade.snapTo(targetAlpha)
-            }
-        }
-    }
+    val presentation = rememberStoryItemPresentation(
+        model = model,
+        style = style,
+        listItem = listItem,
+        animate = animate,
+        pageBackground = pageBackground,
+        onPreviewLoadSuccess = onPreviewLoadSuccess,
+        onPreviewLoadFailed = onPreviewLoadFailed,
+        onPreviewTintExtracted = onPreviewTintExtracted,
+        onFaviconTintExtracted = onFaviconTintExtracted,
+    )
+    val dimAlpha = presentation.dimAlpha
+    val cardProgress = presentation.cardProgress
+    val outlineAlpha = presentation.outlineAlpha
+    val renderedStyle = presentation.renderedStyle
+    val renderedPreviewMode = renderedStyle.previewImageMode
     val mediumPreview = renderedPreviewMode == StoryPreviewMode.MEDIUM
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
-    val tintBaseColorArgb = tintFallback.toArgb()
-    var extractedPreviewTint by remember(
-        model.previewImageUrl,
-        model.previewImageFallback,
-        model.previewImageBitmap,
-        tintBaseColorArgb,
-        style.paletteTintConfigKey,
-    ) { mutableStateOf<Int?>(null) }
-    var extractedFaviconTint by remember(
-        model.faviconUrl,
-        model.faviconFallback,
-        tintBaseColorArgb,
-        style.paletteTintConfigKey,
-    ) { mutableStateOf<Int?>(null) }
-    val handlePreviewLoadFailed: () -> Unit = {
-        previewFailed = true
-        onPreviewLoadFailed?.invoke()
-    }
-    val handlePreviewLoadSuccess: () -> Unit = {
-        onPreviewLoadSuccess?.invoke()
-    }
-    val handlePreviewTintExtracted: (Int) -> Unit = { tintColor ->
-        extractedPreviewTint = tintColor
-        onPreviewTintExtracted?.invoke(tintColor)
-    }
-    val handleFaviconTintExtracted: (Int) -> Unit = { tintColor ->
-        extractedFaviconTint = tintColor
-        onFaviconTintExtracted?.invoke(tintColor)
-    }
+    val hasPreview = presentation.hasPreview
+    val background = presentation.background
+    val tintBaseColorArgb = presentation.tintBaseColorArgb
     val previewAvailable = renderedPreviewMode != StoryPreviewMode.OFF && hasPreview
-    // Discovering an image URL precedes decoding and palette extraction. Keep the favicon
-    // tint during that gap, then transition directly to the preview tint when it is ready.
-    val previewTint = (model.previewImageTintArgb ?: extractedPreviewTint)
-        .takeIf { previewAvailable }
-    val tint = (previewTint ?: model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
-    val targetBackground = when {
-        style.tintCard -> tint ?: tintFallback
-        style.hasBackground -> colors.storyCardBackground
-        else -> pageBackground
-    }
-    // Image palette extraction finishes after a list row is first composed. Preserve the old
-    // blend so an arriving preview/favicon tint does not flash into place.
-    val background = if (animate) {
-        val animatedBackground by animateColorAsState(
-            targetValue = targetBackground,
-            animationSpec = contentTween(),
-            label = "story card tint",
-        )
-        animatedBackground
-    } else {
-        targetBackground
-    }
-    val itemGeometry = remember { StoryItemGeometry() }
-    var sourceCaptureRequested by remember { mutableStateOf(false) }
-    val captureSourceContent = capturePreviewSourceGeometry || sourceCaptureRequested
-    val density = LocalDensity.current
-    val itemVerticalPaddingPx = with(density) {
-        (if (listItem) 8.dp else 28.dp).roundToPx()
-    }
-    val previewImageCornerRadiusPx = with(density) {
-        when {
-            renderedPreviewMode == StoryPreviewMode.SMALL -> 6.dp.toPx()
-            renderedPreviewMode == StoryPreviewMode.MEDIUM && style.borderlessLargeImage ->
-                0f
-            renderedPreviewMode == StoryPreviewMode.MEDIUM -> 10.dp.toPx()
-            renderedPreviewMode == StoryPreviewMode.LARGE && !style.borderlessLargeImage ->
-                8.dp.toPx()
-            else -> 0f
-        }
-    }
-    val geometryModifier = if (
-        onGeometryChanged == null && onPreviewSourceGeometryChanged == null
-    ) {
-        Modifier
-    } else {
-        Modifier
-            .onSizeChanged { size ->
-                val itemHeightPx = size.height + itemVerticalPaddingPx
-                if (itemGeometry.itemHeightPx != itemHeightPx) {
-                    itemGeometry.itemHeightPx = itemHeightPx
-                    onGeometryChanged?.invoke(Rect.Zero, itemHeightPx)
-                }
-            }
-            .onGloballyPositioned { coordinates ->
-                itemGeometry.coordinates = coordinates
-                // Normally defer the window transforms until a preview needs this row. Once it is
-                // the pager's settled source, however, keep its published geometry aligned with
-                // the list. The last pager-driven list delta can land after the page settles; a
-                // one-shot snapshot would then make the dismiss transform end at the old position.
-                if (capturePreviewSourceGeometry) {
-                    itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
-                        ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
-                }
-            }
-    }
-    val trackedLinkLongClick = onLinkLongClick?.let {
-        { sourceCaptureRequested = true }
-    }
-    LaunchedEffect(sourceCaptureRequested, onLinkLongClick) {
-        if (sourceCaptureRequested) {
-            // Let the newly attached recording modifiers draw once before publishing the source.
-            withFrameNanos { }
-            itemGeometry.coordinates
-                ?.takeIf(LayoutCoordinates::isAttached)
-                ?.boundsInWindow()
-                ?.let { bounds ->
-                    onGeometryChanged?.invoke(bounds, itemGeometry.itemHeightPx)
-                }
-            itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
-                ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
-            onLinkLongClick?.invoke()
-            sourceCaptureRequested = false
-        }
-    }
-    LaunchedEffect(
-        capturePreviewSourceGeometry,
-        renderedPreviewMode,
-        style.showSummary,
-        style.compact,
-        hasPreview,
-    ) {
-        if (capturePreviewSourceGeometry) {
-            itemGeometry.snapshot(renderedStyle, hasPreview, previewImageCornerRadiusPx)
-                ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
-        }
-    }
+    val handlePreviewLoadFailed = presentation.onPreviewLoadFailed
+    val handlePreviewLoadSuccess = presentation.onPreviewLoadSuccess
+    val handlePreviewTintExtracted = presentation.onPreviewTintExtracted
+    val handleFaviconTintExtracted = presentation.onFaviconTintExtracted
+    val previewCapture = rememberStoryItemPreviewCapture(
+        style = renderedStyle,
+        hasPreview = hasPreview,
+        listItem = listItem,
+        capturePreviewSourceGeometry = capturePreviewSourceGeometry,
+        onGeometryChanged = onGeometryChanged,
+        onPreviewSourceGeometryChanged = onPreviewSourceGeometryChanged,
+        onLinkLongClick = onLinkLongClick,
+    )
+    val itemGeometry = previewCapture.geometry
+    val captureSourceContent = previewCapture.captureContent
+    val trackedLinkLongClick = previewCapture.onLongClick
+    val geometryModifier = previewCapture.modifier
     val cardDecorationModifier = if (listItem) {
         when {
             style.cardStyle -> Modifier
@@ -627,92 +354,23 @@ fun StoryItem(
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
-                    val imageInset = if (animate) {
-                        val animatedInset by animateDpAsState(
-                            targetValue = if (style.borderlessLargeImage) 0.dp else 10.dp,
-                            animationSpec = contentTween(),
-                            label = "large story image inset",
-                        )
-                        animatedInset
-                    } else if (style.borderlessLargeImage) {
-                        0.dp
-                    } else {
-                        10.dp
-                    }
-                    val imageRadius = if (animate) {
-                        val animatedRadius by animateDpAsState(
-                            targetValue = if (style.borderlessLargeImage) 0.dp else 8.dp,
-                            animationSpec = contentTween(),
-                            label = "large story image radius",
-                        )
-                        animatedRadius
-                    } else if (style.borderlessLargeImage) {
-                        0.dp
-                    } else {
-                        8.dp
-                    }
-                    StoryPreviewImage(
+                    StoryLargePreviewImage(
                         model = model,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(176.dp)
-                            .combinedClickable(
-                                enabled = onLinkClick != null || trackedLinkLongClick != null,
-                                onClick = { onLinkClick?.invoke() },
-                                onLongClick = trackedLinkLongClick,
-                            )
-                            .onSecondaryClick(enabled = trackedLinkLongClick != null) {
-                                trackedLinkLongClick?.invoke()
-                            }
-                            .padding(start = imageInset, top = imageInset, end = imageInset)
-                            .clip(RoundedCornerShape(imageRadius))
-                            .captureStoryPreviewElement(
-                                enabled = captureSourceContent,
-                                onPositioned = { itemGeometry.largeImageCoordinates = it },
-                                onLayerChanged = { itemGeometry.largeImageLayer = it },
-                            )
-                            .graphicsLayer(alpha = dimAlpha),
-                        onLoadFailed = handlePreviewLoadFailed,
-                        onLoadSuccess = handlePreviewLoadSuccess,
-                        tintBaseColorArgb = tintBaseColorArgb,
-                        paletteTintConfigKey = style.paletteTintConfigKey,
-                        extractTint = style.tintCard && model.previewImageTintArgb == null,
-                        onTintExtracted = handlePreviewTintExtracted,
+                        style = style,
+                        presentation = presentation,
+                        animate = animate,
+                        captureSourceContent = captureSourceContent,
+                        itemGeometry = itemGeometry,
+                        onLinkClick = onLinkClick,
+                        onLinkLongClick = trackedLinkLongClick,
                     )
                 }
-                val targetRailWidth: Dp? = when {
-                    !mediumPreview -> 60.dp
-                    hasPreview -> MediumPreviewImageRailWidth
-                    else -> null
-                }
-                val animatedRailWidth = targetRailWidth?.let { width ->
-                    if (animate && hasPreview && !listItem) {
-                        val railModeTransition = updateTransition(
-                            targetState = renderedPreviewMode,
-                            label = "story preview rail mode",
-                        )
-                        val animatedWidth by railModeTransition.animateDp(
-                            transitionSpec = { contentTween() },
-                            label = "story metric rail width",
-                        ) { mode ->
-                            if (mode == StoryPreviewMode.MEDIUM) {
-                                MediumPreviewImageRailWidth
-                            } else {
-                                60.dp
-                            }
-                        }
-                        animatedWidth
-                    } else if (animate) {
-                        val animatedWidth by animateDpAsState(
-                            targetValue = width,
-                            animationSpec = contentTween(),
-                            label = "story metric rail width",
-                        )
-                        animatedWidth
-                    } else {
-                        width
-                    }
-                }
+                val animatedRailWidth = storyPreviewRailWidth(
+                    renderedPreviewMode = renderedPreviewMode,
+                    hasPreview = hasPreview,
+                    animate = animate,
+                    listItem = listItem,
+                )
                 val sharedPreviewImageKey = remember(
                     model.previewImageUrl,
                     model.previewImageFallback,
@@ -743,7 +401,7 @@ fun StoryItem(
                             ) { isMedium ->
                                 if (isMedium) 0f else 1f
                             }
-                            mediumAccessoryAlpha = mediumAccessoryFade.value
+                            mediumAccessoryAlpha = presentation.mediumAccessoryAlpha.value
                             smallAccessoryAlpha = animatedSmallAlpha
                         } else {
                             mediumAccessoryAlpha = 1f
@@ -1723,78 +1381,6 @@ private fun StoryTextColumn(
 }
 
 @Composable
-private fun StoryPreviewImage(
-    model: StoryItemUiModel,
-    modifier: Modifier,
-    onLoadFailed: () -> Unit,
-    onLoadSuccess: () -> Unit,
-    tintBaseColorArgb: Int,
-    paletteTintConfigKey: String,
-    extractTint: Boolean,
-    onTintExtracted: (Int) -> Unit,
-) {
-    if (model.previewImageUrl != null) {
-        var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
-        var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
-        var loadedPainter by remember(model.previewImageUrl) { mutableStateOf<Painter?>(null) }
-        val extractedTint = rememberPreviewImagePaletteTint(
-            image = loadedImage,
-            fallbackPainter = loadedPainter,
-            baseColorArgb = tintBaseColorArgb,
-            paletteTintConfigKey = paletteTintConfigKey,
-            enabled = extractTint,
-        )
-        LaunchedEffect(extractedTint) {
-            extractedTint?.let(onTintExtracted)
-        }
-        val loadProgress by animateFloatAsState(
-            targetValue = if (loaded) 1f else 0f,
-            animationSpec = tween(240, easing = ContentMotionEasing),
-            label = "story image load",
-        )
-        val request = rememberPaletteCompatibleImageRequest(model.previewImageUrl)
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            modifier = modifier.graphicsLayer {
-                alpha = loadProgress
-                scaleX = 0.94f + 0.06f * loadProgress
-                scaleY = 0.94f + 0.06f * loadProgress
-            },
-            contentScale = ContentScale.Crop,
-            onSuccess = { success ->
-                loaded = true
-                loadedImage = success.result.image
-                loadedPainter = success.painter
-                onLoadSuccess()
-            },
-            onError = { onLoadFailed() },
-        )
-    } else {
-        val painter = model.previewImageBitmap?.let { bitmap ->
-            remember(bitmap) { BitmapPainter(bitmap) }
-        } ?: model.previewImageFallback?.let { painterResource(it) }
-        if (painter != null) {
-            val extractedTint = rememberPainterPaletteTint(
-                painter = painter,
-                baseColorArgb = tintBaseColorArgb,
-                paletteTintConfigKey = paletteTintConfigKey,
-                enabled = extractTint,
-            )
-            LaunchedEffect(extractedTint) {
-                extractedTint?.let(onTintExtracted)
-            }
-            Image(
-                painter = painter,
-                contentDescription = null,
-                modifier = modifier,
-                contentScale = ContentScale.Crop,
-            )
-        }
-    }
-}
-
-@Composable
 private fun StoryMeta(
     model: StoryItemUiModel,
     style: StoryItemStyle,
@@ -2035,86 +1621,14 @@ private fun StoryMetaRow(
                 shrinkTowards = Alignment.Start,
             ),
         ) {
-            if (model.faviconUrl != null) {
-                var loaded by remember(model.faviconUrl) { mutableStateOf(false) }
-                var failed by remember(model.faviconUrl) { mutableStateOf(false) }
-                var loadedImage by remember(model.faviconUrl) { mutableStateOf<coil3.Image?>(null) }
-                var loadedPainter by remember(model.faviconUrl) { mutableStateOf<Painter?>(null) }
-                val extractedTint = rememberCoilImagePaletteTint(
-                    image = loadedImage,
-                    fallbackPainter = loadedPainter,
-                    baseColorArgb = tintBaseColorArgb,
-                    paletteTintConfigKey = paletteTintConfigKey,
-                    enabled = extractTint,
-                    sharedCacheKey = model.faviconUrl,
-                )
-                LaunchedEffect(extractedTint) {
-                    extractedTint?.let(onTintExtracted)
-                }
-                val loadAlpha by animateFloatAsState(
-                    targetValue = if (loaded) 1f else 0f,
-                    animationSpec = contentTween(),
-                    label = "story favicon load",
-                )
-                Box(
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(17.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                ) {
-                    Icon(
-                        painter = painterResource(model.faviconFallback),
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer(
-                                alpha = dimAlpha * if (failed) 1f else 1f - loadAlpha,
-                            ),
-                    )
-                    if (!failed) {
-                        val request = rememberPaletteCompatibleImageRequest(model.faviconUrl)
-                        AsyncImage(
-                            model = request,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer(alpha = dimAlpha * loadAlpha),
-                            onSuccess = { success ->
-                                loaded = true
-                                loadedImage = success.result.image
-                                loadedPainter = success.painter
-                            },
-                            onError = { failed = true },
-                        )
-                    }
-                }
-            } else {
-                val fallbackPainter = painterResource(model.faviconFallback)
-                val extractedTint = rememberPainterPaletteTint(
-                    painter = fallbackPainter,
-                    baseColorArgb = tintBaseColorArgb,
-                    paletteTintConfigKey = paletteTintConfigKey,
-                    enabled = extractTint && !model.tintFaviconFallback,
-                )
-                LaunchedEffect(extractedTint) {
-                    extractedTint?.let(onTintExtracted)
-                }
-                if (model.tintFaviconFallback) {
-                    Icon(
-                        painter = fallbackPainter,
-                        contentDescription = null,
-                        tint = HarmonicTheme.colors.drawable,
-                        modifier = Modifier.padding(end = 4.dp).size(17.dp),
-                    )
-                } else {
-                    Image(
-                        painter = fallbackPainter,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 4.dp).size(17.dp),
-                    )
-                }
-            }
+            StoryFavicon(
+                model = model,
+                dimAlpha = dimAlpha,
+                tintBaseColorArgb = tintBaseColorArgb,
+                paletteTintConfigKey = paletteTintConfigKey,
+                extractTint = extractTint,
+                onTintExtracted = onTintExtracted,
+            )
         }
         Text(
             text = metaText,
@@ -2124,17 +1638,6 @@ private fun StoryMetaRow(
             fontSize = metaSize.sp,
             style = legacyTextStyle,
         )
-    }
-}
-
-@Composable
-private fun rememberPaletteCompatibleImageRequest(url: String): ImageRequest {
-    val context = LocalPlatformContext.current
-    return remember(context, url) {
-        ImageRequest.Builder(context)
-            .data(url)
-            .paletteCompatible()
-            .build()
     }
 }
 
@@ -2197,11 +1700,6 @@ private fun StoryCommentRail(
         }
     }
 }
-
-fun <T> contentTween() = tween<T>(
-    durationMillis = ContentAnimationDuration,
-    easing = ContentMotionEasing,
-)
 
 private val legacyTextStyle = TextStyle(
     textMotion = TextMotion.Static,

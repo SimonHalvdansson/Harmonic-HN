@@ -1,14 +1,30 @@
 package com.simon.harmonichackernews.data
 
-class StackExchangeInfo {
-    var title: String? = null
-    var author: String? = null
-    var questionText: String? = null
-    var tags: Array<String?>? = null
-    var site: String? = null
-    var score: Int = 0
-    var answerCount: Int = 0
-    var viewCount: Int = 0
-    var isAnswered: Boolean = false
-    var hasAcceptedAnswer: Boolean = false
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class StackExchangeInfo(
+    val title: String? = null,
+    val author: String? = null,
+    val questionText: String? = null,
+    val tags: List<String?> = emptyList(),
+    val site: String? = null,
+    val score: Int = 0,
+    val answerCount: Int = 0,
+    val viewCount: Int = 0,
+    val isAnswered: Boolean = false,
+    val hasAcceptedAnswer: Boolean = false,
+) {
+    fun formatScore(): String = LinkPreviewFormatUtils.formatCount(score, "point", "points")
+    fun formatAnswerCount(): String =
+        LinkPreviewFormatUtils.formatCount(answerCount, "answer", "answers")
+    fun formatViewCount(): String = LinkPreviewFormatUtils.formatCount(viewCount, "view", "views")
+    fun formatAnswerState(): String = when {
+        hasAcceptedAnswer -> "Accepted answer"
+        isAnswered -> "Answered"
+        else -> "Unanswered"
+    }
+    fun formatTags(): String? = tags.takeIf(List<String?>::isNotEmpty)?.joinToString(", ")
+    fun formatBy(): String? = questionText ?: author?.let { "$it on $site" } ?: site
+    fun formatAuthor(): String? = author ?: site
 }

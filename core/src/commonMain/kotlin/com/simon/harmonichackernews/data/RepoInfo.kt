@@ -1,19 +1,22 @@
 package com.simon.harmonichackernews.data
 
-import com.simon.harmonichackernews.data.LinkPreviewFormatUtils.shortenUrl
+import kotlinx.serialization.Serializable
 
-class RepoInfo {
-    var name: String? = null
-    var owner: String? = null
-    var avatarUrl: String? = null
-    var about: String? = null
-    var website: String? = null
-    var license: String? = null
-    var language: String? = null
-    var stars: Int = 0
-    var watching: Int = 0
-    var forks: Int = 0
-
-    val shortenedUrl: String?
-        get() = shortenUrl(website)
+@Serializable
+data class RepoInfo(
+    val name: String? = null,
+    val owner: String? = null,
+    val avatarUrl: String? = null,
+    val about: String? = null,
+    val website: String? = null,
+    val license: String? = null,
+    val language: String? = null,
+    val stars: Int = 0,
+    val watching: Int = 0,
+    val forks: Int = 0,
+) {
+    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
+    fun formatWatching(): String = "${LinkPreviewFormatUtils.kFormat(watching)} watching"
+    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
+    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
 }

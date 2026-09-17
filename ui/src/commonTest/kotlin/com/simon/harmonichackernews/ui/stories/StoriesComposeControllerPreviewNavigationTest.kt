@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.ui.stories
 import androidx.compose.ui.geometry.Rect
 import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
+import com.simon.harmonichackernews.presentation.StoriesState
+import com.simon.harmonichackernews.presentation.PortableStoryListState
+import com.simon.harmonichackernews.presentation.StoryLoadFailure
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
@@ -19,6 +22,50 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class StoriesComposeControllerPreviewNavigationTest {
+    @Test
+    fun frozenResumeHeaderStillAcceptsFreshFeedContent() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val stories = listOf(storySnapshot(3))
+        val state = storiesState(mainStories = stories).copy(updateAvailable = true)
+
+        controller.updateContent(
+            state,
+            StoriesPlatformPresentation(lastUpdatedText = "Previous time", showUpdateOverride = false),
+        )
+
+        assertSame(stories, controller.mainStories)
+        assertFalse(controller.showUpdate)
+        assertEquals("Previous time", controller.lastUpdatedText)
+
+        controller.updateContent(state, StoriesPlatformPresentation(lastUpdatedText = "New time"))
+
+        assertTrue(controller.showUpdate)
+        assertEquals("New time", controller.lastUpdatedText)
+        assertSame(stories, controller.mainStories)
+    }
+
+    @Test
+    fun switchingSearchUsesFeatureListsAndRetainsTheMainFeed() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val main = listOf(storySnapshot(1))
+        val search = listOf(storySnapshot(2))
+        val state = storiesState(mainStories = main).copy(
+            searchList = PortableStoryListState(items = search),
+            searching = true,
+            searchDraft = "kotlin",
+        )
+
+        controller.updateContent(state)
+        assertTrue(controller.searching)
+        assertEquals("kotlin", controller.searchDraft)
+        assertSame(main, controller.mainStories)
+        assertSame(search, controller.searchStories)
+
+        controller.updateContent(state.copy(searching = false))
+        assertFalse(controller.searching)
+        assertSame(main, controller.mainStories)
+    }
+
     @Test
     fun commentsNavigationKeepsPreviewReadyForBack() {
         val controller = controller(destinationRemainsBesideStories = false)
@@ -79,11 +126,11 @@ class StoriesComposeControllerPreviewNavigationTest {
     fun contentReplacementPrunesGeometryForRemovedStories() {
         val controller = controller(destinationRemainsBesideStories = false)
         controller.updateContent(
-            StoriesScreenState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
+            storiesState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
         )
         controller.updateStoryBounds(1, Rect(0f, 0f, 10f, 10f))
 
-        controller.updateContent(StoriesScreenState(mainStories = listOf(storySnapshot(2))))
+        controller.updateContent(storiesState(mainStories = listOf(storySnapshot(2))))
 
         assertNull(controller.sourceBoundsForStory(1))
     }
@@ -104,11 +151,11 @@ class StoriesComposeControllerPreviewNavigationTest {
     fun previewAndShellUpdatesPreserveTheUnchangedStoryListSlice() {
         val controller = controller(destinationRemainsBesideStories = false)
         val stories = listOf(storySnapshot(1), storySnapshot(2))
-        controller.updateContent(StoriesScreenState(mainStories = stories))
+        controller.updateContent(storiesState(mainStories = stories))
         val retainedStories = controller.mainStories
 
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 mainStories = stories,
                 refreshing = true,
                 previewResources = mapOf(
@@ -132,7 +179,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         val stories = listOf(storySnapshot(1), storySnapshot(2))
 
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 mainStories = stories,
                 previewResources = mapOf(
                     1 to StoryPreviewResourceState(
@@ -148,7 +195,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         // Retrying summary metadata may put the resource back in a loading state, but it must not
         // reintroduce image space after this dialog already observed the miss.
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 mainStories = stories,
                 previewResources = mapOf(
                     1 to StoryPreviewResourceState(
@@ -167,7 +214,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         val controller = controller(destinationRemainsBesideStories = false)
 
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 mainStories = listOf(storySnapshot(1)),
                 previewResources = mapOf(
                     1 to StoryPreviewResourceState(
@@ -186,7 +233,7 @@ class StoriesComposeControllerPreviewNavigationTest {
     fun pullToRefreshOwnershipIsIndependentFromGenericRefreshingState() {
         val controller = controller(destinationRemainsBesideStories = false)
 
-        controller.updateContent(StoriesScreenState(refreshing = true))
+        controller.updateContent(storiesState(refreshing = true))
 
         assertTrue(controller.refreshing)
         assertFalse(controller.pullToRefreshInProgress)
@@ -209,11 +256,11 @@ class StoriesComposeControllerPreviewNavigationTest {
 
         controller.refresh()
         assertEquals(listOf(false), listener.refreshLoadingModes)
-        controller.updateContent(StoriesScreenState(refreshing = true))
+        controller.updateContent(storiesState(refreshing = true))
         assertEquals(0, controller.scrollToTopRequestVersion)
 
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 mainStories = listOf(storySnapshot(2), storySnapshot(1)),
                 refreshing = false,
             ),
@@ -221,8 +268,8 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertEquals(1, controller.scrollToTopRequestVersion)
 
         controller.refresh()
-        controller.updateContent(StoriesScreenState(refreshing = true))
-        controller.updateContent(StoriesScreenState(refreshing = false))
+        controller.updateContent(storiesState(refreshing = true))
+        controller.updateContent(storiesState(refreshing = false))
         assertEquals(2, controller.scrollToTopRequestVersion)
     }
 
@@ -234,7 +281,7 @@ class StoriesComposeControllerPreviewNavigationTest {
             listener = listener,
         )
         controller.updateContent(
-            StoriesScreenState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
+            storiesState(mainStories = listOf(storySnapshot(1), storySnapshot(2))),
         )
 
         controller.beginTapToUpdateExit()
@@ -246,7 +293,7 @@ class StoriesComposeControllerPreviewNavigationTest {
 
         assertEquals(listOf(false), listener.refreshLoadingModes)
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 refreshing = true,
                 mainStories = listOf(storySnapshot(1), storySnapshot(2)),
             ),
@@ -256,7 +303,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         assertEquals(0, controller.mainListGeneration)
 
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 refreshing = false,
                 mainStories = listOf(storySnapshot(3), storySnapshot(4)),
             ),
@@ -275,15 +322,15 @@ class StoriesComposeControllerPreviewNavigationTest {
             listener = listener,
         )
         val retainedStories = listOf(storySnapshot(1), storySnapshot(2))
-        controller.updateContent(StoriesScreenState(mainStories = retainedStories))
+        controller.updateContent(storiesState(mainStories = retainedStories))
 
         controller.beginTapToUpdateExit()
         controller.completeTapToUpdateExit()
         controller.updateContent(
-            StoriesScreenState(refreshing = true, mainStories = retainedStories),
+            storiesState(refreshing = true, mainStories = retainedStories),
         )
         controller.updateContent(
-            StoriesScreenState(
+            storiesState(
                 refreshing = false,
                 loadingFailed = true,
                 mainStories = retainedStories,
@@ -298,19 +345,19 @@ class StoriesComposeControllerPreviewNavigationTest {
     @Test
     fun cachedRefreshDiscardsOldRowLayersOnlyWhenContentSourceChanges() {
         val controller = controller(destinationRemainsBesideStories = false)
-        val cached = StoriesScreenState(
+        val cached = storiesState(
             mainStories = listOf(storySnapshot(1), storySnapshot(2)),
             showingCached = true,
         )
         controller.updateContent(cached)
         val cachedGeneration = controller.mainListGeneration
-        controller.updateContent(cached.copy(refreshing = true))
+        controller.updateContent(cached.copy(refreshIndicatorShowing = true))
         assertTrue(controller.showingCached)
         assertEquals(cachedGeneration, controller.mainListGeneration)
-        controller.updateContent(cached.copy(loadingFailed = true))
+        controller.updateContent(cached.copy(mainList = cached.mainList.copy(failure = StoryLoadFailure.GENERAL)))
         assertEquals(cachedGeneration, controller.mainListGeneration)
-        controller.updateContent(cached.copy(refreshing = true))
-        controller.updateContent(StoriesScreenState(mainStories = listOf(storySnapshot(3))))
+        controller.updateContent(cached.copy(refreshIndicatorShowing = true))
+        controller.updateContent(storiesState(mainStories = listOf(storySnapshot(3))))
         assertFalse(controller.showingCached)
         assertEquals(cachedGeneration + 1, controller.mainListGeneration)
     }
@@ -323,10 +370,10 @@ class StoriesComposeControllerPreviewNavigationTest {
         controller.onStoryPreviewAction(page = 0, action = StoryPreviewActionKind.Vote)
         assertTrue(controller.isStoryPreviewVoteLoading(1))
         controller.updateContent(
-            StoriesScreenState(mainStories = stories, previewVoteLoadingIds = setOf(1)),
+            storiesState(mainStories = stories, previewVoteLoadingIds = setOf(1)),
         )
         controller.updateContent(
-            StoriesScreenState(mainStories = stories, previewVoteLoadingIds = emptySet()),
+            storiesState(mainStories = stories, previewVoteLoadingIds = emptySet()),
         )
 
         assertFalse(controller.isStoryPreviewVoteLoading(1))
@@ -342,6 +389,24 @@ class StoriesComposeControllerPreviewNavigationTest {
         controller.onStoryPreviewAction(page = 0, action = StoryPreviewActionKind.Read)
         assertFalse(controller.isStoryPreviewRead(1, initialValue = true))
     }
+
+    private fun storiesState(
+        mainStories: List<StoryListItemSnapshot> = emptyList(),
+        previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
+        previewVoteLoadingIds: Set<Int> = emptySet(),
+        refreshing: Boolean = false,
+        showingCached: Boolean = false,
+        loadingFailed: Boolean = false,
+    ) = StoriesState(
+        mainList = PortableStoryListState(
+            items = mainStories,
+            showingCached = showingCached,
+            failure = if (loadingFailed) StoryLoadFailure.GENERAL else null,
+        ),
+        refreshIndicatorShowing = refreshing,
+        previewResources = previewResources,
+        previewVoteLoadingIds = previewVoteLoadingIds,
+    )
 
     private fun storySnapshot(id: Int) = StoryListItemSnapshot(
         story = StorySnapshot(id = id, title = "Story $id"),

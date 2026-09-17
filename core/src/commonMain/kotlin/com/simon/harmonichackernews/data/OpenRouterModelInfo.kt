@@ -1,21 +1,23 @@
 package com.simon.harmonichackernews.data
 
 import kotlin.math.roundToLong
+import kotlinx.serialization.Serializable
 
-class OpenRouterModelInfo {
-    var provider: String? = null
-    var name: String? = null
-    var website: String? = null
-    var providerIconUrl: String? = null
-    var description: String? = null
-    var promptPricePerToken: String? = null
-    var completionPricePerToken: String? = null
-    var contextLength: Long = 0
-    var maxCompletionTokens: Long = 0
-    var inputModalities: List<String> = emptyList()
-    var outputModalities: List<String> = emptyList()
-    var knowledgeCutoff: String? = null
-
+@Serializable
+data class OpenRouterModelInfo(
+    val provider: String? = null,
+    val name: String? = null,
+    val website: String? = null,
+    val providerIconUrl: String? = null,
+    val description: String? = null,
+    val promptPricePerToken: String? = null,
+    val completionPricePerToken: String? = null,
+    val contextLength: Long = 0,
+    val maxCompletionTokens: Long = 0,
+    val inputModalities: List<String> = emptyList(),
+    val outputModalities: List<String> = emptyList(),
+    val knowledgeCutoff: String? = null,
+) {
     fun formatPromptPrice(): String? = formatPrice(promptPricePerToken, "input")
 
     fun formatCompletionPrice(): String? = formatPrice(completionPricePerToken, "output")

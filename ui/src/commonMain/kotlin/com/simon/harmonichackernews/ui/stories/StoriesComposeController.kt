@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
+import com.simon.harmonichackernews.presentation.StoriesState
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
@@ -27,67 +28,6 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 import org.jetbrains.compose.resources.DrawableResource
 
-/** One immutable rendering snapshot shared by every stories-screen host. */
-data class StoriesScreenState(
-    val mainStories: List<StoryListItemSnapshot> = emptyList(),
-    val searchStories: List<StoryListItemSnapshot> = emptyList(),
-    val previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),
-    val previewVoteLoadingIds: Set<Int> = emptySet(),
-    val previewFavoriteLoadingIds: Set<Int> = emptySet(),
-    val displaySettings: StoryDisplaySettings? = null,
-    val typeLabels: List<String> = emptyList(),
-    val selectedTypeIndex: Int = 0,
-    val searching: Boolean = false,
-    val lastSearch: String = "",
-    val searchSortLabel: String = "Relevance",
-    val searchDateLabel: String = "All time",
-    val searchPointsLabel: String = "Any points",
-    val searchCommentsLabel: String = "Any comments",
-    val searchSortLabels: List<String> = emptyList(),
-    val searchDateLabels: List<String> = emptyList(),
-    val searchPointsLabels: List<String> = emptyList(),
-    val searchCommentsLabels: List<String> = emptyList(),
-    val searchOnlyClicked: Boolean = false,
-    val loading: Boolean = false,
-    val refreshing: Boolean = false,
-    val loadingFailed: Boolean = false,
-    val loadingFailedServerError: Boolean = false,
-    val loadingFailedMessage: String = "Loading failed",
-    val showingCached: Boolean = false,
-    val showCachedAction: Boolean = false,
-    val showEmptySavedList: Boolean = false,
-    val emptySavedListText: String = "No saved stories",
-    val emptySavedListIcon: DrawableResource = Res.drawable.ic_bookmark,
-    val showEmptySearch: Boolean = false,
-    val showUpdate: Boolean = false,
-    val lastUpdatedText: String? = null,
-    val showLoadMore: Boolean = false,
-    val loadMoreLoading: Boolean = false,
-    val mainVisibleCount: Int = Int.MAX_VALUE,
-    val searchVisibleCount: Int = Int.MAX_VALUE,
-    val showSavedFilter: Boolean = false,
-    val savedFilter: SavedItemFilter = SavedItemFilter.BOTH,
-    val showFrontDate: Boolean = false,
-    val frontDateLabel: String = "",
-    val frontPreviousEnabled: Boolean = false,
-    val frontNextEnabled: Boolean = false,
-    val loggedIn: Boolean = false,
-    val canCache: Boolean = false,
-    val canClearHistory: Boolean = false,
-    val cacheProgressVisible: Boolean = false,
-    val cacheProgress: Int = 0,
-    val cacheProgressMax: Int = 1,
-    val cacheProgressStatus: String = "Caching stories",
-    val contentInsetStartPx: Int = 0,
-)
-
-private fun StoriesScreenState.withoutContent(): StoriesScreenState = copy(
-    mainStories = emptyList(),
-    searchStories = emptyList(),
-    previewResources = emptyMap(),
-    displaySettings = null,
-)
-
 class StoriesComposeController private constructor(
     defaultStoryHeightPx: Int,
     private val savedItemState: SavedItemStateReader,
@@ -99,7 +39,8 @@ class StoriesComposeController private constructor(
     private val previewResourceStates = mutableMapOf<Int, MutableState<StoryPreviewResourceState?>>()
     private val previewImageKnownAbsentIds = mutableSetOf<Int>()
     private var displaySettingsState by mutableStateOf<StoryDisplaySettings?>(null)
-    private var shellState by mutableStateOf(StoriesScreenState().withoutContent())
+    private var shellState by mutableStateOf(StoriesScreenPresentation())
+    private var previousContent = StoriesState()
 
     /** True only while the current refresh was initiated by the pull-to-refresh gesture. */
     var pullToRefreshInProgress by mutableStateOf(false)
@@ -221,60 +162,59 @@ class StoriesComposeController private constructor(
         scrollByRequestState = interactionStore.state.scrollRequest
     }
 
-    fun updateContent(state: StoriesScreenState) {
-        // StoriesScreenStateFactory receives immutable store snapshots. Preserve those list/map
-        // instances so header-only publications don't traverse and copy the entire feed on the UI
-        // thread, and so row-level remember keys can distinguish unchanged content cheaply.
-        val normalized = if (state.cacheProgressMax > 0) {
-            state
-        } else {
-            state.copy(cacheProgressMax = 1)
-        }
-        if (scrollToTopAfterRefresh && normalized.refreshing) {
+    fun updateContent(
+        state: StoriesState,
+        platform: StoriesPlatformPresentation = StoriesPlatformPresentation(),
+    ) {
+        // Keep the feature's immutable list instances. Compose observes independent list,
+        // shell and per-row resource slices, so image arrivals do not invalidate the whole feed.
+        val nextShell = storiesScreenPresentation(state, platform)
+        if (scrollToTopAfterRefresh && state.refreshIndicatorShowing) {
             refreshInProgressObserved = true
         }
         val requestedRefreshCompleted = scrollToTopAfterRefresh &&
-            refreshInProgressObserved && !normalized.refreshing
+            refreshInProgressObserved && !state.refreshIndicatorShowing
         // A cached/live replacement must discard outgoing lazy row animation layers, which can
         // otherwise remain visible through gaps between the replacement stories.
-        if (shellState.showingCached != normalized.showingCached ||
+        if (shellState.showingCached != state.activeList.showingCached ||
             (requestedRefreshCompleted && tapToUpdateRefreshStarted)
         ) {
             mainListGeneration++
         }
-        val listsChanged = mainStoriesState != normalized.mainStories ||
-            searchStoriesState != normalized.searchStories
+        val listsChanged = mainStoriesState != state.mainList.items ||
+            searchStoriesState != state.searchList.items
         val interactionContentChanged = listsChanged ||
-            shellState.searching != normalized.searching ||
-            shellState.lastSearch != normalized.lastSearch
+            shellState.searching != state.searching ||
+            shellState.lastSearch != state.searchDraft
         val previewActionStateChanged =
-            shellState.previewVoteLoadingIds != normalized.previewVoteLoadingIds ||
-                shellState.previewFavoriteLoadingIds != normalized.previewFavoriteLoadingIds
-        mainStoriesState = normalized.mainStories
-        searchStoriesState = normalized.searchStories
+            previousContent.previewVoteLoadingIds != state.previewVoteLoadingIds ||
+                previousContent.previewFavoriteLoadingIds != state.previewFavoriteLoadingIds
+        mainStoriesState = state.mainList.items
+        searchStoriesState = state.searchList.items
         val currentStoryIds = if (listsChanged) {
-            buildSet<Int>(normalized.mainStories.size + normalized.searchStories.size) {
-                normalized.mainStories.forEach { add(it.id) }
-                normalized.searchStories.forEach { add(it.id) }
+            buildSet<Int>(state.mainList.items.size + state.searchList.items.size) {
+                state.mainList.items.forEach { add(it.id) }
+                state.searchList.items.forEach { add(it.id) }
             }
         } else {
             null
         }
-        displaySettingsState = normalized.displaySettings
-        updatePreviewResources(normalized.previewResources, currentStoryIds)
-        shellState = normalized.withoutContent()
+        displaySettingsState = state.displaySettings
+        updatePreviewResources(state.previewResources, currentStoryIds)
+        shellState = nextShell
+        previousContent = state
         if (interactionContentChanged) {
             interactionStore.updateContent(
-                normalized.mainStories,
-                normalized.searchStories,
-                normalized.searching,
-                normalized.lastSearch,
+                state.mainList.items,
+                state.searchList.items,
+                state.searching,
+                state.searchDraft,
             )
         }
         if (previewActionStateChanged) {
             interactionStore.reconcileStoryPreviewActionLoading(
-                normalized.previewVoteLoadingIds,
-                normalized.previewFavoriteLoadingIds,
+                state.previewVoteLoadingIds,
+                state.previewFavoriteLoadingIds,
             )
         }
         val hasRetainedStoryUiState = storyBounds.isNotEmpty() ||

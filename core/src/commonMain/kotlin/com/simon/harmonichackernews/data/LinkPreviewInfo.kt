@@ -71,14 +71,14 @@ data class LinkPreviewInfo(
 
 /** Common preview slots shared by mutable stories and immutable presentation snapshots. */
 interface LinkPreviewState {
-    val repoInfo: Any?
-    val gitLabInfo: Any?
-    val huggingFaceInfo: Any?
-    val openRouterInfo: Any?
-    val stackExchangeInfo: Any?
-    val arxivInfo: Any?
-    val wikiInfo: Any?
-    val nitterInfo: Any?
+    val repoInfo: RepoInfo?
+    val gitLabInfo: GitLabInfo?
+    val huggingFaceInfo: HuggingFaceModelInfo?
+    val openRouterInfo: OpenRouterModelInfo?
+    val stackExchangeInfo: StackExchangeInfo?
+    val arxivInfo: ArxivInfo?
+    val wikiInfo: WikipediaInfo?
+    val nitterInfo: NitterInfo?
     val linkPreviewInfo: LinkPreviewInfo?
 }
 

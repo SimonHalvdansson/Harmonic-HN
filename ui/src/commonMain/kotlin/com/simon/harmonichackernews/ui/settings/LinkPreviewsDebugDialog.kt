@@ -285,15 +285,15 @@ private fun LinkPreviewData.debugStory(sample: DebugLinkPreviewSample): StoryLis
 
 private fun debugTwitterStory(sample: DebugLinkPreviewSample): StoryListItemSnapshot {
     val story = debugStoryBase(sample)
-    story.nitterInfo = NitterInfo().apply {
-        userName = "Living Off The Land"
-        userTag = "@L1v1ng0ffTh3L4N"
-        text = "Microsoft Edge stores passwords in memory in clear text, even when they are not in use."
-        date = "2026-03-30"
-        replyCount = "Replies"
-        reposts = "Reposts"
-        likes = "Likes"
-    }
+    story.nitterInfo = NitterInfo(
+        userName = "Living Off The Land",
+        userTag = "@L1v1ng0ffTh3L4N",
+        text = "Microsoft Edge stores passwords in memory in clear text, even when they are not in use.",
+        date = "2026-03-30",
+        replyCount = "Replies",
+        reposts = "Reposts",
+        likes = "Likes",
+    )
     return StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
 }
 

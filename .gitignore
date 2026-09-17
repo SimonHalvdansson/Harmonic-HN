@@ -17,3 +17,9 @@ deploymentTargetDropDown.xml
 
 # kotlin
 .kotlin/
+
+# Local diagnostics and benchmark results
+/artifacts/
+/artefacts/
+/.playwright-mcp/
+/benchmark/results/

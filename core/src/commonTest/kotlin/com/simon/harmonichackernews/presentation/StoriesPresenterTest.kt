@@ -48,6 +48,65 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoriesPresenterTest {
     @Test
+    fun searchOptionsSurviveRuntimeRecreationWithoutWaitingForCollectors() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            QueuedCacheDispatcher(),
+        )
+        runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
+        runtime.openSearch()
+        runtime.selectSearchOption(StorySearchOption.SORT, 1)
+        runtime.selectSearchOption(StorySearchOption.DATE, 2)
+        runtime.selectSearchOption(StorySearchOption.POINTS, 3)
+        runtime.selectSearchOption(StorySearchOption.COMMENTS, 2)
+        runtime.toggleOnlyClicked()
+
+        val restored = cacheRuntime(
+            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            QueuedCacheDispatcher(),
+        )
+        assertTrue(restored.searching)
+        assertEquals(
+            StorySearchOptions(1, 2, 3, 2, onlyClicked = true),
+            restored.searchOptions.state.value.options,
+        )
+        assertEquals(listOf(42), restored.mainStore.state.value.items.map { it.id })
+
+        runtime.closeSearch()
+        assertFalse(runtime.searching)
+        assertEquals(StorySearchOptions(), session.searchOptions)
+        assertEquals(StorySearchOptions(), runtime.searchOptions.state.value.options)
+    }
+
+    @Test
+    fun feedAndSearchSelectionsUseTheRetainedSessionImmediately() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            QueuedCacheDispatcher(),
+        )
+        runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
+        runtime.selectType(StoryListTarget.MAIN, StoryType.NEW_STORIES)
+        runtime.openSearch()
+        assertEquals(StoryType.NEW_STORIES, runtime.currentType)
+        runtime.selectType(StoryListTarget.SEARCH, StoryType.TOP_STORIES)
+        assertEquals(StoryType.TOP_STORIES, runtime.currentType)
+        assertEquals(StoryType.NEW_STORIES, session.mainStoryType)
+
+        runtime.closeSearch()
+        assertEquals(StoryType.NEW_STORIES, runtime.currentType)
+        assertEquals(listOf(42), runtime.mainStore.state.value.items.map { it.id })
+        runtime.evaluateUpdate(alwaysShow = true)
+        assertTrue(session.updateButtonShowing)
+        runtime.openSearch()
+        runtime.evaluateUpdate(alwaysShow = false)
+        assertFalse(session.updateButtonShowing)
+    }
+
+    @Test
     fun commentsUpdatesRefreshFeedAndSearchSnapshotsWhilePreservingRowState() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
@@ -213,7 +272,7 @@ class StoriesPresenterTest {
             hasAccount = false,
             restoring = false,
         )
-        presenter.mainStoryList.replace(listOf(Story("Retained", 42, true, false)))
+        runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
 
         runtime.openSearch()
         runCurrent()

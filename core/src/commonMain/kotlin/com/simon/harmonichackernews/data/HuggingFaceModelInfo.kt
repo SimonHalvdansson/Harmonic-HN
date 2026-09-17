@@ -2,21 +2,23 @@ package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.data.LinkPreviewFormatUtils.shortenUrl
 import kotlin.math.round
+import kotlinx.serialization.Serializable
 
-class HuggingFaceModelInfo {
-    var author: String? = null
-    var name: String? = null
-    var website: String? = null
-    var logoUrl: String? = null
-    var pipelineTag: String? = null
-    var libraryName: String? = null
-    var quantization: String? = null
-    var licenseName: String? = null
-    var lastModified: String? = null
-    var likes: Long = 0
-    var downloads: Long = 0
-    var parameterCount: Long = 0
-
+@Serializable
+data class HuggingFaceModelInfo(
+    val author: String? = null,
+    val name: String? = null,
+    val website: String? = null,
+    val logoUrl: String? = null,
+    val pipelineTag: String? = null,
+    val libraryName: String? = null,
+    val quantization: String? = null,
+    val licenseName: String? = null,
+    val lastModified: String? = null,
+    val likes: Long = 0,
+    val downloads: Long = 0,
+    val parameterCount: Long = 0,
+) {
     fun formatCapability(): String = listOfNotNull(
         pipelineTag?.toPreviewLabel(),
         libraryName?.toPreviewLabel(),

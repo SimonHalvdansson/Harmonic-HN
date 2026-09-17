@@ -52,6 +52,24 @@ class RichLinkPreviewUrlsTest {
     }
 
     @Test
+    fun knownHostsTakePrecedenceOverFederatedSocialPaths() {
+        // Mastodon accepts any host with an /@user/numeric-id path. Known providers
+        // must keep ownership when their repository/model URL also has that shape.
+        assertEquals(
+            LinkPreviewType.GITHUB_REPOSITORY,
+            RichLinkPreviewUrls.type("https://github.com/@example/123"),
+        )
+        assertEquals(
+            LinkPreviewType.HUGGING_FACE_MODEL,
+            RichLinkPreviewUrls.type("https://huggingface.co/@example/123"),
+        )
+        assertEquals(
+            LinkPreviewType.MASTODON_POST,
+            RichLinkPreviewUrls.type("https://social.example/@example/123"),
+        )
+    }
+
+    @Test
     fun everyEnabledNetworkTypeHasExactlyOneLoader() {
         val externalTypes = LinkPreviewProviders.externalTypes
         val enabledNetworkTypes = LinkPreviewType.entries

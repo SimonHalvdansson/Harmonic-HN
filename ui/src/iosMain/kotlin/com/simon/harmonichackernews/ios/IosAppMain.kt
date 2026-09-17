@@ -72,7 +72,6 @@ import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
-import com.simon.harmonichackernews.ui.stories.StoriesScreenStateFactory
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import platform.UIKit.UIViewController
@@ -585,10 +584,8 @@ private fun IosStoriesContent(
             PresentationCopy.lastUpdated(app.platform.timeFormatting.time(millis))
         }
         controller.updateContent(
-            StoriesScreenStateFactory.create(
-                state,
-                StoriesPlatformPresentation(lastUpdatedText, contentInsetStartPx = 0),
-            ),
+            state,
+            StoriesPlatformPresentation(lastUpdatedText, contentInsetStartPx = 0),
         )
     }
     LaunchedEffect(store, controller, scene) {

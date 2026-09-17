@@ -131,22 +131,22 @@ object NitterPreview {
 
     fun parseJavascriptResult(json: String): NitterInfo {
         val value = JsonObject(json)
-        return NitterInfo().apply {
-            text = value.optString("text").replace("\n", "<br>")
-            userName = value.optString("userName")
-            userTag = value.optString("userTag")
-            date = value.optString("date")
-            replyCount = value.optString("replyCount")
-            reposts = value.optString("reposts")
-            likes = value.optString("likes")
-            imgSrc = value.nullableString("imgSrc")
-            hasVideo = value.optBoolean("hasVideo")
-            beforeUserName = value.optString("beforeName")
-            beforeUserTag = value.optString("beforeTag")
-            beforeText = value.optString("beforeText")
-            beforeDate = value.optString("beforeDate")
-            beforeImgSrc = value.nullableString("beforeImgSrc")
-        }
+        return NitterInfo(
+            text = value.optString("text").replace("\n", "<br>"),
+            userName = value.optString("userName"),
+            userTag = value.optString("userTag"),
+            date = value.optString("date"),
+            replyCount = value.optString("replyCount"),
+            reposts = value.optString("reposts"),
+            likes = value.optString("likes"),
+            imgSrc = value.nullableString("imgSrc"),
+            hasVideo = value.optBoolean("hasVideo"),
+            beforeUserName = value.optString("beforeName"),
+            beforeUserTag = value.optString("beforeTag"),
+            beforeText = value.optString("beforeText"),
+            beforeDate = value.optString("beforeDate"),
+            beforeImgSrc = value.nullableString("beforeImgSrc"),
+        )
     }
 
     private fun JsonObject.nullableString(key: String): String? {

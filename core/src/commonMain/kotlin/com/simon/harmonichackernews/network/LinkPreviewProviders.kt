@@ -26,7 +26,7 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.GITHUB_RELEASE,
                 LinkPreviewType.GITHUB_DISCUSSION,
             ),
-            classify = { RichLinkPreviewUrls.githubTarget(it)?.type },
+            classify = { GitHubLinkPreview.githubTarget(it)?.type },
             load = { client, type, url ->
                 if (type == LinkPreviewType.GITHUB_REPOSITORY) {
                     LinkPreviewData.GitHub(client.loadGitHubInfo(url))
@@ -43,7 +43,7 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.HUGGING_FACE_PAPER,
                 LinkPreviewType.HUGGING_FACE_COLLECTION,
             ),
-            classify = { RichLinkPreviewUrls.huggingFaceTarget(it)?.type },
+            classify = { HuggingFaceLinkPreview.huggingFaceTarget(it)?.type },
             load = { client, type, url ->
                 if (type == LinkPreviewType.HUGGING_FACE_MODEL) {
                     LinkPreviewData.HuggingFace(client.loadHuggingFaceInfo(url))
@@ -60,71 +60,71 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.GO_PACKAGE,
                 LinkPreviewType.HOMEBREW_PACKAGE,
             ),
-            classify = { RichLinkPreviewUrls.packageTarget(it)?.type },
+            classify = { PackageLinkPreview.packageTarget(it)?.type },
             load = { client, type, url ->
                 LinkPreviewData.Rich(client.loadPackagePreview(type, url))
             },
         ),
         singleTypeProvider(
             LinkPreviewType.GITLAB_PROJECT,
-            matches = LinkPreviewUrls::isGitLabUrl,
+            matches = GitLabLinkPreview::isGitLabUrl,
             load = { client, url -> LinkPreviewData.GitLab(client.loadGitLabInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.OPENROUTER_MODEL,
-            matches = LinkPreviewUrls::isOpenRouterUrl,
+            matches = OpenRouterLinkPreview::isOpenRouterUrl,
             load = { client, url -> LinkPreviewData.OpenRouter(client.loadOpenRouterInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.STACK_EXCHANGE,
-            matches = LinkPreviewUrls::isStackExchangeUrl,
+            matches = StackExchangeLinkPreview::isStackExchangeUrl,
             load = { client, url ->
                 LinkPreviewData.StackExchange(client.loadStackExchangeInfo(url))
             },
         ),
         singleTypeProvider(
             LinkPreviewType.ARXIV,
-            matches = LinkPreviewUrls::isArxivUrl,
+            matches = ArxivLinkPreview::isArxivUrl,
             load = { client, url -> LinkPreviewData.Arxiv(client.loadArxivInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.WIKIPEDIA,
-            matches = LinkPreviewUrls::isWikipediaUrl,
+            matches = WikipediaLinkPreview::isWikipediaUrl,
             load = { client, url -> LinkPreviewData.Wikipedia(client.loadWikipediaInfo(url)) },
         ),
         richProvider(
             LinkPreviewType.STATUS_PAGE,
-            matches = { RichLinkPreviewUrls.statusPageIncident(it) != null },
+            matches = { StatusPageLinkPreview.statusPageIncident(it) != null },
             load = { client, url -> client.loadStatusPagePreview(url) },
         ),
         richProvider(
             LinkPreviewType.CROSSREF_ARTICLE,
-            matches = { RichLinkPreviewUrls.crossrefDoi(it) != null },
+            matches = { CrossrefLinkPreview.crossrefDoi(it) != null },
             load = { client, url -> client.loadCrossrefPreview(url) },
         ),
         richProvider(
             LinkPreviewType.USGS_EARTHQUAKE,
-            matches = { RichLinkPreviewUrls.usgsEventId(it) != null },
+            matches = { UsgsLinkPreview.usgsEventId(it) != null },
             load = { client, url -> client.loadUsgsPreview(url) },
         ),
         richProvider(
             LinkPreviewType.SUBSTACK_ARTICLE,
-            matches = RichLinkPreviewUrls::isSubstackArticle,
+            matches = SubstackLinkPreview::isSubstackArticle,
             load = { client, url -> client.loadSubstackPreview(url) },
         ),
         richProvider(
             LinkPreviewType.MASTODON_POST,
-            matches = { RichLinkPreviewUrls.mastodonStatus(it) != null },
+            matches = { MastodonLinkPreview.mastodonStatus(it) != null },
             load = { client, url -> client.loadMastodonPreview(url) },
         ),
         richProvider(
             LinkPreviewType.BLUESKY_POST,
-            matches = RichLinkPreviewUrls::isBlueskyPost,
+            matches = BlueskyLinkPreview::isBlueskyPost,
             load = { client, url -> client.loadBlueskyPreview(url) },
         ),
         richProvider(
             LinkPreviewType.REDDIT_POST,
-            matches = RichLinkPreviewUrls::isRedditPost,
+            matches = RedditLinkPreview::isRedditPost,
             load = { client, url ->
                 client.loadOEmbedPreview(
                     LinkPreviewType.REDDIT_POST,

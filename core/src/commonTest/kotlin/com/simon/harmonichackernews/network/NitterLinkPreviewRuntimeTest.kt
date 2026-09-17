@@ -18,7 +18,7 @@ class NitterLinkPreviewRuntimeTest {
     @Test
     fun customInstanceRedirectsAndExtractsPreview() = runTest {
         val target = "https://nitter.example.org/example/status/123"
-        val expected = NitterInfo().apply { text = "Custom instance" }
+        val expected = NitterInfo(text = "Custom instance")
         val extractor = FakeExtractor(target, listOf(expected))
         val runtime = runtime(this)
         val prefs = preferences(redirect = true).copy(instanceUrl = "https://nitter.example.org")
@@ -82,7 +82,7 @@ class NitterLinkPreviewRuntimeTest {
 
     @Test
     fun pageFinishedReadsImmediatelyAndRetriesFailures() = runTest {
-        val expected = NitterInfo().apply { text = "Loaded" }
+        val expected = NitterInfo(text = "Loaded")
         val extractor = FakeExtractor(NITTER_URL, listOf(null, expected))
         val runtime = runtime(this)
 

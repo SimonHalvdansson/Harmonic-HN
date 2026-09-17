@@ -141,7 +141,6 @@ fun HarmonicAppComposition.createStoriesStore(
     return StoriesStore(
         scope = featureScope,
         sessionState = host.sessionState,
-        presenter = presenter,
         runtime = runtime,
         storyCache = storyCacheRuntime,
         observeSavedItems = { emit -> savedItems.changes.collect { emit(it.source) } },

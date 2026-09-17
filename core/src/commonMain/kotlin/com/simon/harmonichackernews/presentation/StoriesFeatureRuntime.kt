@@ -110,8 +110,8 @@ class StoriesFeatureRuntime(
     private val mutableEffects = MutableSharedFlow<StoriesRuntimeEffect>(extraBufferCapacity = 32)
     val effects: SharedFlow<StoriesRuntimeEffect> = mutableEffects.asSharedFlow()
 
-    val mainStore: StoryListStore = presenter.mainStoryList
-    val searchStore: StoryListStore = presenter.searchStoryList
+    val mainStore: StoryListStore = sessionState.mainStoryList
+    val searchStore: StoryListStore = sessionState.searchStoryList
     val mainStories: MutableList<Story> = mainStore.stories
     val searchStories: MutableList<Story> = searchStore.stories
     val searchOptions: StorySearchStore = presenter.searchStore
@@ -173,10 +173,10 @@ class StoriesFeatureRuntime(
         get() = activeStore.stories
 
     val currentType: StoryType
-        get() = presenter.state.value.activeStoryType
+        get() = if (searching) sessionState.searchStoryType else sessionState.mainStoryType
 
     val searching: Boolean
-        get() = presenter.state.value.searching
+        get() = sessionState.searching
 
     val failure: StoryLoadFailure?
         get() = activeStore.state.value.failure
@@ -399,18 +399,24 @@ class StoriesFeatureRuntime(
     }
 
     fun evaluateUpdate(alwaysShow: Boolean) {
-        presenter.dispatch(
-            StoriesAction.EvaluateUpdateAvailability(
-                nowMillis = nowMillis(),
-                lastLoadedMillis = sessionState.lastLoaded,
-                alwaysShow = alwaysShow,
-                storyType = currentType,
-            ),
+        val updateAvailable = StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
+            nowMillis = nowMillis(),
+            lastLoadedMillis = sessionState.lastLoaded,
+            alwaysShow = alwaysShow,
+            searching = searching,
+            storyType = currentType,
         )
+        if (sessionState.updateButtonShowing != updateAvailable) {
+            sessionState.updateButtonShowing = updateAvailable
+            emit(StoriesRuntimeEffect.StoryChanged())
+        }
     }
 
     fun selectType(target: StoryListTarget, type: StoryType) {
-        presenter.dispatch(StoriesAction.SelectStoryType(type, target))
+        when (target) {
+            StoryListTarget.MAIN -> sessionState.mainStoryType = type
+            StoryListTarget.SEARCH -> sessionState.searchStoryType = type
+        }
         store(target).setPaginationEnabled(shouldUsePagination(type))
     }
 
@@ -441,7 +447,7 @@ class StoriesFeatureRuntime(
         availableStoryTypes.getOrNull(index) ?: StoryType.UNKNOWN
 
     fun selectedStoryTypeIndex(): Int =
-        availableStoryTypes.indexOf(presenter.state.value.mainStoryType)
+        availableStoryTypes.indexOf(sessionState.mainStoryType)
 
     fun shiftFrontPageDay(days: Int) {
         frontPageDay.shift(days)
@@ -461,10 +467,11 @@ class StoriesFeatureRuntime(
         loadPendingBeforeSearch = mainStories.isEmpty() && failure == null &&
             !currentType.isBookmarks && !currentType.isUserItemList
         beginGeneration()
-        presenter.dispatch(StoriesAction.ResetSearchOptions)
-        presenter.dispatch(StoriesAction.SetSearching(true))
-        selectType(StoryListTarget.SEARCH, presenter.state.value.mainStoryType)
-        clearStore(searchStore, presenter.state.value.searchStoryType)
+        searchOptions.resetOptions()
+        retainSearchOptions()
+        sessionState.searching = true
+        selectType(StoryListTarget.SEARCH, sessionState.mainStoryType)
+        clearStore(searchStore, sessionState.searchStoryType)
         refreshIndicatorShowing = false
         rateLimited = false
         changed()
@@ -473,11 +480,12 @@ class StoriesFeatureRuntime(
     /** Returns true when retained main content was restored and no refresh was needed. */
     fun closeSearch(): Boolean {
         if (!searching) return false
-        presenter.dispatch(StoriesAction.SetSearchDraft(""))
-        presenter.dispatch(StoriesAction.ResetSearchOptions)
+        sessionState.lastSearch = ""
+        searchOptions.resetOptions()
+        retainSearchOptions()
         beginGeneration()
-        presenter.dispatch(StoriesAction.SetSearching(false))
-        clearStore(searchStore, presenter.state.value.searchStoryType)
+        sessionState.searching = false
+        clearStore(searchStore, sessionState.searchStoryType)
         refreshIndicatorShowing = false
         rateLimited = false
         val retainedMain = storiesBeforeSearch
@@ -494,23 +502,24 @@ class StoriesFeatureRuntime(
     }
 
     fun submitSearch(query: String, resetResultLimit: Boolean = true) {
-        presenter.dispatch(StoriesAction.Search(query, resetResultLimit))
+        sessionState.lastSearch = query
+        searchOptions.search(query, resetResultLimit)
     }
 
     fun selectSearchOption(option: StorySearchOption, index: Int) {
-        presenter.dispatch(
-            when (option) {
-                StorySearchOption.SORT -> StoriesAction.SelectSearchSort(index)
-                StorySearchOption.DATE -> StoriesAction.SelectSearchDateRange(index)
-                StorySearchOption.POINTS -> StoriesAction.SelectSearchMinimumPoints(index)
-                StorySearchOption.COMMENTS -> StoriesAction.SelectSearchMinimumComments(index)
-            },
-        )
+        when (option) {
+            StorySearchOption.SORT -> searchOptions.selectSort(index)
+            StorySearchOption.DATE -> searchOptions.selectDateRange(index)
+            StorySearchOption.POINTS -> searchOptions.selectMinimumPoints(index)
+            StorySearchOption.COMMENTS -> searchOptions.selectMinimumComments(index)
+        }
+        retainSearchOptions()
         retrySearch()
     }
 
     fun toggleOnlyClicked() {
-        presenter.dispatch(StoriesAction.ToggleOnlyClicked)
+        searchOptions.toggleOnlyClicked()
+        retainSearchOptions()
         retrySearch()
     }
 
@@ -519,7 +528,7 @@ class StoriesFeatureRuntime(
         showMainLoadingIndicator: Boolean = false,
     ) {
         if (currentType.isBookmarks) bookmarksChanged = false
-        presenter.dispatch(StoriesAction.DismissUpdateAvailability)
+        sessionState.updateButtonShowing = false
         val type = currentType
         val plan = StoryFeedRefreshPolicy.plan(
             searching = searching,
@@ -529,7 +538,7 @@ class StoriesFeatureRuntime(
             listIsEmpty = activeStories.isEmpty(),
         )
         if (plan.source == StoryFeedSource.SEARCH) {
-            submitSearch(presenter.state.value.searchDraft)
+            submitSearch(sessionState.lastSearch)
             return
         }
 
@@ -548,11 +557,9 @@ class StoriesFeatureRuntime(
 
         when (plan.source) {
             StoryFeedSource.SEARCH -> Unit
-            StoryFeedSource.ALGOLIA -> presenter.dispatch(
-                StoriesAction.LoadTopStories(
-                    storyType = type,
-                    startTime = searchOptions.getTopStoriesStartTime(type),
-                ),
+            StoryFeedSource.ALGOLIA -> searchOptions.loadTopStories(
+                storyType = type,
+                startTime = searchOptions.getTopStoriesStartTime(type),
             )
             StoryFeedSource.BOOKMARKS -> loadBookmarks()
             StoryFeedSource.USER_ITEMS -> loadUserItems(plan, generation)
@@ -593,7 +600,7 @@ class StoriesFeatureRuntime(
             }
             state.canLoadMore && !searchOptions.state.value.loading -> {
                 searchRuntime.beginLoadMore(activeStore)
-                presenter.dispatch(StoriesAction.LoadMoreSearchResults)
+                searchOptions.loadMore()
             }
         }
         changed()
@@ -734,7 +741,7 @@ class StoriesFeatureRuntime(
         }
 
     fun lastUpdatedMillisForHeader(): Long? = sessionState.lastLoaded.takeIf {
-        presenter.state.value.updateAvailable && !searching && it > 0L
+        sessionState.updateButtonShowing && !searching && it > 0L
     }
 
     fun notifySavedItemsChanged(source: SavedItemSource) {
@@ -975,7 +982,7 @@ class StoriesFeatureRuntime(
         failure = activeStore.state.value.failure,
         listIsEmpty = activeStories.isEmpty(),
         searching = searching,
-        searchQuery = presenter.state.value.searchDraft,
+        searchQuery = sessionState.lastSearch,
         storyType = currentType,
     )
 
@@ -1168,8 +1175,8 @@ class StoriesFeatureRuntime(
             state = state,
             searching = state.mode == StorySearchMode.QUERY,
             activeTypeIsAlgolia = when (state.mode) {
-                StorySearchMode.QUERY -> presenter.state.value.searchStoryType.isAlgolia
-                StorySearchMode.TOP_STORIES -> presenter.state.value.mainStoryType.isAlgolia
+                StorySearchMode.QUERY -> sessionState.searchStoryType.isAlgolia
+                StorySearchMode.TOP_STORIES -> sessionState.mainStoryType.isAlgolia
                 StorySearchMode.NONE -> false
             },
         )
@@ -1369,9 +1376,13 @@ class StoriesFeatureRuntime(
         }
     }
 
+    private fun retainSearchOptions() {
+        sessionState.searchOptions = searchOptions.state.value.options
+    }
+
     private fun retrySearch() {
-        if (searching && presenter.state.value.searchDraft.isNotBlank()) {
-            submitSearch(presenter.state.value.searchDraft)
+        if (searching && sessionState.lastSearch.isNotBlank()) {
+            submitSearch(sessionState.lastSearch)
         }
     }
 
@@ -1385,8 +1396,8 @@ class StoriesFeatureRuntime(
     }
 
     private fun updatePaginationModes() {
-        mainStore.setPaginationEnabled(shouldUsePagination(presenter.state.value.mainStoryType))
-        searchStore.setPaginationEnabled(shouldUsePagination(presenter.state.value.searchStoryType))
+        mainStore.setPaginationEnabled(shouldUsePagination(sessionState.mainStoryType))
+        searchStore.setPaginationEnabled(shouldUsePagination(sessionState.searchStoryType))
     }
 
     private fun shouldUsePagination(type: StoryType): Boolean =
@@ -1403,7 +1414,6 @@ class StoriesFeatureRuntime(
 
     private fun beginGeneration(): Int {
         feedPreparationJob?.cancel()
-        presenter.dispatch(StoriesAction.CancelFeedLoads)
         val generation = presenter.beginStoryLoadGeneration()
         activeStore.clearPendingPage()
         feedRuntime.resetScrapedPagination(activeStore)

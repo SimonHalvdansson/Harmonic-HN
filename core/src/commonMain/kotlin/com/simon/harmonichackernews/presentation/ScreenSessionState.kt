@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.presentation
 
-import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.data.Story
@@ -28,22 +27,13 @@ class StoriesSessionState {
 
     var searching: Boolean = false
     var lastSearch: String = ""
-    var mainAlgoliaHitsPerPage: Int = StorySearchController.ALGOLIA_HITS_INCREMENT
-    var searchAlgoliaHitsPerPage: Int = StorySearchController.ALGOLIA_HITS_INCREMENT
-    var mainLastAlgoliaTopStoriesStartTime: Int = 0
-    var searchLastAlgoliaTopStoriesStartTime: Int = 0
-
     var lastLoaded: Long = 0
     var updateButtonShowing: Boolean = false
     var userItemListFilter: Int = 1
     var frontPageDayUtcMillis: Long = -1L
     var scrapedFrontpageNextPageUrl: String? = null
 
-    var searchSortIndex: Int = 0
-    var searchDateRangeIndex: Int = 0
-    var searchMinimumPointsIndex: Int = 0
-    var searchMinimumCommentsIndex: Int = 0
-    var searchOnlyClicked: Boolean = false
+    var searchOptions: StorySearchOptions = StorySearchOptions()
 
     private val pendingPreviewVoteIds = linkedSetOf<Int>()
     private val pendingPreviewFavoriteIds = linkedSetOf<Int>()

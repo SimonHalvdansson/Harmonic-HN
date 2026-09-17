@@ -19,57 +19,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-data class StoriesPresenterState(
-    val searching: Boolean = false,
-    val searchDraft: String = "",
-    val updateAvailable: Boolean = false,
-    val mainStoryType: StoryType = StoryType.TOP_STORIES,
-    val searchStoryType: StoryType = StoryType.TOP_STORIES,
-    val mainList: PortableStoryListState = PortableStoryListState(),
-    val searchList: PortableStoryListState = PortableStoryListState(),
-    val search: StorySearchUiState = StorySearchUiState(),
-) {
-    val activeList: PortableStoryListState get() = if (searching) searchList else mainList
-    val activeStoryType: StoryType get() = if (searching) searchStoryType else mainStoryType
-}
 
 enum class StoryListTarget { MAIN, SEARCH }
 
 sealed interface StoriesAction {
-    data class SetSearching(val searching: Boolean) : StoriesAction
-    data class SetSearchDraft(val query: String) : StoriesAction
-    data class SelectStoryType(
-        val type: StoryType,
-        val target: StoryListTarget,
-    ) : StoriesAction
-    data class EvaluateUpdateAvailability(
-        val nowMillis: Long,
-        val lastLoadedMillis: Long,
-        val alwaysShow: Boolean,
-        val storyType: StoryType,
-    ) : StoriesAction
-    data object DismissUpdateAvailability : StoriesAction
-    data class Search(val query: String, val resetResultLimit: Boolean = true) : StoriesAction
-    data class LoadTopStories(
-        val storyType: StoryType,
-        val startTime: Int,
-        val resetResultLimit: Boolean = true,
-    ) : StoriesAction
-    data object LoadMoreSearchResults : StoriesAction
-    data object RetrySearch : StoriesAction
-    data object ResetSearchOptions : StoriesAction
-    data class SelectSearchSort(val index: Int) : StoriesAction
-    data class SelectSearchDateRange(val index: Int) : StoriesAction
-    data class SelectSearchMinimumPoints(val index: Int) : StoriesAction
-    data class SelectSearchMinimumComments(val index: Int) : StoriesAction
-    data object ToggleOnlyClicked : StoriesAction
     data class SelectStoryLink(
         val story: Story,
         val alwaysOpenComments: Boolean,
@@ -161,11 +117,10 @@ sealed interface StoriesEffect {
 }
 
 /**
- * Portable presentation owner for the stories screen.
+ * Executes story requests and emits their results for [StoriesFeatureRuntime] to apply.
  *
- * It combines list and search stores, accepts user intent as [StoriesAction], and emits only the
- * effects that a platform shell must perform. Android lifecycle, navigation, intents, and images
- * deliberately remain outside this class.
+ * Feed selection and retained state belong to [StoriesSessionState]; list and search state stay in
+ * their own stores. This class owns cancellable requests, not another copy of feature state.
  */
 class StoriesPresenter(
     private val scope: CoroutineScope,
@@ -179,10 +134,8 @@ class StoriesPresenter(
     clickedStoryIds: () -> List<Int>,
     isStoryClicked: (Int) -> Boolean,
     shouldHideClickedStories: () -> Boolean,
-) : Feature<StoriesAction, StoriesPresenterState, StoriesEffect> {
+) {
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
-    val mainStoryList = sessionState.mainStoryList
-    val searchStoryList = sessionState.searchStoryList
     val searchStore = StorySearchStore(
         scope = scope,
         algoliaRepository = algoliaRepository,
@@ -202,21 +155,8 @@ class StoriesPresenter(
         shouldHideClickedStories = shouldHideClickedStories,
     )
 
-    private val mutableState = MutableStateFlow(
-        StoriesPresenterState(
-            searching = sessionState.searching,
-            searchDraft = sessionState.lastSearch,
-            updateAvailable = sessionState.updateButtonShowing,
-            mainStoryType = sessionState.mainStoryType,
-            searchStoryType = sessionState.searchStoryType,
-            mainList = mainStoryList.state.value,
-            searchList = searchStoryList.state.value,
-        ),
-    )
-    override val state: StateFlow<StoriesPresenterState> = mutableState.asStateFlow()
-
     private val mutableEffects = MutableSharedFlow<StoriesEffect>(extraBufferCapacity = 16)
-    override val effects: SharedFlow<StoriesEffect> = mutableEffects.asSharedFlow()
+    val effects: SharedFlow<StoriesEffect> = mutableEffects.asSharedFlow()
     private var feedLoadJob: Job? = null
 
     fun configureVisibility(filters: ContentFilters, hideJobs: Boolean): Boolean =
@@ -234,59 +174,13 @@ class StoriesPresenter(
     )
 
     init {
-        searchStore.restoreOptions(
-            StorySearchOptions(
-                sortIndex = sessionState.searchSortIndex,
-                dateRangeIndex = sessionState.searchDateRangeIndex,
-                minimumPointsIndex = sessionState.searchMinimumPointsIndex,
-                minimumCommentsIndex = sessionState.searchMinimumCommentsIndex,
-                onlyClicked = sessionState.searchOnlyClicked,
-            ),
-        )
-        scope.launch { mainStoryList.state.collect { publish(mainList = it) } }
-        scope.launch { searchStoryList.state.collect { publish(searchList = it) } }
-        scope.launch { searchStore.state.collect(::applySearchState) }
+        searchStore.restoreOptions(sessionState.searchOptions)
         scope.launch { storyRowLoader.effects.collect(::applyStoryRowLoadEffect) }
     }
 
-    override fun dispatch(intent: StoriesAction) {
+    fun dispatch(intent: StoriesAction) {
         val action = intent
         when (action) {
-            is StoriesAction.SetSearching -> publish(searching = action.searching)
-            is StoriesAction.SetSearchDraft -> publish(searchDraft = action.query)
-            is StoriesAction.SelectStoryType -> when (action.target) {
-                StoryListTarget.MAIN -> publish(mainStoryType = action.type)
-                StoryListTarget.SEARCH -> publish(searchStoryType = action.type)
-            }
-            is StoriesAction.EvaluateUpdateAvailability -> publish(
-                updateAvailable = StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
-                    nowMillis = action.nowMillis,
-                    lastLoadedMillis = action.lastLoadedMillis,
-                    alwaysShow = action.alwaysShow,
-                    searching = state.value.searching,
-                    storyType = action.storyType,
-                ),
-            )
-            StoriesAction.DismissUpdateAvailability -> publish(updateAvailable = false)
-            is StoriesAction.Search -> {
-                publish(searchDraft = action.query)
-                searchStore.search(action.query, action.resetResultLimit)
-            }
-            is StoriesAction.LoadTopStories -> searchStore.loadTopStories(
-                storyType = action.storyType,
-                startTime = action.startTime,
-                resetResultLimit = action.resetResultLimit,
-            )
-            StoriesAction.LoadMoreSearchResults -> searchStore.loadMore()
-            StoriesAction.RetrySearch -> searchStore.retry()
-            StoriesAction.ResetSearchOptions -> searchStore.resetOptions()
-            is StoriesAction.SelectSearchSort -> searchStore.selectSort(action.index)
-            is StoriesAction.SelectSearchDateRange -> searchStore.selectDateRange(action.index)
-            is StoriesAction.SelectSearchMinimumPoints ->
-                searchStore.selectMinimumPoints(action.index)
-            is StoriesAction.SelectSearchMinimumComments ->
-                searchStore.selectMinimumComments(action.index)
-            StoriesAction.ToggleOnlyClicked -> searchStore.toggleOnlyClicked()
             is StoriesAction.SelectStoryLink -> selectStoryLink(action)
             is StoriesAction.SelectStoryComments -> selectStoryComments(action)
             is StoriesAction.LoadFeed -> loadFeed(action)
@@ -299,7 +193,6 @@ class StoriesPresenter(
             )
             is StoriesAction.SyncUserItems -> syncUserItems(action)
         }
-        applySearchState(searchStore.state.value)
     }
 
     private fun selectStoryLink(action: StoriesAction.SelectStoryLink) {
@@ -493,53 +386,6 @@ class StoriesPresenter(
                         cause = effect.cause,
                     )
             },
-        )
-    }
-
-    private fun applySearchState(state: StorySearchUiState) {
-        sessionState.searchSortIndex = state.options.sortIndex
-        sessionState.searchDateRangeIndex = state.options.dateRangeIndex
-        sessionState.searchMinimumPointsIndex = state.options.minimumPointsIndex
-        sessionState.searchMinimumCommentsIndex = state.options.minimumCommentsIndex
-        sessionState.searchOnlyClicked = state.options.onlyClicked
-        when (state.mode) {
-            StorySearchMode.QUERY -> {
-                sessionState.searchAlgoliaHitsPerPage = state.hitsPerPage
-                sessionState.searchLastAlgoliaTopStoriesStartTime = state.topStoriesStartTime
-            }
-            StorySearchMode.TOP_STORIES -> {
-                sessionState.mainAlgoliaHitsPerPage = state.hitsPerPage
-                sessionState.mainLastAlgoliaTopStoriesStartTime = state.topStoriesStartTime
-            }
-            StorySearchMode.NONE -> Unit
-        }
-        publish(search = state)
-    }
-
-    private fun publish(
-        searching: Boolean = state.value.searching,
-        searchDraft: String = state.value.searchDraft,
-        updateAvailable: Boolean = state.value.updateAvailable,
-        mainStoryType: StoryType = state.value.mainStoryType,
-        searchStoryType: StoryType = state.value.searchStoryType,
-        mainList: PortableStoryListState = state.value.mainList,
-        searchList: PortableStoryListState = state.value.searchList,
-        search: StorySearchUiState = state.value.search,
-    ) {
-        sessionState.searching = searching
-        sessionState.lastSearch = searchDraft
-        sessionState.updateButtonShowing = updateAvailable
-        sessionState.mainStoryType = mainStoryType
-        sessionState.searchStoryType = searchStoryType
-        mutableState.value = StoriesPresenterState(
-            searching = searching,
-            searchDraft = searchDraft,
-            updateAvailable = updateAvailable,
-            mainStoryType = mainStoryType,
-            searchStoryType = searchStoryType,
-            mainList = mainList,
-            searchList = searchList,
-            search = search,
         )
     }
 

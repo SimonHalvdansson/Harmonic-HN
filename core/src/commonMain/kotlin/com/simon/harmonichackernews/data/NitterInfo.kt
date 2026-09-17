@@ -1,20 +1,21 @@
 package com.simon.harmonichackernews.data
 
-class NitterInfo {
-    var text: String? = null
-    var userName: String? = null
-    var userTag: String? = null
-    var date: String? = null
-    var replyCount: String? = null
-    var reposts: String? = null
-    var likes: String? = null
+import kotlinx.serialization.Serializable
 
-    var imgSrc: String? = null
-    var hasVideo: Boolean = false
-
-    var beforeUserName: String? = null
-    var beforeUserTag: String? = null
-    var beforeText: String? = null
-    var beforeDate: String? = null
-    var beforeImgSrc: String? = null
-}
+@Serializable
+data class NitterInfo(
+    val text: String? = null,
+    val userName: String? = null,
+    val userTag: String? = null,
+    val date: String? = null,
+    val replyCount: String? = null,
+    val reposts: String? = null,
+    val likes: String? = null,
+    val imgSrc: String? = null,
+    val hasVideo: Boolean = false,
+    val beforeUserName: String? = null,
+    val beforeUserTag: String? = null,
+    val beforeText: String? = null,
+    val beforeDate: String? = null,
+    val beforeImgSrc: String? = null,
+)

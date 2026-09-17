@@ -1,20 +1,23 @@
 package com.simon.harmonichackernews.data
 
-class ArxivInfo {
-    var arxivAbstract: String? = null
-    var authors: Array<String?> = emptyArray()
-    var primaryCategory: String? = null
-    var arxivID: String? = null
-    var htmlUrl: String? = null
+import com.simon.harmonichackernews.utils.ArxivResolver
+import kotlinx.serialization.Serializable
 
-    var secondaryCategories: Array<String?> = emptyArray()
-
-    var publishedDate: String? = null
-
-    fun formatDate(): String {
-        return publishedDate!!.substring(0, 10)
+@Serializable
+data class ArxivInfo(
+    val arxivAbstract: String? = null,
+    val authors: List<String?> = emptyList(),
+    val primaryCategory: String? = null,
+    val arxivID: String? = null,
+    val secondaryCategories: List<String?> = emptyList(),
+    val publishedDate: String? = null,
+    val htmlUrl: String? = null,
+) {
+    fun concatNames(): String = authors.joinToString(", ")
+    fun formatDate(): String = publishedDate.orEmpty().take(10)
+    fun formatSubjects(): String = buildString {
+        append(ArxivResolver.resolveFull(primaryCategory))
+        secondaryCategories.forEach { append("; "); append(ArxivResolver.resolveFull(it)) }
     }
-
-    val pDFURL: String
-        get() = "https://arxiv.org/pdf/$arxivID.pdf"
+    val pDFURL: String get() = "https://arxiv.org/pdf/$arxivID.pdf"
 }

@@ -64,13 +64,13 @@ android {
 
     sourceSets {
         debugLLM {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         debugLLMFast {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
         playRelease {
-            kotlin.srcDirs += "src/play/java"
+            kotlin.srcDirs += "src/play/kotlin"
         }
     }
 

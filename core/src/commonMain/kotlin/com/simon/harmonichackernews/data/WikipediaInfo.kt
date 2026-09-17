@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.data
 
-class WikipediaInfo {
-    var title: String? = null
-    var summary: String? = null
-}
+import kotlinx.serialization.Serializable
+
+@Serializable data class WikipediaInfo(
+    val summary: String? = null,
+    val title: String? = null,
+)
