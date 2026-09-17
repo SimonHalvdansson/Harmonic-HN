@@ -16,8 +16,8 @@ class StoriesSessionState {
     var initialized: Boolean = false
     val mainStoryList = StoryListStore()
     val searchStoryList = StoryListStore()
-    val mainStories: MutableList<Story> = mainStoryList.stories
-    val searchStories: MutableList<Story> = searchStoryList.stories
+    val mainStories: List<Story> = mainStoryList.stories
+    val searchStories: List<Story> = searchStoryList.stories
     val bookmarkStories = mutableListOf<Story>()
     val userItemListStories = mutableListOf<Story>()
     val userItemListCommentIds = mutableSetOf<Int>()

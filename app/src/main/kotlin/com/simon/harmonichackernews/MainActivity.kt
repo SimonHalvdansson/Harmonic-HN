@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
 import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
-import com.simon.harmonichackernews.settings.CommentNavigationPreferences
+import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.utils.ThemeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -130,9 +130,9 @@ class MainActivity : BaseActivity() {
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val volumeNavigationMode = harmonicAppComposition
             .userSettings.comments.volumeNavigationMode
-        if (CommentNavigationPreferences.DISABLED != volumeNavigationMode) {
+        if (CommentVolumeNavigationMode.DISABLED != volumeNavigationMode) {
             val topLevelOnly =
-                CommentNavigationPreferences.TOP_LEVEL == volumeNavigationMode
+                CommentVolumeNavigationMode.TOP_LEVEL == volumeNavigationMode
             val coordinator = navigationController.getCommentsCoordinator()
             if (coordinator?.canNavigateCommentsWithVolumeButtons() == true) {
                 if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {

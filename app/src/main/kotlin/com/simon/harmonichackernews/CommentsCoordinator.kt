@@ -15,12 +15,10 @@ import android.widget.FrameLayout
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.doOnPreDraw
 import androidx.webkit.WebViewFeature
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.CommentsFeatureHost
@@ -50,12 +48,10 @@ import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.navigation.MainNavigationController
-import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import com.simon.harmonichackernews.utils.ViewUtils
 import kotlin.math.max
-import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -133,21 +129,22 @@ class CommentsCoordinator(
     private var appliedCommentsThemeVersion = -1L
     private var appliedCommentsSettingsVersion = -1L
     private var story by sessionState::story
-    private var originalStatusBarColor = Color.TRANSPARENT
-    private var originalStatusBarColorCaptured = false
-    private var commentsPaneStatusBarColor = Color.TRANSPARENT
-    private var composeHeaderStatusBarCoverage = 0f
-    private var commentsHeaderStatusBarColor = Color.TRANSPARENT
-    private var appliedStatusBarProtectionKnown = false
-    private var appliedStatusBarProtectionEnabled = false
-    private var appliedStatusBarProtectionColor = Color.TRANSPARENT
+    private val statusBars = CommentsStatusBarAppearance(activity)
     internal val composeUiController: CommentsComposeController?
         get() = composeController
     private var hostActive = true
-    private var firstDrawCompleted = false
-    private var initialCommentsLoadStarted = false
-    private var pendingVisibleWebsiteInitialization = false
-    private var pendingComposeSummaryRequest = false
+    private val openingWork = CommentsOpeningWork(
+        integrated = { integratedWebview },
+        showingWebsite = { showWebsite },
+        hiddenBrowserDelayMillis = {
+            if (navigation.isAdaptiveTwoPane()) 0L else ActivityNavigationTransitionDurationMillis.toLong()
+        },
+        loadComments = { if (!commentsLoaded) loadInitialStoryAndComments(restoreScrollFromCache) },
+        initializeVisibleBrowser = { webViewController?.initializeForVisibleWebsite() },
+        initializeConfiguredBrowser = { webViewController?.initializeAfterFirstDraw() },
+        startSummary = ::startComposeSummary,
+    )
+    private var restoreScrollFromCache = false
 
     private fun commentsPerformanceTrace(): CommentsPerformanceTrace {
         if (BuildConfig.APPLICATION_ID != COMMENTS_BENCHMARK_APPLICATION_ID) {
@@ -218,14 +215,7 @@ class CommentsCoordinator(
             restoredSorting = restoredSorting,
         )
 
-        originalStatusBarColor = activity.window.statusBarColor
-        originalStatusBarColorCaptured = true
-
-
-        commentsPaneStatusBarColor =
-            StatusBarProtectionUtils.getPaneBackgroundColor(activity)
-        commentsHeaderStatusBarColor = commentsPaneStatusBarColor
-        appliedStatusBarProtectionKnown = false
+        statusBars.capture()
         updateCommentsStatusBarAppearance()
 
         refreshPresentationCapabilities()
@@ -339,11 +329,12 @@ class CommentsCoordinator(
 
         // The pane color was already resolved from the active theme above. Reusing it avoids two
         // cold theme/preference/resource lookups on the comments-open frame.
-        webViewController.setContainerBackgroundColor(commentsPaneStatusBarColor)
+        webViewController.setContainerBackgroundColor(statusBars.paneColor)
 
         val restoreScrollFromCache = !showWebsite
         initializeComposeUi()
-        scheduleOpeningWorkAfterFirstDraw(view, restoreScrollFromCache)
+        this.restoreScrollFromCache = restoreScrollFromCache
+        openingWork.schedule(view)
     }
 
     private fun createBackPressedCallback(
@@ -583,7 +574,7 @@ class CommentsCoordinator(
             override fun onHeaderColorChanged(color: Int) = updateHeaderStatusBarColor(color)
 
             override fun onHeaderCoverageChanged(coverage: Float) {
-                composeHeaderStatusBarCoverage = max(0f, min(1f, coverage))
+                statusBars.headerCoverage = coverage
                 updateCommentsStatusBarAppearance()
             }
 
@@ -638,11 +629,9 @@ class CommentsCoordinator(
             contentInsetRightPx = commentsContentInsetRight,
         )
 
-    private fun requestComposeSummary() {
-        if (!firstDrawCompleted) {
-            pendingComposeSummaryRequest = true
-            return
-        }
+    private fun requestComposeSummary() = openingWork.requestSummary()
+
+    private fun startComposeSummary() {
         val beginSummary: (String?) -> Unit = commentsStore::startSummary
         webViewController?.getLoadedPageText(
             CommentsWebViewController.PageTextCallback(beginSummary),
@@ -764,53 +753,25 @@ class CommentsCoordinator(
     }
 
     private fun updateHeaderStatusBarColor(color: Int) {
-        commentsHeaderStatusBarColor = color
+        statusBars.headerColor = color
         updateCommentsStatusBarAppearance()
     }
 
     private fun syncCommentsStatusBarProtection() {
-        if (!isActive) {
-            return
-        }
-        commentsPaneStatusBarColor =
-            StatusBarProtectionUtils.getPaneBackgroundColor(activity)
+        if (!isActive) return
+        statusBars.refreshPaneColor()
         updateCommentsStatusBarAppearance()
     }
 
-    private fun updateCommentsStatusBarAppearance(commentsStatusBarColor: Int = this.currentCommentsStatusBarColor) {
-        val host = webViewHost
-        if (host == null || !isActive) {
-            return
-        }
-
-        val showStatusBarProtection = shouldShowCommentsStatusBarProtection()
-        val statusBarProtectionEnabled = showStatusBarProtection
-        val statusBarColor =
-            if (showStatusBarProtection) commentsStatusBarColor else commentsPaneStatusBarColor
-        if (!appliedStatusBarProtectionKnown || appliedStatusBarProtectionEnabled != statusBarProtectionEnabled || (statusBarProtectionEnabled && appliedStatusBarProtectionColor != statusBarColor)) {
-            StatusBarProtectionUtils.setTopProtection(
-                host.root,
-                statusBarProtectionEnabled,
-                statusBarColor
-            )
-            appliedStatusBarProtectionKnown = true
-            appliedStatusBarProtectionEnabled = statusBarProtectionEnabled
-            appliedStatusBarProtectionColor =
-                if (statusBarProtectionEnabled) statusBarColor else Color.TRANSPARENT
-        }
-        if (!isActive) {
-            return
-        }
-        val windowStatusBarColor =
-            if (navigation.isAdaptiveTwoPane() ||
-                commentsStore.state.value.settings?.transparentStatusBar == true
-            )
-                Color.TRANSPARENT
-            else
-                statusBarColor
-        if (activity.window.statusBarColor != windowStatusBarColor) {
-            activity.window.statusBarColor = windowStatusBarColor
-        }
+    private fun updateCommentsStatusBarAppearance() {
+        if (!isActive) return
+        val root = webViewHost?.root ?: return
+        statusBars.update(
+            root = root,
+            sheetExpanded = isBottomSheetFullyExpanded,
+            adaptive = navigation.isAdaptiveTwoPane(),
+            transparent = commentsStore.state.value.settings?.transparentStatusBar == true,
+        )
     }
 
     fun onAdaptiveLayoutChanged() {
@@ -835,10 +796,6 @@ class CommentsCoordinator(
             commentsContentInsetRight,
             0,
         )
-    }
-
-    private fun shouldShowCommentsStatusBarProtection(): Boolean {
-        return this.isBottomSheetFullyExpanded
     }
 
     private val isBottomSheetFullyExpanded: Boolean
@@ -880,97 +837,9 @@ class CommentsCoordinator(
         composeController?.requestCollapseSheet()
     }
 
-    /**
-     * Keeps the destination's first frame small, then overlaps cache/network work with the shared
-     * open transition. Hidden WebView preloading is deliberately held until that transition ends;
-     * Chromium startup is large enough to monopolize one of the frames we are trying to protect.
-     */
-    private fun scheduleOpeningWorkAfterFirstDraw(
-        root: View,
-        restoreScrollFromCache: Boolean,
-    ) {
-        root.doOnPreDraw {
-            root.post {
-                if (attachedRoot !== root || !isActive) return@post
-                firstDrawCompleted = true
+    private fun requestVisibleWebsiteInitialization() = openingWork.requestVisibleBrowser()
 
-                // The cache read suspends onto a background dispatcher. Starting it here lets its
-                // disk I/O and JSON parsing use the animation window without delaying first draw.
-                startInitialCommentsLoad(restoreScrollFromCache)
-
-                if (showWebsite || pendingVisibleWebsiteInitialization) {
-                    root.postOnAnimation {
-                        if (attachedRoot !== root || !isActive) return@postOnAnimation
-                        runDeferredWebViewWork(visibleWebsite = true)
-                    }
-                } else {
-                    val delayMillis = if (navigation.isAdaptiveTwoPane()) {
-                        0L
-                    } else {
-                        ActivityNavigationTransitionDurationMillis.toLong()
-                    }
-                    root.postDelayed(
-                        {
-                            if (attachedRoot !== root || !isActive) return@postDelayed
-                            runDeferredWebViewWork(visibleWebsite = false)
-                        },
-                        delayMillis,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun startInitialCommentsLoad(restoreScrollFromCache: Boolean) {
-        if (initialCommentsLoadStarted || commentsLoaded) return
-        initialCommentsLoadStarted = true
-        loadInitialStoryAndComments(restoreScrollFromCache)
-    }
-
-    private fun runDeferredWebViewWork(visibleWebsite: Boolean) {
-        if (visibleWebsite) {
-            pendingVisibleWebsiteInitialization = false
-            requestVisibleWebsiteInitialization()
-        } else {
-            requestConfiguredWebViewInitialization()
-        }
-        if (pendingComposeSummaryRequest) {
-            pendingComposeSummaryRequest = false
-            requestComposeSummary()
-        }
-    }
-
-    private fun requestVisibleWebsiteInitialization() {
-        if (!integratedWebview) return
-        if (!firstDrawCompleted) {
-            pendingVisibleWebsiteInitialization = true
-            return
-        }
-        webViewController?.initializeForVisibleWebsite()
-    }
-
-    private fun requestConfiguredWebViewInitialization() {
-        if (!integratedWebview || !firstDrawCompleted) return
-        webViewController?.initializeAfterFirstDraw()
-    }
-
-    private val currentCommentsStatusBarColor: Int
-        get() {
-            val headerCoverage = this.headerStatusBarCoverage
-            return ColorUtils.blendARGB(
-                commentsPaneStatusBarColor,
-                commentsHeaderStatusBarColor,
-                headerCoverage
-            )
-        }
-
-    private val headerStatusBarCoverage: Float
-        get() {
-            if (composeController != null) {
-                return composeHeaderStatusBarCoverage
-            }
-            return 0f
-        }
+    private fun requestConfiguredWebViewInitialization() = openingWork.requestConfiguredBrowser()
 
     fun onConfigurationChanged(newConfig: Configuration) {
         if (isActive) refreshPresentationCapabilities()
@@ -1131,10 +1000,8 @@ class CommentsCoordinator(
             }
             controller.completeCommentActionDismiss(dispatchPendingAction = false)
         }
-        if (originalStatusBarColorCaptured) {
-            activity.window.statusBarColor = originalStatusBarColor
-            originalStatusBarColorCaptured = false
-        }
+        openingWork.close()
+        statusBars.restore()
 
         val rootView = attachedRoot
         if (rootView != null) {
@@ -1157,7 +1024,6 @@ class CommentsCoordinator(
         session?.composeController = null
         viewSession = null
         predictiveBackInsetsFrozen = false
-        appliedStatusBarProtectionKnown = false
         destroyed = true
     }
 
@@ -1168,8 +1034,8 @@ class CommentsCoordinator(
             hostRestoration = hostRestoration.copy(overlay = null)
             rootView.post(Runnable {
                 composeController?.let { controller ->
-                    val backgroundColor = if (commentsHeaderStatusBarColor != Color.TRANSPARENT)
-                        commentsHeaderStatusBarColor
+                    val backgroundColor = if (statusBars.headerColor != Color.TRANSPARENT)
+                        statusBars.headerColor
                     else
                         ContextCompat.getColor(
                             activity,

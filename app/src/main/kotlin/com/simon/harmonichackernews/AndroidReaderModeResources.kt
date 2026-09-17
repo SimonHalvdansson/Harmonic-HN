@@ -39,9 +39,9 @@ internal class AndroidReaderModeResources {
         ReaderModeThemeFactory.create(
             colors = harmonicColors(context),
             light = ThemeUtils.isLightMode(context),
-            font = preferences.readerModeFont,
+            font = preferences.readerModeFont.storedValue,
             fontSizePx = preferences.readerModeFontSize,
-            fontData = fontData(context, preferences.readerModeFont),
+            fontData = fontData(context, preferences.readerModeFont.storedValue),
         )
 
     private fun fontData(context: Context, font: String?): ReaderModeFontData? {

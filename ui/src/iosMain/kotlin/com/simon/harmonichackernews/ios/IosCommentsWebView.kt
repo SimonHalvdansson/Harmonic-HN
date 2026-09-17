@@ -129,7 +129,7 @@ class IosCommentsWebView(
 
     suspend fun preloadAfterOpening(
         firstDraw: Deferred<Unit>,
-        mode: String,
+        mode: com.simon.harmonichackernews.settings.WebViewPreloadMode,
         minimumBatteryPercent: Int,
         environment: () -> WebPreloadEnvironment,
     ) {

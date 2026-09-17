@@ -25,68 +25,7 @@ import kotlinx.coroutines.launch
 
 enum class StoryListTarget { MAIN, SEARCH }
 
-sealed interface StoriesAction {
-    data class SelectStoryLink(
-        val story: Story,
-        val alwaysOpenComments: Boolean,
-        val useIntegratedWebView: Boolean,
-    ) : StoriesAction
-    data class SelectStoryComments(val story: Story) : StoriesAction
-    data class LoadFeed(
-        val storyType: StoryType,
-        val frontDay: String?,
-        val generation: Int,
-    ) : StoriesAction
-    data class LoadNextScrapedPage(
-        val storyType: StoryType,
-        val nextPageUrl: String,
-        val generation: Int,
-    ) : StoriesAction
-    data object CancelFeedLoads : StoriesAction
-    data class LoadStoryRow(
-        val story: Story,
-        val preserveTime: Boolean,
-        val generation: Int,
-    ) : StoriesAction
-    data class SyncUserItems(
-        val source: SavedItemSource,
-        val generation: Int,
-        val savedAtMillis: Long,
-    ) : StoriesAction
-}
-
 sealed interface StoriesEffect {
-    data class OpenComments(
-        val story: Story,
-        val showWebsite: Boolean,
-    ) : StoriesEffect
-
-    data class OpenExternalStory(
-        val story: Story,
-        val url: String,
-    ) : StoriesEffect
-
-    data class RetryStory(val story: Story) : StoriesEffect
-    data class FeedLoaded(
-        val storyType: StoryType,
-        val generation: Int,
-        val result: StoryFeedResult,
-    ) : StoriesEffect
-    data class FeedFailed(
-        val storyType: StoryType,
-        val generation: Int,
-        val cause: Throwable,
-    ) : StoriesEffect
-    data class NextScrapedPageLoaded(
-        val storyType: StoryType,
-        val generation: Int,
-        val page: HackerNewsListPage,
-    ) : StoriesEffect
-    data class NextScrapedPageFailed(
-        val storyType: StoryType,
-        val generation: Int,
-        val cause: Throwable,
-    ) : StoriesEffect
     data class StoryRowLoaded(
         val story: Story,
         val generation: Int,
@@ -117,12 +56,13 @@ sealed interface StoriesEffect {
 }
 
 /**
- * Executes story requests and emits their results for [StoriesFeatureRuntime] to apply.
+ * Loads story data for [StoriesFeatureRuntime]. Feed requests return directly to their caller;
+ * row retries and saved-item synchronization publish asynchronous results.
  *
  * Feed selection and retained state belong to [StoriesSessionState]; list and search state stay in
  * their own stores. This class owns cancellable requests, not another copy of feature state.
  */
-class StoriesPresenter(
+class StoryRequests(
     private val scope: CoroutineScope,
     private val sessionState: StoriesSessionState,
     algoliaRepository: AlgoliaRepository,
@@ -157,14 +97,12 @@ class StoriesPresenter(
 
     private val mutableEffects = MutableSharedFlow<StoriesEffect>(extraBufferCapacity = 16)
     val effects: SharedFlow<StoriesEffect> = mutableEffects.asSharedFlow()
-    private var feedLoadJob: Job? = null
 
     fun configureVisibility(filters: ContentFilters, hideJobs: Boolean): Boolean =
         storyVisibilityPolicy.update(filters, hideJobs)
 
     fun shouldHideStory(story: Story, type: StoryType): Boolean =
         storyVisibilityPolicy.shouldHide(story, type)
-    private var nextScrapedPageJob: Job? = null
     private var userItemsLoadJob: Job? = null
     private val storyRowLoader = StoryRowLoadOrchestrator(
         scope = scope,
@@ -178,119 +116,25 @@ class StoriesPresenter(
         scope.launch { storyRowLoader.effects.collect(::applyStoryRowLoadEffect) }
     }
 
-    fun dispatch(intent: StoriesAction) {
-        val action = intent
-        when (action) {
-            is StoriesAction.SelectStoryLink -> selectStoryLink(action)
-            is StoriesAction.SelectStoryComments -> selectStoryComments(action)
-            is StoriesAction.LoadFeed -> loadFeed(action)
-            is StoriesAction.LoadNextScrapedPage -> loadNextScrapedPage(action)
-            StoriesAction.CancelFeedLoads -> cancelFeedLoads()
-            is StoriesAction.LoadStoryRow -> storyRowLoader.load(
-                story = action.story,
-                preserveTime = action.preserveTime,
-                requestGeneration = action.generation,
-            )
-            is StoriesAction.SyncUserItems -> syncUserItems(action)
-        }
+    fun loadStoryRow(story: Story, preserveTime: Boolean, generation: Int) {
+        storyRowLoader.load(story, preserveTime, generation)
     }
 
-    private fun selectStoryLink(action: StoriesAction.SelectStoryLink) {
-        val story = action.story
-        val effect = when {
-            !story.loaded && story.loadingFailed -> StoriesEffect.RetryStory(story)
-            !story.loaded -> null
-            story.isFrontpageLink -> story.url?.let {
-                StoriesEffect.OpenExternalStory(story, it)
-            }
-            action.alwaysOpenComments ->
-                StoriesEffect.OpenComments(story, showWebsite = false)
-            story.isLink && action.useIntegratedWebView ->
-                StoriesEffect.OpenComments(story, showWebsite = true)
-            story.isLink -> story.url?.let {
-                StoriesEffect.OpenExternalStory(story, it)
-            }
-            else -> StoriesEffect.OpenComments(story, showWebsite = false)
-        }
-        effect?.let(mutableEffects::tryEmit)
-    }
+    suspend fun loadFeed(storyType: StoryType, frontDay: String?): StoryFeedResult =
+        storyFeedLoader.load(storyType, frontDay)
 
-    private fun selectStoryComments(action: StoriesAction.SelectStoryComments) {
-        if (!action.story.loaded) return
-        val effect = if (action.story.isFrontpageLink) {
-            action.story.url?.let {
-                StoriesEffect.OpenExternalStory(action.story, it)
-            }
-        } else {
-            StoriesEffect.OpenComments(action.story, showWebsite = false)
-        }
-        effect?.let(mutableEffects::tryEmit)
-    }
+    suspend fun loadNextScrapedPage(storyType: StoryType, nextPageUrl: String): HackerNewsListPage =
+        storyFeedLoader.loadNextScrapedPage(storyType, nextPageUrl)
 
-    private fun loadFeed(action: StoriesAction.LoadFeed) {
-        feedLoadJob?.cancel()
-        nextScrapedPageJob?.cancel()
-        nextScrapedPageJob = null
-        feedLoadJob = scope.launch {
-            try {
-                mutableEffects.emit(
-                    StoriesEffect.FeedLoaded(
-                        action.storyType,
-                        action.generation,
-                        storyFeedLoader.load(action.storyType, action.frontDay),
-                    ),
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                mutableEffects.emit(
-                    StoriesEffect.FeedFailed(action.storyType, action.generation, error),
-                )
-            }
-        }
-    }
-
-    private fun loadNextScrapedPage(action: StoriesAction.LoadNextScrapedPage) {
-        nextScrapedPageJob?.cancel()
-        nextScrapedPageJob = scope.launch {
-            try {
-                mutableEffects.emit(
-                    StoriesEffect.NextScrapedPageLoaded(
-                        action.storyType,
-                        action.generation,
-                        storyFeedLoader.loadNextScrapedPage(
-                            action.storyType,
-                            action.nextPageUrl,
-                        ),
-                    ),
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                mutableEffects.emit(
-                    StoriesEffect.NextScrapedPageFailed(
-                        action.storyType,
-                        action.generation,
-                        error,
-                    ),
-                )
-            }
-        }
-    }
-
-    private fun cancelFeedLoads() {
-        feedLoadJob?.cancel()
-        feedLoadJob = null
-        nextScrapedPageJob?.cancel()
-        nextScrapedPageJob = null
+    fun cancelUserItemsLoad() {
         userItemsLoadJob?.cancel()
         userItemsLoadJob = null
     }
 
-    private fun syncUserItems(action: StoriesAction.SyncUserItems) {
+    fun syncUserItems(source: SavedItemSource, generation: Int, savedAtMillis: Long) {
         userItemsLoadJob?.cancel()
         userItemsLoadJob = scope.launch {
-            val upvoted = action.source == SavedItemSource.UPVOTED
+            val upvoted = source == SavedItemSource.UPVOTED
             val path = if (upvoted) "upvoted" else "favorites"
             try {
                 when (val result = userItemsLoader.getUserItems(path, loginRequired = upvoted)) {
@@ -299,33 +143,33 @@ class StoriesPresenter(
                             result.items.itemIds,
                             result.items.commentIds,
                         )
-                        if (savedItemsRepository.loadSnapshot(action.source) != snapshot) {
+                        if (savedItemsRepository.loadSnapshot(source) != snapshot) {
                             savedItemsRepository.saveSnapshotAtomic(
-                                action.source,
+                                source,
                                 snapshot,
-                                action.savedAtMillis,
+                                savedAtMillis,
                             )
                         }
                         mutableEffects.emit(
                             StoriesEffect.UserItemsSynced(
-                                action.source,
-                                action.generation,
+                                source,
+                                generation,
                                 snapshot,
                             ),
                         )
                     }
                     is HackerNewsUserItemsResult.Failure -> mutableEffects.emit(
                         StoriesEffect.UserItemsSyncFailed(
-                            source = action.source,
-                            generation = action.generation,
+                            source = source,
+                            generation = generation,
                             summary = result.summary,
                             detail = result.detail,
                         ),
                     )
                     is HackerNewsUserItemsResult.Captcha -> mutableEffects.emit(
                         StoriesEffect.UserItemsSyncFailed(
-                            source = action.source,
-                            generation = action.generation,
+                            source = source,
+                            generation = generation,
                             summary = "Captcha required",
                             detail = "HN asked for a captcha before syncing $path.",
                         ),
@@ -336,8 +180,8 @@ class StoriesPresenter(
             } catch (error: Throwable) {
                 mutableEffects.emit(
                     StoriesEffect.UserItemsSyncFailed(
-                        source = action.source,
-                        generation = action.generation,
+                        source = source,
+                        generation = generation,
                         summary = "Couldn't sync $path",
                         detail = error.message,
                         cause = error,
@@ -348,7 +192,7 @@ class StoriesPresenter(
     }
 
     fun beginStoryLoadGeneration(): Int {
-        cancelFeedLoads()
+        cancelUserItemsLoad()
         return storyRowLoader.beginGeneration()
     }
 

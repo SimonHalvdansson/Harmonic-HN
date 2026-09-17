@@ -207,15 +207,29 @@ class StoryListStoreTest {
         val store = StoryListStore()
         store.replace(listOf(story(1), story(2), story(3)))
         val before = store.state.value.items
-        val changed = store.stories[1].also { it.title = "Updated" }
-
-        store.contentChanged(changed)
+        store.updateStory(2) { title = "Updated" }
 
         val after = store.state.value.items
         assertSame(before[0], after[0])
         assertNotSame(before[1], after[1])
         assertEquals("Updated", after[1].title)
         assertSame(before[2], after[2])
+    }
+
+    @Test
+    fun markingReadPublishesWithoutMutatingPreviouslyPublishedSnapshots() {
+        val store = StoryListStore()
+        store.replace(listOf(story(1), story(2)))
+        val before = store.state.value
+
+        assertTrue(store.markRead(1, true))
+
+        assertFalse(before.items[0].clicked)
+        assertTrue(store.state.value.items[0].clicked)
+        assertSame(before.items[1], store.state.value.items[1])
+        val current = store.state.value
+        assertFalse(store.markRead(99, true))
+        assertSame(current, store.state.value)
     }
 
     private fun story(id: Int, loaded: Boolean = true) = Story("Story $id", id, loaded, false)

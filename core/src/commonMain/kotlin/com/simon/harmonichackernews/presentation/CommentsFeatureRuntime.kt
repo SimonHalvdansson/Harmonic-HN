@@ -205,7 +205,7 @@ class CommentsFeatureRuntime(
         initialStory = initialStory,
         showWebsite = showWebsite,
         scrollToCommentId = scrollToCommentId,
-        sorting = userSettings?.comments?.sorting ?: "Default",
+        sorting = userSettings?.comments?.sorting?.storedValue ?: "Default",
         restoring = restoring,
         restoredSorting = restoredSorting,
     )

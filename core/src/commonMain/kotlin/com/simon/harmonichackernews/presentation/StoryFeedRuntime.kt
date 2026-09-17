@@ -14,7 +14,7 @@ data class StoryFeedApplication(
 /**
  * Lifecycle-independent owner for applying feed pages to a story list.
  *
- * Network transport belongs to [StoriesPresenter], while this runtime owns placeholder creation,
+ * Network transport belongs to [StoryRequests], while this runtime owns placeholder creation,
  * structural list changes, scraped-page state and pagination visibility. A platform shell only
  * hydrates cached rows and starts the platform image/cache work for newly visible items.
  */

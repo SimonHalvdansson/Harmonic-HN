@@ -116,7 +116,8 @@ data class PortableStoryListState(
 class StoryListStore(
     private val pageSize: Int = DEFAULT_PAGE_SIZE,
 ) {
-    val stories: MutableList<Story> = mutableListOf()
+    private val mutableStories = mutableListOf<Story>()
+    val stories: List<Story> get() = mutableStories
     private val paginationSession = StoryPaginationSession(pageSize)
 
     private val mutableState = MutableStateFlow(PortableStoryListState())
@@ -144,8 +145,8 @@ class StoryListStore(
         showingCached: Boolean,
         failure: StoryLoadFailure?,
     ) {
-        this.stories.clear()
-        this.stories.addAll(stories)
+        mutableStories.clear()
+        mutableStories.addAll(stories)
         publish(
             visibleStoryCount = visibleStoryCount,
             loadedThroughIndex = loadedThroughIndex,
@@ -161,7 +162,7 @@ class StoryListStore(
 
     fun beginLoad(refreshing: Boolean, clearItems: Boolean = false) {
         paginationSession.clear()
-        if (clearItems) stories.clear()
+        if (clearItems) mutableStories.clear()
         publish(
             loading = !refreshing,
             refreshing = refreshing,
@@ -178,8 +179,8 @@ class StoryListStore(
         showingCached: Boolean = false,
     ) {
         paginationSession.clear()
-        this.stories.clear()
-        this.stories.addAll(stories)
+        mutableStories.clear()
+        mutableStories.addAll(stories)
         val current = state.value
         publish(
             visibleStoryCount = if (current.paginationEnabled) {
@@ -199,7 +200,7 @@ class StoryListStore(
 
     fun clear() {
         paginationSession.clear()
-        stories.clear()
+        mutableStories.clear()
         publish(
             visibleStoryCount = if (state.value.paginationEnabled) pageSize else Int.MAX_VALUE,
             loadedThroughIndex = -1,
@@ -243,17 +244,32 @@ class StoryListStore(
     }
 
     fun mutateStories(block: MutableList<Story>.() -> Unit) {
-        stories.block()
+        mutableStories.block()
         publish()
+    }
+
+    /** Updates a row and its immutable snapshot together. */
+    fun updateStory(storyId: Int, update: Story.() -> Unit): Boolean {
+        val story = stories.firstOrNull { it.id == storyId } ?: return false
+        story.update()
+        publish(changedStory = story)
+        return true
+    }
+
+    fun markRead(storyId: Int, read: Boolean): Boolean =
+        updateStory(storyId) { clicked = read }
+
+    fun mergeStoryContent(update: Story): Boolean = updateStory(update.id) {
+        StoryRowMergePolicy.mergeSummaryFields(this, update)
     }
 
     fun removeAt(index: Int): Story? {
         if (index !in stories.indices) return null
-        return stories.removeAt(index).also { publish() }
+        return mutableStories.removeAt(index).also { publish() }
     }
 
     fun insertAt(index: Int, story: Story) {
-        stories.add(index.coerceIn(0, stories.size), story)
+        mutableStories.add(index.coerceIn(0, stories.size), story)
         publish()
     }
 
@@ -278,7 +294,7 @@ class StoryListStore(
         }
         if (showingHistory) return StoryHistorySyncResult.REFRESH_REQUIRED
         if (hideClicked) {
-            val removed = stories.removeAll { it.id in clickedStoryIds }
+            val removed = mutableStories.removeAll { it.id in clickedStoryIds }
             if (removed) {
                 publish()
                 return StoryHistorySyncResult.ITEMS_REMOVED

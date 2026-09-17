@@ -27,6 +27,8 @@ import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredUserSettings
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -46,13 +48,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class StoriesPresenterTest {
+class StoryRequestsTest {
     @Test
     fun searchOptionsSurviveRuntimeRecreationWithoutWaitingForCollectors() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
         val runtime = cacheRuntime(
-            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
             QueuedCacheDispatcher(),
         )
         runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
@@ -64,7 +66,7 @@ class StoriesPresenterTest {
         runtime.toggleOnlyClicked()
 
         val restored = cacheRuntime(
-            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
             QueuedCacheDispatcher(),
         )
         assertTrue(restored.searching)
@@ -85,7 +87,7 @@ class StoriesPresenterTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
         val runtime = cacheRuntime(
-            backgroundScope, session, saved, presenter(session, saved, backgroundScope),
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
             QueuedCacheDispatcher(),
         )
         runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
@@ -110,8 +112,8 @@ class StoriesPresenterTest {
     fun commentsUpdatesRefreshFeedAndSearchSnapshotsWhilePreservingRowState() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
-        val presenter = presenter(session, saved, backgroundScope)
-        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, QueuedCacheDispatcher())
+        val requests = storyRequests(session, saved, backgroundScope)
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests, QueuedCacheDispatcher())
         val feedStory = Story("Feed title", 42, true, true).apply {
             score = 1
             descendants = 2
@@ -155,10 +157,10 @@ class StoriesPresenterTest {
         val worker = QueuedCacheDispatcher()
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
-        val presenter = presenter(session, saved, backgroundScope,
+        val requests = storyRequests(session, saved, backgroundScope,
             RecordingFeedLoader(StoryFeedResult.ItemIds(listOf(2, 1))))
         val hydrated = mutableListOf<Int>()
-        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, worker,
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests, worker,
             hydrate = { story ->
                 assertTrue(worker.executing)
                 hydrated += story.id
@@ -182,9 +184,9 @@ class StoriesPresenterTest {
         val worker = QueuedCacheDispatcher()
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
-        val presenter = presenter(session, saved, backgroundScope)
+        val requests = storyRequests(session, saved, backgroundScope)
         var reads = 0
-        val runtime = cacheRuntime(backgroundScope, session, saved, presenter, worker,
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests, worker,
             cached = {
                 assertTrue(worker.executing)
                 reads++
@@ -201,18 +203,59 @@ class StoriesPresenterTest {
         assertFalse(runtime.mainStore.state.value.loading)
     }
 
+    @Test
+    fun refreshingCancelsThePreviousFeedRequestAndAppliesOnlyTheReplacement() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val cancelled = CompletableDeferred<Unit>()
+        var loads = 0
+        val feedLoader = object : StoryFeedLoader {
+            override suspend fun load(storyType: StoryType, frontDay: String?): StoryFeedResult {
+                loads++
+                if (loads == 1) {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        cancelled.complete(Unit)
+                    }
+                }
+                return StoryFeedResult.LinkDirectory(listOf(Story("Replacement", 2, true, false)))
+            }
+            override suspend fun loadNextScrapedPage(
+                storyType: StoryType,
+                nextPageUrl: String,
+            ): HackerNewsListPage = error("Not used")
+        }
+        val worker = QueuedCacheDispatcher()
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, feedLoader), worker,
+        )
+        runtime.refresh(false)
+        runCurrent()
+        runtime.refresh(false)
+        runCurrent()
+        worker.runAll()
+        runCurrent()
+
+        assertTrue(cancelled.isCompleted)
+        assertEquals(listOf(2), runtime.mainStore.state.value.items.map { it.id })
+        assertFalse(runtime.mainStore.state.value.loading)
+        assertEquals(null, runtime.failure)
+    }
+
     private fun cacheRuntime(
         scope: CoroutineScope,
         session: StoriesSessionState,
         saved: SavedItemsRepository,
-        presenter: StoriesPresenter,
+        requests: StoryRequests,
         worker: CoroutineDispatcher,
         hydrate: (Story) -> Boolean = { false },
         cached: () -> List<Story> = { emptyList() },
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
-        presenter = presenter,
+        requests = requests,
         savedItems = saved,
         savedItemActions = SavedItemActionUseCase(saved, { 0L },
             voteRequest = { _, _ -> error("Not used") },
@@ -245,11 +288,11 @@ class StoriesPresenterTest {
     fun featureRuntimeRetainsMainFeedAcrossSearchAndKeepsSearchResultsIsolated() = runTest {
         val session = StoriesSessionState()
         val savedItems = SavedItemsRepository(MemoryKeyValueStore())
-        val presenter = presenter(session, savedItems, backgroundScope)
+        val requests = storyRequests(session, savedItems, backgroundScope)
         val runtime = StoriesFeatureRuntime(
             scope = backgroundScope,
             sessionState = session,
-            presenter = presenter,
+            requests = requests,
             savedItems = savedItems,
             savedItemActions = SavedItemActionUseCase(
                 repository = savedItems,
@@ -289,9 +332,9 @@ class StoriesPresenterTest {
     }
 
     @Test
-    fun feedTransportAndCompletionAreOwnedByTheSharedPresenter() = runTest {
+    fun feedRequestsReturnTheirResultDirectly() = runTest {
         val feedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(listOf(1, 2, 3)))
-        val presenter = StoriesPresenter(
+        val requests = StoryRequests(
             scope = backgroundScope,
             sessionState = StoriesSessionState(),
             algoliaRepository = UnusedAlgoliaRepository,
@@ -304,22 +347,8 @@ class StoriesPresenterTest {
             isStoryClicked = { false },
             shouldHideClickedStories = { false },
         )
-        val effect = async { presenter.effects.first() }
-        runCurrent()
-
-        presenter.dispatch(
-            StoriesAction.LoadFeed(
-                storyType = StoryType.TOP_STORIES,
-                frontDay = null,
-                generation = 7,
-            ),
-        )
-        runCurrent()
-
-        val loaded = assertIs<StoriesEffect.FeedLoaded>(effect.await())
-        assertEquals(StoryType.TOP_STORIES, loaded.storyType)
-        assertEquals(7, loaded.generation)
-        assertEquals(listOf(1, 2, 3), assertIs<StoryFeedResult.ItemIds>(loaded.result).ids)
+        val result = requests.loadFeed(StoryType.TOP_STORIES, frontDay = null)
+        assertEquals(listOf(1, 2, 3), assertIs<StoryFeedResult.ItemIds>(result).ids)
         assertEquals(
             listOf(Pair<StoryType, String?>(StoryType.TOP_STORIES, null)),
             feedLoader.requests,
@@ -331,7 +360,7 @@ class StoriesPresenterTest {
         val keyValueStore = MemoryKeyValueStore()
         val savedItems = SavedItemsRepository(keyValueStore)
         val userItemsLoader = RecordingUserItemsLoader()
-        val presenter = StoriesPresenter(
+        val requests = StoryRequests(
             scope = backgroundScope,
             sessionState = StoriesSessionState(),
             algoliaRepository = UnusedAlgoliaRepository,
@@ -344,16 +373,14 @@ class StoriesPresenterTest {
             isStoryClicked = { false },
             shouldHideClickedStories = { false },
         )
-        val effect = async { presenter.effects.first() }
+        val effect = async { requests.effects.first() }
         runCurrent()
 
-        presenter.dispatch(
-            StoriesAction.SyncUserItems(
+        requests.syncUserItems(
                 source = SavedItemSource.UPVOTED,
                 generation = 11,
                 savedAtMillis = 123,
-            ),
-        )
+            )
         runCurrent()
 
         val synced = assertIs<StoriesEffect.UserItemsSynced>(effect.await())
@@ -379,12 +406,12 @@ class StoriesPresenterTest {
         ): HackerNewsListPage = error("Not used")
     }
 
-    private fun presenter(
+    private fun storyRequests(
         session: StoriesSessionState,
         savedItems: SavedItemsRepository,
         scope: CoroutineScope,
         feedLoader: StoryFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
-    ) = StoriesPresenter(
+    ) = StoryRequests(
         scope = scope,
         sessionState = session,
         algoliaRepository = UnusedAlgoliaRepository,

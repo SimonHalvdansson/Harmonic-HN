@@ -89,31 +89,25 @@ data class CommentPreferences(
     val collectReferenceLinks: Boolean,
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
-    val preloadCommentsMode: String,
+    val preloadCommentsMode: WebViewPreloadMode,
     val preloadCommentsMinimumBattery: Int,
-    val sorting: String,
+    val sorting: CommentSortingPreference,
     val showScrollbar: Boolean,
     val animateChanges: Boolean,
     val smoothScroll: Boolean,
-    val volumeNavigationMode: String,
+    val volumeNavigationMode: CommentVolumeNavigationMode,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED
-    val sortingPreference: CommentSortingPreference
-        get() = CommentSortingPreference.fromStored(sorting)
-    val volumeNavigation: CommentVolumeNavigationMode
-        get() = CommentVolumeNavigationMode.fromStored(volumeNavigationMode)
     val fontChoice: AppFont
         get() = AppFont.fromStored(font)
-    val commentsPreloadMode: WebViewPreloadMode
-        get() = WebViewPreloadMode.fromStored(preloadCommentsMode)
     val preloadCommentsFromStories: Boolean
-        get() = commentsPreloadMode != WebViewPreloadMode.NEVER
+        get() = preloadCommentsMode != WebViewPreloadMode.NEVER
 }
 
 data class ReadingPreferences(
     val integratedWebView: Boolean,
-    val preloadWebViewMode: String,
+    val preloadWebViewMode: WebViewPreloadMode,
     val preloadWebViewMinimumBattery: Int,
     val matchWebViewTheme: Boolean,
     val readerModeEnabled: Boolean,
@@ -121,7 +115,7 @@ data class ReadingPreferences(
     val blockAds: Boolean,
     val closeWebViewOnBack: Boolean,
     val useAlgoliaApi: Boolean,
-    val readerModeFont: String,
+    val readerModeFont: AppFont,
     val readerModeFontSize: Int,
     val externalBrowser: Boolean,
     val redirectNitter: Boolean,
@@ -129,12 +123,8 @@ data class ReadingPreferences(
     val enabledLinkPreviews: Set<LinkPreviewType>,
     val nitterInstanceUrl: String = NitterInstance.DEFAULT_URL,
 ) {
-    val preloadMode: WebViewPreloadMode
-        get() = WebViewPreloadMode.fromStored(preloadWebViewMode)
     val commentsProvider: CommentsProvider
         get() = if (useAlgoliaApi) CommentsProvider.ALGOLIA else CommentsProvider.OFFICIAL
-    val readerFont: AppFont
-        get() = AppFont.fromStored(readerModeFont)
 }
 
 data class CachePreferences(

@@ -493,7 +493,7 @@ fun CommentsSettingsRoute(
             presenter::setVolumeNavigation,
         )
         CommentsSettingsDialog.Preload -> PreloadCommentsDialog(
-            initialMode = settings.comments.commentsPreloadMode,
+            initialMode = settings.comments.preloadCommentsMode,
             initialBattery = settings.comments.preloadCommentsMinimumBattery,
             onSave = presenter::setPreload,
             onDismiss = { dialog = null },
@@ -513,7 +513,7 @@ fun WebLinksSettingsRoute(
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
     val reading = settings.reading
     WebLinksSettingsScreen(
-        state = presenter.state(reading.readerFont.label, settings),
+        state = presenter.state(reading.readerModeFont.label, settings),
         showNavigation = showNavigation,
         onBack = onBack,
         onBooleanChanged = presenter::setBoolean,
@@ -523,14 +523,14 @@ fun WebLinksSettingsRoute(
     )
     when (dialog) {
         WebLinksSettingsDialog.Preload -> PreloadWebViewDialog(
-            initialMode = reading.preloadMode,
+            initialMode = reading.preloadWebViewMode,
             initialBattery = reading.preloadWebViewMinimumBattery,
             onSave = presenter::setPreload,
             onDismiss = { dialog = null },
         )
         WebLinksSettingsDialog.ReaderFont -> FontSelectionDialog(
             readerMode = true,
-            selected = reading.readerFont,
+            selected = reading.readerModeFont,
             options = AppFont.entries.map { it.label to it },
             onSelected = presenter::setReaderFont,
             onDismiss = { dialog = null },

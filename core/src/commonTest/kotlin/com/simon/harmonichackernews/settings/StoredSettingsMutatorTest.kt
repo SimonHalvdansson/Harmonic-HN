@@ -236,12 +236,12 @@ class StoredSettingsMutatorTest {
         assertTrue(settings.general.specialNighttimeTheme)
         assertEquals("gray", settings.appearance.theme)
         assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
-        assertEquals(CommentSortingPreference.NEWEST_FIRST, settings.comments.sortingPreference)
+        assertEquals(CommentSortingPreference.NEWEST_FIRST, settings.comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, settings.reading.commentsProvider)
-        assertEquals(CommentVolumeNavigationMode.ALL, settings.comments.volumeNavigation)
-        assertEquals(AppFont.GEORGIA, settings.reading.readerFont)
-        assertEquals(WebViewPreloadMode.WIFI_ONLY, settings.reading.preloadMode)
-        assertEquals(WebViewPreloadMode.ALWAYS, settings.comments.commentsPreloadMode)
+        assertEquals(CommentVolumeNavigationMode.ALL, settings.comments.volumeNavigationMode)
+        assertEquals(AppFont.GEORGIA, settings.reading.readerModeFont)
+        assertEquals(WebViewPreloadMode.WIFI_ONLY, settings.reading.preloadWebViewMode)
+        assertEquals(WebViewPreloadMode.ALWAYS, settings.comments.preloadCommentsMode)
         assertEquals(30, settings.comments.preloadCommentsMinimumBattery)
     }
 

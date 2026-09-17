@@ -89,7 +89,7 @@ data class StoryPreviewDeck(
 class StoriesFeatureRuntime(
     private val scope: CoroutineScope,
     val sessionState: StoriesSessionState,
-    val presenter: StoriesPresenter,
+    private val requests: StoryRequests,
     private val savedItems: SavedItemsRepository,
     val savedItemActions: SavedItemActionUseCase,
     private val historyStore: ObservableHistoryStore,
@@ -112,9 +112,9 @@ class StoriesFeatureRuntime(
 
     val mainStore: StoryListStore = sessionState.mainStoryList
     val searchStore: StoryListStore = sessionState.searchStoryList
-    val mainStories: MutableList<Story> = mainStore.stories
-    val searchStories: MutableList<Story> = searchStore.stories
-    val searchOptions: StorySearchStore = presenter.searchStore
+    val mainStories: List<Story> = mainStore.stories
+    val searchStories: List<Story> = searchStore.stories
+    val searchOptions: StorySearchStore = requests.searchStore
     val frontPageDay = FrontPageDayState(
         restoredMillis = sessionState.frontPageDayUtcMillis,
         nowMillis = nowMillis(),
@@ -125,7 +125,7 @@ class StoriesFeatureRuntime(
         clickedStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
         shouldHideClickedStories = { hideClicked },
         hydrateCachedStory = { false },
-        shouldHideHydratedStory = { presenter.shouldHideStory(it, currentType) },
+        shouldHideHydratedStory = { requests.shouldHideStory(it, currentType) },
     )
     private val searchRuntime = StorySearchRuntime()
     val storyResources = previewResourceService?.let { service ->
@@ -169,7 +169,7 @@ class StoriesFeatureRuntime(
     val activeStore: StoryListStore
         get() = if (searching) searchStore else mainStore
 
-    val activeStories: MutableList<Story>
+    val activeStories: List<Story>
         get() = activeStore.stories
 
     val currentType: StoryType
@@ -214,13 +214,15 @@ class StoriesFeatureRuntime(
 
     var cachedStoriesAvailable: Boolean = false
         private set
+    private var feedLoadJob: Job? = null
+    private var nextScrapedPageJob: Job? = null
     private var feedPreparationJob: Job? = null
     private var cacheAvailabilityJob: Job? = null
 
     init {
         configure(userSettings, loadContentFilters())
-        scope.launch { presenter.effects.collect(::applyPresenterEffect) }
-        scope.launch { presenter.searchStore.state.collect(::applySearchState) }
+        scope.launch { requests.effects.collect(::applyRequestEffect) }
+        scope.launch { requests.searchStore.state.collect(::applySearchState) }
         scope.launch { userSettings.changes.collect { reconcileSettings() } }
         scope.launch {
             accounts.accountState.drop(1).collect { refreshAccountState() }
@@ -264,7 +266,7 @@ class StoriesFeatureRuntime(
             alwaysOpenComments = story.alwaysOpenComments,
             useIntegratedWebView = settings.reading.integratedWebView,
         )
-        return presenter.configureVisibility(filters, story.hideJobs)
+        return requests.configureVisibility(filters, story.hideJobs)
     }
 
     fun initializeHistory() {
@@ -567,12 +569,10 @@ class StoriesFeatureRuntime(
             StoryFeedSource.FRONTPAGE_LINKS,
             StoryFeedSource.SCRAPED_FRONTPAGE,
             StoryFeedSource.HACKER_NEWS_API,
-            -> presenter.dispatch(
-                StoriesAction.LoadFeed(
-                    type,
-                    frontPageDay.requestParameter.takeIf { type.isFront },
-                    generation,
-                ),
+            -> loadFeed(
+                type,
+                frontPageDay.requestParameter.takeIf { type.isFront },
+                generation,
             )
         }
         changed()
@@ -582,7 +582,7 @@ class StoriesFeatureRuntime(
         val state = activeStore.state.value
         when {
             state.paginationEnabled && state.visibleStoryCount < activeStories.size -> {
-                val generation = presenter.storyLoadGeneration
+                val generation = requests.storyLoadGeneration
                 val plan = activeStore.beginNextPage(generation) ?: return
                 if (!activeStore.hasPendingPageStories()) activeStore.clearPendingPage()
                 loadThrough(plan.targetLoadedIndex, generation)
@@ -590,13 +590,7 @@ class StoriesFeatureRuntime(
             }
             state.canLoadMore && currentType.isScrapedFrontpage -> {
                 val next = feedRuntime.beginNextScrapedPage(activeStore, currentType) ?: return
-                presenter.dispatch(
-                    StoriesAction.LoadNextScrapedPage(
-                        currentType,
-                        next,
-                        presenter.storyLoadGeneration,
-                    ),
-                )
+                loadNextScrapedPage(currentType, next, requests.storyLoadGeneration)
             }
             state.canLoadMore && !searchOptions.state.value.loading -> {
                 searchRuntime.beginLoadMore(activeStore)
@@ -618,26 +612,39 @@ class StoriesFeatureRuntime(
             paginationEnabled = activeStore.state.value.paginationEnabled,
             visibleStoryCount = activeStore.state.value.visibleStoryCount,
         )
-        val generation = presenter.storyLoadGeneration
+        val generation = requests.storyLoadGeneration
         loadThrough(target, generation)
         retryUnsettledThrough(target, generation)
     }
 
     fun selectStoryLink(story: Story) {
         if (story !in activeStories || !canSelect()) return
-        presenter.dispatch(
-            StoriesAction.SelectStoryLink(
-                story,
-                alwaysOpenComments,
-                useIntegratedWebView,
-            ),
-        )
+        when {
+            !story.loaded && story.loadingFailed -> {
+                activeStore.updateStory(story.id) { loadingFailed = false }
+                loadStory(story, requests.storyLoadGeneration)
+                changed(story)
+            }
+            !story.loaded -> Unit
+            story.isFrontpageLink -> openExternalStory(story)
+            alwaysOpenComments -> openStory(story, showWebsite = false)
+            story.isLink && useIntegratedWebView -> openStory(story, showWebsite = true)
+            story.isLink -> openExternalStory(story)
+            else -> openStory(story, showWebsite = false)
+        }
     }
 
     fun selectStoryComments(story: Story) {
-        if (story in activeStories && canSelect()) {
-            presenter.dispatch(StoriesAction.SelectStoryComments(story))
-        }
+        if (story !in activeStories || !canSelect() || !story.loaded) return
+        if (story.isFrontpageLink) openExternalStory(story)
+        else openStory(story, showWebsite = false)
+    }
+
+    private fun openExternalStory(story: Story) {
+        val url = story.url ?: return
+        if (story.isFrontpageLink) updateStoryReadState(story, true) else markClicked(story)
+        changed(story)
+        emit(StoriesRuntimeEffect.OpenExternalLink(url))
     }
 
     fun selectCommentStory(story: Story) {
@@ -789,9 +796,10 @@ class StoriesFeatureRuntime(
     }
 
     private fun toggleRead(story: Story) {
-        story.clicked = !story.clicked
+        val read = !story.clicked
+        updateStoryReadState(story, read)
         scope.launch {
-            if (story.clicked) {
+            if (read) {
                 historyStore.recordHistory(story.id, nowMillis())
             } else {
                 historyStore.removeHistory(story.id)
@@ -814,7 +822,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun toggleVote(story: Story) {
-        val generation = presenter.storyLoadGeneration
+        val generation = requests.storyLoadGeneration
         val expectedStore = activeStore
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             if (!sessionState.beginPreviewAction(story.id, StoryPreviewActionKind.Vote)) {
@@ -858,7 +866,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun toggleFavorite(story: Story) {
-        val generation = presenter.storyLoadGeneration
+        val generation = requests.storyLoadGeneration
         val expectedStore = activeStore
         val favoritesList = currentType.isFavorites
         val optimisticIndex = activeStories.indexOf(story)
@@ -1011,10 +1019,7 @@ class StoriesFeatureRuntime(
     fun mergeExternalStoryUpdate(update: Story): Boolean {
         var matched = false
         for (store in listOf(mainStore, searchStore)) {
-            val story = store.stories.firstOrNull { it.id == update.id } ?: continue
-            StoryRowMergePolicy.mergeSummaryFields(story, update)
-            store.contentChanged(story)
-            matched = true
+            if (store.mergeStoryContent(update)) matched = true
         }
         if (matched) emit(StoriesRuntimeEffect.StoryChanged(update.id))
         return matched
@@ -1026,45 +1031,17 @@ class StoriesFeatureRuntime(
     }
 
     fun dispose() {
-        feedPreparationJob?.cancel()
+        cancelFeedLoads()
         cacheAvailabilityJob?.cancel()
-        presenter.dispatch(StoriesAction.CancelFeedLoads)
-        presenter.clearStoryRowLoads()
+        requests.cancelUserItemsLoad()
+        requests.clearStoryRowLoads()
         mainStore.cancelTransientLoads()
         searchStore.cancelTransientLoads()
         storyResources?.dispose()
     }
 
-    private fun applyPresenterEffect(effect: StoriesEffect) {
+    private fun applyRequestEffect(effect: StoriesEffect) {
         when (effect) {
-            is StoriesEffect.OpenComments -> {
-                markClicked(effect.story)
-                changed(effect.story)
-                emit(
-                    StoriesRuntimeEffect.OpenStory(
-                        effect.story.toDestination(showWebsite = effect.showWebsite),
-                    ),
-                )
-            }
-            is StoriesEffect.OpenExternalStory -> {
-                if (effect.story.isFrontpageLink) effect.story.clicked = true else markClicked(effect.story)
-                changed(effect.story)
-                emit(StoriesRuntimeEffect.OpenExternalLink(effect.url))
-            }
-            is StoriesEffect.RetryStory -> {
-                effect.story.loadingFailed = false
-                loadStory(effect.story, presenter.storyLoadGeneration)
-                changed(effect.story)
-            }
-            is StoriesEffect.FeedLoaded -> applyFeedLoaded(effect)
-            is StoriesEffect.FeedFailed -> applyFeedFailed(effect)
-            is StoriesEffect.NextScrapedPageLoaded -> applyNextScrapedPage(effect)
-            is StoriesEffect.NextScrapedPageFailed -> {
-                if (isCurrentFeed(effect.storyType, effect.generation)) {
-                    feedRuntime.failNextScrapedPage(activeStore, effect.storyType)
-                    changed()
-                }
-            }
             is StoriesEffect.StoryRowLoaded -> applyRowLoaded(effect)
             is StoriesEffect.StoryRowRejected -> if (isCurrentRow(effect.story, effect.generation)) {
                 removeStory(effect.story)
@@ -1083,39 +1060,58 @@ class StoriesFeatureRuntime(
         }
     }
 
-    private fun applyFeedLoaded(effect: StoriesEffect.FeedLoaded) {
-        if (!isCurrentFeed(effect.storyType, effect.generation)) return
-        val ids = when (val result = effect.result) {
-            is StoryFeedResult.ItemIds -> result.ids
-            is StoryFeedResult.Scraped -> result.page.itemIds
-            is StoryFeedResult.LinkDirectory -> emptyList()
-        }
-        prepareFeedCache(ids, effect.storyType, effect.generation) { cached ->
-            refreshIndicatorShowing = false
-            rateLimited = false
-            val result = feedRuntime.applyInitial(activeStore, effect.storyType, effect.result, cached)
-            if (result.loadVisibleStories) loadVisibleStories()
-            result.loadedStories.filter(Story::loaded).forEach(::prefetch)
-            changed()
+    private fun loadFeed(storyType: StoryType, frontDay: String?, generation: Int) {
+        feedLoadJob?.cancel()
+        nextScrapedPageJob?.cancel()
+        feedLoadJob = scope.launch {
+            try {
+                val result = requests.loadFeed(storyType, frontDay)
+                if (!isCurrentFeed(storyType, generation)) return@launch
+                val ids = when (result) {
+                    is StoryFeedResult.ItemIds -> result.ids
+                    is StoryFeedResult.Scraped -> result.page.itemIds
+                    is StoryFeedResult.LinkDirectory -> emptyList()
+                }
+                prepareFeedCache(ids, storyType, generation) { cached ->
+                    refreshIndicatorShowing = false
+                    rateLimited = false
+                    val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
+                    if (application.loadVisibleStories) loadVisibleStories()
+                    application.loadedStories.filter(Story::loaded).forEach(::prefetch)
+                    changed()
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (!isCurrentFeed(storyType, generation)) return@launch
+                refreshIndicatorShowing = false
+                val failure = StoryFeedRefreshPolicy.failureFor(error)
+                rateLimited = failure == StoryLoadFailure.RATE_LIMITED
+                activeStore.fail(failure)
+                changed()
+            }
         }
     }
 
-    private fun applyFeedFailed(effect: StoriesEffect.FeedFailed) {
-        if (!isCurrentFeed(effect.storyType, effect.generation)) return
-        refreshIndicatorShowing = false
-        val mapped = StoryFeedRefreshPolicy.failureFor(effect.cause)
-        rateLimited = mapped == StoryLoadFailure.RATE_LIMITED
-        activeStore.fail(mapped)
-        changed()
-    }
-
-    private fun applyNextScrapedPage(effect: StoriesEffect.NextScrapedPageLoaded) {
-        if (!isCurrentFeed(effect.storyType, effect.generation)) return
-        prepareFeedCache(effect.page.itemIds, effect.storyType, effect.generation) { cached ->
-            val application = feedRuntime.applyNextScrapedPage(activeStore, effect.storyType, effect.page, cached)
-            if (application.loadVisibleStories) loadVisibleStories()
-            application.loadedStories.filter(Story::loaded).forEach(::prefetch)
-            changed()
+    private fun loadNextScrapedPage(storyType: StoryType, nextPageUrl: String, generation: Int) {
+        nextScrapedPageJob?.cancel()
+        nextScrapedPageJob = scope.launch {
+            try {
+                val page = requests.loadNextScrapedPage(storyType, nextPageUrl)
+                if (!isCurrentFeed(storyType, generation)) return@launch
+                prepareFeedCache(page.itemIds, storyType, generation) { cached ->
+                    val application = feedRuntime.applyNextScrapedPage(activeStore, storyType, page, cached)
+                    if (application.loadVisibleStories) loadVisibleStories()
+                    application.loadedStories.filter(Story::loaded).forEach(::prefetch)
+                    changed()
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (!isCurrentFeed(storyType, generation)) return@launch
+                feedRuntime.failNextScrapedPage(activeStore, storyType)
+                changed()
+            }
         }
     }
 
@@ -1155,7 +1151,7 @@ class StoriesFeatureRuntime(
             removeStory(story, loadReplacement = true)
             return
         }
-        if (presenter.shouldHideStory(story, currentType)) {
+        if (requests.shouldHideStory(story, currentType)) {
             removeStory(story)
             return
         }
@@ -1224,7 +1220,7 @@ class StoriesFeatureRuntime(
             return
         }
         userItemsInitialLoadInProgress = activeStories.isEmpty() && !refreshIndicatorShowing
-        presenter.dispatch(StoriesAction.SyncUserItems(source, generation, nowMillis()))
+        requests.syncUserItems(source, generation, nowMillis())
         changed()
     }
 
@@ -1259,7 +1255,7 @@ class StoriesFeatureRuntime(
             commentIds = commentIds,
         )
         if (!result.changed) return
-        presenter.clearStoryRowLoads()
+        requests.clearStoryRowLoads()
         sessionState.userItemListStories.clear()
         sessionState.userItemListStories.addAll(result.stories)
         sessionState.userItemListCommentIds.clear()
@@ -1310,7 +1306,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun loadThrough(targetIndex: Int, generation: Int) {
-        if (!presenter.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
+        if (!requests.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
         var index = activeLoadedThrough + 1
         while (index <= targetIndex && index < activeStories.size) {
             activeLoadedThrough = index
@@ -1320,40 +1316,38 @@ class StoriesFeatureRuntime(
     }
 
     private fun retryUnsettledThrough(targetIndex: Int, generation: Int) {
-        if (!presenter.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
+        if (!requests.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
         val capped = min(targetIndex, activeStories.lastIndex)
         if (capped < 0) return
         for (index in 0..capped) {
             val story = activeStories[index]
             if (!story.loaded && !story.loadingFailed &&
-                !presenter.isStoryRowLoadInProgress(story.id)
+                !requests.isStoryRowLoadInProgress(story.id)
             ) loadStory(story, generation)
         }
     }
 
     private fun loadStory(story: Story, generation: Int) {
-        if (!presenter.isCurrentStoryLoadGeneration(generation)) return
+        if (!requests.isCurrentStoryLoadGeneration(generation)) return
         if (story.loaded) {
-            if (presenter.shouldHideStory(story, currentType)) removeStory(story)
+            if (requests.shouldHideStory(story, currentType)) removeStory(story)
             else prefetch(story)
             return
         }
-        if (presenter.isStoryRowLoadInProgress(story.id)) return
-        presenter.dispatch(
-            StoriesAction.LoadStoryRow(
+        if (requests.isStoryRowLoadInProgress(story.id)) return
+        requests.loadStoryRow(
                 story = story,
                 preserveTime = currentType.isHistory,
                 generation = generation,
-            ),
-        )
+            )
     }
 
     private fun removeStory(story: Story, loadReplacement: Boolean = false) {
         val index = activeStories.indexOf(story)
         if (index < 0) return
         val removed = activeStore.removeAt(index) ?: return
-        activeStore.finishNextPageStory(removed.id, presenter.storyLoadGeneration)
-        presenter.cancelStoryRowLoad(removed.id)
+        activeStore.finishNextPageStory(removed.id, requests.storyLoadGeneration)
+        requests.cancelStoryRowLoad(removed.id)
         if (index <= activeLoadedThrough) activeLoadedThrough = max(-1, activeLoadedThrough - 1)
         if (loadReplacement) loadVisibleStories()
         changed()
@@ -1391,7 +1385,7 @@ class StoriesFeatureRuntime(
         val last = min(activeLoadedThrough, activeStories.lastIndex)
         for (index in 0..last) {
             val story = activeStories[index]
-            if (!story.loaded && !story.loadingFailed) loadStory(story, presenter.storyLoadGeneration)
+            if (!story.loaded && !story.loadingFailed) loadStory(story, requests.storyLoadGeneration)
         }
     }
 
@@ -1412,9 +1406,15 @@ class StoriesFeatureRuntime(
         StoryPaginationPolicy.DEFAULT_INITIAL_LOAD_COUNT
     }
 
-    private fun beginGeneration(): Int {
+    private fun cancelFeedLoads() {
+        feedLoadJob?.cancel()
+        nextScrapedPageJob?.cancel()
         feedPreparationJob?.cancel()
-        val generation = presenter.beginStoryLoadGeneration()
+    }
+
+    private fun beginGeneration(): Int {
+        cancelFeedLoads()
+        val generation = requests.beginStoryLoadGeneration()
         activeStore.clearPendingPage()
         feedRuntime.resetScrapedPagination(activeStore)
         searchOptions.cancel(clearResults = false)
@@ -1424,22 +1424,29 @@ class StoriesFeatureRuntime(
     }
 
     private fun isCurrentFeed(type: StoryType, generation: Int): Boolean =
-        currentType == type && presenter.isCurrentStoryLoadGeneration(generation)
+        currentType == type && requests.isCurrentStoryLoadGeneration(generation)
 
     private fun isCurrentRow(story: Story, generation: Int): Boolean =
-        presenter.isCurrentStoryLoadGeneration(generation) && activeStories.contains(story)
+        requests.isCurrentStoryLoadGeneration(generation) && activeStories.contains(story)
 
     private fun isCurrentUserItems(source: SavedItemSource, generation: Int): Boolean =
-        presenter.isCurrentStoryLoadGeneration(generation) && currentUserItemSource() == source
+        requests.isCurrentStoryLoadGeneration(generation) && currentUserItemSource() == source
 
     private fun isCurrentActionContext(generation: Int, store: StoryListStore): Boolean =
-        presenter.isCurrentStoryLoadGeneration(generation) && activeStore === store
+        requests.isCurrentStoryLoadGeneration(generation) && activeStore === store
 
     private fun currentUserItemSource(): SavedItemSource =
         if (currentType.isUpvoted) SavedItemSource.UPVOTED else SavedItemSource.FAVORITES
 
+    private fun updateStoryReadState(story: Story, read: Boolean) {
+        // Resolved parent stories may not be in either list yet.
+        story.clicked = read
+        mainStore.markRead(story.id, read)
+        searchStore.markRead(story.id, read)
+    }
+
     private fun markClicked(story: Story) {
-        if (!searchOptions.state.value.options.onlyClicked) story.clicked = true
+        if (!searchOptions.state.value.options.onlyClicked) updateStoryReadState(story, true)
         scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 

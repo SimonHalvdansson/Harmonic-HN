@@ -57,7 +57,7 @@ class StoredUserSettingsTest {
         assertTrue(settings.comments.animateChanges)
         assertTrue(settings.comments.smoothScroll)
         assertFalse(settings.comments.preloadCommentsFromStories)
-        assertEquals(WebViewPreloadMode.NEVER, settings.comments.commentsPreloadMode)
+        assertEquals(WebViewPreloadMode.NEVER, settings.comments.preloadCommentsMode)
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
         assertEquals(18, settings.reading.readerModeFontSize)
@@ -132,7 +132,7 @@ class StoredUserSettingsTest {
         )
 
         assertTrue(desktopDefault.comments.preloadCommentsFromStories)
-        assertEquals(WebViewPreloadMode.ALWAYS, desktopDefault.comments.commentsPreloadMode)
+        assertEquals(WebViewPreloadMode.ALWAYS, desktopDefault.comments.preloadCommentsMode)
         assertFalse(storedChoice.comments.preloadCommentsFromStories)
     }
 
@@ -162,17 +162,17 @@ class StoredUserSettingsTest {
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals(TextPreferences.MAX_COMMENT_TEXT_SIZE, settings.comments.textSize)
         assertEquals(100, settings.reading.preloadWebViewMinimumBattery)
-        assertEquals(WebViewPreloadMode.NEVER, settings.comments.commentsPreloadMode)
+        assertEquals(WebViewPreloadMode.NEVER, settings.comments.preloadCommentsMode)
         assertEquals(100, settings.comments.preloadCommentsMinimumBattery)
         assertEquals(200, settings.cache.storiesToCache)
         assertEquals(FaviconPreferences.GOOGLE, settings.story.faviconProvider)
         assertEquals(StoryPreviewMode.SMALL, settings.story.previewImageMode)
         assertEquals(24, settings.reading.readerModeFontSize)
         assertEquals(listOf("example.com"), settings.reading.archiveRedirectDomains)
-        assertEquals(CommentSortingPreference.DEFAULT, settings.comments.sortingPreference)
+        assertEquals(CommentSortingPreference.DEFAULT, settings.comments.sorting)
         assertEquals(CommentsProvider.ALGOLIA, settings.reading.commentsProvider)
-        assertEquals(CommentVolumeNavigationMode.DISABLED, settings.comments.volumeNavigation)
-        assertEquals(AppFont.GOOGLE_SANS_FLEX_ROUNDED, settings.reading.readerFont)
+        assertEquals(CommentVolumeNavigationMode.DISABLED, settings.comments.volumeNavigationMode)
+        assertEquals(AppFont.GOOGLE_SANS_FLEX_ROUNDED, settings.reading.readerModeFont)
     }
 
     @Test

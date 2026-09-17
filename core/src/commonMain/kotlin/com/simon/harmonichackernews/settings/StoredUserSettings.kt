@@ -191,7 +191,7 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
                 hideDelayedComments = boolean(UserPreferenceKeys.HIDE_DELAYED_COMMENTS, false),
-                preloadCommentsMode = WebViewPreferences.sanitizePreloadMode(
+                preloadCommentsMode = WebViewPreloadMode.fromStored(
                     string(
                         UserPreferenceKeys.PRELOAD_COMMENTS_MODE,
                         if (preloadCommentsFromStoriesByDefault) {
@@ -206,7 +206,7 @@ class StoredUserSettings(
                 ),
                 sorting = CommentSortingPreference.fromStored(
                     string(UserPreferenceKeys.COMMENT_SORTING, CommentSortingPreference.DEFAULT.storedValue),
-                ).storedValue,
+                ),
                 showScrollbar = boolean(UserPreferenceKeys.COMMENTS_SCROLLBAR, false),
                 animateChanges = boolean(UserPreferenceKeys.COMMENTS_ANIMATION, true),
                 smoothScroll = boolean(UserPreferenceKeys.COMMENTS_SMOOTH_SCROLL, true),
@@ -215,7 +215,7 @@ class StoredUserSettings(
                         UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION,
                         CommentVolumeNavigationMode.DISABLED.storedValue,
                     ),
-                ).storedValue,
+                ),
             )
         }
 
@@ -224,7 +224,7 @@ class StoredUserSettings(
             val readerModeEnabled = boolean(UserPreferenceKeys.READER_MODE_ENABLED, true)
             return ReadingPreferences(
                 integratedWebView = boolean(UserPreferenceKeys.WEBVIEW, true),
-                preloadWebViewMode = WebViewPreferences.sanitizePreloadMode(
+                preloadWebViewMode = WebViewPreloadMode.fromStored(
                     string(UserPreferenceKeys.PRELOAD_WEBVIEW, WebViewPreferences.PRELOAD_NEVER),
                 ),
                 preloadWebViewMinimumBattery = WebViewPreferences.clampBatteryPercent(
@@ -239,7 +239,7 @@ class StoredUserSettings(
                 useAlgoliaApi = CommentsProvider.fromStored(
                     string(UserPreferenceKeys.COMMENTS_PROVIDER, CommentsProvider.ALGOLIA.storedValue),
                 ) == CommentsProvider.ALGOLIA,
-                readerModeFont = TextPreferences.sanitizeFont(
+                readerModeFont = AppFont.fromStored(
                     string(UserPreferenceKeys.READER_MODE_FONT, "googlesansflexrounded"),
                 ),
                 readerModeFontSize = TextPreferences.clampReaderModeFontSize(

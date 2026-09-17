@@ -141,7 +141,7 @@ private fun PortableWebLinksSettings(
     val reading = settings.reading
 
     WebLinksSettingsScreen(
-        state = presenter.state(reading.readerFont.label, settings),
+        state = presenter.state(reading.readerModeFont.label, settings),
         capabilities = capabilities,
         showNavigation = showNavigation,
         onBack = onBack,
@@ -162,7 +162,7 @@ private fun PortableWebLinksSettings(
 
     if (dialog == WebLinksSettingsDialog.Preload) {
         PreloadWebViewDialog(
-            initialMode = reading.preloadMode,
+            initialMode = reading.preloadWebViewMode,
             initialBattery = reading.preloadWebViewMinimumBattery,
             onSave = presenter::setPreload,
             onDismiss = { dialog = null },

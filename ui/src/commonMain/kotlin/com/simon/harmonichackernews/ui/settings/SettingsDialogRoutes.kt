@@ -62,7 +62,7 @@ fun FontSelectionRoute(readerMode: Boolean, onDismiss: () -> Unit) {
     val snapshot = app.settings.snapshot()
     FontSelectionDialog(
         readerMode = readerMode,
-        selected = if (readerMode) snapshot.reading.readerFont else snapshot.story.fontChoice,
+        selected = if (readerMode) snapshot.reading.readerModeFont else snapshot.story.fontChoice,
         options = remember(labels, values) { labels.zip(values.map(AppFont::fromStored)) },
         onSelected = { value ->
             if (readerMode) webPresenter.setReaderFont(value) else appearancePresenter.setFont(value)

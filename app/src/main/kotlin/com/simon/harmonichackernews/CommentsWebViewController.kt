@@ -136,7 +136,7 @@ internal class CommentsWebViewController(
     }
     private var showWebsite = false
     private var integratedWebview = true
-    private var preloadWebview: String? = "never"
+    private var preloadWebview = com.simon.harmonichackernews.settings.WebViewPreloadMode.NEVER
     private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
     private var matchWebviewTheme = true
     private lateinit var readingPreferences: ReadingPreferences

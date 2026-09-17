@@ -22,7 +22,7 @@ import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
-import com.simon.harmonichackernews.presentation.StoriesPresenter
+import com.simon.harmonichackernews.presentation.StoryRequests
 import com.simon.harmonichackernews.presentation.StoriesSessionState
 import com.simon.harmonichackernews.presentation.StoriesStore
 import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
@@ -102,7 +102,7 @@ fun HarmonicAppComposition.createStoriesStore(
         voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
         favoriteRequest = hackerNewsUser::setFavorite,
     )
-    val presenter = StoriesPresenter(
+    val requests = StoryRequests(
         scope = featureScope,
         sessionState = host.sessionState,
         algoliaRepository = network.algoliaRepository,
@@ -121,7 +121,7 @@ fun HarmonicAppComposition.createStoriesStore(
     val runtime = StoriesFeatureRuntime(
         scope = featureScope,
         sessionState = host.sessionState,
-        presenter = presenter,
+        requests = requests,
         savedItems = savedItems,
         savedItemActions = actions,
         historyStore = host.platform.history,

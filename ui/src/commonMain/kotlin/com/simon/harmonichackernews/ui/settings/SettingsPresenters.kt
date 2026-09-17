@@ -143,14 +143,14 @@ class CommentsSettingsPresenter(
             collapseParent = comments.collapseParent,
             collapseTopLevel = comments.collapseTopLevel,
             hideDelayedComments = comments.hideDelayedComments,
-            preloadCommentsSummary = comments.commentsPreloadMode.summary(
+            preloadCommentsSummary = comments.preloadCommentsMode.summary(
                 comments.preloadCommentsMinimumBattery,
             ),
             swapTap = comments.swapLongPressTap,
-            sorting = comments.sortingPreference,
+            sorting = comments.sorting,
             provider = settings.reading.commentsProvider,
             showNavigationButtons = comments.showNavigationButtons,
-            volumeNavigation = comments.volumeNavigation,
+            volumeNavigation = comments.volumeNavigationMode,
             smoothScroll = comments.smoothScroll,
         )
     }
@@ -188,7 +188,7 @@ class WebLinksSettingsPresenter(
         return WebLinksSettingsUiState(
             integratedWebView = reading.integratedWebView,
             closeWebViewOnBack = reading.closeWebViewOnBack,
-            preloadSummary = reading.preloadMode.summary(reading.preloadWebViewMinimumBattery),
+            preloadSummary = reading.preloadWebViewMode.summary(reading.preloadWebViewMinimumBattery),
             matchWebViewTheme = reading.matchWebViewTheme,
             blockWebViewAds = reading.blockAds,
             readerModeEnabled = reading.readerModeEnabled,
