@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_action_work_off
 import com.simon.harmonichackernews.resources.ic_delete
 import com.simon.harmonichackernews.resources.ic_edit
+import com.simon.harmonichackernews.resources.ic_library_books
 import com.simon.harmonichackernews.resources.ic_person
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_title
@@ -40,6 +41,7 @@ fun FiltersTagsSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onHideJobsChanged: (Boolean) -> Unit,
+    onAdditionalFrontpagesRequested: () -> Unit,
     onFilterRequested: (ContentFilterDialog) -> Unit,
     onProfileRequested: (String) -> Unit,
     onTagEditRequested: (String) -> Unit,
@@ -78,6 +80,13 @@ fun FiltersTagsSettingsScreen(
                     icon = Res.drawable.ic_action_work_off,
                     checked = state.hideJobs,
                     onCheckedChange = onHideJobsChanged,
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Hide AI posts",
+                    summary = "Using unslop.news RSS",
+                    icon = Res.drawable.ic_library_books,
+                    onClick = onAdditionalFrontpagesRequested,
                 )
             }
         }

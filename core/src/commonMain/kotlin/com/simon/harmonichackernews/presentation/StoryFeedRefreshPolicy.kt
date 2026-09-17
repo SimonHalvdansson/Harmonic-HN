@@ -11,6 +11,7 @@ enum class StoryFeedSource {
     HISTORY,
     FRONTPAGE_LINKS,
     SCRAPED_FRONTPAGE,
+    UNSLOP_RSS,
     HACKER_NEWS_API,
 }
 
@@ -47,6 +48,7 @@ object StoryFeedRefreshPolicy {
             storyType.isHistory -> StoryFeedSource.HISTORY
             storyType.isFrontpageLinkList -> StoryFeedSource.FRONTPAGE_LINKS
             storyType.isScrapedFrontpage -> StoryFeedSource.SCRAPED_FRONTPAGE
+            storyType == StoryType.UNSLOP -> StoryFeedSource.UNSLOP_RSS
             else -> StoryFeedSource.HACKER_NEWS_API
         }
         return StoryFeedRefreshPlan(

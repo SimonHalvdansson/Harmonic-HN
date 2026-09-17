@@ -337,7 +337,8 @@ object AdditionalFrontpagePreferences {
     const val HIGHLIGHTS = "Highlights"
     const val ACTIVE = "Active"
     const val FRONT = "Front"
-    val labels = listOf(CLASSIC, BEST_COMMENTS, HIGHLIGHTS, ACTIVE, FRONT)
+    const val UNSLOP = "unslop.news"
+    val labels = listOf(CLASSIC, BEST_COMMENTS, HIGHLIGHTS, ACTIVE, FRONT, UNSLOP)
 
     fun isLabel(value: String?): Boolean = value in labels
 

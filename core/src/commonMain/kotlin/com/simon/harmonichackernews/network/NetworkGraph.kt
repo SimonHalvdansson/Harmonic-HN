@@ -68,6 +68,7 @@ class NetworkGraph internal constructor(
 
     val hackerNewsApi: HackerNewsApi = KtorHackerNewsApi(client)
     val hackerNewsRepository: HackerNewsRepository = DefaultHackerNewsRepository(hackerNewsApi)
+    val unslopRepository: UnslopRepository = UnslopRepository(client)
     val pollOptionsRepository: PollOptionsRepository = PollOptionsRepository(hackerNewsApi)
     val replyScanner: ReplyScanner = DefaultReplyScanner(hackerNewsApi)
     val algoliaRepository: AlgoliaRepository = KtorAlgoliaRepository(client)

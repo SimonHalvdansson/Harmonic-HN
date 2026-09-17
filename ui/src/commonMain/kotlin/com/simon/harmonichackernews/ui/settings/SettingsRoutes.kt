@@ -430,10 +430,7 @@ fun StoriesSettingsRoute(
         ) {
             presenter.setStartingPage(it).forEach(onPlatformEffect)
         }
-        StoriesSettingsDialog.AdditionalFrontpages -> MultiChoiceDialog(
-            title = "Additional frontpages",
-            description = "Choose which optional Hacker News frontpages appear in the story-list picker. You can set the default under Starting page.",
-            options = StoryTypeSettingsPolicy.additionalFrontpageLabels,
+        StoriesSettingsDialog.AdditionalFrontpages -> AdditionalFrontpagesDialog(
             selected = story.additionalFrontpages,
             onDismiss = { dialog = null },
             onSelectionChanged = {
@@ -586,6 +583,7 @@ fun FiltersTagsSettingsRoute(
     val snapshot by settings.updates.collectAsState(initial = settings.snapshot())
     var refresh by remember { mutableIntStateOf(0) }
     var filterDialog by rememberSaveable { mutableStateOf<ContentFilterDialog?>(null) }
+    var showAdditionalFrontpages by rememberSaveable { mutableStateOf(false) }
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
     var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
     FiltersTagsSettingsScreen(
@@ -593,6 +591,7 @@ fun FiltersTagsSettingsRoute(
         showNavigation = showNavigation,
         onBack = onBack,
         onHideJobsChanged = presenter::setHideJobs,
+        onAdditionalFrontpagesRequested = { showAdditionalFrontpages = true },
         onFilterRequested = { filterDialog = it },
         onProfileRequested = { profileUser = it },
         onTagEditRequested = { tagDialogUser = it },
@@ -602,6 +601,16 @@ fun FiltersTagsSettingsRoute(
         },
         contentVersion = snapshot.hashCode() + refresh,
     )
+    if (showAdditionalFrontpages) {
+        AdditionalFrontpagesDialog(
+            selected = snapshot.story.additionalFrontpages,
+            onDismiss = { showAdditionalFrontpages = false },
+            onSelectionChanged = {
+                settings.setAdditionalFrontpages(it)
+                showAdditionalFrontpages = false
+            },
+        )
+    }
     filterDialog?.let { type ->
         val content = type.content
         StringListEditorDialog(
@@ -632,6 +641,20 @@ fun FiltersTagsSettingsRoute(
         profileDialog(userName, { profileUser = null }) { refresh++ }
     }
 }
+
+@Composable
+private fun AdditionalFrontpagesDialog(
+    selected: Set<String>,
+    onDismiss: () -> Unit,
+    onSelectionChanged: (Set<String>) -> Unit,
+) = MultiChoiceDialog(
+    title = "Additional frontpages",
+    description = "Choose which optional frontpages appear in the story-list picker. You can set the default under Starting page.",
+    options = StoryTypeSettingsPolicy.additionalFrontpageLabels,
+    selected = selected,
+    onDismiss = onDismiss,
+    onSelectionChanged = onSelectionChanged,
+)
 
 @Composable
 private fun SettingsChoiceDialog(

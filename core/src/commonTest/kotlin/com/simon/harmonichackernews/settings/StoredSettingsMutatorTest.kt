@@ -8,6 +8,25 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun unslopCanBeEnabledAndUsedAsStartingPageThenDisabled() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        val label = com.simon.harmonichackernews.StoryType.UNSLOP.label
+        repository.setAdditionalFrontpages(setOf(label))
+        repository.setPreferredStoryType(label)
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(setOf(label), reopened.snapshot().story.additionalFrontpages)
+        assertEquals(label, reopened.snapshot().story.preferredStoryType)
+        assertTrue(label in com.simon.harmonichackernews.StoryTypeSettingsPolicy.startingPageLabels(setOf(label)))
+        assertTrue(com.simon.harmonichackernews.StoryType.UNSLOP in
+            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(setOf(label), false))
+        repository.setAdditionalFrontpages(emptySet())
+        assertEquals("Top Stories", reopened.snapshot().story.preferredStoryType)
+        assertFalse(com.simon.harmonichackernews.StoryType.UNSLOP in
+            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(emptySet(), false))
+    }
+
+    @Test
     fun storyOutlinePersistsIndependentlyOfStyleAndCommentOutline() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

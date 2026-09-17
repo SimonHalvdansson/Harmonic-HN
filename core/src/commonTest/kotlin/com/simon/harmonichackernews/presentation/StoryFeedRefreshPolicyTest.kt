@@ -33,6 +33,8 @@ class StoryFeedRefreshPolicyTest {
         assertEquals(StoryFeedSource.HISTORY, plan(StoryType.HISTORY).source)
         assertEquals(StoryFeedSource.SCRAPED_FRONTPAGE, plan(StoryType.FRONT).source)
         assertEquals(StoryFeedSource.SCRAPED_FRONTPAGE, plan(StoryType.CLASSIC).source)
+        assertEquals(StoryFeedSource.UNSLOP_RSS, plan(StoryType.UNSLOP).source)
+        assertFalse(StoryType.UNSLOP.isScrapedFrontpage)
         assertEquals(StoryFeedSource.HACKER_NEWS_API, plan(StoryType.TOP_STORIES).source)
         assertEquals(
             StoryFeedSource.SEARCH,

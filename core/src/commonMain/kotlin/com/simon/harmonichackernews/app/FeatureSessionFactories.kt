@@ -113,6 +113,7 @@ fun HarmonicAppComposition.createStoriesStore(
         storyFeedLoader = StoryFeedRepository(
             network.hackerNewsRepository,
             network.hackerNewsWebRepository,
+            network.unslopRepository,
         ),
         clickedStoryIds = { host.platform.history.load().map { it.id } },
         isStoryClicked = host.platform.history::contains,

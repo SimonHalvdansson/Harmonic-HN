@@ -17,15 +17,17 @@ interface StoryFeedLoader {
     ): HackerNewsListPage
 }
 
-/** Chooses the API or scraped HN source for a main-list story type. */
+/** Chooses the API, RSS or scraped HN source for a main-list story type. */
 class StoryFeedRepository(
     private val hackerNewsRepository: HackerNewsRepository,
     private val webRepository: HackerNewsWebRepository,
+    private val unslopRepository: UnslopRepository,
 ) : StoryFeedLoader {
     override suspend fun load(
         storyType: StoryType,
         frontDay: String?,
     ): StoryFeedResult = when {
+        storyType == StoryType.UNSLOP -> StoryFeedResult.ItemIds(unslopRepository.getStoryIds())
         storyType.isFrontpageLinkList ->
             StoryFeedResult.LinkDirectory(webRepository.getListDirectory())
         storyType.isScrapedFrontpage -> StoryFeedResult.Scraped(

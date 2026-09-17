@@ -21,6 +21,7 @@ enum class StoryType(
     HIGHLIGHTS("Highlights", "highlights", true, true, false),
     ACTIVE("Active", "active", true, false, false),
     FRONT("Front", "front", true, false, false),
+    UNSLOP("unslop.news", additionalFrontpage = true),
     BOOKMARKS("Bookmarks"),
     FAVORITES("Favorites"),
     UPVOTED("Upvoted"),
@@ -60,7 +61,7 @@ enum class StoryType(
     }
 
     val isScrapedFrontpage: Boolean
-        get() = additionalFrontpage && !this.isFrontpageLinkList
+        get() = additionalFrontpage && hackerNewsPath != null && !this.isFrontpageLinkList
 
     val hackerNewsUrl: String?
         get() = when (this) {
@@ -79,7 +80,8 @@ enum class StoryType(
             BEST_COMMENTS,
             HIGHLIGHTS,
             ACTIVE,
-            FRONT
+            FRONT,
+            UNSLOP,
         )
 
         fun fromLabel(label: CharSequence?): StoryType {

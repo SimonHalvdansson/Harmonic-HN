@@ -568,6 +568,7 @@ class StoriesFeatureRuntime(
             StoryFeedSource.HISTORY -> loadHistory()
             StoryFeedSource.FRONTPAGE_LINKS,
             StoryFeedSource.SCRAPED_FRONTPAGE,
+            StoryFeedSource.UNSLOP_RSS,
             StoryFeedSource.HACKER_NEWS_API,
             -> loadFeed(
                 type,
