@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.compositeOver
@@ -1019,12 +1020,17 @@ private fun ReferenceRow(
                     modifier = Modifier.padding(end = 8.dp).size(17.dp),
                 )
             } else {
+                var faviconLoaded by remember(faviconUrl) { mutableStateOf(false) }
                 AsyncImage(
                     model = faviconUrl,
                     contentDescription = null,
                     placeholder = faviconFallback,
                     error = faviconFallback,
                     fallback = faviconFallback,
+                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.drawable),
+                    onLoading = { faviconLoaded = false },
+                    onSuccess = { faviconLoaded = true },
+                    onError = { faviconLoaded = false },
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .padding(end = 8.dp)
