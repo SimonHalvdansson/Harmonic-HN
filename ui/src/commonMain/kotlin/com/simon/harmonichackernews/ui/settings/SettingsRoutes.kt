@@ -106,8 +106,15 @@ fun AiSummarySettingsRoute(
     val persistedSettings by repository.updates.collectAsState(initial = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
 
-    LaunchedEffect(modelDefaults) {
+    // The page outlives its provider dialog. Changing providers cancels the old lookup,
+    // while dismissing the dialog leaves the new provider's model lookup running.
+    LaunchedEffect(modelDefaults, persistedSettings.baseUrl) {
         modelDefaults.ensureInitialDefault()
+        if (!repository.hasModelSelection()) {
+            com.simon.harmonichackernews.network.AiSummaryProviders
+                .getProviderForBaseUrl(persistedSettings.baseUrl)
+                ?.let { modelDefaults.ensureProviderDefault(it) }
+        }
     }
     LaunchedEffect(
         localAvailabilityResolved,

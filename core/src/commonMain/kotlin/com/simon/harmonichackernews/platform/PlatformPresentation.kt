@@ -12,6 +12,7 @@ data class LocalCalendarDate(val year: Int, val month: Int, val day: Int)
 object PresentationCopy {
     const val CACHE_STORIES = "Caching stories"
     const val CACHE_FINISHED = "Finished"
+    const val CACHE_PARTIAL = "Some items could not be cached"
     const val CACHE_FAILED = "Caching failed"
     const val CACHE_EMPTY = "No stories to cache"
     const val WRITE_ERROR = "Write error"

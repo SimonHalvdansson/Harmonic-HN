@@ -6,6 +6,17 @@ import kotlin.test.assertEquals
 
 class CommentTextPolicyTest {
     @Test
+    fun codeBlockMarginSeparatesFollowingProseWithoutDuplicatingParagraphs() {
+        val code = "<div><tt><small>&nbsp;command<br></small></tt></div>"
+        assertEquals("$code<br>Then open", CommentTextPolicy.preserveLegacyParagraphSpacing("$code\nThen open"))
+        assertEquals("$code<br><a href='https://example.com'>Next</a>",
+            CommentTextPolicy.preserveLegacyParagraphSpacing("$code<a href='https://example.com'>Next</a>"))
+        assertEquals("$code<br>Next", CommentTextPolicy.preserveLegacyParagraphSpacing("$code<p>Next"))
+        assertEquals("$code<br>Next", CommentTextPolicy.preserveLegacyParagraphSpacing("$code<br>Next"))
+        assertEquals(code, CommentTextPolicy.preserveLegacyParagraphSpacing(code))
+    }
+
+    @Test
     fun preservesLegacySpacingAcrossParagraphAndDivisionBoundaries() {
         assertEquals(
             "<br><br>First</p><br><p class=\"next\">Second</p></div><br><div>Third",

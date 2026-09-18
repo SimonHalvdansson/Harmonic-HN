@@ -102,7 +102,7 @@ sealed interface CommentsAction {
         val beforeApplyCachedResponse: (suspend () -> Unit)? = null,
         val loadPreparedThread: (suspend () -> PreparedCommentThread?)? = null,
     ) : CommentsAction
-    data class LoadPollOptions(val story: Story) : CommentsAction
+    data class LoadPollOptions(val story: Story, val forceRefresh: Boolean = false) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
     data object CancelThreadLoad : CommentsAction
     data object CancelPollOptionsLoad : CommentsAction
@@ -208,6 +208,7 @@ class CommentsPresenter(
     private var pollOptionsStoryId: Int = 0
     private var pollOptionsLoadStarted = false
     private var pollOptionsLookupStarted = false
+    private var pollOptionsGeneration = 0
     private var pollVoteJob: Job? = null
     private var pollVoteGeneration: Long = 0L
     private val threadLoadSession = KeyedRequestSession<Int>()
@@ -293,7 +294,7 @@ class CommentsPresenter(
                     direction = action.direction,
                 ) }
             is CommentsAction.LoadThread -> loadThread(action)
-            is CommentsAction.LoadPollOptions -> loadPollOptions(action.story)
+            is CommentsAction.LoadPollOptions -> loadPollOptions(action.story, action.forceRefresh)
             is CommentsAction.VotePollOption -> votePollOption(action.optionId)
             CommentsAction.CancelThreadLoad -> {
                 threadLoadJob?.cancel()
@@ -447,6 +448,7 @@ class CommentsPresenter(
 
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
+        thread.setSorting(action.sorting)
         val storyId = action.story.id
         val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
@@ -670,7 +672,7 @@ class CommentsPresenter(
         thread.appendLoadedComments(
             action.story,
             comments,
-            action.sorting,
+            thread.state.value.sorting,
             action.collapseTopLevel,
         )
         publish(loaded = true, refreshing = false, failure = null)
@@ -687,8 +689,8 @@ class CommentsPresenter(
         )
     }
 
-    private fun loadPollOptions(story: Story) {
-        if (pollOptionsStoryId != story.id) {
+    private fun loadPollOptions(story: Story, forceRefresh: Boolean) {
+        if (forceRefresh || pollOptionsStoryId != story.id) {
             cancelPollOptionsLoad()
             pollOptionsStoryId = story.id
         }
@@ -704,10 +706,11 @@ class CommentsPresenter(
             PollLoadAction.LOAD_KNOWN_OPTIONS -> startPollOptionsLoad(story)
             PollLoadAction.LOOK_UP_OPTIONS -> {
                 pollOptionsLookupStarted = true
+                val generation = pollOptionsGeneration
                 pollOptionsLoadJob = scope.launch {
                     try {
                         val optionIds = pollOptionsLoader.findOptionIds(story.id)
-                        if (pollOptionsStoryId != story.id) return@launch
+                        if (pollOptionsStoryId != story.id || generation != pollOptionsGeneration) return@launch
                         if (optionIds.isNotEmpty()) {
                             story.pollOptions = optionIds
                             startPollOptionsLoad(story)
@@ -715,7 +718,7 @@ class CommentsPresenter(
                     } catch (error: kotlinx.coroutines.CancellationException) {
                         throw error
                     } catch (error: Throwable) {
-                        if (pollOptionsStoryId == story.id) {
+                        if (pollOptionsStoryId == story.id && generation == pollOptionsGeneration) {
                             pollOptionsLookupStarted = false
                             mutableEffects.emit(
                                 CommentsEffect.PollOptionsLookupFailed(story.id, error),
@@ -730,10 +733,12 @@ class CommentsPresenter(
     private fun startPollOptionsLoad(story: Story) {
         val optionIds = story.pollOptions ?: return
         pollOptionsLoadStarted = true
-        story.pollOptionArrayList = ArrayList(pollOptionsLoader.placeholders(optionIds))
+        val existing = story.pollOptionArrayList.orEmpty().associateBy { it.id }
+        story.pollOptionArrayList = ArrayList(pollOptionsLoader.placeholders(optionIds).map { existing[it.id] ?: it })
+        val generation = pollOptionsGeneration
         pollOptionsLoadJob = scope.launch {
             pollOptionsLoader.loadOptions(optionIds).collect { loaded ->
-                if (pollOptionsStoryId != story.id) return@collect
+                if (pollOptionsStoryId != story.id || generation != pollOptionsGeneration) return@collect
                 val pollOption = story.pollOptionArrayList
                     ?.firstOrNull { it.id == loaded.id }
                     ?: return@collect
@@ -752,6 +757,7 @@ class CommentsPresenter(
     }
 
     private fun cancelPollOptionsLoad() {
+        pollOptionsGeneration++
         pollOptionsLoadJob?.cancel()
         pollOptionsLoadJob = null
         pollOptionsStoryId = 0
@@ -785,11 +791,11 @@ class CommentsPresenter(
             thread.replaceParsedComments(
                 action.story,
                 parsed.comments,
-                action.sorting,
+                thread.state.value.sorting,
                 action.collapseTopLevel,
             )
         } else {
-            thread.commitPreparedInitialComments(action.story, initialThread)
+            thread.commitPreparedInitialComments(action.story, initialThread, thread.state.value.sorting)
         }
         publish(
             loaded = true,

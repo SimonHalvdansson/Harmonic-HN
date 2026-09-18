@@ -18,6 +18,47 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubmissionsStoreTest {
     @Test
+    fun initialFailureIsVisibleAndRetryClearsItWithoutChangingTheFilter() = runTest {
+        val repository = FakeRepository(listOf(item(2), item(1))).apply { fail = true }
+        val store = SubmissionsStore("simon", repository, pageSize = 4)
+        store.selectFilter(SubmissionFilter.STORIES)
+        store.ensureLoaded()
+        assertTrue(store.state.value.loadingFailed)
+        assertFalse(store.state.value.loading)
+        assertFalse(store.state.value.loadedSuccessfully)
+        repository.fail = false
+        val gate = CompletableDeferred<Unit>()
+        repository.gate = gate
+        val retry = async { store.retry() }
+        runCurrent()
+        assertFalse(store.state.value.loadingFailed)
+        assertTrue(store.state.value.showInitialLoading)
+        gate.complete(Unit)
+        retry.await()
+        assertEquals(listOf(2, 1), store.ids())
+        assertEquals(SubmissionFilter.STORIES, store.state.value.filter)
+        assertTrue(store.state.value.loadedSuccessfully)
+        assertFalse(store.state.value.loadingFailed)
+    }
+
+    @Test
+    fun oldFailureCannotReplaceTheNewFiltersState() = runTest {
+        val repository = FakeRepository(listOf(item(2), item(1, comment = true)))
+        val store = SubmissionsStore("simon", repository, pageSize = 4)
+        store.ensureLoaded()
+        val gate = CompletableDeferred<Unit>()
+        repository.gate = gate
+        repository.fail = true
+        val refresh = async { store.refresh() }
+        runCurrent()
+        store.selectFilter(SubmissionFilter.COMMENTS)
+        gate.complete(Unit)
+        refresh.await()
+        assertFalse(store.state.value.loadingFailed)
+        assertEquals(listOf(1), store.ids())
+    }
+
+    @Test
     fun initiallyLoadsOneHundredOfEachCategoryAndSwitchesWithoutRequests() = runTest {
         val repository = FakeRepository((500 downTo 1).map { item(it, comment = it > 200) })
         val store = SubmissionsStore("simon", repository)
@@ -130,7 +171,9 @@ class SubmissionsStoreTest {
         assertTrue(store.state.value.canLoadMore)
         assertFalse(store.state.value.loading)
         repository.fail = false
-        store.loadMore()
+        assertTrue(store.state.value.loadingFailed)
+        store.retry()
+        assertFalse(store.state.value.loadingFailed)
         assertEquals(repository.requests[2], repository.requests[3])
         store.refresh()
         assertEquals(listOf(12, 10), store.ids())

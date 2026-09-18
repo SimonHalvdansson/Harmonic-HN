@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 sealed interface SubmissionsIntent {
     data class SelectFilter(val filter: SubmissionFilter) : SubmissionsIntent
     data object Refresh : SubmissionsIntent
+    data object Retry : SubmissionsIntent
     data object LoadMore : SubmissionsIntent
     data class OpenStoryLink(val story: Story) : SubmissionsIntent
     data class OpenStoryComments(val story: Story) : SubmissionsIntent
@@ -93,6 +94,11 @@ class SubmissionsFeatureStore internal constructor(
                 }
             }
             SubmissionsIntent.Refresh -> refresh()
+            SubmissionsIntent.Retry -> {
+                if (loadJob?.isActive != true && !state.value.loading) {
+                    loadJob = scope.launch { store.retry() }
+                }
+            }
             SubmissionsIntent.LoadMore -> loadMore()
             is SubmissionsIntent.OpenStoryLink -> openStoryLink(intent.story)
             is SubmissionsIntent.OpenStoryComments -> openStory(intent.story, showWebsite = false)

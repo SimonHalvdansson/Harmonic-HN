@@ -53,25 +53,21 @@ class CommentsPresentationPolicyTest {
     }
 
     @Test
-    fun threadFailuresKeepTheExistingUiClassification() {
-        assertEquals(
-            StoryLoadFailure.NOT_FOUND,
-            CommentsPresentationPolicy.failureFor(
-                CommentThreadLoadResult.Failure(
-                    noInternet = false,
-                    source = CommentThreadSource.ALGOLIA,
+    fun bothProvidersDistinguishOnlineFailuresFromOfflineFailures() {
+        for (source in CommentThreadSource.entries) {
+            assertEquals(
+                StoryLoadFailure.NOT_FOUND,
+                CommentsPresentationPolicy.failureFor(
+                    CommentThreadLoadResult.Failure(noInternet = false, source = source),
                 ),
-            ),
-        )
-        assertEquals(
-            StoryLoadFailure.GENERAL,
-            CommentsPresentationPolicy.failureFor(
-                CommentThreadLoadResult.Failure(
-                    noInternet = true,
-                    source = CommentThreadSource.ALGOLIA,
+            )
+            assertEquals(
+                StoryLoadFailure.GENERAL,
+                CommentsPresentationPolicy.failureFor(
+                    CommentThreadLoadResult.Failure(noInternet = true, source = source),
                 ),
-            ),
-        )
+            )
+        }
     }
 
     @Test

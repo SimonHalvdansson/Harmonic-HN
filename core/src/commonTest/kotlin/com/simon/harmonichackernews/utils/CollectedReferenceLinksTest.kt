@@ -7,6 +7,25 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun explicitHrefPreservesTerminalPunctuationWhileBareProseStillTrimsIt() {
+        for (url in listOf(
+            "https://en.wikipedia.org/wiki/Yahoo!",
+            "https://example.com/search?q=hello!",
+            "https://example.com/end.",
+            "https://example.com/empty?",
+        )) {
+            for (marker in listOf("", "[1] ")) {
+                val result = CollectedReferenceLinks.parse("<p>$marker<a href=\"$url\">Source</a></p>")
+                assertEquals(url, result.links.single().url)
+            }
+        }
+        assertEquals(
+            "https://example.com/path",
+            CollectedReferenceLinks.parse("<p>[1] https://example.com/path.</p>").links.single().url,
+        )
+    }
+
+    @Test
     fun plainCommentUsesEmptyResultWithoutChangingBody() {
         val html = "<p>A comment without a link.</p>"
 

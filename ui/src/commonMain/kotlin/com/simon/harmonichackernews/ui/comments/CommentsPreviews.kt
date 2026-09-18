@@ -751,6 +751,7 @@ private fun WikipediaPreview(story: StoryListItemSnapshot) {
 
 @Composable
 private fun RichLinkPreview(story: StoryListItemSnapshot) {
+    val platform = LocalCommentsPreviewPlatform.current
     val info = story.linkPreviewInfo ?: return
     val details = remember(info.details) { splitRichPreviewDetails(info.details) }
     val isRelease = info.type == LinkPreviewType.GITHUB_RELEASE
@@ -775,6 +776,8 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
         } else if (info.type.hasMarkdownDescription()) {
             SummaryMarkdownText(
                 markdown = info.description.orEmpty(),
+                baseUrl = info.url,
+                onOpenLink = platform.openLink,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 color = HarmonicTheme.colors.storyNormal,
                 linkColor = HarmonicTheme.colors.link,

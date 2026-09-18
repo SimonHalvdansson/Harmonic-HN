@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.test.Test
@@ -8,6 +9,30 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SummaryMarkdownTest {
+    @Test
+    fun nestedMarkdownLinksResolveAgainstThePageAndUseTheAppCallback() {
+        val opened = mutableListOf<String>()
+        val rendered = summaryMarkdownAnnotatedString(
+            "- **[Issue](/owner/repo/issues/1)**\n- [Details](#details)\n" +
+                "- [Query](?view=full#details)\n- [External](https://example.org/info)",
+            baseUrl = "https://github.com/owner/repo/releases/tag/v1",
+            onOpenLink = opened::add,
+        )
+        val links = rendered.getLinkAnnotations(0, rendered.length)
+        val expected = listOf(
+            "https://github.com/owner/repo/issues/1",
+            "https://github.com/owner/repo/releases/tag/v1#details",
+            "https://github.com/owner/repo/releases/tag/v1?view=full#details",
+            "https://example.org/info",
+        )
+        assertEquals(expected, links.map { (it.item as LinkAnnotation.Url).url })
+        links.forEach { it.item.linkInteractionListener!!.onClick(it.item) }
+        assertEquals(expected, opened)
+        assertTrue(rendered.spanStyles.any {
+            it.item.fontWeight == FontWeight.Bold && rendered.text.substring(it.start, it.end) == "Issue"
+        })
+    }
+
     @Test
     fun rendersBulletsAndInlineEmphasisWithoutMarkdownDelimiters() {
         val rendered = summaryMarkdownAnnotatedString(

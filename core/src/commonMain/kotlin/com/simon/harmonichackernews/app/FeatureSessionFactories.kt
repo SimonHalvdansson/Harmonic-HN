@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
+import com.simon.harmonichackernews.presentation.SavedItemActionKind
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoryRequests
 import com.simon.harmonichackernews.presentation.StoriesSessionState
@@ -101,6 +102,18 @@ fun HarmonicAppComposition.createStoriesStore(
         nowMillis = nowMillis,
         voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
         favoriteRequest = hackerNewsUser::setFavorite,
+        accountRequest = { action ->
+            when (action.kind) {
+                SavedItemActionKind.VOTE -> hackerNewsUser.voteForAccount(
+                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                )
+                SavedItemActionKind.FAVORITE -> hackerNewsUser.setFavoriteForAccount(
+                    action.accountName, action.itemId, action.targetPresent,
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                )
+            }
+        },
     )
     val requests = StoryRequests(
         scope = featureScope,
@@ -158,6 +171,18 @@ fun HarmonicAppComposition.createCommentsStore(
         nowMillis = nowMillis,
         voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
         favoriteRequest = hackerNewsUser::setFavorite,
+        accountRequest = { action ->
+            when (action.kind) {
+                SavedItemActionKind.VOTE -> hackerNewsUser.voteForAccount(
+                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                )
+                SavedItemActionKind.FAVORITE -> hackerNewsUser.setFavoriteForAccount(
+                    action.accountName, action.itemId, action.targetPresent,
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                )
+            }
+        },
     )
     val presenter = CommentsPresenter(
         featureScope,

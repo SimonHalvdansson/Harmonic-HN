@@ -7,6 +7,21 @@ import kotlin.test.assertTrue
 
 class StoriesPresentationTest {
     @Test
+    fun partialCacheCompletionExplainsThatSomeItemsFailed() {
+        val presentation = storiesScreenPresentation(
+            com.simon.harmonichackernews.presentation.StoriesState(
+                cache = com.simon.harmonichackernews.cache.StoryCacheState(
+                    status = com.simon.harmonichackernews.cache.StoryCacheStatus.PARTIAL,
+                    progressVisible = true,
+                ),
+            ),
+            StoriesPlatformPresentation(),
+        )
+        assertTrue(presentation.cacheProgressVisible)
+        assertEquals("Some items could not be cached", presentation.cacheProgressStatus)
+    }
+
+    @Test
     fun completedPredictiveSearchBackDoesNotExposeStaleAnimatedProgress() {
         assertEquals(
             0f,

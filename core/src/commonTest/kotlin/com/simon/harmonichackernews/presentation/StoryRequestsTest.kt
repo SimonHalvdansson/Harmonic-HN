@@ -35,6 +35,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Runnable
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,51 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun pullRefreshUpdatesRetainedMetadataWithoutDiscardingVisibleContent() = runTest {
+        val reply = CompletableDeferred<HackerNewsItemDto>()
+        val requested = mutableListOf<Int>()
+        val api = object : HackerNewsApi by UnusedHackerNewsApi {
+            override suspend fun getItem(id: Int): HackerNewsItemDto {
+                requested += id
+                return if (id == 1) reply.await() else HackerNewsItemDto(id = id, by = "author", title = "New row")
+            }
+        }
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val requests = storyRequests(session, saved, backgroundScope,
+            RecordingFeedLoader(StoryFeedResult.ItemIds(listOf(2, 1))), api)
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests, worker)
+        val retained = Story("Old title", 1, true, true).apply {
+            score = 10
+            descendants = 5
+            previewImageUrl = "https://example.com/image.png"
+        }
+        runtime.mainStore.replace(listOf(retained))
+
+        runtime.refresh(true)
+        runCurrent()
+        worker.runAll()
+        runCurrent()
+        assertEquals(listOf(2, 1), requested)
+        assertEquals("Old title", runtime.mainStore.state.value.items.last().title)
+        assertTrue(retained.loaded)
+        reply.complete(HackerNewsItemDto(id = 1, by = "author", title = "Fresh title", score = 99, descendants = 77))
+        runCurrent()
+
+        val row = runtime.mainStore.state.value.items.last()
+        assertEquals("Fresh title", row.title)
+        assertEquals(99, row.score)
+        assertEquals(77, row.descendants)
+        assertTrue(row.clicked)
+        assertEquals("https://example.com/image.png", row.previewImageUrl)
+        assertTrue(runtime.mainStories.last() === retained)
+        runtime.loadVisibleStories()
+        runCurrent()
+        assertEquals(listOf(2, 1), requested)
+    }
+
     @Test
     fun searchOptionsSurviveRuntimeRecreationWithoutWaitingForCollectors() = runTest {
         val session = StoriesSessionState()
@@ -390,6 +436,33 @@ class StoryRequestsTest {
         assertEquals(listOf("upvoted" to true), userItemsLoader.requests)
     }
 
+    @Test
+    fun syncResponseFromAnEarlierAccountSessionCannotReplaceItsNewSnapshot() = runTest {
+        for (switchBack in listOf(false, true)) {
+            var account = "alice"
+            val savedItems = SavedItemsRepository(MemoryKeyValueStore()).also { it.bindAccountScope { account } }
+            val response = CompletableDeferred<HackerNewsUserItemsResult>()
+            val requests = storyRequests(StoriesSessionState(), savedItems, backgroundScope,
+                userItemsLoader = object : HackerNewsUserItemsLoader {
+                    override suspend fun getUserItems(path: String, loginRequired: Boolean) = response.await()
+                },
+            )
+            val effects = mutableListOf<StoriesEffect>()
+            backgroundScope.launch { requests.effects.collect { effects += it } }
+            requests.syncUserItems(SavedItemSource.FAVORITES, 1, 10)
+            runCurrent()
+            account = "bob"
+            savedItems.refreshAccountScope()
+            if (switchBack) account = "alice"
+            savedItems.saveSnapshotAtomic(SavedItemSource.FAVORITES,
+                com.simon.harmonichackernews.data.SavedItemSnapshot(listOf(9), emptySet()), 20)
+            response.complete(HackerNewsUserItemsResult.Success(HackerNewsUserItems(listOf(1), emptyList())))
+            runCurrent()
+            assertEquals(listOf(9), savedItems.loadSnapshot(SavedItemSource.FAVORITES).itemIds)
+            assertEquals(emptyList(), effects)
+        }
+    }
+
     private class RecordingFeedLoader(
         private val result: StoryFeedResult,
     ) : StoryFeedLoader {
@@ -411,13 +484,15 @@ class StoryRequestsTest {
         savedItems: SavedItemsRepository,
         scope: CoroutineScope,
         feedLoader: StoryFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
+        api: HackerNewsApi = UnusedHackerNewsApi,
+        userItemsLoader: HackerNewsUserItemsLoader = UnusedUserItemsLoader,
     ) = StoryRequests(
         scope = scope,
         sessionState = session,
         algoliaRepository = UnusedAlgoliaRepository,
         hackerNewsRepository = UnusedHackerNewsRepository,
-        hackerNewsApi = UnusedHackerNewsApi,
-        userItemsLoader = UnusedUserItemsLoader,
+        hackerNewsApi = api,
+        userItemsLoader = userItemsLoader,
         savedItemsRepository = savedItems,
         storyFeedLoader = feedLoader,
         clickedStoryIds = { emptyList() },

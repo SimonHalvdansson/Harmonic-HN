@@ -141,6 +141,7 @@ data class PollOptionUi(
 fun StorySummary(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
+    onOpenLink: (String) -> Unit,
     diagnostics: StorySummaryDiagnostics? = null,
     streaming: Boolean = false,
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
@@ -230,6 +231,8 @@ fun StorySummary(
                 SelectionContainer {
                     SummaryMarkdownText(
                         markdown = summary,
+                        baseUrl = story.url ?: "https://news.ycombinator.com/item?id=${story.id}",
+                        onOpenLink = onOpenLink,
                         modifier = Modifier.padding(top = 4.dp),
                         color = HarmonicTheme.colors.storyNormal,
                         linkColor = HarmonicTheme.colors.link,

@@ -43,6 +43,8 @@ data class WebLinksSettingsCapabilities(
     val adBlocking: Boolean = true,
     val readerMode: Boolean = true,
     val closeWebViewOnBack: Boolean = true,
+    val integratedWebView: Boolean = true,
+    val preloadWebsites: Boolean = true,
 )
 
 enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {
@@ -76,7 +78,7 @@ fun WebLinksSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
     ) {
-        item {
+        if (capabilities.integratedWebView) item {
             SettingsCategory("WebView") {
                 BooleanSettingRow(
                     title = "Integrated WebView",
@@ -98,14 +100,16 @@ fun WebLinksSettingsScreen(
                         enabled = state.integratedWebView,
                     )
                 }
-                SettingsDivider()
-                SettingRow(
-                    title = "Preload websites",
-                    summary = state.preloadSummary,
-                    icon = Res.drawable.ic_cached,
-                    enabled = state.integratedWebView,
-                    onClick = { onDialogRequested(WebLinksSettingsDialog.Preload) },
-                )
+                if (capabilities.preloadWebsites) {
+                    SettingsDivider()
+                    SettingRow(
+                        title = "Preload websites",
+                        summary = state.preloadSummary,
+                        icon = Res.drawable.ic_cached,
+                        enabled = state.integratedWebView,
+                        onClick = { onDialogRequested(WebLinksSettingsDialog.Preload) },
+                    )
+                }
                 SettingsDivider()
                 BooleanSettingRow(
                     title = "Match WebView dark mode to theme",
@@ -129,7 +133,7 @@ fun WebLinksSettingsScreen(
                 }
             }
         }
-        if (capabilities.readerMode) {
+        if (capabilities.integratedWebView && capabilities.readerMode) {
             item {
                 SettingsCategory("Reader mode") {
                     BooleanSettingRow(

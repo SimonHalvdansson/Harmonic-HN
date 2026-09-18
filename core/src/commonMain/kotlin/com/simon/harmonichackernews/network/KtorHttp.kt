@@ -43,7 +43,25 @@ class NetworkUrl private constructor(internal val value: Url) {
     fun newBuilder(): Builder = Builder(URLBuilder(value))
 
     fun resolve(relativeUrl: String): NetworkUrl? = try {
-        NetworkUrl(URLBuilder(value).takeFrom(relativeUrl).build())
+        // Ktor's relative-path builder drops the final path segment even when a reference
+        // only replaces the query or fragment. Such references stay on the same document.
+        val reference = relativeUrl.trim()
+        val documentUrl = value.toString().substringBefore('#')
+        val resolved = when {
+            reference.isEmpty() -> Url(documentUrl)
+            reference.startsWith('#') -> Url(documentUrl + reference)
+            reference.startsWith('?') -> Url(documentUrl.substringBefore('?') + reference)
+            absoluteScheme.containsMatchIn(reference) -> Url(reference)
+            reference.startsWith("//") -> Url("$scheme:$reference")
+            else -> URLBuilder(value).apply {
+                // Path references replace the base query and fragment. takeFrom appends
+                // query entries to an existing builder instead of clearing them.
+                parameters.clear()
+                fragment = ""
+                trailingQuery = false
+            }.takeFrom(reference).build()
+        }
+        NetworkUrl(resolved)
     } catch (_: URLDecodeException) {
         null
     } catch (_: URLParserException) {
@@ -71,6 +89,8 @@ class NetworkUrl private constructor(internal val value: Url) {
     }
 
     companion object {
+        private val absoluteScheme = Regex("^[A-Za-z][A-Za-z0-9+.-]*:")
+
         fun parse(value: String): NetworkUrl = NetworkUrl(Url(value))
         fun parseOrNull(value: String?): NetworkUrl? = try {
             value?.let(::parse)

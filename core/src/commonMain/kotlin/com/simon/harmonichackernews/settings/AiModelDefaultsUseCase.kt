@@ -16,6 +16,9 @@ class AiModelDefaultsUseCase(
 ) {
     suspend fun ensureInitialDefault(): Boolean = runCatching {
         if (settings.hasModelSelection()) return false
+        if (AiSummaryProviders.getProviderForBaseUrl(settings.snapshot().baseUrl)?.id !=
+            AiSummaryProviders.PROVIDER_OPENROUTER
+        ) return false
         val models = catalog.fetchModels(
             AiSummaryProviders.OPENAI,
             AiModelCatalogSort.PRICE_LOW_TO_HIGH,

@@ -169,7 +169,7 @@ fun LoginDialog(
                                         Res.drawable.ic_visibility
                                     },
                                 ),
-                                contentDescription = null,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
                             )
                         }
                     },

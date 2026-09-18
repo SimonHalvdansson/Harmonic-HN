@@ -268,6 +268,7 @@ fun CommentItem(
                     ReferenceRow(
                         marker = model.referenceMarker,
                         label = model.referenceUrl,
+                        typography = typography,
                         modifier = Modifier.padding(top = 5.dp),
                         onClick = {},
                         onLongClick = { _, _ -> },
@@ -444,8 +445,12 @@ fun CommentItem(
             )
             AnimatedVisibility(
                 visible = !textCollapsed,
-                enter = fadeIn(contentTween()) + expandVertically(contentTween()),
-                exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
+                enter = if (style.animateChanges) {
+                    fadeIn(contentTween()) + expandVertically(contentTween())
+                } else androidx.compose.animation.EnterTransition.None,
+                exit = if (style.animateChanges) {
+                    fadeOut(contentTween()) + shrinkVertically(contentTween())
+                } else androidx.compose.animation.ExitTransition.None,
             ) {
                 Column {
                     contentBlocks.forEachIndexed { index, block ->
@@ -470,6 +475,7 @@ fun CommentItem(
                             ReferenceRow(
                                 marker = link.markerLabel.orEmpty(),
                                 label = rememberReferenceLinkLabel(link),
+                                typography = typography,
                                 faviconUrl = rememberReferenceLinkFaviconUrl(link),
                                 modifier = when {
                                     hasInterleavedReferences -> Modifier.padding(bottom = 2.dp)
@@ -982,6 +988,7 @@ private fun CommentMeta(
 private fun ReferenceRow(
     marker: String,
     label: String,
+    typography: ContentTypography,
     faviconUrl: String? = null,
     modifier: Modifier = Modifier,
     suppressed: Boolean = false,
@@ -1039,13 +1046,21 @@ private fun ReferenceRow(
                 )
             }
             if (marker.isNotBlank()) {
-                Text(marker, modifier = Modifier.padding(end = 8.dp), color = colors.storyDisabled, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    marker,
+                    modifier = Modifier.padding(end = 8.dp),
+                    color = colors.storyDisabled,
+                    fontFamily = typography.family,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = typography.referenceMarkerSize.sp,
+                )
             }
             Text(
                 label,
                 modifier = Modifier.weight(1f),
                 color = colors.storyNormal,
-                fontSize = 13.sp,
+                fontFamily = typography.family,
+                fontSize = typography.referenceLabelSize.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

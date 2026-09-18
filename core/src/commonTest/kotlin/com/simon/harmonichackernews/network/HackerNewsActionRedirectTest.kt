@@ -15,6 +15,27 @@ import kotlin.test.assertIs
 
 class HackerNewsActionRedirectTest {
     @Test
+    fun submissionFormResponseAndRedirectBackToFormAreNotConfirmation() = runTest {
+        for (redirect in listOf(false, true)) {
+            val transport = HttpClient(MockEngine { request ->
+                when (request.url.encodedPath) {
+                    "/login" -> respond("<input name=\"fnid\" value=\"token\">")
+                    "/r" -> if (redirect) respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/submit"))
+                        else respond("<html>Please slow down.</html>")
+                    else -> respond("<input name=\"fnid\" value=\"token\">Please slow down.")
+                }
+            })
+            try {
+                assertIs<HackerNewsActionResult.Failure>(repository(transport).submit(
+                    HackerNewsAccount("tester", "secret"), "Title", "Body", "",
+                ))
+            } finally {
+                transport.close()
+            }
+        }
+    }
+
+    @Test
     fun successfulCommentRedirectIsFollowedAsGet() = runTest {
         var requestCount = 0
         val transport = HttpClient(MockEngine { request ->

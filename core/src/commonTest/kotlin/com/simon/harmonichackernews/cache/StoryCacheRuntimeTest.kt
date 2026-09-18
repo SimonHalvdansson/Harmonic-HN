@@ -57,6 +57,7 @@ class StoryCacheRuntimeTest {
     @Test
     fun outcomesAreExposedAsStructuredStatuses() = runTest {
         val outcomes = listOf(
+            StoryCacheOutcome.PARTIAL to StoryCacheStatus.PARTIAL,
             StoryCacheOutcome.EMPTY to StoryCacheStatus.EMPTY,
             StoryCacheOutcome.FAILED to StoryCacheStatus.FAILED,
         )

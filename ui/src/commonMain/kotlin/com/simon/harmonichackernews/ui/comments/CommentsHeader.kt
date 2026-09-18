@@ -301,6 +301,7 @@ fun CommentsHeader(
                             StorySummary(
                                 story = story,
                                 settings = settings,
+                                onOpenLink = previewPlatform.openLink,
                                 diagnostics = controller.summaryDiagnostics,
                                 streaming = controller.storySummaryLoading,
                                 containerColor = summaryContainerColor,

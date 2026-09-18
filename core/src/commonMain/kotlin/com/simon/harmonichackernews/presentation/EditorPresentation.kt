@@ -23,6 +23,13 @@ object EditorPolicy {
     const val TITLE_MAX_LENGTH = 80
 }
 
+/** Draft preservation does not depend on whether the form is valid for submission. */
+fun EditorSubmission.hasDraft(type: EditorType): Boolean = if (type == EditorType.POST) {
+    title.isNotEmpty() || url.isNotEmpty() || text.isNotEmpty()
+} else {
+    comment.isNotEmpty()
+}
+
 object EditorPresentationCopy {
     fun successMessage(type: EditorType): String = if (type == EditorType.POST) {
         "Post submitted, it might take a minute to show up"

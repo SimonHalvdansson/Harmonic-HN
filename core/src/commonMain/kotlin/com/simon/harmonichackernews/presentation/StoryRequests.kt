@@ -120,6 +120,11 @@ class StoryRequests(
         storyRowLoader.load(story, preserveTime, generation)
     }
 
+    fun invalidateLoadedStoryRows(stories: List<Story>) =
+        storyRowLoader.invalidateLoadedStories(stories.filter(Story::loaded).map(Story::id))
+
+    fun storyRowNeedsRefresh(storyId: Int): Boolean = storyRowLoader.needsRefresh(storyId)
+
     suspend fun loadFeed(storyType: StoryType, frontDay: String?): StoryFeedResult =
         storyFeedLoader.load(storyType, frontDay)
 
@@ -133,22 +138,26 @@ class StoryRequests(
 
     fun syncUserItems(source: SavedItemSource, generation: Int, savedAtMillis: Long) {
         userItemsLoadJob?.cancel()
+        val accountRevision = savedItemsRepository.currentAccountRevision
         userItemsLoadJob = scope.launch {
             val upvoted = source == SavedItemSource.UPVOTED
             val path = if (upvoted) "upvoted" else "favorites"
             try {
-                when (val result = userItemsLoader.getUserItems(path, loginRequired = upvoted)) {
+                val result = userItemsLoader.getUserItems(path, loginRequired = upvoted)
+                if (savedItemsRepository.currentAccountRevision != accountRevision) return@launch
+                when (result) {
                     is HackerNewsUserItemsResult.Success -> {
                         val snapshot = SavedItemSnapshots.normalize(
                             result.items.itemIds,
                             result.items.commentIds,
                         )
                         if (savedItemsRepository.loadSnapshot(source) != snapshot) {
-                            savedItemsRepository.saveSnapshotAtomic(
+                            if (!savedItemsRepository.saveSnapshotIfAccountCurrent(
                                 source,
                                 snapshot,
                                 savedAtMillis,
-                            )
+                                accountRevision,
+                            )) return@launch
                         }
                         mutableEffects.emit(
                             StoriesEffect.UserItemsSynced(
@@ -178,6 +187,7 @@ class StoryRequests(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                if (savedItemsRepository.currentAccountRevision != accountRevision) return@launch
                 mutableEffects.emit(
                     StoriesEffect.UserItemsSyncFailed(
                         source = source,

@@ -4,12 +4,18 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.platform.HackerNewsAccountState
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
+import com.simon.harmonichackernews.platform.ConnectivityService
+import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.presentation.EditorSubmission
+import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
+import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +27,67 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 
 class HackerNewsActionDispatchClassificationTest {
+    @Test
+    fun accountBoundRequestsRejectTheReplacementLoginBeforeNetworkDispatch() = runTest {
+        var requests = 0
+        val transport = HttpClient(MockEngine { requests++; respond("ok") })
+        try {
+            val service = userService(transport)
+            assertIs<HackerNewsActionResult.Failure>(service.voteForAccount("old-user", "42", "up"))
+            assertIs<HackerNewsActionResult.Failure>(service.setFavoriteForAccount("old-user", 42, true))
+            assertEquals(0, requests)
+        } finally { transport.close() }
+    }
+
+    @Test
+    fun lateInvalidCredentialsDoNotLogOutTheNewAccount() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<Unit>()
+        val accounts = MemoryAccounts()
+        val transport = HttpClient(MockEngine {
+            started.complete(Unit)
+            response.await()
+            respond("Bad login.")
+        })
+        try {
+            val action = async { userService(transport, accounts).vote("42", "up") }
+            started.await()
+            val replacement = HackerNewsAccount("bob", "new password")
+            accounts.saveAccount(replacement)
+            response.complete(Unit)
+            assertEquals(HackerNewsActionFailureReason.INVALID_CREDENTIALS,
+                assertIs<HackerNewsActionResult.Failure>(action.await()).reason)
+            assertEquals(replacement, accounts.currentAccount)
+        } finally { transport.close() }
+    }
+
+    @Test
+    fun unrecognizedPostingResponsesKeepTheEditorDraftAndDoNotReportSuccess() = runTest {
+        for (body in listOf(
+            "<html>You're posting too fast. Please slow down.</html>",
+            "<html>An unfamiliar HN rejection message</html>",
+            "",
+        )) {
+            val transport = HttpClient(MockEngine { respond(body) })
+            try {
+                val workflow = EditorSubmissionWorkflow(
+                    type = EditorType.COMMENT_REPLY,
+                    itemId = 42,
+                    service = userService(transport),
+                    connectivity = object : ConnectivityService {
+                        override fun isOnline() = true
+                        override fun isUnmetered() = true
+                    },
+                )
+                val result = assertIs<EditorWorkflowResult.Failure>(workflow.submit(EditorSubmission(comment = "Keep this draft")))
+                assertEquals("Keep this draft", result.commentDraft)
+                assertFalse(workflow.isSubmitting)
+            } finally {
+                transport.close()
+            }
+        }
+    }
+
     @Test
     fun favoritePreflightTransportFailureIsDefinite() = runTest {
         val transport = HttpClient(MockEngine { error("preflight connection failed") })
@@ -86,7 +153,10 @@ class HackerNewsActionDispatchClassificationTest {
         }
     }
 
-    private fun userService(transport: HttpClient): HackerNewsUserService {
+    private fun userService(
+        transport: HttpClient,
+        accounts: ObservableHackerNewsAccountRepository = MemoryAccounts(),
+    ): HackerNewsUserService {
         val actions = KtorHackerNewsActionRepository(
             client = KtorHttpClient(transport),
             cookieClient = KtorHttpClient(transport),
@@ -98,7 +168,7 @@ class HackerNewsActionDispatchClassificationTest {
                 override val publicWeb: HackerNewsWebRepository = UnusedWebRepository
                 override fun reset() = Unit
             },
-            accounts = MemoryAccounts(),
+            accounts = accounts,
         )
     }
 

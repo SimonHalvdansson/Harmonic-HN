@@ -267,6 +267,18 @@ private final class IosExternalLinkOpener: ExternalLinkOpener {
     }
 }
 
+private final class BrowserDialogCompletion<Value> {
+    private var callback: ((Value) -> Void)?
+
+    init(_ callback: @escaping (Value) -> Void) { self.callback = callback }
+
+    func finish(_ value: Value) {
+        let completion = callback
+        callback = nil
+        completion?(value)
+    }
+}
+
 private final class HarmonicWebViewController:
     UIViewController,
     WKNavigationDelegate,
@@ -277,6 +289,11 @@ private final class HarmonicWebViewController:
     private let shareable: Bool
     private let webView: WKWebView
     private let progressView = UIProgressView(progressViewStyle: .bar)
+    private let errorView = UIView()
+    private let errorLabel = UILabel()
+    private var failedURL: URL?
+    private var requestedURL: URL
+    private var cancelJavaScriptDialog: (() -> Void)?
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var canGoBackObservation: NSKeyValueObservation?
@@ -296,6 +313,7 @@ private final class HarmonicWebViewController:
 
     init(url: URL, shareable: Bool) {
         initialURL = url
+        requestedURL = url
         self.shareable = shareable
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
@@ -315,6 +333,7 @@ private final class HarmonicWebViewController:
         edgesForExtendedLayout = []
         configureNavigation()
         configureWebView()
+        configureErrorView()
         observeWebView()
         webView.load(URLRequest(url: initialURL))
     }
@@ -322,6 +341,8 @@ private final class HarmonicWebViewController:
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         guard isBeingDismissed || navigationController?.isBeingDismissed == true else { return }
+        cancelJavaScriptDialog?()
+        cancelJavaScriptDialog = nil
         webView.stopLoading()
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -432,7 +453,7 @@ private final class HarmonicWebViewController:
             [weak self] webView, _ in
             guard let self else { return }
             progressView.progress = Float(webView.estimatedProgress)
-            progressView.isHidden = webView.estimatedProgress >= 1
+            progressView.isHidden = webView.estimatedProgress >= 1 || !errorView.isHidden
         }
         titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in
             guard let self else { return }
@@ -474,18 +495,24 @@ private final class HarmonicWebViewController:
 
     @objc
     private func reloadPage() {
-        webView.reload()
+        if let failedURL {
+            self.failedURL = nil
+            errorView.isHidden = true
+            webView.load(URLRequest(url: failedURL))
+        } else {
+            webView.reload()
+        }
     }
 
     @objc
     private func openExternally() {
-        UIApplication.shared.open(webView.url ?? initialURL)
+        UIApplication.shared.open(failedURL ?? webView.url ?? requestedURL)
     }
 
     @objc
     private func sharePage() {
         let activity = UIActivityViewController(
-            activityItems: [webView.url ?? initialURL],
+            activityItems: [failedURL ?? webView.url ?? requestedURL],
             applicationActivities: nil
         )
         if let popover = activity.popoverPresentationController {
@@ -525,6 +552,7 @@ private final class HarmonicWebViewController:
         }
         let scheme = url.scheme?.lowercased()
         if scheme == "http" || scheme == "https" || scheme == "about" {
+            if navigationAction.targetFrame?.isMainFrame != false { requestedURL = url }
             decisionHandler(.allow)
             return
         }
@@ -532,6 +560,126 @@ private final class HarmonicWebViewController:
             UIApplication.shared.open(url)
         }
         decisionHandler(.cancel)
+    }
+
+    private func configureErrorView() {
+        errorView.backgroundColor = .systemBackground
+        errorView.isHidden = true
+        errorView.translatesAutoresizingMaskIntoConstraints = false
+        errorView.accessibilityIdentifier = "harmonic_article_error"
+        errorLabel.numberOfLines = 0
+        errorLabel.textAlignment = .center
+        errorLabel.textColor = .label
+        errorLabel.font = .preferredFont(forTextStyle: .body)
+        errorLabel.adjustsFontForContentSizeCategory = true
+        let retry = UIButton(type: .system)
+        retry.setTitle("Retry", for: .normal)
+        retry.addTarget(self, action: #selector(reloadPage), for: .touchUpInside)
+        let external = UIButton(type: .system)
+        external.setTitle("Open in Safari", for: .normal)
+        external.addTarget(self, action: #selector(openExternally), for: .touchUpInside)
+        let content = UIStackView(arrangedSubviews: [errorLabel, retry, external])
+        content.axis = .vertical
+        content.spacing = 16
+        content.translatesAutoresizingMaskIntoConstraints = false
+        errorView.addSubview(content)
+        view.addSubview(errorView)
+        NSLayoutConstraint.activate([
+            errorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            errorView.topAnchor.constraint(equalTo: view.topAnchor),
+            errorView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            content.centerYAnchor.constraint(equalTo: errorView.centerYAnchor),
+            content.leadingAnchor.constraint(equalTo: errorView.leadingAnchor, constant: 24),
+            content.trailingAnchor.constraint(equalTo: errorView.trailingAnchor, constant: -24),
+        ])
+    }
+
+    private func showPageError(_ message: String, url: URL? = nil) {
+        failedURL = url ?? requestedURL
+        errorLabel.text = "Couldn't load this page.\n\n" + message
+        errorView.isHidden = false
+        progressView.isHidden = true
+    }
+
+    private func handleNavigationFailure(_ error: Error) {
+        let failure = error as NSError
+        if failure.domain == NSURLErrorDomain && failure.code == NSURLErrorCancelled { return }
+        showPageError(
+            failure.localizedDescription,
+            url: failure.userInfo[NSURLErrorFailingURLErrorKey] as? URL
+        )
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        failedURL = nil
+        errorView.isHidden = true
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+                 withError error: Error) {
+        handleNavigationFailure(error)
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        handleNavigationFailure(error)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        showPageError("The page stopped responding. Try reloading it.", url: webView.url)
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
+                 decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        guard navigationResponse.isForMainFrame && !navigationResponse.canShowMIMEType else {
+            decisionHandler(.allow)
+            return
+        }
+        decisionHandler(.cancel)
+        showPageError("This file can be opened in Safari.", url: navigationResponse.response.url)
+    }
+
+    private func presentJavaScriptDialog(_ alert: UIAlertController, cancel: @escaping () -> Void) {
+        guard viewIfLoaded?.window != nil, presentedViewController == nil, !isBeingDismissed else {
+            cancel()
+            return
+        }
+        cancelJavaScriptDialog?()
+        cancelJavaScriptDialog = cancel
+        present(alert, animated: true)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let completion = BrowserDialogCompletion<Void> { _ in completionHandler() }
+        let alert = UIAlertController(title: frame.request.url?.host ?? "Website",
+                                      message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completion.finish(()) })
+        presentJavaScriptDialog(alert) { completion.finish(()) }
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let completion = BrowserDialogCompletion(completionHandler)
+        let alert = UIAlertController(title: frame.request.url?.host ?? "Website",
+                                      message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completion.finish(false) })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completion.finish(true) })
+        presentJavaScriptDialog(alert) { completion.finish(false) }
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String,
+                 defaultText: String?, initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (String?) -> Void) {
+        let completion = BrowserDialogCompletion(completionHandler)
+        let alert = UIAlertController(title: frame.request.url?.host ?? "Website",
+                                      message: prompt, preferredStyle: .alert)
+        alert.addTextField { $0.text = defaultText }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completion.finish(nil) })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak alert] _ in
+            completion.finish(alert?.textFields?.first?.text ?? "")
+        })
+        presentJavaScriptDialog(alert) { completion.finish(nil) }
     }
 
     func webView(

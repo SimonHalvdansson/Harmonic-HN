@@ -8,14 +8,18 @@ import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 
 internal object WikipediaLinkPreview {
-    fun isWikipediaUrl(url: String?): Boolean = url != null && wikipediaUrlRegex.matches(url)
+    fun isWikipediaUrl(url: String?): Boolean = wikipediaTitle(url) != null
 
-    fun wikipediaTitle(url: String?): String? = url
-        ?.takeIf(::isWikipediaUrl)
-        ?.substringAfter("en.wikipedia.org/wiki/", missingDelimiterValue = "")
-        ?.takeIf(String::isNotEmpty)
-
-    private val wikipediaUrlRegex = Regex("^https?://en\\.wikipedia\\.org/wiki/.+")
+    fun wikipediaTitle(url: String?): String? {
+        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.scheme !in setOf("http", "https") || parsed.host.lowercase() != "en.wikipedia.org") {
+            return null
+        }
+        val segments = parsed.pathSegments.dropWhile(String::isEmpty)
+        if (segments.firstOrNull() != "wiki") return null
+        // Path segments are decoded once by the URL parser; preserve subpage slashes and pluses.
+        return segments.drop(1).joinToString("/").takeIf(String::isNotEmpty)
+    }
 
     fun parseWikipedia(response: String): WikipediaInfo? {
         val json = JsonObject(response)

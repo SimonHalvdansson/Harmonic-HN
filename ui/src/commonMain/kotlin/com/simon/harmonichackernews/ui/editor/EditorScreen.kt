@@ -108,6 +108,7 @@ import com.simon.harmonichackernews.presentation.EditorPolicy
 import com.simon.harmonichackernews.presentation.formatEditorCodeBlock
 import com.simon.harmonichackernews.presentation.formatEditorItalic
 import com.simon.harmonichackernews.presentation.validate
+import com.simon.harmonichackernews.presentation.hasDraft
 
 private enum class EditorDialog {
     Information,
@@ -183,12 +184,13 @@ fun EditorScreen(
     val validation = submission.validate(type, titleMaxLength)
     val titleTooLong = validation.titleTooLong
     val canSubmit = validation.canSubmit
-    val predictiveBackEnabled = !canSubmit && dialog == null && !submitting
+    val hasDraft = submission.hasDraft(type)
+    val predictiveBackEnabled = !hasDraft && dialog == null && !submitting
 
     SideEffect { onPredictiveBackEnabledChanged(predictiveBackEnabled) }
 
     fun requestClose() {
-        if (canSubmit) dialog = EditorDialog.Discard else onClose()
+        if (hasDraft) dialog = EditorDialog.Discard else onClose()
     }
 
     LaunchedEffect(backRequestVersion) {

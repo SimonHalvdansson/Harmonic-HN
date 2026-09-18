@@ -164,6 +164,7 @@ internal fun storiesScreenPresentation(
             StoryCacheStatus.IDLE -> PresentationCopy.CACHE_STORIES
             StoryCacheStatus.CACHING -> PresentationCopy.cachingStories(storyCache.total)
             StoryCacheStatus.FINISHED -> PresentationCopy.CACHE_FINISHED
+            StoryCacheStatus.PARTIAL -> PresentationCopy.CACHE_PARTIAL
             StoryCacheStatus.EMPTY -> PresentationCopy.CACHE_EMPTY
             StoryCacheStatus.FAILED -> PresentationCopy.CACHE_FAILED
         },

@@ -293,13 +293,10 @@ private fun SwtEdgeBrowserSurface(
         }
     }
 
-    val invertPage = (dark && matchTheme) xor session.manualInversion
-    LaunchedEffect(session.isLoading, invertPage, browserCanvas) {
+    LaunchedEffect(session.isLoading, dark, matchTheme, session.manualInversion, browserCanvas) {
         if (!session.isLoading) {
-            val filter = if (invertPage) "invert(1) hue-rotate(180deg)" else "none"
             session.evaluateJavaScript(
-                "document.documentElement.style.filter='$filter';" +
-                    "document.documentElement.style.backgroundColor='transparent';" +
+                desktopWebViewAppearanceScript(dark, matchTheme, session.manualInversion) +
                     MATERIAL_SCROLLBAR_SCRIPT,
             )
         }
@@ -344,13 +341,10 @@ private fun MacWkWebViewSurface(
         }
     }
 
-    val invertPage = (dark && matchTheme) xor session.manualInversion
-    LaunchedEffect(session.isLoading, invertPage, browserCanvas) {
+    LaunchedEffect(session.isLoading, dark, matchTheme, session.manualInversion, browserCanvas) {
         if (!session.isLoading) {
-            val filter = if (invertPage) "invert(1) hue-rotate(180deg)" else "none"
             session.evaluateJavaScript(
-                "document.documentElement.style.filter='$filter';" +
-                    "document.documentElement.style.backgroundColor='transparent';",
+                desktopWebViewAppearanceScript(dark, matchTheme, session.manualInversion),
             )
         }
     }

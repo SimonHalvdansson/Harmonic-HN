@@ -10,6 +10,45 @@ class LocalModelPresentationTest {
     private val model = LocalModelCatalog.models.first { it.downloadable }
 
     @Test
+    fun modelHandoffErrorIsVisibleWithoutHidingTheInstalledRuntime() {
+        val runtime = LocalRuntimeInstallStatus(
+            state = LocalRuntimeInstallState.INSTALLED,
+            pendingModelId = model.id,
+            modelDownloadError = "Not enough free space. Free storage and try again.",
+        )
+        val failed = present(
+            LocalModelTransferStatus(LocalModelTransferState.NOT_DOWNLOADED),
+            runtime = runtime,
+            runtimeInstalled = true,
+        )
+        assertTrue(failed.summary.endsWith(runtime.modelDownloadError))
+        assertEquals(LocalModelPresentationAction.DOWNLOAD_MODEL, failed.action)
+        assertFalse(failed.selectable)
+        val otherModel = present(
+            LocalModelTransferStatus(LocalModelTransferState.DOWNLOADED),
+            runtime = runtime.copy(pendingModelId = "another-model"),
+            runtimeInstalled = true,
+        )
+        assertTrue(otherModel.summary.endsWith("Downloaded"))
+        assertTrue(otherModel.selectable)
+    }
+
+    @Test
+    fun actualRuntimeInstallationErrorsRemainVisibleAndRetryable() {
+        val failed = present(
+            LocalModelTransferStatus(LocalModelTransferState.NOT_DOWNLOADED),
+            runtime = LocalRuntimeInstallStatus(
+                state = LocalRuntimeInstallState.FAILED,
+                pendingModelId = model.id,
+                error = "Runtime download failed. Check your connection.",
+            ),
+        )
+        assertTrue(failed.summary.endsWith("Runtime download failed. Check your connection."))
+        assertEquals(LocalModelPresentationAction.DOWNLOAD_MODEL, failed.action)
+        assertFalse(failed.selectable)
+    }
+
+    @Test
     fun nanoStaysDisabledUntilAvailabilityIsResolved() {
         assertEquals("Gemini Nano", LocalModelCatalog.models.first().displayName)
         val unresolved = presentNano(resolved = false, available = false)

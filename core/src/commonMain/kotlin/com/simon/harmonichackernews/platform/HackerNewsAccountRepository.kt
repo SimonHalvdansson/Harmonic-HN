@@ -165,19 +165,26 @@ class ObservableAccountRepositoryAdapter(
             .onSuccess(::publish)
     }
 
-    override suspend fun clearAccount(): Boolean = withContext(storageDispatcher) {
-        mutationMutex.withLock {
-            runCatching { delegate.clear() }
-                .getOrDefault(false)
-                .also { cleared ->
-                    if (cleared) {
-                        publish(null)
-                    } else {
-                        reloadWithoutDiscardingPublishedState()
+    override suspend fun clearAccount(): Boolean = clearMatchingAccount(null)
+
+    override suspend fun clearAccountIfMatches(account: HackerNewsAccount): Boolean =
+        clearMatchingAccount(account)
+
+    private suspend fun clearMatchingAccount(expected: HackerNewsAccount?): Boolean =
+        withContext(storageDispatcher) {
+            mutationMutex.withLock {
+                if (expected != null && currentAccount != expected) return@withLock false
+                runCatching { delegate.clear() }
+                    .getOrDefault(false)
+                    .also { cleared ->
+                        if (cleared) {
+                            publish(null)
+                        } else {
+                            reloadWithoutDiscardingPublishedState()
+                        }
                     }
-                }
+            }
         }
-    }
 
     override fun close() {
         storageScope.cancel()

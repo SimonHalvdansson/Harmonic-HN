@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
-import com.simon.harmonichackernews.network.CommentThreadSource
 import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.utils.StoryTitlePolicy
 
@@ -29,7 +28,9 @@ object CommentsPresentationPolicy {
         )
 
     fun failureFor(result: CommentThreadLoadResult.Failure): StoryLoadFailure =
-        if (result.source == CommentThreadSource.ALGOLIA && !result.noInternet) {
+        // Both providers can fail while online. The legacy NOT_FOUND bucket renders the
+        // neutral server/load error; GENERAL is the comments screen's offline bucket.
+        if (!result.noInternet) {
             StoryLoadFailure.NOT_FOUND
         } else {
             StoryLoadFailure.GENERAL

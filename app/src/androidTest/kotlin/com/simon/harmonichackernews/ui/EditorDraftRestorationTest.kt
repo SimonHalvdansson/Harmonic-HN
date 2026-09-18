@@ -41,6 +41,28 @@ class EditorDraftRestorationTest {
     }
 
     @Test
+    fun incompletePostCannotCloseWithoutAnExplicitDiscard() {
+        val cases = listOf(
+            "compose_editor_text" to "Body without a title",
+            "compose_editor_title" to "Title without a URL or body",
+            "compose_editor_url" to "https://example.com/unfinished",
+            "compose_editor_title" to "x".repeat(81),
+        )
+        for ((tag, draft) in cases) {
+            openEditor(EditorType.POST)
+            compose.onNodeWithTag(tag).performTextReplacement(draft)
+            compose.onNodeWithContentDescription("Close").performClick()
+            compose.onNodeWithText("Cancel", substring = false).performClick()
+            assertFieldText(tag, draft)
+            // System Back uses the same dirty-draft guard as the close button.
+            compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.onNodeWithText("Cancel", substring = false).performClick()
+            assertFieldText(tag, draft)
+            discardEditor()
+        }
+    }
+
+    @Test
     fun ordinaryReplyRestoresTextAndSelectionWithoutCreatingDraftFiles() {
         val originalFiles = draftFiles()
         openEditor(EditorType.COMMENT_REPLY)

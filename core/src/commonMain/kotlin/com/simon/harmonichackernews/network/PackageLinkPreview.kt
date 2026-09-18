@@ -22,7 +22,12 @@ internal object PackageLinkPreview {
             host == "npmjs.com" && segments.firstOrNull() == "package" && segments.size >= 2 ->
                 PackagePreviewTarget(
                     LinkPreviewType.NPM_PACKAGE,
-                    segments.drop(1).take(2).joinToString("/"),
+                    if (segments[1].startsWith('@')) {
+                        if (segments.size < 3) return null
+                        segments.subList(1, 3).joinToString("/")
+                    } else {
+                        segments[1]
+                    },
                 )
             host == "pypi.org" && segments.firstOrNull() == "project" && segments.size >= 2 ->
                 PackagePreviewTarget(LinkPreviewType.PYPI_PACKAGE, segments[1])

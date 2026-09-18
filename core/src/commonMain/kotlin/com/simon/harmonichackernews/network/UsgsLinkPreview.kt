@@ -34,7 +34,9 @@ internal object UsgsLinkPreview {
                     ?.numberString(2)?.let { "$it km" },
                 "Type" to properties.nonBlankString("type")?.titleCase(),
                 "Significance" to properties.optLong("sig").toString(),
-                "Tsunami" to if (properties.optInt("tsunami") == 1) "Warning" else "No warning",
+                // ComCat's flag links to tsunami information; it is not a warning status.
+                "Tsunami information" to "Available on the event page"
+                    .takeIf { properties.optInt("tsunami") == 1 },
                 "Status" to properties.nonBlankString("status")?.titleCase(),
             ),
         )

@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 8) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 9) {
         return;
     }
 
@@ -152,6 +152,11 @@
 
         try {
             var documentClone = document.cloneNode(true);
+            // Readability absolutizes URLs using <base>; keep article-local anchors local first.
+            var fragmentLinks = documentClone.querySelectorAll("a[href^='#']");
+            for (var i = 0; i < fragmentLinks.length; i++) {
+                fragmentLinks[i].setAttribute("href", new URL(fragmentLinks[i].getAttribute("href"), location.href).href);
+            }
             var parsed = new Readability(documentClone, {
                 charThreshold: MIN_ARTICLE_TEXT_LENGTH,
                 keepClasses: false
@@ -249,7 +254,7 @@
 
     function cleanAttributes(element) {
         var allowed = {
-            "a": ["href", "title"],
+            "a": ["href", "title", "name"],
             "img": ["src", "srcset", "sizes", "alt", "title", "width", "height"],
             "picture": [],
             "video": ["src", "poster", "controls"],
@@ -261,7 +266,7 @@
             "pre": ["class"]
         };
         var tagName = element.tagName ? element.tagName.toLowerCase() : "";
-        var keep = allowed[tagName] || [];
+        var keep = (allowed[tagName] || []).concat(["id", "lang", "dir"]);
         for (var i = element.attributes.length - 1; i >= 0; i--) {
             var name = element.attributes[i].name;
             if (keep.indexOf(name) === -1) {
@@ -306,7 +311,8 @@
             } else if (tagName === "a") {
                 var href = node.getAttribute("href");
                 if (href) {
-                    node.setAttribute("href", absolutizeUrl(href));
+                    // Fragment links refer to this article even when the source uses a <base> URL.
+                    node.setAttribute("href", href.charAt(0) === "#" ? new URL(href, location.href).href : absolutizeUrl(href));
                 }
             } else if (tagName === "video") {
                 var videoSrc = node.getAttribute("src");
@@ -348,7 +354,8 @@
         for (var i = nodes.length - 1; i >= 0; i--) {
             var node = nodes[i];
             var tagName = node.tagName ? node.tagName.toLowerCase() : "";
-            if (!keepEmpty[tagName] && getText(node).length === 0 && node.getElementsByTagName("img").length === 0) {
+            if (!keepEmpty[tagName] && !node.id && !node.getAttribute("name") &&
+                    getText(node).length === 0 && node.getElementsByTagName("img").length === 0) {
                 node.parentNode.removeChild(node);
             }
         }
@@ -395,6 +402,11 @@
         var headings = root.querySelectorAll("h1, h2");
         for (var i = 0; i < headings.length; i++) {
             if (normalizeTitle(getText(headings[i])) === titleText) {
+                if (headings[i].id) {
+                    var target = document.createElement("span");
+                    target.id = headings[i].id;
+                    headings[i].parentNode.insertBefore(target, headings[i]);
+                }
                 headings[i].parentNode.removeChild(headings[i]);
                 return;
             }
@@ -649,7 +661,7 @@
 
             window[STATE_KEY] = {
                 enabled: true,
-                bodyHtml: document.body.innerHTML,
+                bodyNodes: null,
                 bodyAttrs: getAttributes(document.body),
                 htmlAttrs: getAttributes(document.documentElement),
                 title: originalTitle,
@@ -664,6 +676,7 @@
                 title ? "<h1>" + escapeHtml(title) + "</h1>" : "",
                 meta ? "<div id=\"harmonic-reader-byline\">" + escapeHtml(meta) + "</div>" : "",
                 "<article id=\"harmonic-reader-article\">",
+                extractedArticle.root.id ? "<span id=\"" + escapeHtml(extractedArticle.root.id) + "\"></span>" : "",
                 extractedArticle.root.innerHTML,
                 "</article>",
                 "</main>"
@@ -673,6 +686,12 @@
                 var state = window[STATE_KEY];
                 if (!state || !state.enabled || !isCurrentTransition(transitionId)) {
                     return;
+                }
+                // Keep the live nodes (including listeners and form state) for restoration.
+                // Detach only when the transition commits so a cancelled open leaves them intact.
+                state.bodyNodes = document.createDocumentFragment();
+                while (document.body.firstChild) {
+                    state.bodyNodes.appendChild(document.body.firstChild);
                 }
                 document.body.innerHTML = html;
                 restoreAttributes(document.body, {"data-harmonic-reader": "true"});
@@ -698,7 +717,12 @@
                 if (!currentState || !currentState.enabled || !isCurrentTransition(transitionId)) {
                     return;
                 }
-                document.body.innerHTML = currentState.bodyHtml;
+                if (currentState.bodyNodes) {
+                    while (document.body.firstChild) {
+                        document.body.removeChild(document.body.firstChild);
+                    }
+                    document.body.appendChild(currentState.bodyNodes);
+                }
                 restoreAttributes(document.body, currentState.bodyAttrs || {});
                 restoreAttributes(document.documentElement, currentState.htmlAttrs || {});
                 document.title = currentState.title || document.title;
@@ -725,7 +749,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 8,
+        version: 9,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,

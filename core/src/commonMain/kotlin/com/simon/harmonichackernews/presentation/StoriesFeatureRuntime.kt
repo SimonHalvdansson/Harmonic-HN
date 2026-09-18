@@ -383,10 +383,15 @@ class StoriesFeatureRuntime(
     }
 
     fun refreshAccountState() {
+        requests.cancelUserItemsLoad()
+        savedItems.refreshAccountScope()
         updateAvailableStoryTypes(
             enabledAdditionalFrontpages = userSettings.story.additionalFrontpages,
             hasAccount = loggedIn,
         )
+        syncVisibleUserItemsWithCache()
+        if (currentType.isUserItemList) refresh(showSwipeRefreshIndicator = false)
+        changed()
     }
 
     fun requestStoryCache(storyCount: Int, downloadWebViewContents: Boolean) {
@@ -1077,7 +1082,10 @@ class StoriesFeatureRuntime(
                     refreshIndicatorShowing = false
                     rateLimited = false
                     val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
-                    if (application.loadVisibleStories) loadVisibleStories()
+                    if (application.loadVisibleStories) {
+                        requests.invalidateLoadedStoryRows(application.loadedStories)
+                        loadVisibleStories()
+                    }
                     application.loadedStories.filter(Story::loaded).forEach(::prefetch)
                     changed()
                 }
@@ -1102,7 +1110,10 @@ class StoriesFeatureRuntime(
                 if (!isCurrentFeed(storyType, generation)) return@launch
                 prepareFeedCache(page.itemIds, storyType, generation) { cached ->
                     val application = feedRuntime.applyNextScrapedPage(activeStore, storyType, page, cached)
-                    if (application.loadVisibleStories) loadVisibleStories()
+                    if (application.loadVisibleStories) {
+                        requests.invalidateLoadedStoryRows(application.loadedStories)
+                        loadVisibleStories()
+                    }
                     application.loadedStories.filter(Story::loaded).forEach(::prefetch)
                     changed()
                 }
@@ -1322,7 +1333,7 @@ class StoriesFeatureRuntime(
         if (capped < 0) return
         for (index in 0..capped) {
             val story = activeStories[index]
-            if (!story.loaded && !story.loadingFailed &&
+            if (((!story.loaded && !story.loadingFailed) || requests.storyRowNeedsRefresh(story.id)) &&
                 !requests.isStoryRowLoadInProgress(story.id)
             ) loadStory(story, generation)
         }
@@ -1330,7 +1341,7 @@ class StoriesFeatureRuntime(
 
     private fun loadStory(story: Story, generation: Int) {
         if (!requests.isCurrentStoryLoadGeneration(generation)) return
-        if (story.loaded) {
+        if (story.loaded && !requests.storyRowNeedsRefresh(story.id)) {
             if (requests.shouldHideStory(story, currentType)) removeStory(story)
             else prefetch(story)
             return

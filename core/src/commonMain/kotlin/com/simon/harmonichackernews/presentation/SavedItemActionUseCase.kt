@@ -28,6 +28,8 @@ data class PendingSavedItemAction(
     val mutationToken: SavedItemMutationToken? = null,
     val previousItemPresent: Boolean = previousPresent,
     val previousCommentPresent: Boolean = false,
+    val accountRevision: Long = 0L,
+    val accountName: String? = null,
 )
 
 sealed interface SavedItemActionOutcome {
@@ -63,6 +65,7 @@ class SavedItemActionUseCase(
     private val nowMillis: () -> Long,
     private val voteRequest: suspend (itemId: Int, direction: String) -> HackerNewsActionResult,
     private val favoriteRequest: suspend (itemId: Int, favorite: Boolean) -> HackerNewsActionResult,
+    private val accountRequest: (suspend (PendingSavedItemAction) -> HackerNewsActionResult)? = null,
 ) : SavedItemStateReader {
     override fun isBookmarked(itemId: Int): Boolean =
         repository.contains(SavedItemSource.BOOKMARKS, itemId)
@@ -111,6 +114,8 @@ class SavedItemActionUseCase(
             targetPresent = direction == "up",
             previousPresent = previous,
             voteDirection = direction,
+            accountRevision = repository.currentAccountRevision,
+            accountName = repository.currentAccountName,
         )
         persist(action, action.targetPresent)
         return action
@@ -149,6 +154,8 @@ class SavedItemActionUseCase(
             mutationToken = mutation.token,
             previousItemPresent = mutation.previousItemPresent,
             previousCommentPresent = mutation.previousCommentPresent,
+            accountRevision = mutation.token.accountRevision,
+            accountName = mutation.token.accountName,
         )
     }
 
@@ -176,6 +183,8 @@ class SavedItemActionUseCase(
             mutationToken = mutation.token,
             previousItemPresent = mutation.previousItemPresent,
             previousCommentPresent = mutation.previousCommentPresent,
+            accountRevision = mutation.token.accountRevision,
+            accountName = mutation.token.accountName,
         )
     }
 
@@ -191,6 +200,7 @@ class SavedItemActionUseCase(
     ): SavedItemActionOutcome = executeSerialized(
         source = SavedItemSource.UPVOTED,
         itemId = itemId,
+        isComment = isComment,
         createPending = { toggleVoteAtomic(itemId, isComment) },
         onPending = onPending,
     )
@@ -203,6 +213,7 @@ class SavedItemActionUseCase(
     ): SavedItemActionOutcome = executeSerialized(
         source = SavedItemSource.UPVOTED,
         itemId = itemId,
+        isComment = isComment,
         createPending = { beginVoteAtomic(itemId, isComment, direction) },
         onPending = onPending,
     )
@@ -215,6 +226,8 @@ class SavedItemActionUseCase(
             isComment = isComment,
             targetPresent = !previous,
             previousPresent = previous,
+            accountRevision = repository.currentAccountRevision,
+            accountName = repository.currentAccountName,
         )
         persist(action, action.targetPresent)
         return action
@@ -247,6 +260,8 @@ class SavedItemActionUseCase(
             mutationToken = mutation.token,
             previousItemPresent = mutation.previousItemPresent,
             previousCommentPresent = mutation.previousCommentPresent,
+            accountRevision = mutation.token.accountRevision,
+            accountName = mutation.token.accountName,
         )
     }
 
@@ -257,6 +272,7 @@ class SavedItemActionUseCase(
     ): SavedItemActionOutcome = executeSerialized(
         source = SavedItemSource.FAVORITES,
         itemId = itemId,
+        isComment = isComment,
         createPending = { beginFavoriteAtomic(itemId, isComment) },
         onPending = onPending,
     )
@@ -268,12 +284,16 @@ class SavedItemActionUseCase(
             rollbackIgnoringFailure(action)
             throw error
         }
+        if (repository.currentAccountRevision != action.accountRevision) {
+            rollbackIgnoringFailure(action)
+            return SavedItemActionOutcome.Failure(action, accountChanged())
+        }
         // Once a mutating request starts, let the HTTP layer's bounded result settle the
         // optimistic state. A lifecycle cancellation after the server commits is ambiguous and
         // must not guess by rolling local state back.
         return withContext(NonCancellable) {
             val result = try {
-                when (action.kind) {
+                accountRequest?.invoke(action) ?: when (action.kind) {
                     SavedItemActionKind.VOTE -> voteRequest(
                         action.itemId,
                         requireNotNull(action.voteDirection),
@@ -301,7 +321,7 @@ class SavedItemActionUseCase(
                     detail = error.message,
                 )
             }
-            when {
+            val outcome = when {
                 result is HackerNewsActionResult.Success -> {
                     reconcileSuccessIgnoringFailure(action)
                     SavedItemActionOutcome.Success(action)
@@ -315,6 +335,8 @@ class SavedItemActionUseCase(
                     SavedItemActionOutcome.Failure(action, result)
                 }
             }
+            if (repository.currentAccountRevision == action.accountRevision) outcome
+            else SavedItemActionOutcome.Failure(action, accountChanged())
         }
     }
 
@@ -325,24 +347,49 @@ class SavedItemActionUseCase(
     private suspend fun executeSerialized(
         source: SavedItemSource,
         itemId: Int,
+        isComment: Boolean,
         createPending: suspend () -> PendingSavedItemAction,
         onPending: (PendingSavedItemAction) -> Unit,
-    ): SavedItemActionOutcome = repository.withSerializedAction(source, itemId) {
-        val pending = createPending()
-        try {
-            onPending(pending)
-            // Preserve the UI contract that observers see the optimistic state before a fast
-            // request can complete and reconcile it.
-            yield()
-        } catch (error: CancellationException) {
-            cancel(pending)
-            throw error
-        } catch (error: Throwable) {
-            cancel(pending)
-            throw error
+    ): SavedItemActionOutcome {
+        val accountRevision = repository.currentAccountRevision
+        val accountName = repository.currentAccountName
+        return repository.withSerializedAction(source, itemId) {
+            if (repository.currentAccountRevision != accountRevision) {
+                return@withSerializedAction SavedItemActionOutcome.Failure(
+                    PendingSavedItemAction(
+                        kind = if (source == SavedItemSource.UPVOTED) SavedItemActionKind.VOTE
+                            else SavedItemActionKind.FAVORITE,
+                        itemId = itemId,
+                        isComment = isComment,
+                        targetPresent = false,
+                        previousPresent = false,
+                        accountRevision = accountRevision,
+                        accountName = accountName,
+                    ),
+                    accountChanged(),
+                )
+            }
+            val pending = createPending()
+            try {
+                onPending(pending)
+                // Preserve the UI contract that observers see the optimistic state before a fast
+                // request can complete and reconcile it.
+                yield()
+            } catch (error: CancellationException) {
+                cancel(pending)
+                throw error
+            } catch (error: Throwable) {
+                cancel(pending)
+                throw error
+            }
+            execute(pending)
         }
-        execute(pending)
     }
+
+    private fun accountChanged() = HackerNewsActionResult.Failure(
+        "Hacker News account changed",
+        "This action belongs to the previous login. Try again with the current account.",
+    )
 
     private fun persist(action: PendingSavedItemAction, present: Boolean) {
         when {
@@ -397,6 +444,7 @@ class SavedItemActionUseCase(
             runCatching {
                 val token = action.mutationToken
                 if (token == null) {
+                    if (repository.currentAccountRevision != action.accountRevision) return@runCatching
                     persistAtomic(action, action.previousPresent)
                 } else {
                     repository.restoreMembershipIfCurrentAtomic(

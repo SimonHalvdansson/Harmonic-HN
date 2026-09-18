@@ -191,6 +191,8 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
             when (block) {
                 is ReleaseMarkdownBlock.Text -> SummaryMarkdownText(
                     markdown = block.markdown,
+                    baseUrl = pageUrl,
+                    onOpenLink = platform.openLink,
                     modifier = Modifier.padding(vertical = 4.dp),
                     color = HarmonicTheme.colors.storyNormal,
                     linkColor = HarmonicTheme.colors.link,

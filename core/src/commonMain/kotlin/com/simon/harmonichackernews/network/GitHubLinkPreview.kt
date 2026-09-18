@@ -23,18 +23,16 @@ internal data class GitHubPreviewTarget(
 )
 
 internal object GitHubLinkPreview {
-    fun isGitHubUrl(url: String?): Boolean = url != null && githubUrlRegex.matches(url)
+    fun isGitHubUrl(url: String?): Boolean = githubTarget(url) != null
 
     fun gitHubRepository(url: String?): GitHubRepository? {
-        if (!isGitHubUrl(url)) return null
-        val parts = url.orEmpty().substringAfter("github.com/").split('/')
-        return if (parts.size >= 2) GitHubRepository(parts[0], parts[1]) else null
+        val target = githubTarget(url) ?: return null
+        return GitHubRepository(target.owner, target.repository)
     }
-
-    private val githubUrlRegex = Regex("^https?://github\\.com/[^/]+/[^/]+(/.*)?$")
 
     internal fun githubTarget(url: String?): GitHubPreviewTarget? {
         val parsed = url?.toNetworkUrlOrNull() ?: return null
+        if (parsed.scheme !in setOf("http", "https")) return null
         if (parsed.host.lowercase().removePrefix("www.") != "github.com") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         if (segments.size < 2) return null

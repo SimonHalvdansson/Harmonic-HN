@@ -411,11 +411,9 @@ object CollectedReferenceLinks {
         value.replace('\u00a0', ' ').trim().replace(whitespacePattern, " ")
 
     private fun normalizeUrl(value: String?): String {
-        val url = trimTrailingUrlPunctuation(
-            Ksoup.parse(value.orEmpty()).text().trim()
-                .replace("&#x2F;", "/")
-                .replace("&#47;", "/"),
-        )
+        // Anchor attributes have already been HTML-decoded. Punctuation in an explicit href
+        // belongs to the destination; only bare URLs detected in prose need trimming.
+        val url = value.orEmpty().trim()
         return when {
             url.startsWith("//") -> "https:$url"
             url.startsWith("/") -> HackerNewsLinks.BASE_URL + url

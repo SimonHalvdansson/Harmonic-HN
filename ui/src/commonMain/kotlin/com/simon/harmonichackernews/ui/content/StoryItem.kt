@@ -64,6 +64,7 @@ import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -1671,7 +1672,10 @@ private fun StoryCommentRail(
             .width(60.dp)
             .fillMaxHeight()
             .then(modifier)
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .clickable(enabled = onClick != null, onClickLabel = "Open comments") { onClick?.invoke() }
+            .semantics(mergeDescendants = true) {
+                contentDescription = "Open comments, ${model.commentCount} comments"
+            }
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

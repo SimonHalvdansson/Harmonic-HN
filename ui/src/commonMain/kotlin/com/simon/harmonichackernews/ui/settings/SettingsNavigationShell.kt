@@ -157,7 +157,7 @@ fun SettingsNavigationShell(
         }
 
         fun navigateBack() {
-            if (!navigation.navigateBack()) onBackFromSettings()
+            handleSettingsBack(navigation, onBackFromSettings)
         }
 
         // An empty one-pane stack represents the settings list. `selectedSection` intentionally has

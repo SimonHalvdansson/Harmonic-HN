@@ -185,6 +185,7 @@ class KtorHackerNewsActionRepository(
             COMMENT_PARAM_TEXT to text,
         ),
         useCookies = false,
+        requirePostConfirmation = true,
     )
 
     override suspend fun submit(
@@ -217,6 +218,9 @@ class KtorHackerNewsActionRepository(
         client = if (challenge.useCookies) cookieClient else client,
         request = buildCaptchaRequest(challenge, captchaResponse),
         useCookies = challenge.useCookies,
+        requirePostConfirmation = challenge.formFields.any {
+            it.name == COMMENT_PARAM_TEXT || it.name == SUBMIT_PARAM_TITLE
+        },
     )
 
     override suspend fun setFavorite(
@@ -303,6 +307,7 @@ class KtorHackerNewsActionRepository(
                 SUBMIT_PARAM_TEXT to text,
             ),
             useCookies = true,
+            requirePostConfirmation = true,
         )
     }
 
@@ -358,12 +363,14 @@ class KtorHackerNewsActionRepository(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
+        requirePostConfirmation: Boolean = false,
     ): HackerNewsActionResult = runIndeterminateAfterDispatch {
         when (
             val page = loadActionResponse(
                 client,
                 request,
                 useCookies,
+                requirePostConfirmation,
             )
         ) {
             is PageResult.Success -> HackerNewsActionResult.Success()
@@ -380,14 +387,20 @@ class KtorHackerNewsActionRepository(
         client: KtorHttpClient,
         request: HttpRequest,
         useCookies: Boolean,
+        requirePostConfirmation: Boolean,
     ): PageResult {
         val response = client.execute(request)
         if (response.code !in HN_GET_REDIRECT_CODES) {
-            return classifyResponse(
+            val page = classifyResponse(
                 response = response,
                 useCookies = useCookies,
                 indeterminateOnHttpFailure = true,
             )
+            // HN confirms posting with a redirect. A 200 error/form page must not dismiss
+            // the editor merely because its message is not one of our known errors.
+            return if (requirePostConfirmation && page is PageResult.Success) {
+                unconfirmedPost(page.body)
+            } else page
         }
 
         val location = response.header(LOCATION_HEADER)
@@ -402,12 +415,28 @@ class KtorHackerNewsActionRepository(
                 reason = HackerNewsActionFailureReason.INDETERMINATE,
             ),
         )
-        return loadPage(
+        val page = loadPage(
             client = client,
             request = get(redirectUrl.toString()),
             useCookies = useCookies,
             indeterminateOnHttpFailure = true,
         )
+        return if (requirePostConfirmation && page is PageResult.Success &&
+            redirectUrl.encodedPath !in setOf("/item", "/newest", "/submitted", "/newcomments", "/threads")
+        ) {
+            unconfirmedPost(page.body)
+        } else page
+    }
+
+    private fun unconfirmedPost(body: String): PageResult.Result {
+        val message = Ksoup.parse(body).text().trim().take(1_600)
+        val rejected = listOf("posting too fast", "please slow down", "can't post", "cannot post", "not allowed")
+            .any { message.contains(it, ignoreCase = true) }
+        return PageResult.Result(HackerNewsActionResult.Failure(
+            summary = if (rejected) "HN rejected the post" else "Post not confirmed",
+            detail = message.ifEmpty { "HN did not confirm the post. Check the thread before trying again." },
+            reason = if (rejected) HackerNewsActionFailureReason.GENERAL else HackerNewsActionFailureReason.INDETERMINATE,
+        ))
     }
 
     private suspend fun loadPageAfterMutation(

@@ -80,6 +80,22 @@ final class HarmonicIosUITests: XCTestCase {
         add(screenshot)
     }
 
+    func testSettingsEdgeBackReturnsToParentBeforeClosingSettings() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        openSettings()
+        app.buttons["Appearance"].tap()
+        let theme = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Theme")).firstMatch
+        XCTAssertTrue(theme.waitForExistence(timeout: 5))
+        theme.tap()
+        XCTAssertTrue(app.staticTexts["Theme"].firstMatch.waitForExistence(timeout: 5))
+        edgeSwipeBack()
+        XCTAssertTrue(theme.waitForExistence(timeout: 5), "Back must return to Appearance")
+        edgeSwipeBack()
+        XCTAssertTrue(app.buttons["Appearance"].waitForExistence(timeout: 5), "Back must return to Settings")
+        edgeSwipeBack()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 5))
+    }
+
     func testProfileCommentsOpening() throws {
         for mode in ["immediate", "after-draw", "after-draw", "immediate"] {
             app.terminate()

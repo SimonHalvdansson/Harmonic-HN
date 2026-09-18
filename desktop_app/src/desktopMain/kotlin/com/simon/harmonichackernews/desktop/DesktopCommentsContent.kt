@@ -66,6 +66,7 @@ private class DesktopCommentsHost(
     val store get() = binding.store
     val controller get() = binding.controller
     var webViewSession: DesktopCommentsWebViewSession? = null
+    var externalArticleOpened = false
 }
 
 @Composable
@@ -79,6 +80,9 @@ internal fun DesktopCommentsContent(
     onControllerChanged: (CommentsComposeController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val integratedBrowserAvailable = remember {
+        desktopEmbeddedBrowserBackend() != DesktopEmbeddedBrowserBackend.UNSUPPORTED
+    }
     val host = remember(app, scene, request.serial, scope) {
         DesktopCommentsHost(
             CommentsFeatureBinding.create(
@@ -111,6 +115,7 @@ internal fun DesktopCommentsContent(
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = contentInsetRightPx,
+                integratedWebViewAvailable = integratedBrowserAvailable,
             ),
         )
     }
@@ -218,8 +223,16 @@ internal fun DesktopCommentsContent(
             featureState.settings?.reading?.archiveRedirectDomains.orEmpty(),
         )?.loadUrl
     }
+    LaunchedEffect(request.serial, integratedBrowserAvailable, storyUrl) {
+        if (!integratedBrowserAvailable && request.destination.showWebsite && storyUrl != null &&
+            !host.externalArticleOpened
+        ) {
+            host.externalArticleOpened = true
+            scene.links.open(storyUrl, preferInApp = false)
+        }
+    }
     CommentsHazeHost {
-        if (host.controller.integratedWebView && storyUrl != null) {
+        if (integratedBrowserAvailable && host.controller.integratedWebView && storyUrl != null) {
             val appearance = app.appearance.selection()
             DesktopCommentsWebViewScaffold(
                 controller = host.controller,

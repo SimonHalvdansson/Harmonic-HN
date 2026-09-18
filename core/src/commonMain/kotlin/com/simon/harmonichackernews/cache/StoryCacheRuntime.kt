@@ -14,6 +14,7 @@ enum class StoryCacheStatus {
     IDLE,
     CACHING,
     FINISHED,
+    PARTIAL,
     EMPTY,
     FAILED,
 }
@@ -98,6 +99,7 @@ class StoryCacheRuntime(
 
     private fun StoryCacheOutcome.toStatus(): StoryCacheStatus = when (this) {
         StoryCacheOutcome.FINISHED -> StoryCacheStatus.FINISHED
+        StoryCacheOutcome.PARTIAL -> StoryCacheStatus.PARTIAL
         StoryCacheOutcome.EMPTY -> StoryCacheStatus.EMPTY
         StoryCacheOutcome.FAILED -> StoryCacheStatus.FAILED
     }

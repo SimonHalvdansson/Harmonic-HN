@@ -5,6 +5,16 @@ import kotlin.test.assertEquals
 
 class StoryTextProcessorTest {
     @Test
+    fun balancedParenthesesStayInUrlsButSurroundingPunctuationDoesNot() {
+        val url = "https://en.wikipedia.org/wiki/Function_(mathematics)"
+        val anchor = "<a href=\"$url\">$url</a>"
+        assertEquals(anchor, StoryTextProcessor.preprocessHtml(url))
+        assertEquals("$anchor.", StoryTextProcessor.preprocessHtml("$url."))
+        assertEquals("($anchor).", StoryTextProcessor.preprocessHtml("($url)."))
+        assertEquals("(($anchor)).", StoryTextProcessor.preprocessHtml("(($url))."))
+    }
+
+    @Test
     fun preservesExistingAnchorsWhileLinkifyingSurroundingUrls() {
         val anchor = """<A href="https://example.com/existing">https://example.com/label</A>"""
         assertEquals(

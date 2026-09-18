@@ -3,11 +3,70 @@ package com.simon.harmonichackernews.summary
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 class LocalModelServiceTest {
+    @Test
+    fun successfulDirectRetryClearsHandoffErrorAndMakesDownloadedModelSelectable() {
+        var runtimeStatus = LocalRuntimeInstallStatus(
+            state = LocalRuntimeInstallState.INSTALLED,
+            runtime = DownloadableModel.runtime,
+            pendingModelId = DownloadableModel.id,
+            modelDownloadError = "Not enough storage",
+        )
+        var freeSpace = 0L
+        var downloaded = false
+        var runtimeRequests = 0
+        val transfers = RecordingTransfers()
+        val delivery = object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
+            override fun isInstalled(runtime: LocalModelRuntime) = true
+            override fun status(runtime: LocalModelRuntime) = runtimeStatus.copy(runtime = runtime)
+            override fun request(model: LocalModelDefinition): String? {
+                runtimeRequests++
+                return null
+            }
+            override fun clearModelDownloadError(modelId: String) {
+                if (runtimeStatus.pendingModelId == modelId) {
+                    runtimeStatus = runtimeStatus.copy(pendingModelId = "", modelDownloadError = "")
+                }
+            }
+        }
+        val storage = object : LocalModelStorage by EmptyStorage {
+            override fun snapshot(model: LocalModelDefinition) = LocalModelStorageSnapshot(
+                finalFileBytes = model.sizeBytes.takeIf { model.downloadable && downloaded },
+                usableSpaceBytes = freeSpace,
+            )
+            override fun prepareDownload(model: LocalModelDefinition) = LocalModelStoragePreparation.Ready(snapshot(model))
+        }
+        val service = LocalModelService(
+            TestKeyValueStore(), storage, transfers, delivery,
+            LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+        )
+        val failed = service.presentation(DownloadableModel, true, false)
+        assertTrue(failed.summary.endsWith("Not enough storage"))
+        assertFalse(failed.selectable)
+        assertEquals(LocalModelPresentationAction.DOWNLOAD_MODEL, failed.action)
+        assertNotNull(service.requestRuntimeAndModelDownload(DownloadableModel.id))
+        assertEquals("Not enough storage", runtimeStatus.modelDownloadError)
+
+        freeSpace = Long.MAX_VALUE
+        assertNull(service.requestRuntimeAndModelDownload(DownloadableModel.id))
+        assertEquals(0, runtimeRequests, "An installed runtime retries the model directly")
+        assertEquals(listOf(DownloadableModel.id), transfers.enqueued)
+        assertEquals("", runtimeStatus.modelDownloadError)
+        downloaded = true
+        service.refresh()
+        assertTrue(service.select(DownloadableModel.id))
+        val complete = service.presentation(DownloadableModel, true, false)
+        assertTrue(complete.selectable)
+        assertTrue(complete.selected)
+        assertTrue(complete.summary.endsWith("Downloaded"))
+    }
+
     @Test
     fun transferMonitoringStartsWhenTransferStateIsRequested() {
         val transfers = RecordingTransfers()
@@ -167,6 +226,7 @@ class LocalModelServiceTest {
         var resets = 0
         var invokeObserverOnRegistration = false
         val cancelled = mutableListOf<String>()
+        val enqueued = mutableListOf<String>()
 
         override fun work(modelId: String): LocalModelWorkSnapshot? {
             workReads += 1
@@ -175,7 +235,7 @@ class LocalModelServiceTest {
 
         override fun isActive(modelId: String): Boolean = false
 
-        override fun enqueue(model: LocalModelDefinition) = Unit
+        override fun enqueue(model: LocalModelDefinition) { enqueued += model.id }
 
         override fun cancel(modelId: String, onCancelled: () -> Unit) {
             cancelled += modelId

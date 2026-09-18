@@ -35,6 +35,52 @@ class HackerNewsAccountRepositoryTest {
     }
 
     @Test
+    fun switchingAwayAndBackInvalidatesPendingActionsWithoutAnIntermediateCacheRead() = runTest {
+        val accounts = CredentialBackedHackerNewsAccountRepository(
+            MemoryCredentialStore(), StandardTestDispatcher(testScheduler),
+        )
+        val alice = HackerNewsAccount("alice", "password")
+        accounts.saveAccount(alice)
+        val saved = com.simon.harmonichackernews.data.SavedItemsRepository(
+            com.simon.harmonichackernews.settings.TestKeyValueStore(),
+        ).also {
+            it.bindAccountScope(accountSession = { accounts.accountState.value }) {
+                accounts.currentAccount?.username
+            }
+        }
+        var requests = 0
+        val actions = com.simon.harmonichackernews.presentation.SavedItemActionUseCase(
+            saved, { 10 },
+            voteRequest = { _, _ -> requests++; com.simon.harmonichackernews.network.HackerNewsActionResult.Success() },
+            favoriteRequest = { _, _ -> requests++; com.simon.harmonichackernews.network.HackerNewsActionResult.Success() },
+        )
+        val pending = actions.beginVoteAtomic(42, false, "up")
+        accounts.saveAccount(HackerNewsAccount("bob", "password"))
+        accounts.saveAccount(alice)
+        // No saved-item reader or collector runs during the intermediate account.
+        assertIs<com.simon.harmonichackernews.presentation.SavedItemActionOutcome.Failure>(actions.execute(pending))
+        assertEquals(0, requests)
+        assertFalse(actions.isUpvoted(42, false))
+        accounts.close()
+    }
+
+    @Test
+    fun rejectionOfAnOldLoginCannotClearTheReplacementAccount() = runTest {
+        val repository = CredentialBackedHackerNewsAccountRepository(
+            MemoryCredentialStore(), StandardTestDispatcher(testScheduler),
+        )
+        val alice = HackerNewsAccount("alice", "old password")
+        val bob = HackerNewsAccount("bob", "new password")
+        repository.saveAccount(alice)
+        repository.saveAccount(bob)
+        assertFalse(repository.clearAccountIfMatches(alice))
+        assertEquals(bob, repository.currentAccount)
+        assertTrue(repository.clearAccountIfMatches(bob))
+        assertNull(repository.currentAccount)
+        repository.close()
+    }
+
+    @Test
     fun trimsUsernameWithoutChangingPassword() = runTest {
         val credentials = MemoryCredentialStore()
         val repository = CredentialBackedHackerNewsAccountRepository(

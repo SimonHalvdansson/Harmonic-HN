@@ -7,6 +7,34 @@ import kotlin.test.assertTrue
 
 class SettingsNavigationStoreTest {
     @Test
+    fun hostBackTraversesThemeAppearanceAndListBeforeClosing() {
+        val navigation = SettingsNavigationStore(initialSection = SettingsSection.Appearance)
+        navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)
+        var closes = 0
+
+        handleSettingsBack(navigation) { closes++ }
+        assertEquals(listOf(SettingsSection.Appearance), navigation.state.value.detailStack)
+        assertEquals(0, closes)
+        handleSettingsBack(navigation) { closes++ }
+        assertTrue(navigation.state.value.detailStack.isEmpty())
+        assertEquals(0, closes)
+        handleSettingsBack(navigation) { closes++ }
+        assertEquals(1, closes)
+    }
+
+    @Test
+    fun wideSettingsBackKeepsItsDefaultDetailUntilTheHostCloses() {
+        val navigation = SettingsNavigationStore(twoPane = true)
+        navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)
+        var closes = 0
+        handleSettingsBack(navigation) { closes++ }
+        assertEquals(listOf(SettingsSection.Appearance), navigation.state.value.detailStack)
+        assertEquals(0, closes)
+        handleSettingsBack(navigation) { closes++ }
+        assertEquals(1, closes)
+    }
+
+    @Test
     fun selectedDetailSurvivesRepeatedLayoutChanges() {
         val navigation = SettingsNavigationStore(twoPane = true)
         navigation.navigateTo(SettingsSection.Comments)

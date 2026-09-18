@@ -55,6 +55,103 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun pollRefreshRetriesFailedOptionsAndUpdatesPreviouslyLoadedCounts() = runTest {
+        var loads = 0
+        val options = object : PollOptionsLoader {
+            override suspend fun findOptionIds(storyId: Int) = intArrayOf(7)
+            override fun placeholders(optionIds: IntArray) = listOf(PollOption().apply { id = 7 })
+            override fun loadOptions(optionIds: IntArray) = flow {
+                loads++
+                emit(PollOption().apply {
+                    id = 7
+                    loaded = loads > 1
+                    loadFailed = loads == 1
+                    text = "Option"
+                    points = loads * 10
+                })
+            }
+        }
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
+            options, savedItemActions(), UnusedVotingService)
+        val story = Story("Poll: choose", 42, true, false).apply { pollOptions = intArrayOf(7) }
+        presenter.dispatch(CommentsAction.LoadPollOptions(story))
+        runCurrent()
+        assertTrue(story.pollOptionArrayList!!.single().loadFailed)
+        presenter.dispatch(CommentsAction.LoadPollOptions(story))
+        runCurrent()
+        assertEquals(1, loads)
+        for (expected in listOf(20, 30)) {
+            presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = true))
+            runCurrent()
+            val option = story.pollOptionArrayList!!.single()
+            assertTrue(option.loaded)
+            assertFalse(option.loadFailed)
+            assertEquals(expected, option.points)
+        }
+    }
+
+    @Test
+    fun selectedSortSurvivesBothNetworkProvidersCompleting() = runTest {
+        for (useAlgolia in listOf(false, true)) {
+            val release = CompletableDeferred<Unit>()
+            val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
+            val official = object : HackerNewsRepository {
+                override suspend fun getStory(id: Int): Story { release.await(); return story }
+                override suspend fun getComment(id: Int) = Comment().apply {
+                    this.id = id; by = "author"; text = "Comment $id"; time = id
+                }
+                override suspend fun getStoryIds(type: StoryType) = emptyList<Int>()
+            }
+            val algolia = object : AlgoliaRepository by FakeAlgoliaRepository("{}") {
+                override suspend fun getItemJson(id: Int): String { release.await(); return sortingResponse }
+            }
+            val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+                CommentThreadRepository(algolia, official,
+                    AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))), UnusedPollOptions,
+                savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler))
+            presenter.dispatch(CommentsAction.ResetThread(story, Comment(), "Default"))
+            presenter.dispatch(CommentsAction.LoadThread(story, useAlgolia, emptySet(), "Default", false, null, false))
+            runCurrent()
+            presenter.dispatch(CommentsAction.SetSorting("Newest first"))
+            release.complete(Unit)
+            runCurrent()
+            assertEquals("Newest first", presenter.thread.state.value.sorting)
+            assertEquals(listOf(0, 2, 1), presenter.thread.allComments.map { it.id })
+            presenter.dispatch(CommentsAction.CancelThreadLoad)
+        }
+    }
+
+    @Test
+    fun sortChangedAfterCachedPreparationIsAppliedWhenTheSnapshotCommits() = runTest {
+        val prepared = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val algolia = object : AlgoliaRepository by FakeAlgoliaRepository("{}") {
+            override suspend fun getItemJson(id: Int): String = kotlinx.coroutines.awaitCancellation()
+        }
+        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(algolia, UnusedHackerNewsRepository,
+                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))), UnusedPollOptions,
+            savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler))
+        presenter.dispatch(CommentsAction.ResetThread(story, Comment(), "Default"))
+        presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false,
+            sortingResponse, false, beforeApplyCachedResponse = { prepared.complete(Unit); release.await() }))
+        runCurrent()
+        assertTrue(prepared.isCompleted)
+        presenter.dispatch(CommentsAction.SetSorting("Newest first"))
+        release.complete(Unit)
+        runCurrent()
+        assertEquals("Newest first", presenter.thread.state.value.sorting)
+        assertEquals(listOf(0, 2, 1), presenter.thread.allComments.map { it.id })
+        presenter.dispatch(CommentsAction.CancelThreadLoad)
+    }
+
+    private val sortingResponse = """{"id":42,"title":"Discussion","children":[{"id":1,"author":"alice","text":"First","created_at_i":1},{"id":2,"author":"bob","text":"Second","created_at_i":2}]}"""
+
+    @Test
     fun firstThreadIsReadyWhileCachePersistenceIsStillSuspended() = runTest {
         val response = """{"id":42,"title":"Fresh","children":[{"id":7,"author":"alice","text":"Hello"}]}"""
         val dispatcher = UnconfinedTestDispatcher(testScheduler)

@@ -30,6 +30,7 @@ data class StoryCacheProgress(
 
 enum class StoryCacheOutcome {
     FINISHED,
+    PARTIAL,
     EMPTY,
     FAILED,
 }
@@ -58,32 +59,41 @@ class StoryCacheUseCase(
         var completed = 0
         val progressMutex = Mutex()
         val concurrency = Semaphore(MAX_CONCURRENT_STORY_CACHES)
-        coroutineScope {
+        val outcomes = coroutineScope {
             storyIds.map { id ->
                 async {
-                    concurrency.withPermit {
+                    val outcome = concurrency.withPermit {
+                        var storySaved = false
                         try {
                             val payload = algoliaRepository.getItemJson(id)
                             sink.cacheStory(id, payload)
+                            storySaved = true
                             if (request.cacheArticleSnapshots) {
                                 StoryCachePayloadParser.externalArticleUrl(payload)?.let { url ->
-                                    sink.cacheArticle(id, url)
+                                    if (!sink.cacheArticle(id, url)) return@withPermit StoryCacheOutcome.PARTIAL
                                 }
                             }
+                            StoryCacheOutcome.FINISHED
                         } catch (error: CancellationException) {
                             throw error
                         } catch (_: Throwable) {
                             // A failed item does not prevent the rest of the requested batch.
+                            if (storySaved) StoryCacheOutcome.PARTIAL else StoryCacheOutcome.FAILED
                         }
                     }
                     progressMutex.withLock {
                         completed++
                         onProgress(StoryCacheProgress(completed, storyIds.size))
                     }
+                    outcome
                 }
             }.awaitAll()
         }
-        return StoryCacheOutcome.FINISHED
+        return when {
+            outcomes.all { it == StoryCacheOutcome.FINISHED } -> StoryCacheOutcome.FINISHED
+            outcomes.all { it == StoryCacheOutcome.FAILED } -> StoryCacheOutcome.FAILED
+            else -> StoryCacheOutcome.PARTIAL
+        }
     }
 
     private companion object {

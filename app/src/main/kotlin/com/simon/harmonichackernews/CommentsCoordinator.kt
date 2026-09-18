@@ -804,7 +804,7 @@ class CommentsCoordinator(
         get() = composeController?.isSheetExpanded() == true
 
     internal fun canNavigateCommentsWithVolumeButtons(): Boolean =
-        isActive && isBottomSheetFullyExpanded
+        isActive && hostActive && isBottomSheetFullyExpanded
 
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
         if (!isActive || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {

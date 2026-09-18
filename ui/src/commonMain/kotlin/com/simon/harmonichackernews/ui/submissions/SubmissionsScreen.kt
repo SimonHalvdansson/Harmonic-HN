@@ -182,6 +182,7 @@ fun SubmissionsScreen(
                 canLoadMore = state.canLoadMore,
                 loadedSuccessfully = state.loadedSuccessfully,
                 loading = state.loading,
+                loadingFailed = state.loadingFailed,
                 emptyText = state.emptyText,
                 displaySettings = displaySettings,
                 contentVersion = state.revision,
@@ -230,6 +231,7 @@ private fun BoxScope.SubmissionsList(
     canLoadMore: Boolean,
     loadedSuccessfully: Boolean,
     loading: Boolean,
+    loadingFailed: Boolean,
     emptyText: String,
     displaySettings: StoryDisplaySettings,
     contentVersion: Int,
@@ -309,7 +311,7 @@ private fun BoxScope.SubmissionsList(
             Spacer(Modifier.height(with(density) { headerHeightPx.toDp() }))
         }
 
-        if (loadedSuccessfully && !loading && submissions.isEmpty()) {
+        if (loadedSuccessfully && !loading && !loadingFailed && submissions.isEmpty()) {
             item(key = "empty") {
                 EmptySubmissions(
                     text = emptyText,
@@ -409,9 +411,31 @@ private fun BoxScope.SubmissionsList(
             }
         }
 
+        // Keep errors after the rows so a failed request cannot shift their saved indices.
+        if (loadingFailed && !loading) {
+            item(key = "error") {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "Couldn't load submissions",
+                        color = HarmonicTheme.colors.textPrimary,
+                        fontFamily = ProductSansFontFamily,
+                    )
+                    OutlinedButton(
+                        onClick = { onIntent(SubmissionsIntent.Retry) },
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+
         item(key = "load-more") {
             AnimatedVisibility(
-                visible = canLoadMore,
+                visible = canLoadMore && !loadingFailed,
                 modifier = Modifier.animateItem(),
                 enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
                 exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),

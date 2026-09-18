@@ -7,6 +7,46 @@ import kotlin.test.assertNull
 
 class NetworkUrlTest {
     @Test
+    fun queryAndFragmentReferencesPreserveTheEntireDocumentPath() {
+        val base = "https://example.com/releases/tag/v1?view=full#old".toNetworkUrl()
+        val expected = mapOf(
+            "#details" to "https://example.com/releases/tag/v1?view=full#details",
+            "?view=compact" to "https://example.com/releases/tag/v1?view=compact",
+            "?view=compact#details" to "https://example.com/releases/tag/v1?view=compact#details",
+            "" to "https://example.com/releases/tag/v1?view=full",
+        )
+        for ((reference, url) in expected) {
+            assertEquals(url, base.resolve(reference)?.toString(), reference)
+            assertEquals(url, base.resolve(" $reference ")?.toString(), "padded $reference")
+        }
+    }
+
+    @Test
+    fun relativePathsAndAbsoluteUrlsStillResolveNormally() {
+        val base = "https://example.com/releases/tag/v1".toNetworkUrl()
+        assertEquals("https://example.com/releases/tag/v2", base.resolve("v2")?.toString())
+        assertEquals("https://example.com/issues/1", base.resolve("/issues/1")?.toString())
+        assertEquals("https://other.example/item", base.resolve("https://other.example/item")?.toString())
+    }
+
+    @Test
+    fun destinationPathsAndAuthoritiesDoNotInheritBaseQueryOrFragment() {
+        val base = "https://user:secret@example.com:8443/releases/tag/v1?edition=1#old".toNetworkUrl()
+        val expected = mapOf(
+            "v2" to "https://user:secret@example.com:8443/releases/tag/v2",
+            "v2?edition=2#new" to "https://user:secret@example.com:8443/releases/tag/v2?edition=2#new",
+            "/issues/1" to "https://user:secret@example.com:8443/issues/1",
+            "https://news.ycombinator.com/item?id=42" to "https://news.ycombinator.com/item?id=42",
+            "https://other.example/" to "https://other.example/",
+            "//other.example/item?id=42" to "https://other.example/item?id=42",
+        )
+        for ((reference, url) in expected) {
+            assertEquals(url, base.resolve(reference)?.toString(), reference)
+            assertEquals(url, base.resolve(" $reference ")?.toString(), "padded $reference")
+        }
+    }
+
+    @Test
     fun nullableParsingRejectsMalformedPercentEscapes() {
         for (url in listOf(
             "https://example.com/search?q=%s",

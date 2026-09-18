@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
+import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 
 @Composable
 internal fun SummaryMarkdownText(
@@ -39,6 +41,8 @@ internal fun SummaryMarkdownText(
     fontFamily: FontFamily,
     fontSize: TextUnit,
     lineHeight: TextUnit,
+    onOpenLink: (String) -> Unit,
+    baseUrl: String? = null,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
@@ -55,6 +59,8 @@ internal fun SummaryMarkdownText(
             fontFamily = fontFamily,
             fontSize = fontSize,
             lineHeight = lineHeight,
+            onOpenLink = onOpenLink,
+            baseUrl = baseUrl,
             modifier = modifier,
             enableBoldFormatting = enableBoldFormatting,
             animateStreamingText = animateStreamingText,
@@ -69,6 +75,8 @@ internal fun SummaryMarkdownText(
         fontFamily = fontFamily,
         fontSize = fontSize,
         lineHeight = lineHeight,
+        onOpenLink = onOpenLink,
+        baseUrl = baseUrl,
         modifier = modifier,
         maxLines = maxLines,
         overflow = overflow,
@@ -86,6 +94,8 @@ private fun SummaryMarkdownList(
     fontFamily: FontFamily,
     fontSize: TextUnit,
     lineHeight: TextUnit,
+    onOpenLink: (String) -> Unit,
+    baseUrl: String?,
     modifier: Modifier,
     enableBoldFormatting: Boolean,
     animateStreamingText: Boolean,
@@ -121,6 +131,8 @@ private fun SummaryMarkdownList(
                     fontFamily = fontFamily,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
+                    onOpenLink = onOpenLink,
+                    baseUrl = baseUrl,
                     modifier = Modifier.weight(1f),
                     enableBoldFormatting = enableBoldFormatting,
                     animateStreamingText = animateStreamingText,
@@ -139,6 +151,8 @@ private fun SummaryMarkdownSingleText(
     fontFamily: FontFamily,
     fontSize: TextUnit,
     lineHeight: TextUnit,
+    onOpenLink: (String) -> Unit,
+    baseUrl: String?,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
@@ -146,8 +160,8 @@ private fun SummaryMarkdownSingleText(
     animateStreamingText: Boolean = false,
     animationContentKey: Any? = null,
 ) {
-    val rendered = remember(markdown, linkColor, enableBoldFormatting) {
-        summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting)
+    val rendered = remember(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink) {
+        summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink)
     }
     val history = remember(animationContentKey) { StreamingTextHistory() }
     val fadeRange = remember(animationContentKey, rendered.text, animateStreamingText) {
@@ -255,6 +269,8 @@ internal fun summaryMarkdownAnnotatedString(
     markdown: String,
     linkColor: Color = Color.Unspecified,
     enableBoldFormatting: Boolean = true,
+    baseUrl: String? = null,
+    onOpenLink: ((String) -> Unit)? = null,
 ): AnnotatedString = buildAnnotatedString {
     val lines = compactSummaryMarkdownListSpacing(
         markdown.stripMarkdownHtmlComments().trim().lines(),
@@ -326,6 +342,27 @@ internal fun summaryMarkdownAnnotatedString(
                 line.stripMarkdownHtmlTags(),
                 linkColor,
                 enableBoldFormatting,
+            )
+        }
+    }
+}.let { parsed ->
+    // Rebind parsed links after rendering so nested emphasis, lists and headings all use
+    // the same base URL and host routing, without retaining a platform URI handler.
+    buildAnnotatedString {
+        append(AnnotatedString(parsed.text, parsed.spanStyles, parsed.paragraphStyles))
+        parsed.getLinkAnnotations(0, parsed.length).forEach { range ->
+            val link = range.item as? LinkAnnotation.Url ?: return@forEach
+            val url = baseUrl?.toNetworkUrlOrNull()?.resolve(link.url)?.toString() ?: link.url
+            addLink(
+                LinkAnnotation.Url(
+                    url = url,
+                    styles = link.styles,
+                    linkInteractionListener = onOpenLink?.let { open ->
+                        LinkInteractionListener { open(url) }
+                    },
+                ),
+                range.start,
+                range.end,
             )
         }
     }

@@ -42,6 +42,112 @@ class SavedItemActionUseCaseTest {
     )
 
     @Test
+    fun lateVoteAndFavoriteResultsSettleOnlyTheirOriginalAccount() = runTest {
+        for (kind in SavedItemActionKind.entries) {
+            for (success in listOf(true, false)) {
+                var account = "alice"
+                val scoped = SavedItemsRepository(TestKeyValueStore()).also { it.bindAccountScope { account } }
+                val response = CompletableDeferred<HackerNewsActionResult>()
+                val scopedActions = SavedItemActionUseCase(scoped, { 10 },
+                    voteRequest = { _, _ -> response.await() },
+                    favoriteRequest = { _, _ -> response.await() },
+                )
+                val source = if (kind == SavedItemActionKind.VOTE) SavedItemSource.UPVOTED else SavedItemSource.FAVORITES
+                val pending = if (kind == SavedItemActionKind.VOTE) scopedActions.beginVoteAtomic(42, true, "up")
+                    else scopedActions.beginFavoriteAtomic(42, true)
+                val result = async { scopedActions.execute(pending) }
+                runCurrent()
+                account = "bob"
+                scoped.refreshAccountScope()
+                // Opposite membership makes both an accidental success and rollback observable.
+                scoped.saveSnapshotAtomic(source,
+                    SavedItemSnapshot(if (success) emptyList() else listOf(42), if (success) emptySet() else setOf(42)), 20)
+                response.complete(if (success) HackerNewsActionResult.Success() else HackerNewsActionResult.Failure("Rejected"))
+                assertIs<SavedItemActionOutcome.Failure>(result.await())
+                assertEquals(!success, scoped.contains(source, 42))
+                assertEquals(!success, 42 in scoped.loadCommentIds(source))
+                account = "alice"
+                assertEquals(success, scoped.contains(source, 42))
+                assertEquals(success, 42 in scoped.loadCommentIds(source))
+            }
+        }
+    }
+
+    @Test
+    fun lateResponseAfterSwitchingAwayAndBackCannotUndoANewerAction() = runTest {
+        for (success in listOf(true, false)) {
+            var account = "alice"
+            val scoped = SavedItemsRepository(TestKeyValueStore()).also { it.bindAccountScope { account } }
+            val response = CompletableDeferred<HackerNewsActionResult>()
+            val scopedActions = SavedItemActionUseCase(scoped, { 10 },
+                voteRequest = { _, _ -> HackerNewsActionResult.Success() },
+                favoriteRequest = { _, _ -> response.await() },
+            )
+            val pending = scopedActions.beginFavoriteAtomic(42)
+            val result = async { scopedActions.execute(pending) }
+            runCurrent()
+            account = "bob"
+            scoped.refreshAccountScope()
+            account = "alice"
+            assertFalse(scopedActions.beginFavoriteAtomic(42).targetPresent)
+            response.complete(if (success) HackerNewsActionResult.Success() else HackerNewsActionResult.Failure("Rejected"))
+            assertIs<SavedItemActionOutcome.Failure>(result.await())
+            assertFalse(scopedActions.isFavorited(42))
+        }
+    }
+
+    @Test
+    fun actionPreparedBeforeSwitchingAwayAndBackIsNotSent() = runTest {
+        var account = "alice"
+        repository.bindAccountScope { account }
+        val pending = actions.beginVoteAtomic(42, false, "up")
+        account = "bob"
+        repository.refreshAccountScope()
+        account = "alice"
+        assertIs<SavedItemActionOutcome.Failure>(actions.execute(pending))
+        assertEquals(null, requestedVote)
+        assertFalse(actions.isUpvoted(42, false))
+    }
+
+    @Test
+    fun queuedActionDoesNotMoveToAnotherLoginWhileWaitingForTheItemLock() = runTest {
+        var account = "alice"
+        repository.bindAccountScope { account }
+        val response = CompletableDeferred<HackerNewsActionResult>()
+        var requests = 0
+        val scopedActions = SavedItemActionUseCase(repository, { 10 },
+            voteRequest = { _, _ -> HackerNewsActionResult.Success() },
+            favoriteRequest = { _, _ -> requests++; response.await() },
+        )
+        val first = async { scopedActions.toggleFavoriteAndExecuteAtomic(42) }
+        runCurrent()
+        val queued = async { scopedActions.toggleFavoriteAndExecuteAtomic(42) }
+        runCurrent()
+        account = "bob"
+        repository.refreshAccountScope()
+        response.complete(HackerNewsActionResult.Success())
+        first.await()
+        assertIs<SavedItemActionOutcome.Failure>(queued.await())
+        assertEquals(1, requests)
+        assertFalse(scopedActions.isFavorited(42))
+    }
+
+    @Test
+    fun newerActionAfterSwitchingBackWinsOverTheOldAccountResponse() = runTest {
+        var account = "alice"
+        repository.bindAccountScope { account }
+        val pending = actions.beginFavoriteAtomic(42)
+        account = "bob"
+        repository.refreshAccountScope()
+        account = "alice"
+        val newer = actions.beginFavoriteAtomic(42)
+        assertFalse(newer.targetPresent)
+        // The stale request is rejected before dispatch and must not undo the newer toggle.
+        assertIs<SavedItemActionOutcome.Failure>(actions.execute(pending))
+        assertFalse(actions.isFavorited(42))
+    }
+
+    @Test
     fun toggleBookmarkPersistsPortableState() {
         assertTrue(actions.toggleBookmark(42))
         assertTrue(actions.isBookmarked(42))

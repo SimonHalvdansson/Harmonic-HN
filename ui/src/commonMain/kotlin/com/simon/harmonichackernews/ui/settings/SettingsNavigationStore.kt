@@ -4,6 +4,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** Host Back and the in-page Up button must consume the same Settings hierarchy. */
+fun handleSettingsBack(navigation: SettingsNavigationStore?, closeSettings: () -> Unit) {
+    if (navigation?.navigateBack() != true) closeSettings()
+}
+
 data class SettingsNavigationState(
     val detailStack: List<SettingsSection>,
     val twoPane: Boolean,

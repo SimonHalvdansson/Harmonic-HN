@@ -67,6 +67,8 @@ import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
+import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
+import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesComposeController
@@ -101,6 +103,7 @@ fun main() {
             val navigation by bootstrap.scene.navigation.state.collectAsState()
             var storiesController by remember { mutableStateOf<StoriesComposeController?>(null) }
             var commentsController by remember { mutableStateOf<CommentsComposeController?>(null) }
+            var settingsNavigation by remember { mutableStateOf<SettingsNavigationStore?>(null) }
             var editorBackRequestVersion by remember { mutableIntStateOf(0) }
             Window(
                 onCloseRequest = ::exitApplication,
@@ -115,6 +118,7 @@ fun main() {
                             bootstrap.scene,
                             storiesController,
                             commentsController,
+                            settingsNavigation,
                             onEditorBackRequested = { editorBackRequestVersion++ },
                         )
                         event.key == Key.Comma && (event.isMetaPressed || event.isCtrlPressed) -> {
@@ -172,6 +176,7 @@ fun main() {
                                 editorBackRequestVersion = editorBackRequestVersion,
                                 onStoriesControllerChanged = { storiesController = it },
                                 onCommentsControllerChanged = { commentsController = it },
+                                onSettingsNavigationChanged = { settingsNavigation = it },
                             )
                         }
                     }
@@ -233,6 +238,7 @@ private fun handleDesktopBack(
     scene: HarmonicSceneComposition,
     storiesController: StoriesComposeController?,
     commentsController: CommentsComposeController?,
+    settingsNavigation: SettingsNavigationStore?,
     onEditorBackRequested: () -> Unit,
 ): Boolean {
     when {
@@ -246,7 +252,9 @@ private fun handleDesktopBack(
         navigation.coulombGasVisible -> scene.navigation.closeCoulombGas()
         navigation.editorRequest != null -> onEditorBackRequested()
         navigation.submissionsRequest != null -> scene.navigation.closeSubmissions()
-        navigation.settingsRequest != null -> scene.navigation.closeSettings()
+        navigation.settingsRequest != null -> {
+            handleSettingsBack(settingsNavigation, scene.navigation::closeSettings)
+        }
         commentsController?.isHeaderMenuShowing() == true ->
             commentsController.requestDismissHeaderMenu()
         commentsController?.isLinkPreviewOverlayShowing() == true ->
@@ -276,6 +284,7 @@ private fun DesktopAppContent(
     editorBackRequestVersion: Int,
     onStoriesControllerChanged: (StoriesComposeController?) -> Unit,
     onCommentsControllerChanged: (CommentsComposeController?) -> Unit,
+    onSettingsNavigationChanged: (SettingsNavigationStore?) -> Unit,
 ) {
     val navigation by scene.navigation.state.collectAsState()
     val storyDestinationForeground = navigation.currentDestination == MainDestination.STORY
@@ -400,6 +409,7 @@ private fun DesktopAppContent(
             DesktopSettingsShell(
                 app = app,
                 scene = scene,
+                onNavigationChanged = onSettingsNavigationChanged,
                 initialSection = SettingsSection.fromRoute(
                     navigation.currentSettingsSectionRoute.orEmpty(),
                 ),
@@ -599,6 +609,7 @@ private fun DesktopSettingsShell(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     initialSection: SettingsSection?,
+    onNavigationChanged: (SettingsNavigationStore?) -> Unit,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
@@ -608,6 +619,11 @@ private fun DesktopSettingsShell(
         initialSection = initialSection,
         twoPane = isTwoPane,
     )
+    val currentOnNavigationChanged by rememberUpdatedState(onNavigationChanged)
+    DisposableEffect(navigation) {
+        currentOnNavigationChanged(navigation)
+        onDispose { currentOnNavigationChanged(null) }
+    }
 
     LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 

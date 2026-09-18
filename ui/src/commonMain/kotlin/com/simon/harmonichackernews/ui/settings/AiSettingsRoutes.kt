@@ -3,11 +3,9 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.rememberCoroutineScope
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import kotlinx.coroutines.launch
 
 /** Shared settings-aware host for AI text preferences, including secure-save errors. */
 @Composable
@@ -57,19 +55,13 @@ fun AiSummaryTextDialog(
 fun AiSummaryBaseUrlDialog(onDismiss: () -> Unit) {
     val app = LocalHarmonicUiDependencies.current
     val repository = app.aiSummarySettings
-    val scope = rememberCoroutineScope()
     AiSummaryBaseUrlDialog(
         initialUrl = repository.snapshot().baseUrl,
         presets = AiSummaryProviders.PROVIDERS.map { provider ->
             AiBaseUrlPreset(provider.id, provider.label, provider.baseUrl)
         },
         onSave = { savedUrl ->
-            val update = repository.setBaseUrl(savedUrl)
-            if (update.needsDefaultModel) {
-                update.provider?.let { provider ->
-                    scope.launch { app.aiModelDefaults.ensureProviderDefault(provider) }
-                }
-            }
+            repository.setBaseUrl(savedUrl)
         },
         onDismiss = onDismiss,
     )

@@ -682,19 +682,28 @@ private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifie
             val layoutInfo = state.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             val totalItems = layoutInfo.totalItemsCount
-            if (totalItems <= 0 || visibleItems.isEmpty() || visibleItems.size >= totalItems) {
+            if (totalItems <= 0 || visibleItems.isEmpty()) {
                 return@derivedStateOf null
             }
 
             val first = visibleItems.first()
-            val averageItemSize = visibleItems.sumOf { it.size }.toFloat() / visibleItems.size
+            val last = visibleItems.last()
             val firstFraction = if (first.size == 0) 0f else {
-                (-first.offset).coerceAtLeast(0).toFloat() / first.size
+                ((layoutInfo.viewportStartOffset - first.offset).toFloat() / first.size)
+                    .coerceIn(0f, 1f)
             }
-            ScrollbarMetrics(
-                scrollPosition = (first.index + firstFraction) / totalItems,
-                visibleFraction = (layoutInfo.viewportSize.height / (averageItemSize * totalItems))
-                    .coerceIn(0.04f, 1f),
+            val lastFraction = if (last.size == 0) 1f else {
+                ((layoutInfo.viewportEndOffset - last.offset).toFloat() / last.size)
+                    .coerceIn(0f, 1f)
+            }
+            commentsScrollbarMetrics(
+                totalItems = totalItems,
+                firstIndex = first.index,
+                firstFraction = firstFraction,
+                lastIndex = last.index,
+                lastFraction = lastFraction,
+                canScrollBackward = state.canScrollBackward,
+                canScrollForward = state.canScrollForward,
             )
         }
     }
@@ -705,7 +714,8 @@ private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifie
         val widthPx = with(density) { 3.dp.toPx() }
         val endPaddingPx = with(density) { 1.dp.toPx() }
         val minimumHeightPx = with(density) { 24.dp.toPx() }
-        val thumbHeight = (size.height * currentMetrics.visibleFraction).coerceAtLeast(minimumHeightPx)
+        val thumbHeight = (size.height * currentMetrics.visibleFraction)
+            .coerceAtLeast(minimumHeightPx).coerceAtMost(size.height)
         val top = ((size.height - thumbHeight) * currentMetrics.scrollPosition)
             .coerceIn(0f, size.height - thumbHeight)
         drawRoundRect(
@@ -716,11 +726,6 @@ private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifie
         )
     }
 }
-
-private data class ScrollbarMetrics(
-    val scrollPosition: Float,
-    val visibleFraction: Float,
-)
 
 @Composable
 fun EmptyCommentsScreen() {

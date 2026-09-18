@@ -45,6 +45,7 @@ class StoryRowLoadOrchestrator(
 ) {
     private val session = StoryFeedLoadSession(staleLoadMillis)
     private val jobsByStoryId = mutableMapOf<Int, Job>()
+    private val staleStoryIds = mutableSetOf<Int>()
     private val mutableEffects = MutableSharedFlow<StoryRowLoadEffect>(extraBufferCapacity = 64)
     val effects: SharedFlow<StoryRowLoadEffect> = mutableEffects.asSharedFlow()
 
@@ -52,8 +53,16 @@ class StoryRowLoadOrchestrator(
 
     fun beginGeneration(): Int {
         cancelAllLoads()
+        staleStoryIds.clear()
         return session.beginGeneration()
     }
+
+    /** Keep rendered rows available while refreshing their metadata once in this generation. */
+    fun invalidateLoadedStories(storyIds: Iterable<Int>) {
+        staleStoryIds.addAll(storyIds)
+    }
+
+    fun needsRefresh(storyId: Int): Boolean = storyId in staleStoryIds
 
     fun isCurrent(requestGeneration: Int): Boolean = session.isCurrent(requestGeneration)
 
@@ -63,11 +72,13 @@ class StoryRowLoadOrchestrator(
 
     fun cancel(storyId: Int) {
         jobsByStoryId.remove(storyId)?.cancel()
+        staleStoryIds.remove(storyId)
         session.clearStory(storyId)
     }
 
     fun clear() {
         cancelAllLoads()
+        staleStoryIds.clear()
         session.clearStoryLoads()
     }
 
@@ -76,7 +87,10 @@ class StoryRowLoadOrchestrator(
         preserveTime: Boolean,
         requestGeneration: Int = generation,
     ) {
-        if (!session.isCurrent(requestGeneration) || story.loaded || isInProgress(story.id)) return
+        if (!session.isCurrent(requestGeneration) ||
+            (story.loaded && !needsRefresh(story.id)) || isInProgress(story.id)
+        ) return
+        val refreshing = story.loaded
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 for (attempt in 0 until MAX_ATTEMPTS) {
@@ -99,8 +113,8 @@ class StoryRowLoadOrchestrator(
                     } catch (error: Throwable) {
                         if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
                         session.clearStory(story.id, startedAt)
-                        if (!session.isCurrent(requestGeneration) || story.loaded) return@launch
-                        story.loadingFailed = true
+                        if (!session.isCurrent(requestGeneration)) return@launch
+                        if (!refreshing) story.loadingFailed = true
                         val finalAttempt = attempt == MAX_ATTEMPTS - 1
                         mutableEffects.emit(
                             StoryRowLoadEffect.AttemptFailed(
@@ -115,6 +129,7 @@ class StoryRowLoadOrchestrator(
                     }
                 }
             } finally {
+                if (session.isCurrent(requestGeneration)) staleStoryIds.remove(story.id)
                 if (jobsByStoryId[story.id] === currentCoroutineContext()[Job]) {
                     jobsByStoryId.remove(story.id)
                 }

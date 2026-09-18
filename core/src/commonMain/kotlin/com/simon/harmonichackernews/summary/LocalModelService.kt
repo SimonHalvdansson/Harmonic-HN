@@ -16,6 +16,7 @@ interface LocalModelRuntimeDelivery {
     fun cancel(runtime: LocalModelRuntime)
     fun setObserver(observer: () -> Unit)
     fun setModelDownloadStarter(starter: (String) -> String?)
+    fun clearModelDownloadError(modelId: String) = Unit
     fun engineClassName(runtime: LocalModelRuntime): String?
     fun runtimeLabel(runtime: LocalModelRuntime): String
 }
@@ -156,6 +157,7 @@ class LocalModelService(
                     "${formatDecimalBytes(result.requiredBytes)} available."
             is LocalModelDownloadResult.StorageFailure -> result.message
         }
+        if (message == null) runtimeDelivery.clearModelDownloadError(model.id)
         refresh()
         return message
     }

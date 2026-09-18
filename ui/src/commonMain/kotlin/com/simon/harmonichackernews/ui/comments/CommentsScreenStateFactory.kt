@@ -10,6 +10,7 @@ data class CommentsPlatformPresentation(
     val topInsetPx: Int,
     val contentInsetLeftPx: Int,
     val contentInsetRightPx: Int,
+    val integratedWebViewAvailable: Boolean = true,
 )
 
 /** Builds the portable comments rendering snapshot from the common feature state. */
@@ -39,7 +40,7 @@ object CommentsScreenStateFactory {
             commentsByOpFilterActive = thread.commentsByOp,
             hasCommentsByOp = thread.hasCommentsByOp,
             adBlockActive = platform.adBlockActive,
-            integratedWebView = settings.integratedWebView,
+            integratedWebView = settings.integratedWebView && platform.integratedWebViewAvailable,
             readerModeAvailable = platform.readerModeAvailable,
             readerModeEnabled = platform.readerModeEnabled,
             showSheetControls = platform.showSheetControls,

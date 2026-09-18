@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.content
 
-import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -9,9 +8,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
@@ -43,56 +43,107 @@ fun htmlAnnotatedString(
 internal fun prepareCommentHtml(html: String): AnnotatedString {
     val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
     return buildAnnotatedString {
-        document.body().childNodes().forEach { appendHtmlNode(it) }
+        val renderer = CommentHtmlRenderer(this)
+        document.body().childNodes().forEach { renderer.appendNode(it) }
     }.trimmed()
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
 
-private fun AnnotatedString.Builder.appendHtmlNode(
-    node: Node,
-) {
-    when (node) {
-        is TextNode -> append(node.getWholeText())
-        is Element -> {
-            val tag = node.normalName()
-            if (tag == "script" || tag == "style") return
-            if (tag == "br") {
-                append('\n')
-                return
-            }
+private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) {
+    private var pendingCodeBoundary = false
 
-            val start = length
-            val style = htmlSpanStyle(tag)
-            if (style == null) {
-                node.childNodes().forEach { child -> appendHtmlNode(child) }
-            } else {
-                pushStyle(style)
-                node.childNodes().forEach { child -> appendHtmlNode(child) }
-                pop()
+    fun appendNode(node: Node, convertedCode: Boolean = false, preformatted: Boolean = false): Unit = with(builder) {
+        when (node) {
+            is TextNode -> {
+                // Converted code stores authored spaces as NBSP and line breaks as <br>.
+                // Ksoup may insert ordinary whitespace when expanding shortened links.
+                var text = node.getWholeText()
+                if (convertedCode) {
+                    text = text.filterNot { it == ' ' || it == '\n' || it == '\r' }
+                } else if (!preformatted) {
+                    text = text.replace(htmlWhitespace, " ")
+                    if (length == 0 || toAnnotatedString().text.endsWith('\n')) text = text.trimStart(' ')
+                    val nextTag = (node.nextSibling() as? Element)?.normalName()
+                    if (nextTag in setOf("p", "br", "pre", "div")) text = text.trimEnd(' ')
+                }
+                if (pendingCodeBoundary) {
+                    text = text.trimStart()
+                    if (text.isEmpty()) return
+                    ensureCodeBlockBoundary()
+                    pendingCodeBoundary = false
+                }
+                append(text)
             }
-            val end = length
-            val url = node.attr("href").trim()
-            if (tag == "a" && url.isNotEmpty() && start < end) {
-                addStringAnnotation(COMMENT_URL_TAG, url, start, end)
+            is Element -> {
+                val tag = node.normalName()
+                if (tag == "script" || tag == "style") return
+                if (tag == "br") {
+                    if (!pendingCodeBoundary) append('\n')
+                    return
+                }
+
+                val convertedBlock = tag == "div" && node.children().singleOrNull()?.normalName() == "tt"
+                val codeBlock = tag == "pre" || convertedBlock
+                if (codeBlock || pendingCodeBoundary) {
+                    ensureCodeBlockBoundary()
+                    pendingCodeBoundary = false
+                }
+
+                val start = length
+                val style = htmlSpanStyle(tag)
+                val children = if (convertedBlock) node.children().toList() else node.childNodes()
+                if (style != null) pushStyle(style)
+                children.forEach { child ->
+                    appendNode(
+                        child,
+                        convertedCode = convertedCode || convertedBlock,
+                        preformatted = preformatted || tag == "pre" || tag == "code" || tag == "tt",
+                    )
+                }
+                if (style != null) pop()
+                val end = length
+                val url = node.attr("href").trim()
+                if (tag == "a" && url.isNotEmpty() && start < end) {
+                    addStringAnnotation(COMMENT_URL_TAG, url, start, end)
+                }
+                if (codeBlock) pendingCodeBoundary = true
             }
         }
     }
 }
+
+private val htmlWhitespace = Regex("[ \\t\\r\\n\\u000c]+")
 
 private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
     "b", "strong" -> SpanStyle(fontWeight = FontWeight.Bold)
     "i", "em" -> SpanStyle(fontStyle = FontStyle.Italic)
     "u" -> SpanStyle(textDecoration = TextDecoration.Underline)
     "s", "strike", "del" -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+    "pre", "code", "tt" -> SpanStyle(fontFamily = FontFamily.Monospace)
+    "small" -> SpanStyle(fontSize = 0.8.em)
     else -> null
 }
 
 private fun AnnotatedString.trimmed(): AnnotatedString {
-    val start = text.indexOfFirst { !it.isWhitespace() }
-    if (start < 0) return AnnotatedString("")
-    val end = text.indexOfLast { !it.isWhitespace() } + 1
+    // Do not trim indentation or trailing whitespace belonging to preformatted code.
+    val codeSpans = spanStyles.filter { it.item.fontFamily == FontFamily.Monospace }
+    val start = minOf(
+        text.indexOfFirst { !it.isWhitespace() }.takeIf { it >= 0 } ?: length,
+        codeSpans.minOfOrNull { it.start } ?: length,
+    )
+    val end = maxOf(
+        text.indexOfLast { !it.isWhitespace() } + 1,
+        codeSpans.maxOfOrNull { it.end } ?: 0,
+    )
+    if (start >= end) return AnnotatedString("")
     return subSequence(start, end)
+}
+
+private fun AnnotatedString.Builder.ensureCodeBlockBoundary() {
+    if (length == 0) return
+    val trailingBreaks = toAnnotatedString().text.takeLast(2).takeLastWhile { it == '\n' }.length
+    repeat(2 - trailingBreaks) { append('\n') }
 }
 
 internal fun preserveLegacyCommentParagraphSpacing(html: String): String = html

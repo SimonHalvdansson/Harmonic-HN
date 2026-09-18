@@ -10,7 +10,7 @@ object StoryTextProcessor {
             "(?:/{1}|(?:&#x2F;)|(?:&#47;))" +
             "(?=[^\\s<>\"]*\\.)[^\\s<>\"]+)",
     )
-    private const val TRAILING_PUNCTUATION = ".,;:!?)"
+    private const val TRAILING_PUNCTUATION = ".,;:!?"
     private val pdfSuffixes = arrayOf(" [pdf]", "[pdf]", " (pdf)", "(pdf)")
     private val videoSuffixes = arrayOf(" [video]", "[video]", " (video)", "(video)")
 
@@ -65,10 +65,16 @@ object StoryTextProcessor {
         return urlPattern.replace(segment) { match ->
             val url = match.value
             var end = url.length
-            while (end > 0 && url[end - 1] in TRAILING_PUNCTUATION) end--
-            if (end > 0 && url[end - 1] == ')') {
-                val core = url.substring(0, end)
-                if (core.count { it == ')' } > core.count { it == '(' }) end--
+            var unmatchedClosing = url.count { it == ')' } - url.count { it == '(' }
+            while (end > 0) {
+                when {
+                    url[end - 1] in TRAILING_PUNCTUATION -> end--
+                    url[end - 1] == ')' && unmatchedClosing > 0 -> {
+                        end--
+                        unmatchedClosing--
+                    }
+                    else -> break
+                }
             }
             val core = url.substring(0, end)
                 .replace("&#x2F;", "/")

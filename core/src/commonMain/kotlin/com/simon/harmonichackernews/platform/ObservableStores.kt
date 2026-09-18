@@ -44,6 +44,9 @@ interface ObservableHackerNewsAccountRepository {
 
     suspend fun saveAccount(account: HackerNewsAccount): Boolean
     suspend fun clearAccount(): Boolean
+    /** Ignore a rejected login from a request that belongs to an older account. */
+    suspend fun clearAccountIfMatches(account: HackerNewsAccount): Boolean =
+        if (currentAccount == account) clearAccount() else false
     fun close() = Unit
 }
 

@@ -18,6 +18,48 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun remoteMembershipIsAccountScopedWhileBookmarksRemainLocal() = runTest {
+        val store = TestKeyValueStore(mapOf(SavedItemKeys.FAVORITES to "999q1"))
+        var account: String? = "alice"
+        val repository = SavedItemsRepository(store).also { it.bindAccountScope { account } }
+        assertFalse(repository.contains(SavedItemSource.FAVORITES, 999))
+        repository.setMembership(SavedItemSource.BOOKMARKS, 7, true, 10)
+        repository.saveSnapshotAtomic(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(1), setOf(1)), 10)
+        repository.saveSnapshotAtomic(SavedItemSource.UPVOTED, SavedItemSnapshot(listOf(2), setOf(2)), 10)
+
+        account = "bob"
+        assertEquals(emptyList(), repository.loadItems(SavedItemSource.FAVORITES))
+        assertEquals(emptySet(), repository.loadCommentIds(SavedItemSource.UPVOTED))
+        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 7))
+        repository.saveSnapshotAtomic(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(3), setOf(3)), 20)
+
+        account = null
+        assertEquals(emptyList(), repository.loadItems(SavedItemSource.FAVORITES))
+        account = "alice"
+        assertEquals(SavedItemSnapshot(listOf(1), setOf(1)), repository.loadSnapshot(SavedItemSource.FAVORITES))
+        assertEquals(SavedItemSnapshot(listOf(2), setOf(2)), repository.loadSnapshot(SavedItemSource.UPVOTED))
+        val reopened = SavedItemsRepository(store).also { it.bindAccountScope { account } }
+        assertEquals(repository.loadSnapshot(SavedItemSource.FAVORITES), reopened.loadSnapshot(SavedItemSource.FAVORITES))
+        account = "bob"
+        assertEquals(SavedItemSnapshot(listOf(3), setOf(3)), reopened.loadSnapshot(SavedItemSource.FAVORITES))
+    }
+
+    @Test
+    fun oldSnapshotCannotOverwriteAnAccountAfterSwitchingAwayAndBack() = runTest {
+        var account = "alice"
+        val repository = SavedItemsRepository(TestKeyValueStore()).also { it.bindAccountScope { account } }
+        val initialRevision = repository.currentAccountRevision
+        account = "bob"
+        repository.refreshAccountScope()
+        account = "alice"
+        repository.saveSnapshotAtomic(SavedItemSource.UPVOTED, SavedItemSnapshot(listOf(9), emptySet()), 10)
+        assertFalse(repository.saveSnapshotIfAccountCurrent(
+            SavedItemSource.UPVOTED, SavedItemSnapshot(listOf(1), emptySet()), 20, initialRevision,
+        ))
+        assertEquals(listOf(9), repository.loadSnapshot(SavedItemSource.UPVOTED).itemIds)
+    }
+
+    @Test
     fun codecPreservesNumericLimitsAndRejectsOverflowOrDuplicateSeparators() {
         assertEquals(
             listOf(TimestampedItem(Int.MAX_VALUE, Long.MAX_VALUE)),

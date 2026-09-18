@@ -22,6 +22,7 @@ data class SubmissionsUiState(
     val loading: Boolean = false,
     val showInitialLoading: Boolean = false,
     val refreshing: Boolean = false,
+    val loadingFailed: Boolean = false,
     val emptyText: String = "No submissions",
     val revision: Int = 0,
 )
@@ -44,6 +45,7 @@ class SubmissionsStore(
     private val mutableState = MutableStateFlow(SubmissionsUiState())
     val state: StateFlow<SubmissionsUiState> = mutableState.asStateFlow()
     private var requestSerial = 0
+    private var failedLoad: Pair<Int, Boolean>? = null
 
     init {
         require(userName.isNotBlank()) { "A username is required" }
@@ -53,7 +55,8 @@ class SubmissionsStore(
     fun selectFilter(filter: SubmissionFilter) {
         if (mutableState.value.filter == filter) return
         cancelLoad()
-        mutableState.value = mutableState.value.copy(filter = filter)
+        failedLoad = null
+        mutableState.value = mutableState.value.copy(filter = filter, loadingFailed = false)
         publish()
     }
 
@@ -65,6 +68,12 @@ class SubmissionsStore(
     }
 
     suspend fun refresh() = load(limit = batchSize(), refresh = true)
+
+    suspend fun retry() {
+        if (mutableState.value.loading) return
+        val (limit, refresh) = failedLoad ?: return
+        load(limit, refresh)
+    }
 
     private fun batchSize() = if (mutableState.value.filter == SubmissionFilter.BOTH) {
         pageSize
@@ -96,10 +105,12 @@ class SubmissionsStore(
         val filter = mutableState.value.filter
         val serial = ++requestSerial
         val previousRange = ranges[filter]
+        failedLoad = null
         mutableState.value = mutableState.value.copy(
             loading = true,
             showInitialLoading = previousRange == null,
             refreshing = refresh && previousRange != null,
+            loadingFailed = false,
         )
         try {
             if (filter == SubmissionFilter.BOTH && (refresh || ranges.isEmpty())) {
@@ -157,6 +168,10 @@ class SubmissionsStore(
             throw error
         } catch (_: Exception) {
             // Preserve the successful range and its pagination state for retry.
+            if (serial == requestSerial) {
+                failedLoad = limit to refresh
+                mutableState.value = mutableState.value.copy(loadingFailed = true)
+            }
         } finally {
             if (serial == requestSerial) cancelLoad()
         }

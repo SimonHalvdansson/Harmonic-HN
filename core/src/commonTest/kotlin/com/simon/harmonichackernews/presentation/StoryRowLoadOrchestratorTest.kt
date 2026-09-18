@@ -19,9 +19,37 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRowLoadOrchestratorTest {
+    @Test
+    fun failedMetadataRefreshKeepsLoadedContentAndCanRetryInTheNextGeneration() = runTest {
+        var attempts = 0
+        val api = object : HackerNewsApi {
+            override suspend fun getItem(id: Int): HackerNewsItemDto? { attempts++; error("Offline") }
+            override suspend fun getUser(username: String): HackerNewsUserDto? = error("Unused")
+            override suspend fun getMaxItemId(): Int = error("Unused")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+        }
+        val orchestrator = StoryRowLoadOrchestrator(backgroundScope, api, 30_000) { testScheduler.currentTime }
+        val story = Story("Retained", 1, true, true).apply { score = 10 }
+        repeat(2) {
+            orchestrator.beginGeneration()
+            orchestrator.invalidateLoadedStories(listOf(1))
+            orchestrator.load(story, false)
+            runCurrent()
+            assertTrue(story.loaded)
+            assertFalse(story.loadingFailed)
+            assertEquals("Retained", story.title)
+            assertEquals(10, story.score)
+            assertFalse(orchestrator.needsRefresh(1))
+            orchestrator.load(story, false)
+            runCurrent()
+            assertEquals((it + 1) * 3, attempts)
+        }
+    }
+
     @Test
     fun retriesAndStoryMutationAreOwnedByCommonOrchestration() = runTest {
         val api = RetryingApi()

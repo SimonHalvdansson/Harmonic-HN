@@ -11,6 +11,7 @@ android {
     namespace = "com.simon.harmonichackernews"
     compileSdk = 37
     ndkVersion = "29.0.13113456"
+    testBuildType = providers.gradleProperty("harmonic.testBuildType").getOrElse("debug")
     dynamicFeatures = [":local_ai_runtime"]
 
     defaultConfig {
@@ -205,6 +206,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.espresso.core)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugLLMImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 baselineProfile {

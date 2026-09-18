@@ -18,6 +18,8 @@ data class LocalRuntimeInstallStatus(
     val runtime: LocalModelRuntime? = null,
     val error: String = "",
     val sessionId: Int = 0,
+    /** Model handoff failure for [pendingModelId]; does not change runtime installation state. */
+    val modelDownloadError: String = "",
 ) {
     val active: Boolean
         get() = state == LocalRuntimeInstallState.PENDING ||
@@ -156,6 +158,12 @@ object LocalModelPresentationPolicy {
                 )}%"
         input.transferStatus.state == LocalModelTransferState.WAITING ->
             "Waiting for a network connection…"
+        input.runtimeStatus.pendingModelId == input.model.id &&
+            input.runtimeStatus.modelDownloadError.isNotBlank() ->
+            input.runtimeStatus.modelDownloadError
+        input.runtimeStatus.pendingModelId == input.model.id &&
+            input.runtimeStatus.state == LocalRuntimeInstallState.FAILED ->
+            input.runtimeStatus.error.ifBlank { "Runtime installation failed · tap to retry" }
         input.transferStatus.state == LocalModelTransferState.PARTIALLY_DOWNLOADED ->
             "${formatDecimalBytes(input.transferStatus.receivedBytes)} downloaded · tap to resume"
         input.transferStatus.state == LocalModelTransferState.FAILED ->

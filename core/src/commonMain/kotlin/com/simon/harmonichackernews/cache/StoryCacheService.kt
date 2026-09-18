@@ -146,7 +146,7 @@ class StoryCacheService(
     }
 
     override suspend fun cacheStory(id: Int, payload: String) {
-        storeStory(id, payload)
+        check(storeStory(id, payload)) { "Could not save story $id" }
     }
 
     suspend fun cacheParsedStory(

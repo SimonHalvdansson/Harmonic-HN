@@ -39,10 +39,12 @@ import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
 import com.simon.harmonichackernews.ui.settings.SettingRow
 import com.simon.harmonichackernews.ui.settings.SettingsDivider
 import com.simon.harmonichackernews.ui.settings.SettingsSection
+import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
 import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import java.awt.Desktop
 import java.io.File
 import javax.swing.JFileChooser
+import javax.swing.JOptionPane
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -81,8 +83,19 @@ internal fun DesktopSettingsDetail(
             "Reply notifications and Android notification fixtures do not apply to desktop.",
         aiSettings = { DesktopAiSettings(app, scene, singlePane, onBack) },
         dataSettings = { DesktopDataSettings(app, scene, singlePane, onBack) },
+        webLinksCapabilities = desktopWebLinksSettingsCapabilities(),
     )
 }
+
+internal fun desktopWebLinksSettingsCapabilities(
+    backend: DesktopEmbeddedBrowserBackend = desktopEmbeddedBrowserBackend(),
+) = WebLinksSettingsCapabilities(
+    integratedWebView = backend != DesktopEmbeddedBrowserBackend.UNSUPPORTED,
+    adBlocking = false,
+    readerMode = false,
+    closeWebViewOnBack = false,
+    preloadWebsites = false,
+)
 
 @Composable
 private fun DesktopAiSettings(
@@ -346,6 +359,43 @@ private fun chooseTextFile(save: Boolean, suggestedName: String? = null): File? 
         fileFilter = FileNameExtensionFilter("Text files", "txt")
         suggestedName?.let { selectedFile = File(it) }
     }
-    val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
-    return chooser.selectedFile.takeIf { result == JFileChooser.APPROVE_OPTION }
+    if (!save) {
+        val result = chooser.showOpenDialog(null)
+        return chooser.selectedFile.takeIf { result == JFileChooser.APPROVE_OPTION }
+    }
+    return chooseExportFile(
+        choose = {
+            if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) chooser.selectedFile else null
+        },
+        confirmReplace = { selected ->
+            when (JOptionPane.showConfirmDialog(
+                chooser,
+                "${selected.name} already exists. Replace it?",
+                "Replace file?",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+            )) {
+                JOptionPane.YES_OPTION -> ExportReplacement.REPLACE
+                JOptionPane.NO_OPTION -> ExportReplacement.CHOOSE_ANOTHER
+                else -> ExportReplacement.CANCEL
+            }
+        },
+    )
+}
+
+internal enum class ExportReplacement { REPLACE, CHOOSE_ANOTHER, CANCEL }
+
+internal fun chooseExportFile(
+    choose: () -> File?,
+    confirmReplace: (File) -> ExportReplacement,
+): File? {
+    while (true) {
+        val selected = choose() ?: return null
+        if (!selected.exists()) return selected
+        when (confirmReplace(selected)) {
+            ExportReplacement.REPLACE -> return selected
+            ExportReplacement.CHOOSE_ANOTHER -> Unit
+            ExportReplacement.CANCEL -> return null
+        }
+    }
 }

@@ -394,7 +394,7 @@ class CommentsFeatureRuntime(
                 loadPreparedThread = loadPreparedResponse,
             ),
         )
-        presenter.dispatch(CommentsAction.LoadPollOptions(story))
+        presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = refreshing))
         changed()
     }
 
@@ -412,8 +412,8 @@ class CommentsFeatureRuntime(
 
     fun retry(cachedResponse: String? = null) = load(cachedResponse, refreshing = true)
 
-    fun reloadPollOptions() {
-        story?.let { presenter.dispatch(CommentsAction.LoadPollOptions(it)) }
+    fun reloadPollOptions(forceRefresh: Boolean = false) {
+        story?.let { presenter.dispatch(CommentsAction.LoadPollOptions(it, forceRefresh)) }
     }
 
     fun shouldUseIntegratedWebView(preferred: Boolean): Boolean =
@@ -720,8 +720,10 @@ class CommentsFeatureRuntime(
             is CommentsEffect.PollVoteCompleted -> {
                 changed()
                 when (val outcome = effect.outcome) {
-                    PollVoteOutcome.Success ->
+                    PollVoteOutcome.Success -> {
+                        reloadPollOptions(forceRefresh = true)
                         platform(CommentsPlatformEffect.ShowMessage("Poll vote successful"))
+                    }
                     is PollVoteOutcome.Failure -> mutableEffects.tryEmit(
                         CommentsRuntimeEffect.ActionFailed(
                             ActionFailurePresentation(

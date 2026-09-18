@@ -7,13 +7,13 @@ import android.os.Looper
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService.RemoteViewsFactory
-import com.simon.harmonichackernews.CommentsContract
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.toBundle
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.WidgetRefreshResult
+import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.presentation.WidgetStoryFormatter
 import com.simon.harmonichackernews.utils.HarmonicLog.debug as log
 import kotlin.time.TimeSource
@@ -129,8 +129,7 @@ class StoriesRemoteViewsFactory(private val context: Context, private val appWid
 
         // Fill-in intent for item click -> MainActivity's Compose comments destination.
         val fillInIntent = Intent()
-        fillInIntent.putExtras(story.toBundle())
-        fillInIntent.putExtra(CommentsContract.EXTRA_SHOW_WEBSITE, story.isLink)
+        fillInIntent.putExtras(story.toDestination(showWebsite = story.isLink).toBundle())
         views.setOnClickFillInIntent(R.id.widget_story_item_container, fillInIntent)
 
         return views

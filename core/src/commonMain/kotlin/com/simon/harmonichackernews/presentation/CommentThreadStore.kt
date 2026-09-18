@@ -148,6 +148,7 @@ class CommentThreadStore {
     internal fun commitPreparedInitialComments(
         story: Story?,
         prepared: PreparedInitialCommentThread,
+        sorting: String = prepared.state.sorting,
     ) {
         // Reuse the worker's structural work on the first expansion. The next visibility build
         // still checks every source object, ID and depth in case they changed before commit.
@@ -163,6 +164,11 @@ class CommentThreadStore {
         portableItemsById.clear()
         prepared.state.allComments.forEach { item -> portableItemsById[item.id] = item }
         currentStory = story
+        if (sorting != prepared.state.sorting) {
+            // A user can change sorting while preparation is running on a worker.
+            setSorting(sorting)
+            return
+        }
         mutableState.value = prepared.state.copy(
             story = story?.toSnapshot(),
             revision = mutableState.value.revision + 1,
