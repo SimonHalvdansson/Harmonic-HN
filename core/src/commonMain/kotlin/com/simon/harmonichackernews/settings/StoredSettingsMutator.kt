@@ -282,6 +282,14 @@ class StoredSettingsMutator(
         )
     }
 
+    fun setCommentIndicatorThickness(value: CommentIndicatorThickness) {
+        store.putString(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, value.storedValue)
+    }
+
+    fun setUserAvatarMode(value: UserAvatarMode) {
+        store.putString(UserPreferenceKeys.USER_AVATAR_MODE, value.storedValue)
+    }
+
     /** Returns true when palette-derived caches must be invalidated. */
     fun setPaletteTint(
         mode: String?,

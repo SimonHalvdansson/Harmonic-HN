@@ -53,6 +53,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -83,6 +85,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -130,9 +134,9 @@ fun CommentActionOverlay(
     var overlayActive by remember(comment.id) { mutableStateOf(false) }
     var hideTargetContent by remember(comment.id) { mutableStateOf(source != null) }
     var drawOverlayShadows by remember(comment.id) { mutableStateOf(false) }
-    var openingStarted by remember(comment.id) { mutableStateOf(false) }
     var openingCompleted by remember(comment.id) { mutableStateOf(false) }
     var closingStarted by remember(comment.id) { mutableStateOf(false) }
+    var useLiveContent by remember(comment.id) { mutableStateOf(false) }
     val dismissRequest = controller.commentActionDismissRequest
     val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
         predictiveBackProgress = controller.commentActionPredictiveBackProgress,
@@ -156,7 +160,7 @@ fun CommentActionOverlay(
         targetUserCapture.isUnavailable(snapshotRefreshKey) ||
         targetBodyCapture.isUnavailable(snapshotRefreshKey) ||
         targetSupplementaryCapture.isUnavailable(snapshotRefreshKey)
-    val transitionSource = source?.takeUnless { snapshotsUnavailable }
+    val transitionSource = source?.takeUnless { snapshotsUnavailable || useLiveContent }
     val snapshotsReady = transitionSource != null &&
         sourceCapture.isCurrent(snapshotRefreshKey) &&
         targetContainer != null &&
@@ -167,17 +171,17 @@ fun CommentActionOverlay(
         targetBodyCapture.isCurrent(snapshotRefreshKey) &&
         targetSupplementaryCapture.isCurrent(snapshotRefreshKey)
 
-    LaunchedEffect(
-        comment.id,
-        targetContainer,
-        snapshotsReady,
-        snapshotsUnavailable,
-        dismissRequest,
-    ) {
-        if (targetContainer == null || dismissRequest != 0 || openingStarted) return@LaunchedEffect
-        if (transitionSource != null && !snapshotsReady) return@LaunchedEffect
-        openingStarted = true
-        if (transitionSource != null) {
+    val canAnimate by rememberUpdatedState(transitionSource != null && snapshotsReady)
+    val openingReady by rememberUpdatedState(targetContainer != null && (transitionSource == null || snapshotsReady))
+    // Geometry and graphics captures may change after backgrounding or during layout. They must
+    // not cancel an in-flight effect after it has hidden the live dialog.
+    LaunchedEffect(comment.id) {
+        val ready = withTimeoutOrNull(600.milliseconds) {
+            snapshotFlow { openingReady }.first { it }
+        } != null
+        if (controller.commentActionDismissRequest != 0) return@LaunchedEffect
+        val sharedOpening = ready && canAnimate
+        if (sharedOpening) {
             // Cover the still-live row before suppression, eliminating the opening handoff flash.
             overlayActive = true
             withFrameNanos { }
@@ -186,12 +190,13 @@ fun CommentActionOverlay(
             withFrameNanos { }
         } else {
             // A restored dialog or failed capture uses a fade over the still-visible source row.
+            useLiveContent = true
             hideTargetContent = false
             withFrameNanos { }
             controller.setCommentActionSourceCovered(false)
         }
         transformProgress.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
-        if (transitionSource != null) {
+        if (sharedOpening) {
             hideTargetContent = false
             drawOverlayShadows = false
             withFrameNanos { }
@@ -199,19 +204,25 @@ fun CommentActionOverlay(
         }
         openingCompleted = true
     }
-    LaunchedEffect(dismissRequest, snapshotsReady, snapshotsUnavailable, targetContainer) {
-        if (dismissRequest == 0 || closingStarted || targetContainer == null) {
+    LaunchedEffect(dismissRequest) {
+        if (dismissRequest == 0 || closingStarted) {
             return@LaunchedEffect
         }
-        if (transitionSource != null && !snapshotsReady) return@LaunchedEffect
+        withTimeoutOrNull(300.milliseconds) {
+            snapshotFlow { openingReady }.first { it }
+        }
         closingStarted = true
-        if (transitionSource != null) {
+        if (canAnimate) {
             // Put an identical progress-one overlay over the dialog before hiding live content.
             overlayActive = true
             withFrameNanos { }
             hideTargetContent = true
             drawOverlayShadows = true
             withFrameNanos { }
+        } else {
+            useLiveContent = true
+            hideTargetContent = false
+            overlayActive = false
         }
         transformProgress.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
         controller.setCommentActionSourceCovered(false)

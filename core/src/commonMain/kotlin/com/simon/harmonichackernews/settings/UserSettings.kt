@@ -96,6 +96,10 @@ data class CommentPreferences(
     val animateChanges: Boolean,
     val smoothScroll: Boolean,
     val volumeNavigationMode: CommentVolumeNavigationMode,
+    val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val roundedDepthIndicators: Boolean = false,
+    val continuousDepthIndicators: Boolean = false,
+    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED

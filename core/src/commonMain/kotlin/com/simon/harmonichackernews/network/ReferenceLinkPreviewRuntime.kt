@@ -54,7 +54,8 @@ class ReferenceLinkPreviewRuntime(
             try {
                 val cached = if (forceRefresh) null else previews.cachedLinkSummary(url)?.takeIf {
                     LinkSummaryParser.hackerNewsItemId(url) == null ||
-                        it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
+                        (it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
+                            (LinkSummaryParser.isHackerNewsStory(it) || it.commentTextVersion >= 1))
                 }
                 val result = cached ?: summaries.load(url, fallbackTitle).also {
                     previews.saveLinkSummary(url, it)

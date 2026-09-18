@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.CommentIndicatorThickness
+import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
@@ -47,9 +49,15 @@ data class CommentsSettingsUiState(
     val showNavigationButtons: Boolean,
     val volumeNavigation: CommentVolumeNavigationMode,
     val smoothScroll: Boolean,
+    val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val roundedDepthIndicators: Boolean = false,
+    val continuousDepthIndicators: Boolean = false,
+    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
+    RoundedDepthIndicators(CommentBooleanPreference.ROUNDED_DEPTH_INDICATORS),
+    ContinuousDepthIndicators(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS),
     Outline(CommentBooleanPreference.OUTLINE),
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
     EmphasizeMetadata(CommentBooleanPreference.HIGHLIGHT_METADATA),
@@ -80,6 +88,7 @@ fun CommentsSettingsScreen(
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onUserAvatarModeChanged: (UserAvatarMode) -> Unit,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -135,6 +144,13 @@ fun CommentsSettingsScreen(
                 BooleanRow("Collect links", Res.drawable.ic_link, state.collectLinks, CommentsBooleanSetting.CollectLinks, onBooleanChanged)
                 SettingsDivider()
                 BooleanRow("Emphasize meta", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "User profile image",
+                    options = UserAvatarMode.entries.map { it.storedValue to it.label },
+                    selected = state.userAvatarMode.storedValue,
+                    onSelected = { onUserAvatarModeChanged(UserAvatarMode.fromStored(it)) },
+                )
                 SettingsDivider()
                 SettingRow(
                     title = "Thread depth indicators",

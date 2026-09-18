@@ -128,6 +128,10 @@ class CommentsSettingsPresenter(
             collectLinks = comments.collectReferenceLinks,
             emphasizeMetadata = comments.highlightMetadata,
             depthMode = comments.depthIndicatorMode,
+            indicatorThickness = comments.indicatorThickness,
+            roundedDepthIndicators = comments.roundedDepthIndicators,
+            continuousDepthIndicators = comments.continuousDepthIndicators,
+            userAvatarMode = comments.userAvatarMode,
             depthModeLabel = com.simon.harmonichackernews.settings.CommentDepthPreferences
                 .modeLabel(comments.depthIndicatorMode),
             showDividers = comments.showDividers,
@@ -173,6 +177,10 @@ class CommentsSettingsPresenter(
     )
 
     fun setDepthIndicatorMode(value: String) = repository.setCommentDepthIndicatorMode(value)
+    fun setIndicatorThickness(value: com.simon.harmonichackernews.settings.CommentIndicatorThickness) =
+        repository.setCommentIndicatorThickness(value)
+    fun setUserAvatarMode(value: com.simon.harmonichackernews.settings.UserAvatarMode) =
+        repository.setUserAvatarMode(value)
     fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         repository.setCommentsPreload(mode, minimumBattery)
 }

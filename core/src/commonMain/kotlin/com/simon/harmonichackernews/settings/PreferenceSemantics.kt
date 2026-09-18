@@ -238,6 +238,26 @@ object CommentNavigationPreferences {
     const val TOP_LEVEL = "top_level"
 }
 
+enum class CommentIndicatorThickness(val storedValue: String, val label: String, val widthDp: Float) {
+    THIN("thin", "Thin", 1.5f),
+    STANDARD("standard", "Standard", 3f),
+    WIDE("wide", "Wide", 5f);
+
+    companion object {
+        fun fromStored(value: String?): CommentIndicatorThickness =
+            entries.firstOrNull { it.storedValue == value } ?: STANDARD
+    }
+}
+
+enum class UserAvatarMode(val storedValue: String, val label: String) {
+    NONE("none", "None"), GENERIC("generic", "Generic"), GENERATED("generated", "Generated");
+
+    companion object {
+        fun fromStored(value: String?): UserAvatarMode =
+            entries.firstOrNull { it.storedValue == value } ?: NONE
+    }
+}
+
 object CommentDepthPreferences {
     const val THEME_DEFAULT = "theme_default"
     const val MATERIAL_YOU = "material_you"

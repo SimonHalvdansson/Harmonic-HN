@@ -29,6 +29,8 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
 enum class StoryStringPreference { DISPLAY_STYLE }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
+    ROUNDED_DEPTH_INDICATORS(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS),
+    CONTINUOUS_DEPTH_INDICATORS(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS),
     OUTLINE(UserPreferenceKeys.COMMENT_OUTLINE),
     COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),
     HIGHLIGHT_METADATA(UserPreferenceKeys.HIGHLIGHT_COMMENT_META),
@@ -147,6 +149,8 @@ class AppSettingsRepository(
     fun setCommentsVolumeNavigation(value: CommentVolumeNavigationMode) =
         mutator.setCommentsVolumeNavigation(value)
     fun setCommentDepthIndicatorMode(value: String) = mutator.setCommentDepthIndicatorMode(value)
+    fun setCommentIndicatorThickness(value: CommentIndicatorThickness) = mutator.setCommentIndicatorThickness(value)
+    fun setUserAvatarMode(value: UserAvatarMode) = mutator.setUserAvatarMode(value)
     fun setCommentsPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         mutator.setCommentsPreload(mode, minimumBattery)
 

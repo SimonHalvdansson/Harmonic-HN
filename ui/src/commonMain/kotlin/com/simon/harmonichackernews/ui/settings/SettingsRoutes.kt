@@ -478,6 +478,7 @@ fun CommentsSettingsRoute(
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
+        onUserAvatarModeChanged = presenter::setUserAvatarMode,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {

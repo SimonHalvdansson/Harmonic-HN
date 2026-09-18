@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.data.CommentPresentationSnapshot
 import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.presentation.PortableCommentItem
-import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.settings_section_thread_depth
+import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.ui.content.CommentItem
@@ -41,6 +41,8 @@ fun ThreadDepthIndicatorsSettingsRoute(
     ThreadDepthIndicatorsSettingsScreen(
         state = presenter.state(settings),
         onModeSelected = presenter::setDepthIndicatorMode,
+        onThicknessSelected = presenter::setIndicatorThickness,
+        onBooleanChanged = presenter::setBoolean,
         onBack = onBack,
     )
 }
@@ -49,6 +51,8 @@ fun ThreadDepthIndicatorsSettingsRoute(
 private fun ThreadDepthIndicatorsSettingsScreen(
     state: CommentsSettingsUiState,
     onModeSelected: (String) -> Unit,
+    onThicknessSelected: (CommentIndicatorThickness) -> Unit,
+    onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     val comments = remember {
@@ -89,7 +93,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
             // Use runtime rows so indentation, surfaces, type, metadata and top-level indicators
             // follow the same preferences as the actual thread. Keep this scrollable on short windows.
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                comments.forEach { comment ->
+                comments.forEachIndexed { index, comment ->
                     CommentItem(
                         comment = comment,
                         style = state.toPreviewCommentItemStyle(),
@@ -99,6 +103,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                         hiddenReplyCount = 0,
                         collapseParent = state.collapseParent,
                         showTopLevelIndicator = state.topLevelIndicators,
+                        nextCommentDepth = comments.getOrNull(index + 1)?.depth,
                         enableLongClick = false,
                         onToggleExpanded = {},
                         onShowActions = {},
@@ -106,6 +111,35 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                         onReferenceLongClick = { _, _, _ -> },
                     )
                 }
+            }
+        }
+        item {
+            SettingsCategory("Indicator shape") {
+                SegmentedSetting(
+                    title = "Thickness",
+                    options = CommentIndicatorThickness.entries.map { it.storedValue to it.label },
+                    selected = state.indicatorThickness.storedValue,
+                    onSelected = { onThicknessSelected(CommentIndicatorThickness.fromStored(it)) },
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Rounded corners",
+                    summary = "Rounded line ends in Flat; follows the card corners in Filled and Raised",
+                    icon = Res.drawable.ic_select,
+                    checked = state.roundedDepthIndicators,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.RoundedDepthIndicators, it) },
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Continuous thread lines",
+                    summary = if (state.depthMode == CommentDepthPreferences.AUTHOR) {
+                        "Unavailable with Author colors"
+                    } else "Continue ancestor lines along the left of their replies",
+                    icon = Res.drawable.ic_format_align_left,
+                    checked = state.continuousDepthIndicators && state.depthMode != CommentDepthPreferences.AUTHOR,
+                    enabled = state.depthMode != CommentDepthPreferences.AUTHOR && state.depthMode != CommentDepthPreferences.NONE,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.ContinuousDepthIndicators, it) },
+                )
             }
         }
         item {

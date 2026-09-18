@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Node
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.simon.harmonichackernews.serialization.JsonObject
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.HackerNewsLinks
@@ -31,6 +33,7 @@ data class LinkSummary(
     val description: String = "",
     val imageUrl: String = "",
     val finalUrl: String = "",
+    val commentTextVersion: Int = 0,
 )
 
 object LinkSummaryCodec {
@@ -44,6 +47,7 @@ object LinkSummaryCodec {
         .put("description", summary.description)
         .put("image", summary.imageUrl)
         .put("url", summary.finalUrl)
+        .put("commentTextVersion", summary.commentTextVersion)
         .toString()
 
     fun decode(serialized: String?): LinkSummary? {
@@ -60,6 +64,7 @@ object LinkSummaryCodec {
                 description = json.optString("description", ""),
                 imageUrl = json.optString("image", ""),
                 finalUrl = json.optString("url", ""),
+                commentTextVersion = json.optInt("commentTextVersion", 0),
             )
         }.getOrNull()
     }
@@ -414,6 +419,7 @@ object LinkSummaryParser {
             val metadata = buildHackerNewsMetadata(item, comment, author)
             val body = cleanHackerNewsText(item.optString("text"))
             val description = when {
+                comment -> body
                 body.isEmpty() -> metadata
                 metadata.isEmpty() -> body
                 else -> "$metadata — $body"
@@ -427,8 +433,12 @@ object LinkSummaryParser {
                 }.orEmpty(),
                 language = "en",
                 contentType = HACKER_NEWS_ITEM_CONTENT_TYPE,
-                description = truncate(description, MAX_DESCRIPTION_CHARS),
+                description = if (comment) {
+                    com.simon.harmonichackernews.utils.HtmlTextUtils
+                        .normalizeAndTruncatePlainText(description, MAX_DESCRIPTION_CHARS)
+                } else truncate(description, MAX_DESCRIPTION_CHARS),
                 finalUrl = pageUrl,
+                commentTextVersion = if (comment) 1 else 0,
             )
         }.getOrNull()
     }
@@ -477,8 +487,34 @@ object LinkSummaryParser {
         return parts.joinToString(" · ")
     }
 
-    private fun cleanHackerNewsText(html: String?): String =
-        if (html.isNullOrEmpty()) "" else clean(Ksoup.parseBodyFragment(html).body().text())
+    private fun cleanHackerNewsText(html: String?): String {
+        if (html.isNullOrEmpty()) return ""
+        val output = StringBuilder()
+        fun breakLine(count: Int) {
+            while (output.isNotEmpty() && output.last() == ' ') output.deleteAt(output.lastIndex)
+            if (output.isEmpty()) return
+            val existing = output.takeLastWhile { it == '\n' }.length
+            repeat((count - existing).coerceAtLeast(0)) { output.append('\n') }
+        }
+        fun visit(node: Node, preformatted: Boolean = false) {
+            when (node) {
+                is TextNode -> output.append(
+                    if (preformatted) node.getWholeText() else node.getWholeText().replace(whitespacePattern, " "),
+                )
+                is Element -> {
+                    val tag = node.normalName()
+                    if (tag in listOf("script", "style")) return
+                    if (tag == "br") { breakLine(1); return }
+                    val block = tag in listOf("p", "div", "pre", "blockquote", "ul", "ol", "li")
+                    if (block) breakLine(if (tag == "li") 1 else 2)
+                    node.childNodes().forEach { visit(it, preformatted || tag == "pre") }
+                    if (block) breakLine(if (tag == "li") 1 else 2)
+                }
+            }
+        }
+        visit(Ksoup.parseBodyFragment(html).body())
+        return output.toString().replace('\u00a0', ' ').trim()
+    }
 
     private fun formatCount(count: Int, singular: String, plural: String): String =
         "$count ${if (count == 1) singular else plural}"

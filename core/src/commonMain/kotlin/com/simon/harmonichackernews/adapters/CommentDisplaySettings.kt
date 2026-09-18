@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.adapters
 
 import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.CommentIndicatorThickness
+import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -32,6 +34,10 @@ data class CommentDisplaySettings(
     val canProvideSummary: Boolean,
     val showAdditionalSummaryInfo: Boolean,
     val enableSummaryBoldFormatting: Boolean,
+    val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val roundedDepthIndicators: Boolean = false,
+    val continuousDepthIndicators: Boolean = false,
+    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -47,6 +53,11 @@ data class CommentDisplaySettings(
             enableSummaryBoldFormatting: Boolean = true,
         ): CommentDisplaySettings = CommentDisplaySettings(
             collapseParent = preferences.collapseParent,
+            indicatorThickness = preferences.indicatorThickness,
+            roundedDepthIndicators = preferences.roundedDepthIndicators,
+            continuousDepthIndicators = preferences.continuousDepthIndicators &&
+                preferences.depthIndicatorMode != CommentDepthPreferences.AUTHOR,
+            userAvatarMode = preferences.userAvatarMode,
             showThumbnail = preferences.thumbnails,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,

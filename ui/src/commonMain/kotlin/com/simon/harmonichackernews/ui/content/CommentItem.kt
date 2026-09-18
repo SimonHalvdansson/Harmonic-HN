@@ -48,6 +48,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -82,6 +84,9 @@ import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.nodes.Node
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
+import com.simon.harmonichackernews.settings.CommentIndicatorThickness
+import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.presentation.PortableCommentItem
@@ -119,6 +124,10 @@ data class CommentItemStyle(
     val preferredFont: String,
     val animateChanges: Boolean = true,
     val transparentNonCardBackground: Boolean = false,
+    val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val roundedDepthIndicators: Boolean = false,
+    val continuousDepthIndicators: Boolean = false,
+    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -219,6 +228,7 @@ fun CommentItem(
     ) {
         CommentMeta(
             author = model.author,
+            avatarMode = style.userAvatarMode,
             age = model.age,
             byOp = false,
             byUser = false,
@@ -306,6 +316,7 @@ fun CommentItem(
     hiddenReplyCount: Int,
     collapseParent: Boolean,
     showTopLevelIndicator: Boolean,
+    nextCommentDepth: Int? = null,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
     flattenHierarchy: Boolean = false,
@@ -364,14 +375,49 @@ fun CommentItem(
         collapsedCommentPreview(comment.id, comment.text, textCollapsed)
     }
 
-    val top = if (style.hasBackground) {
-        if (effectiveDepth > 0 && !collapseParent) 2.dp else 0.dp
-    } else if (effectiveDepth > 0 && !collapseParent) {
-        10.dp
-    } else {
-        6.dp
+    // Equal space on either side of the row boundary centers its divider between surfaces.
+    val top = if (style.hasBackground) 0.dp else 8.dp
+    val bottom = top
+    val continuous = style.continuousDepthIndicators && showIndicator &&
+        style.depthIndicatorMode != CommentDepthPreferences.AUTHOR
+    val firstRailDepth = if (showTopLevelIndicator) 0 else 1
+    val railColors = if (continuous) (firstRailDepth..effectiveDepth).map { depth ->
+        commentDepthColor(style.depthIndicatorMode, depth - firstRailDepth, "")
+    } else emptyList()
+    val dividerColor = colors.commentDivider
+    val decorations = Modifier.drawWithCache {
+        // Match the row layout's pixel rounding, including devices with fractional density.
+        val railWidth = style.indicatorThickness.widthDp.dp.roundToPx().toFloat()
+        val inset = (if (style.hasBackground) 4.dp else top).roundToPx().toFloat()
+        fun railStart(depth: Int): Float = min(
+            16.dp.roundToPx() + 12.dp.roundToPx() * depth,
+            (size.width * 0.6f).roundToInt(),
+        ).toFloat()
+        onDrawBehind {
+            railColors.forEachIndexed { index, color ->
+                val depth = firstRailDepth + index
+                val x = railStart(depth)
+                // The current line is painted by the surface so its top follows the card's
+                // rounded corner. Only extend it through the gap below a parent with replies.
+                val isAncestor = depth < effectiveDepth
+                if (!isAncestor && (nextCommentDepth == null || nextCommentDepth <= depth)) return@forEachIndexed
+                val y = if (isAncestor) 0f else size.height - inset
+                val bottomY = if (nextCommentDepth != null && nextCommentDepth > depth) {
+                    size.height
+                } else size.height - inset
+                // Only the actual branch ends are rounded; joins remain seamless.
+                val radius = if (style.roundedDepthIndicators && isAncestor) railWidth / 2f else 0f
+                drawRoundRect(color, Offset(x, y), Size(railWidth, (bottomY - y).coerceAtLeast(0f)), CornerRadius(radius))
+                if (y == 0f) drawRect(color, Offset(x, 0f), Size(railWidth, radius))
+                if (bottomY == size.height) drawRect(color, Offset(x, bottomY - radius), Size(railWidth, radius))
+            }
+            if (style.showDivider) {
+                val x = railStart(effectiveDepth) +
+                    if (continuous) railWidth + 8.dp.toPx() else 0f
+                drawRect(dividerColor, Offset(x, size.height - 0.5.dp.toPx()), Size((size.width - x - 16.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx()))
+            }
+        }
     }
-    val bottom = if (style.hasBackground) 0.dp else 6.dp
     val itemGeometry = remember { CommentItemGeometry() }
     var pendingActionSourceGesture by remember {
         mutableStateOf<CommentActionSourceGesture?>(null)
@@ -392,7 +438,7 @@ fun CommentItem(
         pendingActionSourceGesture = null
     }
     CommentItemLayout(
-        modifier = modifier,
+        modifier = modifier.then(decorations),
         effectiveDepth = effectiveDepth,
         cardStyle = style.hasBackground,
         topPadding = top,
@@ -402,6 +448,7 @@ fun CommentItem(
             modifier = Modifier.fillMaxWidth(),
             style = style,
             showIndicator = showIndicator,
+            continuesBelow = continuous && nextCommentDepth != null && nextCommentDepth > effectiveDepth,
             indicatorColor = indicatorColor,
             highlighted = highlighted,
             itemGeometry = itemGeometry,
@@ -429,6 +476,7 @@ fun CommentItem(
         ) {
             CommentMeta(
                 author = comment.by.orEmpty(),
+                avatarMode = style.userAvatarMode,
                 age = comment.timeFormatted,
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
@@ -657,6 +705,7 @@ private fun CommentSurface(
     modifier: Modifier,
     style: CommentItemStyle,
     showIndicator: Boolean,
+    continuesBelow: Boolean = false,
     indicatorColor: Color,
     highlighted: Boolean,
     itemGeometry: CommentItemGeometry? = null,
@@ -672,10 +721,10 @@ private fun CommentSurface(
         label = "comment corner radius",
     )
     val shape = RoundedCornerShape(
-        topStart = if (showIndicator) 0.dp else shapeRadius,
+        topStart = if (showIndicator && !style.roundedDepthIndicators) 0.dp else shapeRadius,
         topEnd = shapeRadius,
         bottomEnd = shapeRadius,
-        bottomStart = if (showIndicator) 0.dp else shapeRadius,
+        bottomStart = if (showIndicator && (!style.roundedDepthIndicators || continuesBelow)) 0.dp else shapeRadius,
     )
     val baseBackground = when {
         style.hasBackground -> colors.storyCardBackground
@@ -710,7 +759,7 @@ private fun CommentSurface(
     )
     val indicatorWidth by animateDpAsState(
         if (showIndicator || style.hasBackground) {
-            if (style.hasBackground) 3.5.dp else 2.5.dp
+            style.indicatorThickness.widthDp.dp
         } else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment indicator width",
@@ -736,21 +785,6 @@ private fun CommentSurface(
         if (style.hasBackground) 7.dp else 5.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment content vertical padding",
-    )
-    val dividerInset by animateDpAsState(
-        if (style.hasBackground) 8.dp else 4.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
-        label = "comment divider inset",
-    )
-    val dividerHeight by animateDpAsState(
-        if (style.showDivider) 4.dp else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
-        label = "comment divider height",
-    )
-    val dividerAlpha by animateFloatAsState(
-        if (style.showDivider) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
-        label = "comment divider alpha",
     )
     SideEffect {
         itemGeometry?.containerColor = background
@@ -811,7 +845,15 @@ private fun CommentSurface(
                         Modifier
                             .width(indicatorWidth)
                             .graphicsLayer(alpha = indicatorAlpha)
-                            .background(indicatorColor),
+                            .background(
+                                indicatorColor,
+                                RoundedCornerShape(
+                                    topStart = if (style.roundedDepthIndicators && !style.hasBackground) indicatorWidth / 2 else 0.dp,
+                                    topEnd = if (style.roundedDepthIndicators && !style.hasBackground) indicatorWidth / 2 else 0.dp,
+                                    bottomStart = if (style.roundedDepthIndicators && !style.hasBackground && !continuesBelow) indicatorWidth / 2 else 0.dp,
+                                    bottomEnd = if (style.roundedDepthIndicators && !style.hasBackground && !continuesBelow) indicatorWidth / 2 else 0.dp,
+                                ),
+                            ),
                     )
                     Column(
                         Modifier.padding(
@@ -856,21 +898,13 @@ private fun CommentSurface(
                 }
             }
         }
-        Box(
-            Modifier.fillMaxWidth().height(dividerHeight).padding(horizontal = dividerInset),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier.fillMaxWidth().height(1.dp).graphicsLayer(alpha = dividerAlpha)
-                    .background(colors.commentDivider),
-            )
-        }
     }
 }
 
 @Composable
 private fun CommentMeta(
     author: String,
+    avatarMode: UserAvatarMode,
     age: String,
     byOp: Boolean,
     byUser: Boolean,
@@ -924,6 +958,7 @@ private fun CommentMeta(
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        UserAvatar(author, avatarMode, Modifier.padding(end = 6.dp).size(22.dp))
         Row(
             modifier = Modifier
                 .clip(metaShape)

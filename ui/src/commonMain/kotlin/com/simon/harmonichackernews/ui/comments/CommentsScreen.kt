@@ -410,7 +410,7 @@ fun CommentsScreen(
                     }
                 }
             },
-        ) { _, item ->
+        ) { index, item ->
                 val tag = item.comment.by?.lowercase()?.trim()?.let(userTags::get)
                 val suppressed = item.comment.id in controller.suppressedCommentIds
                 val keepActionSourceVisible =
@@ -428,6 +428,7 @@ fun CommentsScreen(
                     hiddenReplyCount = item.hiddenReplyCount,
                     collapseParent = settings.collapseParent,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
+                    nextCommentDepth = visibleComments.getOrNull(index + 1)?.comment?.depth,
                     highlighted = item.comment.id == controller.highlightedCommentId,
                     suppressedReferenceUrl = suppressedReferenceUrl,
                     captureActionSource =

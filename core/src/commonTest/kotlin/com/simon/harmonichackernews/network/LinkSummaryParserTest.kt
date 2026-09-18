@@ -7,6 +7,30 @@ import kotlin.test.assertTrue
 
 class LinkSummaryParserTest {
     @Test
+    fun commentReferencePreservesParagraphsWithoutRepeatingMetadata() {
+        val summary = LinkSummaryParser.extractHackerNewsItem(
+            json = """{"type":"comment","by":"tptacek","time":1739365814,"kids":[1,2,3],"text":"First paragraph.<p>* A &amp; B<br>Next line.<p>Final <i>paragraph</i>."}""",
+            pageUrl = "https://news.ycombinator.com/item?id=43025038",
+            fallbackTitle = null,
+        )!!
+        assertEquals("Comment by tptacek", summary.title)
+        assertEquals("First paragraph.\n\n* A & B\nNext line.\n\nFinal paragraph.", summary.description)
+        assertEquals(1, summary.commentTextVersion)
+        assertEquals(summary, LinkSummaryCodec.decode(LinkSummaryCodec.encode(summary)))
+    }
+
+    @Test
+    fun commentReferenceTruncationPreservesParagraphBreaks() {
+        val summary = LinkSummaryParser.extractHackerNewsItem(
+            json = """{"type":"comment","by":"pg","text":"Intro.<p>${"More words. ".repeat(700)}"}""",
+            pageUrl = "https://news.ycombinator.com/item?id=1",
+            fallbackTitle = null,
+        )!!
+        assertTrue(summary.description.startsWith("Intro.\n\nMore words."))
+        assertTrue(summary.description.endsWith("…"))
+    }
+
+    @Test
     fun distinguishesHackerNewsPostsFromCommentsForReferenceTitles() {
         val story = LinkSummaryParser.extractHackerNewsItem(
             json = """{"type":"story","title":"The post title","by":"pg"}""",

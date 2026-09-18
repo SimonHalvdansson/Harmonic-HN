@@ -50,6 +50,10 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_SHOW_UP_BUTTON = "pref_comments_show_up_button"
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
+    const val COMMENT_INDICATOR_THICKNESS = "pref_comment_indicator_thickness"
+    const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
+    const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
+    const val USER_AVATAR_MODE = "pref_user_avatar_mode"
     const val MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth"
     const val SCROLL_NAVIGATION = "pref_scroll_navigation"
     const val TOP_LEVEL_THREAD_INDICATORS = "pref_top_level_thread_indicators"
@@ -173,6 +177,12 @@ class StoredUserSettings(
                 paletteTintConfigKey = paletteTintConfigKey(),
                 textSize = commentTextSize(),
                 depthIndicatorMode = commentDepthMode(),
+                indicatorThickness = CommentIndicatorThickness.fromStored(
+                    string(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "standard"),
+                ),
+                roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, false),
+                continuousDepthIndicators = boolean(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS, false),
+                userAvatarMode = UserAvatarMode.fromStored(string(UserPreferenceKeys.USER_AVATAR_MODE, "none")),
                 showNavigationButtons = boolean(UserPreferenceKeys.SCROLL_NAVIGATION, false),
                 font = preferredFont(),
                 showTopLevelDepthIndicator =

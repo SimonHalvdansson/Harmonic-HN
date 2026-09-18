@@ -298,14 +298,16 @@ fun CommentsHeader(
                             }
                             // Keep selectable summary text outside the article click target so a
                             // long press starts text selection instead of opening the WebView.
-                            StorySummary(
-                                story = story,
-                                settings = settings,
-                                onOpenLink = previewPlatform.openLink,
-                                diagnostics = controller.summaryDiagnostics,
-                                streaming = controller.storySummaryLoading,
-                                containerColor = summaryContainerColor,
-                            )
+                            CommentsPreviewPlatformProvider(previewPlatform) {
+                                StorySummary(
+                                    story = story,
+                                    settings = settings,
+                                    onOpenLink = previewPlatform.openLink,
+                                    diagnostics = controller.summaryDiagnostics,
+                                    streaming = controller.storySummaryLoading,
+                                    containerColor = summaryContainerColor,
+                                )
+                            }
                             HeaderMeta(
                                 story = story,
                                 settings = settings,
