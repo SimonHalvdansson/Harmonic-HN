@@ -217,10 +217,14 @@ fun DebugSettingsRoute(
         showNavigation = showNavigation,
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
+        glassEffectEnabled = settings.debug.glassEffectEnabled,
         environment = environment,
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH, it)
+        },
+        onGlassEffectChanged = {
+            repository.setDebugBoolean(DebugBooleanPreference.GLASS_EFFECT, it)
         },
         onOpenHnId = onOpenHnId,
         onOpenWithoutCache = onOpenWithoutCache,

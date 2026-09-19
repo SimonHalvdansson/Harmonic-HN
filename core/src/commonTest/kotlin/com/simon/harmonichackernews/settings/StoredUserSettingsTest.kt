@@ -78,6 +78,7 @@ class StoredUserSettingsTest {
         assertEquals(ThemePreferences.DEFAULT_DARK, settings.appearance.darkTheme)
         assertEquals(ThemePreferences.ACCENT_DEFAULT, settings.appearance.accentPreset)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
+        assertFalse(settings.debug.glassEffectEnabled)
     }
 
     @Test

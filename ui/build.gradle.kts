@@ -53,6 +53,7 @@ kotlin {
             implementation(libs.coil.svg)
             implementation(libs.haze)
             implementation(libs.haze.blur)
+            implementation(libs.haze.glass)
             implementation(libs.ksoup)
             implementation(libs.latex.renderer)
             implementation(libs.androidx.material3.adaptive)

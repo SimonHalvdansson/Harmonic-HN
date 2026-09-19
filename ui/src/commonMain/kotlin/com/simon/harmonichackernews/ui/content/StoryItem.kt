@@ -91,11 +91,8 @@ import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import dev.chrisbanes.haze.HazeInput
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
@@ -979,17 +976,12 @@ private fun StoryMetricPill(
             .background(container.copy(alpha = 0.92f))
             .border(1.dp, colors.outlineVariant, StoryMetricPillShape)
     } else {
-        val hazeTint = container.copy(alpha = 0.60f)
         Modifier
-            .clip(StoryMetricPillShape)
-            .hazeBlur(
-                input = HazeInput.Sources(hazeState),
-                style = HazeBlurStyle {
-                    blurRadius(4.dp)
-                    colorEffects(listOf(HazeColorEffect.tint(hazeTint)))
-                    noiseFactor(0f)
-                    fallbackColorEffect(HazeColorEffect.tint(hazeTint))
-                },
+            .sharedHazeBackground(
+                hazeState = hazeState,
+                surfaceColor = container.copy(alpha = 0.60f),
+                shape = StoryMetricPillShape,
+                blurRadius = 4.dp,
             )
     }
     Row(

@@ -12,6 +12,24 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun debugGlassIsOptInAndPersistsBothToggleStatesAcrossReaders() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        val original = repository.snapshot()
+        assertFalse(original.debug.glassEffectEnabled)
+
+        repository.setDebugBoolean(DebugBooleanPreference.GLASS_EFFECT, true)
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(
+            original.copy(debug = original.debug.copy(glassEffectEnabled = true)),
+            restored.snapshot(),
+        )
+
+        restored.setDebugBoolean(DebugBooleanPreference.GLASS_EFFECT, false)
+        assertEquals(original, AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow()).snapshot())
+    }
+
+    @Test
     fun storyListSelectorDefaultsToDropdownAndPersistsAcrossReaders() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

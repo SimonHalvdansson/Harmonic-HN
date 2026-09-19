@@ -97,9 +97,11 @@ fun DebugSettingsScreen(
     showNavigation: Boolean,
     contentVersion: Int,
     alwaysShowTapToRefresh: Boolean,
+    glassEffectEnabled: Boolean,
     environment: DebugEnvironmentUiState,
     onBack: () -> Unit,
     onAlwaysShowTapToRefreshChanged: (Boolean) -> Unit,
+    onGlassEffectChanged: (Boolean) -> Unit,
     onOpenHnId: (Int) -> Unit,
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
@@ -132,6 +134,18 @@ fun DebugSettingsScreen(
                     title = "Open without cache",
                     icon = Res.drawable.ic_cached,
                     onClick = onOpenWithoutCache,
+                )
+            }
+        }
+
+        item {
+            SettingsCategory("Experimental appearance") {
+                SwitchSettingRow(
+                    title = "Glass effect",
+                    summary = "Use frosted glass on floating buttons and image-backed story pills",
+                    icon = Res.drawable.ic_palette,
+                    checked = glassEffectEnabled,
+                    onCheckedChange = onGlassEffectChanged,
                 )
             }
         }

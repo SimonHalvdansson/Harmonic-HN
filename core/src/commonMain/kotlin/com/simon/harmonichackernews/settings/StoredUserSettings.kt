@@ -42,6 +42,7 @@ object UserPreferenceKeys {
     const val ALWAYS_OPEN_COMMENTS = "pref_always_open_comments"
     const val PAGINATION_MODE = "pref_pagination_mode"
     const val ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh"
+    const val DEBUG_GLASS_EFFECT = "pref_debug_glass_effect"
     const val DEFAULT_STORY_TYPE = "pref_default_story_type"
     const val ADDITIONAL_FRONTPAGES = "pref_additional_frontpages"
     const val FRONTPAGE_ORDER = "pref_frontpage_order"
@@ -340,6 +341,7 @@ class StoredUserSettings(
     override val debug: DebugPreferences
         get() = DebugPreferences(
             alwaysShowTapToRefresh = boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
+            glassEffectEnabled = boolean(UserPreferenceKeys.DEBUG_GLASS_EFFECT, false),
         )
 
     override fun setStoriesToCache(count: Int) {

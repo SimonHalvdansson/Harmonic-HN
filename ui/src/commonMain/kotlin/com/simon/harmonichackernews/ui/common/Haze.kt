@@ -5,11 +5,16 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.hazeGlass
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
@@ -19,6 +24,9 @@ import dev.chrisbanes.haze.rememberHazeState
 
 /** Provides the shared backdrop source used by floating translucent controls. */
 private val LocalSharedHazeState = compositionLocalOf<HazeState?> { null }
+
+/** Opt-in experiment supplied once by the host's observable settings environment. */
+internal val LocalHazeGlassEnabled = compositionLocalOf { false }
 
 @Composable
 fun HazeHost(content: @Composable () -> Unit) {
@@ -40,18 +48,37 @@ internal fun Modifier.sharedHazeSource(
     hazeSource(hazeState, zIndex = zIndex)
 }
 
+@Composable
+@OptIn(ExperimentalHazeApi::class)
 internal fun Modifier.sharedHazeBackground(
     hazeState: HazeState?,
     surfaceColor: Color,
-    shape: Shape,
+    shape: RoundedCornerShape,
+    blurRadius: Dp = 6.dp,
 ): Modifier = clip(shape).then(
     if (hazeState == null) {
         Modifier.background(surfaceColor)
+    } else if (LocalHazeGlassEnabled.current) {
+        Modifier.hazeGlass(
+            input = HazeInput.Sources(hazeState),
+            // Regular diffuses the backdrop without Fixed optics' sharp edge-detail layer.
+            style = GlassStyle.regular.then {
+                shape(shape)
+                backgroundColor(surfaceColor.copy(alpha = 1f))
+                tint(surfaceColor)
+                specularIntensity(0.18f)
+                ambientResponse(0.08f)
+                lightPosition(Alignment.TopStart)
+                contentNormalBlend(0f)
+                edgeSoftness(1.dp)
+                chromaticAberrationStrength(0f)
+            },
+        )
     } else {
         Modifier.hazeBlur(
             input = HazeInput.Sources(hazeState),
             style = HazeBlurStyle {
-                blurRadius(6.dp)
+                blurRadius(blurRadius)
                 colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
                 noiseFactor(0f)
                 fallbackColorEffect(HazeColorEffect.tint(surfaceColor))

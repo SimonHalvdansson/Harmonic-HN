@@ -56,7 +56,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -76,11 +75,8 @@ import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
 import com.simon.harmonichackernews.ui.content.toCommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
@@ -582,7 +578,7 @@ fun CommentsScreen(
                 },
                 modifier = Modifier
                     .shadow(3.dp, scrollTopShape, clip = false)
-                    .commentsHazeBackground(
+                    .sharedHazeBackground(
                         hazeState = commentsHazeState,
                         surfaceColor = scrollTopSurface,
                         shape = scrollTopShape,
@@ -806,8 +802,8 @@ private fun CommentNavigationButtons(
     Box {
         Row(
             modifier = Modifier
-                .shadow(6.dp, shape, clip = false)
-                .commentsHazeBackground(
+                .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, shape, clip = false)
+                .sharedHazeBackground(
                     hazeState = hazeState,
                     surfaceColor = surfaceColor,
                     shape = shape,
@@ -855,23 +851,3 @@ private fun CommentNavigationButtons(
         ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
     }
 }
-
-private fun Modifier.commentsHazeBackground(
-    hazeState: HazeState?,
-    surfaceColor: Color,
-    shape: Shape,
-): Modifier = clip(shape).then(
-    if (hazeState == null) {
-        Modifier.background(surfaceColor)
-    } else {
-        Modifier.hazeBlur(
-            input = HazeInput.Sources(hazeState),
-            style = HazeBlurStyle {
-                blurRadius(6.dp)
-                colorEffects(listOf(HazeColorEffect.tint(surfaceColor)))
-                noiseFactor(0f)
-                fallbackColorEffect(HazeColorEffect.tint(surfaceColor))
-            },
-        )
-    },
-)

@@ -80,6 +80,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.ui.stories.menuIcon
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -429,7 +430,7 @@ fun ManageFrontpagesSettingsScreen(
                     .padding(16.dp)
                     .widthIn(min = 140.dp)
                     .onSizeChanged { resetButtonHeight = with(density) { it.height.toDp() } }
-                    .shadow(6.dp, resetButtonShape, clip = false)
+                    .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, resetButtonShape, clip = false)
                     .sharedHazeBackground(
                         hazeState = hazeState,
                         surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),

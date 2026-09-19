@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -13,6 +16,9 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.resources.BundledHarmonicResources
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -92,7 +98,14 @@ fun ProvideHarmonicUiDependencies(
     LaunchedEffect(dependencies.webContent) {
         dependencies.installBundledResources()
     }
-    CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, content = content)
+    val glassEffectEnabled by remember(dependencies.settings) {
+        dependencies.settings.updates.map { it.debug.glassEffectEnabled }.distinctUntilChanged()
+    }.collectAsState(initial = dependencies.userSettings.debug.glassEffectEnabled)
+    CompositionLocalProvider(
+        LocalHarmonicUiDependencies provides dependencies,
+        LocalHazeGlassEnabled provides (dependencies.metadata.debugSettingsEnabled && glassEffectEnabled),
+        content = content,
+    )
 }
 
 /** Installs large shared assets for Compose and native UI hosts that own this environment. */
