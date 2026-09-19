@@ -141,7 +141,6 @@ class SettingsPreviewItemStylesTest {
         preferredFont = "serif",
         paletteTintConfigKey = "muted:0.5",
         startingPage = "Top",
-        additionalFrontpagesSummary = "None",
         alwaysOpenComments = false,
         pagination = false,
         hideClicked = false,

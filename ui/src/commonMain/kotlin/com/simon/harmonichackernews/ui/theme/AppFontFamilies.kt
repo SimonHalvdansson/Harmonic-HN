@@ -6,12 +6,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.google_sans_code_regular
 import com.simon.harmonichackernews.resources.google_sans_flex_rounded_bold
 import com.simon.harmonichackernews.resources.google_sans_flex_rounded_regular
 import com.simon.harmonichackernews.resources.product_sans_bold
 import com.simon.harmonichackernews.resources.product_sans_italic
 import com.simon.harmonichackernews.resources.product_sans_regular
 import org.jetbrains.compose.resources.Font
+
+val GoogleSansCodeFontFamily: FontFamily
+    @Composable get() {
+        val regular = Font(Res.font.google_sans_code_regular, FontWeight.Normal)
+        return remember(regular) { FontFamily(regular) }
+    }
 
 val ProductSansFontFamily: FontFamily
     @Composable get() {

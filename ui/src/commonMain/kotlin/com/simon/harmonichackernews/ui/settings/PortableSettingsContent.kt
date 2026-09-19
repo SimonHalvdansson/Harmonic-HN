@@ -72,7 +72,10 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
         )
-        SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack)
+        SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack) {
+            onNavigate(SettingsSection.Frontpages, true)
+        }
+        SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(app.settings, onBack)
         SettingsSection.Comments -> CommentsSettingsRoute(
             repository = app.settings,
             showNavigation = singlePane,
@@ -92,6 +95,7 @@ fun PortableSettingsDetail(
             userTags = app.userTags,
             showNavigation = singlePane,
             onBack = onBack,
+            onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             profileDialog = { userName, dismiss, onTagChanged ->
                 PortableUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
             },
@@ -368,6 +372,7 @@ private fun PortableStoriesSettings(
     app: HarmonicAppComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onManageFrontpages: () -> Unit,
 ) {
     val story = app.settings.snapshot().story
     StoriesSettingsRoute(
@@ -376,6 +381,7 @@ private fun PortableStoriesSettings(
             tintFallbackArgb = HarmonicTheme.colors.storyCardBackground.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
+        onManageFrontpages = onManageFrontpages,
         showNavigation = showNavigation,
         onBack = onBack,
         onPlatformEffect = { effect ->

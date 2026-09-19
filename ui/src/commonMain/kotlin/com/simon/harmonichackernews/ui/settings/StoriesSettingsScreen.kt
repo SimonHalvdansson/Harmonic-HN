@@ -35,7 +35,6 @@ data class StoriesSettingsUiState(
     val preferredFont: String,
     val paletteTintConfigKey: String,
     val startingPage: String,
-    val additionalFrontpagesSummary: String,
     val alwaysOpenComments: Boolean,
     val pagination: Boolean,
     val hideClicked: Boolean,
@@ -65,7 +64,7 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
 }
 
 enum class StoriesStringSetting { DisplayStyle }
-enum class StoriesSettingsDialog { Hotness, StartingPage, AdditionalFrontpages, FaviconProvider }
+enum class StoriesSettingsDialog { Hotness, FaviconProvider }
 
 @Composable
 fun StoriesSettingsScreen(
@@ -78,6 +77,7 @@ fun StoriesSettingsScreen(
     onTextSizeOffsetChanged: (Int) -> Unit,
     onResetLayout: () -> Unit,
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
+    onManageFrontpages: () -> Unit,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -199,9 +199,12 @@ fun StoriesSettingsScreen(
         }
         item {
             SettingsCategory("Behavior") {
-                DialogRow("Starting page", state.startingPage, Res.drawable.ic_bookmark, StoriesSettingsDialog.StartingPage, onDialogRequested)
-                SettingsDivider()
-                DialogRow("Additional frontpages", state.additionalFrontpagesSummary, Res.drawable.ic_library_books, StoriesSettingsDialog.AdditionalFrontpages, onDialogRequested)
+                SettingRow(
+                    title = "Manage frontpages",
+                    summary = "Default: ${state.startingPage}",
+                    icon = Res.drawable.ic_library_books,
+                    onClick = onManageFrontpages,
+                )
                 SettingsDivider()
                 BooleanRow("Always open comments", Res.drawable.ic_keyboard_double_arrow_right, state.alwaysOpenComments, StoriesBooleanSetting.AlwaysOpenComments, onBooleanChanged, summary = "Clicking a story takes you directly to the comments view")
                 SettingsDivider()
@@ -241,20 +244,6 @@ private fun BooleanRow(
     checked = checked,
     enabled = enabled,
     onCheckedChange = { onChanged(setting, it) },
-)
-
-@Composable
-private fun DialogRow(
-    title: String,
-    summary: String,
-    icon: org.jetbrains.compose.resources.DrawableResource,
-    dialog: StoriesSettingsDialog,
-    onDialogRequested: (StoriesSettingsDialog) -> Unit,
-) = SettingRow(
-    title = title,
-    summary = summary,
-    icon = icon,
-    onClick = { onDialogRequested(dialog) },
 )
 
 private fun formatOffset(offset: Int): String = if (offset >= 0) "+$offset" else "$offset"

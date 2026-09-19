@@ -26,6 +26,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
@@ -87,7 +88,7 @@ fun FaviconProviderDialog(
                             Text(
                                 text = provider.urlTemplate,
                                 color = HarmonicTheme.colors.storyDisabled,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = GoogleSansCodeFontFamily,
                                 fontSize = 12.sp,
                                 lineHeight = 15.sp,
                             )

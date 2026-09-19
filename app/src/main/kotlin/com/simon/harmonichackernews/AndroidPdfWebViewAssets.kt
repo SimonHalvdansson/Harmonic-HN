@@ -15,18 +15,25 @@ internal object AndroidPdfWebViewAssets {
     private val assetRoot = Res.getUri("files/web/${WebContentAssets.PDF_VIEWER_INDEX}")
         .removePrefix("file:///android_asset/")
         .substringBeforeLast('/') + "/"
+    private val statusFontAsset = Res.getUri("font/product_sans_regular.ttf")
+        .removePrefix("file:///android_asset/")
 
     fun loader(context: Context): WebViewAssetLoader {
         val assets = context.applicationContext.assets
         return WebViewAssetLoader.Builder()
             .addPathHandler(PATH_PREFIX) { path ->
                 // Failed local resources must stay local rather than falling through to a network
-                // request, and the handler must never expose an asset outside the PDF directory.
+                // request. Only the PDF directory and the bundled status font are exposed.
                 if (path.split('/').any { it == ".." || it.contains('\\') }) {
                     missing()
                 } else {
                     try {
-                        WebResourceResponse(mimeType(path), "UTF-8", assets.open(assetRoot + path))
+                        val asset = if (path == "fonts/product_sans_regular.ttf") {
+                            statusFontAsset
+                        } else {
+                            assetRoot + path
+                        }
+                        WebResourceResponse(mimeType(path), "UTF-8", assets.open(asset))
                     } catch (_: IOException) {
                         missing()
                     }

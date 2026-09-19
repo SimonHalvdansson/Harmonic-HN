@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
-import com.simon.harmonichackernews.StoryTypeSettingsPolicy
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
@@ -386,6 +385,7 @@ fun StoriesSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
+    onManageFrontpages: () -> Unit,
     faviconDialog: @Composable (
         selected: String,
         presenter: StoriesSettingsPresenter,
@@ -407,6 +407,7 @@ fun StoriesSettingsRoute(
             presenter.setBoolean(setting, value).forEach(onPlatformEffect)
         },
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
+        onManageFrontpages = onManageFrontpages,
         onStringChanged = presenter::setString,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onResetLayout = {
@@ -428,23 +429,6 @@ fun StoriesSettingsRoute(
             story.hotness.toString(),
             { dialog = null },
             presenter::setHotness,
-        )
-        StoriesSettingsDialog.StartingPage -> SettingsChoiceDialog(
-            "Starting page",
-            StoryTypeSettingsPolicy.startingPageLabels(story.additionalFrontpages)
-                .map { it to it },
-            state.startingPage,
-            { dialog = null },
-        ) {
-            presenter.setStartingPage(it).forEach(onPlatformEffect)
-        }
-        StoriesSettingsDialog.AdditionalFrontpages -> AdditionalFrontpagesDialog(
-            selected = story.additionalFrontpages,
-            onDismiss = { dialog = null },
-            onSelectionChanged = {
-                presenter.setAdditionalFrontpages(it).forEach(onPlatformEffect)
-                dialog = null
-            },
         )
         StoriesSettingsDialog.FaviconProvider -> faviconDialog(
             story.faviconProvider,
@@ -580,6 +564,7 @@ fun FiltersTagsSettingsRoute(
     userTags: UserTagsRepository,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onManageFrontpages: () -> Unit,
     profileDialog: @Composable (
         userName: String,
         onDismiss: () -> Unit,
@@ -592,7 +577,6 @@ fun FiltersTagsSettingsRoute(
     val snapshot by settings.updates.collectAsState(initial = settings.snapshot())
     var refresh by remember { mutableIntStateOf(0) }
     var filterDialog by rememberSaveable { mutableStateOf<ContentFilterDialog?>(null) }
-    var showAdditionalFrontpages by rememberSaveable { mutableStateOf(false) }
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
     var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
     FiltersTagsSettingsScreen(
@@ -600,7 +584,7 @@ fun FiltersTagsSettingsRoute(
         showNavigation = showNavigation,
         onBack = onBack,
         onHideJobsChanged = presenter::setHideJobs,
-        onAdditionalFrontpagesRequested = { showAdditionalFrontpages = true },
+        onAdditionalFrontpagesRequested = onManageFrontpages,
         onFilterRequested = { filterDialog = it },
         onProfileRequested = { profileUser = it },
         onTagEditRequested = { tagDialogUser = it },
@@ -610,16 +594,6 @@ fun FiltersTagsSettingsRoute(
         },
         contentVersion = snapshot.hashCode() + refresh,
     )
-    if (showAdditionalFrontpages) {
-        AdditionalFrontpagesDialog(
-            selected = snapshot.story.additionalFrontpages,
-            onDismiss = { showAdditionalFrontpages = false },
-            onSelectionChanged = {
-                settings.setAdditionalFrontpages(it)
-                showAdditionalFrontpages = false
-            },
-        )
-    }
     filterDialog?.let { type ->
         val content = type.content
         StringListEditorDialog(
@@ -650,20 +624,6 @@ fun FiltersTagsSettingsRoute(
         profileDialog(userName, { profileUser = null }) { refresh++ }
     }
 }
-
-@Composable
-private fun AdditionalFrontpagesDialog(
-    selected: Set<String>,
-    onDismiss: () -> Unit,
-    onSelectionChanged: (Set<String>) -> Unit,
-) = MultiChoiceDialog(
-    title = "Additional frontpages",
-    description = "Choose which optional frontpages appear in the story-list picker. You can set the default under Starting page.",
-    options = StoryTypeSettingsPolicy.additionalFrontpageLabels,
-    selected = selected,
-    onDismiss = onDismiss,
-    onSelectionChanged = onSelectionChanged,
-)
 
 @Composable
 private fun SettingsChoiceDialog(

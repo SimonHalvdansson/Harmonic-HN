@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.widget.setSkipFetchForAllWidgets
 fun AndroidStoriesSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onManageFrontpages: () -> Unit,
 ) {
     val context = LocalContext.current
     val repository = LocalHarmonicUiDependencies.current.settings
@@ -32,6 +33,7 @@ fun AndroidStoriesSettingsScreen(
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,
         onBack = onBack,
+        onManageFrontpages = onManageFrontpages,
         onPlatformEffect = { effect ->
             when (effect) {
                 SettingsPlatformEffect.RefreshStoryWidgets -> refreshStoryWidgets(context)

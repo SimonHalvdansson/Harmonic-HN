@@ -58,7 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,11 +71,11 @@ import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToLong
@@ -95,13 +94,6 @@ private sealed interface AiModelPriceState {
     data class Resolved(val model: AiModel) : AiModelPriceState
     data class Error(val message: String) : AiModelPriceState
 }
-
-private val AiMonoFontFamily: FontFamily
-    @Composable get() {
-        val regular = Font(Res.font.jetbrains_mono_regular, FontWeight.Normal)
-        val bold = Font(Res.font.jetbrains_mono_bold, FontWeight.Bold)
-        return remember(regular, bold) { FontFamily(regular, bold) }
-    }
 
 @Composable
 fun AiModelSelectorDialog(
@@ -239,7 +231,7 @@ fun AiModelSelectorDialog(
                 supportingText = modelError?.let { message -> { Text(message) } },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = AiMonoFontFamily,
+                    fontFamily = GoogleSansCodeFontFamily,
                     fontSize = 14.sp,
                 ),
                 keyboardOptions = KeyboardOptions(
@@ -505,7 +497,7 @@ private fun AiModelRow(
                     text = model.requestId,
                     modifier = Modifier.padding(top = 2.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = AiMonoFontFamily,
+                    fontFamily = GoogleSansCodeFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 17.sp,
                     maxLines = 1,

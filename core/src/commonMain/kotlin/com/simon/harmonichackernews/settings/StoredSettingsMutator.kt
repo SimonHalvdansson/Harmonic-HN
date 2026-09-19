@@ -51,9 +51,20 @@ class StoredSettingsMutator(
     }
 
     fun setAdditionalFrontpages(value: Set<String>) {
-        store.putStringSet(
-            UserPreferenceKeys.ADDITIONAL_FRONTPAGES,
-            AdditionalFrontpagePreferences.sanitize(value),
+        val enabled = AdditionalFrontpagePreferences.sanitize(value)
+        val preferred = store.getString(UserPreferenceKeys.DEFAULT_STORY_TYPE)
+        store.update {
+            putStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES, enabled)
+            if (AdditionalFrontpagePreferences.isLabel(preferred) && preferred !in enabled) {
+                putString(UserPreferenceKeys.DEFAULT_STORY_TYPE, "Top Stories")
+            }
+        }
+    }
+
+    fun setFrontpageOrder(value: List<String>) {
+        store.putString(
+            UserPreferenceKeys.FRONTPAGE_ORDER,
+            com.simon.harmonichackernews.StoryTypeMenuPolicy.sanitizeOrder(value).joinToString(","),
         )
     }
 

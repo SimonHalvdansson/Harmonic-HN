@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 /** Platform-neutral app bar used by settings and informational screens. */
@@ -95,7 +95,7 @@ fun HarmonicTopAppBar(
             text = title,
             modifier = Modifier.padding(top = 1.dp),
             color = colors.onSurface,
-            fontFamily = FontFamily.SansSerif,
+            fontFamily = ProductSansFontFamily,
             fontSize = 22.sp,
             fontWeight = FontWeight.Normal,
             style = platformTextStyle,

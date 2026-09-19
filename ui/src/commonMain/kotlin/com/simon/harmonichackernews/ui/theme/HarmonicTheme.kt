@@ -4,9 +4,11 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
@@ -62,11 +64,13 @@ fun HarmonicTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit,
 ) {
+    val fontFamily = ProductSansFontFamily
+    val typography = remember(fontFamily) { Typography(fontFamily = fontFamily) }
     CompositionLocalProvider(
         LocalHarmonicColors provides colors,
         LocalHarmonicDarkTheme provides darkTheme,
     ) {
-        MaterialTheme(colorScheme = colorScheme) {
+        MaterialTheme(colorScheme = colorScheme, typography = typography) {
             CompositionLocalProvider(
                 LocalRippleConfiguration provides RippleConfiguration(
                     color = if (darkTheme) {

@@ -7,6 +7,23 @@ import kotlin.test.assertTrue
 
 class SettingsNavigationStoreTest {
     @Test
+    fun manageFrontpagesRestoresAndReturnsToItsEntryPointInEitherLayout() {
+        for (twoPane in listOf(false, true)) {
+            for (parent in listOf(SettingsSection.Stories, SettingsSection.FiltersTags)) {
+                val navigation = SettingsNavigationStore(initialSection = parent, twoPane = twoPane)
+                navigation.navigateTo(SettingsSection.Frontpages, preserveCurrentDetail = true)
+                val restored = SettingsNavigationStore(
+                    twoPane = twoPane,
+                    restoredRoutes = navigation.savedRoutes(),
+                )
+                assertEquals(SettingsSection.Frontpages, restored.state.value.selectedSection)
+                assertTrue(restored.navigateBack())
+                assertEquals(parent, restored.state.value.selectedSection)
+            }
+        }
+    }
+
+    @Test
     fun hostBackTraversesThemeAppearanceAndListBeforeClosing() {
         val navigation = SettingsNavigationStore(initialSection = SettingsSection.Appearance)
         navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)

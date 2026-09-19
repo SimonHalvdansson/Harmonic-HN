@@ -57,6 +57,7 @@ data class StoryPreferences(
     val additionalFrontpages: Set<String>,
     val outline: Boolean = false,
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
+    val frontpageOrder: List<String> = emptyList(),
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED

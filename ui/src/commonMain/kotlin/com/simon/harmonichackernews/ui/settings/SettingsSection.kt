@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.resources.settings_section_debug_link_previe
 import com.simon.harmonichackernews.resources.settings_section_filters_tags
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.resources.settings_section_stories
+import com.simon.harmonichackernews.resources.settings_section_frontpages
 import com.simon.harmonichackernews.resources.settings_section_notifications
 import com.simon.harmonichackernews.resources.settings_section_palette_tint
 import com.simon.harmonichackernews.resources.settings_section_theme
@@ -26,6 +27,7 @@ enum class SettingsSection(
     Theme("theme", Res.string.settings_section_theme),
     PaletteTint("palette_tint", Res.string.settings_section_palette_tint),
     Stories("stories", Res.string.settings_section_stories),
+    Frontpages("frontpages", Res.string.settings_section_frontpages),
     Comments("comments", Res.string.settings_section_comments),
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
     WebLinks("web_links", Res.string.settings_section_web_links),

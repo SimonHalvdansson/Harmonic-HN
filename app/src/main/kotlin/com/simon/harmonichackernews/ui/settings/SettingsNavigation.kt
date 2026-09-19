@@ -192,6 +192,11 @@ fun SettingsShell(
                 SettingsSection.Stories -> AndroidStoriesSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
+                )
+                SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(
+                    repository = dependencies.settings,
+                    onBack = onBack,
                 )
                 SettingsSection.Comments -> AndroidCommentsSettingsScreen(
                     showNavigation = singlePane,
@@ -210,6 +215,7 @@ fun SettingsShell(
                 SettingsSection.FiltersTags -> AndroidFiltersTagsSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
                 )
                 SettingsSection.AiSummary -> AndroidAiSummarySettingsScreen(
                     showNavigation = singlePane,

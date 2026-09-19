@@ -45,6 +45,7 @@ object UserPreferenceKeys {
     const val ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh"
     const val DEFAULT_STORY_TYPE = "pref_default_story_type"
     const val ADDITIONAL_FRONTPAGES = "pref_additional_frontpages"
+    const val FRONTPAGE_ORDER = "pref_frontpage_order"
 
     const val COLLAPSE_PARENT = "pref_collapse_parent"
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
@@ -152,6 +153,9 @@ class StoredUserSettings(
                 alwaysShowTapToRefresh =
                     boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
                 preferredStoryType = preferredStoryType(),
+                frontpageOrder = com.simon.harmonichackernews.StoryTypeMenuPolicy.sanitizeOrder(
+                    string(UserPreferenceKeys.FRONTPAGE_ORDER, "").split(','),
+                ),
                 additionalFrontpages = AdditionalFrontpagePreferences.sanitize(
                     runCatching {
                         store.getStringSet(UserPreferenceKeys.ADDITIONAL_FRONTPAGES)

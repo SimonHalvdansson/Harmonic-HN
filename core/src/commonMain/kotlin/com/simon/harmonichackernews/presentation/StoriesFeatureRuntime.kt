@@ -279,10 +279,12 @@ class StoriesFeatureRuntime(
         enabledAdditionalFrontpages: Set<String>,
         hasAccount: Boolean,
         restoring: Boolean,
+        frontpageOrder: List<String> = userSettings.story.frontpageOrder,
     ) {
         availableStoryTypes = StoryTypeMenuPolicy.availableTypes(
             enabledAdditionalFrontpages,
             hasAccount,
+            frontpageOrder,
         )
         this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
         val preferredType = StoryTypeMenuPolicy.preferred(
@@ -308,6 +310,7 @@ class StoriesFeatureRuntime(
         enabledAdditionalFrontpages = settings.story.additionalFrontpages,
         hasAccount = hasAccount,
         restoring = restoring,
+        frontpageOrder = settings.story.frontpageOrder,
     )
 
     fun initialize(restoring: Boolean) = initialize(
@@ -437,9 +440,10 @@ class StoriesFeatureRuntime(
     fun updateAvailableStoryTypes(
         enabledAdditionalFrontpages: Set<String>,
         hasAccount: Boolean,
+        frontpageOrder: List<String> = userSettings.story.frontpageOrder,
     ): Boolean {
         this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
-        val next = StoryTypeMenuPolicy.availableTypes(enabledAdditionalFrontpages, hasAccount)
+        val next = StoryTypeMenuPolicy.availableTypes(enabledAdditionalFrontpages, hasAccount, frontpageOrder)
         if (next == availableStoryTypes) return false
         availableStoryTypes = next
         if (currentType !in next) {

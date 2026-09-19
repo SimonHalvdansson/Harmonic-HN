@@ -94,7 +94,7 @@ enum class StoryType(
 
 /** Portable ordering and availability policy for the stories source selector. */
 object StoryTypeMenuPolicy {
-    private val baseTypes = listOf(
+    val baseFrontpages = listOf(
         StoryType.TOP_STORIES,
         StoryType.LAST_24_HOURS,
         StoryType.LAST_48_HOURS,
@@ -104,23 +104,32 @@ object StoryTypeMenuPolicy {
         StoryType.ASK_HN,
         StoryType.SHOW_HN,
         StoryType.HN_JOBS,
-        StoryType.BOOKMARKS,
-        StoryType.HISTORY,
     )
+
+    /** Stable enum names are persisted independently of display labels and availability. */
+    fun sanitizeOrder(order: List<String>): List<String> = order.distinct().filter { name ->
+        (baseFrontpages + StoryType.additionalFrontpages).any { it.name == name }
+    }
+
+    fun frontpages(
+        enabledAdditionalFrontpages: Set<String>,
+        order: List<String> = emptyList(),
+    ): List<StoryType> {
+        val available = baseFrontpages +
+            StoryType.additionalFrontpages.filter { it.label in enabledAdditionalFrontpages }
+        val ordered = order.distinct().mapNotNull { name -> available.find { it.name == name } }
+        return ordered + available.filterNot { it in ordered }
+    }
 
     fun availableTypes(
         enabledAdditionalFrontpages: Set<String>,
         hasAccount: Boolean,
+        frontpageOrder: List<String> = emptyList(),
     ): List<StoryType> = buildList {
-        baseTypes.forEach { type ->
-            if (type == StoryType.BOOKMARKS) {
-                StoryType.additionalFrontpages
-                    .filter { it.label in enabledAdditionalFrontpages }
-                    .forEach(::add)
-            }
-            add(type)
-            if (hasAccount && type == StoryType.BOOKMARKS) add(StoryType.FAVORITES)
-        }
+        addAll(frontpages(enabledAdditionalFrontpages, frontpageOrder))
+        add(StoryType.BOOKMARKS)
+        if (hasAccount) add(StoryType.FAVORITES)
+        add(StoryType.HISTORY)
         if (hasAccount) add(StoryType.UPVOTED)
     }
 

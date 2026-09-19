@@ -4,7 +4,11 @@ import androidx.compose.runtime.Composable
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
-fun AndroidFiltersTagsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
+fun AndroidFiltersTagsSettingsScreen(
+    showNavigation: Boolean,
+    onBack: () -> Unit,
+    onManageFrontpages: () -> Unit,
+) {
     val app = LocalHarmonicUiDependencies.current
     FiltersTagsSettingsRoute(
         settings = app.settings,
@@ -12,6 +16,7 @@ fun AndroidFiltersTagsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit
         userTags = app.userTags,
         showNavigation = showNavigation,
         onBack = onBack,
+        onManageFrontpages = onManageFrontpages,
         profileDialog = { userName, dismiss, onTagChanged ->
             AndroidUserSettingsDialog(
                 userName = userName,

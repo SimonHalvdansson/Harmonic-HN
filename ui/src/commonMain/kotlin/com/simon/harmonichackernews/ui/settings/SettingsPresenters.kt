@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.data.LinkPreviewType
-import com.simon.harmonichackernews.settings.AdditionalFrontpagePreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettings
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -59,9 +58,6 @@ class StoriesSettingsPresenter(
             preferredFont = story.font,
             paletteTintConfigKey = story.paletteTintConfigKey,
             startingPage = story.preferredStoryType,
-            additionalFrontpagesSummary = AdditionalFrontpagePreferences.summary(
-                story.additionalFrontpages,
-            ),
             alwaysOpenComments = story.alwaysOpenComments,
             pagination = story.pagination,
             hideClicked = story.hideClicked,

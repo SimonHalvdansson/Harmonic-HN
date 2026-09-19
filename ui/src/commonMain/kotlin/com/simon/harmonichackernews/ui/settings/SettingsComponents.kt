@@ -41,6 +41,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -397,6 +399,8 @@ fun SettingsListScreen(
                             selectedSection == SettingsSection.DebugLinkPreviews ||
                             entry.section == SettingsSection.Comments &&
                             selectedSection == SettingsSection.ThreadDepth ||
+                            entry.section == SettingsSection.Stories &&
+                            selectedSection == SettingsSection.Frontpages ||
                             entry.section == SettingsSection.About &&
                             selectedSection == SettingsSection.Licenses
                         SettingsNavigationRow(
@@ -472,6 +476,8 @@ fun SettingsPage(
     modifier: Modifier = Modifier,
     contentVersion: Int = 0,
     pinnedContent: (@Composable () -> Unit)? = null,
+    listState: LazyListState = rememberLazyListState(),
+    extraBottomPadding: Dp = 0.dp,
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
@@ -493,11 +499,12 @@ fun SettingsPage(
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(
                 start = 0.dp,
                 top = 0.dp,
                 end = 0.dp,
-                bottom = 24.dp + navigationBarPadding,
+                bottom = 24.dp + navigationBarPadding + extraBottomPadding,
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {

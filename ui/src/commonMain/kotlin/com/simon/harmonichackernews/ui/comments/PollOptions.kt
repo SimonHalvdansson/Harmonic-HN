@@ -36,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -71,30 +70,6 @@ fun PollOptions(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Poll",
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = HarmonicTheme.colors.textPrimary,
-                )
-                Text(
-                    when {
-                        totalPoints != null -> pointCount(totalPoints)
-                        items.any { !it.loaded && !it.loadFailed } -> "Loading results…"
-                        else -> "Partial results"
-                    },
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 12.sp,
-                    color = HarmonicTheme.colors.textSecondary,
-                )
-            }
             items.forEach { option ->
                 key(option.id) {
                     AnimatedContent(
@@ -122,13 +97,6 @@ fun PollOptions(
                     }
                 }
             }
-            Text(
-                if (voteInFlightOptionId != null) "Submitting vote…" else "Tap an option to vote",
-                modifier = Modifier.padding(start = 2.dp, top = 2.dp),
-                fontFamily = ProductSansFontFamily,
-                fontSize = 12.sp,
-                color = HarmonicTheme.colors.textSecondary,
-            )
         }
     }
 }
@@ -156,7 +124,7 @@ private fun PollOptionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 84.dp)
+            .heightIn(min = 76.dp)
             .clip(shape)
             .background(colors.surfaceContainerHigh)
             .border(1.dp, if (submitting) colors.accent else colors.commentDivider, shape)
@@ -178,18 +146,20 @@ private fun PollOptionCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         label,
                         fontFamily = typography.family,
                         fontWeight = FontWeight.Bold,
                         fontSize = typography.commentTextSize.sp,
+                        lineHeight = (typography.commentTextSize * 1.25f).sp,
                         color = colors.textPrimary,
                     )
                     Text(
                         pointCount(option.points.coerceAtLeast(0).toLong()),
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = colors.textSecondary,
                     )
                 }
