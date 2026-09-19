@@ -117,7 +117,6 @@ data class CommentItemUiModel(
 @Immutable
 data class CommentItemStyle(
     val displayStyle: DisplayStyle,
-    val showOutline: Boolean,
     val textSize: Float,
     val collectLinks: Boolean,
     val emphasizeMeta: Boolean,
@@ -131,7 +130,8 @@ data class CommentItemStyle(
     val continuousDepthIndicators: Boolean = false,
     val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
-    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 }
 
@@ -795,7 +795,7 @@ private fun CommentSurface(
         label = "comment card progress",
     )
     val outlineAlpha by animateFloatAsState(
-        if (style.cardStyle && style.showOutline) 1f else 0f,
+        if (style.showOutline) 1f else 0f,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment outline",
     )
@@ -838,7 +838,7 @@ private fun CommentSurface(
         itemGeometry?.containerElevationDp = if (style.cardStyle) 1f else 0f
         itemGeometry?.containerBorderColor = colors.commentDivider
         itemGeometry?.containerBorderWidthDp =
-            if (style.cardStyle && style.showOutline) 1f else 0f
+            if (style.showOutline) 1f else 0f
     }
     val contentCaptureModifier = if (itemGeometry != null && captureSource) {
         Modifier.captureCommentActionSourceContent { itemGeometry.contentLayer = it }

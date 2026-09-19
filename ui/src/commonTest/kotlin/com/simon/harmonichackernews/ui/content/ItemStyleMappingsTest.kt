@@ -10,21 +10,6 @@ import kotlin.test.assertEquals
 
 class ItemStyleMappingsTest {
     @Test
-    fun storyOutlineDoesNotChangeFillOrElevation() {
-        for (displayStyle in DisplayStyle.entries) {
-            for (outline in listOf(false, true)) {
-                val style = storySettings().copy(
-                    displayStyle = displayStyle,
-                    outline = outline,
-                ).toStoryItemStyle(StoryItemStyleContext(0, 0, false))
-                assertEquals(outline, style.showOutline)
-                assertEquals(displayStyle == DisplayStyle.RAISED, style.cardStyle)
-                assertEquals(displayStyle != DisplayStyle.FLAT, style.hasBackground)
-            }
-        }
-    }
-
-    @Test
     fun displayStylesPreserveIndependentFillAndElevation() {
         for (displayStyle in DisplayStyle.entries) {
             val story = storySettings().copy(displayStyle = displayStyle).toStoryItemStyle(
@@ -33,12 +18,14 @@ class ItemStyleMappingsTest {
             val comments = commentSettings().copy(displayStyle = displayStyle).toCommentItemStyle(
                 CommentItemStyleContext.Thread(animateChanges = false),
             )
+            assertEquals(displayStyle == DisplayStyle.OUTLINED, story.showOutline)
+            assertEquals(displayStyle == DisplayStyle.OUTLINED, comments.showOutline)
             assertEquals(displayStyle, story.displayStyle)
             assertEquals(displayStyle, comments.displayStyle)
             assertEquals(displayStyle != DisplayStyle.FLAT, story.hasBackground)
             assertEquals(displayStyle != DisplayStyle.FLAT, comments.hasBackground)
-            assertEquals(displayStyle == DisplayStyle.RAISED, story.cardStyle)
-            assertEquals(displayStyle == DisplayStyle.RAISED, comments.cardStyle)
+            assertEquals((displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED), story.cardStyle)
+            assertEquals((displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED), comments.cardStyle)
         }
     }
 
@@ -102,7 +89,6 @@ class ItemStyleMappingsTest {
                 context = CommentItemStyleContext.Search,
                 expected = CommentItemStyle(
                     displayStyle = DisplayStyle.RAISED,
-                    showOutline = false,
                     textSize = 18.5f,
                     collectLinks = false,
                     emphasizeMeta = false,
@@ -188,7 +174,6 @@ class ItemStyleMappingsTest {
         faviconProvider = "example",
         swapLongPressTap = false,
         displayStyle = DisplayStyle.RAISED,
-        outline = false,
         showDividers = true,
         highlightCommentMeta = false,
         collectReferenceLinks = true,
@@ -200,7 +185,6 @@ class ItemStyleMappingsTest {
 
     private fun threadCommentStyle(animateChanges: Boolean) = CommentItemStyle(
         displayStyle = DisplayStyle.RAISED,
-        showOutline = false,
         textSize = 18.5f,
         collectLinks = true,
         emphasizeMeta = false,

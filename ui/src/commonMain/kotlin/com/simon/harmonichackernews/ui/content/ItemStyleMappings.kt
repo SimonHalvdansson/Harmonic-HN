@@ -29,7 +29,6 @@ internal fun StoryDisplaySettings.toStoryItemStyle(
     commentsOnLeft = leftAlign,
     tintCard = tintCardUsingPreview,
     displayStyle = displayStyle,
-    showOutline = outline,
     useHotnessIcon = hotness > 0 && context.score + context.commentCount > hotness,
     preferredFont = font,
     textSize = storyTextSize,
@@ -47,7 +46,6 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
 ): CommentItemStyle = when (context) {
     is CommentItemStyleContext.Thread -> CommentItemStyle(
         displayStyle = displayStyle,
-        showOutline = outline,
         textSize = preferredTextSize,
         collectLinks = collectReferenceLinks,
         emphasizeMeta = highlightCommentMeta,
@@ -62,7 +60,6 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
     )
     CommentItemStyleContext.Search -> CommentItemStyle(
         displayStyle = displayStyle,
-        showOutline = outline,
         textSize = preferredTextSize,
         collectLinks = false,
         emphasizeMeta = highlightCommentMeta,

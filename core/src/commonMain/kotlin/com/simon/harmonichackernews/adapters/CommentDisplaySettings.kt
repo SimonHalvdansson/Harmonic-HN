@@ -26,7 +26,6 @@ data class CommentDisplaySettings(
     val faviconProvider: String,
     val swapLongPressTap: Boolean,
     val displayStyle: DisplayStyle,
-    val outline: Boolean,
     val showDividers: Boolean,
     val highlightCommentMeta: Boolean,
     val collectReferenceLinks: Boolean,
@@ -39,7 +38,7 @@ data class CommentDisplaySettings(
     val continuousDepthIndicators: Boolean = false,
     val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
-    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 
     companion object {
@@ -78,7 +77,6 @@ data class CommentDisplaySettings(
             faviconProvider = preferences.faviconProvider,
             swapLongPressTap = preferences.swapLongPressTap,
             displayStyle = preferences.displayStyle,
-            outline = preferences.outline,
             showDividers = preferences.showDividers,
             highlightCommentMeta = preferences.highlightMetadata,
             collectReferenceLinks = preferences.collectReferenceLinks,

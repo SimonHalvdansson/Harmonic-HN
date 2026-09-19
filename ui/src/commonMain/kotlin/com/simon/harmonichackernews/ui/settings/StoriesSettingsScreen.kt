@@ -41,11 +41,9 @@ data class StoriesSettingsUiState(
     val grayOutClicked: Boolean,
     val faviconProvider: String,
     val faviconIcon: Painter,
-    val showOutline: Boolean = false,
 )
 
 enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
-    Outline(StoryBooleanPreference.OUTLINE),
     BorderlessLargeImage(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE),
     Tint(StoryBooleanPreference.TINT_CARD_USING_PREVIEW),
     Compact(StoryBooleanPreference.COMPACT_VIEW),
@@ -132,19 +130,11 @@ fun StoriesSettingsScreen(
                         DisplayStyle.FLAT.storedValue to "Flat",
                         DisplayStyle.STANDARD.storedValue to "Filled",
                         DisplayStyle.RAISED.storedValue to "Raised",
+                        DisplayStyle.OUTLINED.storedValue to "Outlined",
                     ),
                     selected = state.displayStyle,
                     disabledOptions = if (state.tint) setOf(DisplayStyle.FLAT.storedValue) else emptySet(),
                     onSelected = { onStringChanged(StoriesStringSetting.DisplayStyle, it) },
-                )
-                SettingsDivider()
-                BooleanRow(
-                    "Outline",
-                    Res.drawable.ic_select,
-                    state.showOutline,
-                    StoriesBooleanSetting.Outline,
-                    onBooleanChanged,
-                    enabled = state.displayStyle == DisplayStyle.RAISED.storedValue,
                 )
                 SettingsDivider()
                 BooleanRow("Tint", Res.drawable.ic_palette, state.tint, StoriesBooleanSetting.Tint, onBooleanChanged, summary = "Uses preview or favicon")

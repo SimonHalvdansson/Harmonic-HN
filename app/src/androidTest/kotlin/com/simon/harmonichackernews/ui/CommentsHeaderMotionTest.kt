@@ -277,7 +277,7 @@ class CommentsHeaderMotionTest {
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,
         isTablet = false, faviconProvider = "default", swapLongPressTap = false,
-        displayStyle = DisplayStyle.RAISED, outline = false, showDividers = false,
+        displayStyle = DisplayStyle.RAISED, showDividers = false,
         highlightCommentMeta = false, collectReferenceLinks = false, hasAccountDetails = false,
         canProvideSummary = false, showAdditionalSummaryInfo = false, enableSummaryBoldFormatting = true,
     )

@@ -55,12 +55,11 @@ data class StoryPreferences(
     val alwaysShowTapToRefresh: Boolean,
     val preferredStoryType: String,
     val additionalFrontpages: Set<String>,
-    val outline: Boolean = false,
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val frontpageOrder: List<String> = emptyList(),
 ) {
     val cardStyle: Boolean
-        get() = displayStyle == DisplayStyle.RAISED
+        get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val fontChoice: AppFont
         get() = AppFont.fromStored(font)
 }
@@ -85,7 +84,6 @@ data class CommentPreferences(
     val faviconProvider: String,
     val swapLongPressTap: Boolean,
     val displayStyle: DisplayStyle,
-    val outline: Boolean,
     val showDividers: Boolean,
     val highlightMetadata: Boolean,
     val collectReferenceLinks: Boolean,
@@ -104,7 +102,7 @@ data class CommentPreferences(
     val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
     val cardStyle: Boolean
-        get() = displayStyle == DisplayStyle.RAISED
+        get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val fontChoice: AppFont
         get() = AppFont.fromStored(font)
     val preloadCommentsFromStories: Boolean

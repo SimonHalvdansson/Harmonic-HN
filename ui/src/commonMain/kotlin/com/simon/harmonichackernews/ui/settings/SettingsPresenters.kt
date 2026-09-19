@@ -48,7 +48,6 @@ class StoriesSettingsPresenter(
             leftAlignComments = story.leftAlign,
             tint = story.tintCardUsingPreview,
             displayStyle = story.displayStyle.storedValue,
-            showOutline = story.outline,
             textSize = story.storyTextSize,
             textSizeOffset = TextPreferences.storyTextSizeOffset(story.storyTextSize),
             minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,
@@ -116,7 +115,6 @@ class CommentsSettingsPresenter(
         val comments = settings.comments
         return CommentsSettingsUiState(
             displayStyle = comments.displayStyle,
-            showOutline = comments.outline,
             textSize = comments.textSize,
             textSizeOffset = TextPreferences.commentTextSizeOffset(comments.textSize),
             minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,

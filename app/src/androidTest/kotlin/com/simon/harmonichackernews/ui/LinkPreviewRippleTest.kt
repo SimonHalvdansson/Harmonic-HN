@@ -118,7 +118,7 @@ class LinkPreviewRippleTest {
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,
         isTablet = false, faviconProvider = "default", swapLongPressTap = false,
-        displayStyle = DisplayStyle.FLAT, outline = false, showDividers = false,
+        displayStyle = DisplayStyle.FLAT, showDividers = false,
         highlightCommentMeta = false, collectReferenceLinks = false, hasAccountDetails = false,
         canProvideSummary = false, showAdditionalSummaryInfo = false, enableSummaryBoldFormatting = true,
     )

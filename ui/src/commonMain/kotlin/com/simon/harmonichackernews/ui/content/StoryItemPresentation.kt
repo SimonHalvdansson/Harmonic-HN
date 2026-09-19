@@ -79,10 +79,10 @@ internal fun rememberStoryItemPresentation(
         animatedCardProgress
     }
     val outlineAlpha = if (listItem) {
-        if (style.cardStyle && style.showOutline) 1f else 0f
+        if (style.showOutline) 1f else 0f
     } else {
         val animatedOutlineAlpha by animateFloatAsState(
-            targetValue = if (style.cardStyle && style.showOutline) 1f else 0f,
+            targetValue = if (style.showOutline) 1f else 0f,
             animationSpec = contentTween(),
             label = "story outline",
         )

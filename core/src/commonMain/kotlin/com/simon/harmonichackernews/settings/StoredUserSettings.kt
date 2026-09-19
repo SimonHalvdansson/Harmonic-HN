@@ -27,7 +27,6 @@ object UserPreferenceKeys {
     const val STORY_LIST_SELECTOR = "pref_story_list_selector"
     const val LEFT_ALIGN = "pref_left_align"
     const val STORY_DISPLAY_STYLE = "pref_story_display_style"
-    const val STORY_OUTLINE = "pref_story_outline"
     const val COMMENT_DISPLAY_STYLE = "pref_comment_display_style"
     const val TINT_CARD_USING_PREVIEW = "pref_tint_card_using_preview"
     const val PALETTE_TINT_MODE = "pref_palette_tint_mode"
@@ -60,7 +59,6 @@ object UserPreferenceKeys {
     const val SCROLL_NAVIGATION = "pref_scroll_navigation"
     const val TOP_LEVEL_THREAD_INDICATORS = "pref_top_level_thread_indicators"
     const val COMMENTS_SWAP_LONG = "pref_comments_swap_long"
-    const val COMMENT_OUTLINE = "pref_comment_outline"
     const val COMMENT_DIVIDERS = "pref_comment_dividers"
     const val HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta"
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
@@ -136,7 +134,6 @@ class StoredUserSettings(
                     string(UserPreferenceKeys.STORY_DISPLAY_STYLE, STANDARD),
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 ),
-                outline = boolean(UserPreferenceKeys.STORY_OUTLINE, false),
                 tintCardUsingPreview =
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
@@ -203,7 +200,6 @@ class StoredUserSettings(
                 displayStyle = DisplayStyle.fromStored(
                     string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD),
                 ),
-                outline = boolean(UserPreferenceKeys.COMMENT_OUTLINE, false),
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),
                 collectReferenceLinks =

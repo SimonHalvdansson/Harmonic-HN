@@ -213,9 +213,9 @@ data class StoryItemStyle(
     val textSize: Float,
     val dimmed: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
-    val showOutline: Boolean = false,
 ) {
-    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 }
 

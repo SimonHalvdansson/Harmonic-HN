@@ -28,10 +28,10 @@ data class StoryDisplaySettings(
     val faviconProvider: String,
     val font: String,
     val commentTextSize: Float,
-    val outline: Boolean = false,
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
 ) {
-    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
+    val outline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
+    val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 
     fun withShowIndex(showIndex: Boolean): StoryDisplaySettings = copy(showIndex = showIndex)
@@ -67,7 +67,6 @@ data class StoryDisplaySettings(
             listSelector = preferences.listSelector,
             leftAlign = preferences.leftAlign,
             displayStyle = preferences.displayStyle,
-            outline = preferences.outline,
             tintCardUsingPreview = preferences.tintCardUsingPreview,
             paletteTintMode = preferences.paletteTintConfigKey,
             grayOutClicked = preferences.grayOutClicked,

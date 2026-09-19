@@ -16,15 +16,11 @@ import kotlin.test.assertEquals
 
 class SettingsPreviewItemStylesTest {
     @Test
-    fun storyPreviewAllowsRaisedWithoutOutline() {
-        for (outline in listOf(false, true)) {
-            val style = storiesState().copy(
-                displayStyle = "raised",
-                showOutline = outline,
-            ).toPreviewStoryItemStyle()
-            assertEquals(outline, style.showOutline)
-            assertEquals(true, style.cardStyle)
-        }
+    fun previewsUseOutlinedWithElevation() {
+        val story = storiesState().copy(displayStyle = "outlined").toPreviewStoryItemStyle()
+        val comment = commentsState().copy(displayStyle = DisplayStyle.OUTLINED).toPreviewCommentItemStyle()
+        for (outlined in listOf(story.showOutline, comment.showOutline)) assertEquals(true, outlined)
+        for (raised in listOf(story.cardStyle, comment.cardStyle)) assertEquals(true, raised)
     }
 
     @Test
@@ -87,7 +83,6 @@ class SettingsPreviewItemStylesTest {
         val cases = listOf(
             base to CommentItemStyle(
                 displayStyle = DisplayStyle.RAISED,
-                showOutline = true,
                 textSize = 18f,
                 collectLinks = true,
                 emphasizeMeta = false,
@@ -97,12 +92,10 @@ class SettingsPreviewItemStylesTest {
             ),
             base.copy(
                 displayStyle = DisplayStyle.STANDARD,
-                showOutline = false,
                 collectLinks = false,
                 emphasizeMetadata = true,
             ) to CommentItemStyle(
                 displayStyle = DisplayStyle.STANDARD,
-                showOutline = false,
                 textSize = 18f,
                 collectLinks = false,
                 emphasizeMeta = true,
@@ -151,7 +144,6 @@ class SettingsPreviewItemStylesTest {
 
     private fun commentsState() = CommentsSettingsUiState(
         displayStyle = DisplayStyle.RAISED,
-        showOutline = true,
         textSize = 18f,
         textSizeOffset = 2,
         minTextSizeOffset = -4,

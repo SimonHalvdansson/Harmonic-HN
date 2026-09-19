@@ -181,6 +181,7 @@ object DisplayStylePreferences {
     const val FLAT = "flat"
     const val STANDARD = "standard"
     const val RAISED = "raised"
+    const val OUTLINED = "outlined"
     /** Legacy stored value, read as Raised. */
     const val CARD = "card"
 }
@@ -188,7 +189,8 @@ object DisplayStylePreferences {
 enum class DisplayStyle(val storedValue: String) {
     FLAT(DisplayStylePreferences.FLAT),
     STANDARD(DisplayStylePreferences.STANDARD),
-    RAISED(DisplayStylePreferences.RAISED);
+    RAISED(DisplayStylePreferences.RAISED),
+    OUTLINED(DisplayStylePreferences.OUTLINED);
 
     companion object {
         fun fromStored(value: String?): DisplayStyle =
