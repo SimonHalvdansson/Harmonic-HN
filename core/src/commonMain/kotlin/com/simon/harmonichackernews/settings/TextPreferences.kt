@@ -36,10 +36,12 @@ object TextPreferences {
     fun sanitizeFont(font: String?): String = AppFont.fromStored(font).storedValue
 
     fun clampStoryTextSize(value: Float): Float =
-        value.coerceIn(MIN_STORY_TEXT_SIZE, MAX_STORY_TEXT_SIZE)
+        if (value.isNaN()) DEFAULT_STORY_TEXT_SIZE
+        else value.coerceIn(MIN_STORY_TEXT_SIZE, MAX_STORY_TEXT_SIZE)
 
     fun clampCommentTextSize(value: Float): Float =
-        value.coerceIn(MIN_COMMENT_TEXT_SIZE, MAX_COMMENT_TEXT_SIZE)
+        if (value.isNaN()) DEFAULT_COMMENT_TEXT_SIZE
+        else value.coerceIn(MIN_COMMENT_TEXT_SIZE, MAX_COMMENT_TEXT_SIZE)
 
     fun storyTextSizeOffset(value: Float): Int =
         ((clampStoryTextSize(value) - DEFAULT_STORY_TEXT_SIZE) / TEXT_SIZE_OFFSET_STEP)

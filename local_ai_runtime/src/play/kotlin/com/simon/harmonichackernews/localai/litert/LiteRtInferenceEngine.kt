@@ -93,38 +93,21 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
     modelPath: String,
     maxTokens: Int,
     preferGpu: Boolean,
-  ): Engine {
-    if (preferGpu) {
-      var gpuEngine: Engine? = null
-      try {
-        gpuEngine =
-          Engine(
-            EngineConfig(
-              modelPath = modelPath,
-              backend = Backend.GPU(),
-              maxNumTokens = maxTokens,
-              cacheDir = context.cacheDir.absolutePath,
-            )
-          )
-        gpuEngine.initialize()
-        return gpuEngine
-      } catch (_: Exception) {
-        gpuEngine?.close()
-      }
-    }
-
-    val cpuEngine =
+  ): Engine = initializeEngineWithCpuFallback(
+    preferGpu = preferGpu,
+    create = { gpu ->
       Engine(
         EngineConfig(
           modelPath = modelPath,
-          backend = Backend.CPU(),
+          backend = if (gpu) Backend.GPU() else Backend.CPU(),
           maxNumTokens = maxTokens,
           cacheDir = context.cacheDir.absolutePath,
         )
       )
-    cpuEngine.initialize()
-    return cpuEngine
-  }
+    },
+    initialize = Engine::initialize,
+    isInitialized = { it.isInitialized() },
+  )
 
   private fun isEmulator(): Boolean {
     return Build.FINGERPRINT.startsWith("generic") ||
@@ -136,4 +119,25 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
   private companion object {
     const val INFERENCE_TIMEOUT_MINUTES = 10L
   }
+}
+
+internal fun <T : AutoCloseable> initializeEngineWithCpuFallback(
+  preferGpu: Boolean,
+  create: (gpu: Boolean) -> T,
+  initialize: (T) -> Unit,
+  isInitialized: (T) -> Boolean,
+): T {
+  if (preferGpu) {
+    var gpuEngine: T? = null
+    try {
+      gpuEngine = create(true)
+      initialize(gpuEngine)
+      return gpuEngine
+    } catch (_: Exception) {
+      // LiteRT rejects close() until initialization has succeeded. Closing a failed GPU engine
+      // would throw here and prevent the CPU fallback from ever being created.
+      if (gpuEngine != null && isInitialized(gpuEngine)) gpuEngine.close()
+    }
+  }
+  return create(false).also(initialize)
 }

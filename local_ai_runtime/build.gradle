@@ -9,6 +9,7 @@ android {
     namespace = "com.simon.harmonichackernews.localai.runtime"
     compileSdk = 37
     ndkVersion = "29.0.13113456"
+    testBuildType = providers.gradleProperty("harmonic.testBuildType").getOrElse("debug")
 
     defaultConfig {
         minSdk = 26
@@ -101,6 +102,7 @@ dependencies {
     debugLLMImplementation(libs.litertlm)
     debugLLMFastImplementation(libs.litertlm)
     playReleaseImplementation(libs.litertlm)
+    testImplementation(libs.junit)
 }
 
 java {

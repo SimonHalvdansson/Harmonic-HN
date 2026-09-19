@@ -38,6 +38,7 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
+import androidx.webkit.WebViewAssetLoader
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.data.Story
@@ -75,9 +76,11 @@ import java.io.ByteArrayInputStream
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -160,6 +163,8 @@ internal class CommentsWebViewController(
     private var pendingSummaryCallback: PageTextCallback? = null
     private var lastPageFinishedGeneration = -1
     private var cachedArticleJob: Job? = null
+    private var pdfDownloadJob: Job? = null
+    private var downloadedPdfUrl: String? = null
     val isReaderModeAvailable: Boolean get() = webContentSession.readerState.available
     private val readerModeEnabled: Boolean get() = webContentSession.readerState.enabled
     private var touchGestureStartScrollX = 0
@@ -174,6 +179,7 @@ internal class CommentsWebViewController(
         progressIndicator: LinearProgressIndicator
     ) {
         cancelCachedArticleLoad()
+        cancelPdfDownload()
         loadingUi.bind(progressIndicator, host.webViewBackdrop)
         fullscreen.bind(host.webViewContainer, host.fullscreenContainer)
         webView = null
@@ -322,6 +328,7 @@ internal class CommentsWebViewController(
     fun goBackFromVisibleWebView() {
         val currentWebView = webView?.takeIf { it.canGoBack() } ?: return
         cancelCachedArticleLoad()
+        cancelPdfDownload()
         val currentDownloadButton = downloadButton
         if (currentDownloadButton?.isVisible == true && currentWebView.isGone) {
             currentWebView.isGone = false
@@ -348,8 +355,9 @@ internal class CommentsWebViewController(
     }
 
     fun openCurrentOrStoryUrlInBrowser() {
+        val currentUrl = webView?.url
         val url = WebContentPagePolicy.externalBrowserUrl(
-            currentUrl = webView?.url,
+            currentUrl = if (isPdfViewerUrl(currentUrl)) downloadedPdfUrl else currentUrl,
             storyUrl = story?.url,
             platformUrls = WEB_CONTENT_URLS,
         )
@@ -361,6 +369,7 @@ internal class CommentsWebViewController(
         isBlockingAds = false
         val currentWebView = webView ?: return
         cancelCachedArticleLoad()
+        cancelPdfDownload()
         currentWebView.reload()
 
         callbacks.showMessage(WebContentCopy.AD_BLOCK_DISABLED)
@@ -571,7 +580,7 @@ internal class CommentsWebViewController(
         webView = currentWebView
         initializedWebView = true
 
-        currentWebView.webViewClient = MyWebViewClient()
+        currentWebView.webViewClient = MyWebViewClient(AndroidPdfWebViewAssets.loader(context))
 
         currentWebView.settings.apply {
             builtInZoomControls = true
@@ -671,6 +680,7 @@ internal class CommentsWebViewController(
             return
         }
         cancelCachedArticleLoad()
+        cancelPdfDownload()
 
         if (!isPdfViewerUrl(url)) {
             pdfWebViewSession.revokeBridge(view)
@@ -909,17 +919,40 @@ internal class CommentsWebViewController(
         mimetype: String?,
         ctx: Context?
     ) {
-        if (ctx == null) {
-            return
+        if (ctx == null) return
+        val targetWebView = webView ?: return
+        val generation = webContentLoad.state.generation
+        cancelPdfDownload()
+        val job = coroutineScope.launch(start = CoroutineStart.LAZY) {
+            try {
+                val filePath = pdfDownloads.download(url)
+                currentCoroutineContext().ensureActive()
+                if (!isCurrentWebViewCallback(targetWebView) ||
+                    generation != webContentLoad.state.generation
+                ) return@launch
+
+                // The viewer starts a new navigation. Release this job first so that navigation
+                // cancels only an older transfer, never its own successful completion.
+                pdfDownloadJob = null
+                downloadedPdfUrl = url
+                loadUrl(PDF_LOADER_URL, filePath)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                if (isCurrentWebViewCallback(targetWebView) &&
+                    generation == webContentLoad.state.generation
+                ) showDownloadButton(url, contentDisposition, mimetype)
+            } finally {
+                if (pdfDownloadJob === currentCoroutineContext()[Job]) pdfDownloadJob = null
+            }
         }
-        callbacks.showMessage("Loading PDF...", UserMessageDuration.LONG)
-        coroutineScope.launch {
-            runCatching { pdfDownloads.download(url) }
-                .onSuccess { filePath -> loadUrl(PDF_LOADER_URL, filePath) }
-                .onFailure {
-                showDownloadButton(url, contentDisposition, mimetype)
-                }
-        }
+        pdfDownloadJob = job
+        job.start()
+    }
+
+    private fun cancelPdfDownload() {
+        pdfDownloadJob?.cancel()
+        pdfDownloadJob = null
     }
 
     private fun showDownloadButton(url: String?, contentDisposition: String?, mimetype: String?) {
@@ -1097,6 +1130,9 @@ internal class CommentsWebViewController(
 
     private fun destroy(rendererProcessGone: Boolean) {
         cancelCachedArticleLoad()
+        cancelPdfDownload()
+        downloadedPdfUrl = null
+        startedLoading = false
         loadingUi.cancelAnimations()
         pdfWebViewSession.release(webView, removeJavascriptInterface = !rendererProcessGone)
         webContentSession.reset()
@@ -1123,7 +1159,8 @@ internal class CommentsWebViewController(
                 if (!rendererProcessGone) {
                     webViewToDestroy.stopLoading()
                     webViewToDestroy.clearHistory()
-                    webViewToDestroy.clearCache(true)
+                    // WebView's resource cache is shared by every browser in this app. Keep it
+                    // across article closes so revisits and other retained panes can reuse it.
                     webViewToDestroy.onPause()
                     webViewToDestroy.removeAllViews()
                     webViewToDestroy.destroyDrawingCache()
@@ -1169,6 +1206,7 @@ internal class CommentsWebViewController(
 
     fun clearViewReferences() {
         cancelCachedArticleLoad()
+        cancelPdfDownload()
         pdfWebViewSession.release(webView, removeJavascriptInterface = true)
         webView = null
         webViewContainer = null
@@ -1187,12 +1225,14 @@ internal class CommentsWebViewController(
 
         override fun reload() {
             cancelCachedArticleLoad()
+            cancelPdfDownload()
             webView?.reload()
         }
 
         override fun goBack(): Boolean {
             val view = webView?.takeIf { it.canGoBack() } ?: return false
             cancelCachedArticleLoad()
+            cancelPdfDownload()
             view.goBack()
             return true
         }
@@ -1253,7 +1293,9 @@ internal class CommentsWebViewController(
 
     // The AndroidX detector does not recognize this Kotlin override further below.
     @SuppressLint("MissingOnRenderProcessGone")
-    private inner class MyWebViewClient : WebViewClient() {
+    private inner class MyWebViewClient(
+        private val pdfAssets: WebViewAssetLoader,
+    ) : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             val currentView = view
@@ -1369,6 +1411,7 @@ internal class CommentsWebViewController(
             view: WebView,
             request: WebResourceRequest?
         ): Boolean {
+            if (request?.isForMainFrame == true) cancelPdfDownload()
             return request != null && request.getUrl() != null && shouldOverrideUrlLoading(
                 view,
                 request.getUrl().toString()
@@ -1379,6 +1422,7 @@ internal class CommentsWebViewController(
             view: WebView?,
             request: WebResourceRequest
         ): WebResourceResponse? {
+            pdfAssets.shouldInterceptRequest(request.url)?.let { return it }
             if (!this@CommentsWebViewController.isBlockingAds) {
                 return super.shouldInterceptRequest(view, request)
             }
@@ -1489,7 +1533,7 @@ internal class CommentsWebViewController(
 
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
-        private val PDF_LOADER_URL = Res.getUri(sharedWebResource(WebContentAssets.PDF_VIEWER_INDEX))
+        private const val PDF_LOADER_URL = AndroidPdfWebViewAssets.VIEWER_URL
         private val OFFLINE_PAGE_URL = Res.getUri(sharedWebResource(WebContentAssets.OFFLINE_PAGE))
         private val WEB_CONTENT_URLS = WebContentPlatformUrls(PDF_LOADER_URL, OFFLINE_PAGE_URL)
 

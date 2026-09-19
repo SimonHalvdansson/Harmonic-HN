@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -760,6 +761,7 @@ private fun StoryMediumPreviewRail(
         if (hasPreview && hazeState != null) {
             Box(
                 modifier = Modifier
+                    .testTag("story-medium-preview-image")
                     .fillMaxWidth()
                     .height(imageHeight)
                     .clip(

@@ -6,10 +6,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
@@ -57,13 +56,10 @@ class StoryPreviewMotionTest {
         }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
-        // The medium image owns this click action, with its clipping and exact image bounds.
-        // Unlike its shared image draw layer, this node remains inspectable while exiting.
-        val image = compose.onAllNodes(
-            SemanticsMatcher("Medium image comments action") { node ->
-                node.config.contains(SemanticsActions.OnClick) &&
-                    node.config[SemanticsActions.OnClick].label == "Open comments"
-            },
+        // Follow the medium image's owning surface, which remains inspectable while exiting.
+        // The incoming small-mode comments rail has the same click label during the transition.
+        val image = compose.onAllNodesWithTag(
+            "story-medium-preview-image",
             useUnmergedTree = true,
         )
         val before = image.fetchSemanticsNodes().single().boundsInRoot

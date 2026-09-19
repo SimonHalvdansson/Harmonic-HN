@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -196,7 +197,9 @@ private fun StableStoryLayer(
     modifier: Modifier,
     content: @Composable () -> Unit,
 ) {
-    Box(modifier) {
+    Box(
+        modifier.then(if (active) Modifier else Modifier.clearAndSetSemantics { }),
+    ) {
         content()
         if (!active) {
             Box(

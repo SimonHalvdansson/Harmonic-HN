@@ -33,11 +33,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -490,19 +493,32 @@ private fun LocalModelTag(
     foreground: Color,
 ) {
     if (text.isBlank()) return
+    val textColor = remember(background, foreground) { localModelTagForeground(background, foreground) }
     Text(
         text = text,
         modifier = Modifier
             .clip(RoundedCornerShape(5.dp))
             .background(background)
             .padding(horizontal = 5.dp, vertical = 2.dp),
-        color = foreground,
+        color = textColor,
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         lineHeight = 10.sp,
         maxLines = 1,
     )
+}
+
+/** Legacy themes can override a container while retaining an unrelated Material foreground. */
+internal fun localModelTagForeground(background: Color, preferred: Color): Color {
+    val backgroundLuminance = background.luminance()
+    val foregroundLuminance = preferred.compositeOver(background).luminance()
+    val preferredContrast = (maxOf(backgroundLuminance, foregroundLuminance) + 0.05f) /
+        (minOf(backgroundLuminance, foregroundLuminance) + 0.05f)
+    if (preferredContrast >= 4.5f) return preferred
+    val blackContrast = (backgroundLuminance + 0.05f) / 0.05f
+    val whiteContrast = 1.05f / (backgroundLuminance + 0.05f)
+    return if (blackContrast >= whiteContrast) Color.Black else Color.White
 }
 
 @Composable

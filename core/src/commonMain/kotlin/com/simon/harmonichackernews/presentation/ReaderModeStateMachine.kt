@@ -39,6 +39,7 @@ class ReaderModeStateMachine {
             defaultEnabled = featureEnabled && defaultEnabled,
             available = state.available && featureEnabled && integrated,
             enabled = state.enabled && featureEnabled && integrated,
+            pending = state.pending && featureEnabled && integrated,
         )
     }
 
@@ -119,9 +120,10 @@ class ReaderModeStateMachine {
     }
 
     fun applyResult(status: ReaderModeScriptStatus) {
+        val allowed = state.featureEnabled && state.integrated
         state = when (status) {
-            ReaderModeScriptStatus.ENABLED -> state.copy(available = true, enabled = true)
-            ReaderModeScriptStatus.DISABLED -> state.copy(available = true, enabled = false)
+            ReaderModeScriptStatus.ENABLED -> state.copy(available = allowed, enabled = allowed)
+            ReaderModeScriptStatus.DISABLED -> state.copy(available = allowed, enabled = false)
             ReaderModeScriptStatus.NO_ARTICLE,
             ReaderModeScriptStatus.UNAVAILABLE -> state.copy(available = false, enabled = false)
             ReaderModeScriptStatus.FAILED -> state

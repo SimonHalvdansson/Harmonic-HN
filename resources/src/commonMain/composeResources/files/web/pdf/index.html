@@ -1,29 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" data-pdf-state="loading">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; base-uri 'none'; object-src 'none'">
   <meta name="google" content="notranslate">
   <title>PDF Viewer</title>
 
   <style>
-    body {
+    html, body {
       background-color: #808080;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #viewerContainer {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+    #pdfStatus {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      padding: 24px;
+      height: fit-content;
+      max-width: 32em;
+      color: white;
+      font: 16px/1.5 system-ui, sans-serif;
+      text-align: center;
     }
   </style>
 
-  <link rel="stylesheet" href="vendor/pdf.js/1.9.658/pdf_viewer.css">
-  <script src="vendor/pdf.js/1.9.658/pdf.js"></script>
-  <script src="vendor/pdf.js/1.9.658/pdf_viewer.js"></script>
+  <link rel="stylesheet" href="vendor/pdf.js/6.3.289/pdf_viewer.css">
 </head>
 
 <body>
-  <div id="viewerContainer">
+  <div id="viewerContainer" tabindex="0" aria-label="PDF document">
     <div id="viewer" class="pdfViewer"></div>
   </div>
 
-  <script src="script.js"></script>
+  <p id="pdfStatus" role="status">Loading PDF…</p>
+  <script src="bootstrap.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>

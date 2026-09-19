@@ -52,6 +52,26 @@ private const val COMMENT_URL_TAG = "harmonic-comment-url"
 
 private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) {
     private var pendingCodeBoundary = false
+    // Keep just the tail needed for spacing; materializing the entire builder per text node
+    // repeatedly copied all preceding text and spans in formatting-heavy comments.
+    private var trailingLineBreaks = 0
+
+    private fun appendText(text: String) {
+        builder.append(text)
+        if (text.isEmpty()) return
+        var breaks = 0
+        var index = text.lastIndex
+        while (index >= 0 && text[index] == '\n' && breaks < 2) {
+            breaks++
+            index--
+        }
+        trailingLineBreaks = if (index < 0) (trailingLineBreaks + breaks).coerceAtMost(2) else breaks
+    }
+
+    private fun ensureCodeBlockBoundary() {
+        if (builder.length == 0) return
+        repeat(2 - trailingLineBreaks) { appendText("\n") }
+    }
 
     fun appendNode(node: Node, convertedCode: Boolean = false, preformatted: Boolean = false): Unit = with(builder) {
         when (node) {
@@ -63,7 +83,7 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                     text = text.filterNot { it == ' ' || it == '\n' || it == '\r' }
                 } else if (!preformatted) {
                     text = text.replace(htmlWhitespace, " ")
-                    if (length == 0 || toAnnotatedString().text.endsWith('\n')) text = text.trimStart(' ')
+                    if (length == 0 || trailingLineBreaks > 0) text = text.trimStart(' ')
                     val nextTag = (node.nextSibling() as? Element)?.normalName()
                     if (nextTag in setOf("p", "br", "pre", "div")) text = text.trimEnd(' ')
                 }
@@ -73,13 +93,13 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                     ensureCodeBlockBoundary()
                     pendingCodeBoundary = false
                 }
-                append(text)
+                appendText(text)
             }
             is Element -> {
                 val tag = node.normalName()
                 if (tag == "script" || tag == "style") return
                 if (tag == "br") {
-                    if (!pendingCodeBoundary) append('\n')
+                    if (!pendingCodeBoundary) appendText("\n")
                     return
                 }
 
@@ -138,12 +158,6 @@ private fun AnnotatedString.trimmed(): AnnotatedString {
     )
     if (start >= end) return AnnotatedString("")
     return subSequence(start, end)
-}
-
-private fun AnnotatedString.Builder.ensureCodeBlockBoundary() {
-    if (length == 0) return
-    val trailingBreaks = toAnnotatedString().text.takeLast(2).takeLastWhile { it == '\n' }.length
-    repeat(2 - trailingBreaks) { append('\n') }
 }
 
 internal fun preserveLegacyCommentParagraphSpacing(html: String): String = html

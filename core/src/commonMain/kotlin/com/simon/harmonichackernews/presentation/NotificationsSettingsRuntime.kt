@@ -51,6 +51,7 @@ class NotificationsSettingsRuntime(
         try {
             when (runtime.enable(username)) {
                 is ReplySubscriptionResult.Enabled -> finish("")
+                ReplySubscriptionResult.Superseded -> finish("")
                 ReplySubscriptionResult.UserNotFound -> finish("Hacker News user not found. Try again.", true)
                 is ReplySubscriptionResult.Failed -> finish("Could not enable notifications. Check your connection and try again.", true)
             }

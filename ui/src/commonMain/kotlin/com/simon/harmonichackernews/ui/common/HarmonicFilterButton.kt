@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,6 +71,21 @@ fun HarmonicFilterButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) colors.checkedBackground else Color.Transparent,
+        animationSpec = tween(160),
+        label = "filter button background",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) colors.checkedText else colors.uncheckedText,
+        animationSpec = tween(160),
+        label = "filter button content",
+    )
+    val strokeColor by animateColorAsState(
+        targetValue = if (selected) colors.checkedStroke else colors.uncheckedStroke,
+        animationSpec = tween(160),
+        label = "filter button stroke",
+    )
     val innerCorner by animateDpAsState(
         targetValue = when {
             isPressed -> 4.dp
@@ -88,10 +105,10 @@ fun HarmonicFilterButton(
         modifier = modifier
             .height(48.dp)
             .clip(shape)
-            .background(if (selected) colors.checkedBackground else Color.Transparent)
+            .background(backgroundColor)
             .border(
                 1.dp,
-                if (selected) colors.checkedStroke else colors.uncheckedStroke,
+                strokeColor,
                 shape,
             )
             .selectable(
@@ -108,13 +125,13 @@ fun HarmonicFilterButton(
                 painter = painterResource(it),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = if (selected) colors.checkedText else colors.uncheckedText,
+                tint = contentColor,
             )
             Spacer(Modifier.width(7.dp))
         }
         Text(
             text = label,
-            color = if (selected) colors.checkedText else colors.uncheckedText,
+            color = contentColor,
             fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,

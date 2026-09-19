@@ -280,7 +280,7 @@ fun StringListEditorDialog(
     onItemsChanged: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var items by remember(initialItems) { mutableStateOf(initialItems) }
+    var items by remember(initialItems) { mutableStateOf(uniqueEditorItems(initialItems)) }
     var input by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val suggestions = suggestedItems.filter { suggestion ->
@@ -288,9 +288,7 @@ fun StringListEditorDialog(
     }
 
     val additions = remember(input, parseInput, items) {
-        parseInput(input).filter { candidate ->
-            items.none { it.equals(candidate, ignoreCase = true) }
-        }
+        newEditorItems(items, parseInput(input))
     }
     val canAdd = additions.isNotEmpty()
 
@@ -300,10 +298,7 @@ fun StringListEditorDialog(
     }
 
     fun addValues(rawValue: String = input) {
-        val parsed = parseInput(rawValue)
-        val toAdd = parsed.filter { candidate ->
-            items.none { it.equals(candidate, ignoreCase = true) }
-        }
+        val toAdd = newEditorItems(items, parseInput(rawValue))
         if (toAdd.isNotEmpty()) {
             updateItems(items + toAdd)
             if (rawValue == input) {
@@ -453,6 +448,15 @@ fun StringListEditorDialog(
         confirmButton = {},
         showButtons = false,
     )
+}
+
+// Imported and older stored lists can contain values that collide with the lazy row's key.
+// Preserve the first spelling and ordering without changing persistence until the user edits.
+internal fun uniqueEditorItems(items: List<String>): List<String> = items.distinctBy(String::lowercase)
+
+internal fun newEditorItems(items: List<String>, candidates: List<String>): List<String> {
+    val existing = items.mapTo(mutableSetOf(), String::lowercase)
+    return candidates.filter { existing.add(it.lowercase()) }
 }
 
 @Composable

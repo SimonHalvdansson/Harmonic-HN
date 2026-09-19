@@ -4,6 +4,7 @@
     <exclude domain="file" path="story_cache" />
     <exclude domain="file" path="article_cache" />
     <exclude domain="external" path="local_ai_models" />
+    <exclude domain="file" path="local_ai_models" />
     <exclude
         domain="sharedpref"
         path="com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.xml" />

@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.settings.ReplyNotificationFrequency
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object ReplyNotificationKeys {
     const val USERNAME = "reply_notifications_username"
@@ -13,6 +15,7 @@ object ReplyNotificationKeys {
 
 sealed interface ReplySubscriptionResult {
     data class Enabled(val username: String) : ReplySubscriptionResult
+    data object Superseded : ReplySubscriptionResult
     data object UserNotFound : ReplySubscriptionResult
     data class Failed(val cause: Throwable) : ReplySubscriptionResult
 }
@@ -98,6 +101,9 @@ class ReplyNotificationUseCase(
     private val scanner: ReplyScanner,
     private val store: KeyValueStore,
 ) {
+    private val checkMutex = Mutex()
+    private var subscriptionRevision = 0L
+
     val configuredUsername: String
         get() = store.getString(ReplyNotificationKeys.USERNAME).orEmpty().trim()
 
@@ -115,9 +121,12 @@ class ReplyNotificationUseCase(
     suspend fun enable(username: String?): ReplySubscriptionResult {
         val normalized = ReplyText.normalizeUsername(username)
         if (normalized.isEmpty()) return ReplySubscriptionResult.UserNotFound
+        val revision = ++subscriptionRevision
         return try {
             val baseline = scanner.initialize(normalized)
-                ?: return ReplySubscriptionResult.UserNotFound
+            if (revision != subscriptionRevision) return ReplySubscriptionResult.Superseded
+            if (baseline == null) return ReplySubscriptionResult.UserNotFound
+            subscriptionRevision++
             store.putString(ReplyNotificationKeys.USERNAME, baseline.username)
             store.putString(
                 ReplyNotificationKeys.LAST_SEEN_ITEM_ID,
@@ -132,16 +141,23 @@ class ReplyNotificationUseCase(
     }
 
     fun disable() {
+        subscriptionRevision++
         store.putString(ReplyNotificationKeys.USERNAME, null)
         store.putString(ReplyNotificationKeys.LAST_SEEN_ITEM_ID, "0")
     }
 
-    suspend fun check(): ReplyCheckResult {
+    suspend fun check(): ReplyCheckResult = checkMutex.withLock {
         val username = configuredUsername
-        if (username.isEmpty()) return ReplyCheckResult.Disabled
-        return try {
+        if (username.isEmpty()) return@withLock ReplyCheckResult.Disabled
+        val revision = subscriptionRevision
+        try {
             val result = scanner.scan(username, lastSeenItemId())
-            if (!result.userFound) return ReplyCheckResult.UserNotFound
+            // Settings can change while the scan is suspended. Its result belongs to the
+            // original subscription, even if the same username has since been re-enabled.
+            if (revision != subscriptionRevision || username != configuredUsername) {
+                return@withLock ReplyCheckResult.Disabled
+            }
+            if (!result.userFound) return@withLock ReplyCheckResult.UserNotFound
             store.putString(
                 ReplyNotificationKeys.LAST_SEEN_ITEM_ID,
                 result.lastSeenItemId.toString(),

@@ -12,6 +12,34 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun manyInlineNodesPreserveTextAndFormattingRanges() {
+        val rendered = prepareCommentHtml("<b>word</b> plain <i>text</i> ".repeat(1_000))
+
+        assertEquals("word plain text ".repeat(1_000).trimEnd(), rendered.text)
+        assertEquals(2_000, rendered.spanStyles.size)
+        assertTrue(rendered.spanStyles.all {
+            rendered.text.substring(it.start, it.end) in setOf("word", "text")
+        })
+    }
+
+    @Test
+    fun emptyInlineNodesPreserveParagraphAndCodeBoundaries() {
+        val rendered = prepareCommentHtml(
+            "Before<br><span> </span><br><b> </b><pre><code>  line\n</code></pre>" +
+                "<span> </span><i> After</i>",
+        )
+
+        assertEquals("Before\n\n  line\n\nAfter", rendered.text)
+    }
+
+    @Test
+    fun codeBoundaryPreservesThreeAuthoredLineBreaks() {
+        val rendered = prepareCommentHtml("Before<pre><code>line\n\n\n</code></pre>After")
+
+        assertEquals("Before\n\nline\n\n\nAfter", rendered.text)
+    }
+
+    @Test
     fun codeBlocksSeparateProseAndRetainIndentation() {
         val rendered = prepareCommentHtml("Before<pre><code>  one\n    two</code></pre>After")
         assertEquals("Before\n\n  one\n    two\n\nAfter", rendered.text)

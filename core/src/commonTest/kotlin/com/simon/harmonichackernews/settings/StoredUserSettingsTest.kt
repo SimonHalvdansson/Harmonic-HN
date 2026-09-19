@@ -197,6 +197,26 @@ class StoredUserSettingsTest {
     }
 
     @Test
+    fun nanTextSizesFallBackToDefaultsForStoredStringsAndLegacyFloats() {
+        for (value in listOf("NaN", Float.NaN)) {
+            val settings = StoredUserSettings(
+                TestKeyValueStore(
+                    mapOf(
+                        UserPreferenceKeys.STORY_TEXT_SIZE to value,
+                        UserPreferenceKeys.COMMENT_TEXT_SIZE to value,
+                    ),
+                ),
+                emptyFlow(),
+            )
+
+            assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
+            assertEquals(TextPreferences.DEFAULT_COMMENT_TEXT_SIZE, settings.comments.textSize)
+            assertEquals(0, TextPreferences.storyTextSizeOffset(settings.story.storyTextSize))
+            assertEquals(0, TextPreferences.commentTextSizeOffset(settings.comments.textSize))
+        }
+    }
+
+    @Test
     fun unavailableOrPrivateDefaultStoryTypesFallBackToTopStories() {
         val unavailableFrontpage = StoredUserSettings(
             TestKeyValueStore(
