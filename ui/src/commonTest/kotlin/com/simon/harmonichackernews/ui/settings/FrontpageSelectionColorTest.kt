@@ -6,21 +6,26 @@ import androidx.compose.ui.graphics.luminance
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.theme.ThemeAccentCatalog
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class FrontpageSelectionColorTest {
     @Test
-    fun selectedCardStaysDistinctWhenThePageMatchesTheAccentWash() {
+    fun selectedCardUsesSubtleLightWashAndDistinctDarkTone() {
         for (card in listOf(Color.White, Color(0xff181818))) {
             val accent = Color(0xff6d638c)
             val page = accent.copy(alpha = 0.16f).compositeOver(card)
             val selected = frontpageSelectionColor(page, card, accent)
-            assertTrue(contrast(page, selected) >= 1.3f)
+            if (page.luminance() > 0.5f) {
+                assertEquals(accent.copy(alpha = 0.05f).compositeOver(card), selected)
+            } else {
+                assertTrue(contrast(page, selected) >= 1.3f)
+            }
         }
     }
 
     @Test
-    fun themeAndAccentCombinationsKeepTheCardDistinctAndItsNameReadable() {
+    fun themeAndAccentCombinationsKeepSelectionGentleAndItsNameReadable() {
         val themes = listOf(
             "light", "white", "dark", "gray", "amoled", "hacker", "hacker_news",
             "material_light", "material_dark", "material_fixed_light", "material_fixed_dark",
@@ -31,7 +36,15 @@ class FrontpageSelectionColorTest {
             val selected = frontpageSelectionColor(
                 colors.settingsPageBackground, colors.settingsItemBackground, palette.colorScheme.primary,
             )
-            assertTrue(contrast(colors.settingsPageBackground, selected) >= 1.3f, "$theme/${accent.value}")
+            if (colors.settingsPageBackground.luminance() > 0.5f) {
+                assertEquals(
+                    palette.colorScheme.primary.copy(alpha = 0.05f).compositeOver(colors.settingsItemBackground),
+                    selected,
+                    "$theme/${accent.value}",
+                )
+            } else {
+                assertTrue(contrast(colors.settingsPageBackground, selected) >= 1.3f, "$theme/${accent.value}")
+            }
             assertTrue(contrast(colors.textPrimary, selected) >= 4.5f, "Name in $theme/${accent.value}")
         }
     }

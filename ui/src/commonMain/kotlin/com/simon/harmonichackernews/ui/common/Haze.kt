@@ -28,6 +28,11 @@ private val LocalSharedHazeState = compositionLocalOf<HazeState?> { null }
 /** Opt-in experiment supplied once by the host's observable settings environment. */
 internal val LocalHazeGlassEnabled = compositionLocalOf { false }
 
+internal enum class HazeGlassAppearance {
+    Subtle,
+    FloatingButton,
+}
+
 @Composable
 fun HazeHost(content: @Composable () -> Unit) {
     val hazeState = rememberHazeState()
@@ -55,6 +60,7 @@ internal fun Modifier.sharedHazeBackground(
     surfaceColor: Color,
     shape: RoundedCornerShape,
     blurRadius: Dp = 6.dp,
+    glassAppearance: HazeGlassAppearance = HazeGlassAppearance.Subtle,
 ): Modifier = clip(shape).then(
     if (hazeState == null) {
         Modifier.background(surfaceColor)
@@ -65,9 +71,12 @@ internal fun Modifier.sharedHazeBackground(
             style = GlassStyle.regular.then {
                 shape(shape)
                 backgroundColor(surfaceColor.copy(alpha = 1f))
-                tint(surfaceColor)
-                specularIntensity(0.18f)
-                ambientResponse(0.08f)
+                // FABs' normal 80% tint masks the optics. Let more backdrop through and
+                // give their rim a stronger highlight, without sharpening background text.
+                val floatingButton = glassAppearance == HazeGlassAppearance.FloatingButton
+                tint(if (floatingButton) surfaceColor.copy(alpha = 0.4f) else surfaceColor)
+                specularIntensity(if (floatingButton) 0.45f else 0.18f)
+                ambientResponse(if (floatingButton) 0.16f else 0.08f)
                 lightPosition(Alignment.TopStart)
                 contentNormalBlend(0f)
                 edgeSoftness(1.dp)

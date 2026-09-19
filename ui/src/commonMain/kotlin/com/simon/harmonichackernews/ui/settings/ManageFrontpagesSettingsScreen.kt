@@ -79,6 +79,7 @@ import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.ui.stories.menuIcon
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
@@ -215,7 +216,7 @@ fun ManageFrontpagesSettingsScreen(
     CompositionLocalProvider(
         LocalRippleConfiguration provides RippleConfiguration(
             color = if (HarmonicTheme.isDark) Color.White else Color.Unspecified,
-            rippleAlpha = RippleAlpha(draggedAlpha = 0.08f, focusedAlpha = 0.06f, hoveredAlpha = 0.03f, pressedAlpha = 0.05f),
+            rippleAlpha = RippleAlpha(draggedAlpha = 0.024f, focusedAlpha = 0.018f, hoveredAlpha = 0.009f, pressedAlpha = 0.015f),
         ),
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -300,7 +301,7 @@ fun ManageFrontpagesSettingsScreen(
                                 painterResource(type.menuIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = if (selected) accent else HarmonicTheme.colors.drawable,
+                                tint = HarmonicTheme.colors.drawable,
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
@@ -432,6 +433,7 @@ fun ManageFrontpagesSettingsScreen(
                     .onSizeChanged { resetButtonHeight = with(density) { it.height.toDp() } }
                     .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, resetButtonShape, clip = false)
                     .sharedHazeBackground(
+                        glassAppearance = HazeGlassAppearance.FloatingButton,
                         hazeState = hazeState,
                         surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
                         shape = resetButtonShape,

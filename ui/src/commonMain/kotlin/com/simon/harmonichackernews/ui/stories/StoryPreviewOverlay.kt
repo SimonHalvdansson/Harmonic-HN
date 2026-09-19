@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -93,10 +95,11 @@ internal fun storyPreviewOptionalSnapshotUnavailable(
 
 internal fun storyPreviewPagerSettleTarget(
     isScrollInProgress: Boolean,
+    isPointerPressed: Boolean,
     currentPage: Int,
     currentPageOffsetFraction: Float,
 ): Int? = currentPage.takeIf {
-    !isScrollInProgress &&
+    !isScrollInProgress && !isPointerPressed &&
         currentPageOffsetFraction.isFinite() &&
         abs(currentPageOffsetFraction) > PagerSettledOffsetTolerance
 }
@@ -142,6 +145,8 @@ fun StoryPreviewOverlay(
     val currentStory = state.stories[pagerState.currentPage]
     val currentCardColor = rememberStoryPreviewCardColor(controller, currentStory)
     val pagerSettlingScope = rememberCoroutineScope()
+    var isPointerPressed by remember(state) { mutableStateOf(false) }
+    var pagerRepairJob by remember(state) { mutableStateOf<Job?>(null) }
     var scrollWheelGestureReady by remember(state) { mutableStateOf(true) }
     var scrollWheelResetJob by remember(state) { mutableStateOf<Job?>(null) }
     val transformProgress = remember(state) { Animatable(0f) }
@@ -440,6 +445,7 @@ fun StoryPreviewOverlay(
         snapshotFlow {
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = pagerState.isScrollInProgress,
+                isPointerPressed = isPointerPressed,
                 currentPage = pagerState.currentPage,
                 currentPageOffsetFraction = pagerState.currentPageOffsetFraction,
             )
@@ -448,7 +454,7 @@ fun StoryPreviewOverlay(
                 // Starting another gesture can cancel Pager's return animation after an incomplete
                 // swipe. Run the repair in a child job so that cancellation does not kill this
                 // observer; once the pager is idle again it can retry and finish centering the page.
-                pagerSettlingScope.launch {
+                pagerRepairJob = pagerSettlingScope.launch {
                     pagerState.animateScrollToPage(targetPage)
                 }
             }
@@ -586,6 +592,23 @@ fun StoryPreviewOverlay(
             flingBehavior = pagerFlingBehavior,
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(pagerState) {
+                    // The card's verticalScroll can move Pager through nested scroll without
+                    // setting Pager's isScrollInProgress. Observe even child-consumed touches
+                    // so the idle repair never pulls the card away from a held finger.
+                    try {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val pressed = event.changes.any { it.pressed }
+                                if (pressed && !isPointerPressed) pagerRepairJob?.cancel()
+                                isPointerPressed = pressed
+                            }
+                        }
+                    } finally {
+                        isPointerPressed = false
+                    }
+                }
                 .then(
                     if (pageOnScrollWheel) {
                         Modifier.storyPreviewScrollWheelPaging { scrollDeltaY ->

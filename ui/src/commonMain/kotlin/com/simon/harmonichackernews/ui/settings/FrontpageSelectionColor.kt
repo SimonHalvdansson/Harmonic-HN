@@ -5,15 +5,16 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
-/** A fixed accent wash can match the page itself, especially with dynamic light palettes. */
+/** Light cards use a subtle wash; dark cards retain their separation from the page. */
 internal fun frontpageSelectionColor(
     pageBackground: Color,
     cardBackground: Color,
     accent: Color,
 ): Color {
-    val tinted = accent.copy(alpha = 0.16f).compositeOver(cardBackground)
     val pageLuminance = pageBackground.luminance()
-    val contrastingTone = if (pageLuminance > 0.5f) Color.Black else Color.White
+    if (pageLuminance > 0.5f) return accent.copy(alpha = 0.05f).compositeOver(cardBackground)
+    val tinted = accent.copy(alpha = 0.16f).compositeOver(cardBackground)
+    val contrastingTone = Color.White
     for (step in 0..100) {
         val candidate = lerp(tinted, contrastingTone, step / 100f)
         val luminance = candidate.luminance()

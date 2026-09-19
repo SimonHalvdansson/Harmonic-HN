@@ -10,6 +10,7 @@ class StoryPreviewPagerSettlingTest {
         assertNull(
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = false,
+                isPointerPressed = false,
                 currentPage = 4,
                 currentPageOffsetFraction = 0f,
             ),
@@ -21,6 +22,33 @@ class StoryPreviewPagerSettlingTest {
         assertNull(
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = true,
+                isPointerPressed = true,
+                currentPage = 4,
+                currentPageOffsetFraction = 0.25f,
+            ),
+        )
+    }
+
+    @Test
+    fun nestedScrollAndHeldTouchDoNotRequestSettleEvenWhenPagerReportsIdle() {
+        for (offset in listOf(-0.25f, 0.25f)) {
+            assertNull(
+                storyPreviewPagerSettleTarget(
+                    isScrollInProgress = false,
+                    isPointerPressed = true,
+                    currentPage = 4,
+                    currentPageOffsetFraction = offset,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun flingAfterTouchReleaseDoesNotRequestSettle() {
+        assertNull(
+            storyPreviewPagerSettleTarget(
+                isScrollInProgress = true,
+                isPointerPressed = false,
                 currentPage = 4,
                 currentPageOffsetFraction = 0.25f,
             ),
@@ -33,6 +61,7 @@ class StoryPreviewPagerSettlingTest {
             4,
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = false,
+                isPointerPressed = false,
                 currentPage = 4,
                 currentPageOffsetFraction = 0.25f,
             ),
@@ -41,6 +70,7 @@ class StoryPreviewPagerSettlingTest {
             4,
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = false,
+                isPointerPressed = false,
                 currentPage = 4,
                 currentPageOffsetFraction = -0.25f,
             ),
@@ -52,6 +82,7 @@ class StoryPreviewPagerSettlingTest {
         assertNull(
             storyPreviewPagerSettleTarget(
                 isScrollInProgress = false,
+                isPointerPressed = false,
                 currentPage = 4,
                 currentPageOffsetFraction = Float.NaN,
             ),

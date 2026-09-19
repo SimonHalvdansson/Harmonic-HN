@@ -142,6 +142,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.currentSharedHazeState
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
@@ -397,6 +398,7 @@ fun BoxScope.StoryTapToUpdateButton(
                 modifier = Modifier.widthIn(min = 189.dp)
                     .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, shape, clip = false)
                     .sharedHazeBackground(
+                        glassAppearance = HazeGlassAppearance.FloatingButton,
                         hazeState = hazeState,
                         surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
                         shape = shape,

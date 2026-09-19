@@ -76,6 +76,7 @@ import com.simon.harmonichackernews.ui.content.toCommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -579,6 +580,7 @@ fun CommentsScreen(
                 modifier = Modifier
                     .shadow(3.dp, scrollTopShape, clip = false)
                     .sharedHazeBackground(
+                        glassAppearance = HazeGlassAppearance.FloatingButton,
                         hazeState = commentsHazeState,
                         surfaceColor = scrollTopSurface,
                         shape = scrollTopShape,
@@ -804,6 +806,7 @@ private fun CommentNavigationButtons(
             modifier = Modifier
                 .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, shape, clip = false)
                 .sharedHazeBackground(
+                    glassAppearance = HazeGlassAppearance.FloatingButton,
                     hazeState = hazeState,
                     surfaceColor = surfaceColor,
                     shape = shape,
