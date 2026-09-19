@@ -108,8 +108,9 @@ class CommentsFeatureBinding private constructor(
                 if (controller.scrollToCommentRequest == null) controller.completeInitialScrollRestoration()
             }
             is CommentsRuntimeEffect.ActionFailed -> {
-                if (effect.presentation.requestLogin) scene.navigation.showLoginDialog()
-                if (effect.presentation.showDetails) {
+                if (effect.presentation.requestLogin) {
+                    scene.navigation.showLoginDialog()
+                } else if (effect.presentation.showDetails) {
                     scene.navigation.showFailureDetailDialog(
                         effect.presentation.failureSummary,
                         effect.presentation.failureDetail,

@@ -997,7 +997,12 @@ private fun StoriesHeader(
                     ) {
                         Icon(painterResource(Res.drawable.ic_calendar_today), null)
                         Spacer(Modifier.width(8.dp))
-                        Text(controller.frontDateLabel, maxLines = 1)
+                        Text(
+                            controller.frontDateLabel,
+                            fontFamily = rememberContentTypography(settings.font).family,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
                     }
                     Button(
                         onClick = { controller.listener.onShiftFrontDate(1) },

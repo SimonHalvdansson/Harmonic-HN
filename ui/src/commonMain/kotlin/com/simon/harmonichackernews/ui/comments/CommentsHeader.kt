@@ -294,6 +294,7 @@ fun CommentsHeader(
                                     pollOptions,
                                     controller.pollVoteInFlightOptionId,
                                     controller.listener::onPollOption,
+                                    typography = headerTypography,
                                 )
                             }
                             // Keep selectable summary text outside the article click target so a

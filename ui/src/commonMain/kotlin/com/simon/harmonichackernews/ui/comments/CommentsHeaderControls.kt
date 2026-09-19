@@ -54,7 +54,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -88,79 +87,6 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
-
-@Composable
-fun PollOptions(
-    options: List<PollOptionUi>?,
-    voteInFlightOptionId: Int?,
-    onVote: (Int) -> Unit,
-) {
-    AnimatedVisibility(
-        visible = !options.isNullOrEmpty(),
-        enter = fadeIn(tween(180)) + expandVertically(
-            animationSpec = tween(260, easing = FastOutSlowInEasing),
-            expandFrom = Alignment.Top,
-        ),
-        exit = fadeOut(tween(90)) + shrinkVertically(shrinkTowards = Alignment.Top),
-        label = "poll options",
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            options.orEmpty().forEach { option ->
-                key(option.id) {
-                    AnimatedContent(
-                        targetState = option,
-                        modifier = Modifier.fillMaxWidth(),
-                        // Updated vote counts should not replay the loading transition.
-                        contentKey = { it.loaded to it.loadFailed },
-                        transitionSpec = {
-                            (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(90))).using(
-                                SizeTransform(clip = false) { _, _ ->
-                                    tween(260, easing = FastOutSlowInEasing)
-                                },
-                            )
-                        },
-                        label = "poll option content",
-                    ) { displayedOption ->
-                        if (displayedOption.loaded) {
-                            OutlinedButton(
-                                onClick = { onVote(displayedOption.id) },
-                                enabled = voteInFlightOptionId == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("${displayedOption.text} (${displayedOption.points} ${if (displayedOption.points == 1) "point" else "points"})")
-                            }
-                        } else if (displayedOption.loadFailed) {
-                            Text(
-                                "Unable to load this option",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                color = HarmonicTheme.colors.textSecondary,
-                            )
-                        } else {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                HarmonicLoadingIndicator(Modifier.size(42.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-data class PollOptionUi(
-    val id: Int,
-    val loaded: Boolean,
-    val loadFailed: Boolean,
-    val text: String?,
-    val points: Int,
-)
 
 @Composable
 fun StorySummary(

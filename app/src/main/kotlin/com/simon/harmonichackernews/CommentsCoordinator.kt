@@ -1131,8 +1131,9 @@ class CommentsCoordinator(
     private fun showActionFailure(
         presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
     ) {
-        if (presentation.requestLogin) navigation.showLoginDialog()
-        if (presentation.showDetails) {
+        if (presentation.requestLogin) {
+            navigation.showLoginDialog()
+        } else if (presentation.showDetails) {
             navigation.showFailureDetailDialog(
                 presentation.failureSummary,
                 presentation.failureDetail,
