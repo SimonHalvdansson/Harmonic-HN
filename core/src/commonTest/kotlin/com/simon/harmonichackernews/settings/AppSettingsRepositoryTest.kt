@@ -12,6 +12,32 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun storyListSelectorDefaultsToDropdownAndPersistsAcrossReaders() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(StoryListSelector.DROPDOWN, repository.snapshot().story.listSelector)
+
+        repository.setStoryListSelector(StoryListSelector.CHIPS)
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow()).snapshot().story
+        assertEquals(StoryListSelector.CHIPS, restored.listSelector)
+        assertEquals(
+            StoryListSelector.CHIPS,
+            com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(restored).listSelector,
+        )
+        assertFalse(restored.compactHeader)
+
+        repository.setStoryListSelector(StoryListSelector.DROPDOWN)
+        assertEquals(StoryListSelector.DROPDOWN, repository.snapshot().story.listSelector)
+    }
+
+    @Test
+    fun unknownStoryListSelectorFallsBackToDropdown() {
+        val store = TestKeyValueStore(mapOf(UserPreferenceKeys.STORY_LIST_SELECTOR to "future-mode"))
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(StoryListSelector.DROPDOWN, repository.snapshot().story.listSelector)
+    }
+
+    @Test
     fun commentAppearanceDefaultsAndPersistedChoices() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

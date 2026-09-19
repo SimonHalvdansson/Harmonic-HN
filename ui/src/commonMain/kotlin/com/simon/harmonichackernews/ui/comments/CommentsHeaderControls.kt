@@ -54,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -94,36 +95,60 @@ fun PollOptions(
     voteInFlightOptionId: Int?,
     onVote: (Int) -> Unit,
 ) {
-    if (options == null) return
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+    AnimatedVisibility(
+        visible = !options.isNullOrEmpty(),
+        enter = fadeIn(tween(180)) + expandVertically(
+            animationSpec = tween(260, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(tween(90)) + shrinkVertically(shrinkTowards = Alignment.Top),
+        label = "poll options",
     ) {
-        options.forEach { option ->
-            if (option.loaded) {
-                OutlinedButton(
-                    onClick = { onVote(option.id) },
-                    enabled = voteInFlightOptionId == null,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("${option.text} (${option.points} ${if (option.points == 1) "point" else "points"})")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            options.orEmpty().forEach { option ->
+                key(option.id) {
+                    AnimatedContent(
+                        targetState = option,
+                        modifier = Modifier.fillMaxWidth(),
+                        // Updated vote counts should not replay the loading transition.
+                        contentKey = { it.loaded to it.loadFailed },
+                        transitionSpec = {
+                            (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(90))).using(
+                                SizeTransform(clip = false) { _, _ ->
+                                    tween(260, easing = FastOutSlowInEasing)
+                                },
+                            )
+                        },
+                        label = "poll option content",
+                    ) { displayedOption ->
+                        if (displayedOption.loaded) {
+                            OutlinedButton(
+                                onClick = { onVote(displayedOption.id) },
+                                enabled = voteInFlightOptionId == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("${displayedOption.text} (${displayedOption.points} ${if (displayedOption.points == 1) "point" else "points"})")
+                            }
+                        } else if (displayedOption.loadFailed) {
+                            Text(
+                                "Unable to load this option",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                color = HarmonicTheme.colors.textSecondary,
+                            )
+                        } else {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                HarmonicLoadingIndicator(Modifier.size(42.dp))
+                            }
+                        }
+                    }
                 }
-            } else if (option.loadFailed) {
-                Text(
-                    "Unable to load this option",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    color = HarmonicTheme.colors.textSecondary,
-                )
-            } else {
-                HarmonicLoadingIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(42.dp),
-                )
             }
         }
     }
@@ -726,13 +751,15 @@ private fun MoreMenu(
                                 CommentsMoreAction.TOGGLE_BOOKMARK,
                             )
                         }
-                        if (commentsCount > 1) {
+                        AnimatedCommentMenuItem(visible = commentsCount > 1) {
                             action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
                         }
-                        if (commentsCount > 2) {
+                        AnimatedCommentMenuItem(visible = commentsCount > 2) {
                             SubmenuEntry("Sort comments", Res.drawable.ic_filter_list, onSortExpanded)
                         }
-                        if (!controller.commentsByOpFilterActive && controller.hasCommentsByOp) {
+                        AnimatedCommentMenuItem(
+                            visible = !controller.commentsByOpFilterActive && controller.hasCommentsByOp,
+                        ) {
                             action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
                         }
                         action("Open in browser", Res.drawable.ic_open_in_browser, CommentsMoreAction.OPEN_BROWSER)
@@ -750,6 +777,28 @@ private fun MoreMenu(
 }
 
 private enum class MoreMenuPage { Root, Sort, Archive }
+
+@Composable
+private fun AnimatedCommentMenuItem(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.fillMaxWidth(),
+        enter = expandVertically(
+            animationSpec = tween(220, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ) + fadeIn(tween(150, delayMillis = 50)),
+        exit = shrinkVertically(
+            animationSpec = tween(190, easing = FastOutSlowInEasing),
+            shrinkTowards = Alignment.Top,
+        ) + fadeOut(tween(100)),
+        label = "comment menu item",
+    ) {
+        content()
+    }
+}
 
 @Composable
 private fun SubmenuHeader(title: String, onClick: () -> Unit) {

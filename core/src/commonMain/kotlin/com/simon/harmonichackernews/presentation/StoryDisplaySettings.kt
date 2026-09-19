@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreferences
+import com.simon.harmonichackernews.settings.StoryListSelector
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.TextPreferences
 
@@ -28,6 +29,7 @@ data class StoryDisplaySettings(
     val font: String,
     val commentTextSize: Float,
     val outline: Boolean = false,
+    val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -62,6 +64,7 @@ data class StoryDisplaySettings(
             storyTextSize = TextPreferences.clampStoryTextSize(preferences.storyTextSize),
             showIndex = preferences.showIndex,
             compactHeader = preferences.compactHeader,
+            listSelector = preferences.listSelector,
             leftAlign = preferences.leftAlign,
             displayStyle = preferences.displayStyle,
             outline = preferences.outline,

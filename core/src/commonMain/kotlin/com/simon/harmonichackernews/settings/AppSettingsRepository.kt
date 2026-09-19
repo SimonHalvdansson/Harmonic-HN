@@ -181,6 +181,8 @@ class AppSettingsRepository(
 
     fun setExtraSidePadding(value: ExtraSidePadding) = mutator.setExtraSidePadding(value)
 
+    fun setStoryListSelector(value: StoryListSelector) = mutator.setStoryListSelector(value)
+
     fun setTheme(value: String) = mutator.setTheme(value)
     fun setNighttimeTheme(value: String) = mutator.setNighttimeTheme(value)
     fun setFollowSystemTheme(value: Boolean) = mutator.setFollowSystem(value)

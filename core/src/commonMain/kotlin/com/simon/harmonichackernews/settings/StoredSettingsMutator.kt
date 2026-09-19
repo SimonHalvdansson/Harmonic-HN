@@ -181,6 +181,10 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.EXTRA_SIDE_PADDING, value.storedValue)
     }
 
+    fun setStoryListSelector(value: StoryListSelector) {
+        store.putString(UserPreferenceKeys.STORY_LIST_SELECTOR, value.storedValue)
+    }
+
     fun setTheme(value: String) {
         store.update {
             putString(ThemePreferences.KEY, value)

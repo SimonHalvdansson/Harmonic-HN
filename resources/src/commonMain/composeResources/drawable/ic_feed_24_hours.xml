@@ -1,0 +1,22 @@
+<!-- Custom rolling-day icon, drawn to match Material Symbols Rounded at 24dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:alpha="0.8">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20,7A9,9 0,1 0,21,12M20,3.5V7H17" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 7.159 10.026 C 7.159 9.274 7.817 8.804 8.757 8.804 C 9.791 8.804 10.449 9.462 10.449 10.308 C 10.449 11.06 10.073 11.53 9.415 12.188 L 7.159 14.632 V 15.196 H 10.543 M 15.619 15.196 V 8.992 L 12.329 13.316 H 16.841" />
+</vector>

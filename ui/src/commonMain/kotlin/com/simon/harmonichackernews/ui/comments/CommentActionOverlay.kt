@@ -78,6 +78,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentMenuAction
+import com.simon.harmonichackernews.settings.UserAvatarMode
+import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -452,8 +454,9 @@ private fun CommentActionCardContent(
     val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(comment.time)
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
     val commentTextSize = settings.preferredTextSize - 1f
+    val author = comment.by?.takeIf(String::isNotBlank)
     val userLabel = buildString {
-        append(comment.by?.takeIf(String::isNotBlank) ?: "Unknown user")
+        append(author ?: "Unknown user")
         if (comment.by == controller.story.by) append(" (OP)")
     }
     val linkListener = remember(onOpenLink) {
@@ -488,7 +491,15 @@ private fun CommentActionCardContent(
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.height(40.dp),
             ) {
-                Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
+                if (settings.userAvatarMode == UserAvatarMode.GENERATED && author != null) {
+                    UserAvatar(
+                        author = author,
+                        mode = settings.userAvatarMode,
+                        modifier = Modifier.size(24.dp),
+                    )
+                } else {
+                    Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
+                }
                 Text(
                     userLabel,
                     modifier = Modifier.padding(start = 8.dp),

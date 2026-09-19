@@ -56,12 +56,14 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -118,6 +120,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.settings.StoryListSelector
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
@@ -887,7 +891,8 @@ private fun StoriesHeader(
     val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
-    val compact = controller.displaySettings?.compactHeader == true
+    val settings = controller.displaySettings ?: return
+    val compact = settings.compactHeader
     val topSpacing = if (compact) 20.dp else 40.dp
     val bottomSpacing = if (compact) 4.dp else 8.dp
 
@@ -910,6 +915,19 @@ private fun StoriesHeader(
                     showRefreshMenuItem = showRefreshMenuItem,
                     modifier = Modifier.padding(start = sideStart, end = sideEnd),
                 )
+                if (settings.listSelector == StoryListSelector.CHIPS) {
+                    StoryTypeChips(
+                        labels = controller.typeLabels,
+                        selectedIndex = controller.selectedTypeIndex,
+                        fontFamily = rememberContentTypography(
+                            settings.font,
+                            settings.storyTextSize,
+                        ).family,
+                        contentPadding = PaddingValues(start = sideStart, end = sideEnd),
+                        onSelected = controller.listener::onTypeSelected,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
             }
 
             AnimatedVisibility(visible = !searchMode && controller.showSavedFilter) {
@@ -951,22 +969,27 @@ private fun StoriesHeader(
             }
 
             AnimatedVisibility(visible = !searchMode && controller.showFrontDate) {
+                val dateButtonColors = ButtonDefaults.filledTonalButtonColors()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = sideStart, top = 10.dp, end = sideEnd),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedButton(
+                    Button(
                         onClick = { controller.listener.onShiftFrontDate(-1) },
                         enabled = controller.frontPreviousEnabled,
+                        colors = dateButtonColors,
+                        elevation = null,
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.size(56.dp),
                     ) {
                         Icon(painterResource(Res.drawable.ic_chevron_left), "Previous front page day")
                     }
-                    OutlinedButton(
+                    Button(
                         onClick = controller.listener::onPickFrontDate,
+                        colors = dateButtonColors,
+                        elevation = null,
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 8.dp)
@@ -976,9 +999,11 @@ private fun StoriesHeader(
                         Spacer(Modifier.width(8.dp))
                         Text(controller.frontDateLabel, maxLines = 1)
                     }
-                    OutlinedButton(
+                    Button(
                         onClick = { controller.listener.onShiftFrontDate(1) },
                         enabled = controller.frontNextEnabled,
+                        colors = dateButtonColors,
+                        elevation = null,
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.size(56.dp),
                     ) {
@@ -1130,6 +1155,10 @@ private fun MainHeader(
     }
     val settings = controller.displaySettings ?: return
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
+    val useDropdown = settings.listSelector == StoryListSelector.DROPDOWN
+    LaunchedEffect(useDropdown) {
+        if (!useDropdown) typesExpanded = false
+    }
     val density = LocalDensity.current
     val title = if (controller.showingCached) {
         "Cached stories"
@@ -1161,9 +1190,11 @@ private fun MainHeader(
                         // Grow the hit/ripple bounds around the existing text origin.
                         .offset(x = (-4).dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .combinedClickable(
-                            onClick = { typesExpanded = true },
-                            onLongClick = null,
+                        .then(
+                            if (useDropdown) Modifier.combinedClickable(
+                                onClick = { typesExpanded = true },
+                                onLongClick = null,
+                            ) else Modifier,
                         )
                         .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1214,17 +1245,19 @@ private fun MainHeader(
                             Spacer(Modifier.width(visibleSizing.arrowGap.dp))
                         }
                     }
-                    Icon(
-                        painterResource(Res.drawable.ic_keyboard_arrow_down),
-                        contentDescription = "Choose story list",
-                        modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.drawable,
-                    )
+                    if (useDropdown) {
+                        Icon(
+                            painterResource(Res.drawable.ic_keyboard_arrow_down),
+                            contentDescription = "Choose story list",
+                            modifier = Modifier.size(24.dp),
+                            tint = HarmonicTheme.colors.drawable,
+                        )
+                    }
                 }
                 HarmonicDropdownMenu(
-                    expanded = typesExpanded,
+                    expanded = useDropdown && typesExpanded,
                     onDismiss = { typesExpanded = false },
-                    modifier = Modifier.width(196.dp),
+                    modifier = Modifier.width(240.dp),
                 ) {
                     controller.typeLabels.forEachIndexed { index, label ->
                         DropdownMenuItem(
@@ -1240,6 +1273,14 @@ private fun MainHeader(
                             onClick = {
                                 typesExpanded = false
                                 controller.listener.onTypeSelected(index)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(StoryType.fromLabel(label).menuIcon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = HarmonicTheme.colors.drawable,
+                                )
                             },
                         )
                     }

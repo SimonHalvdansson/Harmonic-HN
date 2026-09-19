@@ -253,6 +253,7 @@ class AppearanceSettingsPresenter(
             showTransparentStatusBar = showTransparentStatusBar,
             transparentStatusBar = settings.general.transparentStatusBar,
             compactHeader = settings.story.compactHeader,
+            storyListSelector = settings.story.listSelector,
         )
     }
 

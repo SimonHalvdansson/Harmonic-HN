@@ -16,6 +16,19 @@ import kotlin.test.assertTrue
 
 class SettingsPresentersTest {
     @Test
+    fun appearanceReflectsThePersistedStoryListSelector() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        val presenter = AppearanceSettingsPresenter(repository)
+        repository.setStoryListSelector(com.simon.harmonichackernews.settings.StoryListSelector.CHIPS)
+
+        assertEquals(
+            com.simon.harmonichackernews.settings.StoryListSelector.CHIPS,
+            presenter.state("Default", "Default", showTransparentStatusBar = true).storyListSelector,
+        )
+    }
+
+    @Test
     fun storiesMapsActionsToTypedSettingsAndPlatformEffects() {
         val presenter = fixture().stories
 

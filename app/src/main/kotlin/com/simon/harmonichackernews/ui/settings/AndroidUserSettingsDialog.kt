@@ -37,6 +37,9 @@ fun AndroidUserSettingsDialog(
     }
     val runtime = session.runtime
     val runtimeState by runtime.state.collectAsState()
+    val settings by appComposition.settings.updates.collectAsState(
+        initial = appComposition.settings.snapshot(),
+    )
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
 
@@ -85,6 +88,7 @@ fun AndroidUserSettingsDialog(
             tag = currentTag,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
+            userAvatarMode = settings.comments.userAvatarMode,
             onDismiss = onDismiss,
             onRetry = session::retry,
             onOpenSubmissions = session::openSubmissions,

@@ -35,6 +35,8 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.settings.UserAvatarMode
+import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
@@ -68,7 +70,9 @@ fun UserSettingsDialog(
     onToggleBlocked: (String) -> Unit,
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit = {},
+    userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
 ) {
+    val userName = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         edgeToEdgeContent = true,
@@ -83,14 +87,22 @@ fun UserSettingsDialog(
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_account_circle),
-                            contentDescription = null,
-                            tint = HarmonicTheme.colors.storyNormal,
-                            modifier = Modifier.padding(end = 8.dp).size(28.dp),
-                        )
+                        if (userAvatarMode == UserAvatarMode.GENERATED) {
+                            UserAvatar(
+                                author = userName,
+                                mode = userAvatarMode,
+                                modifier = Modifier.padding(end = 8.dp).size(28.dp),
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_account_circle),
+                                contentDescription = null,
+                                tint = HarmonicTheme.colors.storyNormal,
+                                modifier = Modifier.padding(end = 8.dp).size(28.dp),
+                            )
+                        }
                         Text(
-                            text = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName,
+                            text = userName,
                             color = HarmonicTheme.colors.storyNormal,
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,

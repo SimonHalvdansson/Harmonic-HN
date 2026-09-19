@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
 import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
+import com.simon.harmonichackernews.settings.StoryListSelector
 
 data class AppearanceSettingsUiState(
     val themeLabel: String,
@@ -36,6 +37,7 @@ data class AppearanceSettingsUiState(
     val allowSplitAdjustment: Boolean = false,
     val showExtraSidePadding: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
+    val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
@@ -57,6 +59,7 @@ fun AppearanceSettingsScreen(
     contentVersion: Int = 0,
     onSplitRatioChanged: (Float) -> Unit = {},
     onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
+    onStoryListSelectorChanged: (StoryListSelector) -> Unit = {},
 ) {
     var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
     if (state.paletteTintEnabled) PreloadPalettePreviewResources()
@@ -103,6 +106,16 @@ fun AppearanceSettingsScreen(
                         },
                     )
                 }
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "Story list selector",
+                    options = listOf(
+                        StoryListSelector.DROPDOWN to "Dropdown",
+                        StoryListSelector.CHIPS to "Chips",
+                    ),
+                    selected = state.storyListSelector,
+                    onSelected = onStoryListSelectorChanged,
+                )
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Compact header",

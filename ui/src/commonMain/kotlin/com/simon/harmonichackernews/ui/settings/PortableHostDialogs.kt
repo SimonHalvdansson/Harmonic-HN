@@ -136,6 +136,7 @@ fun PortableUserProfileDialog(
         app.createUserProfileSession(scope, userName, monthNames)
     }
     val runtimeState by session.runtime.state.collectAsState()
+    val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(app.userTags.tagFor(userName)) }
 
@@ -177,6 +178,7 @@ fun PortableUserProfileDialog(
             tag = currentTag,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
+            userAvatarMode = settings.comments.userAvatarMode,
             onDismiss = onDismiss,
             onRetry = session::retry,
             onOpenSubmissions = session::openSubmissions,

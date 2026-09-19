@@ -1,0 +1,22 @@
+<!-- Custom two-day icon; shares the rolling-day outline with the 24-hour feed. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:alpha="0.8">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20,7A9,9 0,1 0,21,12M20,3.5V7H17" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 10.12 15.149 V 8.945 L 6.83 13.269 H 11.342 M 15.196 11.859 C 14.068 11.859 13.41 11.295 13.41 10.355 C 13.41 9.415 14.068 8.757 15.196 8.757 C 16.324 8.757 16.982 9.415 16.982 10.355 C 16.982 11.295 16.324 11.859 15.196 11.859 C 13.974 11.859 13.222 12.517 13.222 13.551 C 13.222 14.585 13.974 15.243 15.196 15.243 C 16.418 15.243 17.17 14.585 17.17 13.551 C 17.17 12.517 16.418 11.859 15.196 11.859" />
+</vector>

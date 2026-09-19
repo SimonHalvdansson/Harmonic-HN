@@ -297,6 +297,7 @@ fun AppearanceSettingsRoute(
             )
         },
         onExtraSidePaddingChanged = repository::setExtraSidePadding,
+        onStoryListSelectorChanged = repository::setStoryListSelector,
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }
