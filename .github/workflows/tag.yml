@@ -128,6 +128,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      # Gradle also configures the Android native feature for desktop tasks.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
       - name: Add WiX Toolset to PATH
         if: runner.os == 'Windows'
         shell: pwsh

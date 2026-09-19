@@ -62,6 +62,7 @@ androidx-core = "androidx.core:core:1.19.0"
 androidx-browser = "androidx.browser:browser:1.10.0"
 androidx-preference = "androidx.preference:preference:1.2.1"
 androidx-security = "androidx.security:security-crypto:1.1.0"
+jsr305 = "com.google.code.findbugs:jsr305:3.0.2"
 androidx-webkit = "androidx.webkit:webkit:1.17.0"
 androidx-activity = "androidx.activity:activity:1.13.0"
 

@@ -164,6 +164,8 @@ dependencies {
     implementation(libs.androidx.preference)
     // Read-only compatibility bridge for credentials written before the direct-Keystore vault.
     implementation(libs.androidx.security)
+    // Tink's static-analysis annotations must be available to R8 during release shrinking.
+    compileOnly(libs.jsr305)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity)
 
