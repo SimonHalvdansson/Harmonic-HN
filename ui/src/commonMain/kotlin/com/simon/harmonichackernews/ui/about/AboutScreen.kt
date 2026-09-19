@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_attribution
 import com.simon.harmonichackernews.resources.ic_link_preview_github
@@ -54,6 +55,7 @@ import com.simon.harmonichackernews.resources.ic_system_update_alt
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.common.OutlinedButton
+import com.simon.harmonichackernews.ui.settings.SettingsCard
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -121,55 +123,64 @@ fun AboutScreen(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
                 )
                 .padding(
-                    start = 16.dp + sidePadding,
-                    top = 20.dp,
-                    end = 16.dp + sidePadding,
-                    bottom = 8.dp,
+                    start = sidePadding,
+                    top = HarmonicDimens.settings_list_first_segment_top_margin,
+                    end = sidePadding,
+                    bottom = 24.dp,
                 ),
         ) {
-            AboutIdentity(
-                versionLabel = versionLabel,
-                appIcon = appIcon,
-                platformTextStyle = platformTextStyle,
-            )
+            SettingsCard {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.settingsItemBackground)
+                        .padding(horizontal = 16.dp, vertical = 20.dp),
+                ) {
+                    AboutIdentity(
+                        versionLabel = versionLabel,
+                        appIcon = appIcon,
+                        platformTextStyle = platformTextStyle,
+                    )
 
-            Text(
-                text = aboutBody,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp, bottom = 16.dp),
-                color = colors.textPrimary,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 16.sp,
-                style = platformTextStyle,
-            )
+                    Text(
+                        text = aboutBody,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp, bottom = 16.dp),
+                        color = colors.textPrimary,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 15.sp,
+                        style = platformTextStyle,
+                    )
 
-            FeedbackCard(platformTextStyle)
-            Spacer(modifier = Modifier.height(16.dp))
-            AboutActionButton(
-                text = "Harmonic on GitHub",
-                icon = painterResource(Res.drawable.ic_link_preview_github),
-                onClick = onOpenGithub,
-                platformTextStyle = platformTextStyle,
-            )
-            AboutActionButton(
-                text = "Changelog",
-                icon = painterResource(Res.drawable.ic_system_update_alt),
-                onClick = onOpenChangelog,
-                platformTextStyle = platformTextStyle,
-            )
-            AboutActionButton(
-                text = "Licenses",
-                icon = painterResource(Res.drawable.ic_attribution),
-                onClick = onOpenLicenses,
-                platformTextStyle = platformTextStyle,
-            )
-            AboutActionButton(
-                text = "Privacy policy",
-                icon = painterResource(Res.drawable.ic_policy),
-                onClick = onOpenPrivacy,
-                platformTextStyle = platformTextStyle,
-            )
+                    FeedbackCard(platformTextStyle)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    AboutActionButton(
+                        text = "Harmonic on GitHub",
+                        icon = painterResource(Res.drawable.ic_link_preview_github),
+                        onClick = onOpenGithub,
+                        platformTextStyle = platformTextStyle,
+                    )
+                    AboutActionButton(
+                        text = "Changelog",
+                        icon = painterResource(Res.drawable.ic_system_update_alt),
+                        onClick = onOpenChangelog,
+                        platformTextStyle = platformTextStyle,
+                    )
+                    AboutActionButton(
+                        text = "Licenses",
+                        icon = painterResource(Res.drawable.ic_attribution),
+                        onClick = onOpenLicenses,
+                        platformTextStyle = platformTextStyle,
+                    )
+                    AboutActionButton(
+                        text = "Privacy policy",
+                        icon = painterResource(Res.drawable.ic_policy),
+                        onClick = onOpenPrivacy,
+                        platformTextStyle = platformTextStyle,
+                    )
+                }
+            }
         }
     }
 }
@@ -182,9 +193,8 @@ private fun AboutIdentity(
 ) {
     val colors = HarmonicTheme.colors
     Row(modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Image(
+        AboutAnimatedIcon(
             painter = appIcon,
-            contentDescription = "Harmonic app icon",
             modifier = Modifier.size(56.dp),
         )
         Spacer(modifier = Modifier.width(16.dp))

@@ -89,7 +89,7 @@ fun FaviconProviderDialog(
                                 text = provider.urlTemplate,
                                 color = HarmonicTheme.colors.storyDisabled,
                                 fontFamily = GoogleSansCodeFontFamily,
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 lineHeight = 15.sp,
                             )
                         }

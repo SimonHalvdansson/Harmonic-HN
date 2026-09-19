@@ -515,6 +515,7 @@ private fun fontFamilyForSetting(value: String): FontFamily = when (value) {
     )
     "productsans" -> FontFamily(
         Font(Res.font.product_sans_regular, FontWeight.Normal),
+        Font(Res.font.product_sans_medium, FontWeight.Medium),
         Font(Res.font.product_sans_bold, FontWeight.Bold),
     )
     "verdana" -> FontFamily(

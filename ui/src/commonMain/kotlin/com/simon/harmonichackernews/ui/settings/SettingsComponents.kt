@@ -54,7 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import com.simon.harmonichackernews.ui.common.HarmonicSwitch
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
@@ -630,7 +630,7 @@ fun SettingsMainToggle(
             fontSize = 17.sp,
             lineHeight = 21.sp,
         )
-        Switch(
+        HarmonicSwitch(
             checked = checked,
             onCheckedChange = null,
             enabled = enabled,
@@ -762,7 +762,7 @@ fun SwitchSettingRow(
         checkedState = checked,
         onClick = { onCheckedChange(!checked) },
         trailing = {
-            Switch(
+            HarmonicSwitch(
                 checked = checked,
                 onCheckedChange = null,
                 enabled = enabled,

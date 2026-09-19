@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.resources.google_sans_regular
 import com.simon.harmonichackernews.resources.jetbrains_mono_bold
 import com.simon.harmonichackernews.resources.jetbrains_mono_regular
 import com.simon.harmonichackernews.resources.product_sans_bold
+import com.simon.harmonichackernews.resources.product_sans_medium
 import com.simon.harmonichackernews.resources.product_sans_regular
 import com.simon.harmonichackernews.resources.roboto_slab_bold
 import com.simon.harmonichackernews.resources.roboto_slab_regular
@@ -128,6 +129,7 @@ private fun contentFontFamily(font: String): FontFamily = when (font) {
     "productsans" -> rememberFontFamily(
         font,
         Font(Res.font.product_sans_regular, FontWeight.Normal),
+        Font(Res.font.product_sans_medium, FontWeight.Medium),
         Font(Res.font.product_sans_bold, FontWeight.Bold),
     )
     "googlesans" -> rememberFontFamily(
@@ -171,6 +173,5 @@ private fun contentFontFamily(font: String): FontFamily = when (font) {
 @Composable
 private fun rememberFontFamily(
     fontKey: String,
-    regular: ComposeFont,
-    bold: ComposeFont,
-): FontFamily = remember(fontKey) { FontFamily(regular, bold) }
+    vararg fonts: ComposeFont,
+): FontFamily = remember(fontKey) { FontFamily(*fonts) }

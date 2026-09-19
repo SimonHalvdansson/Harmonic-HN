@@ -53,9 +53,11 @@ class ReferenceLinkPreviewRuntime(
         loadJob = scope.launch {
             try {
                 val cached = if (forceRefresh) null else previews.cachedLinkSummary(url)?.takeIf {
-                    LinkSummaryParser.hackerNewsItemId(url) == null ||
+                    (LinkSummaryParser.buildXkcdApiUrl(url) == null ||
+                        it.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE) &&
+                    (LinkSummaryParser.hackerNewsItemId(url) == null ||
                         (it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
-                            (LinkSummaryParser.isHackerNewsStory(it) || it.commentTextVersion >= 1))
+                            (LinkSummaryParser.isHackerNewsStory(it) || it.commentTextVersion >= 1)))
                 }
                 val result = cached ?: summaries.load(url, fallbackTitle).also {
                     previews.saveLinkSummary(url, it)

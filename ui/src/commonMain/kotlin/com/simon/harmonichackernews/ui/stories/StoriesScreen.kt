@@ -61,6 +61,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.simon.harmonichackernews.ui.common.Button
@@ -100,6 +101,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -107,11 +109,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -136,6 +141,11 @@ import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
+import com.simon.harmonichackernews.ui.common.currentSharedHazeState
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
+import com.simon.harmonichackernews.ui.common.sharedHazeSource
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.rememberHazeState
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -168,6 +178,8 @@ fun StoriesScreen(
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
     val settings = controller.displaySettings ?: return
+    val localHazeState = rememberHazeState()
+    val hazeState = currentSharedHazeState() ?: localHazeState
     val mainState = mainListState
     val searchState = rememberLazyListState()
     val tapToUpdateExitClock = remember { Animatable(0f) }
@@ -289,23 +301,25 @@ fun StoriesScreen(
         predictiveBackProgress = controller.predictiveBackProgress,
         backgroundColor = HarmonicTheme.colors.settingsPageBackground,
         mainLayer = {
-            StoriesList(
-                controller = controller,
-                settings = settings,
-                stories = controller.mainStories,
-                listState = mainState,
-                searchMode = false,
-                // The animation clock, rather than the controller hand-off flag, owns visibility.
-                // This keeps the old rows hidden until the replacement frame has been committed.
-                tapToUpdateExitProgress = tapToUpdateExitProgress,
-                suppressTapToUpdateRowExit = suppressTapToUpdateRowExit,
-                storyItemModelCacheKey = storyItemModelCacheKey,
-                storyItemModel = storyItemModel,
-                filterColors = filterColors,
-                pullToRefreshEnabled = pullToRefreshEnabled,
-                showRefreshMenuItem = showRefreshMenuItem,
-                onVisibleStoriesChanged = onVisibleStoriesChanged,
-            )
+            Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
+                StoriesList(
+                    controller = controller,
+                    settings = settings,
+                    stories = controller.mainStories,
+                    listState = mainState,
+                    searchMode = false,
+                    // The animation clock, rather than the controller hand-off flag, owns visibility.
+                    // This keeps the old rows hidden until the replacement frame has been committed.
+                    tapToUpdateExitProgress = tapToUpdateExitProgress,
+                    suppressTapToUpdateRowExit = suppressTapToUpdateRowExit,
+                    storyItemModelCacheKey = storyItemModelCacheKey,
+                    storyItemModel = storyItemModel,
+                    filterColors = filterColors,
+                    pullToRefreshEnabled = pullToRefreshEnabled,
+                    showRefreshMenuItem = showRefreshMenuItem,
+                    onVisibleStoriesChanged = onVisibleStoriesChanged,
+                )
+            }
         },
         searchLayer = {
             StoriesList(
@@ -330,6 +344,7 @@ fun StoriesScreen(
                     controller = controller,
                     mainListState = mainState,
                     modifier = Modifier.zIndex(2f),
+                    hazeState = hazeState,
                 )
             }
         },
@@ -352,6 +367,7 @@ fun BoxScope.StoryTapToUpdateButton(
     modifier: Modifier = Modifier,
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
+    hazeState: HazeState? = currentSharedHazeState(),
 ) {
     val shape = RoundedCornerShape(16.dp)
     AnimatedVisibility(
@@ -378,9 +394,21 @@ fun BoxScope.StoryTapToUpdateButton(
                     }
                 },
                 modifier = Modifier.widthIn(min = 189.dp)
+                    .shadow(6.dp, shape, clip = false)
+                    .sharedHazeBackground(
+                        hazeState = hazeState,
+                        surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                        shape = shape,
+                    )
                     .semantics { contentDescription = "Tap to update" },
                 shape = shape,
-                containerColor = HarmonicTheme.colors.overlayButton,
+                containerColor = Color.Transparent,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp,
+                ),
                 contentColor = HarmonicTheme.colors.overlayButtonContent,
                 icon = {
                     Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
@@ -474,6 +502,13 @@ private fun StoriesList(
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    fun dismissSearchKeyboard() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
+
     val visibleCount = (
         if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
     ).coerceIn(0, stories.size)
@@ -605,8 +640,14 @@ private fun StoriesList(
                             SavedCommentStoryItem(
                                 story = story,
                                 settings = settings,
-                                onStory = { controller.listener.onCommentStoryClick(story) },
-                                onReplies = { controller.listener.onCommentRepliesClick(story) },
+                                onStory = {
+                                    dismissSearchKeyboard()
+                                    controller.listener.onCommentStoryClick(story)
+                                },
+                                onReplies = {
+                                    dismissSearchKeyboard()
+                                    controller.listener.onCommentRepliesClick(story)
+                                },
                                 modifier = itemHeightModifier,
                             )
                         } else if (!story.loaded && !story.loadingFailed) {
@@ -702,8 +743,12 @@ private fun StoriesList(
                                 listItem = true,
                                 pageBackground = HarmonicTheme.colors.settingsPageBackground,
                                 animateChanges = true,
-                                onLinkClick = { controller.listener.onLinkClick(story) },
+                                onLinkClick = {
+                                    dismissSearchKeyboard()
+                                    controller.listener.onLinkClick(story)
+                                },
                                 onLinkLongClick = {
+                                    dismissSearchKeyboard()
                                     controller.listener.onStoryLongClick(
                                         story,
                                         storyTintBase,
@@ -721,7 +766,10 @@ private fun StoriesList(
                                         )
                                     }
                                 },
-                                onCommentClick = { controller.listener.onCommentClick(story) },
+                                onCommentClick = {
+                                    dismissSearchKeyboard()
+                                    controller.listener.onCommentClick(story)
+                                },
                                 onGeometryChanged = { bounds, itemHeightPx ->
                                     controller.updateStoryItemHeight(story.id, itemHeightPx)
                                     controller.updateStoryBounds(story.id, bounds)
@@ -1265,7 +1313,17 @@ private fun MainHeader(
                     modifier = Modifier.width(240.dp),
                 ) {
                     controller.typeLabels.forEachIndexed { index, label ->
+                        val isSelected = index == controller.selectedTypeIndex
                         DropdownMenuItem(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f)
+                                    else Color.Transparent,
+                                )
+                                .semantics { selected = isSelected },
+                            contentPadding = PaddingValues(horizontal = 8.dp),
                             text = {
                                 HarmonicMenuText(
                                     text = label,

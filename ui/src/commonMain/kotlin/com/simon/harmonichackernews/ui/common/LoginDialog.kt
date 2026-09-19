@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.ui.common
 
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -193,35 +192,13 @@ fun LoginDialog(
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
                 )
-                AnimatedVisibility(visible = !showInformation) {
-                    OutlinedButton(onClick = { showInformation = true }) {
-                        Icon(painterResource(Res.drawable.ic_info), contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(Res.string.login_dialog_how_it_works),
-                            lineHeight = 16.sp,
-                        )
-                    }
-                }
-                AnimatedVisibility(visible = showInformation) {
-                    Column {
-                        Text(
-                            text = stringResource(Res.string.login_dialog_information),
-                            modifier = Modifier.padding(top = HarmonicDimens.login_dialog_small_spacing),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 13.sp,
-                            lineHeight = 16.sp,
-                        )
-                        Text(
-                            text = stringResource(Res.string.login_dialog_troubleshooting),
-                            modifier = Modifier.padding(top = HarmonicDimens.login_dialog_info_spacing),
-                            color = HarmonicTheme.colors.textPrimary,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 13.sp,
-                            lineHeight = 16.sp,
-                        )
-                    }
+                OutlinedButton(onClick = { showInformation = true }) {
+                    Icon(painterResource(Res.drawable.ic_info), contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(Res.string.login_dialog_how_it_works),
+                        lineHeight = 16.sp,
+                    )
                 }
                 Text(
                     text = stringResource(Res.string.login_dialog_create_account_explanation),
@@ -309,6 +286,29 @@ fun LoginDialog(
             }
         },
     )
+
+    if (showInformation) {
+        SettingsAlertDialog(
+            onDismissRequest = { showInformation = false },
+            text = {
+                Text(
+                    text = stringResource(Res.string.login_dialog_information) + "\n\n" +
+                        stringResource(Res.string.login_dialog_troubleshooting),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    color = HarmonicTheme.colors.textPrimary,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp,
+                )
+            },
+            scrollableContent = true,
+            confirmButton = {
+                SettingsDialogTextButton(onClick = { showInformation = false }) {
+                    Text("OK")
+                }
+            },
+        )
+    }
 
     captchaChallenge?.let { challenge ->
         captchaDialog(

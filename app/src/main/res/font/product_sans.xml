@@ -5,6 +5,10 @@
         android:fontWeight="400"
         android:font="@font/product_sans_regular" />
     <font
+        android:fontStyle="normal"
+        android:fontWeight="500"
+        android:font="@font/product_sans_medium" />
+    <font
         android:fontStyle="italic"
         android:fontWeight="400"
         android:font="@font/product_sans_italic" />

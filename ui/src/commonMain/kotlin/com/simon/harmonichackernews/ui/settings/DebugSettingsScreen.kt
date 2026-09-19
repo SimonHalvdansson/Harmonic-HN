@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -229,6 +230,7 @@ fun DebugSettingsScreen(
 @Composable
 private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
     val currentOnOpenId by rememberUpdatedState(onOpenId)
+    val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var value by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
@@ -243,6 +245,7 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
             id <= 0 -> error = "Enter a positive HN ID"
             else -> {
                 error = null
+                focusManager.clearFocus(force = true)
                 keyboardController?.hide()
                 currentOnOpenId(id)
             }

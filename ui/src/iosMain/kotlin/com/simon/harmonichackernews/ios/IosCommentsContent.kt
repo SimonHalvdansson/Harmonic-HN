@@ -611,7 +611,7 @@ private fun IosReferencePreview(
         favicon = favicon,
         offline = runtimeState.offline,
         textStyle = TextStyle.Default,
-        referenceImage = { imageUrl, loading, _, shape, _, onRatio, onClick, modifier ->
+        referenceImage = { imageUrl, loading, expanded, shape, _, onRatio, onClick, modifier ->
             Box(
                 modifier = modifier
                     .clip(shape)
@@ -623,7 +623,7 @@ private fun IosReferencePreview(
                     model = imageUrl,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+                    contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                     onSuccess = { success ->
                         val size = success.painter.intrinsicSize
                         if (size.width > 0f && size.height > 0f) onRatio(size.width / size.height)

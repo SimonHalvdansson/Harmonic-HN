@@ -85,6 +85,7 @@ import com.simon.harmonichackernews.ui.content.NetworkImage
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import org.jetbrains.compose.resources.DrawableResource
@@ -430,6 +431,7 @@ fun StoryPreviewCard(
                                     } else {
                                         "Bookmark"
                                     },
+                                    iconContent = { AnimatedBookmarkIcon(bookmarked, story.id) },
                                 ) {
                                     controller.onStoryPreviewAction(
                                         page,
@@ -459,6 +461,7 @@ fun StoryPreviewCard(
                             }
                             StoryPreviewTooltip(
                                 description = "Comments",
+                                enabled = hasAccount,
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(start = 4.dp),
@@ -577,6 +580,7 @@ private fun RowScope.StoryPreviewActionIcon(
     icon: DrawableResource,
     description: String,
     loading: Boolean = false,
+    iconContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -586,6 +590,10 @@ private fun RowScope.StoryPreviewActionIcon(
         contentAlignment = Alignment.Center,
     ) {
         StoryPreviewTooltip(description) {
+            if (iconContent != null) {
+                IconButton(onClick = onClick) { iconContent() }
+                return@StoryPreviewTooltip
+            }
             AnimatedContent(
                 targetState = StoryPreviewActionVisual(icon, description, loading),
                 transitionSpec = {
@@ -633,8 +641,13 @@ private fun RowScope.StoryPreviewActionIcon(
 private fun StoryPreviewTooltip(
     description: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    if (!enabled) {
+        Box(modifier = modifier) { content() }
+        return
+    }
     val state = rememberTooltipState()
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(state.isVisible) {

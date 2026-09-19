@@ -89,6 +89,12 @@ class KtorLinkSummaryRepository(
             val normalizedUrl = LinkSummaryParser.normalizeHttpUrl(pageUrl)
                 ?: throw LinkPreviewException("This link does not use HTTP or HTTPS")
 
+            LinkSummaryParser.buildXkcdApiUrl(normalizedUrl)?.let { apiUrl ->
+                val response = fetchText(apiUrl, "application/json")
+                return@withContext LinkSummaryParser.extractXkcd(response.body, normalizedUrl)
+                    ?: throw LinkPreviewException("xkcd did not return a comic image")
+            }
+
             LinkSummaryParser.hackerNewsItemId(normalizedUrl)?.let { itemId ->
                 val response = fetchText(
                     "https://hacker-news.firebaseio.com/v0/item/$itemId.json",
@@ -216,6 +222,7 @@ class KtorLinkSummaryRepository(
 }
 
 object LinkSummaryParser {
+    const val XKCD_COMIC_CONTENT_TYPE = "application/vnd.xkcd.comic+json"
     const val HACKER_NEWS_ITEM_CONTENT_TYPE = "application/vnd.hacker-news.item+json"
     private const val HACKER_NEWS_COMMENT_SITE_NAME = "Hacker News · comment"
     private const val HACKER_NEWS_STORY_SITE_NAME = "Hacker News · story"
@@ -230,6 +237,35 @@ object LinkSummaryParser {
         RegexOption.IGNORE_CASE,
     )
     private val whitespacePattern = Regex("\\s+")
+
+    fun buildXkcdApiUrl(pageUrl: String?): String? {
+        val parsed = pageUrl?.toNetworkUrlOrNull() ?: return null
+        if (!isHttpScheme(parsed) || parsed.host.lowercase() !in
+            setOf("xkcd.com", "www.xkcd.com", "m.xkcd.com")
+        ) return null
+        val path = parsed.encodedPath
+        if (path.isEmpty() || path == "/") return "https://xkcd.com/info.0.json"
+        val comic = path.removePrefix("/").removeSuffix("/")
+        if (!isPositiveInteger(comic)) return null
+        return "https://xkcd.com/$comic/info.0.json"
+    }
+
+    internal fun extractXkcd(json: String, pageUrl: String): LinkSummary? = runCatching {
+        val comic = JsonObject(json)
+        val imageUrl = normalizeHttpUrl(comic.optString("img")) ?: return null
+        val title = clean(comic.optString("safe_title")).ifEmpty { clean(comic.optString("title")) }
+        if (title.isEmpty() || comic.optInt("num") <= 0) return null
+        LinkSummary(
+            title = title,
+            siteName = "xkcd",
+            author = "Randall Munroe",
+            language = "en",
+            contentType = XKCD_COMIC_CONTENT_TYPE,
+            description = clean(comic.optString("alt")),
+            imageUrl = imageUrl,
+            finalUrl = pageUrl,
+        )
+    }.getOrNull()
 
     internal fun extractArxiv(html: String, arxivId: String, pageUrl: String): LinkSummary? {
         val document = Ksoup.parse(html)

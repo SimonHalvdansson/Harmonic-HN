@@ -81,6 +81,7 @@ import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
@@ -349,7 +350,7 @@ fun HeaderActions(
             verticalArrangement = Arrangement.Center,
         ) {
             actions.forEach { action ->
-                HeaderActionButton(action, actionButtonModifier) {
+                HeaderActionButton(action, actionButtonModifier, story.id) {
                     controller.listener.onHeaderAction(action.action)
                 }
             }
@@ -456,6 +457,7 @@ private data class HeaderActionVisual(
 private fun HeaderActionButton(
     action: HeaderAction,
     modifier: Modifier,
+    itemId: Int,
     onClick: () -> Unit,
 ) {
     CommentsTooltip(action.label) {
@@ -464,6 +466,13 @@ private fun HeaderActionButton(
             enabled = !action.loading,
             modifier = modifier,
         ) {
+            if (action.action == CommentsHeaderAction.BOOKMARK) {
+                AnimatedBookmarkIcon(
+                    bookmarked = action.icon == Res.drawable.ic_bookmark_filled,
+                    itemId = itemId,
+                )
+                return@IconButton
+            }
             AnimatedContent(
                 targetState = HeaderActionVisual(action.icon, action.label, action.loading),
                 transitionSpec = {
@@ -671,10 +680,17 @@ private fun MoreMenu(
                             action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
                         }
                         if (settings.hasAccountDetails && bookmarksEnabled) {
-                            action(
-                                if (bookmarked) "Remove bookmark" else "Bookmark",
-                                if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
-                                CommentsMoreAction.TOGGLE_BOOKMARK,
+                            DropdownMenuItem(
+                                text = {
+                                    CommentsMenuText(if (bookmarked) "Remove bookmark" else "Bookmark")
+                                },
+                                leadingIcon = {
+                                    AnimatedBookmarkIcon(bookmarked, story.id, description = null)
+                                },
+                                // This local toggle stays visible to show the saved state and its motion.
+                                onClick = {
+                                    controller.listener.onMoreAction(CommentsMoreAction.TOGGLE_BOOKMARK)
+                                },
                             )
                         }
                         AnimatedCommentMenuItem(visible = commentsCount > 1) {

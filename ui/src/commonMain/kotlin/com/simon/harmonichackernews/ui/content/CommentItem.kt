@@ -1067,7 +1067,13 @@ private fun CommentMeta(
             }
             Text(age, modifier = Modifier.padding(start = 4.dp), color = metaColor, fontFamily = fontFamily, fontSize = 13.sp)
             if (!userTag.isNullOrBlank()) {
-                Text(" • $userTag", color = metaColor, fontFamily = fontFamily, fontSize = 12.sp)
+                Text(
+                    " • $userTag",
+                    color = metaColor,
+                    fontFamily = fontFamily,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                )
             }
         }
         if (hiddenPreview != null) {

@@ -81,6 +81,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.comments.CommentNavigationControls
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
@@ -948,7 +949,9 @@ private fun MainNavigation(
 
     val storiesController = controller.storiesComposeController
     PredictiveBackHandler(
+        // Let the preview's Back callback dismiss the overlay before leaving search.
         enabled = storiesController?.searching == true &&
+            !storiesController.isStoryPreviewShowing() &&
             navigationSnapshot.currentDestination == MainDestination.STORIES,
     ) { events ->
         val searchController = storiesController ?: return@PredictiveBackHandler
@@ -1327,45 +1330,47 @@ private fun StoriesPane(
     val extraPadding = animatedExtraPanePadding()
     val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }
     SideEffect { controller.setStoriesExtraSidePadding(extraPaddingPx) }
-    Box(Modifier.fillMaxSize()) {
-        val storiesController = controller.storiesComposeController
-        val mainListState = rememberLazyListState()
-        var previewScrimAlpha by remember(storiesController) { mutableFloatStateOf(0f) }
-        val previewVisible = storiesController?.storyPreviewOverlay != null
-        LaunchedEffect(previewVisible) {
-            if (!previewVisible) previewScrimAlpha = 0f
-        }
-        storiesController?.let {
-            AndroidStoriesScreen(
-                controller = it,
-                mainListState = mainListState,
-                onVisibleStoriesChanged = controller::updateVisibleStories,
-            )
-        }
-        if (drawStatusBarProtection) {
-            StatusBarProtection(
-                color = statusBarColor,
-                statusBarHeight = statusBarHeight,
-            )
-        }
-        storiesController
-            ?.takeIf { it.storyPreviewOverlay != null }
-            ?.let {
-                Box(Modifier.fillMaxSize().zIndex(100f)) {
-                    AndroidStoryPreviewOverlay(
-                        controller = it,
-                        onScrimAlphaChanged = { alpha -> previewScrimAlpha = alpha },
-                    )
-                }
+    HazeHost {
+        Box(Modifier.fillMaxSize()) {
+            val storiesController = controller.storiesComposeController
+            val mainListState = rememberLazyListState()
+            var previewScrimAlpha by remember(storiesController) { mutableFloatStateOf(0f) }
+            val previewVisible = storiesController?.storyPreviewOverlay != null
+            LaunchedEffect(previewVisible) {
+                if (!previewVisible) previewScrimAlpha = 0f
             }
-        storiesController?.let {
-            StoryTapToUpdateButton(
-                controller = it,
-                mainListState = mainListState,
-                modifier = Modifier.zIndex(101f),
-                modalScrimAlpha = previewScrimAlpha,
-                modalScrimActive = previewVisible,
-            )
+            storiesController?.let {
+                AndroidStoriesScreen(
+                    controller = it,
+                    mainListState = mainListState,
+                    onVisibleStoriesChanged = controller::updateVisibleStories,
+                )
+            }
+            if (drawStatusBarProtection) {
+                StatusBarProtection(
+                    color = statusBarColor,
+                    statusBarHeight = statusBarHeight,
+                )
+            }
+            storiesController
+                ?.takeIf { it.storyPreviewOverlay != null }
+                ?.let {
+                    Box(Modifier.fillMaxSize().zIndex(100f)) {
+                        AndroidStoryPreviewOverlay(
+                            controller = it,
+                            onScrimAlphaChanged = { alpha -> previewScrimAlpha = alpha },
+                        )
+                    }
+                }
+            storiesController?.let {
+                StoryTapToUpdateButton(
+                    controller = it,
+                    mainListState = mainListState,
+                    modifier = Modifier.zIndex(101f),
+                    modalScrimAlpha = previewScrimAlpha,
+                    modalScrimActive = previewVisible,
+                )
+            }
         }
     }
 }

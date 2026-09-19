@@ -160,7 +160,7 @@ private fun ReferencePreviewImage(
                     },
                 ),
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
+                contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                 onSuccess = { success ->
                     val image = success.result.image
                     if (image.width > 0 && image.height > 0) {

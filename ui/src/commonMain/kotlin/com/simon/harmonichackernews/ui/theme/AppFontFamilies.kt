@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.resources.google_sans_flex_rounded_bold
 import com.simon.harmonichackernews.resources.google_sans_flex_rounded_regular
 import com.simon.harmonichackernews.resources.product_sans_bold
 import com.simon.harmonichackernews.resources.product_sans_italic
+import com.simon.harmonichackernews.resources.product_sans_medium
 import com.simon.harmonichackernews.resources.product_sans_regular
 import org.jetbrains.compose.resources.Font
 
@@ -23,14 +24,15 @@ val GoogleSansCodeFontFamily: FontFamily
 val ProductSansFontFamily: FontFamily
     @Composable get() {
         val regular = Font(Res.font.product_sans_regular, FontWeight.Normal)
+        val medium = Font(Res.font.product_sans_medium, FontWeight.Medium)
         val semibold = Font(Res.font.product_sans_bold, FontWeight.SemiBold)
         val italic = Font(
             Res.font.product_sans_italic,
             FontWeight.Normal,
             FontStyle.Italic,
         )
-        return remember(regular, semibold, italic) {
-            FontFamily(regular, semibold, italic)
+        return remember(regular, medium, semibold, italic) {
+            FontFamily(regular, medium, semibold, italic)
         }
     }
 

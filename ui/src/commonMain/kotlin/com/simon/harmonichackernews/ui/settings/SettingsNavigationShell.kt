@@ -19,6 +19,8 @@ import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import com.simon.harmonichackernews.ui.navigation.SplitPaneViewport
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +56,9 @@ import com.simon.harmonichackernews.ui.navigation.activityNavigationOpenContentT
 import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTransform
 import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 import kotlinx.coroutines.flow.first
+
+/** The retained destination keeps its own navigation origin, including in two-pane layouts. */
+internal val LocalSettingsParentSection = staticCompositionLocalOf<SettingsSection?> { null }
 
 private data object SettingsListDestination : NavKey
 
@@ -138,6 +143,14 @@ fun SettingsNavigationShell(
             paneExpansionState = paneExpansionState.takeIf { isTwoPane },
         )
         val navigationState by navigation.state.collectAsState()
+        val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
+            { section, singlePane, onBack, onNavigate ->
+                val parent = navigationState.detailStack
+                    .getOrNull(navigationState.detailStack.indexOf(section) - 1)
+                CompositionLocalProvider(LocalSettingsParentSection provides parent) {
+                    renderDetail(section, singlePane, onBack, onNavigate)
+                }
+            }
         val showDetailNavigation = !isTwoPane
         val selectedSection = navigationState.selectedSection
         val backStack = remember(navigationState.detailStack, isTwoPane) {
@@ -173,7 +186,7 @@ fun SettingsNavigationShell(
             entry<SettingsListDestination>(
                 metadata = ListDetailSceneStrategy.listPane(
                     detailPlaceholder = {
-                        renderDetail(
+                        renderDetailWithOrigin(
                             SettingsSection.Appearance,
                             false,
                             ::navigateBack,
@@ -188,19 +201,19 @@ fun SettingsNavigationShell(
                 metadata = ListDetailSceneStrategy.detailPane(),
             ) {
                 if (!animateDetailChanges) {
-                    renderDetail(selectedSection, false, ::navigateBack, ::navigateTo)
+                    renderDetailWithOrigin(selectedSection, false, ::navigateBack, ::navigateTo)
                 } else {
                     detailPaneTransition.AnimatedContent(
                         transitionSpec = { paneDetailSwitchTransition() },
                     ) { section ->
-                        renderDetail(section, false, ::navigateBack, ::navigateTo)
+                        renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
                     }
                 }
             }
             entry<SettingsDetailDestination>(
                 metadata = ListDetailSceneStrategy.detailPane(),
             ) { destination ->
-                renderDetail(destination.section, true, ::navigateBack, ::navigateTo)
+                renderDetailWithOrigin(destination.section, true, ::navigateBack, ::navigateTo)
             }
         }
         val entries = rememberDecoratedNavEntries(
@@ -231,7 +244,7 @@ fun SettingsNavigationShell(
                     onNavigateBack = ::navigateBack,
                     onNavigateTo = ::navigateTo,
                     renderList = renderList,
-                    renderDetail = renderDetail,
+                    renderDetail = renderDetailWithOrigin,
                     predictiveBackOverlay = predictiveBackOverlay,
                     completedPredictiveBack = completedPredictiveBack,
                     modifier = Modifier.fillMaxSize(),

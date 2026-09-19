@@ -8,6 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -121,7 +124,7 @@ class ManageFrontpagesInteractionTest {
     }
 
     @Test
-    fun resetRestoresTheOrderWithoutChangingTheDefaultOrAddedFrontpages() {
+    fun resetRestoresTheOrderAndTopStoriesDefaultWhileKeepingAddedFrontpages() {
         val store = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(store, store.changes)
         repository.setAdditionalFrontpages(setOf(StoryType.CLASSIC.label))
@@ -129,11 +132,11 @@ class ManageFrontpagesInteractionTest {
         repository.setFrontpageOrder(listOf(StoryType.CLASSIC.name, StoryType.NEW_STORIES.name))
         showRoute(repository)
 
-        compose.onNodeWithContentDescription("Reset frontpage order").performClick()
+        compose.onNodeWithContentDescription("Reset frontpage order and default").performClick()
         compose.runOnIdle {
             val story = repository.snapshot().story
             assertTrue(story.frontpageOrder.isEmpty())
-            assertEquals(StoryType.NEW_STORIES.label, story.preferredStoryType)
+            assertEquals(StoryType.TOP_STORIES.label, story.preferredStoryType)
             assertEquals(setOf(StoryType.CLASSIC.label), story.additionalFrontpages)
             assertEquals(
                 StoryTypeMenuPolicy.baseFrontpages + StoryType.CLASSIC,
@@ -154,21 +157,110 @@ class ManageFrontpagesInteractionTest {
         compose.onNode(hasScrollAction()).performScrollToIndex(lastIndex)
         val last = compose.onNodeWithContentDescription("Add ${StoryType.additionalFrontpages.last().label}")
         last.assertIsDisplayed()
-        val reset = compose.onNodeWithContentDescription("Reset frontpage order")
+        val reset = compose.onNodeWithContentDescription("Reset frontpage order and default")
         reset.assertIsDisplayed()
+        assertEquals(compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot.center.x,
+            reset.fetchSemanticsNode().boundsInRoot.center.x, 1f)
         assertTrue(last.fetchSemanticsNode().boundsInRoot.bottom < reset.fetchSemanticsNode().boundsInRoot.top)
     }
 
-    private fun showRoute(repository: AppSettingsRepository) {
+    @Test
+    fun addHeadingAnimatesWhenFrontpagesAreAddedAndRemoved() {
+        showScreen()
+        compose.mainClock.autoAdvance = false
+        for (control in listOf("Add Classic", "Remove Classic")) {
+            val before = compose.onNodeWithText("Add frontpage").fetchSemanticsNode().boundsInRoot.top
+            compose.onNodeWithContentDescription(control).performClick()
+            val tops = buildList {
+                repeat(45) {
+                    compose.mainClock.advanceTimeByFrame()
+                    add(compose.onNodeWithText("Add frontpage").fetchSemanticsNode().boundsInRoot.top)
+                }
+            }
+            val after = tops.last()
+            assertTrue(kotlin.math.abs(after - before) > 10f)
+            assertTrue("The heading must move through intermediate positions for $control",
+                tops.filter { it > minOf(before, after) + 1f && it < maxOf(before, after) - 1f }
+                    .map { it.toInt() }.distinct().size >= 3)
+        }
+    }
+
+    @Test
+    fun unslopShortcutScrollsToTheAvailableRowWithoutChangingPreferences() {
+        verifyUnslopShortcut(enabled = false)
+    }
+
+    @Test
+    fun unslopShortcutFindsAnAlreadyEnabledAndReorderedFrontpage() {
+        verifyUnslopShortcut(enabled = true)
+    }
+
+    private fun verifyUnslopShortcut(enabled: Boolean) {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        if (enabled) {
+            repository.setAdditionalFrontpages(setOf(StoryType.UNSLOP.label))
+            repository.setFrontpageOrder((StoryTypeMenuPolicy.baseFrontpages.reversed() + StoryType.UNSLOP).map { it.name })
+        }
+        val before = repository.snapshot().story
+        showRoute(repository, StoryType.UNSLOP)
+        val target = compose.onNodeWithContentDescription(
+            if (enabled) "Drag to reorder unslop.news" else "Add unslop.news",
+        )
+        compose.waitUntil(5_000) { target.isDisplayed() }
+        target.assertIsDisplayed()
+        assertTrue(target.fetchSemanticsNode().boundsInRoot.bottom <
+            compose.onNodeWithContentDescription("Reset frontpage order and default").fetchSemanticsNode().boundsInRoot.top)
+        compose.runOnIdle { assertEquals(before, repository.snapshot().story) }
+    }
+
+    private fun showRoute(repository: AppSettingsRepository, focusFrontpage: StoryType? = null) {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 Box(Modifier.height(480.dp)) {
-                    ManageFrontpagesSettingsRoute(repository, onBack = {})
+                    ManageFrontpagesSettingsRoute(repository, onBack = {}, focusFrontpage = focusFrontpage)
                 }
             }
         }
         compose.waitForIdle()
+    }
+
+    @Test
+    fun everyAvailableFrontpageHasAnExplanationWithoutAddingIt() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        val before = repository.snapshot().story
+        showRoute(repository)
+        val explanations = listOf(
+            StoryType.CLASSIC to "An alternative Hacker News frontpage based on votes from its oldest accounts.",
+            StoryType.BEST_COMMENTS to "The most-upvoted Hacker News comments from the last 48 hours.",
+            StoryType.HIGHLIGHTS to "A curated collection of standout Hacker News comments and discussions from over the years.",
+            StoryType.ACTIVE to "Stories with the most active discussions on Hacker News right now.",
+            StoryType.FRONT to "Stories that appeared on the Hacker News frontpage on a particular day. Use the date controls to browse past days.",
+            StoryType.UNSLOP to "Hacker News stories with AI-related posts filtered out by unslop.news.",
+        )
+        for ((type, explanation) in explanations) {
+            compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("About ${type.label}"))
+            compose.onNodeWithContentDescription("About ${type.label}").performTouchInput { click() }
+            compose.onNodeWithText(explanation).assertIsDisplayed()
+            compose.onNodeWithText("OK").performClick()
+            compose.runOnIdle { assertEquals(before, repository.snapshot().story) }
+        }
+    }
+
+    @Test
+    fun enabledFrontpageInfoDoesNotSelectRemoveOrReorderIt() {
+        frontpages.value = initial + StoryType.CLASSIC
+        showScreen()
+        compose.onNodeWithContentDescription("About Classic").performTouchInput { click() }
+        compose.onNodeWithText("An alternative Hacker News frontpage based on votes from its oldest accounts.")
+            .assertIsDisplayed()
+        compose.onNodeWithText("OK").performClick()
+        compose.runOnIdle {
+            assertEquals(initial + StoryType.CLASSIC, frontpages.value)
+            assertEquals(StoryType.TOP_STORIES, default.value)
+        }
     }
 
     private fun showScreen() {
@@ -178,11 +270,11 @@ class ManageFrontpagesInteractionTest {
                 ManageFrontpagesSettingsScreen(
                     frontpages = frontpages.value,
                     defaultLabel = default.value.label,
-                    available = listOf(StoryType.CLASSIC).filterNot { it in frontpages.value },
+                    available = listOf(StoryType.CLASSIC, StoryType.ACTIVE).filterNot { it in frontpages.value },
                     onBack = {},
                     onDefaultSelected = { default.value = it },
                     onOrderChanged = { frontpages.value = it },
-                    onResetOrder = { frontpages.value = initial },
+                    onReset = { frontpages.value = initial; default.value = StoryType.TOP_STORIES },
                     onRemove = { frontpages.value -= it },
                     onAdd = { frontpages.value += it },
                 )

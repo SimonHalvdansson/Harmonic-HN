@@ -267,7 +267,11 @@ fun ReferenceCardContent(
     }
     val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
     val directImage = result?.contentType?.startsWith("image/", ignoreCase = true) == true
-    var imageExpanded by remember(url, imageUrl, directImage) { mutableStateOf(directImage) }
+    val expandImageInitially = directImage ||
+        result?.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE
+    var imageExpanded by remember(url, imageUrl, expandImageInitially) {
+        mutableStateOf(expandImageInitially)
+    }
     var imageBoundsAnimating by remember(url, imageUrl) { mutableStateOf(false) }
     val metadataAlpha = remember(url, imageUrl) { Animatable(1f) }
     var imageRatio by remember(url, imageUrl) { mutableFloatStateOf(1f) }

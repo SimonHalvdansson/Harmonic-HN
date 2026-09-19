@@ -145,7 +145,7 @@ val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
         "--build", desktopLocalAiBuild.get().asFile.absolutePath,
         "--config", "Release",
         "--target", "harmonic-local-ai",
-        "--parallel",
+        "--parallel", "2",
     )
 }
 

@@ -84,6 +84,7 @@ import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
@@ -602,6 +603,7 @@ private fun CommentActionCardContent(
                         CommentActionIcon(
                             icon = if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark,
                             description = if (bookmarked) "Remove bookmark" else "Bookmark",
+                            iconContent = { AnimatedBookmarkIcon(bookmarked, comment.id) },
                         ) {
                             controller.listener.onCommentAction(
                                 comment,
@@ -673,6 +675,7 @@ private fun RowScope.CommentActionIcon(
     description: String,
     loading: Boolean = false,
     enabled: Boolean = true,
+    iconContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -681,6 +684,12 @@ private fun RowScope.CommentActionIcon(
             .height(48.dp),
         contentAlignment = Alignment.Center,
     ) {
+        if (iconContent != null) {
+            CommentsTooltip(description) {
+                IconButton(onClick = onClick, enabled = enabled) { iconContent() }
+            }
+            return@Box
+        }
         AnimatedContent(
             targetState = CommentActionVisual(icon, description, loading),
             transitionSpec = {

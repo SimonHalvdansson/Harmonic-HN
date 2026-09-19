@@ -41,6 +41,7 @@ jobs:
           :app:verifyFossDependencies
           --warning-mode all
           --no-daemon
+          --max-workers=2
           --parallel
       - name: Sign release APKs
         env:
@@ -138,7 +139,7 @@ jobs:
           }
           $wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build desktop package
-        run: ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon
+        run: ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.artifact_name }}

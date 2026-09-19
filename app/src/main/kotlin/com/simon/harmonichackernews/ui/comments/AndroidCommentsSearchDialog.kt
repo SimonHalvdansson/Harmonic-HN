@@ -24,6 +24,50 @@ fun AndroidCommentsSearchDialog(
     val links = LocalHarmonicUiDependencies.current.links
     val windowHeight = LocalWindowInfo.current.containerSize.height
     val maxDialogHeight = with(LocalDensity.current) { windowHeight.toDp() * 0.9f }
+    CommentsSearchDialog(
+        preparing = controller.searchPreparing,
+        searchTerm = searchTerm,
+        visibleComments = visibleComments,
+        settings = settings,
+        storyAuthor = storyAuthor,
+        accountUser = accountUser,
+        maxDialogHeight = maxDialogHeight,
+        onSearchTermChanged = onSearchTermChanged,
+        onDismiss = {
+            if (controller.linkPreviewOverlay != null) {
+                controller.requestDismissLinkPreview()
+            } else {
+                onDismiss()
+            }
+        },
+        onCommentSelected = onCommentSelected,
+        onOpenLink = { url -> links.open(url) },
+        onLinkLongClick = { comment, url, title, bounds ->
+            controller.showReferencePreview(
+                url = url,
+                title = title,
+                sourceBounds = bounds,
+                sourceCommentId = comment.id,
+            )
+        },
+        onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
+            controller.showReferencePreview(
+                link = link,
+                sourceBounds = bounds,
+                sourceCommentId = comment.id,
+                sourceContentLayer = sourceContentLayer,
+            )
+        },
+        foreground = {
+            // Register with the search dialog's dispatcher, above its own Back handler.
+            AndroidSearchLinkPreviewBackHandler(controller)
+            AndroidCommentLinkPreviewOverlay(controller)
+        },
+    )
+}
+
+@Composable
+private fun AndroidSearchLinkPreviewBackHandler(controller: CommentsComposeController) {
     PredictiveBackHandler(enabled = controller.linkPreviewOverlay != null) { events ->
         var predictiveBackStarted = false
         try {
@@ -52,34 +96,4 @@ fun AndroidCommentsSearchDialog(
             if (predictiveBackStarted) controller.cancelLinkPreviewPredictiveBack()
         }
     }
-    CommentsSearchDialog(
-        preparing = controller.searchPreparing,
-        searchTerm = searchTerm,
-        visibleComments = visibleComments,
-        settings = settings,
-        storyAuthor = storyAuthor,
-        accountUser = accountUser,
-        maxDialogHeight = maxDialogHeight,
-        onSearchTermChanged = onSearchTermChanged,
-        onDismiss = onDismiss,
-        onCommentSelected = onCommentSelected,
-        onOpenLink = { url -> links.open(url) },
-        onLinkLongClick = { comment, url, title, bounds ->
-            controller.showReferencePreview(
-                url = url,
-                title = title,
-                sourceBounds = bounds,
-                sourceCommentId = comment.id,
-            )
-        },
-        onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
-            controller.showReferencePreview(
-                link = link,
-                sourceBounds = bounds,
-                sourceCommentId = comment.id,
-                sourceContentLayer = sourceContentLayer,
-            )
-        },
-        foreground = { AndroidCommentLinkPreviewOverlay(controller) },
-    )
 }
