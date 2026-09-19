@@ -211,6 +211,7 @@ object HarmonicThemeCatalog {
         background = Color(0xFF1C1B1F),
         surface = Color(0xFF2B2930),
         accent = Color(0xFFD0BCFF),
+        commentCountIndicator = Color(0xFF6750A4),
         primary = Color(0xFFD0BCFF),
         secondary = Color(0xFFCCC2DC),
         primaryContainer = Color(0xFF4F378B),

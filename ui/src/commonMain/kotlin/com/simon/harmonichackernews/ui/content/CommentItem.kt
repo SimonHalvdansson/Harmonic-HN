@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -79,6 +80,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.nodes.Node
@@ -139,6 +141,10 @@ internal fun commentSurfaceColor(baseBackground: Color, textColor: Color, highli
     } else 0f
     return textColor.copy(alpha = overlayAlpha).compositeOver(baseBackground)
 }
+
+/** Preserve the legacy white label when readable, including custom and dynamic accent colors. */
+internal fun commentCountContentColor(background: Color): Color =
+    if (1.05f / (background.luminance() + 0.05f) >= 4.5f) Color.White else Color.Black
 
 private class CommentItemGeometry {
     var coordinates: LayoutCoordinates? = null
@@ -378,27 +384,28 @@ fun CommentItem(
     // Equal space on either side of the row boundary centers its divider between surfaces.
     val top = if (style.hasBackground) 0.dp else 8.dp
     val bottom = top
-    val continuous = style.continuousDepthIndicators && showIndicator &&
-        style.depthIndicatorMode != CommentDepthPreferences.AUTHOR
+    val indicatorGeometry = animatedCommentIndicatorGeometry(style, showIndicator)
+    val continuousProgress = indicatorGeometry.continuous
     val firstRailDepth = if (showTopLevelIndicator) 0 else 1
-    val railColors = if (continuous) (firstRailDepth..effectiveDepth).map { depth ->
+    val railColors = if (continuousProgress > 0f) (firstRailDepth..effectiveDepth).map { depth ->
         commentDepthColor(style.depthIndicatorMode, depth - firstRailDepth, "")
     } else emptyList()
     val dividerColor = colors.commentDivider
     val decorations = Modifier.drawWithCache {
         // Match the row layout's pixel rounding, including devices with fractional density.
-        val railWidth = style.indicatorThickness.widthDp.dp.roundToPx().toFloat()
+        val railWidth = indicatorGeometry.width.roundToPx().toFloat()
         val inset = (if (style.hasBackground) 4.dp else top).roundToPx().toFloat()
         fun railStart(depth: Int): Float = min(
             16.dp.roundToPx() + 12.dp.roundToPx() * depth,
             (size.width * 0.6f).roundToInt(),
         ).toFloat()
         onDrawBehind {
-            railColors.forEachIndexed { index, color ->
+            railColors.forEachIndexed { index, railColor ->
+                val color = railColor.copy(alpha = railColor.alpha * continuousProgress)
                 val depth = firstRailDepth + index
                 val x = railStart(depth)
-                // The current line is painted by the surface so its top follows the card's
-                // rounded corner. Only extend it through the gap below a parent with replies.
+                // The current line belongs to CommentSurface, including its detached rail.
+                // Only extend it through the gap below a parent with replies.
                 val isAncestor = depth < effectiveDepth
                 if (!isAncestor && (nextCommentDepth == null || nextCommentDepth <= depth)) return@forEachIndexed
                 val y = if (isAncestor) 0f else size.height - inset
@@ -406,14 +413,13 @@ fun CommentItem(
                     size.height
                 } else size.height - inset
                 // Only the actual branch ends are rounded; joins remain seamless.
-                val radius = if (style.roundedDepthIndicators && isAncestor) railWidth / 2f else 0f
+                val radius = if (isAncestor) railWidth / 2f * indicatorGeometry.rounding else 0f
                 drawRoundRect(color, Offset(x, y), Size(railWidth, (bottomY - y).coerceAtLeast(0f)), CornerRadius(radius))
                 if (y == 0f) drawRect(color, Offset(x, 0f), Size(railWidth, radius))
                 if (bottomY == size.height) drawRect(color, Offset(x, bottomY - radius), Size(railWidth, radius))
             }
             if (style.showDivider) {
-                val x = railStart(effectiveDepth) +
-                    if (continuous) railWidth + 8.dp.toPx() else 0f
+                val x = railStart(effectiveDepth) + (railWidth + 8.dp.toPx()) * continuousProgress
                 drawRect(dividerColor, Offset(x, size.height - 0.5.dp.toPx()), Size((size.width - x - 16.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx()))
             }
         }
@@ -448,7 +454,10 @@ fun CommentItem(
             modifier = Modifier.fillMaxWidth(),
             style = style,
             showIndicator = showIndicator,
-            continuesBelow = continuous && nextCommentDepth != null && nextCommentDepth > effectiveDepth,
+            indicatorGeometry = indicatorGeometry,
+            continuationBelow = if (nextCommentDepth != null && nextCommentDepth > effectiveDepth) {
+                continuousProgress
+            } else 0f,
             indicatorColor = indicatorColor,
             highlighted = highlighted,
             itemGeometry = itemGeometry,
@@ -701,11 +710,49 @@ private fun animatedSearchMatches(
 }
 
 @Composable
+private fun animatedCommentIndicatorGeometry(
+    style: CommentItemStyle,
+    showIndicator: Boolean,
+): CommentIndicatorGeometry {
+    val width by animateDpAsState(
+        if (showIndicator || style.hasBackground) style.indicatorThickness.widthDp.dp else 0.dp,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment indicator width",
+    )
+    val rounding by animateFloatAsState(
+        if (style.roundedDepthIndicators) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment indicator rounding",
+    )
+    val detached by animateFloatAsState(
+        if (showIndicator && style.hasBackground && style.roundedDepthIndicators) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "comment indicator outside card",
+    )
+    val continuous by animateFloatAsState(
+        if (showIndicator && style.continuousDepthIndicators &&
+            style.depthIndicatorMode != CommentDepthPreferences.AUTHOR
+        ) 1f else 0f,
+        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        label = "continuous comment indicators",
+    )
+    return CommentIndicatorGeometry(width, rounding, detached, continuous)
+}
+
+private data class CommentIndicatorGeometry(
+    val width: Dp,
+    val rounding: Float,
+    val detached: Float,
+    val continuous: Float,
+)
+
+@Composable
 private fun CommentSurface(
     modifier: Modifier,
     style: CommentItemStyle,
     showIndicator: Boolean,
-    continuesBelow: Boolean = false,
+    indicatorGeometry: CommentIndicatorGeometry = animatedCommentIndicatorGeometry(style, showIndicator),
+    continuationBelow: Float = 0f,
     indicatorColor: Color,
     highlighted: Boolean,
     itemGeometry: CommentItemGeometry? = null,
@@ -721,10 +768,10 @@ private fun CommentSurface(
         label = "comment corner radius",
     )
     val shape = RoundedCornerShape(
-        topStart = if (showIndicator && !style.roundedDepthIndicators) 0.dp else shapeRadius,
+        topStart = if (showIndicator) shapeRadius * indicatorGeometry.rounding else shapeRadius,
         topEnd = shapeRadius,
         bottomEnd = shapeRadius,
-        bottomStart = if (showIndicator && (!style.roundedDepthIndicators || continuesBelow)) 0.dp else shapeRadius,
+        bottomStart = if (showIndicator) shapeRadius * indicatorGeometry.rounding else shapeRadius,
     )
     val baseBackground = when {
         style.hasBackground -> colors.storyCardBackground
@@ -757,13 +804,12 @@ private fun CommentSurface(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment indicator",
     )
-    val indicatorWidth by animateDpAsState(
-        if (showIndicator || style.hasBackground) {
-            style.indicatorThickness.widthDp.dp
-        } else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
-        label = "comment indicator width",
-    )
+    val indicatorWidth = indicatorGeometry.width
+    val indicatorRadius = if (style.hasBackground) 0.dp else indicatorWidth / 2 * indicatorGeometry.rounding
+    val detachedProgress = indicatorGeometry.detached
+    // Keep the rail aligned with ancestor lines while the card separates from it.
+    val externalInset = (indicatorWidth + 4.dp) * detachedProgress
+    val internalIndicatorWidth = indicatorWidth * (1f - detachedProgress)
     val indicatorMargin by animateDpAsState(
         if (showIndicator || style.hasBackground) {
             if (style.hasBackground) 4.dp else 8.dp
@@ -807,18 +853,40 @@ private fun CommentSurface(
             .then(contentCaptureModifier)
     }
     Column(modifier) {
-        Box(Modifier.fillMaxWidth().padding(shadowPadding)) {
+        Box(
+            Modifier.fillMaxWidth().padding(shadowPadding).drawWithCache {
+                val width = indicatorWidth.roundToPx().toFloat()
+                val radius = indicatorWidth / 2 * indicatorGeometry.rounding
+                val outline = RoundedCornerShape(
+                    topStart = radius,
+                    topEnd = radius,
+                    bottomStart = radius * (1f - continuationBelow),
+                    bottomEnd = radius * (1f - continuationBelow),
+                ).createOutline(Size(width, size.height), layoutDirection, this)
+                onDrawBehind {
+                    if (detachedProgress > 0f) {
+                        translate(left = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f) {
+                            drawOutline(
+                                outline,
+                                indicatorColor.copy(alpha = indicatorColor.alpha * indicatorAlpha * detachedProgress),
+                            )
+                        }
+                    }
+                }
+            },
+        ) {
             Layout(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(start = externalInset)
                     .shadow((cardProgress * 1f).dp, shape, clip = false)
                     .clip(shape)
                     .background(background)
                     .drawWithCache {
                         val outline = shape.createOutline(size, layoutDirection, this)
                         // The outer half is clipped by the surface shape. Draw before the
-                        // children so the depth indicator owns the full start edge, including
-                        // its top and bottom pixels, just as in the shared action transition.
+                        // children so an attached depth indicator owns the full start edge,
+                        // including its top and bottom pixels in the shared action transition.
                         val stroke = Stroke(2.dp.toPx())
                         onDrawBehind {
                             drawOutline(
@@ -843,21 +911,21 @@ private fun CommentSurface(
                 content = {
                     Box(
                         Modifier
-                            .width(indicatorWidth)
-                            .graphicsLayer(alpha = indicatorAlpha)
+                            .width(internalIndicatorWidth)
+                            .graphicsLayer(alpha = indicatorAlpha * (1f - detachedProgress))
                             .background(
                                 indicatorColor,
                                 RoundedCornerShape(
-                                    topStart = if (style.roundedDepthIndicators && !style.hasBackground) indicatorWidth / 2 else 0.dp,
-                                    topEnd = if (style.roundedDepthIndicators && !style.hasBackground) indicatorWidth / 2 else 0.dp,
-                                    bottomStart = if (style.roundedDepthIndicators && !style.hasBackground && !continuesBelow) indicatorWidth / 2 else 0.dp,
-                                    bottomEnd = if (style.roundedDepthIndicators && !style.hasBackground && !continuesBelow) indicatorWidth / 2 else 0.dp,
+                                    topStart = indicatorRadius,
+                                    topEnd = indicatorRadius,
+                                    bottomStart = indicatorRadius * (1f - continuationBelow),
+                                    bottomEnd = indicatorRadius * (1f - continuationBelow),
                                 ),
                             ),
                     )
                     Column(
                         Modifier.padding(
-                            start = contentStartPadding,
+                            start = contentStartPadding + 4.dp * detachedProgress,
                             top = contentVerticalPadding,
                             end = contentEndPadding,
                             bottom = contentVerticalPadding,
@@ -865,9 +933,9 @@ private fun CommentSurface(
                     ) { content() }
                 },
             ) { measurables, constraints ->
-                val indicatorWidthPx = indicatorWidth.roundToPx()
+                val indicatorWidthPx = internalIndicatorWidth.roundToPx()
                     .coerceAtMost(constraints.maxWidth)
-                val indicatorMarginPx = indicatorMargin.roundToPx()
+                val indicatorMarginPx = (indicatorMargin * (1f - detachedProgress)).roundToPx()
                     .coerceAtMost((constraints.maxWidth - indicatorWidthPx).coerceAtLeast(0))
                 val contentWidth = (
                     constraints.maxWidth - indicatorWidthPx - indicatorMarginPx
@@ -958,7 +1026,23 @@ private fun CommentMeta(
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        UserAvatar(author, avatarMode, Modifier.padding(end = 6.dp).size(22.dp))
+        AnimatedContent(
+            targetState = avatarMode,
+            transitionSpec = {
+                (fadeIn(if (animateChanges) contentTween() else snap()) togetherWith
+                    fadeOut(if (animateChanges) contentTween() else snap())).using(
+                    SizeTransform(clip = true) { _, _ -> if (animateChanges) contentTween() else snap() },
+                )
+            },
+            contentAlignment = Alignment.CenterStart,
+            label = "comment user avatar",
+        ) { mode ->
+            if (mode == UserAvatarMode.NONE) {
+                Box(Modifier.size(0.dp))
+            } else {
+                UserAvatar(author, mode, Modifier.padding(end = 6.dp).size(22.dp))
+            }
+        }
         Row(
             modifier = Modifier
                 .clip(metaShape)
@@ -1010,7 +1094,7 @@ private fun CommentMeta(
                     .then(
                         if (showHiddenReplyCount) Modifier else Modifier.clearAndSetSemantics { },
                     ),
-                color = Color.White,
+                color = commentCountContentColor(colors.commentCountIndicator),
                 fontFamily = fontFamily,
                 fontSize = 12.sp,
                 style = compactCommentTextStyle,

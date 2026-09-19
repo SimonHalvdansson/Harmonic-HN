@@ -148,6 +148,10 @@ fun CommentsSettingsScreen(
                 SegmentedSetting(
                     title = "User profile image",
                     options = UserAvatarMode.entries.map { it.storedValue to it.label },
+                    optionIcons = mapOf(
+                        UserAvatarMode.GENERIC.storedValue to Res.drawable.ic_person,
+                        UserAvatarMode.GENERATED.storedValue to Res.drawable.ic_generated_avatar,
+                    ),
                     selected = state.userAvatarMode.storedValue,
                     onSelected = { onUserAvatarModeChanged(UserAvatarMode.fromStored(it)) },
                 )
@@ -160,19 +164,6 @@ fun CommentsSettingsScreen(
                 )
                 SettingsDivider()
                 BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)
-                SettingsDivider()
-                BooleanRow(
-                    "Show top level thread indicators",
-                    Res.drawable.ic_format_align_left,
-                    state.topLevelIndicators,
-                    CommentsBooleanSetting.TopLevelIndicators,
-                    onBooleanChanged,
-                    summary = "Makes it easier to separate top level comments",
-                )
-                SettingsDivider()
-                BooleanRow("Show scrollbar", Res.drawable.ic_swipe_vertical, state.showScrollbar, CommentsBooleanSetting.Scrollbar, onBooleanChanged)
-                SettingsDivider()
-                BooleanRow("Animate comment expand/collapse", Res.drawable.ic_animation, state.animateChanges, CommentsBooleanSetting.AnimateChanges, onBooleanChanged)
             }
         }
         item {
@@ -261,6 +252,8 @@ fun CommentsSettingsScreen(
                     onDialogRequested,
                 )
                 SettingsDivider()
+                BooleanRow("Show scrollbar", Res.drawable.ic_swipe_vertical, state.showScrollbar, CommentsBooleanSetting.Scrollbar, onBooleanChanged)
+                SettingsDivider()
                 BooleanRow(
                     "Smooth scroll comments",
                     Res.drawable.ic_comments_animation_navigation,
@@ -268,6 +261,8 @@ fun CommentsSettingsScreen(
                     CommentsBooleanSetting.SmoothScroll,
                     onBooleanChanged,
                 )
+                SettingsDivider()
+                BooleanRow("Animate comment expand/collapse", Res.drawable.ic_animation, state.animateChanges, CommentsBooleanSetting.AnimateChanges, onBooleanChanged)
             }
         }
     }

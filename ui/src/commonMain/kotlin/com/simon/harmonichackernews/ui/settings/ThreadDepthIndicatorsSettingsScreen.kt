@@ -88,10 +88,9 @@ private fun ThreadDepthIndicatorsSettingsScreen(
         showNavigation = true,
         onBack = onBack,
         contentVersion = state.hashCode(),
-    ) {
-        item(key = "thread-preview") {
+        pinnedContent = {
             // Use runtime rows so indentation, surfaces, type, metadata and top-level indicators
-            // follow the same preferences as the actual thread. Keep this scrollable on short windows.
+            // follow the same preferences as the actual thread.
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 comments.forEachIndexed { index, comment ->
                     CommentItem(
@@ -112,7 +111,8 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                     )
                 }
             }
-        }
+        },
+    ) {
         item {
             SettingsCategory("Indicator shape") {
                 SegmentedSetting(
@@ -124,10 +124,22 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Rounded corners",
-                    summary = "Rounded line ends in Flat; follows the card corners in Filled and Raised",
+                    summary = "Rounded line ends; sits beside the card in Filled and Raised",
                     icon = Res.drawable.ic_select,
                     checked = state.roundedDepthIndicators,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.RoundedDepthIndicators, it) },
+                )
+            }
+        }
+        item {
+            SettingsCategory("Thread lines") {
+                SwitchSettingRow(
+                    title = "Show top level thread indicators",
+                    summary = "Makes it easier to separate top level comments",
+                    icon = Res.drawable.ic_format_align_left,
+                    checked = state.topLevelIndicators,
+                    enabled = state.depthMode != CommentDepthPreferences.NONE,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.TopLevelIndicators, it) },
                 )
                 SettingsDivider()
                 SwitchSettingRow(

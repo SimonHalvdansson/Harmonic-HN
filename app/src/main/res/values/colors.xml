@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="material_comment_count_indicator">#00668B</color>
+    <color name="fixed_material_comment_count_indicator">#6750A4</color>
     <color name="colorPrimary">#FF959E</color>
     <color name="colorPrimaryDark">#99595e</color>
     <color name="colorAccent">#FF959E</color>

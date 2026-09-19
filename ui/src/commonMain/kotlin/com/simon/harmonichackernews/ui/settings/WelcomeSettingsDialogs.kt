@@ -173,7 +173,7 @@ fun WelcomeSettingsDialog(
                         text = if (styleChooser) "Preset" else "Welcome to Harmonic",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = if (styleChooser) 0.dp else 12.dp),
+                            .padding(top = if (styleChooser) 0.dp else 8.dp),
                         color = HarmonicTheme.colors.textPrimary,
                         fontFamily = GoogleSansFlexRoundedFontFamily,
                         fontWeight = FontWeight.Bold,

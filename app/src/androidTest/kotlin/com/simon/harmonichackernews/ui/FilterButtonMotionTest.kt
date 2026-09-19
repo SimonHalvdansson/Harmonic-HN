@@ -22,7 +22,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +31,7 @@ class FilterButtonMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun selectionColorsFadeAndRapidChangesSettleOnCurrentSelection() {
+    fun selectionColorsChangeImmediatelyAndFollowCurrentSelection() {
         val selected = mutableStateOf(false)
         val checkedBackground = Color(0xff336699)
         compose.setContent {
@@ -55,10 +54,11 @@ class FilterButtonMotionTest {
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { selected.value = true }
         compose.mainClock.advanceTimeByFrame()
-        compose.mainClock.advanceTimeBy(64)
         compose.onNodeWithTag("filter").assertIsSelected()
-        val intermediate = sampledBackground()
-        assertTrue("Selection fades from white to the selected color", intermediate.red in 0.23f..0.98f)
+        val selectedBackground = sampledBackground()
+        assertEquals(checkedBackground.red, selectedBackground.red, 0.02f)
+        assertEquals(checkedBackground.green, selectedBackground.green, 0.02f)
+        assertEquals(checkedBackground.blue, selectedBackground.blue, 0.02f)
 
         compose.runOnUiThread { selected.value = false }
         compose.mainClock.advanceTimeBy(48)

@@ -1,9 +1,7 @@
 package com.simon.harmonichackernews.ui.common
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -71,21 +69,9 @@ fun HarmonicFilterButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val backgroundColor by animateColorAsState(
-        targetValue = if (selected) colors.checkedBackground else Color.Transparent,
-        animationSpec = tween(160),
-        label = "filter button background",
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) colors.checkedText else colors.uncheckedText,
-        animationSpec = tween(160),
-        label = "filter button content",
-    )
-    val strokeColor by animateColorAsState(
-        targetValue = if (selected) colors.checkedStroke else colors.uncheckedStroke,
-        animationSpec = tween(160),
-        label = "filter button stroke",
-    )
+    val backgroundColor = if (selected) colors.checkedBackground else Color.Transparent
+    val contentColor = if (selected) colors.checkedText else colors.uncheckedText
+    val strokeColor = if (selected) colors.checkedStroke else colors.uncheckedStroke
     val innerCorner by animateDpAsState(
         targetValue = when {
             isPressed -> 4.dp

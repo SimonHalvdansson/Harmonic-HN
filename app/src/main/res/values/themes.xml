@@ -27,7 +27,7 @@
         <item name="drawableColor">?attr/colorOnSurface</item>
         <item name="opCommentColor">?attr/colorTertiary</item>
         <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">?attr/colorPrimary</item>
+        <item name="commentCountIndicatorColor">@color/material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
         <item name="overlayButtonContentColor">?attr/colorOnPrimaryContainer</item>
@@ -63,7 +63,7 @@
         <item name="drawableColor">?attr/colorOnSurface</item>
         <item name="opCommentColor">?attr/colorTertiary</item>
         <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">?attr/colorPrimary</item>
+        <item name="commentCountIndicatorColor">@color/fixed_material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
         <item name="overlayButtonContentColor">?attr/colorOnPrimaryContainer</item>
@@ -355,7 +355,7 @@
         <item name="drawableColor">?attr/colorOnSurface</item>
         <item name="opCommentColor">?attr/colorTertiary</item>
         <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">?attr/colorPrimary</item>
+        <item name="commentCountIndicatorColor">@color/material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimary</item>
         <item name="overlayButtonContentColor">?attr/colorOnPrimary</item>
@@ -392,7 +392,7 @@
         <item name="drawableColor">?attr/colorOnSurface</item>
         <item name="opCommentColor">?attr/colorTertiary</item>
         <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">?attr/colorPrimary</item>
+        <item name="commentCountIndicatorColor">@color/fixed_material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimary</item>
         <item name="overlayButtonContentColor">?attr/colorOnPrimary</item>

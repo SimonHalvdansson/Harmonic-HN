@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome version of the "pg" mosaic produced by UserAvatar. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:alpha="0.8">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.12"
+        android:pathData="M0,12 a12,12 0,1 0,24,0 a12,12 0,1 0,-24,0 Z" />
+    <group android:rotation="270" android:pivotX="12" android:pivotY="12">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M12,5.088 L14.112,9.312 L9.888,9.312 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M5.088,7.2 a2.112,2.112 0,1 0,4.224,0 a2.112,2.112 0,1 0,-4.224,0 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M14.688,7.2 a2.112,2.112 0,1 0,4.224,0 a2.112,2.112 0,1 0,-4.224,0 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M9.888,12 a2.112,2.112 0,1 0,4.224,0 a2.112,2.112 0,1 0,-4.224,0 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M6.048,9.888 H8.352 Q9.312,9.888 9.312,10.848 V13.152 Q9.312,14.112 8.352,14.112 H6.048 Q5.088,14.112 5.088,13.152 V10.848 Q5.088,9.888 6.048,9.888 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M15.648,9.888 H17.952 Q18.912,9.888 18.912,10.848 V13.152 Q18.912,14.112 17.952,14.112 H15.648 Q14.688,14.112 14.688,13.152 V10.848 Q14.688,9.888 15.648,9.888 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M10.848,14.688 H13.152 Q14.112,14.688 14.112,15.648 V17.952 Q14.112,18.912 13.152,18.912 H10.848 Q9.888,18.912 9.888,17.952 V15.648 Q9.888,14.688 10.848,14.688 Z" />
+    </group>
+</vector>
