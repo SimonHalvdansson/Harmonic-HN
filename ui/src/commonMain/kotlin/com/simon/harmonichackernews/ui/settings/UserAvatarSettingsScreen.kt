@@ -59,6 +59,7 @@ private val avatarPreviewNames = listOf(
     "otter", "jules", "carol", "dave", "eve", "fern", "mira", "atlas",
     "cedar", "robin", "pixel_fox", "cloudwalker", "raven", "kai", "sage", "river",
     "rowan", "nova", "juniper", "finch", "quinn", "ember", "hugo", "luna",
+    "latent_space", "gradient", "show_hn", "ycombinator", "euler", "noether", "quark", "photon",
 )
 
 @Composable
@@ -103,7 +104,11 @@ fun UserAvatarSettingsScreen(
                 repeat(3) { row ->
                     AvatarCommentPreview(
                         authors = commentAuthors, row = row,
-                        style = previewStyle.copy(userAvatarsEnabled = enabled, userAvatarOptions = options),
+                        style = previewStyle.copy(
+                            userAvatarsEnabled = enabled,
+                            userAvatarOptions = options,
+                            depthIndicatorMode = "none",
+                        ),
                     )
                 }
             }
