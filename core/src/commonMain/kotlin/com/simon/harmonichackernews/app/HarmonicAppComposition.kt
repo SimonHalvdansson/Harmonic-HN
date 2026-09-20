@@ -85,6 +85,7 @@ class HarmonicAppComposition(
         theme = { appearance.selection().theme },
         showCommentsUpButtonByDefault = host.showCommentsUpButtonByDefault,
         preloadCommentsFromStoriesByDefault = host.preloadCommentsFromStoriesByDefault,
+        defaultSurfaceEffectMode = host.defaultSurfaceEffectMode,
     )
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser

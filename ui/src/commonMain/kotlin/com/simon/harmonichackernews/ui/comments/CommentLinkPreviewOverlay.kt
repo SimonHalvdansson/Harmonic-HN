@@ -167,6 +167,7 @@ fun CommentLinkPreviewOverlay(
         verticalSwipeDismissEnabled = imageOnly,
         sourceContentLayer = sharedSourceLayer,
         sharedHazeSourceZIndex = CommentsModalHazeSourceZIndex,
+        glassBackground = !imageOnly,
         onSourceReadyToCover = if (sharedSourceLayer != null) {
             controller::coverLinkPreviewSource
         } else {

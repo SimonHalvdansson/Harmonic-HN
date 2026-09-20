@@ -277,7 +277,7 @@ object CommentDepthPreferences {
 
     fun modeLabel(mode: String): String = when (sanitizeMode(mode)) {
         MATERIAL_YOU -> "Material You"
-        COLORS -> "Standard"
+        COLORS -> "Colorful"
         AUTHOR -> "Author"
         MONOCHROME -> "Monochrome"
         NONE -> "None"

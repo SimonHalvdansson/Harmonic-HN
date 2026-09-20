@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
 import com.simon.harmonichackernews.settings.IosKeyValueStore
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
 import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.summary.LocalModelService
 import kotlinx.io.files.Path
@@ -74,6 +75,7 @@ class IosHarmonicAppBootstrap(
             currentMinutesFromMidnight = runtime.currentMinutesFromMidnight,
             systemDark = runtime.systemDark,
             showCommentsUpButtonByDefault = true,
+            defaultSurfaceEffectMode = SurfaceEffectMode.Glass,
             storyCacheRepository = persistentStorage.storyCacheRepository,
             // WKWebView cannot consume the stored snapshot format yet.
             articleSnapshotStore = null,

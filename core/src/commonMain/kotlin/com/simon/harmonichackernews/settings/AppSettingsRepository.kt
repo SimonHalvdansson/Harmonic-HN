@@ -72,7 +72,6 @@ enum class GeneralBooleanPreference(internal val storageKey: String) {
 
 enum class DebugBooleanPreference(internal val storageKey: String) {
     ALWAYS_SHOW_TAP_TO_REFRESH(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH),
-    GLASS_EFFECT(UserPreferenceKeys.DEBUG_GLASS_EFFECT),
 }
 
 /**
@@ -91,6 +90,7 @@ class AppSettingsRepository(
         theme: () -> String? = { null },
         showCommentsUpButtonByDefault: Boolean = false,
         preloadCommentsFromStoriesByDefault: Boolean = false,
+        defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
     ) : this(
         reader = StoredUserSettings(
             store,
@@ -98,6 +98,7 @@ class AppSettingsRepository(
             theme,
             showCommentsUpButtonByDefault,
             preloadCommentsFromStoriesByDefault,
+            defaultSurfaceEffectMode,
         ),
         mutator = StoredSettingsMutator(store),
     )
@@ -198,6 +199,12 @@ class AppSettingsRepository(
 
     fun setDebugBoolean(preference: DebugBooleanPreference, value: Boolean) =
         mutator.setDebugBoolean(preference, value)
+
+    fun setSurfaceEffectMode(value: SurfaceEffectMode) = mutator.setSurfaceEffectMode(value)
+    fun setGlassParameter(parameter: GlassParameter, value: Float) = mutator.setGlassParameter(parameter, value)
+    fun setGlassSwitch(option: GlassSwitch, value: Boolean) = mutator.setGlassSwitch(option, value)
+    fun setGlassSurfaceProfile(value: GlassSurfaceProfile) = mutator.setGlassSurfaceProfile(value)
+    fun resetGlassPreferences() = mutator.resetGlassPreferences()
 
     fun setStoriesToCache(value: Int) = reader.setStoriesToCache(value)
     fun applyWelcomePreset(expressive: Boolean) = mutator.applyWelcomePreset(expressive)

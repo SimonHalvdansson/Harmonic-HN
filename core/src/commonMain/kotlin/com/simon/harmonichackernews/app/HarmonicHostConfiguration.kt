@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
 import com.simon.harmonichackernews.summary.LocalModelService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -31,6 +32,7 @@ class HarmonicHostConfiguration(
     val storyCacheRepository: StoryCacheRepository,
     val showCommentsUpButtonByDefault: Boolean = false,
     val preloadCommentsFromStoriesByDefault: Boolean = false,
+    val defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
     val savedItemsRepository: SavedItemsRepository? = null,
     val widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),
     val widgetRuntimeStore: KeyValueStore = InMemoryKeyValueStore(),
@@ -48,6 +50,7 @@ class HarmonicHostConfiguration(
             settingsChanges: Flow<Unit>,
             showCommentsUpButtonByDefault: Boolean = false,
             preloadCommentsFromStoriesByDefault: Boolean = false,
+            defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
             settingsStore: KeyValueStore = InMemoryKeyValueStore(),
             appDataStore: KeyValueStore = InMemoryKeyValueStore(),
             previewCacheStore: KeyValueStore = InMemoryKeyValueStore(),
@@ -62,6 +65,7 @@ class HarmonicHostConfiguration(
             systemDark = systemDark,
             showCommentsUpButtonByDefault = showCommentsUpButtonByDefault,
             preloadCommentsFromStoriesByDefault = preloadCommentsFromStoriesByDefault,
+            defaultSurfaceEffectMode = defaultSurfaceEffectMode,
             storyCacheRepository = StoryCacheRepository(
                 InMemoryStoryCacheFileStore(),
                 InMemoryStoryCacheMetadataStore(),

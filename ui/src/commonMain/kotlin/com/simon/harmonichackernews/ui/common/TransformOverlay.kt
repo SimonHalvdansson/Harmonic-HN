@@ -96,6 +96,7 @@ fun TransformOverlay(
     verticalSwipeDismissEnabled: Boolean = false,
     sourceContentLayer: GraphicsLayer? = null,
     sharedHazeSourceZIndex: Float? = null,
+    glassBackground: Boolean = false,
     onSourceReadyToCover: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onDismissAnimationFinished: () -> Unit,
@@ -418,8 +419,17 @@ fun TransformOverlay(
                     )
                     .graphicsLayer(alpha = movingAlpha)
                     .shadow(movingElevation, movingShape, clip = false)
-                    .clip(movingShape)
-                    .background(movingColor)
+                    .then(
+                        if (glassBackground) {
+                            Modifier.sharedHazeDialogBackground(
+                                movingColor,
+                                movingShape,
+                                revealProgress = containerRevealProgress,
+                            )
+                        } else {
+                            Modifier.clip(movingShape).background(movingColor)
+                        },
+                    )
                     .then(
                         if (movingBorderWidth > 0.dp) {
                             Modifier.border(movingBorderWidth, movingBorderColor, movingShape)

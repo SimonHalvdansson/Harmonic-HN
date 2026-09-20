@@ -208,6 +208,7 @@ fun DebugSettingsRoute(
     onCachePost: () -> Unit,
     onOpenLink: (String) -> Unit,
     onOpenLinkPreviews: () -> Unit,
+    onOpenGlassSettings: () -> Unit,
     onEasterEggRequested: () -> Unit,
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
 ) {
@@ -217,15 +218,12 @@ fun DebugSettingsRoute(
         showNavigation = showNavigation,
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
-        glassEffectEnabled = settings.debug.glassEffectEnabled,
         environment = environment,
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH, it)
         },
-        onGlassEffectChanged = {
-            repository.setDebugBoolean(DebugBooleanPreference.GLASS_EFFECT, it)
-        },
+        onGlassSettingsRequested = onOpenGlassSettings,
         onOpenHnId = onOpenHnId,
         onOpenWithoutCache = onOpenWithoutCache,
         onCachePost = onCachePost,
@@ -301,6 +299,7 @@ fun AppearanceSettingsRoute(
         },
         onExtraSidePaddingChanged = repository::setExtraSidePadding,
         onStoryListSelectorChanged = repository::setStoryListSelector,
+        onSurfaceEffectChanged = repository::setSurfaceEffectMode,
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

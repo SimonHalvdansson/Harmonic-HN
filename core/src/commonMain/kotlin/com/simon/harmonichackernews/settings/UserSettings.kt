@@ -158,6 +158,7 @@ data class AppearancePreferences(
     val landscapeSplitRatio: Float? = null,
     val allowSplitAdjustment: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
+    val surfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
 ) {
     fun splitRatio(orientation: SplitOrientation): Float? = when (orientation) {
         SplitOrientation.Portrait -> portraitSplitRatio
@@ -167,7 +168,7 @@ data class AppearancePreferences(
 
 data class DebugPreferences(
     val alwaysShowTapToRefresh: Boolean,
-    val glassEffectEnabled: Boolean = false,
+    val glass: GlassPreferences = GlassPreferences(),
 )
 
 data class AppSettings(

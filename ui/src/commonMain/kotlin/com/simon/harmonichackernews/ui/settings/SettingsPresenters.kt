@@ -248,6 +248,7 @@ class AppearanceSettingsPresenter(
             transparentStatusBar = settings.general.transparentStatusBar,
             compactHeader = settings.story.compactHeader,
             storyListSelector = settings.story.listSelector,
+            surfaceEffectMode = settings.appearance.surfaceEffectMode,
         )
     }
 

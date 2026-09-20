@@ -255,6 +255,30 @@ class StoredSettingsMutator(
         store.putBoolean(preference.storageKey, value)
     }
 
+    fun setSurfaceEffectMode(value: SurfaceEffectMode) {
+        store.putString(SurfaceEffectMode.STORAGE_KEY, value.storedValue)
+    }
+
+    fun setGlassParameter(parameter: GlassParameter, value: Float) {
+        store.putFloat(parameter.storageKey, parameter.sanitize(value))
+    }
+
+    fun setGlassSwitch(option: GlassSwitch, value: Boolean) {
+        store.putBoolean(option.storageKey, value)
+    }
+
+    fun setGlassSurfaceProfile(value: GlassSurfaceProfile) {
+        store.putString(GlassSurfaceProfile.STORAGE_KEY, value.name)
+    }
+
+    fun resetGlassPreferences() {
+        store.update {
+            GlassParameter.entries.forEach { remove(it.storageKey) }
+            GlassSwitch.entries.forEach { remove(it.storageKey) }
+            remove(GlassSurfaceProfile.STORAGE_KEY)
+        }
+    }
+
     fun applyWelcomePreset(expressive: Boolean) {
         store.update {
             val style = if (expressive) DisplayStyle.STANDARD else DisplayStyle.FLAT

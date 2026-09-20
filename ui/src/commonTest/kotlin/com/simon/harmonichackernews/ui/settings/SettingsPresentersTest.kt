@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import kotlin.test.Test
@@ -15,6 +16,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsPresentersTest {
+    @Test
+    fun appearanceReflectsHostSurfaceDefaultAndStoredSelection() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(
+            store, store.changes, defaultSurfaceEffectMode = SurfaceEffectMode.Glass,
+        )
+        val presenter = AppearanceSettingsPresenter(repository)
+        assertEquals(
+            SurfaceEffectMode.Glass,
+            presenter.state("Default", "Default", showTransparentStatusBar = true).surfaceEffectMode,
+        )
+        repository.setSurfaceEffectMode(SurfaceEffectMode.Solid)
+        assertEquals(
+            SurfaceEffectMode.Solid,
+            presenter.state("Default", "Default", showTransparentStatusBar = true).surfaceEffectMode,
+        )
+    }
+
     @Test
     fun appearanceReflectsThePersistedStoryListSelector() {
         val store = InMemoryKeyValueStore()

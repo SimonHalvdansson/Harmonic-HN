@@ -42,7 +42,6 @@ object UserPreferenceKeys {
     const val ALWAYS_OPEN_COMMENTS = "pref_always_open_comments"
     const val PAGINATION_MODE = "pref_pagination_mode"
     const val ALWAYS_SHOW_TAP_TO_REFRESH = "pref_always_show_tap_to_refresh"
-    const val DEBUG_GLASS_EFFECT = "pref_debug_glass_effect"
     const val DEFAULT_STORY_TYPE = "pref_default_story_type"
     const val ADDITIONAL_FRONTPAGES = "pref_additional_frontpages"
     const val FRONTPAGE_ORDER = "pref_frontpage_order"
@@ -107,6 +106,7 @@ class StoredUserSettings(
     private val theme: () -> String? = { null },
     private val showCommentsUpButtonByDefault: Boolean = false,
     private val preloadCommentsFromStoriesByDefault: Boolean = false,
+    private val defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
 ) : UserSettings {
     override val story: StoryPreferences
         get() {
@@ -332,6 +332,10 @@ class StoredUserSettings(
                     store.getFloat(UserPreferenceKeys.SPLIT_RATIO_LANDSCAPE, Float.NaN),
                 ),
                 allowSplitAdjustment = boolean(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT, false),
+                surfaceEffectMode = SurfaceEffectMode.fromStored(
+                    store.getString(SurfaceEffectMode.STORAGE_KEY),
+                    defaultSurfaceEffectMode,
+                ),
                 extraSidePadding = ExtraSidePadding.fromStored(
                     store.getString(UserPreferenceKeys.EXTRA_SIDE_PADDING),
                 ),
@@ -341,7 +345,15 @@ class StoredUserSettings(
     override val debug: DebugPreferences
         get() = DebugPreferences(
             alwaysShowTapToRefresh = boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
-            glassEffectEnabled = boolean(UserPreferenceKeys.DEBUG_GLASS_EFFECT, false),
+            glass = GlassPreferences(
+                parameters = GlassParameter.entries.filter { store.contains(it.storageKey) }
+                    .associateWith { it.sanitize(store.getFloat(it.storageKey, it.default)) },
+                switches = GlassSwitch.entries.filter { store.contains(it.storageKey) }
+                    .associateWith { store.getBoolean(it.storageKey, it.default) },
+                surfaceProfile = GlassSurfaceProfile.fromStored(
+                    store.getString(GlassSurfaceProfile.STORAGE_KEY),
+                ),
+            ),
         )
 
     override fun setStoriesToCache(count: Int) {

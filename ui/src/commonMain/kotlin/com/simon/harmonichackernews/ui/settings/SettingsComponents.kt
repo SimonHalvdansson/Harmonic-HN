@@ -396,7 +396,8 @@ fun SettingsListScreen(
                             (selectedSection == SettingsSection.Theme ||
                                 selectedSection == SettingsSection.PaletteTint) ||
                             entry.section == SettingsSection.Debug &&
-                            selectedSection == SettingsSection.DebugLinkPreviews ||
+                            (selectedSection == SettingsSection.DebugLinkPreviews ||
+                                selectedSection == SettingsSection.Glass) ||
                             entry.section == SettingsSection.Comments &&
                             selectedSection == SettingsSection.ThreadDepth ||
                             entry.section == SettingsSection.Stories &&
@@ -813,6 +814,7 @@ fun <T> SegmentedSetting(
     optionWeights: Map<T, Float> = emptyMap(),
     disabledOptions: Set<T> = emptySet(),
     containerColor: Color = settingsItemBackgroundColor(),
+    optionContent: (@Composable (T, Boolean) -> Unit)? = null,
     onSelected: (T) -> Unit,
 ) {
     val hasHeader = !title.isNullOrBlank() || !summary.isNullOrBlank()
@@ -926,32 +928,36 @@ fun <T> SegmentedSetting(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    optionIcons[value]?.let { icon ->
-                        Icon(
-                            painter = painterResource(icon),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = if (isSelected) {
+                    if (optionContent != null) {
+                        optionContent(value, isSelected)
+                    } else {
+                        optionIcons[value]?.let { icon ->
+                            Icon(
+                                painter = painterResource(icon),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = if (isSelected) {
+                                    HarmonicTheme.colors.onSecondaryContainer
+                                } else {
+                                    HarmonicTheme.colors.drawable
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = label,
+                            color = if (isSelected) {
                                 HarmonicTheme.colors.onSecondaryContainer
                             } else {
-                                HarmonicTheme.colors.drawable
+                                HarmonicTheme.colors.textPrimary
                             },
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            textAlign = TextAlign.Center,
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(
-                        text = label,
-                        color = if (isSelected) {
-                            HarmonicTheme.colors.onSecondaryContainer
-                        } else {
-                            HarmonicTheme.colors.textPrimary
-                        },
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        textAlign = TextAlign.Center,
-                    )
                 }
             }
         }

@@ -1,7 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
+
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -13,16 +14,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -52,6 +54,8 @@ data class CommentActionSourceGeometry(
     val containerBorderColor: Color = Color.Transparent,
     val containerBorderWidthDp: Float = 0f,
     val contentLayer: GraphicsLayer? = null,
+    val indicatorBounds: Rect? = null,
+    val indicatorLayer: GraphicsLayer? = null,
 )
 
 internal enum class CommentActionTargetElement {
@@ -120,7 +124,13 @@ internal fun CommentActionTarget(
             .drawWithContent snapshot@{
                 layer.resetForLocalDraw()
                 layer.record { this@snapshot.drawContent() }
-                if (transition?.hideTargetContent != true) drawLayer(layer)
+                if (transition?.hideTargetContent == true) {
+                    // Register the retained layer with its parent even while its pixels are
+                    // hidden, so Android can complete the opening snapshot readback.
+                    clipRect(0f, 0f, 0f, 0f) { drawLayer(layer) }
+                } else {
+                    drawLayer(layer)
+                }
             },
         content = content,
     )
@@ -144,8 +154,7 @@ internal fun BoxScope.CommentActionContainerBackground(
             .matchParentSize()
             .then(visibility)
             .shadow(8.dp, shape, clip = false)
-            .clip(shape)
-            .background(color),
+            .sharedHazeDialogBackground(color, shape),
     )
 }
 
@@ -221,8 +230,11 @@ internal fun CommentActionTransitionOverlay(
                     with(density) { container.height.coerceAtLeast(1f).toDp() },
                 )
                 .shadow(elevation, shape, clip = false)
-                .clip(shape)
-                .background(lerp(source.containerColor, targetColor, progress))
+                .sharedHazeDialogBackground(
+                    lerp(source.containerColor, targetColor, progress),
+                    shape,
+                    revealProgress = progress,
+                )
                 .then(sourceBorder),
         )
         Canvas(Modifier.fillMaxSize()) {
@@ -261,13 +273,55 @@ private fun DrawScope.drawCommentActionContent(
     // height. Scaling this bitmap made the source text progressively taller until it occupied the
     // whole dialog. Preserve its intrinsic size, like the fixed-size source accessories in the
     // story preview transition, and crossfade to the separately measured dialog groups instead.
-    val sourceDestination = moveRectBetweenContainers(sourceContainer, visibleSource, baseContainer)
+    val movingSource = moveRectBetweenContainers(sourceContainer, visibleSource, baseContainer)
+    val sourceDestination = movingSource
         .transformedForPredictiveBack(
             scale = predictiveBackScale,
             pivotFractionX = predictiveBackPivotFractionX,
             translation = predictiveBackTranslation,
             pivotBounds = baseContainer,
         )
+    // Detached depth rails live outside the card. Move and fade them with the source,
+    // without clipping them to the morphing dialog surface.
+    val indicatorBounds = transition.source?.indicatorBounds
+        ?.translate(-transition.rootBounds.left, -transition.rootBounds.top)
+    val indicatorLayer = transition.source?.indicatorLayer
+    if (indicatorBounds != null && indicatorLayer != null && !indicatorLayer.isReleased) {
+        val visibleIndicator = indicatorBounds.intersectionOrNull(
+            Rect(0f, 0f, transition.rootBounds.width, transition.rootBounds.height),
+        )
+        if (visibleIndicator != null) {
+            val destination = indicatorBounds.translate(
+                movingSource.left - sourceContainer.left,
+                movingSource.top - sourceContainer.top,
+            ).transformedForPredictiveBack(
+                scale = predictiveBackScale,
+                pivotFractionX = predictiveBackPivotFractionX,
+                translation = predictiveBackTranslation,
+                pivotBounds = baseContainer,
+            )
+            val alpha = sourceAlpha(progress)
+            if (alpha > 0f && indicatorBounds.width > 0f && indicatorBounds.height > 0f) {
+                val scaleX = destination.width / indicatorBounds.width
+                val scaleY = destination.height / indicatorBounds.height
+                // This tiny, retained vector layer needs no additional GPU bitmap readback.
+                drawContext.canvas.saveLayer(destination, Paint().apply { this.alpha = alpha })
+                withTransform({
+                    translate(destination.left, destination.top)
+                    scale(scaleX, scaleY, Offset.Zero)
+                    clipRect(
+                        visibleIndicator.left - indicatorBounds.left,
+                        visibleIndicator.top - indicatorBounds.top,
+                        visibleIndicator.right - indicatorBounds.left,
+                        visibleIndicator.bottom - indicatorBounds.top,
+                    )
+                }) {
+                    drawLayer(indicatorLayer)
+                }
+                drawContext.canvas.restore()
+            }
+        }
+    }
     clipPath(clip) {
         transition.sourceSnapshot?.let { snapshot ->
             drawSnapshotRegion(

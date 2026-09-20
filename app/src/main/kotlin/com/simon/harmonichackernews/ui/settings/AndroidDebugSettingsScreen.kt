@@ -18,6 +18,7 @@ fun AndroidDebugSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
+    onOpenGlassSettings: () -> Unit,
 ) {
     val app = LocalHarmonicUiDependencies.current
     val scope = rememberCoroutineScope()
@@ -48,6 +49,7 @@ fun AndroidDebugSettingsScreen(
         },
         onOpenLink = { app.links.open(it) },
         onOpenLinkPreviews = onOpenLinkPreviews,
+        onOpenGlassSettings = onOpenGlassSettings,
         onEasterEggRequested = app.navigation::openCoulombGas,
         dialogContent = { dialog, dismiss ->
             when (dialog) {

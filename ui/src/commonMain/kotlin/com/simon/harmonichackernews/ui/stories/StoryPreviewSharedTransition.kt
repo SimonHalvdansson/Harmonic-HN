@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.lerpRect
+import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.common.moveRectBetweenContainers
 import com.simon.harmonichackernews.ui.common.roundedRectPath
 import kotlin.math.roundToInt
@@ -124,8 +125,7 @@ internal fun StoryPreviewContainerBackground(
         modifier
             .then(visibility)
             .shadow(8.dp, shape, clip = false)
-            .clip(shape)
-            .background(color),
+            .sharedHazeDialogBackground(color, shape),
     )
 }
 
@@ -238,8 +238,7 @@ internal fun StoryPreviewTransitionOverlay(
                 }
                 .requiredSize(width, height)
                 .shadow(elevation, shape, clip = false)
-                .clip(shape)
-                .background(color),
+                .sharedHazeDialogBackground(color, shape, revealProgress = progress),
         )
         if (
             transition.drawOverlayShadows &&

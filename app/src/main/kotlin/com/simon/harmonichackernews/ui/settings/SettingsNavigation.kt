@@ -229,11 +229,13 @@ fun SettingsShell(
                 SettingsSection.Debug -> AndroidDebugSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onOpenGlassSettings = { onNavigate(SettingsSection.Glass, true) },
                     onOpenLinkPreviews = {
                         onNavigate(SettingsSection.DebugLinkPreviews, true)
                     },
                 )
                 SettingsSection.DebugLinkPreviews -> AndroidLinkPreviewsDebugScreen(onBack)
+                SettingsSection.Glass -> GlassSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.About -> AndroidAboutScreen(
                     onBack = onBack,
                     onOpenGithub = { dependencies.links.open(dependencies.metadata.projectUrl) },

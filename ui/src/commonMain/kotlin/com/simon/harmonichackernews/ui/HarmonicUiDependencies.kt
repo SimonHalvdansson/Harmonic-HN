@@ -17,6 +17,10 @@ import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.resources.BundledHarmonicResources
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.LocalHazePreferences
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
+import com.simon.harmonichackernews.settings.SurfaceEffectPreferences
+import com.simon.harmonichackernews.settings.GlassPreferences
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CoroutineScope
@@ -98,12 +102,20 @@ fun ProvideHarmonicUiDependencies(
     LaunchedEffect(dependencies.webContent) {
         dependencies.installBundledResources()
     }
-    val glassEffectEnabled by remember(dependencies.settings) {
-        dependencies.settings.updates.map { it.debug.glassEffectEnabled }.distinctUntilChanged()
-    }.collectAsState(initial = dependencies.userSettings.debug.glassEffectEnabled)
+    val surfaceEffects by remember(dependencies.settings) {
+        dependencies.settings.updates.map {
+            SurfaceEffectPreferences(it.appearance.surfaceEffectMode, it.debug.glass)
+        }.distinctUntilChanged()
+    }.collectAsState(initial = SurfaceEffectPreferences(
+        dependencies.userSettings.appearance.surfaceEffectMode,
+        dependencies.userSettings.debug.glass,
+    ))
+    val activeEffects = if (dependencies.metadata.debugSettingsEnabled) surfaceEffects
+        else surfaceEffects.copy(glass = GlassPreferences())
     CompositionLocalProvider(
         LocalHarmonicUiDependencies provides dependencies,
-        LocalHazeGlassEnabled provides (dependencies.metadata.debugSettingsEnabled && glassEffectEnabled),
+        LocalHazeGlassEnabled provides (activeEffects.mode == SurfaceEffectMode.Glass),
+        LocalHazePreferences provides activeEffects,
         content = content,
     )
 }

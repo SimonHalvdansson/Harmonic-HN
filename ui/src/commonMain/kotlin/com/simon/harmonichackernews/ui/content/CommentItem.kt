@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -46,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
@@ -55,11 +57,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -80,7 +82,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.nodes.Node
@@ -149,6 +150,8 @@ internal fun commentCountContentColor(background: Color): Color =
 private class CommentItemGeometry {
     var coordinates: LayoutCoordinates? = null
     var contentLayer: GraphicsLayer? = null
+    var indicatorCoordinates: LayoutCoordinates? = null
+    var indicatorLayer: GraphicsLayer? = null
     var containerColor: Color = Color.Transparent
     var containerCornerRadiusDp: Float = 0f
     var containerElevationDp: Float = 0f
@@ -175,6 +178,10 @@ private class CommentItemGeometry {
             containerBorderColor = containerBorderColor,
             containerBorderWidthDp = containerBorderWidthDp,
             contentLayer = contentLayer?.takeUnless(GraphicsLayer::isReleased),
+            indicatorBounds = indicatorCoordinates?.takeIf { it.isAttached }?.let {
+                Rect(it.positionInWindow(), Size(it.size.width.toFloat(), it.size.height.toFloat()))
+            },
+            indicatorLayer = indicatorLayer?.takeUnless(GraphicsLayer::isReleased),
         )
     }
 }
@@ -331,6 +338,7 @@ fun CommentItem(
     animateSearchMatches: Boolean = false,
     suppressedReferenceUrl: String? = null,
     captureActionSource: Boolean = false,
+    suppressActionSource: Boolean = false,
     showActionsOnClick: Boolean = false,
     enableLongClick: Boolean = true,
     onToggleExpanded: (Rect?) -> Unit,
@@ -425,6 +433,7 @@ fun CommentItem(
         }
     }
     val itemGeometry = remember { CommentItemGeometry() }
+    val hiddenSurfaceLayer = if (suppressActionSource) rememberGraphicsLayer() else null
     var pendingActionSourceGesture by remember {
         mutableStateOf<CommentActionSourceGesture?>(null)
     }
@@ -433,7 +442,9 @@ fun CommentItem(
     }
     LaunchedEffect(pendingActionSourceGesture) {
         val gesture = pendingActionSourceGesture ?: return@LaunchedEffect
-        // Record the row once only when the gesture is going to open the shared-element overlay.
+        // Frame callbacks run before drawing. Cross a complete frame so both the card and
+        // detached indicator have recorded contents before publishing the opening geometry.
+        withFrameNanos { }
         withFrameNanos { }
         publishActionSourceGeometry()
         val bounds = itemGeometry.boundsInWindowOrNull()
@@ -451,7 +462,14 @@ fun CommentItem(
         bottomPadding = bottom,
     ) {
         CommentSurface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().drawWithContent {
+                if (hiddenSurfaceLayer != null) {
+                    // Keep captures current without hiding the surrounding thread rails.
+                    hiddenSurfaceLayer.record { this@drawWithContent.drawContent() }
+                } else {
+                    drawContent()
+                }
+            },
             style = style,
             showIndicator = showIndicator,
             indicatorGeometry = indicatorGeometry,
@@ -839,6 +857,7 @@ private fun CommentSurface(
         itemGeometry?.containerBorderColor = colors.commentDivider
         itemGeometry?.containerBorderWidthDp =
             if (style.showOutline) 1f else 0f
+        if (detachedProgress == 0f) itemGeometry?.indicatorLayer = null
     }
     val contentCaptureModifier = if (itemGeometry != null && captureSource) {
         Modifier.captureCommentActionSourceContent { itemGeometry.contentLayer = it }
@@ -854,27 +873,36 @@ private fun CommentSurface(
     }
     Column(modifier) {
         Box(
-            Modifier.fillMaxWidth().padding(shadowPadding).drawWithCache {
-                val width = indicatorWidth.roundToPx().toFloat()
-                val radius = indicatorWidth / 2 * indicatorGeometry.rounding
-                val outline = RoundedCornerShape(
-                    topStart = radius,
-                    topEnd = radius,
-                    bottomStart = radius * (1f - continuationBelow),
-                    bottomEnd = radius * (1f - continuationBelow),
-                ).createOutline(Size(width, size.height), layoutDirection, this)
-                onDrawBehind {
-                    if (detachedProgress > 0f) {
-                        translate(left = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f) {
+            Modifier.fillMaxWidth().padding(shadowPadding),
+        ) {
+            val indicatorCaptureModifier = if (itemGeometry != null && captureSource && detachedProgress > 0f) {
+                Modifier.captureCommentActionSourceContent { itemGeometry.indicatorLayer = it }
+            } else {
+                Modifier
+            }
+            if (detachedProgress > 0f) Box(
+                Modifier.matchParentSize()
+                    .wrapContentWidth(Alignment.Start)
+                    .width(indicatorWidth)
+                    .onGloballyPositioned { itemGeometry?.indicatorCoordinates = it }
+                    .then(indicatorCaptureModifier)
+                    .drawWithCache {
+                        val width = indicatorWidth.roundToPx().toFloat()
+                        val radius = indicatorWidth / 2 * indicatorGeometry.rounding
+                        val outline = RoundedCornerShape(
+                            topStart = radius,
+                            topEnd = radius,
+                            bottomStart = radius * (1f - continuationBelow),
+                            bottomEnd = radius * (1f - continuationBelow),
+                        ).createOutline(Size(width, size.height), layoutDirection, this)
+                        onDrawBehind {
                             drawOutline(
                                 outline,
                                 indicatorColor.copy(alpha = indicatorColor.alpha * indicatorAlpha * detachedProgress),
                             )
                         }
-                    }
-                }
-            },
-        ) {
+                    },
+            )
             Layout(
                 modifier = Modifier
                     .fillMaxWidth()

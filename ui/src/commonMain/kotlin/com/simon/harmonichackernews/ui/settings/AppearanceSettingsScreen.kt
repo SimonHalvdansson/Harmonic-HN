@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
 import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.StoryListSelector
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
 
 data class AppearanceSettingsUiState(
     val themeLabel: String,
@@ -38,6 +39,7 @@ data class AppearanceSettingsUiState(
     val showExtraSidePadding: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,
+    val surfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
@@ -60,6 +62,7 @@ fun AppearanceSettingsScreen(
     onSplitRatioChanged: (Float) -> Unit = {},
     onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
     onStoryListSelectorChanged: (StoryListSelector) -> Unit = {},
+    onSurfaceEffectChanged: (SurfaceEffectMode) -> Unit = {},
 ) {
     var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
     if (state.paletteTintEnabled) PreloadPalettePreviewResources()
@@ -126,6 +129,8 @@ fun AppearanceSettingsScreen(
                         onBooleanChanged(AppearanceBooleanSetting.CompactHeader, it)
                     },
                 )
+                SettingsDivider()
+                SurfaceEffectSelector(state.surfaceEffectMode, onSurfaceEffectChanged)
             }
         }
         if (state.showSplitRatio) {

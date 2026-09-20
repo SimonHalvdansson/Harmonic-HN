@@ -111,8 +111,10 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
             onOpenLinkPreviews = { onNavigate(SettingsSection.DebugLinkPreviews, true) },
+            onOpenGlassSettings = { onNavigate(SettingsSection.Glass, true) },
         )
         SettingsSection.DebugLinkPreviews -> PortableLinkPreviewsDebugScreen(app, scene, onBack)
+        SettingsSection.Glass -> GlassSettingsRoute(app.settings, onBack)
         SettingsSection.About -> AboutScreen(
             versionLabel = app.metadata.versionLabel,
             appIcon = appIcon,
@@ -406,6 +408,7 @@ private fun PortableDebugSettings(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
+    onOpenGlassSettings: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     DebugSettingsRoute(
@@ -435,6 +438,7 @@ private fun PortableDebugSettings(
         },
         onOpenLink = scene.links::open,
         onOpenLinkPreviews = onOpenLinkPreviews,
+        onOpenGlassSettings = onOpenGlassSettings,
         onEasterEggRequested = scene.navigation::openCoulombGas,
         dialogContent = { dialog, dismiss ->
             when (dialog) {
