@@ -1263,7 +1263,7 @@ private fun MainHeader(
                     modifier = Modifier
                         // Grow the hit/ripple bounds around the existing text origin.
                         .offset(x = (-4).dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .then(
                             if (useDropdown) Modifier.combinedClickable(
                                 onClick = { typesExpanded = true },
