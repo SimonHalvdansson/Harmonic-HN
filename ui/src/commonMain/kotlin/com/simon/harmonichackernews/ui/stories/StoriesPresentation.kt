@@ -34,7 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
-import androidx.compose.material3.DropdownMenu
+import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -344,11 +344,10 @@ private fun SearchOptionChip(
             },
             border = BorderStroke(1.dp, iconColor),
         )
-        DropdownMenu(
+        HarmonicDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismiss = { expanded = false },
             modifier = Modifier.width(196.dp),
-            shape = RoundedCornerShape(16.dp),
             containerColor = menuColor,
         ) {
             labels.forEachIndexed { index, option ->
