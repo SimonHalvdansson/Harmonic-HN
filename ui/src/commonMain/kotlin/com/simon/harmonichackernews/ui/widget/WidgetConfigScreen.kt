@@ -1,222 +1,260 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.simon.harmonichackernews.ui.widget
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.network.WidgetConfiguration
-import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_check
-import com.simon.harmonichackernews.resources.widget_config_ask_hn
-import com.simon.harmonichackernews.resources.widget_config_best_stories
-import com.simon.harmonichackernews.resources.widget_config_confirm
-import com.simon.harmonichackernews.resources.widget_config_jobs
-import com.simon.harmonichackernews.resources.widget_config_new_stories
-import com.simon.harmonichackernews.resources.widget_config_show_hn
-import com.simon.harmonichackernews.resources.widget_config_story_count_label
-import com.simon.harmonichackernews.resources.widget_config_title
-import com.simon.harmonichackernews.resources.widget_config_top_stories
-import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
-import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
+import com.simon.harmonichackernews.resources.*
+import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.PaletteTintPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
+import com.simon.harmonichackernews.settings.SurfaceEffectMode
+import com.simon.harmonichackernews.settings.SurfaceEffectPreferences
+import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
+import com.simon.harmonichackernews.ui.stories.StoryTypeDropdownMenu
+import com.simon.harmonichackernews.ui.settings.*
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.LocalHazePreferences
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
+import com.simon.harmonichackernews.ui.common.sharedHazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 
-private data class WidgetFeedOption(
-    val label: StringResource,
-    val storyType: StoryType,
-    val feedName: String,
-)
-
-private val WidgetFeeds = listOf(
-    WidgetFeedOption(Res.string.widget_config_top_stories, StoryType.TOP_STORIES, "Top stories"),
-    WidgetFeedOption(Res.string.widget_config_new_stories, StoryType.NEW_STORIES, "New stories"),
-    WidgetFeedOption(Res.string.widget_config_best_stories, StoryType.BEST_STORIES, "Best stories"),
-    WidgetFeedOption(Res.string.widget_config_ask_hn, StoryType.ASK_HN, "Ask HN"),
-    WidgetFeedOption(Res.string.widget_config_show_hn, StoryType.SHOW_HN, "Show HN"),
-    WidgetFeedOption(Res.string.widget_config_jobs, StoryType.HN_JOBS, "Jobs"),
-)
-
-/** Portable widget configuration UI reusable by Android Glance/RemoteViews and WidgetKit hosts. */
 @Composable
 fun WidgetConfigScreen(
     initialConfiguration: WidgetConfiguration,
+    frontpages: List<StoryType>,
     onConfirm: (WidgetConfiguration) -> Unit,
+    onBack: () -> Unit,
+    paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
+    headlineFontFamily: FontFamily? = null,
+    headlineFontLabel: String = "Device headline",
 ) {
-    var selectedFeedIndex by rememberSaveable(initialConfiguration.storyType) {
-        mutableIntStateOf(
-            WidgetFeeds.indexOfFirst { it.storyType == initialConfiguration.storyType }
-                .coerceAtLeast(0),
-        )
-    }
-    var selectedStoryCount by rememberSaveable(initialConfiguration.visibleStoryCount) {
-        mutableIntStateOf(initialConfiguration.visibleStoryCount)
-    }
+    val feeds = frontpages.ifEmpty { listOf(StoryType.TOP_STORIES) }
+    var feed by rememberSaveable { mutableStateOf(initialConfiguration.storyType.takeIf { it in feeds } ?: feeds.first()) }
+    var count by rememberSaveable { mutableIntStateOf(initialConfiguration.visibleStoryCount) }
+    var image by rememberSaveable { mutableStateOf(initialConfiguration.previewImageMode) }
+    var style by rememberSaveable { mutableStateOf(initialConfiguration.displayStyle) }
+    var tint by rememberSaveable { mutableStateOf(initialConfiguration.tint) }
+    var useHeadlineFont by rememberSaveable { mutableStateOf(initialConfiguration.useHeadlineFont) }
+    var choosingFeed by rememberSaveable { mutableStateOf(false) }
+    val configuration = WidgetConfiguration(feed, feed.label, count, image, style, tint, useHeadlineFont)
+    val fontFamily = if (useHeadlineFont) headlineFontFamily ?: FontFamily.SansSerif else FontFamily.SansSerif
+    val hazeState = rememberHazeState()
+    val buttonShape = RoundedCornerShape(16.dp)
 
-    Column(
-        Modifier.fillMaxSize()
-            .background(HarmonicTheme.colors.settingsPageBackground)
-            .windowInsetsPadding(WindowInsets.systemBars)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        Text(
-            stringResource(Res.string.widget_config_title),
-            modifier = Modifier.padding(start = 32.dp, top = 40.dp, end = 32.dp),
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 28.sp,
-            letterSpacing = 0.125.sp,
-        )
-        Column(Modifier.fillMaxWidth().padding(top = 16.dp).selectableGroup()) {
-            WidgetFeeds.forEachIndexed { index, option ->
-                WidgetFeedRow(
-                    text = stringResource(option.label),
-                    selected = selectedFeedIndex == index,
-                    onClick = { selectedFeedIndex = index },
-                )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val pinPreview = maxHeight >= 560.dp
+        val preview: @Composable () -> Unit = {
+            // The launcher cannot render Haze. Keep all sample-widget content under the same
+            // restriction, independently of the screen's glass-styled confirmation button.
+            CompositionLocalProvider(LocalHazeGlassEnabled provides false,
+                LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Solid)) {
+                WidgetConfigurationPreview(configuration, paletteTintConfigKey, fontFamily)
             }
         }
-        Column(Modifier.fillMaxWidth().padding(horizontal = 32.dp)) {
-            Text(
-                stringResource(Res.string.widget_config_story_count_label),
-                modifier = Modifier.padding(top = 24.dp),
-                color = HarmonicTheme.colors.textPrimary,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 14.sp,
-                letterSpacing = 0.2.sp,
-            )
-            WidgetStoryCountSelector(
-                selected = selectedStoryCount,
-                onSelected = { selectedStoryCount = it },
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-        Box(
-            Modifier.fillMaxWidth().padding(start = 32.dp, top = 24.dp, end = 32.dp, bottom = 16.dp)
-                .height(56.dp),
+        SettingsPage(
+            modifier = Modifier.sharedHazeSource(hazeState),
+            title = stringResource(Res.string.widget_config_title),
+            showNavigation = true,
+            onBack = onBack,
+            extraBottomPadding = 88.dp,
+            pinnedContent = preview.takeIf { pinPreview },
+            headerContent = preview.takeUnless { pinPreview },
         ) {
-            val confirmShape = RoundedCornerShape(28.dp)
-            Button(
-                onClick = {
-                    val feed = WidgetFeeds[selectedFeedIndex]
-                    onConfirm(
-                        WidgetConfiguration(
-                            storyType = feed.storyType,
-                            feedName = feed.feedName,
-                            visibleStoryCount = selectedStoryCount,
-                        ),
+            item {
+                SettingsCategory("Content") {
+                    Box {
+                        SettingRow(
+                            title = "Frontpage", summary = feed.label,
+                            icon = Res.drawable.ic_library_books,
+                            onClick = { choosingFeed = true },
+                        )
+                        StoryTypeDropdownMenu(
+                            expanded = choosingFeed, onDismiss = { choosingFeed = false },
+                            types = feeds, selectedType = feed,
+                            onSelected = { feed = it; choosingFeed = false },
+                        )
+                    }
+                    SettingsDivider()
+                    SliderSetting(
+                        title = stringResource(Res.string.widget_config_story_count_label),
+                        valueLabel = count.toString(), value = count.toFloat(),
+                        valueRange = WidgetConfiguration.MIN_STORY_COUNT.toFloat()..WidgetConfiguration.MAX_STORY_COUNT.toFloat(),
+                        steps = WidgetConfiguration.MAX_STORY_COUNT - WidgetConfiguration.MIN_STORY_COUNT - 1,
+                        onValueChange = { count = it.roundToInt() },
                     )
-                },
-                modifier = Modifier.fillMaxSize().padding(vertical = 4.dp),
-                shapes = ButtonDefaults.shapes(shape = confirmShape),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_check),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(Res.string.widget_config_confirm),
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                )
+                }
+            }
+            item {
+                SettingsCategory("Appearance") {
+                    if (headlineFontFamily != null) {
+                        SegmentedSetting(
+                            title = "Font",
+                            options = listOf(false to "Default", true to headlineFontLabel),
+                            optionWeights = if (headlineFontLabel.length > 18) mapOf(false to 1f, true to 2f) else emptyMap(),
+                            selected = useHeadlineFont, onSelected = { useHeadlineFont = it },
+                        )
+                        SettingsDivider()
+                    }
+                    SegmentedSetting(
+                        title = "Preview image",
+                        options = listOf(StoryPreviewMode.OFF to "Off", StoryPreviewMode.SMALL to "Small", StoryPreviewMode.MEDIUM to "Medium"),
+                        selected = image, onSelected = { image = it },
+                    )
+                    SettingsDivider()
+                    SegmentedSetting(
+                        title = "Display style",
+                        options = listOf(DisplayStyle.FLAT to "Flat", DisplayStyle.STANDARD to "Filled", DisplayStyle.RAISED to "Raised", DisplayStyle.OUTLINED to "Outlined"),
+                        selected = style,
+                        onSelected = { style = it; if (it == DisplayStyle.FLAT) tint = false },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Tint", summary = "Uses preview or favicon",
+                        icon = Res.drawable.ic_palette, checked = tint,
+                        onCheckedChange = {
+                            tint = it
+                            if (it && style == DisplayStyle.FLAT) style = DisplayStyle.STANDARD
+                        },
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun WidgetFeedRow(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(48.dp).selectable(
-            selected = selected,
-            role = Role.RadioButton,
-            onClick = onClick,
-        ).padding(horizontal = 32.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-            RadioButton(selected = selected, onClick = null)
+        ExtendedFloatingActionButton(
+            onClick = { onConfirm(configuration) },
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp)
+                .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, buttonShape, clip = false)
+                .sharedHazeBackground(
+                    hazeState = hazeState,
+                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    shape = buttonShape,
+                    glassAppearance = HazeGlassAppearance.FloatingButton,
+                ),
+            shape = buttonShape,
+            containerColor = Color.Transparent,
+            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+        ) {
+            Icon(painterResource(Res.drawable.ic_check), null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(Res.string.widget_config_confirm))
         }
-        Text(
-            text,
-            modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.storyNormal,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 16.sp,
-            letterSpacing = 0.25.sp,
-        )
     }
 }
 
+/** Shared with the Glance renderer, which can only use platform fonts. */
+object WidgetTypography {
+    const val TITLE_SIZE = 14f
+    const val HEADER_SIZE = 16f
+    const val METADATA_SIZE = 11f
+    const val COMMENT_COUNT_SIZE = 12f
+}
+
+object WidgetDimensions {
+    val mediumImageWidth = 120.dp
+    val mediumImageHeight = 72.dp
+    val mediumNoImageWidth = 64.dp
+    val mediumNoImageHeight = 60.dp
+    val headerTopPadding = 6.dp
+    val headerBottomPadding = 2.dp
+    val listBottomPadding = 6.dp
+    val cardSpacing = 7.dp
+    val cardHorizontalMargin = 12.dp
+    const val metricBackgroundAlpha = 0.92f
+    val metricStartPadding = 5.dp
+    val pointsStartPadding = 2.dp
+    val metricEndPadding = 7.dp
+    val metricVerticalPadding = 4.dp
+    val metricIconSize = 13.dp
+}
+
+// A gesture that starts in the sample widget belongs to it, including at either scroll limit.
+private val PreviewScrollBoundary = object : NestedScrollConnection {
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+}
+
+private val WidgetPreviewStories = listOf(
+    SettingsStoryPreviewModel.copy(index = "1."),
+    SettingsStoryPreviewModel.copy(
+        index = "2.", title = "The hidden gardens of New York City",
+        domain = "nytimes.com", domainWithoutTopLevel = "nytimes", age = "4h", points = 128,
+        commentCount = 42, previewImageFallback = Res.drawable.palette2,
+        faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,
+    ),
+    SettingsStoryPreviewModel.copy(
+        index = "3.", title = "Ask HN: What have you been building this weekend?",
+        domain = "news.ycombinator.com", domainWithoutTopLevel = "news.ycombinator", age = "5h", points = 76, commentCount = 103,
+        previewImageFallback = null, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,
+    ),
+    SettingsStoryPreviewModel.copy(
+        index = "4.", title = "A small database that fits in your pocket",
+        domain = "sqlite.org", domainWithoutTopLevel = "sqlite", age = "6h", points = 214, commentCount = 57,
+        previewImageFallback = null, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,
+    ),
+    SettingsStoryPreviewModel.copy(
+        index = "5.", title = "New patterns",
+        domain = "science.org", domainWithoutTopLevel = "science", age = "7h", points = 91, commentCount = 24,
+    ),
+)
+
+/** Fixed widget viewport with animated Glance-equivalent rows and an independent scroll boundary. */
 @Composable
-private fun WidgetStoryCountSelector(
-    selected: Int,
-    onSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val options = WidgetConfiguration.allowedStoryCounts.sorted()
-    val colors = harmonicFilterButtonColors()
-    Row(
-        modifier.fillMaxWidth().height(48.dp).selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, paletteTintConfigKey: String, fontFamily: FontFamily) {
+    val colors = HarmonicTheme.colors
+    Column(
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.settingsPageBackground)
+            .border(1.dp, colors.outlineVariant, RoundedCornerShape(24.dp)),
     ) {
-        options.forEachIndexed { index, option ->
-            HarmonicFilterButton(
-                label = option.toString(),
-                selected = option == selected,
-                position = index,
-                lastPosition = options.lastIndex,
-                colors = colors,
-                onClick = { onSelected(option) },
-                modifier = Modifier.weight(1f),
-            )
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
+            Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->
+                Text(feed.label, color = colors.textPrimary, fontWeight = FontWeight.Bold, fontFamily = family, fontSize = WidgetTypography.HEADER_SIZE.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, style = LocalWidgetTextStyle.current)
+            }
+            Crossfade(fontFamily, label = "Widget status font") { family ->
+                Text("Updated just now", Modifier.padding(start = 8.dp), color = colors.textSecondary,
+                    fontFamily = family, fontSize = WidgetTypography.METADATA_SIZE.sp, maxLines = 1, style = LocalWidgetTextStyle.current)
+            }
+            Icon(painterResource(Res.drawable.ic_refresh), null, Modifier.size(48.dp).padding(12.dp), tint = colors.textPrimary)
+        }
+        LazyColumn(Modifier.fillMaxWidth().weight(1f).nestedScroll(PreviewScrollBoundary)
+            .semantics { contentDescription = "Widget preview" }, contentPadding = PaddingValues(bottom = WidgetDimensions.listBottomPadding)) {
+            items(WidgetPreviewStories, key = { it.index }) { model ->
+                Crossfade(fontFamily, label = "Widget story font") { family ->
+                    WidgetPreviewStoryRow(model, configuration, family, paletteTintConfigKey)
+                }
+            }
         }
     }
 }

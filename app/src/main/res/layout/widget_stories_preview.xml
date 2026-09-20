@@ -1,240 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher picker RemoteViews use platform tint, not AppCompat app:tint. -->
+<!-- The live widget is rendered by StoriesGlanceWidget. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/widget_root"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="@drawable/widget_background"
-    android:orientation="vertical"
-    tools:ignore="HardcodedText">
-
-    <!-- Static sample copy used only by the launcher's widget picker preview. -->
-
-    <LinearLayout
-        android:id="@+id/widget_header"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingLeft="14dp"
-        android:paddingRight="8dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="6dp">
-
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginRight="8dp"
-            android:contentDescription="@string/widget_app_icon_content_description"
-            android:src="@mipmap/ic_launcher" />
-
-        <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:fontFamily="@font/product_sans"
-            android:text="@string/widget_top_stories"
-            android:textColor="@color/widget_title"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_updated_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="2dp"
-            android:textColor="@color/widget_secondary_text"
-            android:textSize="11sp" />
-
-        <FrameLayout
-            android:layout_width="36dp"
-            android:layout_height="36dp">
-
-            <ImageView
-                android:id="@+id/widget_refresh_button"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:padding="6dp"
-                android:src="@drawable/ic_refresh_widget"
-                app:tint="@color/widget_title"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/widget_refresh_content_description" />
-
-            <ProgressBar
-                android:id="@+id/widget_refresh_progress"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="center"
-                android:visibility="gone" />
-        </FrameLayout>
-
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/widget_background"
+    android:clipToOutline="true" tools:ignore="HardcodedText,UseAppTint">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="16dp" android:paddingEnd="4dp"
+        android:paddingTop="6dp" android:paddingBottom="2dp">
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="@string/widget_top_stories" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+            android:textSize="16sp" android:textColor="@color/widget_title" android:maxLines="1" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Updated just now" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+            android:textColor="@color/widget_secondary_text" />
+        <ImageView android:layout_width="48dp" android:layout_height="48dp" android:padding="12dp"
+            android:src="@drawable/ic_refresh_widget" android:contentDescription="@string/widget_refresh_content_description" />
     </LinearLayout>
-
-    <!-- Story 1 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:layout_width="20dp"
-            android:layout_marginLeft="-1dp"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="2dp"
-            android:layout_marginTop="1dp"
-            android:gravity="right"
-            android:text="1."
-            android:textColor="@color/widget_story_index"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingLeft="4dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="Show HN: A minimal Hacker News reader"
-                android:textColor="@color/widget_story_title"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="256 points · 142 comments"
-                android:textColor="@color/widget_story_meta"
-                android:textSize="12sp" />
-
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
+        android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
+        android:background="@drawable/widget_preview_card">
+        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+            android:text="1." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:paddingVertical="12dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Algorithm breaks speed limit for solving linear equations" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="3" android:ellipsize="end" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:text="53 points · science.org · 2h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                android:textColor="@color/widget_story_meta" android:maxLines="2" />
         </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Story 2 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:layout_width="20dp"
-            android:layout_marginLeft="-1dp"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="2dp"
-            android:layout_marginTop="1dp"
-            android:gravity="right"
-            android:text="2."
-            android:textColor="@color/widget_story_index"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingLeft="4dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="Why SQLite is so great for the edge"
-                android:textColor="@color/widget_story_title"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="189 points · 97 comments"
-                android:textColor="@color/widget_story_meta"
-                android:textSize="12sp" />
-
+        <ImageView android:layout_width="72dp" android:layout_height="52dp" android:layout_marginStart="6dp"
+            android:background="@drawable/widget_preview_card" android:clipToOutline="true"
+            android:src="@drawable/widget_preview_equations" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="48dp" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_comment"
+                android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18"
+                android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/widget_story_title" />
         </LinearLayout>
-
     </LinearLayout>
-
-    <!-- Story 3 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:layout_width="20dp"
-            android:layout_marginLeft="-1dp"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="2dp"
-            android:layout_marginTop="1dp"
-            android:gravity="right"
-            android:text="3."
-            android:textColor="@color/widget_story_index"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingLeft="4dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="Ask HN: Best resources to learn Rust?"
-                android:textColor="@color/widget_story_title"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/product_sans"
-                android:text="134 points · 85 comments"
-                android:textColor="@color/widget_story_meta"
-                android:textSize="12sp" />
-
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
+        android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
+        android:background="@drawable/widget_preview_card">
+        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+            android:text="2." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:paddingVertical="12dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="The hidden gardens of New York City" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="3" android:ellipsize="end" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:text="128 points · nytimes.com · 4h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                android:textColor="@color/widget_story_meta" android:maxLines="2" />
         </LinearLayout>
-
+        <ImageView android:layout_width="72dp" android:layout_height="52dp" android:layout_marginStart="6dp"
+            android:background="@drawable/widget_preview_card" android:clipToOutline="true"
+            android:src="@drawable/widget_preview_gardens" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="48dp" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_comment"
+                android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="42"
+                android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/widget_story_title" />
+        </LinearLayout>
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/widget_empty_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="4dp"
-        android:paddingBottom="6dp"
-        android:textColor="@color/widget_secondary_text"
-        android:textSize="11sp"
-        android:visibility="gone" />
-
-    <ListView
-        android:id="@+id/widget_stories_list"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        android:visibility="gone" />
-
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
+        android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
+        android:background="@drawable/widget_preview_card">
+        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+            android:text="3." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:paddingVertical="12dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Finding new patterns in old mathematics" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="3" android:ellipsize="end" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:text="91 points · science.org · 5h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                android:textColor="@color/widget_story_meta" android:maxLines="2" />
+        </LinearLayout>
+        <ImageView android:layout_width="72dp" android:layout_height="52dp" android:layout_marginStart="6dp"
+            android:background="@drawable/widget_preview_card" android:clipToOutline="true"
+            android:src="@drawable/widget_preview_equations" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="48dp" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_comment"
+                android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="24"
+                android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/widget_story_title" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
+        android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
+        android:background="@drawable/widget_preview_card">
+        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+            android:text="4." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:paddingVertical="12dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="A quieter corner of the city" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="3" android:ellipsize="end" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:text="76 points · nytimes.com · 6h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                android:textColor="@color/widget_story_meta" android:maxLines="2" />
+        </LinearLayout>
+        <ImageView android:layout_width="72dp" android:layout_height="52dp" android:layout_marginStart="6dp"
+            android:background="@drawable/widget_preview_card" android:clipToOutline="true"
+            android:src="@drawable/widget_preview_gardens" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="48dp" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_comment"
+                android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="57"
+                android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/widget_story_title" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

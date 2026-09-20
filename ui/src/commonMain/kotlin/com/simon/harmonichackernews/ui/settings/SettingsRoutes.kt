@@ -211,6 +211,7 @@ fun DebugSettingsRoute(
     onOpenGlassSettings: () -> Unit,
     onEasterEggRequested: () -> Unit,
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
+    onWidgetDebugInfoChanged: () -> Unit = {},
 ) {
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
@@ -218,10 +219,15 @@ fun DebugSettingsRoute(
         showNavigation = showNavigation,
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
+        showWidgetDebugInfo = settings.debug.showWidgetDebugInfo,
         environment = environment,
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.ALWAYS_SHOW_TAP_TO_REFRESH, it)
+        },
+        onShowWidgetDebugInfoChanged = {
+            repository.setDebugBoolean(DebugBooleanPreference.SHOW_WIDGET_DEBUG_INFO, it)
+            onWidgetDebugInfoChanged()
         },
         onGlassSettingsRequested = onOpenGlassSettings,
         onOpenHnId = onOpenHnId,

@@ -1328,47 +1328,18 @@ private fun MainHeader(
                         )
                     }
                 }
-                HarmonicDropdownMenu(
+                StoryTypeDropdownMenu(
                     expanded = useDropdown && typesExpanded,
                     onDismiss = { typesExpanded = false },
-                    modifier = Modifier.width(240.dp),
-                ) {
-                    controller.typeLabels.forEachIndexed { index, label ->
-                        val isSelected = index == controller.selectedTypeIndex
-                        DropdownMenuItem(
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f)
-                                    else Color.Transparent,
-                                )
-                                .semantics { selected = isSelected },
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            text = {
-                                HarmonicMenuText(
-                                    text = label,
-                                    color = HarmonicTheme.colors.storyNormal,
-                                    fontFamily = typography.family,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = typography.storiesDropdownItemSize.sp,
-                                )
-                            },
-                            onClick = {
-                                typesExpanded = false
-                                onTypeSelected(index)
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(StoryType.fromLabel(label).menuIcon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = HarmonicTheme.colors.drawable,
-                                )
-                            },
-                        )
-                    }
-                }
+                    types = controller.typeLabels.map(StoryType::fromLabel),
+                    selectedType = StoryType.fromLabel(controller.typeLabels.getOrNull(controller.selectedTypeIndex)),
+                    fontFamily = typography.family,
+                    fontSize = typography.storiesDropdownItemSize.sp,
+                    onSelected = { type ->
+                        typesExpanded = false
+                        onTypeSelected(controller.typeLabels.indexOf(type.label))
+                    },
+                )
             }
             if (!sizing.searchInMenu) StoriesTooltip("Search") {
                 IconButton(

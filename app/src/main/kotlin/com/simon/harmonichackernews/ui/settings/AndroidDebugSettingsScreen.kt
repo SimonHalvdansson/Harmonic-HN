@@ -4,6 +4,9 @@ import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.glance.appwidget.updateAll
+import com.simon.harmonichackernews.widget.StoriesGlanceWidget
 import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
@@ -22,8 +25,10 @@ fun AndroidDebugSettingsScreen(
 ) {
     val app = LocalHarmonicUiDependencies.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     DebugSettingsRoute(
         repository = app.settings,
+        onWidgetDebugInfoChanged = { scope.launch { StoriesGlanceWidget().updateAll(context) } },
         environment = DebugEnvironmentUiState(
             appVersion = app.metadata.versionName,
             appBuild = app.metadata.buildNumber,

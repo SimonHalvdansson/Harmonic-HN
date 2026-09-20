@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.ui.debug.CoulombGasContract
 import com.simon.harmonichackernews.ui.editor.ComposeEditorContract
 import com.simon.harmonichackernews.ui.settings.SettingsIntents
 import com.simon.harmonichackernews.ui.submissions.SubmissionsContract
+import com.simon.harmonichackernews.widget.ACTION_OPEN_WIDGET_STORIES
 
 /** Android decoder for the platform-neutral application launch router. */
 internal class MainLaunchIntentRouter(
@@ -23,19 +24,25 @@ internal class MainLaunchIntentRouter(
 ) {
     private val launches = AppLaunchRouter(navigation.navigationState)
 
-    fun route(intent: Intent?): Boolean = when (
-        val result = launches.route(intent?.toLaunchRequest() ?: AppLaunchRequest.Unknown)
-    ) {
-        AppLaunchResult.Routed -> {
-            if (Intent.ACTION_VIEW.equals(intent?.action, ignoreCase = true)) {
-                navigation.markExternalStoryEntry()
-            }
-            true
+    fun route(intent: Intent?): Boolean {
+        if (intent?.action == ACTION_OPEN_WIDGET_STORIES) {
+            navigation.navigationState.returnToStories()
+            return true
         }
-        AppLaunchResult.Ignored -> false
-        is AppLaunchResult.Invalid -> {
-            navigation.showMessage(result.message)
-            false
+        return when (
+            val result = launches.route(intent?.toLaunchRequest() ?: AppLaunchRequest.Unknown)
+        ) {
+            AppLaunchResult.Routed -> {
+                if (Intent.ACTION_VIEW.equals(intent?.action, ignoreCase = true)) {
+                    navigation.markExternalStoryEntry()
+                }
+                true
+            }
+            AppLaunchResult.Ignored -> false
+            is AppLaunchResult.Invalid -> {
+                navigation.showMessage(result.message)
+                false
+            }
         }
     }
 

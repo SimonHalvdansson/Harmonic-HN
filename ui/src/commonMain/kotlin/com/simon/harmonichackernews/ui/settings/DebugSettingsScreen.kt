@@ -97,9 +97,11 @@ fun DebugSettingsScreen(
     showNavigation: Boolean,
     contentVersion: Int,
     alwaysShowTapToRefresh: Boolean,
+    showWidgetDebugInfo: Boolean,
     environment: DebugEnvironmentUiState,
     onBack: () -> Unit,
     onAlwaysShowTapToRefreshChanged: (Boolean) -> Unit,
+    onShowWidgetDebugInfoChanged: (Boolean) -> Unit,
     onGlassSettingsRequested: () -> Unit,
     onOpenHnId: (Int) -> Unit,
     onOpenWithoutCache: () -> Unit,
@@ -125,6 +127,14 @@ fun DebugSettingsScreen(
                     icon = Res.drawable.ic_refresh,
                     checked = alwaysShowTapToRefresh,
                     onCheckedChange = onAlwaysShowTapToRefreshChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Show widget debug info",
+                    summary = "Shows detailed refresh errors on home screen widgets",
+                    icon = Res.drawable.ic_info,
+                    checked = showWidgetDebugInfo,
+                    onCheckedChange = onShowWidgetDebugInfoChanged,
                 )
                 SettingsDivider()
                 DebugHnIdSetting(onOpenId = onOpenHnId)

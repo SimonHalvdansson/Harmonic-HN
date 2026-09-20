@@ -90,6 +90,6 @@
     <string name="widget_config_show_hn">Show HN</string>
     <string name="widget_config_jobs">Jobs</string>
     <string name="widget_config_story_count_label">Number of stories to show</string>
-    <string name="widget_config_confirm">Confirm</string>
+    <string name="widget_config_confirm">Add widget</string>
     <string name="settings_section_user_avatars">User profile images</string>
 </resources>

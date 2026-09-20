@@ -210,6 +210,7 @@ data class StoryItemStyle(
     val textSize: Float,
     val dimmed: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
+    val mediumPreviewImageHeight: Dp = 88.dp,
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -253,9 +254,11 @@ fun StoryItem(
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
     pageBackground: Color = HarmonicTheme.colors.settingsPageBackground,
+    typographyOverride: ContentTypography? = null,
+    cardPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
 ) {
     val colors = HarmonicTheme.colors
-    val typography = rememberContentTypography(
+    val typography = typographyOverride ?: rememberContentTypography(
         preferredFont = style.preferredFont,
         storyTextSize = style.textSize,
     )
@@ -298,7 +301,7 @@ fun StoryItem(
     val captureSourceContent = previewCapture.captureContent
     val trackedLinkLongClick = previewCapture.onLongClick
     val geometryModifier = previewCapture.modifier
-    val cardDecorationModifier = if (listItem) {
+    val cardDecorationModifier = if (listItem && !animate) {
         when {
             style.cardStyle -> Modifier
                 .shadow(elevation = 1.dp, shape = StoryCardShape, clip = false)
@@ -338,7 +341,7 @@ fun StoryItem(
                 vertical = if (listItem) 0.dp else 10.dp,
             ),
     ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Box(Modifier.fillMaxWidth().padding(cardPadding)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -520,7 +523,8 @@ fun StoryItem(
                             animateChanges = animate,
                             railWidth = animatedRailWidth,
                             contentMinHeight = if (mediumPreview && hasPreview) {
-                                MediumPreviewImageMinimumHeight
+                                if (renderedStyle.borderlessLargeImage) MediumPreviewImageMinimumHeight
+                                else renderedStyle.mediumPreviewImageHeight + 16.dp
                             } else {
                                 0.dp
                             },
@@ -694,7 +698,7 @@ private fun StoryMediumPreviewRail(
     }
     val imageHeight = if (animateChanges) {
         val animatedHeight by animateDpAsState(
-            targetValue = if (borderlessImage) MediumPreviewImageMinimumHeight else 88.dp,
+            targetValue = if (borderlessImage) MediumPreviewImageMinimumHeight else style.mediumPreviewImageHeight,
             animationSpec = contentTween(),
             label = "medium story image height",
         )
@@ -702,7 +706,7 @@ private fun StoryMediumPreviewRail(
     } else if (borderlessImage) {
         MediumPreviewImageMinimumHeight
     } else {
-        88.dp
+        style.mediumPreviewImageHeight
     }
     val imageStartRadius = if (animateChanges) {
         val animatedRadius by animateDpAsState(

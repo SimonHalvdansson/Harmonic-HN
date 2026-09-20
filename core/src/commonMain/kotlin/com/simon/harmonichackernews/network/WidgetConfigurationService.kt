@@ -2,25 +2,35 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.StoryPreviewMode
+import com.simon.harmonichackernews.settings.StoryPreferences
 
 data class WidgetConfiguration(
     val storyType: StoryType = StoryType.TOP_STORIES,
     val feedName: String? = null,
     val visibleStoryCount: Int = DEFAULT_STORY_COUNT,
+    val previewImageMode: StoryPreviewMode = StoryPreviewMode.OFF,
+    val displayStyle: DisplayStyle = DisplayStyle.STANDARD,
+    val tint: Boolean = false,
+    val useHeadlineFont: Boolean = true,
 ) {
-    val feedUrl: String get() = checkNotNull(storyType.hackerNewsUrl)
-    val fetchStoryCount: Int get() = when (visibleStoryCount) {
-        STORY_COUNT_SMALL -> 10
-        STORY_COUNT_LARGE -> 28
-        else -> 20
-    }
+    // Keep official URLs for existing installations; other feeds use stable enum names.
+    val feedUrl: String get() = storyType.hackerNewsUrl ?: storyType.name
+    val fetchStoryCount: Int get() = visibleStoryCount.coerceIn(MIN_STORY_COUNT, MAX_STORY_COUNT) + 4
 
     companion object {
-        const val STORY_COUNT_SMALL = 8
-        const val STORY_COUNT_MEDIUM = 16
-        const val STORY_COUNT_LARGE = 24
-        const val DEFAULT_STORY_COUNT = STORY_COUNT_MEDIUM
-        val allowedStoryCounts = setOf(STORY_COUNT_SMALL, STORY_COUNT_MEDIUM, STORY_COUNT_LARGE)
+        const val MIN_STORY_COUNT = 8
+        const val MAX_STORY_COUNT = 24
+        const val DEFAULT_STORY_COUNT = 12
+
+        fun fromStoryPreferences(preferences: StoryPreferences) = WidgetConfiguration(
+            previewImageMode = preferences.previewImageMode.let {
+                if (it == StoryPreviewMode.LARGE) StoryPreviewMode.MEDIUM else it
+            },
+            displayStyle = preferences.displayStyle,
+            tint = preferences.tintCardUsingPreview,
+        )
     }
 }
 
@@ -38,10 +48,16 @@ class WidgetConfigurationService(
     private val configStore: KeyValueStore,
     private val runtimeStore: KeyValueStore,
     repository: HackerNewsRepository,
+    feedLoader: suspend (StoryType, Int) -> StoryFeedResult = { type, _ ->
+        StoryFeedResult.ItemIds(repository.getStoryIds(type))
+    },
 ) {
-    private val feed = WidgetFeedUseCase(repository)
+    private val feed = WidgetFeedUseCase(repository, feedLoader)
 
-    fun configuration(widgetId: Int): WidgetConfiguration {
+    fun configuration(widgetId: Int, defaults: WidgetConfiguration = WidgetConfiguration()): WidgetConfiguration {
+        // Only newly added widgets inherit current app preferences. Reconfiguration keeps the
+        // independent choices saved for this widget, including older installations.
+        if (!configStore.contains(key(FEED_TYPE, widgetId))) return defaults
         val storyType = widgetStoryTypeForUrl(
             configStore.getString(key(FEED_TYPE, widgetId), StoryType.TOP_STORIES.hackerNewsUrl),
         )
@@ -53,12 +69,22 @@ class WidgetConfigurationService(
             storyType = storyType,
             feedName = configStore.getString(key(FEED_NAME, widgetId)),
             visibleStoryCount = normalizeStoryCount(rawCount),
+            previewImageMode = StoryPreviewMode.fromStored(
+                configStore.getString(key(PREVIEW_IMAGE, widgetId), StoryPreviewMode.OFF.storedValue),
+            ).let { if (it == StoryPreviewMode.LARGE) StoryPreviewMode.MEDIUM else it },
+            displayStyle = DisplayStyle.fromStored(configStore.getString(key(DISPLAY_STYLE, widgetId))),
+            tint = configStore.getBoolean(key(TINT, widgetId), false),
+            useHeadlineFont = configStore.getBoolean(key(HEADLINE_FONT, widgetId), true),
         )
     }
 
     fun save(widgetId: Int, configuration: WidgetConfiguration) {
         configStore.putString(key(FEED_TYPE, widgetId), configuration.feedUrl)
         configStore.putString(key(FEED_NAME, widgetId), configuration.feedName)
+        configStore.putString(key(PREVIEW_IMAGE, widgetId), configuration.previewImageMode.storedValue)
+        configStore.putString(key(DISPLAY_STYLE, widgetId), configuration.displayStyle.storedValue)
+        configStore.putBoolean(key(TINT, widgetId), configuration.tint)
+        configStore.putBoolean(key(HEADLINE_FONT, widgetId), configuration.useHeadlineFont)
         configStore.putInt(
             key(STORY_COUNT, widgetId),
             normalizeStoryCount(configuration.visibleStoryCount),
@@ -92,7 +118,7 @@ class WidgetConfigurationService(
     }
 
     fun clear(widgetId: Int) {
-        listOf(FEED_TYPE, FEED_NAME, STORY_COUNT).forEach {
+        listOf(FEED_TYPE, FEED_NAME, STORY_COUNT, PREVIEW_IMAGE, DISPLAY_STYLE, TINT, HEADLINE_FONT).forEach {
             configStore.remove(key(it, widgetId))
         }
         listOf(LAST_UPDATED, SKIP_FETCH, REFRESHING).forEach {
@@ -100,13 +126,8 @@ class WidgetConfigurationService(
         }
     }
 
-    private fun normalizeStoryCount(value: Int): Int = when (value) {
-        in WidgetConfiguration.allowedStoryCounts -> value
-        10 -> WidgetConfiguration.STORY_COUNT_SMALL
-        20 -> WidgetConfiguration.STORY_COUNT_MEDIUM
-        30, 40 -> WidgetConfiguration.STORY_COUNT_LARGE
-        else -> WidgetConfiguration.DEFAULT_STORY_COUNT
-    }
+    private fun normalizeStoryCount(value: Int): Int =
+        value.coerceIn(WidgetConfiguration.MIN_STORY_COUNT, WidgetConfiguration.MAX_STORY_COUNT)
 
     private fun key(prefix: String, widgetId: Int): String = prefix + widgetId
 
@@ -114,6 +135,10 @@ class WidgetConfigurationService(
         const val FEED_TYPE = "feed_type_"
         const val FEED_NAME = "feed_name_"
         const val STORY_COUNT = "story_count_"
+        const val PREVIEW_IMAGE = "preview_image_"
+        const val DISPLAY_STYLE = "display_style_"
+        const val TINT = "tint_"
+        const val HEADLINE_FONT = "headline_font_"
         const val LAST_UPDATED = "last_updated_"
         const val SKIP_FETCH = "skip_fetch_"
         const val REFRESHING = "refreshing_"

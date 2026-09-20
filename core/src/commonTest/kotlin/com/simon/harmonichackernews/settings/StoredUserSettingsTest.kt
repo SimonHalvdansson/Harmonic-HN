@@ -47,6 +47,7 @@ class StoredUserSettingsTest {
         val settings = StoredUserSettings(TestKeyValueStore(), emptyFlow())
 
         assertTrue(settings.story.showPoints)
+        assertFalse(settings.debug.showWidgetDebugInfo)
         assertEquals(StoryPreviewMode.SMALL, settings.story.previewImageMode)
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, settings.story.storyTextSize)
         assertEquals("Top Stories", settings.story.preferredStoryType)

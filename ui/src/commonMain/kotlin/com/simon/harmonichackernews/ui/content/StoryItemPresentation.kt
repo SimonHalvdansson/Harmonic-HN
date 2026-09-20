@@ -68,7 +68,7 @@ internal fun rememberStoryItemPresentation(
     } else {
         1f
     }
-    val cardProgress = if (listItem) {
+    val cardProgress = if (listItem && !animate) {
         if (style.cardStyle) 1f else 0f
     } else {
         val animatedCardProgress by animateFloatAsState(
@@ -78,7 +78,7 @@ internal fun rememberStoryItemPresentation(
         )
         animatedCardProgress
     }
-    val outlineAlpha = if (listItem) {
+    val outlineAlpha = if (listItem && !animate) {
         if (style.showOutline) 1f else 0f
     } else {
         val animatedOutlineAlpha by animateFloatAsState(

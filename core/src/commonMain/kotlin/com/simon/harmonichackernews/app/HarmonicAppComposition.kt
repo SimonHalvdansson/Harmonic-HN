@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.app
 
+import com.simon.harmonichackernews.StorySearchController
+import com.simon.harmonichackernews.network.StoryFeedRepository
+import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
 import com.simon.harmonichackernews.cache.ArticleSnapshotService
@@ -137,6 +140,22 @@ class HarmonicAppComposition(
         configStore = host.widgetConfigurationStore,
         runtimeStore = host.widgetRuntimeStore,
         repository = network.hackerNewsRepository,
+        feedLoader = { type, count ->
+            if (type.isAlgolia) {
+                val search = StorySearchController()
+                StoryFeedResult.LinkDirectory(
+                    network.algoliaRepository.search(
+                        search.buildTopStoriesUrl(search.getCurrentTopStoriesStartTime(type), count),
+                    ),
+                )
+            } else {
+                StoryFeedRepository(
+                    network.hackerNewsRepository,
+                    network.hackerNewsWebRepository,
+                    network.unslopRepository,
+                ).load(type)
+            }
+        },
     )
     val widgetRefresh = WidgetRefreshRuntime(widgets, nowMillis)
     val hackerNewsUser = HackerNewsUserService(

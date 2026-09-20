@@ -92,6 +92,7 @@ mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta4"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.16.1"
 play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"
 androidx-work = "androidx.work:work-runtime:2.11.2"
+androidx-glance-appwidget = "androidx.glance:glance-appwidget:1.2.0"
 androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 androidx-benchmark-junit4 = { module = "androidx.benchmark:benchmark-junit4", version.ref = "benchmark" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-junit" }

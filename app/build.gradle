@@ -187,6 +187,7 @@ dependencies {
     playReleaseImplementation(libs.mlkit.genai.prompt)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
+    implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.profileinstaller)
 
     implementation(platform(libs.androidx.compose.bom))

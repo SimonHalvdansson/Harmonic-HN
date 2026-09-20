@@ -1,9 +1,14 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.data.Story
-import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class WidgetFeedRequest(
@@ -14,13 +19,9 @@ data class WidgetFeedRequest(
     val totalTimeoutMillis: Long = DEFAULT_TOTAL_TIMEOUT_MILLIS,
 ) {
     init {
-        require(storyType.hackerNewsUrl != null) {
-            "$storyType is not backed by an official Hacker News widget feed"
-        }
-        require(fetchCount > 0) { "Widget fetch count must be positive" }
-        require(visibleCount > 0) { "Widget visible count must be positive" }
-        require(itemTimeoutMillis > 0L) { "Widget item timeout must be positive" }
-        require(totalTimeoutMillis > 0L) { "Widget total timeout must be positive" }
+        require(storyType in StoryTypeMenuPolicy.baseFrontpages + StoryType.additionalFrontpages)
+        require(fetchCount > 0 && visibleCount > 0)
+        require(itemTimeoutMillis > 0 && totalTimeoutMillis > 0)
     }
 
     companion object {
@@ -40,68 +41,99 @@ sealed interface WidgetFeedResult {
     data class Failed(val cause: Throwable? = null) : WidgetFeedResult
 }
 
-/**
- * Fetches the portable data needed by a platform widget or glance surface.
- *
- * Widget hosts are normally called through a synchronous platform API. They may bridge that API
- * at the platform edge, while this workflow remains suspend-first and shares the application's
- * normal Hacker News repository instead of maintaining a second raw-HTTP implementation.
- */
+/** Bounded parallel loading, including feed discovery in the overall deadline. */
 class WidgetFeedUseCase(
     private val repository: HackerNewsRepository,
+    private val feedLoader: suspend (StoryType, Int) -> StoryFeedResult = { type, _ ->
+        StoryFeedResult.ItemIds(repository.getStoryIds(type))
+    },
 ) {
     suspend fun load(request: WidgetFeedRequest): WidgetFeedResult {
-        val ids = try {
-            repository.getStoryIds(request.storyType)
+        val stories = mutableMapOf<Int, Story>()
+        val lock = Mutex()
+        var available = 0
+        var failures = 0
+        var firstFailure: Throwable? = null
+        var itemTimedOut = false
+        val completed = try {
+            withTimeoutOrNull(request.totalTimeoutMillis) {
+                val source = feedLoader(request.storyType, request.fetchCount)
+                if (source is StoryFeedResult.LinkDirectory) {
+                    available = source.stories.size
+                    source.stories.take(request.visibleCount).forEachIndexed { index, story ->
+                        stories[index] = story
+                    }
+                } else {
+                    val ids = when (source) {
+                        is StoryFeedResult.ItemIds -> source.ids
+                        is StoryFeedResult.Scraped -> source.page.itemIds
+                    }.distinct()
+                    available = ids.size
+                    for (batch in ids.take(request.fetchCount).withIndex().chunked(4)) {
+                        coroutineScope {
+                            batch.map { (index, id) ->
+                                async {
+                                    var failure: Throwable? = null
+                                    var timedOut = false
+                                    val story = try {
+                                        // A nullable result is different from a timed-out request.
+                                        val response = withTimeoutOrNull(request.itemTimeoutMillis) {
+                                            listOf(repository.getStory(id))
+                                        }
+                                        timedOut = response == null
+                                        response?.single()
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (error: Exception) {
+                                        failure = error
+                                        null
+                                    }
+                                    lock.withLock {
+                                        if (story != null && !story.loadingFailed &&
+                                            (!story.isComment || request.storyType.usesCommentRows())) {
+                                            stories[index] = story
+                                        } else {
+                                            failures++
+                                            itemTimedOut = itemTimedOut || timedOut
+                                            if (firstFailure == null) {
+                                                firstFailure = failure ?: IllegalStateException(
+                                                    if (timedOut) "Timed out loading HN item $id"
+                                                    else "HN item $id was unavailable",
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }.awaitAll()
+                        }
+                        if (stories.size >= request.visibleCount) break
+                    }
+                }
+                true
+            } ?: false
         } catch (error: CancellationException) {
             throw error
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
             return WidgetFeedResult.Failed(error)
         }
-        if (ids.isEmpty()) return WidgetFeedResult.Failed()
-
-        val startedAt = TimeSource.Monotonic.markNow()
-        val stories = ArrayList<Story>(minOf(request.fetchCount, request.visibleCount))
-        var failures = 0
-        var timedOut = false
-
-        for (storyId in ids.take(request.fetchCount)) {
-            val remainingMillis = request.totalTimeoutMillis -
-                startedAt.elapsedNow().inWholeMilliseconds
-            if (remainingMillis <= 0L) {
-                timedOut = true
-                break
-            }
-
-            val story = try {
-                withTimeoutOrNull(minOf(request.itemTimeoutMillis, remainingMillis)) {
-                    repository.getStory(storyId)
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                null
-            }
-            if (story == null) {
-                failures++
-            } else if (!story.isComment) {
-                stories += story
-                if (stories.size == request.visibleCount) break
-            } else {
-                failures++
-            }
+        if (stories.isEmpty()) {
+            return WidgetFeedResult.Failed(
+                firstFailure ?: IllegalStateException(
+                    if (!completed) "Timed out loading ${request.storyType.label}"
+                    else "${request.storyType.label} returned no available items",
+                ),
+            )
         }
-
-        if (stories.isEmpty()) return WidgetFeedResult.Failed()
         return WidgetFeedResult.Loaded(
-            stories = stories.toList(),
-            availableStoryCount = ids.size,
+            stories = stories.entries.sortedBy { it.key }.map { it.value }.take(request.visibleCount),
+            availableStoryCount = available,
             failedStoryCount = failures,
-            timedOut = timedOut,
+            timedOut = !completed || itemTimedOut,
         )
     }
 }
 
-fun widgetStoryTypeForUrl(url: String?): StoryType = StoryType.entries.firstOrNull { type ->
-    type.hackerNewsUrl == url
-} ?: StoryType.TOP_STORIES
+fun widgetStoryTypeForUrl(url: String?): StoryType =
+    (StoryTypeMenuPolicy.baseFrontpages + StoryType.additionalFrontpages).firstOrNull { type ->
+        type.name == url || type.hackerNewsUrl != null && type.hackerNewsUrl == url
+    } ?: StoryType.TOP_STORIES

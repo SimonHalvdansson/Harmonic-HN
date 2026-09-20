@@ -38,9 +38,9 @@ class WidgetRefreshRuntime(
                         timedOut = result.timedOut,
                     )
                 }
-                else -> {
+                is WidgetFeedResult.Failed -> {
                     widgets.setRefreshing(widgetId, false)
-                    WidgetRefreshResult.Failed()
+                    WidgetRefreshResult.Failed(result.cause)
                 }
             }
         } catch (error: CancellationException) {

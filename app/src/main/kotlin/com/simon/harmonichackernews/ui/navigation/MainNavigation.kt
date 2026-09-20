@@ -1104,6 +1104,7 @@ private fun MainNavigation(
                                 onThemeChanged = {
                                     ThemeUtils.setupTheme(activity)
                                     appearance.refreshSelection()
+                                    com.simon.harmonichackernews.widget.refreshStoryWidgets(activity, reloadStories = false)
                                 },
                             )
                         }

@@ -170,6 +170,7 @@ data class AppearancePreferences(
 data class DebugPreferences(
     val alwaysShowTapToRefresh: Boolean,
     val glass: GlassPreferences = GlassPreferences(),
+    val showWidgetDebugInfo: Boolean = false,
 )
 
 data class AppSettings(

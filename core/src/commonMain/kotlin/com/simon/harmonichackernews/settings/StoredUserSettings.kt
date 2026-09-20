@@ -349,6 +349,7 @@ class StoredUserSettings(
     override val debug: DebugPreferences
         get() = DebugPreferences(
             alwaysShowTapToRefresh = boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
+            showWidgetDebugInfo = boolean(DebugBooleanPreference.SHOW_WIDGET_DEBUG_INFO.storageKey, false),
             glass = GlassPreferences(
                 parameters = GlassParameter.entries.filter { store.contains(it.storageKey) }
                     .associateWith { it.sanitize(store.getFloat(it.storageKey, it.default)) },
