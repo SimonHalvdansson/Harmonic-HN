@@ -43,7 +43,9 @@ class CommentAppearanceRegressionTest {
     @Test
     fun continuousLinesCrossChildrenButStopAtNewRootAndDividersAreCentered() {
         val style = mutableStateOf(CommentItemStyle(
-            DisplayStyle.FLAT, false, 14f, false, false, "colors", true, "default",
+            displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
+            emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
+            preferredFont = "default",
             animateChanges = false, continuousDepthIndicators = true, roundedDepthIndicators = true,
         ))
         val rows = listOf(comment(1, 0), comment(2, 1), comment(3, 2), comment(4, 0))

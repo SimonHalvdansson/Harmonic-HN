@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -1350,6 +1351,7 @@ private fun StoriesPane(
                 StatusBarProtection(
                     color = statusBarColor,
                     statusBarHeight = statusBarHeight,
+                    modalScrimAlpha = previewScrimAlpha,
                 )
             }
             storiesController
@@ -1446,6 +1448,7 @@ private fun CommentsPane(
                     StatusBarProtection(
                         color = statusBarColor,
                         statusBarHeight = statusBarHeight,
+                        modalScrimAlpha = modalScrimAlpha,
                     )
                 }
                 if (showFloatingUpButton) {
@@ -1497,19 +1500,26 @@ private fun CommentsPane(
 }
 
 @Composable
-private fun StatusBarProtection(
+internal fun StatusBarProtection(
     color: Color,
     statusBarHeight: Dp,
+    modalScrimAlpha: Float = 0f,
 ) {
+    // Keep the gradient above moving modal cards (100), below floating controls (101).
+    // The modal dim is underneath us, so darken the gradient's color by that same amount.
+    // A second black overlay here would also dim the card and double-dim the page beneath it.
+    val protectedColor = Color.Black.copy(alpha = modalScrimAlpha.coerceIn(0f, 1f))
+        .compositeOver(color)
     Spacer(
         modifier = Modifier
+            .zIndex(100.5f)
             .fillMaxWidth()
             .height(statusBarHeight + 16.dp)
             .background(
                 Brush.verticalGradient(
-                    0f to color.copy(alpha = 0.92f),
-                    0.58f to color.copy(alpha = 0.72f),
-                    1f to color.copy(alpha = 0f),
+                    0f to protectedColor.copy(alpha = 0.92f),
+                    0.58f to protectedColor.copy(alpha = 0.72f),
+                    1f to protectedColor.copy(alpha = 0f),
                 ),
             ),
     )
