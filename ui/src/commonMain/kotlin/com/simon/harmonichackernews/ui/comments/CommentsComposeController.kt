@@ -81,6 +81,8 @@ class CommentsComposeController private constructor(
     /** True only while the current refresh was requested from a header affordance. */
     var headerRefreshInProgress by mutableStateOf(false)
         private set
+    var refreshButtonInProgress by mutableStateOf(false)
+        private set
     private var headerRefreshObserved = false
 
     val story: StoryListItemSnapshot get() = screenState.story
@@ -290,13 +292,15 @@ class CommentsComposeController private constructor(
         pullToRefreshInProgress = false
     }
 
-    fun beginHeaderRefresh() {
+    fun beginHeaderRefresh(showProgressInButton: Boolean = false) {
         headerRefreshObserved = commentsRefreshInProgress
         headerRefreshInProgress = true
+        refreshButtonInProgress = showProgressInButton
     }
 
     fun finishHeaderRefresh() {
         headerRefreshInProgress = false
+        refreshButtonInProgress = false
         headerRefreshObserved = false
     }
 

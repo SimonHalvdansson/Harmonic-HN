@@ -382,17 +382,33 @@ fun HeaderActions(
                 CommentsTooltip("Refresh") {
                     IconButton(
                         onClick = {
-                            controller.beginHeaderRefresh()
+                            controller.beginHeaderRefresh(showProgressInButton = true)
                             controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
                         },
                         modifier = actionButtonModifier,
                     ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_refresh),
-                            contentDescription = "Refresh",
-                            modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.drawable,
-                        )
+                        AnimatedContent(
+                            targetState = controller.refreshButtonInProgress,
+                            transitionSpec = {
+                                fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                            },
+                            label = "Refresh loading transition",
+                        ) { refreshing ->
+                            if (refreshing) {
+                                HarmonicLoadingIndicator(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .semantics { contentDescription = "Refresh" },
+                                )
+                            } else {
+                                Icon(
+                                    painterResource(Res.drawable.ic_refresh),
+                                    contentDescription = "Refresh",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = HarmonicTheme.colors.drawable,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -839,7 +855,7 @@ internal fun shouldShowCommentsHeaderLoading(
 
 @Composable
 fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: String?) {
-    val showLoading = shouldShowCommentsHeaderLoading(
+    val showLoading = !controller.refreshButtonInProgress && shouldShowCommentsHeaderLoading(
         loadingFailed = controller.loadingFailed,
         pullToRefreshInProgress = controller.pullToRefreshInProgress,
         headerRefreshInProgress = controller.headerRefreshInProgress,
