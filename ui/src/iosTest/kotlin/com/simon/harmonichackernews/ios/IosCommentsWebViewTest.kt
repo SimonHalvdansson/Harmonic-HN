@@ -82,7 +82,7 @@ class IosCommentsWebViewTest {
         val firstDraw = CompletableDeferred<Unit>()
         try {
             launch {
-                browser.preloadAfterOpening(firstDraw, WebViewPreloadMode.ALWAYS.storedValue, 0) {
+                browser.preloadAfterOpening(firstDraw, WebViewPreloadMode.ALWAYS, 0) {
                     WebPreloadEnvironment(unmeteredConnection = false, batteryPercent = 100)
                 }
             }
@@ -113,7 +113,7 @@ class IosCommentsWebViewTest {
             val browser = IosCommentsWebView(url)
             try {
                 launch {
-                    browser.preloadAfterOpening(CompletableDeferred(Unit), mode.storedValue, 20) {
+                    browser.preloadAfterOpening(CompletableDeferred(Unit), mode, 20) {
                         environment
                     }
                 }
@@ -129,7 +129,7 @@ class IosCommentsWebViewTest {
     fun leavingDuringTheTransitionCancelsPreloading() = runTest {
         val browser = IosCommentsWebView(url)
         val job = launch {
-            browser.preloadAfterOpening(CompletableDeferred(Unit), WebViewPreloadMode.ALWAYS.storedValue, 0) {
+            browser.preloadAfterOpening(CompletableDeferred(Unit), WebViewPreloadMode.ALWAYS, 0) {
                 WebPreloadEnvironment(true, 100)
             }
         }
