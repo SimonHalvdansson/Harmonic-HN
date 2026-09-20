@@ -50,6 +50,83 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
     @Test
+    fun coveredPageStopsAnimatingAndResumesWithoutReloading() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            fixture().use { browser ->
+                scenario.onActivity { activity ->
+                    (activity.window.decorView as ViewGroup).addView(browser.host.root,
+                        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT))
+                    browser.webView.loadDataWithBaseURL("https://example.invalid/animation", """
+                        <html><body style="height:10000px"><script>
+                        window.framesDrawn = 0;
+                        window.retainedValue = 'unchanged';
+                        function frame() { framesDrawn++; requestAnimationFrame(frame); }
+                        requestAnimationFrame(frame);
+                        </script></body></html>
+                    """.trimIndent(), "text/html", "UTF-8", null)
+                }
+                awaitJavascript(browser.webView, "framesDrawn > 3 && !document.hidden")
+                onMain {
+                    browser.webView.scrollTo(0, 300)
+                    browser.controller.setCoveredByComments(true)
+                    assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility)
+                }
+                awaitJavascript(browser.webView, "document.hidden")
+                val pausedFrames = evaluate(browser.webView, "framesDrawn")!!.toInt()
+                Thread.sleep(250)
+                assertEquals("The covered page must stop requesting animation frames",
+                    pausedFrames, evaluate(browser.webView, "framesDrawn")!!.toInt())
+                onMain {
+                    browser.controller.setCoveredByComments(false)
+                    assertEquals(View.VISIBLE, browser.host.webViewContainer.visibility)
+                    assertEquals(300, browser.webView.scrollY)
+                    assertTrue(browser.webView === browser.host.webViewContainer
+                        .findViewById<WebView>(R.id.comments_webview))
+                }
+                awaitJavascript(browser.webView, "!document.hidden && framesDrawn > $pausedFrames")
+                assertEquals("\"unchanged\"", evaluate(browser.webView, "retainedValue"))
+            }
+        }
+    }
+
+    @Test
+    fun preloadedPageStaysCoveredAcrossHostRestartAndCanBeRevealed() {
+        fixture(coveredByComments = true).use { browser ->
+            onMain {
+                assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility)
+                browser.controller.setHostStarted(false)
+                browser.controller.setHostStarted(true)
+                assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility)
+                browser.controller.setCoveredByComments(false)
+                assertEquals(View.VISIBLE, browser.host.webViewContainer.visibility)
+                browser.controller.setIntegratedWebview(false)
+                assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility)
+                browser.controller.setIntegratedWebview(true)
+                assertEquals(View.VISIBLE, browser.host.webViewContainer.visibility)
+            }
+        }
+    }
+
+    @Test
+    fun fullscreenKeepsOwnershipOfVisibilityUntilItCloses() {
+        fixture().use { browser ->
+            onMain {
+                browser.webView.webChromeClient!!.onShowCustomView(
+                    View(browser.webView.context), {},
+                )
+                browser.controller.setCoveredByComments(true)
+                assertTrue(browser.controller.isShowingCustomView)
+                assertEquals(View.VISIBLE, browser.host.fullscreenContainer.visibility)
+                assertEquals(View.GONE, browser.host.webViewContainer.visibility)
+                browser.controller.hideCustomView(true)
+                assertFalse(browser.controller.isShowingCustomView)
+                assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility)
+            }
+        }
+    }
+
+    @Test
     fun visiblePdfSupportsTouchScrolling() {
         TestServer().use { server ->
             server.releasePdf.countDown()
@@ -272,7 +349,10 @@ class CommentsWebViewLifecycleTest {
             server.pdfDownloadStarted.await(15, TimeUnit.SECONDS))
     }
 
-    private fun fixture(blockAds: Boolean = false): BrowserFixture = onMain { BrowserFixture(blockAds) }
+    private fun fixture(
+        blockAds: Boolean = false,
+        coveredByComments: Boolean = false,
+    ): BrowserFixture = onMain { BrowserFixture(blockAds, coveredByComments) }
 
     private fun swipeUp(view: View) {
         val bounds = onMain {
@@ -302,7 +382,7 @@ class CommentsWebViewLifecycleTest {
             Thread.sleep(50)
         }
         val status = evaluate(view, "document.documentElement.dataset.pdfState + ': ' + document.body.innerText")
-        throw AssertionError("PDF condition did not become true: $condition; status=$status")
+        throw AssertionError("Page condition did not become true: $condition; status=$status")
     }
 
     private fun awaitTitle(view: WebView, title: String) {
@@ -327,7 +407,7 @@ class CommentsWebViewLifecycleTest {
         return result.get()
     }
 
-    private class BrowserFixture(blockAds: Boolean) : Closeable {
+    private class BrowserFixture(blockAds: Boolean, coveredByComments: Boolean) : Closeable {
         private val context = ContextThemeWrapper(
             InstrumentationRegistry.getInstrumentation().targetContext,
             R.style.AppThemeMaterialFixedLight,
@@ -383,6 +463,7 @@ class CommentsWebViewLifecycleTest {
             },
         ).apply {
             bindViews(host, host.progressIndicator)
+            setCoveredByComments(coveredByComments)
             configure(false, true, reading, reading.blockAds)
             initialize()
         }

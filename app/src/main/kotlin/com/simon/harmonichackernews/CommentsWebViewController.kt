@@ -131,8 +131,12 @@ internal class CommentsWebViewController(
     private var webView: WebView? = null
     private var webViewContainer: FrameLayout? = null
     private var downloadButton: MaterialButton? = null
+    private var coveredByComments = false
+    private var hostStarted = true
+    private var webViewPaused = false
     private val loadingUi = CommentsWebViewLoadingUi()
     private val fullscreen = CommentsWebViewFullscreen { visible ->
+        updateWebViewVisibility()
         callbacks.onFullscreenChanged(visible)
         callbacks.setFullscreenSystemBarsHidden(visible)
         callbacks.syncOnBackPressedCallbackEnabledState()
@@ -207,11 +211,42 @@ internal class CommentsWebViewController(
             ),
         )
         this.isBlockingAds = blockAds
+        updateWebViewVisibility()
     }
 
     fun setIntegratedWebview(integratedWebview: Boolean) {
         this.integratedWebview = integratedWebview
         applyReaderModeChange(webContentSession.setReaderIntegrated(integratedWebview))
+        updateWebViewVisibility()
+    }
+
+    /** Compose covering a View does not make it invisible to WebView's renderer. */
+    fun setCoveredByComments(covered: Boolean) {
+        if (coveredByComments == covered) return
+        coveredByComments = covered
+        updateWebViewVisibility()
+    }
+
+    fun setHostStarted(started: Boolean) {
+        if (hostStarted == started) return
+        hostStarted = started
+        updateWebViewVisibility()
+    }
+
+    private fun updateWebViewVisibility() {
+        val fullscreenVisible = fullscreen.isShowing
+        val pageVisible = integratedWebview && !coveredByComments
+        if (!fullscreenVisible) {
+            // Retain the viewport, DOM, history and scroll position while removing the live
+            // WebView draw from the app's RenderThread. Alpha/Compose occlusion is insufficient.
+            webViewContainer?.visibility = if (pageVisible) View.VISIBLE else View.INVISIBLE
+        }
+        val view = webView ?: return
+        val pause = !hostStarted || (!pageVisible && !fullscreenVisible)
+        if (webViewPaused == pause) return
+        webViewPaused = pause
+        // pauseTimers() is process-wide and would also suspend other visible browser panes.
+        if (pause) view.onPause() else view.onResume()
     }
 
     fun initializeForVisibleWebsite() {
@@ -878,6 +913,7 @@ internal class CommentsWebViewController(
                 return null
             }
             webView = createdWebView
+            webViewPaused = false
             attachWebView(createdWebView)
             return createdWebView
         }
@@ -911,6 +947,7 @@ internal class CommentsWebViewController(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
+        updateWebViewVisibility()
     }
 
     private fun downloadPdf(
@@ -1144,6 +1181,7 @@ internal class CommentsWebViewController(
         if (webView != null) {
             val webViewToDestroy = webView ?: return
             webView = null
+            webViewPaused = false
             initializedWebView = false
 
             if (!rendererProcessGone) {
@@ -1188,6 +1226,7 @@ internal class CommentsWebViewController(
                 id = R.id.comments_webview
             }
             webView = recreatedWebView
+            webViewPaused = false
             attachWebView(recreatedWebView)
             initialize()
         } catch (e: RuntimeException) {

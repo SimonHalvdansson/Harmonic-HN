@@ -309,6 +309,8 @@ class CommentsCoordinator(
         )
         viewSession = session
         webViewController.bindViews(host, progressIndicator)
+        webViewController.setCoveredByComments(!showWebsite)
+        webViewController.setHostStarted(started)
         webViewController.configure(
             showWebsite,
             integratedWebview,
@@ -559,6 +561,9 @@ class CommentsCoordinator(
             override fun collapseSheetForWebsite() = collapseBottomSheetForWebsite()
 
             override fun onSheetProgressChanged(expandedFraction: Float) {
+                // Resume as soon as the sheet reveals any of the page, including a drag that
+                // is later cancelled. The settled value alone misses those intermediate states.
+                webViewController?.setCoveredByComments(expandedFraction >= 1f)
                 if (expandedFraction < WEBSITE_PRELOAD_SHEET_THRESHOLD && integratedWebview &&
                     webViewController?.hasWebView() == false
                 ) requestVisibleWebsiteInitialization()
@@ -886,6 +891,7 @@ class CommentsCoordinator(
     fun onStart() {
         if (destroyed || started) return
         started = true
+        webViewController?.setHostStarted(true)
         refreshPresentationCapabilities()
         commentsStore.onResume()
         syncComposeState()
@@ -902,6 +908,7 @@ class CommentsCoordinator(
     fun onStop() {
         if (!started) return
         started = false
+        webViewController?.setHostStarted(false)
     }
 
     private fun captureHostRestoration(preserveOverlay: Boolean): CommentsHostRestoration {
