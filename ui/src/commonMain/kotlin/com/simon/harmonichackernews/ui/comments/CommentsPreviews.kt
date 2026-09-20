@@ -76,6 +76,7 @@ import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
+import com.simon.harmonichackernews.ui.content.prepareCommentHtml
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -734,12 +735,12 @@ private fun ArxivActionLabel(text: String) {
 
 @Composable
 private fun WikipediaPreview(story: StoryListItemSnapshot) {
-    val platform = LocalCommentsPreviewPlatform.current
     val info = story.wikiInfo ?: return
+    val summary = remember(info.summary) { prepareCommentHtml(info.summary.orEmpty()).text }
     Column {
         PreviewHeader("Wikipedia summary:")
         PreviewBody(
-            platform.plainText(info.summary.orEmpty()),
+            summary,
             maxLines = 40,
             topPadding = 0.dp,
             bottomPadding = 3.dp,

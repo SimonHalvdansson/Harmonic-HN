@@ -5,12 +5,27 @@ import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.em
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.network.LinkPreviewParsers
 import com.simon.harmonichackernews.network.StoryTextProcessor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CommentHtmlTest {
+    @Test
+    fun wikipediaSummaryPreservesParagraphsAndExplicitLineBreaks() {
+        val info = requireNotNull(
+            LinkPreviewParsers.parseWikipedia(
+                """{"query":{"pages":{"123":{"title":"Example","extract":"<p>First <b>paragraph</b> &amp; text.</p><p>Second paragraph.<br>Next line.<br /><br />After blank line.</p>"}}}}""",
+            ),
+        )
+
+        assertEquals(
+            "First paragraph & text.\n\nSecond paragraph.\nNext line.\n\nAfter blank line.",
+            prepareCommentHtml(info.summary.orEmpty()).text,
+        )
+    }
+
     @Test
     fun manyInlineNodesPreserveTextAndFormattingRanges() {
         val rendered = prepareCommentHtml("<b>word</b> plain <i>text</i> ".repeat(1_000))
