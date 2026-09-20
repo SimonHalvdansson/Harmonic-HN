@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.UserAvatarOptions
+
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -7,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
-import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
@@ -51,7 +52,8 @@ data class CommentsSettingsUiState(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
-    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
+    val userAvatarsEnabled: Boolean = false,
+    val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -86,7 +88,7 @@ fun CommentsSettingsScreen(
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
-    onUserAvatarModeChanged: (UserAvatarMode) -> Unit,
+    onUserAvatarsRequested: () -> Unit,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -135,15 +137,11 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Emphasize meta", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
                 SettingsDivider()
-                SegmentedSetting(
-                    title = "User profile image",
-                    options = UserAvatarMode.entries.map { it.storedValue to it.label },
-                    optionIcons = mapOf(
-                        UserAvatarMode.GENERIC.storedValue to Res.drawable.ic_person,
-                        UserAvatarMode.GENERATED.storedValue to Res.drawable.ic_generated_avatar,
-                    ),
-                    selected = state.userAvatarMode.storedValue,
-                    onSelected = { onUserAvatarModeChanged(UserAvatarMode.fromStored(it)) },
+                SettingRow(
+                    title = "User profile images",
+                    summary = if (!state.userAvatarsEnabled) "Off" else state.userAvatarOptions.summary,
+                    icon = Res.drawable.ic_person,
+                    onClick = onUserAvatarsRequested,
                 )
                 SettingsDivider()
                 SettingRow(

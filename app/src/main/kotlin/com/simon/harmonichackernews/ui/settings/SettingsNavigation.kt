@@ -202,7 +202,9 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+                    onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
+                SettingsSection.UserAvatars -> UserAvatarSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
                     repository = dependencies.settings,
                     onBack = onBack,

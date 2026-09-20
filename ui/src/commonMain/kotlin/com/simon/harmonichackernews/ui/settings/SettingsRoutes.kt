@@ -452,6 +452,7 @@ fun CommentsSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onUserAvatarsRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
@@ -466,7 +467,7 @@ fun CommentsSettingsRoute(
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
-        onUserAvatarModeChanged = presenter::setUserAvatarMode,
+        onUserAvatarsRequested = onUserAvatarsRequested,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {

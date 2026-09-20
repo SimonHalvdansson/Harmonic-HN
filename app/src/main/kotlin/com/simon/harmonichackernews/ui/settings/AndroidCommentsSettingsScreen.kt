@@ -8,11 +8,13 @@ fun AndroidCommentsSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onUserAvatarsRequested: () -> Unit,
 ) {
     CommentsSettingsRoute(
         repository = LocalHarmonicUiDependencies.current.settings,
         showNavigation = showNavigation,
         onBack = onBack,
         onThreadDepthRequested = onThreadDepthRequested,
+        onUserAvatarsRequested = onUserAvatarsRequested,
     )
 }

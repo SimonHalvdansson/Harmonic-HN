@@ -41,15 +41,15 @@ class AppSettingsRepositoryTest {
     fun commentAppearanceDefaultsAndPersistedChoices() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
-        assertEquals(UserAvatarMode.NONE, repository.snapshot().comments.userAvatarMode)
+        assertEquals(false, repository.snapshot().comments.userAvatarsEnabled)
         assertEquals(CommentIndicatorThickness.STANDARD, repository.snapshot().comments.indicatorThickness)
-        repository.setUserAvatarMode(UserAvatarMode.GENERATED)
+        repository.setUserAvatarsEnabled(true)
         repository.setCommentIndicatorThickness(CommentIndicatorThickness.WIDE)
         repository.setCommentBoolean(CommentBooleanPreference.ROUNDED_DEPTH_INDICATORS, true)
         repository.setCommentBoolean(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS, true)
         repository.setCommentDepthIndicatorMode(CommentDepthPreferences.AUTHOR)
         val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow()).snapshot().comments
-        assertEquals(UserAvatarMode.GENERATED, restored.userAvatarMode)
+        assertEquals(true, restored.userAvatarsEnabled)
         assertEquals(CommentIndicatorThickness.WIDE, restored.indicatorThickness)
         assertTrue(restored.roundedDepthIndicators)
         assertTrue(restored.continuousDepthIndicators)
@@ -57,9 +57,9 @@ class AppSettingsRepositoryTest {
             restored, showInvert = false, isTablet = false, hasAccountDetails = false, canProvideSummary = false,
         )
         assertFalse(display.continuousDepthIndicators)
-        store.putString(UserPreferenceKeys.USER_AVATAR_MODE, "invalid")
+        repository.setUserAvatarsEnabled(false)
         store.putString(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "invalid")
-        assertEquals(UserAvatarMode.NONE, repository.snapshot().comments.userAvatarMode)
+        assertEquals(false, repository.snapshot().comments.userAvatarsEnabled)
         assertEquals(CommentIndicatorThickness.STANDARD, repository.snapshot().comments.indicatorThickness)
     }
 

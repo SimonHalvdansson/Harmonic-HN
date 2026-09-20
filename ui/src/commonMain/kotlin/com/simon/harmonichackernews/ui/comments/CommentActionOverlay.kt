@@ -79,7 +79,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentMenuAction
-import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
@@ -491,10 +490,10 @@ private fun CommentActionCardContent(
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.height(40.dp),
             ) {
-                if (settings.userAvatarMode == UserAvatarMode.GENERATED && author != null) {
+                if (settings.userAvatarsEnabled && author != null) {
                     UserAvatar(
                         author = author,
-                        mode = settings.userAvatarMode,
+                        options = settings.userAvatarOptions,
                         modifier = Modifier.size(24.dp),
                     )
                 } else {

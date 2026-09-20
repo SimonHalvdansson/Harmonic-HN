@@ -399,7 +399,8 @@ fun SettingsListScreen(
                             (selectedSection == SettingsSection.DebugLinkPreviews ||
                                 selectedSection == SettingsSection.Glass) ||
                             entry.section == SettingsSection.Comments &&
-                            selectedSection == SettingsSection.ThreadDepth ||
+                            (selectedSection == SettingsSection.ThreadDepth ||
+                                selectedSection == SettingsSection.UserAvatars) ||
                             entry.section == SettingsSection.Stories &&
                             selectedSection == SettingsSection.Frontpages ||
                             entry.section == SettingsSection.About &&
@@ -479,6 +480,7 @@ fun SettingsPage(
     pinnedContent: (@Composable () -> Unit)? = null,
     listState: LazyListState = rememberLazyListState(),
     extraBottomPadding: Dp = 0.dp,
+    headerContent: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
@@ -513,6 +515,9 @@ fun SettingsPage(
             // version here makes LazyColumn rebuild those declarations after a preference edit.
             @Suppress("UNUSED_EXPRESSION")
             contentVersion
+            headerContent?.let { header ->
+                item(key = "settings-header") { header() }
+            }
             pinnedContent?.let { preview ->
                 stickyHeader(key = "settings-preview") {
                     Box(

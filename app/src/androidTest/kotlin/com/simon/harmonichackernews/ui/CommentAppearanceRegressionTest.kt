@@ -107,15 +107,59 @@ class CommentAppearanceRegressionTest {
     }
 
     @Test
-    fun generatedAvatarsAreStableDistinctAndNoneOccupiesNoSpace() {
-        val mode = mutableStateOf(UserAvatarMode.GENERATED)
+    fun avatarArtworkAndFrameAnimateThroughIntermediatePixels() {
+        val author = mutableStateOf("willow")
+        val options = mutableStateOf(UserAvatarOptions(setOf(UserAvatarStyle.ROBOT)))
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                Row {
-                    UserAvatar("willow", mode.value, Modifier.size(40.dp).testTag("first"))
-                    UserAvatar("willow", mode.value, Modifier.size(40.dp).testTag("same"))
-                    UserAvatar("compass", mode.value, Modifier.size(40.dp).testTag("different"))
+                UserAvatar(author.value, Modifier.size(64.dp).testTag("animated-avatar"), options.value)
+            }
+        }
+        compose.mainClock.autoAdvance = false
+        try {
+            fun difference(a: androidx.compose.ui.graphics.ImageBitmap, b: androidx.compose.ui.graphics.ImageBitmap): Float {
+                val first = a.toPixelMap()
+                val second = b.toPixelMap()
+                var sum = 0f
+                for (y in 0 until first.height) for (x in 0 until first.width) {
+                    sum += abs(first[x, y].red - second[x, y].red) +
+                        abs(first[x, y].green - second[x, y].green) +
+                        abs(first[x, y].blue - second[x, y].blue) +
+                        abs(first[x, y].alpha - second[x, y].alpha)
+                }
+                return sum / (first.width * first.height * 4)
+            }
+            fun assertAnimated(label: String, change: () -> Unit) {
+                val before = compose.onNodeWithTag("animated-avatar").captureToImage()
+                compose.runOnIdle(change)
+                compose.mainClock.advanceTimeBy(120)
+                val during = compose.onNodeWithTag("animated-avatar").captureToImage()
+                compose.mainClock.advanceTimeBy(350)
+                val after = compose.onNodeWithTag("animated-avatar").captureToImage()
+                assertTrue("$label must leave the starting image", difference(before, during) > .001f)
+                assertTrue("$label must have an intermediate image", difference(during, after) > .001f)
+            }
+            assertAnimated("Identity") { author.value = "compass" }
+            assertAnimated("Expressive to generic") { options.value = options.value.copy(generic = true) }
+            assertAnimated("Generic to expressive") { options.value = options.value.copy(generic = false) }
+            assertAnimated("Frame corners") { options.value = options.value.copy(shape = UserAvatarShape.SQUARE) }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    fun avatarStylesAreStableDistinctAndDisabledOccupiesNoSpace() {
+        val enabled = mutableStateOf(true)
+        val options = mutableStateOf(UserAvatarOptions())
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                if (enabled.value) Row {
+                    UserAvatar("willow", Modifier.size(40.dp).testTag("first"), options.value)
+                    UserAvatar("willow", Modifier.size(40.dp).testTag("same"), options.value)
+                    UserAvatar("compass", Modifier.size(40.dp).testTag("different"), options.value)
                 }
             }
         }
@@ -129,15 +173,19 @@ class CommentAppearanceRegressionTest {
             }
             return difference / (first.height * first.width * 3)
         }
-        // GPU antialiasing/dithering can differ slightly with the on-screen pixel origin.
-        val same = difference("first", "same")
-        val different = difference("first", "different")
-        assertTrue("Same username pixels differ by $same", same < 0.015f)
-        assertTrue("Different username pixels differ by $different", different > 0.04f)
-        compose.runOnIdle { mode.value = UserAvatarMode.GENERIC }
-        val generic = difference("first", "different")
-        assertTrue("Generic icons differ by $generic", generic < 0.015f)
-        compose.runOnIdle { mode.value = UserAvatarMode.NONE }
+        // Exercise every renderer, including path parsing, on the real Android canvas.
+        UserAvatarStyle.entries.forEach { style ->
+            compose.runOnIdle { options.value = UserAvatarOptions(setOf(style)) }
+            // GPU antialiasing/dithering can differ slightly with the on-screen pixel origin.
+            val same = difference("first", "same")
+            val different = difference("first", "different")
+            assertTrue("$style same username pixels differ by $same", same < 0.015f)
+            assertTrue("$style different username pixels differ by $different", different > 0.01f)
+        }
+        compose.runOnIdle { options.value = options.value.copy(generic = true) }
+        val genericDifference = difference("first", "different")
+        assertTrue("Generic icons differ by $genericDifference", genericDifference < 0.015f)
+        compose.runOnIdle { enabled.value = false }
         compose.onNodeWithTag("first").assertDoesNotExist()
         compose.onNodeWithTag("different").assertDoesNotExist()
     }

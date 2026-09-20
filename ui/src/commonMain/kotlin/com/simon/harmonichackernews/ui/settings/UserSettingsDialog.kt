@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.UserAvatarOptions
+
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
@@ -35,7 +37,6 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -70,7 +71,8 @@ fun UserSettingsDialog(
     onToggleBlocked: (String) -> Unit,
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit = {},
-    userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
+    userAvatarsEnabled: Boolean = false,
+    userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
     val userName = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName
     SettingsAlertDialog(
@@ -87,10 +89,10 @@ fun UserSettingsDialog(
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (userAvatarMode == UserAvatarMode.GENERATED) {
+                        if (userAvatarsEnabled) {
                             UserAvatar(
                                 author = userName,
-                                mode = userAvatarMode,
+                                options = userAvatarOptions,
                                 modifier = Modifier.padding(end = 8.dp).size(28.dp),
                             )
                         } else {

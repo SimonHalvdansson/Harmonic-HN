@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.settings.UserAvatarOptions
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -89,7 +91,6 @@ import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
-import com.simon.harmonichackernews.settings.UserAvatarMode
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.presentation.PortableCommentItem
@@ -129,7 +130,8 @@ data class CommentItemStyle(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
-    val userAvatarMode: UserAvatarMode = UserAvatarMode.NONE,
+    val userAvatarsEnabled: Boolean = false,
+    val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -207,6 +209,7 @@ fun CommentItem(
     model: CommentItemUiModel,
     style: CommentItemStyle,
     modifier: Modifier = Modifier,
+    verticalPadding: Dp = 10.dp,
 ) {
     val typography = rememberContentTypography(
         preferredFont = style.preferredFont,
@@ -231,7 +234,7 @@ fun CommentItem(
         label = "comment preview indicator color",
     )
     CommentSurface(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = verticalPadding),
         style = style,
         showIndicator = style.depthIndicatorMode != "none",
         indicatorColor = indicatorColor,
@@ -241,7 +244,8 @@ fun CommentItem(
     ) {
         CommentMeta(
             author = model.author,
-            avatarMode = style.userAvatarMode,
+            avatarsEnabled = style.userAvatarsEnabled,
+            avatarOptions = style.userAvatarOptions,
             age = model.age,
             byOp = false,
             byUser = false,
@@ -503,7 +507,8 @@ fun CommentItem(
         ) {
             CommentMeta(
                 author = comment.by.orEmpty(),
-                avatarMode = style.userAvatarMode,
+                avatarsEnabled = style.userAvatarsEnabled,
+                avatarOptions = style.userAvatarOptions,
                 age = comment.timeFormatted,
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
@@ -1000,7 +1005,8 @@ private fun CommentSurface(
 @Composable
 private fun CommentMeta(
     author: String,
-    avatarMode: UserAvatarMode,
+    avatarsEnabled: Boolean,
+    avatarOptions: UserAvatarOptions,
     age: String,
     byOp: Boolean,
     byUser: Boolean,
@@ -1055,7 +1061,7 @@ private fun CommentMeta(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedContent(
-            targetState = avatarMode,
+            targetState = avatarsEnabled,
             transitionSpec = {
                 (fadeIn(if (animateChanges) contentTween() else snap()) togetherWith
                     fadeOut(if (animateChanges) contentTween() else snap())).using(
@@ -1064,11 +1070,11 @@ private fun CommentMeta(
             },
             contentAlignment = Alignment.CenterStart,
             label = "comment user avatar",
-        ) { mode ->
-            if (mode == UserAvatarMode.NONE) {
+        ) { showAvatars ->
+            if (!showAvatars) {
                 Box(Modifier.size(0.dp))
             } else {
-                UserAvatar(author, mode, Modifier.padding(end = 6.dp).size(22.dp))
+                UserAvatar(author, Modifier.padding(end = 6.dp).size(22.dp), avatarOptions)
             }
         }
         Row(

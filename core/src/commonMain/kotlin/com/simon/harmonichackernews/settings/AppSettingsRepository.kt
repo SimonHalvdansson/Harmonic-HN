@@ -151,7 +151,8 @@ class AppSettingsRepository(
         mutator.setCommentsVolumeNavigation(value)
     fun setCommentDepthIndicatorMode(value: String) = mutator.setCommentDepthIndicatorMode(value)
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) = mutator.setCommentIndicatorThickness(value)
-    fun setUserAvatarMode(value: UserAvatarMode) = mutator.setUserAvatarMode(value)
+    fun setUserAvatarOptions(value: UserAvatarOptions) = mutator.setUserAvatarOptions(value)
+    fun setUserAvatarsEnabled(enabled: Boolean) = mutator.setUserAvatarsEnabled(enabled)
     fun setCommentsPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         mutator.setCommentsPreload(mode, minimumBattery)
 

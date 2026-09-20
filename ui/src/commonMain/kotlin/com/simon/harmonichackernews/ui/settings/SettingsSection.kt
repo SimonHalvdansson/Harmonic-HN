@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.settings_section_user_avatars
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.resources.settings_section_ai_summary
@@ -31,6 +32,7 @@ enum class SettingsSection(
     Frontpages("frontpages", Res.string.settings_section_frontpages),
     Comments("comments", Res.string.settings_section_comments),
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
+    UserAvatars("user_avatars", Res.string.settings_section_user_avatars),
     WebLinks("web_links", Res.string.settings_section_web_links),
     FiltersTags("filters_tags", Res.string.settings_section_filters_tags),
     AiSummary("ai_summary", Res.string.settings_section_ai_summary),

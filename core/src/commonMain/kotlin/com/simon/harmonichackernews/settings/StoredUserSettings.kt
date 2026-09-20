@@ -54,7 +54,8 @@ object UserPreferenceKeys {
     const val COMMENT_INDICATOR_THICKNESS = "pref_comment_indicator_thickness"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
-    const val USER_AVATAR_MODE = "pref_user_avatar_mode"
+    const val USER_AVATARS_ENABLED = "pref_user_avatars_enabled"
+    const val USER_AVATAR_OPTIONS = "pref_user_avatar_options"
     const val MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth"
     const val SCROLL_NAVIGATION = "pref_scroll_navigation"
     const val TOP_LEVEL_THREAD_INDICATORS = "pref_top_level_thread_indicators"
@@ -188,7 +189,10 @@ class StoredUserSettings(
                 ),
                 roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, false),
                 continuousDepthIndicators = boolean(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS, false),
-                userAvatarMode = UserAvatarMode.fromStored(string(UserPreferenceKeys.USER_AVATAR_MODE, "none")),
+                userAvatarsEnabled = boolean(UserPreferenceKeys.USER_AVATARS_ENABLED, false),
+                userAvatarOptions = UserAvatarOptions.decode(
+                    string(UserPreferenceKeys.USER_AVATAR_OPTIONS, ""),
+                ),
                 showNavigationButtons = boolean(UserPreferenceKeys.SCROLL_NAVIGATION, false),
                 font = preferredFont(),
                 showTopLevelDepthIndicator =

@@ -81,7 +81,9 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+            onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
+        SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(
             app = app,

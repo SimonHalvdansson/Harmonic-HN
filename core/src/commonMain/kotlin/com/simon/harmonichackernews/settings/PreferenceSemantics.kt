@@ -251,15 +251,6 @@ enum class CommentIndicatorThickness(val storedValue: String, val label: String,
     }
 }
 
-enum class UserAvatarMode(val storedValue: String, val label: String) {
-    NONE("none", "None"), GENERIC("generic", "Generic"), GENERATED("generated", "Generated");
-
-    companion object {
-        fun fromStored(value: String?): UserAvatarMode =
-            entries.firstOrNull { it.storedValue == value } ?: NONE
-    }
-}
-
 object CommentDepthPreferences {
     const val THEME_DEFAULT = "theme_default"
     const val MATERIAL_YOU = "material_you"

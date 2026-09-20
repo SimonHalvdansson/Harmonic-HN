@@ -1,73 +1,79 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_person
-import com.simon.harmonichackernews.settings.UserAvatarMode
+import com.simon.harmonichackernews.settings.UserAvatarColors
+import com.simon.harmonichackernews.settings.UserAvatarOptions
+import com.simon.harmonichackernews.settings.UserAvatarShape
+import com.simon.harmonichackernews.settings.UserAvatarStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
-/** A stable, local identity: no network requests or platform-dependent random generator. */
-internal fun avatarSeed(author: String): Int = author.fold(0x811c9dc5.toInt()) { hash, char ->
-    (hash xor char.code) * 0x01000193
-}
+private data class AvatarVisual(
+    val author: String,
+    val style: UserAvatarStyle?,
+    val colors: UserAvatarColors,
+)
 
 @Composable
-fun UserAvatar(author: String, mode: UserAvatarMode, modifier: Modifier = Modifier) {
-    if (mode == UserAvatarMode.NONE) return
-    if (mode == UserAvatarMode.GENERIC) {
-        Icon(
-            painterResource(Res.drawable.ic_person),
-            contentDescription = null,
-            tint = HarmonicTheme.colors.storyDisabled,
-            modifier = modifier.clip(CircleShape)
-                .background(HarmonicTheme.colors.surfaceContainerHighest).padding(2.dp),
-        )
-        return
+fun UserAvatar(
+    author: String,
+    modifier: Modifier = Modifier,
+    options: UserAvatarOptions = UserAvatarOptions(),
+) {
+    val cornerPercent by animateFloatAsState(
+        targetValue = when (options.shape) {
+            UserAvatarShape.CIRCLE -> 50f
+            UserAvatarShape.ROUNDED -> 25f
+            UserAvatarShape.SQUARE -> 0f
+        },
+        animationSpec = tween(300),
+        label = "avatar frame corners",
+    )
+    val corner = CornerSize(cornerPercent)
+    val shape = RoundedCornerShape(corner, corner, corner, corner)
+    val visual = remember(author, options) {
+        if (options.generic) AvatarVisual("", null, UserAvatarColors.VIVID)
+        else AvatarVisual(author, options.styleFor(author), options.colors)
     }
-    val seed = remember(author) { avatarSeed(author) }
-    val hue = (seed.toUInt() % 360u).toFloat()
-    val background = Color.hsl(hue, 0.48f, 0.88f)
-    val foreground = Color.hsl(hue, 0.62f, 0.38f)
-    val accent = Color.hsl((hue + 55f) % 360f, 0.72f, 0.59f)
-    Canvas(modifier.clip(CircleShape).background(background)) {
-        val unit = size.minDimension / 5f
-        rotate(((seed ushr 9) % 4) * 90f) {
-            // Mirrored, rounded mosaic tiles give each username a recognizable silhouette.
-            for (row in 0..2) for (column in 0..1) {
-                val bits = seed ushr (row * 6 + column * 3)
-                if (bits and 3 == 0 && column != 0) continue
-                val color = if (bits and 4 == 0) foreground else accent
-                val xs = if (column == 0) listOf(2) else listOf(1, 3)
-                xs.forEach { x ->
-                    val offset = Offset(x * unit + unit * 0.06f, (row + 1) * unit + unit * 0.06f)
-                    val tile = unit * 0.88f
-                    when ((seed ushr (row + column + 22)) and 3) {
-                        0 -> drawCircle(color, tile / 2, offset + Offset(tile / 2, tile / 2))
-                        1 -> drawPath(Path().apply {
-                            moveTo(offset.x + tile / 2, offset.y)
-                            lineTo(offset.x + tile, offset.y + tile)
-                            lineTo(offset.x, offset.y + tile)
-                            close()
-                        }, color)
-                        else -> drawRoundRect(color, offset, Size(tile, tile), CornerRadius(unit * 0.2f))
-                    }
-                }
+    // The frame morphs independently, while identity, style and palette changes crossfade inside it.
+    Crossfade(
+        targetState = visual,
+        modifier = modifier.clip(shape),
+        animationSpec = tween(300),
+        label = "user avatar artwork",
+    ) { content ->
+        if (content.style == null) {
+            Icon(
+                painterResource(Res.drawable.ic_person), contentDescription = null,
+                tint = HarmonicTheme.colors.storyDisabled,
+                modifier = Modifier.fillMaxSize()
+                    .background(HarmonicTheme.colors.surfaceContainerHighest).padding(2.dp),
+            )
+        } else {
+            val artwork = remember(content) {
+                GeneratedAvatarArtwork(content.author, content.style, UserAvatarOptions(colors = content.colors))
+            }
+            Canvas(Modifier.fillMaxSize().background(artwork.background)) {
+                scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) { artwork.draw(this) }
             }
         }
     }

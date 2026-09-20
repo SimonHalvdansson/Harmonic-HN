@@ -325,8 +325,12 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, value.storedValue)
     }
 
-    fun setUserAvatarMode(value: UserAvatarMode) {
-        store.putString(UserPreferenceKeys.USER_AVATAR_MODE, value.storedValue)
+    fun setUserAvatarOptions(value: UserAvatarOptions) {
+        store.putString(UserPreferenceKeys.USER_AVATAR_OPTIONS, value.encode())
+    }
+
+    fun setUserAvatarsEnabled(value: Boolean) {
+        store.putBoolean(UserPreferenceKeys.USER_AVATARS_ENABLED, value)
     }
 
     /** Returns true when palette-derived caches must be invalidated. */
