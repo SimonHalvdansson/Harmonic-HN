@@ -91,6 +91,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -152,6 +153,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -507,6 +510,17 @@ private fun StoriesList(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
+    var sectionChangeJob by remember { mutableStateOf<Job?>(null) }
+    val onTypeSelected: (Int) -> Unit = { index ->
+        sectionChangeJob?.cancel()
+        sectionChangeJob = scope.launch {
+            // Changing sections clears the feed, which resets LazyListState immediately.
+            // Expand the header while the current rows still provide a scrollable viewport.
+            listState.animateScrollToItem(0)
+            controller.listener.onTypeSelected(index)
+        }
+    }
     fun dismissSearchKeyboard() {
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
@@ -839,6 +853,7 @@ private fun StoriesList(
 
             StoriesHeader(
                 controller = controller,
+                onTypeSelected = onTypeSelected,
                 searchMode = searchMode,
                 tapToUpdateExitProgress = tapToUpdateExitProgress,
                 suppressLastUpdated = controller.tapToUpdateRefreshStarted,
@@ -847,7 +862,7 @@ private fun StoriesList(
                 showFailureStatus = !centerFailure,
                 modifier = Modifier
                     .zIndex(1f)
-                    .graphicsLayer(translationY = -headerCollapsePx.toFloat())
+                    .graphicsLayer { translationY = -headerCollapsePx.toFloat() }
                     .onSizeChanged { headerHeightPx = it.height },
             )
             if (centerFailure) {
@@ -927,6 +942,7 @@ internal inline fun calculateStoriesHeaderCollapsePx(
 @Composable
 private fun StoriesHeader(
     controller: StoriesComposeController,
+    onTypeSelected: (Int) -> Unit,
     searchMode: Boolean,
     tapToUpdateExitProgress: () -> Float,
     suppressLastUpdated: Boolean,
@@ -963,6 +979,7 @@ private fun StoriesHeader(
             } else {
                 MainHeader(
                     controller = controller,
+                    onTypeSelected = onTypeSelected,
                     showRefreshMenuItem = showRefreshMenuItem,
                     modifier = Modifier.padding(start = sideStart, end = sideEnd),
                 )
@@ -975,7 +992,7 @@ private fun StoriesHeader(
                             settings.storyTextSize,
                         ).family,
                         contentPadding = PaddingValues(start = sideStart, end = sideEnd),
-                        onSelected = controller.listener::onTypeSelected,
+                        onSelected = onTypeSelected,
                         modifier = Modifier.padding(top = 8.dp),
                     )
                 }
@@ -1191,6 +1208,7 @@ private fun StoriesHeader(
 @Composable
 private fun MainHeader(
     controller: StoriesComposeController,
+    onTypeSelected: (Int) -> Unit,
     showRefreshMenuItem: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1338,7 +1356,7 @@ private fun MainHeader(
                             },
                             onClick = {
                                 typesExpanded = false
-                                controller.listener.onTypeSelected(index)
+                                onTypeSelected(index)
                             },
                             leadingIcon = {
                                 Icon(
