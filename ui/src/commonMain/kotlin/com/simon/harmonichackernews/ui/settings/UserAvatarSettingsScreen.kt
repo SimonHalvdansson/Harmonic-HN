@@ -90,7 +90,6 @@ fun UserAvatarSettingsScreen(
     val authors = remember(exampleBatch) {
         avatarPreviewNames.shuffled(Random(exampleBatch))
     }
-    val commentAuthors = remember(authors) { authors.take(6) }
     SettingsPage(
         title = "User profile images", showNavigation = true, onBack = onBack,
         headerContent = {
@@ -103,7 +102,7 @@ fun UserAvatarSettingsScreen(
             Column(Modifier.testTag("avatar-comment-preview")) {
                 repeat(3) { row ->
                     AvatarCommentPreview(
-                        authors = commentAuthors, row = row,
+                        authors = authors, row = row,
                         style = previewStyle.copy(
                             userAvatarsEnabled = enabled,
                             userAvatarOptions = options,

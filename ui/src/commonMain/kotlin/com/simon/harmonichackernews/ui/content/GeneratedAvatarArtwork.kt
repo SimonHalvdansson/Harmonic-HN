@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -13,26 +14,22 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.PathParser
-import com.simon.harmonichackernews.settings.UserAvatarColors
-import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.UserAvatarStyle
 import com.simon.harmonichackernews.settings.userAvatarSeed
 
 /** Cached paths in a 100 x 100 coordinate space, shared by runtime avatars and previews. */
-internal class GeneratedAvatarArtwork(author: String, style: UserAvatarStyle, options: UserAvatarOptions) {
-    private data class Mark(val path: Path, val color: Color, val stroke: Float = 0f)
+internal class GeneratedAvatarArtwork(author: String, style: UserAvatarStyle) {
+    private data class ArtworkColor(val hue: Float, val saturation: Float, val lightness: Float) {
+        fun resolve(saturationScale: Float) = Color.hsl(hue, saturation * saturationScale, lightness)
+    }
+    private data class Mark(val path: Path, val color: ArtworkColor, val stroke: Float = 0f)
     private val marks = mutableListOf<Mark>()
     private var rotation = 0f
     private val name = author
     private val seed = userAvatarSeed(name)
     private val hue = (seed.toUInt() % 360u).toFloat()
-    private val saturation = when (options.colors) {
-        UserAvatarColors.VIVID -> 1f
-        UserAvatarColors.MUTED -> .4f
-        UserAvatarColors.MONOCHROME -> 0f
-    }
-    private fun color(h: Float, s: Float, l: Float) = Color.hsl(h, s * saturation, l)
-    val background = color(hue, .45f, .90f)
+    private fun color(h: Float, s: Float, l: Float) = ArtworkColor(h, s, l)
+    private val background = color(hue, .45f, .90f)
     private val ink = color(hue, .55f, .25f)
     private val mid = color(hue, .58f, .48f)
     private val accent = color((hue + 65f) % 360f, .76f, .62f)
@@ -48,29 +45,30 @@ internal class GeneratedAvatarArtwork(author: String, style: UserAvatarStyle, op
         }
     }
 
-    fun draw(scope: DrawScope) = with(scope) {
+    fun draw(scope: DrawScope, saturation: Float) = with(scope) {
+        drawRect(background.resolve(saturation), size = Size(100f, 100f))
         rotate(rotation, Offset(50f, 50f)) {
             marks.forEach { mark ->
-                drawPath(mark.path, mark.color, style = if (mark.stroke == 0f) Fill else
+                drawPath(mark.path, mark.color.resolve(saturation), style = if (mark.stroke == 0f) Fill else
                     Stroke(mark.stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
     }
 
-    private fun c(x: Number, y: Number, r: Number, color: Color) = e(x, y, r, r, color)
-    private fun e(x: Number, y: Number, rx: Number, ry: Number, color: Color) {
+    private fun c(x: Number, y: Number, r: Number, color: ArtworkColor) = e(x, y, r, r, color)
+    private fun e(x: Number, y: Number, rx: Number, ry: Number, color: ArtworkColor) {
         marks += Mark(Path().apply {
             addOval(Rect(x.toFloat() - rx.toFloat(), y.toFloat() - ry.toFloat(),
                 x.toFloat() + rx.toFloat(), y.toFloat() + ry.toFloat()))
         }, color)
     }
-    private fun rect(x: Number, y: Number, w: Number, h: Number, radius: Number, color: Color) {
+    private fun rect(x: Number, y: Number, w: Number, h: Number, radius: Number, color: ArtworkColor) {
         marks += Mark(Path().apply {
             addRoundRect(RoundRect(Rect(x.toFloat(), y.toFloat(), x.toFloat() + w.toFloat(),
                 y.toFloat() + h.toFloat()), CornerRadius(radius.toFloat())))
         }, color)
     }
-    private fun p(path: String, color: Color, stroke: Float = 0f) {
+    private fun p(path: String, color: ArtworkColor, stroke: Float = 0f) {
         marks += Mark(PathParser().parsePathString(path).toPath(), color, stroke)
     }
 

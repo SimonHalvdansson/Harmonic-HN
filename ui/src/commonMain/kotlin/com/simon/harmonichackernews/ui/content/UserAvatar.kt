@@ -30,7 +30,6 @@ import org.jetbrains.compose.resources.painterResource
 private data class AvatarVisual(
     val author: String,
     val style: UserAvatarStyle?,
-    val colors: UserAvatarColors,
 )
 
 @Composable
@@ -50,11 +49,20 @@ fun UserAvatar(
     )
     val corner = CornerSize(cornerPercent)
     val shape = RoundedCornerShape(corner, corner, corner, corner)
-    val visual = remember(author, options) {
-        if (options.generic) AvatarVisual("", null, UserAvatarColors.VIVID)
-        else AvatarVisual(author, options.styleFor(author), options.colors)
+    val saturation by animateFloatAsState(
+        targetValue = when (options.colors) {
+            UserAvatarColors.VIVID -> 1f
+            UserAvatarColors.MUTED -> .4f
+            UserAvatarColors.MONOCHROME -> 0f
+        },
+        animationSpec = tween(300),
+        label = "avatar color saturation",
+    )
+    val visual = remember(author, options.generic, options.styles) {
+        if (options.generic) AvatarVisual("", null)
+        else AvatarVisual(author, options.styleFor(author))
     }
-    // The frame morphs independently, while identity, style and palette changes crossfade inside it.
+    // Frame and colors interpolate independently; only changes to the artwork crossfade.
     Crossfade(
         targetState = visual,
         modifier = modifier.clip(shape),
@@ -70,10 +78,12 @@ fun UserAvatar(
             )
         } else {
             val artwork = remember(content) {
-                GeneratedAvatarArtwork(content.author, content.style, UserAvatarOptions(colors = content.colors))
+                GeneratedAvatarArtwork(content.author, content.style)
             }
-            Canvas(Modifier.fillMaxSize().background(artwork.background)) {
-                scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) { artwork.draw(this) }
+            Canvas(Modifier.fillMaxSize()) {
+                scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {
+                    artwork.draw(this, saturation)
+                }
             }
         }
     }
