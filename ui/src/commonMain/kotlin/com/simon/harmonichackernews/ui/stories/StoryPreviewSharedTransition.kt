@@ -116,7 +116,9 @@ internal fun StoryPreviewContainerBackground(
     modifier: Modifier = Modifier,
 ) {
     val transition = LocalStoryPreviewSharedTransition.current
-    val visibility = if (transition?.hideTargetContent == true) {
+    // Text snapshots briefly overlap the live content during handoff. Translucent backgrounds
+    // must have a single owner throughout that overlap or their tint/optics are applied twice.
+    val visibility = if (transition?.active == true || transition?.hideTargetContent == true) {
         Modifier.graphicsLayer(alpha = 0f)
     } else {
         Modifier
@@ -215,7 +217,8 @@ internal fun StoryPreviewTransitionOverlay(
     val targetRadiusPx = with(density) { 28.dp.toPx() } * transition.targetScale
     val containerRadiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress)
     val containerRadius = with(density) { containerRadiusPx.toDp() }
-    val elevation = if (transition.drawOverlayShadows) {
+    // The moving container also owns its shadow during the live-content handoff.
+    val elevation = if (transition.drawOverlayShadows || !transition.hideTargetContent) {
         lerp(source.containerElevationDp, 8f * transition.targetScale, progress).dp
     } else {
         0.dp

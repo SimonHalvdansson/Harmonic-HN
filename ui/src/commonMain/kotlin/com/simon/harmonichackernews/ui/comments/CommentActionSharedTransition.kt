@@ -143,7 +143,8 @@ internal fun BoxScope.CommentActionContainerBackground(
     modifier: Modifier = Modifier,
 ) {
     val transition = LocalCommentActionSharedTransition.current
-    val visibility = if (transition?.hideTargetContent == true) {
+    // Keep only one material visible while live text and transition snapshots hand off.
+    val visibility = if (transition?.active == true || transition?.hideTargetContent == true) {
         Modifier.graphicsLayer(alpha = 0f)
     } else {
         Modifier
@@ -198,7 +199,8 @@ internal fun CommentActionTransitionOverlay(
     val targetRadiusPx = with(density) { 28.dp.toPx() }
     val radiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress) * backScale
     val shape = RoundedCornerShape(with(density) { radiusPx.toDp() })
-    val elevation = if (transition.drawOverlayShadows) {
+    // The moving container also owns its shadow during the live-content handoff.
+    val elevation = if (transition.drawOverlayShadows || !transition.hideTargetContent) {
         (lerp(source.containerElevationDp, 8f, progress) * backScale).dp
     } else {
         0.dp

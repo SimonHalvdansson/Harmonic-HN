@@ -8,7 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
@@ -53,15 +57,31 @@ internal fun Modifier.sharedHazeDialogBackground(
 ): Modifier {
     val hazeState = currentSharedHazeState()
     val preferences = LocalHazePreferences.current
+    val progress = revealProgress.coerceIn(0f, 1f)
     return if (preferences != null && preferences.mode != SurfaceEffectMode.Solid && hazeState != null) {
-        sharedHazeBackground(
-            hazeState = hazeState,
-            surfaceColor = surfaceColor,
-            shape = shape,
-            blurRadius = 16.dp,
-            glassAppearance = HazeGlassAppearance.Dialog,
-            revealProgress = revealProgress,
-        )
+        // Mix the complete material with the source surface, including blur, refraction and
+        // lighting. Tint alone cannot hide those effects (especially with tint disabled).
+        // Add premultiplied contributions in an isolated layer: SrcOver would apply the source
+        // opacity twice and cause a dip halfway through a translucent-to-translucent morph.
+        clip(shape)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                if (progress < 1f) {
+                    drawRect(
+                        surfaceColor.copy(alpha = surfaceColor.alpha * (1f - progress)),
+                        blendMode = BlendMode.Plus,
+                    )
+                }
+            }
+            .sharedHazeBackground(
+                hazeState = hazeState,
+                surfaceColor = surfaceColor,
+                shape = shape,
+                blurRadius = 16.dp,
+                glassAppearance = HazeGlassAppearance.Dialog,
+                effectAlpha = progress,
+            )
     } else {
         clip(shape).background(surfaceColor)
     }
@@ -95,11 +115,10 @@ internal fun Modifier.sharedHazeBackground(
     shape: RoundedCornerShape,
     blurRadius: Dp = 6.dp,
     glassAppearance: HazeGlassAppearance = HazeGlassAppearance.Subtle,
-    revealProgress: Float = 1f,
+    effectAlpha: Float = 1f,
 ): Modifier {
     val preferences = LocalHazePreferences.current ?: SurfaceEffectPreferences()
     val glass = preferences.glass
-    val progress = revealProgress.coerceIn(0f, 1f)
     return clip(shape).then(if (preferences.mode == SurfaceEffectMode.Solid) {
         Modifier.background(surfaceColor.copy(alpha = 1f))
     } else if (hazeState == null) {
@@ -112,8 +131,7 @@ internal fun Modifier.sharedHazeBackground(
                 backgroundColor(surfaceColor.copy(alpha = glass[GlassParameter.BackgroundOpacity]))
                 val tintAlpha = when (glassAppearance) {
                     HazeGlassAppearance.FloatingButton -> glass[GlassParameter.ButtonTint]
-                    HazeGlassAppearance.Dialog -> surfaceColor.alpha *
-                        (1f - (1f - glass[GlassParameter.DialogTint]) * progress)
+                    HazeGlassAppearance.Dialog -> surfaceColor.alpha * glass[GlassParameter.DialogTint]
                     HazeGlassAppearance.Subtle ->
                         (surfaceColor.alpha * glass[GlassParameter.SubtleTint] / 0.5f).coerceIn(0f, 1f)
                 }
@@ -132,7 +150,7 @@ internal fun Modifier.sharedHazeBackground(
                 edgeSoftness(glass[GlassParameter.EdgeSoftness].dp)
                 specularExponent(glass[GlassParameter.SpecularExponent])
                 fresnelExponent(glass[GlassParameter.FresnelExponent])
-                alpha(glass[GlassParameter.MaterialOpacity])
+                alpha(glass[GlassParameter.MaterialOpacity] * effectAlpha)
                 contrast(glass[GlassParameter.Contrast])
                 whitePoint(glass[GlassParameter.WhitePoint])
                 chromaMultiplier(glass[GlassParameter.ChromaMultiplier])
@@ -159,11 +177,12 @@ internal fun Modifier.sharedHazeBackground(
         )
     } else {
         val frostedColor = if (glassAppearance == HazeGlassAppearance.Dialog) {
-            surfaceColor.copy(alpha = surfaceColor.alpha * (1f - 0.22f * progress))
+            surfaceColor.copy(alpha = surfaceColor.alpha * 0.78f)
         } else surfaceColor
         Modifier.hazeBlur(
             input = HazeInput.Sources(hazeState),
             style = HazeBlurStyle {
+                alpha(effectAlpha)
                 blurRadius(blurRadius)
                 colorEffects(listOf(HazeColorEffect.tint(frostedColor)))
                 noiseFactor(0f)
