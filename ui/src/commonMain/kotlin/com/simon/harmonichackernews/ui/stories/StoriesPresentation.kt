@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
@@ -71,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.resources.ic_close
 import com.simon.harmonichackernews.resources.ic_cloud_off
 import com.simon.harmonichackernews.resources.ic_history
@@ -246,43 +246,51 @@ fun StorySearchHeader(
     }
 
     Column {
-        Row(
-            modifier = Modifier.padding(start = sideStart, end = sideEnd),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextField(
-                value = state.draft,
-                onValueChange = onDraftChanged,
-                placeholder = { Text("Search posts") },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
-                    onSearch(state.draft)
-                    keyboard?.hide()
-                    focusManager.clearFocus()
-                }),
-                shape = RoundedCornerShape(32.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = searchContainerColor,
-                    unfocusedContainerColor = searchContainerColor,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .weight(1f)
-                    .focusRequester(focusRequester),
-            )
-            IconButton(
-                onClick = {
-                    keyboard?.hide()
-                    focusManager.clearFocus()
-                    onClose()
-                },
-            ) {
-                Icon(painterResource(Res.drawable.ic_close), "Close search", tint = iconColor)
-            }
-        }
+        TextField(
+            value = state.draft,
+            onValueChange = onDraftChanged,
+            placeholder = { Text("Search posts") },
+            leadingIcon = {
+                IconButton(
+                    onClick = {
+                        keyboard?.hide()
+                        focusManager.clearFocus()
+                        onClose()
+                    },
+                ) {
+                    Icon(painterResource(Res.drawable.ic_arrow_back), "Back", tint = iconColor)
+                }
+            },
+            trailingIcon = {
+                IconButton(
+                    onClick = {
+                        onDraftChanged("")
+                        focusRequester.requestFocus()
+                        keyboard?.show()
+                    },
+                ) {
+                    Icon(painterResource(Res.drawable.ic_close), "Clear search", tint = iconColor)
+                }
+            },
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
+                onSearch(state.draft)
+                keyboard?.hide()
+                focusManager.clearFocus()
+            }),
+            shape = RoundedCornerShape(32.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = searchContainerColor,
+                unfocusedContainerColor = searchContainerColor,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = sideStart, end = sideEnd)
+                .focusRequester(focusRequester),
+        )
         LazyRow(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
