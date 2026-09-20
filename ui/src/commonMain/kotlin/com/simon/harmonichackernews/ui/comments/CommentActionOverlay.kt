@@ -2,7 +2,8 @@ package com.simon.harmonichackernews.ui.comments
 
 import kotlin.time.Duration.Companion.milliseconds
 
-import com.simon.harmonichackernews.ui.common.ScrollableTextDecorations
+import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
+import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -416,7 +417,6 @@ fun CommentActionOverlay(
                             comment = comment,
                             hasAccount = hasAccount,
                             bookmarksEnabled = bookmarksEnabled,
-                            cardColor = cardColor,
                             textStyle = textStyle,
                             onOpenLink = onOpenLink,
                         )
@@ -436,7 +436,6 @@ private fun CommentActionCardContent(
     comment: PortableCommentItem,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
-    cardColor: Color,
     textStyle: TextStyle,
     onOpenLink: (String) -> Unit,
 ) {
@@ -524,6 +523,7 @@ private fun CommentActionCardContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .fadingScrollEdges(bodyScrollState)
                             .verticalScroll(bodyScrollState)
                             .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
                     ) {
@@ -536,9 +536,8 @@ private fun CommentActionCardContent(
                             style = textStyle,
                         )
                     }
-                    ScrollableTextDecorations(
+                    ScrollableTextScrollbar(
                         state = bodyScrollState,
-                        containerColor = cardColor,
                         modifier = Modifier.matchParentSize(),
                     )
                 }
