@@ -18,6 +18,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalForeignApi::class, ExperimentalCoroutinesApi::class)
 class IosCommentsWebViewTest {
@@ -33,6 +34,8 @@ class IosCommentsWebViewTest {
             assertFalse(browser.canGoBack())
             browser.goBack()
             browser.toggleInversion()
+            browser.visible = true
+            browser.visible = false
             assertNull(browser.view)
         } finally {
             browser.dispose()
@@ -45,11 +48,17 @@ class IosCommentsWebViewTest {
         val browser = IosCommentsWebView(url)
         try {
             browser.updateAppearance(dark = true, matchTheme = true)
+            browser.visible = true
             browser.ensureLoaded()
             val view = assertNotNull(browser.view)
+            assertFalse(view.isHidden())
             assertEquals(UIUserInterfaceStyle.UIUserInterfaceStyleDark, view.overrideUserInterfaceStyle)
+            browser.visible = false
+            assertTrue(view.isHidden())
             browser.ensureLoaded()
             assertSame(view, browser.view)
+            browser.visible = true
+            assertFalse(view.isHidden())
             browser.reload()
             assertSame(view, browser.view)
             browser.updateAppearance(dark = false, matchTheme = true)
@@ -95,7 +104,7 @@ class IosCommentsWebViewTest {
             assertNull(browser.view)
             advanceTimeBy(1)
             runCurrent()
-            assertNotNull(browser.view)
+            assertTrue(assertNotNull(browser.view).isHidden())
         } finally {
             browser.dispose()
         }

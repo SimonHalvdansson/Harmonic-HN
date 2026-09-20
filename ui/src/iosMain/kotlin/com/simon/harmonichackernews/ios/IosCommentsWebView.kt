@@ -94,6 +94,12 @@ class IosCommentsWebView(
     var onPageFinished: (String?) -> Unit = {}
     var onLoadFailed: () -> Unit = {}
     var visible: Boolean = false
+        set(value) {
+            field = value
+            // Compose occlusion alone does not tell WebKit that the page is hidden. Keep the
+            // browser and its page state, but remove its native rendering while covered.
+            view?.setHidden(!value)
+        }
 
     var view: WKWebView? by mutableStateOf(null)
         private set
@@ -121,6 +127,7 @@ class IosCommentsWebView(
         scrollView.backgroundColor = UIColor.systemBackgroundColor
         accessibilityLabel = "Article web view"
         overrideUserInterfaceStyle = appearance
+        setHidden(!visible)
     }
 
     fun ensureLoaded() {
@@ -471,6 +478,7 @@ internal fun IosCommentsScaffold(
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
     LaunchedEffect(webView, controller.initialShowWebsite) {
+        webView.visible = controller.initialShowWebsite
         if (controller.initialShowWebsite) webView.ensureLoaded()
     }
 
@@ -483,17 +491,19 @@ internal fun IosCommentsScaffold(
             if (request.expanded) sheetState.expand() else sheetState.partialExpand()
             controller.consumeSheetRequest(request)
         }
-        LaunchedEffect(sheetState, travelPx) {
+        LaunchedEffect(webView, sheetState, travelPx) {
             snapshotFlow { runCatching { sheetState.requireOffset() }.getOrNull() }
                 .collect { offset ->
-                    // A direct drag can reveal the article without issuing a sheet request.
-                    if (offset != null && offset > 0.5f) webView.ensureLoaded()
                     val expandedFraction = offset
                         ?.let { 1f - (it / travelPx) }
                         ?.coerceIn(0f, 1f)
                         ?: if (sheetState.currentValue == SheetValue.Expanded) 1f else 0f
                     controller.updateSheet(expandedFraction, controller.topInsetPx)
-                    webView.visible = expandedFraction < 0.99f
+                    // Reveal the native view with the first exposed portion of the page,
+                    // including a partial drag that returns to fully expanded comments.
+                    webView.visible = expandedFraction < 1f
+                    // Apply visibility before lazy creation so hidden preloads stay hidden.
+                    if (offset != null && offset > 0.5f) webView.ensureLoaded()
                     controller.listener.onSheetProgressChanged(expandedFraction)
                 }
         }
