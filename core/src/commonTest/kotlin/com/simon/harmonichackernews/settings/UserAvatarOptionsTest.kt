@@ -14,6 +14,7 @@ class UserAvatarOptionsTest {
             setOf(UserAvatarStyle.ROBOT, UserAvatarStyle.LANDSCAPE),
             UserAvatarShape.ROUNDED, UserAvatarColors.MONOCHROME,
         )
+        repository.setUserAvatarsEnabled(false)
         repository.setUserAvatarOptions(options)
         val restored = AppSettingsRepository(store, emptyFlow()).snapshot().comments
         assertEquals(false, restored.userAvatarsEnabled)

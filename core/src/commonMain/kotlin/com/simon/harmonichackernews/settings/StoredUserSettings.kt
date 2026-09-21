@@ -189,9 +189,9 @@ class StoredUserSettings(
                 indicatorThickness = CommentIndicatorThickness.fromStored(
                     string(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "standard"),
                 ),
-                roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, false),
+                roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, true),
                 continuousDepthIndicators = boolean(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS, false),
-                userAvatarsEnabled = boolean(UserPreferenceKeys.USER_AVATARS_ENABLED, false),
+                userAvatarsEnabled = boolean(UserPreferenceKeys.USER_AVATARS_ENABLED, true),
                 userAvatarOptions = UserAvatarOptions.decode(
                     string(UserPreferenceKeys.USER_AVATAR_OPTIONS, ""),
                 ),
@@ -382,7 +382,7 @@ class StoredUserSettings(
     )
 
     private fun previewImageMode(): StoryPreviewMode = StoryPreviewMode.fromStored(
-        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, StoryPreviewMode.SMALL.storedValue),
+        string(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, StoryPreviewMode.MEDIUM.storedValue),
     )
 
     private fun storyTextSize(): Float = TextPreferences.clampStoryTextSize(

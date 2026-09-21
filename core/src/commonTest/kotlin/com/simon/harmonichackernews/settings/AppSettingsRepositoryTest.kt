@@ -74,7 +74,9 @@ class AppSettingsRepositoryTest {
     fun commentAppearanceDefaultsAndPersistedChoices() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
-        assertEquals(false, repository.snapshot().comments.userAvatarsEnabled)
+        assertEquals(true, repository.snapshot().comments.userAvatarsEnabled)
+        assertTrue(repository.snapshot().comments.roundedDepthIndicators)
+        assertEquals(setOf(UserAvatarStyle.MOSAIC), repository.snapshot().comments.userAvatarOptions.styles)
         assertEquals(CommentIndicatorThickness.STANDARD, repository.snapshot().comments.indicatorThickness)
         repository.setUserAvatarsEnabled(true)
         repository.setCommentIndicatorThickness(CommentIndicatorThickness.WIDE)

@@ -97,10 +97,10 @@ data class CommentPreferences(
     val smoothScroll: Boolean,
     val volumeNavigationMode: CommentVolumeNavigationMode,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
-    val roundedDepthIndicators: Boolean = false,
+    val roundedDepthIndicators: Boolean = true,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = false,
-    val userAvatarsEnabled: Boolean = false,
+    val userAvatarsEnabled: Boolean = true,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
     val cardStyle: Boolean

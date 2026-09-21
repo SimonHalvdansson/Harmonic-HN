@@ -155,7 +155,7 @@ class StoredSettingsMutatorTest {
         mutator.resetStoryLayout()
 
         val story = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).story
-        assertEquals(StoryPreviewMode.SMALL, story.previewImageMode)
+        assertEquals(StoryPreviewMode.MEDIUM, story.previewImageMode)
         assertFalse(story.borderlessLargePreviewImage)
         assertEquals(TextPreferences.DEFAULT_STORY_TEXT_SIZE, story.storyTextSize)
         assertFalse(story.cardStyle)
