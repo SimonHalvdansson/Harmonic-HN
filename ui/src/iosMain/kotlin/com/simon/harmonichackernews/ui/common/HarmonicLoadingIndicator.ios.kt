@@ -9,8 +9,15 @@ import androidx.compose.ui.graphics.Color
 actual fun HarmonicLoadingIndicator(
     modifier: Modifier,
     color: Color,
+    progress: (() -> Float)?,
 ) {
-    if (color == Color.Unspecified) {
+    if (progress != null) {
+        if (color == Color.Unspecified) {
+            CircularProgressIndicator(progress = progress, modifier = modifier)
+        } else {
+            CircularProgressIndicator(progress = progress, modifier = modifier, color = color)
+        }
+    } else if (color == Color.Unspecified) {
         CircularProgressIndicator(modifier = modifier)
     } else {
         CircularProgressIndicator(modifier = modifier, color = color)

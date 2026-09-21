@@ -8,6 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import com.simon.harmonichackernews.ui.comments.HeaderLinkInfo
+import com.simon.harmonichackernews.data.LinkPreviewInfo
+import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.data.LinkPreviewDetail
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -110,6 +117,70 @@ class LinkPreviewRippleTest {
         }
         compose.waitForIdle()
         assertEquals(website, openedLink)
+    }
+
+    @Test
+    fun fallbackFaviconRepaintsWhenThemeChangesWithoutReloadingStory() {
+        val dark = mutableStateOf(false)
+        // A URL without a host deliberately selects the local fallback without network timing.
+        val story = StoryListItemSnapshot(
+            StorySnapshot(42, url = "invalid-url"),
+            StoryPresentationSnapshot(loaded = true, isLink = true),
+        )
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve(if (dark.value) "dark" else "light", false)
+            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
+                    textStyle = TextStyle.Default, openLink = {}, downloadPdf = {}, openCustomTab = {},
+                    plainText = { it }, annotatedHtml = { text, _, _ -> AnnotatedString(text) },
+                )) {
+                    Column(Modifier.fillMaxWidth().background(Color.Magenta).testTag("favicon")) {
+                        HeaderLinkInfo(story, settings.copy(showThumbnail = true))
+                    }
+                }
+            }
+        }
+        fun iconPixels(): List<Color> {
+            val pixels = compose.onNodeWithTag("favicon").captureToImage().toPixelMap()
+            val density = compose.activity.resources.displayMetrics.density
+            return (0 until pixels.height).flatMap { y ->
+                ((16 * density).toInt() until (33 * density).toInt()).map { x -> pixels[x, y] }
+            }
+        }
+        val light = iconPixels()
+        compose.runOnIdle { dark.value = true }
+        val night = iconPixels()
+        assertTrue("Fallback must repaint on a live theme switch", light.zip(night).count { it.first != it.second } > 20)
+        compose.runOnIdle { dark.value = false }
+        assertEquals("Switching back must restore the fallback tint", light, iconPixels())
+    }
+
+    @Test
+    fun pypiProjectUrlOpensItsOwnDestinationWithoutLabelPrefix() {
+        val projectUrl = "https://pypi.org/project/requests/"
+        var openedLink: String? = null
+        val story = StoryListItemSnapshot(
+            StorySnapshot(42, url = "https://pypi.org/project/requests/2.0/"),
+            StoryPresentationSnapshot(loaded = true, isLink = true, linkPreviewInfo = LinkPreviewInfo(
+                type = LinkPreviewType.PYPI_PACKAGE, title = "requests", url = projectUrl,
+                details = listOf(LinkPreviewDetail("Project URL", projectUrl)),
+            )),
+        )
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
+                    textStyle = TextStyle.Default, openLink = { openedLink = it },
+                    downloadPdf = {}, openCustomTab = {}, plainText = { it },
+                    annotatedHtml = { text, _, _ -> AnnotatedString(text) },
+                )) {
+                    LinkPreviewContent(story, 0, settings)
+                }
+            }
+        }
+        compose.onNodeWithText("Project URL:", substring = true).assertDoesNotExist()
+        compose.onNode(hasClickAction() and hasText(projectUrl)).performClick()
+        assertEquals(projectUrl, openedLink)
     }
 
     private val settings = CommentDisplaySettings(

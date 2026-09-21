@@ -38,6 +38,7 @@ fun AndroidDebugSettingsScreen(
         showNavigation = showNavigation,
         onBack = onBack,
         onOpenHnId = { app.navigation.openStory(StoryDestination(it)) },
+        onOpenUserProfile = { app.navigation.showUserDialog(it) },
         onOpenWithoutCache = {
             scope.launch {
                 app.storyCache.remove(OpenWithoutCacheStoryId)

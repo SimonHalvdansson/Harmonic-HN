@@ -198,7 +198,7 @@ internal fun LinkPreviewType.linkPreviewIcon(): DrawableResource = when (this) {
     LinkPreviewType.HOMEBREW_PACKAGE,
     -> Res.drawable.ic_deployed_code
     LinkPreviewType.CROSSREF_ARTICLE -> Res.drawable.ic_newspaper
-    LinkPreviewType.USGS_EARTHQUAKE -> Res.drawable.ic_public
+    LinkPreviewType.USGS_EARTHQUAKE -> Res.drawable.ic_earthquake
     LinkPreviewType.STATUS_PAGE -> Res.drawable.ic_info
     LinkPreviewType.SUBSTACK_ARTICLE -> Res.drawable.ic_subject
 }

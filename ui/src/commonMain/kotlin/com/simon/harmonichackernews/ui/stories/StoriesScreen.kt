@@ -79,7 +79,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
@@ -893,7 +893,7 @@ private fun StoriesList(
                 controller.refreshing && !searchMode,
             state = pullToRefreshState,
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                HarmonicPullToRefreshIndicator(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         // Begin at the physical top edge, then approach the inset-aware refresh

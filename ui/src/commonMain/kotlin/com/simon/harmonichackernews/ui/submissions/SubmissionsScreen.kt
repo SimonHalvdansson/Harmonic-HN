@@ -63,6 +63,8 @@ import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import androidx.compose.material3.Icon
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
+import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -207,7 +209,16 @@ fun SubmissionsScreen(
     }
 
     if (pullToRefreshEnabled) {
+        val refreshState = rememberPullToRefreshState()
         PullToRefreshBox(
+            state = refreshState,
+            indicator = {
+                HarmonicPullToRefreshIndicator(
+                    state = refreshState,
+                    isRefreshing = state.refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            },
             isRefreshing = state.refreshing,
             onRefresh = { onIntent(SubmissionsIntent.Refresh) },
             modifier = modifier,

@@ -424,6 +424,7 @@ private fun PortableDebugSettings(
         showNavigation = showNavigation,
         onBack = onBack,
         onOpenHnId = { scene.navigation.openStory(StoryDestination(it)) },
+        onOpenUserProfile = { scene.navigation.showUserDialog(it) },
         onOpenWithoutCache = {
             scope.launch {
                 app.storyCache.remove(OpenWithoutCacheStoryId)

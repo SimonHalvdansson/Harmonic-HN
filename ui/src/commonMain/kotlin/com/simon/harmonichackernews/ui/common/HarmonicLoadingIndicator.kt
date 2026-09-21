@@ -9,4 +9,5 @@ import androidx.compose.ui.graphics.Color
 expect fun HarmonicLoadingIndicator(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
+    progress: (() -> Float)? = null,
 )

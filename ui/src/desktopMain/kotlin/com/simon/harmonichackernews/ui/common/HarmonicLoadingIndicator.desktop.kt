@@ -11,8 +11,15 @@ import androidx.compose.ui.graphics.Color
 actual fun HarmonicLoadingIndicator(
     modifier: Modifier,
     color: Color,
+    progress: (() -> Float)?,
 ) {
-    if (color == Color.Unspecified) {
+    if (progress != null) {
+        if (color == Color.Unspecified) {
+            LoadingIndicator(progress = progress, modifier = modifier)
+        } else {
+            LoadingIndicator(progress = progress, modifier = modifier, color = color)
+        }
+    } else if (color == Color.Unspecified) {
         LoadingIndicator(modifier = modifier)
     } else {
         LoadingIndicator(modifier = modifier, color = color)

@@ -19,6 +19,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ButtonDefaults
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import androidx.compose.material3.Text
+import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -308,6 +315,38 @@ fun CommentsHeader(
                                     streaming = controller.storySummaryLoading,
                                     containerColor = summaryContainerColor,
                                 )
+                            }
+                            if (story.isComment) {
+                                val actions = buildList {
+                                    if (story.parentId > 0) add(Triple("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT))
+                                    if (story.commentMasterId > 0) add(Triple("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL))
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    actions.forEachIndexed { index, (label, icon, action) ->
+                                        Button(
+                                            onClick = { controller.listener.onMoreAction(action) },
+                                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                            shape = RoundedCornerShape(
+                                                topStart = if (index == 0) 24.dp else 8.dp,
+                                                bottomStart = if (index == 0) 24.dp else 8.dp,
+                                                topEnd = if (index == actions.lastIndex) 24.dp else 8.dp,
+                                                bottomEnd = if (index == actions.lastIndex) 24.dp else 8.dp,
+                                            ),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = HarmonicTheme.colors.secondaryContainer,
+                                                contentColor = HarmonicTheme.colors.onSecondaryContainer,
+                                            ),
+                                        ) {
+                                            Icon(painterResource(icon), null, Modifier.size(18.dp))
+                                            Text(label, Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily,
+                                                fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
                             }
                             HeaderMeta(
                                 story = story,

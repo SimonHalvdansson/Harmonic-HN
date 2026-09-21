@@ -127,10 +127,17 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (settings.showThumbnail) {
+            var faviconLoaded by remember(favicon) { mutableStateOf(false) }
+            val fallback = painterResource(Res.drawable.ic_public)
             AsyncImage(
                 model = favicon,
-                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                placeholder = fallback,
+                fallback = fallback,
+                error = fallback,
+                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.drawable),
+                onLoading = { faviconLoaded = false },
+                onSuccess = { faviconLoaded = true },
+                onError = { faviconLoaded = false },
                 contentDescription = null,
                 modifier = Modifier
                     .padding(end = 4.dp)
@@ -443,7 +450,7 @@ private fun PreviewInfoRow(
         )
         Text(
             text,
-            color = HarmonicTheme.colors.storyNormal,
+            color = if (onClick != null) HarmonicTheme.colors.link else HarmonicTheme.colors.storyNormal,
             fontFamily = ProductSansFontFamily,
             fontSize = 14.sp,
             lineHeight = 17.sp,
@@ -749,12 +756,12 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
         PreviewInfoColumns(
             left = {
                 details.left.forEach { detail ->
-                    RichPreviewDetail(detail)
+                    RichPreviewDetail(detail, info.type)
                 }
             },
             right = {
                 details.right.forEach { detail ->
-                    RichPreviewDetail(detail)
+                    RichPreviewDetail(detail, info.type)
                 }
             },
         )
@@ -771,9 +778,19 @@ private fun LinkPreviewType.hasMarkdownDescription(): Boolean = when (this) {
 }
 
 @Composable
-private fun RichPreviewDetail(detail: LinkPreviewDetail) {
+private fun RichPreviewDetail(detail: LinkPreviewDetail, type: LinkPreviewType) {
+    val platform = LocalCommentsPreviewPlatform.current
+    val projectUrl = detail.value.takeIf {
+        detail.label == "Project URL" && (it.startsWith("https://") || it.startsWith("http://"))
+    }
     PreviewInfoRow(
         icon = when (detail.label.lowercase()) {
+            "project url" -> Res.drawable.ic_link
+            "magnitude" -> Res.drawable.ic_earthquake
+            "type" -> if (type == LinkPreviewType.USGS_EARTHQUAKE) Res.drawable.ic_earthquake else Res.drawable.ic_subject
+            "depth" -> Res.drawable.ic_vertical_align_bottom
+            "significance" -> Res.drawable.ic_priority_high
+            "tsunami information" -> Res.drawable.ic_tsunami
             "author", "authors" -> Res.drawable.ic_person
             "published", "updated", "started" -> Res.drawable.ic_calendar_today
             "likes", "favourites", "upvotes" -> Res.drawable.ic_favorite
@@ -785,7 +802,8 @@ private fun RichPreviewDetail(detail: LinkPreviewDetail) {
             "files", "items", "dependencies" -> Res.drawable.ic_library_books
             else -> Res.drawable.ic_subject
         },
-        text = detail.displayText ?: "${detail.label}: ${detail.value}",
+        text = projectUrl ?: detail.displayText ?: "${detail.label}: ${detail.value}",
+        onClick = projectUrl?.let { url -> { platform.openLink(url) } },
     )
 }
 

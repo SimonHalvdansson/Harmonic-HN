@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -104,6 +106,7 @@ fun DebugSettingsScreen(
     onShowWidgetDebugInfoChanged: (Boolean) -> Unit,
     onGlassSettingsRequested: () -> Unit,
     onOpenHnId: (Int) -> Unit,
+    onOpenUserProfile: (String) -> Unit,
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
     onOpenLink: (String) -> Unit,
@@ -111,13 +114,21 @@ fun DebugSettingsScreen(
     onDialogRequested: (DebugSettingsDialog) -> Unit,
     onEasterEggRequested: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    fun navigate(action: () -> Unit) {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        action()
+    }
+
     var versionTapCount by remember { mutableIntStateOf(0) }
     var lastVersionTap by remember { mutableStateOf<TimeMark?>(null) }
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_debug),
         showNavigation = showNavigation,
-        onBack = onBack,
+        onBack = { navigate(onBack) },
         contentVersion = contentVersion,
     ) {
         item {
@@ -137,12 +148,36 @@ fun DebugSettingsScreen(
                     onCheckedChange = onShowWidgetDebugInfoChanged,
                 )
                 SettingsDivider()
-                DebugHnIdSetting(onOpenId = onOpenHnId)
+                DebugOpenSetting(
+                    title = "Open HN item by ID",
+                    label = "HN ID",
+                    description = "Open HN ID",
+                    icon = Res.drawable.ic_open_in_new,
+                    numeric = true,
+                    validate = { value ->
+                        when {
+                            value.isEmpty() || value.any { !it.isDigit() } -> "Enter a numeric HN ID"
+                            value.toIntOrNull() == null -> "HN ID is too large"
+                            value.toInt() <= 0 -> "Enter a positive HN ID"
+                            else -> null
+                        }
+                    },
+                    onOpen = { onOpenHnId(it.toInt()) },
+                )
+                SettingsDivider()
+                DebugOpenSetting(
+                    title = "Open user profile",
+                    label = "Username",
+                    description = "Open user profile",
+                    icon = Res.drawable.ic_person,
+                    validate = { value -> if (value.isBlank()) "Enter an HN username" else null },
+                    onOpen = onOpenUserProfile,
+                )
                 SettingsDivider()
                 SettingRow(
                     title = "Open without cache",
                     icon = Res.drawable.ic_cached,
-                    onClick = onOpenWithoutCache,
+                    onClick = { navigate(onOpenWithoutCache) },
                 )
             }
         }
@@ -152,25 +187,25 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = stringResource(Res.string.settings_section_glass),
                     icon = Res.drawable.ic_palette,
-                    onClick = onGlassSettingsRequested,
+                    onClick = { navigate(onGlassSettingsRequested) },
                 )
             }
         }
 
         item {
             SettingsCategory("Sample content") {
-                DebugLinkRows(DebugSampleContentLinks, onOpenLink)
+                DebugLinkRows(DebugSampleContentLinks) { url -> navigate { onOpenLink(url) } }
                 SettingsDivider()
                 SettingRow(
                     title = "Cached post",
                     icon = Res.drawable.ic_cached,
-                    onClick = onCachePost,
+                    onClick = { navigate(onCachePost) },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Link previews",
                     icon = Res.drawable.ic_preview,
-                    onClick = onLinkPreviewsRequested,
+                    onClick = { navigate(onLinkPreviewsRequested) },
                 )
             }
         }
@@ -180,19 +215,19 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "Welcome dialog",
                     icon = Res.drawable.ic_explore,
-                    onClick = { onDialogRequested(DebugSettingsDialog.WELCOME) },
+                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.WELCOME) } },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Changelog",
                     icon = Res.drawable.ic_history,
-                    onClick = { onDialogRequested(DebugSettingsDialog.CHANGELOG) },
+                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.CHANGELOG) } },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Debug notifications",
                     icon = Res.drawable.ic_notifications,
-                    onClick = { onDialogRequested(DebugSettingsDialog.NOTIFICATIONS) },
+                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.NOTIFICATIONS) } },
                 )
             }
         }
@@ -218,7 +253,7 @@ fun DebugSettingsScreen(
                         if (versionTapCount == 5) {
                             versionTapCount = 0
                             lastVersionTap = null
-                            onEasterEggRequested()
+                            navigate(onEasterEggRequested)
                         }
                     },
                 )
@@ -249,27 +284,28 @@ fun DebugSettingsScreen(
 }
 
 @Composable
-private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
-    val currentOnOpenId by rememberUpdatedState(onOpenId)
+private fun DebugOpenSetting(
+    title: String,
+    label: String,
+    description: String,
+    icon: DrawableResource,
+    numeric: Boolean = false,
+    validate: (String) -> String?,
+    onOpen: (String) -> Unit,
+) {
+    val currentOnOpen by rememberUpdatedState(onOpen)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var value by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
 
-    fun openId() {
+    fun open() {
         val trimmed = value.trim()
-        val id = trimmed.toIntOrNull()
-        when {
-            trimmed.isEmpty() || trimmed.any { !it.isDigit() } ->
-                error = "Enter a numeric HN ID"
-            id == null -> error = "HN ID is too large"
-            id <= 0 -> error = "Enter a positive HN ID"
-            else -> {
-                error = null
-                focusManager.clearFocus(force = true)
-                keyboardController?.hide()
-                currentOnOpenId(id)
-            }
+        error = validate(trimmed)
+        if (error == null) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+            currentOnOpen(trimmed)
         }
     }
 
@@ -286,14 +322,14 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                painterResource(Res.drawable.ic_open_in_new),
+                painterResource(icon),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = HarmonicTheme.colors.drawable,
             )
             Spacer(Modifier.width(32.dp))
             Text(
-                "Open HN item by ID",
+                title,
                 color = HarmonicTheme.colors.textPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
@@ -303,17 +339,17 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 56.dp, top = 8.dp),
+                .padding(start = 56.dp, top = 6.dp),
             verticalAlignment = Alignment.Top,
         ) {
             OutlinedTextField(
                 value = value,
                 onValueChange = {
-                    value = it.filter(Char::isDigit)
+                    value = if (numeric) it.filter(Char::isDigit) else it
                     error = null
                 },
                 modifier = Modifier.weight(1f),
-                label = { Text("HN ID", fontFamily = ProductSansFontFamily) },
+                label = { Text(label, fontFamily = ProductSansFontFamily) },
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { message ->
@@ -324,20 +360,23 @@ private fun DebugHnIdSetting(onOpenId: (Int) -> Unit) {
                     fontSize = 16.sp,
                 ),
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
+                    keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,
+                    autoCorrectEnabled = false,
                     imeAction = ImeAction.Go,
                 ),
-                keyboardActions = KeyboardActions(onGo = { openId() }),
+                keyboardActions = KeyboardActions(onGo = { open() }),
             )
-            OutlinedIconButton(
-                onClick = { openId() },
+            OutlinedButton(
+                onClick = { open() },
+                border = BorderStroke(1.dp, HarmonicTheme.colors.drawable.copy(alpha = 0.2f)),
+                contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
                     .padding(start = 10.dp, top = 12.dp)
                     .size(48.dp),
             ) {
                 Icon(
                     painterResource(Res.drawable.ic_chevron_right),
-                    contentDescription = "Open HN ID",
+                    contentDescription = description,
                     tint = HarmonicTheme.colors.drawable,
                 )
             }

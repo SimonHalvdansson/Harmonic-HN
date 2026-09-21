@@ -1,5 +1,12 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +15,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,29 +70,87 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
-    val preferences = SurfaceEffectPreferences(settings.appearance.surfaceEffectMode, settings.debug.glass)
-    SettingsPage(
-        title = stringResource(Res.string.settings_section_glass),
-        showNavigation = true,
-        onBack = onBack,
-        contentVersion = preferences.hashCode(),
-        pinnedContent = { SurfaceEffectPreview(preferences) },
-    ) {
-        if (preferences.mode == SurfaceEffectMode.Glass) {
-            glassTuningSettings(
-                preferences = preferences,
-                onParameterChanged = repository::setGlassParameter,
-                onSwitchChanged = repository::setGlassSwitch,
-                onProfileChanged = repository::setGlassSurfaceProfile,
-                onResetGlass = repository::resetGlassPreferences,
-            )
-        } else {
-            item {
-                Text(
-                    "Select Glass in Appearance to adjust its settings.",
-                    modifier = Modifier.padding(24.dp),
-                    color = HarmonicTheme.colors.textPrimary,
-                )
+    var animateReset by remember { mutableStateOf(false) }
+    val glass = settings.debug.glass
+    val displayedParameters = GlassParameter.entries.associateWith { parameter ->
+        val value by animateFloatAsState(
+            targetValue = glass[parameter],
+            animationSpec = if (animateReset) tween(250, easing = FastOutSlowInEasing) else snap(),
+            label = "Reset ${parameter.name}",
+        )
+        value
+    }
+    val preferences = SurfaceEffectPreferences(
+        settings.appearance.surfaceEffectMode,
+        glass.copy(parameters = displayedParameters),
+    )
+    CompositionLocalProvider(LocalHazePreferences provides preferences) {
+        HazeHost {
+            val hazeState = currentSharedHazeState()
+            val glassEnabled = preferences.mode == SurfaceEffectMode.Glass
+            Box(Modifier.fillMaxSize()) {
+                SettingsPage(
+                    title = stringResource(Res.string.settings_section_glass),
+                    showNavigation = true,
+                    onBack = onBack,
+                    modifier = Modifier.sharedHazeSource(hazeState),
+                    contentVersion = preferences.hashCode(),
+                    pinnedContent = { SurfaceEffectPreview(preferences) },
+                    extraBottomPadding = if (glassEnabled) 88.dp else 0.dp,
+                ) {
+                    if (glassEnabled) {
+                        glassTuningSettings(
+                            preferences = preferences,
+                            onParameterChanged = { parameter, value ->
+                                animateReset = false
+                                repository.setGlassParameter(parameter, value)
+                            },
+                            onSwitchChanged = { option, value ->
+                                animateReset = false
+                                repository.setGlassSwitch(option, value)
+                            },
+                            onProfileChanged = { profile ->
+                                animateReset = false
+                                repository.setGlassSurfaceProfile(profile)
+                            },
+                        )
+                    } else {
+                        item {
+                            Text(
+                                "Select Glass in Appearance to adjust its settings.",
+                                modifier = Modifier.padding(24.dp),
+                                color = HarmonicTheme.colors.textPrimary,
+                            )
+                        }
+                    }
+                }
+                if (glassEnabled) {
+                    val shape = RoundedCornerShape(28.dp)
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            animateReset = true
+                            repository.resetGlassPreferences()
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                            .padding(16.dp)
+                            .widthIn(min = 140.dp)
+                            .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, shape, clip = false)
+                            .sharedHazeBackground(
+                                hazeState = hazeState,
+                                surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                                shape = shape,
+                                glassAppearance = HazeGlassAppearance.FloatingButton,
+                            )
+                            .semantics { contentDescription = "Reset glass settings" },
+                        shape = shape,
+                        containerColor = Color.Transparent,
+                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+                        icon = { Icon(painterResource(Res.drawable.ic_refresh), null) },
+                        text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+                    )
+                }
             }
         }
     }
@@ -81,17 +161,10 @@ private fun LazyListScope.glassTuningSettings(
     onParameterChanged: (GlassParameter, Float) -> Unit,
     onSwitchChanged: (GlassSwitch, Boolean) -> Unit,
     onProfileChanged: (GlassSurfaceProfile) -> Unit,
-    onResetGlass: () -> Unit,
 ) {
     val glass = preferences.glass
     item(key = "glass-material") {
-        SettingsCategory("Glass · material") {
-            SettingRow(
-                title = "Reset glass settings",
-                summary = "Restore the default glass appearance.",
-                icon = Res.drawable.ic_refresh,
-                onClick = onResetGlass,
-            )
+        SettingsCategory("Material") {
             SwitchSettingRow(
                 title = "Keep surface tint",
                 summary = "Use theme and image-derived colours.",
@@ -111,7 +184,7 @@ private fun LazyListScope.glassTuningSettings(
         }
     }
     item(key = "glass-optics") {
-        SettingsCategory("Glass · optics") {
+        SettingsCategory("Optics") {
             SwitchSettingRow(
                 title = "Adaptive optics",
                 summary = "Automatically adjust blur and refraction to each surface. Turn off for manual control.",
@@ -138,7 +211,7 @@ private fun LazyListScope.glassTuningSettings(
         }
     }
     item(key = "glass-light") {
-        SettingsCategory("Glass · lighting") {
+        SettingsCategory("Lighting") {
             GlassSliders(glass, listOf(
                 GlassParameter.SpecularIntensity to "Highlight intensity",
                 GlassParameter.AmbientResponse to "Ambient light",
@@ -151,7 +224,7 @@ private fun LazyListScope.glassTuningSettings(
         }
     }
     item(key = "glass-colour") {
-        SettingsCategory("Glass · colour") {
+        SettingsCategory("Colour") {
             GlassSliders(glass, listOf(
                 GlassParameter.Contrast to "Contrast",
                 GlassParameter.WhitePoint to "White point",

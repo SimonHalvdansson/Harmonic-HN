@@ -41,7 +41,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -502,7 +502,7 @@ fun CommentsScreen(
                     controller.commentsRefreshInProgress,
                 state = pullToRefreshState,
                 indicator = {
-                    PullToRefreshDefaults.Indicator(
+                    HarmonicPullToRefreshIndicator(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .offset(y = statusBarInset),

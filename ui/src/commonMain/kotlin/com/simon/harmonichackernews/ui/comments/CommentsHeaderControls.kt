@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -629,14 +630,26 @@ private fun MoreMenu(
                 when (visiblePage) {
                     MoreMenuPage.Sort -> {
                         SubmenuHeader("Sort comments", onSubmenuBack)
+                        Spacer(Modifier.height(8.dp))
                         val options = stringArrayResource(Res.array.comment_sorting)
                         options.forEach { option ->
+                            val isSelected = option == controller.currentSorting
                             DropdownMenuItem(
-                                text = {
-                                    CommentsMenuText(
-                                        if (option == controller.currentSorting) "✓ $option" else option,
-                                    )
-                                },
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f) else Color.Transparent)
+                                    .semantics { selected = isSelected },
+                                text = { CommentsMenuText(option) },
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            painterResource(Res.drawable.ic_check),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                            tint = HarmonicTheme.colors.drawable,
+                                        )
+                                    }
+                                } else null,
                                 onClick = {
                                     onDismiss()
                                     controller.listener.onSortComments(option)
