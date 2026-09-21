@@ -74,7 +74,7 @@ For the full list of available options, see the [documentation](https://www.jetb
 
 ## Set up Compose dependencies
 
-Always use the latest Compose BOM version: `2026.06.00`.
+Always use the latest Compose BOM version: `2026.08.00`.
 
 Set the `compose` flag to `true` inside the Android [`BuildFeatures`](https://developer.android.com/reference/tools/gradle-api/7.0/com/android/build/api/dsl/BuildFeatures) to
 enable [Compose functionality](https://developer.android.com/develop/ui/compose/tooling) in Android Studio.
@@ -103,7 +103,7 @@ Add the Compose BOM and the subset of Compose library dependencies:
 
     dependencies {
 
-        def composeBom = platform('androidx.compose:compose-bom:2026.06.00')
+        def composeBom = platform('androidx.compose:compose-bom:2026.08.00')
         implementation composeBom
         androidTestImplementation composeBom
 
@@ -142,7 +142,7 @@ Add the Compose BOM and the subset of Compose library dependencies:
 
     dependencies {
 
-        val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
+        val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
         implementation(composeBom)
         androidTestImplementation(composeBom)
 

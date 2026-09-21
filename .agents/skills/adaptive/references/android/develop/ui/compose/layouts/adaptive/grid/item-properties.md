@@ -6,6 +6,8 @@ and alignment of items within that structure.
 
 Place an item into a specific track or cell
 with the `row` and `column` parameters.
+Coordinate indexes work best for straightforward grid layouts.
+For larger or more complex layouts, define [named areas](https://developer.android.com/develop/ui/compose/layouts/adaptive/grid/container-properties#named-area) instead.
 
 The `row` and `column` parameters specify the row and column track indexes
 that the item is placed in.

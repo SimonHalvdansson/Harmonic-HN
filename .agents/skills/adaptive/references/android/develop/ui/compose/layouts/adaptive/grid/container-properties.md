@@ -112,7 +112,7 @@ You can specify the size of a grid track using one of the following methods:
 - **Fixed** (`Dp`): Allocates a specific size (e.g., `column(180.dp)`).
 - **Percentage** (`Float`): Allocates a percentage of the total available space from `0.0f` to `1.0f` (e.g., `row(0.5f)` for 50%).
 - **Flexible** ([`Fr`](https://developer.android.com/reference/kotlin/androidx/compose/foundation/layout/Fr)): Distributes remaining space proportionally after fixed and percentage tracks are calculated. For example, if two rows are set to `1.fr` and `3.fr`, the latter receives 75% of the remaining height.
-- **Intrinsic** : Sizes the track based on the content inside it. For more information, see [Determine grid track size intrinsically](https://developer.android.com/develop/ui/compose/layouts/adaptive/grid/container-properties#intrinsic-grid-track-size).
+- **Intrinsic** : Sizes the track based on the content inside it. For more information, see [Determine grid track size intrinsically](https://developer.android.com/develop/ui/compose/layouts/adaptive/grid/container-properties#intrisic-grid-track-size).
 
 The following example uses the different track sizing options
 to define the row heights:
@@ -205,7 +205,7 @@ Grid(
     },
     modifier = Modifier.size(width = 170.dp, height = 240.dp)
 ) {
-    Text("Lazy column in a Grid")
+    Text("LazyColumn in a Grid")
     // The LazyColumn is placed in the second row, filling the remaining space.
     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(100) { number ->
@@ -318,3 +318,98 @@ Grid(
 ```
 
 <br />
+
+## Define grid areas with named areas
+
+Named areas allow you to attach names to groups of grid cells,
+which are called [grid areas](https://developer.android.com/develop/ui/compose/layouts/adaptive/grid#grid-area).
+You can use these names instead of [coordinate indexes](https://developer.android.com/develop/ui/compose/layouts/adaptive/grid/item-properties#position)
+when placing UI elements in the grid.
+
+Using named areas has two main benefits to code readability:
+
+- When defining the grid layout, the purpose and placement of the expected content is clear.
+- When adding the content, the purpose of that content is clear.
+
+To organize complex layouts clearly, you can decouple your physical grid
+structure from child placement by defining semantic grid areas.
+
+Inside the `config` lambda, use the [`area`](https://developer.android.com/reference/kotlin/androidx/compose/foundation/layout/GridConfigurationScope#area(kotlin.Any,kotlin.Int,kotlin.Int,kotlin.Int,kotlin.Int)) function in
+`GridConfigurationScope` to register named areas in the grid.
+You can then assign child composables to these areas
+using the [`gridItem`](https://developer.android.com/reference/kotlin/androidx/compose/foundation/layout/GridScope#(androidx.compose.ui.Modifier).gridItem(kotlin.Any,androidx.compose.ui.Alignment)) modifier
+with the corresponding area identifier. The `area` function maps
+a semantic identifier (such as an `enum` class value or a string key) to
+a set of physical grid coordinates. Grid lines and indexes are **1-based**
+(that is, the first row is `1`, and the first column is `1`).
+
+For example, you define a grid that has four area IDs:
+
+
+```kotlin
+/**
+ * An enum representing the IDs for named areas within the grid.
+ */
+enum class GridAreaNames {
+    Area1,
+    Area2,
+    Area3,
+    Area4
+}
+```
+
+<br />
+
+Provide the name for the area using the `areaId` parameter along with the area's
+cell coordinates and spans.
+The `gridItem` modifier uses the `areaId` as a key
+to assign each child item to its designated grid area,
+as shown in the following example:
+
+
+```kotlin
+Grid(
+    config = {
+        // Define a single column that takes all available width.
+        repeat(2) { column(0.5f) }
+
+        // Define four rows, each taking 25% of the total height.
+        repeat(4) { row(0.25f) }
+
+        // Define named grid areas by associating an areaId with specific row and column indices.
+        // Row and column indices are 1-based.
+        area(areaId = GridAreaNames.Area1, row = 1, column = 1, columnSpan = 2)
+        area(areaId = GridAreaNames.Area2, row = 2, column = 1, rowSpan = 3)
+        area(areaId = GridAreaNames.Area3, rows = 2..3, columns = 2..2)
+        area(areaId = GridAreaNames.Area4, row = 4, column = 2)
+
+        gap(4.dp)
+    },
+    modifier = Modifier.size(360.dp)
+) {
+    PastelRedCard(
+        "Area 1",
+        // Use Modifier.gridItem(areaId) to place this composable into the
+        // grid area defined with the matching ID in the config block.
+        modifier = Modifier.gridItem(areaId = GridAreaNames.Area1)
+    )
+    PastelGreenCard(
+        "Area 2",
+        modifier = Modifier.gridItem(areaId = GridAreaNames.Area2)
+    )
+    PastelBlueCard(
+        "Area 3",
+        modifier = Modifier.gridItem(areaId = GridAreaNames.Area3)
+    )
+    PastelYellowCard(
+        "Area 4",
+        modifier = Modifier.gridItem(areaId = GridAreaNames.Area4)
+    )
+}
+```
+
+<br />
+
+By using named areas, you can reorganize or adjust the physical layout grid (for
+example, changing rows, columns, or track sizes) in the `config` lambda
+without needing to modify the order or parameters of the child composables.

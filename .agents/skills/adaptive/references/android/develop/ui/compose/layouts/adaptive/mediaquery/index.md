@@ -16,6 +16,10 @@ Because the information is updated dynamically,
 you need to monitor it and trigger recomposition when any update happens.
 The [`mediaQuery`](https://developer.android.com/reference/kotlin/androidx/compose/ui/mediaQuery.composable#mediaQuery(kotlin.Function1)) function abstracts the details of the information retrieval
 and lets you focus on defining the condition to trigger the layout updates.
+
+> [!NOTE]
+> **Note:** "media" refers to the presentation medium that the UI is rendered on. The term "media" originates from [CSS media queries](https://www.w3.org/TR/mediaqueries-3/) which inspired the `mediaQuery` API.
+
 The following example switches the layout to `TabletopLayout`
 when the foldable posture is tabletop:
 

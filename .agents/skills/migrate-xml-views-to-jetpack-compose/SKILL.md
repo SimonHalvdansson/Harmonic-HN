@@ -9,7 +9,7 @@ description: Provides a structured workflow for migrating an Android XML View to
 license: Complete terms in LICENSE.txt
 metadata:
   author: Google LLC
-  last-updated: '2026-07-02'
+  last-updated: '2026-08-14'
   keywords:
   - Jetpack Compose
   - migration
