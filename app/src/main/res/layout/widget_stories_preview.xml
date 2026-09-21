@@ -12,7 +12,7 @@
         android:paddingTop="6dp" android:paddingBottom="2dp">
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:text="@string/widget_top_stories" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
-            android:textSize="16sp" android:textColor="@color/widget_title" android:maxLines="1" />
+            android:textSize="18sp" android:textColor="@color/widget_title" android:maxLines="1" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Updated just now" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
             android:textColor="@color/widget_secondary_text" />
