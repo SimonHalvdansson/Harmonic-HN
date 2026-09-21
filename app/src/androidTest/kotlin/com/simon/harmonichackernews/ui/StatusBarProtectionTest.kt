@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.ui.navigation.StatusBarProtection
+import com.simon.harmonichackernews.ui.navigation.statusBarProtectionAlpha
+import kotlin.math.roundToInt
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +29,25 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class StatusBarProtectionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun smoothFadeEndsFourDpBelowStatusBar() {
+        compose.setContent {
+            Box(Modifier.size(100.dp).background(Color.Black).testTag("scene")) {
+                StatusBarProtection(Color.White, 24.dp)
+            }
+        }
+        val pixels = compose.onNodeWithTag("scene").captureToImage().toPixelMap()
+        val density = compose.activity.resources.displayMetrics.density
+        val heightPx = (28 * density).roundToInt()
+        val x = (50 * density).toInt()
+        for (distanceDp in listOf(0, 12, 24, 25, 26, 27, 28, 30)) {
+            val y = (distanceDp * density).toInt()
+            val t = ((y + 0.5f) / heightPx).coerceIn(0f, 1f)
+            val alpha = statusBarProtectionAlpha(t, 24f / 28f)
+            assertColor(Color(alpha, alpha, alpha), pixels[x, y])
+        }
+    }
 
     @Test
     fun movingModalStaysUnderGradientButAbovePageDim() {
@@ -50,7 +70,12 @@ class StatusBarProtectionTest {
             val x = (64 * density).toInt()
             val y = ((top.coerceAtLeast(0f) + 16) * density).toInt()
             val gradientCoverage = baseline[x, y].green
-            assertTrue("The gradient must cover the moving card at y=$top", gradientCoverage > 0.2f)
+            val expectedCoverage = statusBarProtectionAlpha(
+                (y + 0.5f) / (44 * density).roundToInt(),
+                40f / 44f,
+            )
+            assertEquals("Gradient coverage on the moving card at y=$top",
+                expectedCoverage, gradientCoverage, 0.015f)
             for (alpha in listOf(0.16f, 0.32f, 0.16f, 0f)) {
                 compose.runOnIdle { dim.floatValue = alpha }
                 val pixels = compose.onNodeWithTag("scene").captureToImage().toPixelMap()

@@ -521,9 +521,9 @@ private fun SubmissionsHeader(
                     top = if (reserveBackButtonSpace) {
                         64.dp
                     } else if (compact) {
-                        27.75.dp
+                        15.75.dp
                     } else {
-                        47.75.dp
+                        35.75.dp
                     },
                     bottom = if (compact) 8.dp else 16.dp,
                 )

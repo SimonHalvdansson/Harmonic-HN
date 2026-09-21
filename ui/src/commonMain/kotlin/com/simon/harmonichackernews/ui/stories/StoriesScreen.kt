@@ -960,7 +960,7 @@ private fun StoriesHeader(
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val settings = controller.displaySettings ?: return
     val compact = settings.compactHeader
-    val topSpacing = if (compact) 20.dp else 40.dp
+    val topSpacing = if (compact) 8.dp else 28.dp
     val bottomSpacing = if (compact) 4.dp else 8.dp
 
     val sideStart = 16.dp + startInset + safeStart

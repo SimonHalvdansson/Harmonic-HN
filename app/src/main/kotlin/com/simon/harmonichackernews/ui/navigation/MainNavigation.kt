@@ -16,12 +16,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -49,8 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -1498,32 +1494,6 @@ private fun CommentsPane(
             }
         }
     }
-}
-
-@Composable
-internal fun StatusBarProtection(
-    color: Color,
-    statusBarHeight: Dp,
-    modalScrimAlpha: Float = 0f,
-) {
-    // Keep the gradient above moving modal cards (100), below floating controls (101).
-    // The modal dim is underneath us, so darken the gradient's color by that same amount.
-    // A second black overlay here would also dim the card and double-dim the page beneath it.
-    val protectedColor = Color.Black.copy(alpha = modalScrimAlpha.coerceIn(0f, 1f))
-        .compositeOver(color)
-    Spacer(
-        modifier = Modifier
-            .zIndex(100.5f)
-            .fillMaxWidth()
-            .height(statusBarHeight + 16.dp)
-            .background(
-                Brush.verticalGradient(
-                    0f to protectedColor.copy(alpha = 0.92f),
-                    0.58f to protectedColor.copy(alpha = 0.72f),
-                    1f to protectedColor.copy(alpha = 0f),
-                ),
-            ),
-    )
 }
 
 private const val LEGACY_COMMENTS_PANE_WEIGHT = 5f
