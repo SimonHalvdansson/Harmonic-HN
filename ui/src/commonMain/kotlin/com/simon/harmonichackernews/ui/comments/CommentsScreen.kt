@@ -42,6 +42,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -788,6 +789,7 @@ private fun CommentNavigationButtons(
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
     val shape = RoundedCornerShape(28.dp)
+    val navigationRipple = ripple(bounded = true, radius = 48.dp)
     val hazeState = currentCommentsHazeState()
     val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
 
@@ -812,7 +814,12 @@ private fun CommentNavigationButtons(
                         topEnd = 12.dp,
                         bottomEnd = 12.dp,
                     ))
-                    .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
+                    .combinedClickable(
+                        interactionSource = null,
+                        indication = navigationRipple,
+                        onClick = onPrevious,
+                        onLongClick = onFirst,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -843,7 +850,12 @@ private fun CommentNavigationButtons(
                         topEnd = 28.dp,
                         bottomEnd = 28.dp,
                     ))
-                    .combinedClickable(onClick = onNext, onLongClick = onLast),
+                    .combinedClickable(
+                        interactionSource = null,
+                        indication = navigationRipple,
+                        onClick = onNext,
+                        onLongClick = onLast,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
