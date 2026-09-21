@@ -51,6 +51,7 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_SHOW_UP_BUTTON = "pref_comments_show_up_button"
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
+    const val LAST_ENABLED_COMMENT_DEPTH_INDICATORS = "pref_last_enabled_comment_depth_indicators"
     const val COMMENT_INDICATOR_THICKNESS = "pref_comment_indicator_thickness"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"

@@ -321,6 +321,23 @@ class StoredSettingsMutator(
         )
     }
 
+    fun setCommentDepthIndicatorsEnabled(enabled: Boolean, currentMode: String) {
+        if (enabled == CommentDepthPreferences.shouldShowIndicators(currentMode)) return
+        if (enabled) {
+            val previousMode = CommentDepthPreferences.sanitizeMode(
+                store.getString(UserPreferenceKeys.LAST_ENABLED_COMMENT_DEPTH_INDICATORS)
+                    ?: CommentDepthPreferences.THEME_DEFAULT,
+            )
+            setCommentDepthIndicatorMode(
+                previousMode.takeUnless { it == CommentDepthPreferences.NONE }
+                    ?: CommentDepthPreferences.THEME_DEFAULT,
+            )
+        } else {
+            store.putString(UserPreferenceKeys.LAST_ENABLED_COMMENT_DEPTH_INDICATORS, currentMode)
+            setCommentDepthIndicatorMode(CommentDepthPreferences.NONE)
+        }
+    }
+
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) {
         store.putString(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, value.storedValue)
     }

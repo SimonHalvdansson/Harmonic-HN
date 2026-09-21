@@ -12,6 +12,39 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun depthIndicatorSwitchRestoresColorsAcrossRepositoryRecreation() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        repository.setCommentDepthIndicatorMode(CommentDepthPreferences.AUTHOR)
+        repository.setCommentBoolean(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS, true)
+        repository.setCommentDepthIndicatorsEnabled(false)
+        repository.setCommentDepthIndicatorsEnabled(false)
+        assertEquals(CommentDepthPreferences.NONE, repository.snapshot().comments.depthIndicatorMode)
+
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        restored.setCommentDepthIndicatorsEnabled(true)
+        assertEquals(CommentDepthPreferences.AUTHOR, restored.snapshot().comments.depthIndicatorMode)
+        assertTrue(restored.snapshot().comments.continuousDepthIndicators)
+    }
+
+    @Test
+    fun depthIndicatorSwitchSupportsLegacyPreferences() {
+        val disabledStore = TestKeyValueStore(
+            mapOf(UserPreferenceKeys.COMMENT_DEPTH_INDICATORS to CommentDepthPreferences.NONE),
+        )
+        val disabled = AppSettingsRepository(disabledStore, kotlinx.coroutines.flow.emptyFlow())
+        assertEquals(CommentDepthPreferences.NONE, disabled.snapshot().comments.depthIndicatorMode)
+        disabled.setCommentDepthIndicatorsEnabled(true)
+        assertEquals(CommentDepthPreferences.THEME_DEFAULT, disabled.snapshot().comments.depthIndicatorMode)
+
+        val monochromeStore = TestKeyValueStore(mapOf(UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH to true))
+        val monochrome = AppSettingsRepository(monochromeStore, kotlinx.coroutines.flow.emptyFlow())
+        monochrome.setCommentDepthIndicatorsEnabled(false)
+        monochrome.setCommentDepthIndicatorsEnabled(true)
+        assertEquals(CommentDepthPreferences.MONOCHROME, monochrome.snapshot().comments.depthIndicatorMode)
+    }
+
+    @Test
     fun storyListSelectorDefaultsToDropdownAndPersistsAcrossReaders() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

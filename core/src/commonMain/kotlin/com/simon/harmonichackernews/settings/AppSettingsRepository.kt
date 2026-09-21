@@ -151,6 +151,8 @@ class AppSettingsRepository(
     fun setCommentsVolumeNavigation(value: CommentVolumeNavigationMode) =
         mutator.setCommentsVolumeNavigation(value)
     fun setCommentDepthIndicatorMode(value: String) = mutator.setCommentDepthIndicatorMode(value)
+    fun setCommentDepthIndicatorsEnabled(enabled: Boolean) =
+        mutator.setCommentDepthIndicatorsEnabled(enabled, reader.comments.depthIndicatorMode)
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) = mutator.setCommentIndicatorThickness(value)
     fun setUserAvatarOptions(value: UserAvatarOptions) = mutator.setUserAvatarOptions(value)
     fun setUserAvatarsEnabled(enabled: Boolean) = mutator.setUserAvatarsEnabled(enabled)

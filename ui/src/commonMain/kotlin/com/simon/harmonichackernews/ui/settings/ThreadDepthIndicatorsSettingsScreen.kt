@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +41,7 @@ fun ThreadDepthIndicatorsSettingsRoute(
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
     ThreadDepthIndicatorsSettingsScreen(
         state = presenter.state(settings),
+        onEnabledChanged = repository::setCommentDepthIndicatorsEnabled,
         onModeSelected = presenter::setDepthIndicatorMode,
         onThicknessSelected = presenter::setIndicatorThickness,
         onBooleanChanged = presenter::setBoolean,
@@ -50,6 +52,7 @@ fun ThreadDepthIndicatorsSettingsRoute(
 @Composable
 private fun ThreadDepthIndicatorsSettingsScreen(
     state: CommentsSettingsUiState,
+    onEnabledChanged: (Boolean) -> Unit,
     onModeSelected: (String) -> Unit,
     onThicknessSelected: (CommentIndicatorThickness) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
@@ -81,13 +84,21 @@ private fun ThreadDepthIndicatorsSettingsScreen(
         CommentDepthPreferences.COLORS,
         CommentDepthPreferences.AUTHOR,
         CommentDepthPreferences.MONOCHROME,
-        CommentDepthPreferences.NONE,
     )
+    val indicatorsEnabled = CommentDepthPreferences.shouldShowIndicators(state.depthMode)
     SettingsPage(
         title = stringResource(Res.string.settings_section_thread_depth),
         showNavigation = true,
         onBack = onBack,
         contentVersion = state.hashCode(),
+        headerContent = {
+            SettingsMainToggle(
+                title = "Use thread depth indicators",
+                checked = indicatorsEnabled,
+                enabled = true,
+                onCheckedChange = onEnabledChanged,
+            )
+        },
         pinnedContent = {
             // Use runtime rows so indentation, surfaces, type, metadata and top-level indicators
             // follow the same preferences as the actual thread.
@@ -119,6 +130,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                     title = "Thickness",
                     options = CommentIndicatorThickness.entries.map { it.storedValue to it.label },
                     selected = state.indicatorThickness.storedValue,
+                    enabled = indicatorsEnabled,
                     onSelected = { onThicknessSelected(CommentIndicatorThickness.fromStored(it)) },
                 )
                 SettingsDivider()
@@ -127,6 +139,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                     summary = "Rounded line ends; sits beside the card in Filled and Raised",
                     icon = Res.drawable.ic_select,
                     checked = state.roundedDepthIndicators,
+                    enabled = indicatorsEnabled,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.RoundedDepthIndicators, it) },
                 )
             }
@@ -134,23 +147,23 @@ private fun ThreadDepthIndicatorsSettingsScreen(
         item {
             SettingsCategory("Thread lines") {
                 SwitchSettingRow(
-                    title = "Show top level thread indicators",
-                    summary = "Makes it easier to separate top level comments",
-                    icon = Res.drawable.ic_format_align_left,
-                    checked = state.topLevelIndicators,
-                    enabled = state.depthMode != CommentDepthPreferences.NONE,
-                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.TopLevelIndicators, it) },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
                     title = "Continuous thread lines",
                     summary = if (state.depthMode == CommentDepthPreferences.AUTHOR) {
                         "Unavailable with Author colors"
                     } else "Continue ancestor lines along the left of their replies",
-                    icon = Res.drawable.ic_format_align_left,
+                    icon = Res.drawable.ic_account_tree,
                     checked = state.continuousDepthIndicators && state.depthMode != CommentDepthPreferences.AUTHOR,
-                    enabled = state.depthMode != CommentDepthPreferences.AUTHOR && state.depthMode != CommentDepthPreferences.NONE,
+                    enabled = indicatorsEnabled && state.depthMode != CommentDepthPreferences.AUTHOR,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.ContinuousDepthIndicators, it) },
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Show top level thread indicators",
+                    summary = "Makes it easier to separate top level comments",
+                    icon = Res.drawable.ic_border_left,
+                    checked = state.topLevelIndicators,
+                    enabled = indicatorsEnabled,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.TopLevelIndicators, it) },
                 )
             }
         }
@@ -160,6 +173,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                     Modifier
                         .fillMaxWidth()
                         .background(settingsItemBackgroundColor())
+                        .alpha(if (indicatorsEnabled) 1f else 0.38f)
                         .selectableGroup(),
                 ) {
                     modes.forEachIndexed { index, option ->
@@ -170,6 +184,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                                 .defaultMinSize(minHeight = 52.dp)
                                 .selectable(
                                     selected = selected,
+                                    enabled = indicatorsEnabled,
                                     role = Role.RadioButton,
                                     onClick = { onModeSelected(option) },
                                 )
