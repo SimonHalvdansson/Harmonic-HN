@@ -30,7 +30,7 @@
         <item name="commentCountIndicatorColor">@color/material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnPrimaryContainer</item>
+        <item name="overlayButtonContentColor">?attr/colorOnSurface</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
         <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
         <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
@@ -66,7 +66,7 @@
         <item name="commentCountIndicatorColor">@color/fixed_material_comment_count_indicator</item>
         <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
         <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnPrimaryContainer</item>
+        <item name="overlayButtonContentColor">?attr/colorOnSurface</item>
         <item name="overlayButtonOutlineColor">@android:color/transparent</item>
         <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
         <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
