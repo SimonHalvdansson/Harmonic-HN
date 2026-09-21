@@ -140,6 +140,8 @@ class AppSettingsRepository(
     fun setCommentBoolean(preference: CommentBooleanPreference, value: Boolean) =
         mutator.setCommentBoolean(preference, value)
 
+    fun setCollectedLinksMode(mode: CollectedLinksMode) = mutator.setCollectedLinksMode(mode)
+
     fun setCommentDisplayStyle(value: String) = mutator.setCommentDisplayStyle(value)
     fun setCommentDisplayStyle(value: DisplayStyle) = mutator.setCommentDisplayStyle(value)
     fun setCommentTextSize(value: Float) = mutator.setCommentTextSize(value)

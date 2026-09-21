@@ -803,6 +803,9 @@ private fun CommentsMenuText(text: String) {
 
 @Composable
 fun OpFilterBanner(controller: CommentsComposeController) {
+    val colors = HarmonicTheme.colors
+    val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
+    val contentColor = if (HarmonicTheme.isDark) colors.storyNormal else colors.onSecondaryContainer
     AnimatedVisibility(
         visible = controller.commentsByOpFilterActive,
         enter = fadeIn() + expandVertically(),
@@ -813,14 +816,14 @@ fun OpFilterBanner(controller: CommentsComposeController) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(HarmonicTheme.colors.surfaceContainerHigh)
+                .background(bannerColor)
                 .padding(start = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Showing comments by OP",
+                "Showing comment threads with OP",
                 modifier = Modifier.weight(1f),
-                color = HarmonicTheme.colors.storyNormal,
+                color = contentColor,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
@@ -829,7 +832,7 @@ fun OpFilterBanner(controller: CommentsComposeController) {
                 IconButton(
                     onClick = { controller.listener.onMoreAction(CommentsMoreAction.COMMENTS_BY_OP) },
                 ) {
-                    Icon(painterResource(Res.drawable.ic_close), contentDescription = "Show all comments")
+                    Icon(painterResource(Res.drawable.ic_close), contentDescription = "Show all comments", tint = contentColor)
                 }
             }
         }

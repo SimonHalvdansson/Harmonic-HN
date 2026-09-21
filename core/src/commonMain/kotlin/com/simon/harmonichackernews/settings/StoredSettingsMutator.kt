@@ -85,6 +85,13 @@ class StoredSettingsMutator(
         store.putBoolean(preference.storageKey, value)
     }
 
+    fun setCollectedLinksMode(mode: CollectedLinksMode) {
+        store.update {
+            putBoolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, mode != CollectedLinksMode.Off)
+            putBoolean(UserPreferenceKeys.EXPAND_COLLECTED_LINKS, mode == CollectedLinksMode.Expanded)
+        }
+    }
+
     fun setCommentDisplayStyle(value: String) {
         setCommentDisplayStyle(DisplayStyle.fromStored(value))
     }

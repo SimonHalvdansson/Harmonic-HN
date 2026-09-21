@@ -29,6 +29,7 @@ internal fun CommentsSettingsUiState.toPreviewCommentItemStyle(): CommentItemSty
         displayStyle = displayStyle,
         textSize = textSize,
         collectLinks = collectLinks,
+        expandedReferenceLinks = expandedReferenceLinks,
         emphasizeMeta = emphasizeMetadata,
         depthIndicatorMode = depthMode,
         indicatorThickness = indicatorThickness,

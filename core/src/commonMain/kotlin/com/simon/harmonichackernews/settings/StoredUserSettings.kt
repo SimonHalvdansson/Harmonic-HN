@@ -63,6 +63,7 @@ object UserPreferenceKeys {
     const val COMMENTS_SWAP_LONG = "pref_comments_swap_long"
     const val COMMENT_DIVIDERS = "pref_comment_dividers"
     const val HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta"
+    const val EXPAND_COLLECTED_LINKS = "pref_expand_collected_links"
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
     const val COLLAPSE_TOP_LEVEL = "pref_collapse_top_level"
     const val HIDE_DELAYED_COMMENTS = "pref_hide_delayed_comments"
@@ -208,6 +209,7 @@ class StoredUserSettings(
                 ),
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),
+                expandedReferenceLinks = boolean(UserPreferenceKeys.EXPAND_COLLECTED_LINKS, false),
                 collectReferenceLinks =
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),

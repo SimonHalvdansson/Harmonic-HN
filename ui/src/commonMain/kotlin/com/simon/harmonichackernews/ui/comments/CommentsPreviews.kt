@@ -17,7 +17,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +34,6 @@ import com.simon.harmonichackernews.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,10 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
@@ -75,10 +71,9 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.ReferenceRow
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.content.prepareCommentHtml
-import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
-import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -269,66 +264,22 @@ private fun HeaderReferenceRow(
     ) -> Unit,
 ) {
     val platform = LocalCommentsPreviewPlatform.current
-    val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
     )
-    var bounds by remember(link.url) { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    var sourceContentLayer by remember(link.url) { mutableStateOf<GraphicsLayer?>(null) }
-    Box(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer(alpha = if (suppressed) 0f else 1f)
-                .defaultMinSize(minHeight = 38.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
-                .onGloballyPositioned { bounds = it.boundsInWindow() }
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
-                    onClick = { platform.openLink(link.url) },
-                    onLongClick = { onLongClick(link, bounds, sourceContentLayer) },
-                )
-                .onSecondaryClick { onLongClick(link, bounds, sourceContentLayer) }
-                .captureSharedTransformSourceContent { sourceContentLayer = it }
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AsyncImage(
-                model = runCatching {
-                    FaviconUrlBuilder.faviconUrl(link.url.orEmpty(), settings.faviconProvider)
-                }.getOrNull(),
-                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                contentDescription = null,
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(17.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-            )
-            if (link.hasNumber()) {
-                Text(
-                    link.markerLabel.orEmpty(),
-                    modifier = Modifier.padding(end = 8.dp),
-                    color = colors.storyDisabled,
-                    fontFamily = typography.family,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = typography.referenceMarkerSize.sp,
-                )
-            }
-            Text(
-                rememberReferenceLinkLabel(link),
-                modifier = Modifier.weight(1f),
-                color = colors.storyNormal,
-                fontFamily = typography.family,
-                fontSize = typography.referenceLabelSize.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    ReferenceRow(
+        marker = if (link.hasNumber()) link.markerLabel.orEmpty() else "",
+        label = rememberReferenceLinkLabel(link, settings.expandedReferenceLinks),
+        typography = typography,
+        expandedUrl = link.url.orEmpty().takeIf { settings.expandedReferenceLinks },
+        faviconUrl = runCatching {
+            FaviconUrlBuilder.faviconUrl(link.url.orEmpty(), settings.faviconProvider)
+        }.getOrNull(),
+        suppressed = suppressed,
+        onClick = { platform.openLink(link.url) },
+        onLongClick = { bounds, layer -> onLongClick(link, bounds, layer) },
+    )
 }
 
 @Composable

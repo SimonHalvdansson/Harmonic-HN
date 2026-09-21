@@ -37,6 +37,7 @@ data class CommentDisplaySettings(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
+    val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
@@ -83,6 +84,7 @@ data class CommentDisplaySettings(
             showDividers = preferences.showDividers,
             highlightCommentMeta = preferences.highlightMetadata,
             collectReferenceLinks = preferences.collectReferenceLinks,
+            expandedReferenceLinks = preferences.expandedReferenceLinks,
             hasAccountDetails = hasAccountDetails,
             canProvideSummary = canProvideSummary,
             showAdditionalSummaryInfo = showAdditionalSummaryInfo,

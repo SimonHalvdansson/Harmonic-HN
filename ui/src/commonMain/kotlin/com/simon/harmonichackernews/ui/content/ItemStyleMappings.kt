@@ -48,6 +48,7 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
         displayStyle = displayStyle,
         textSize = preferredTextSize,
         collectLinks = collectReferenceLinks,
+        expandedReferenceLinks = expandedReferenceLinks,
         emphasizeMeta = highlightCommentMeta,
         depthIndicatorMode = commentDepthIndicatorMode,
         indicatorThickness = indicatorThickness,

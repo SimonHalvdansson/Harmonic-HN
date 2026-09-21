@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,7 +91,7 @@ fun CommentSearchScreen(
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
         )
-        OutlinedTextField(
+        TextField(
             value = fieldValue,
             onValueChange = { value ->
                 fieldValue = value
@@ -102,7 +104,13 @@ fun CommentSearchScreen(
                 .focusRequester(focusRequester),
             placeholder = { Text("Search comments") },
             leadingIcon = { Icon(painterResource(Res.drawable.ic_search), null) },
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(32.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.Search,

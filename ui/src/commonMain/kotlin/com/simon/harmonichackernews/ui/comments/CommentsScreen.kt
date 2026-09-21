@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -567,6 +569,11 @@ fun CommentsScreen(
                     )
                 },
                 modifier = Modifier
+                    // A drag cancels the click and stays on the button, without moving
+                    // either the comments list or its parent sheet.
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, _ -> change.consume() }
+                    }
                     .shadow(3.dp, scrollTopShape, clip = false)
                     .sharedHazeBackground(
                         glassAppearance = HazeGlassAppearance.FloatingButton,

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ data class CommentsSettingsUiState(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
+    val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 )
@@ -89,6 +91,7 @@ fun CommentsSettingsScreen(
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -133,7 +136,12 @@ fun CommentsSettingsScreen(
                     onValueChange = { onTextSizeOffsetChanged(it.toInt()) },
                 )
                 SettingsDivider()
-                BooleanRow("Collect links", Res.drawable.ic_link, state.collectLinks, CommentsBooleanSetting.CollectLinks, onBooleanChanged)
+                SegmentedSetting(
+                    title = "Collect links",
+                    options = CollectedLinksMode.entries.map { it to it.label },
+                    selected = CollectedLinksMode.from(state.collectLinks, state.expandedReferenceLinks),
+                    onSelected = onCollectedLinksModeChanged,
+                )
                 SettingsDivider()
                 BooleanRow("Emphasize meta", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
                 SettingsDivider()

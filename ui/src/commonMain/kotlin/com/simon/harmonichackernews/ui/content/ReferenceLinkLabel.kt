@@ -21,10 +21,10 @@ internal fun shouldResolveReferenceLinkTitle(url: String): Boolean =
 
 /** Resolves supported reference links to useful source titles. */
 @Composable
-fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink): String {
+fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink, resolveAllTitles: Boolean = false): String {
     val url = link.url.orEmpty()
     val fallback = ReferenceLinkRowUtils.getReferenceLinkLabel(link)
-    if (!shouldResolveReferenceLinkTitle(url)) return fallback
+    if (!resolveAllTitles && !shouldResolveReferenceLinkTitle(url)) return fallback
     val dependencies = LocalHarmonicUiDependencies.current
     var label by remember(url, link.resolvedTitle) { mutableStateOf(fallback) }
 

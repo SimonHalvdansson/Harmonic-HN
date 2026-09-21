@@ -469,6 +469,7 @@ fun CommentsSettingsRoute(
         showNavigation = showNavigation,
         onBack = onBack,
         onDisplayStyleChanged = presenter::setDisplayStyle,
+        onCollectedLinksModeChanged = presenter::setCollectedLinksMode,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },

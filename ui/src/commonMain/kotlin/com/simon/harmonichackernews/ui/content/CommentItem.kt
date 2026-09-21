@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.ui.content
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
@@ -51,11 +54,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -130,6 +135,7 @@ data class CommentItemStyle(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
+    val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
@@ -294,7 +300,8 @@ fun CommentItem(
                 if (collectLinks) {
                     ReferenceRow(
                         marker = model.referenceMarker,
-                        label = model.referenceUrl,
+                        label = if (style.expandedReferenceLinks) "Reference article" else model.referenceUrl,
+                        expandedUrl = model.referenceUrl.takeIf { style.expandedReferenceLinks },
                         typography = typography,
                         modifier = Modifier.padding(top = 5.dp),
                         onClick = {},
@@ -411,25 +418,33 @@ fun CommentItem(
             16.dp.roundToPx() + 12.dp.roundToPx() * depth,
             (size.width * 0.6f).roundToInt(),
         ).toFloat()
-        onDrawBehind {
-            railColors.forEachIndexed { index, railColor ->
-                val color = railColor.copy(alpha = railColor.alpha * continuousProgress)
-                val depth = firstRailDepth + index
-                val x = railStart(depth)
-                // The current line belongs to CommentSurface, including its detached rail.
-                // Only extend it through the gap below a parent with replies.
-                val isAncestor = depth < effectiveDepth
-                if (!isAncestor && (nextCommentDepth == null || nextCommentDepth <= depth)) return@forEachIndexed
-                val y = if (isAncestor) 0f else size.height - inset
-                val bottomY = if (nextCommentDepth != null && nextCommentDepth > depth) {
-                    size.height
-                } else size.height - inset
-                // Only the actual branch ends are rounded; joins remain seamless.
-                val radius = if (isAncestor) railWidth / 2f * indicatorGeometry.rounding else 0f
-                drawRoundRect(color, Offset(x, y), Size(railWidth, (bottomY - y).coerceAtLeast(0f)), CornerRadius(radius))
-                if (y == 0f) drawRect(color, Offset(x, 0f), Size(railWidth, radius))
-                if (bottomY == size.height) drawRect(color, Offset(x, bottomY - radius), Size(railWidth, radius))
+        val railSegments = railColors.mapIndexedNotNull { index, railColor ->
+            val depth = firstRailDepth + index
+            val x = railStart(depth)
+            // The current line belongs to CommentSurface; only extend it through its gap.
+            val isAncestor = depth < effectiveDepth
+            if (!isAncestor && (nextCommentDepth == null || nextCommentDepth <= depth)) {
+                return@mapIndexedNotNull null
             }
+            val y = if (isAncestor) 0f else size.height - inset
+            val continuesBelow = nextCommentDepth != null && nextCommentDepth > depth
+            val bottomY = if (continuesBelow) size.height else size.height - inset
+            val radius = if (isAncestor && !continuesBelow) {
+                CornerRadius(railWidth / 2f * indicatorGeometry.rounding)
+            } else CornerRadius.Zero
+            // A single path avoids alpha accumulation where square joins used to cover
+            // rounded caps, which flashed darker while continuous lines faded in or out.
+            val path = Path().apply {
+                addRoundRect(RoundRect(
+                    rect = Rect(x, y, x + railWidth, bottomY.coerceAtLeast(y)),
+                    bottomLeft = radius,
+                    bottomRight = radius,
+                ))
+            }
+            path to railColor.copy(alpha = railColor.alpha * continuousProgress)
+        }
+        onDrawBehind {
+            railSegments.forEach { (path, color) -> drawPath(path, color) }
             if (style.showDivider) {
                 val x = railStart(effectiveDepth) + (railWidth + 8.dp.toPx()) * continuousProgress
                 drawRect(dividerColor, Offset(x, size.height - 0.5.dp.toPx()), Size((size.width - x - 16.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx()))
@@ -554,7 +569,8 @@ fun CommentItem(
                         } else {
                             ReferenceRow(
                                 marker = link.markerLabel.orEmpty(),
-                                label = rememberReferenceLinkLabel(link),
+                                label = rememberReferenceLinkLabel(link, style.expandedReferenceLinks),
+                                expandedUrl = link.url.takeIf { style.expandedReferenceLinks },
                                 typography = typography,
                                 faviconUrl = rememberReferenceLinkFaviconUrl(link),
                                 modifier = when {
@@ -1143,11 +1159,13 @@ private fun CommentMeta(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun ReferenceRow(
+internal fun ReferenceRow(
     marker: String,
     label: String,
     typography: ContentTypography,
+    expandedUrl: String? = null,
     faviconUrl: String? = null,
     modifier: Modifier = Modifier,
     suppressed: Boolean = false,
@@ -1155,6 +1173,11 @@ private fun ReferenceRow(
     onLongClick: (Rect, GraphicsLayer?) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
+    val faviconSize by animateDpAsState(
+        targetValue = if (expandedUrl != null) 21.dp else 17.dp,
+        animationSpec = contentTween(),
+        label = "collected link favicon size",
+    )
     var bounds by remember(label) { mutableStateOf(Rect.Zero) }
     var sourceContentLayer by remember(label) { mutableStateOf<GraphicsLayer?>(null) }
     Box(modifier.fillMaxWidth().padding(top = 4.dp)) {
@@ -1183,7 +1206,7 @@ private fun ReferenceRow(
                     painter = faviconFallback,
                     contentDescription = null,
                     tint = colors.drawable,
-                    modifier = Modifier.padding(end = 8.dp).size(17.dp),
+                    modifier = Modifier.padding(end = 8.dp).size(faviconSize),
                 )
             } else {
                 var faviconLoaded by remember(faviconUrl) { mutableStateOf(false) }
@@ -1200,29 +1223,81 @@ private fun ReferenceRow(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .padding(end = 8.dp)
-                        .size(17.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .size(faviconSize)
+                        .clip(RoundedCornerShape(faviconSize * (3f / 17f))),
                 )
             }
-            if (marker.isNotBlank()) {
-                Text(
-                    marker,
-                    modifier = Modifier.padding(end = 8.dp),
-                    color = colors.storyDisabled,
-                    fontFamily = typography.family,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = typography.referenceMarkerSize.sp,
-                )
+            SharedTransitionLayout(Modifier.weight(1f)) {
+                AnimatedContent(
+                    targetState = label to expandedUrl,
+                    contentAlignment = Alignment.TopStart,
+                    transitionSpec = {
+                        (fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 5 })
+                            .togetherWith(fadeOut(tween(120)))
+                            .using(SizeTransform(clip = false) { _, _ -> contentTween() })
+                    },
+                    label = "collected link layout",
+                ) { (title, url) ->
+                    val visibilityScope = this
+                    val titleSize = typography.referenceLabelSize + if (url != null) 0.5f else 0f
+                    val titleLineHeight = titleSize + if (url != null) 2f else 3f
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (marker.isNotBlank()) Text(
+                                marker,
+                                modifier = Modifier.padding(end = 6.dp).alignByBaseline()
+                                    .sharedElement(
+                                        sharedContentState = rememberSharedContentState("marker"),
+                                        animatedVisibilityScope = visibilityScope,
+                                        boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                                    ),
+                                color = colors.storyDisabled,
+                                fontFamily = typography.family,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = typography.referenceMarkerSize.sp,
+                                lineHeight = titleLineHeight.sp,
+                            )
+                            Text(
+                                title,
+                                modifier = Modifier.weight(1f).alignByBaseline()
+                                    .wrapContentWidth(Alignment.Start)
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(
+                                            (if (url == null) "url" else "title") to title,
+                                        ),
+                                        animatedVisibilityScope = visibilityScope,
+                                        enter = fadeIn(contentTween()),
+                                        exit = fadeOut(contentTween()),
+                                        boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                                    ),
+                                color = if (url != null) colors.storyDisabled else colors.storyNormal,
+                                fontFamily = typography.family,
+                                fontSize = titleSize.sp,
+                                lineHeight = titleLineHeight.sp,
+                                fontWeight = if (url != null) FontWeight.Medium else FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (url != null) Text(
+                            url,
+                            modifier = Modifier.sharedBounds(
+                                sharedContentState = rememberSharedContentState("url" to url),
+                                animatedVisibilityScope = visibilityScope,
+                                enter = fadeIn(contentTween()),
+                                exit = fadeOut(contentTween()),
+                                boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                            ),
+                            color = colors.storyDisabled,
+                            fontFamily = typography.family,
+                            fontSize = (typography.referenceMarkerSize - 2f).sp,
+                            lineHeight = (typography.referenceMarkerSize - 0.5f).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
-            Text(
-                label,
-                modifier = Modifier.weight(1f),
-                color = colors.storyNormal,
-                fontFamily = typography.family,
-                fontSize = typography.referenceLabelSize.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

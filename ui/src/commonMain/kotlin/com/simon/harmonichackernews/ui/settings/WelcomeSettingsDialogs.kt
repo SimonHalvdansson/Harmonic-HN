@@ -397,9 +397,11 @@ private fun WelcomeStoryPreviewContent(
                 painter = painterResource(Res.drawable.ic_comment),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
+                tint = HarmonicTheme.colors.drawable,
             )
             Text(
                 text = "18",
+                color = HarmonicTheme.colors.storyNormal,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,

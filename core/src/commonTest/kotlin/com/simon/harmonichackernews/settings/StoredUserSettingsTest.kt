@@ -9,6 +9,22 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun collectedLinkModesPreserveLegacyChoicesAndSurviveReopening() {
+        for (enabled in listOf(false, true)) {
+            val store = TestKeyValueStore(mapOf(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS to enabled))
+            val repository = AppSettingsRepository(store, emptyFlow())
+            val legacy = repository.snapshot().comments
+            assertEquals(enabled, legacy.collectReferenceLinks)
+            assertFalse(legacy.expandedReferenceLinks)
+            for (mode in CollectedLinksMode.entries) {
+                repository.setCollectedLinksMode(mode)
+                val reopened = AppSettingsRepository(store, emptyFlow()).snapshot().comments
+                assertEquals(mode, CollectedLinksMode.from(reopened.collectReferenceLinks, reopened.expandedReferenceLinks))
+            }
+        }
+    }
+
+    @Test
     fun hackerOverridePreservesConfiguredFontForOtherThemePreviews() {
         val settings = StoredUserSettings(
             TestKeyValueStore(mapOf(UserPreferenceKeys.FONT to "productsans")),

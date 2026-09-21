@@ -120,6 +120,7 @@ class CommentsSettingsPresenter(
             minTextSizeOffset = TextPreferences.MIN_TEXT_SIZE_OFFSET,
             maxTextSizeOffset = TextPreferences.MAX_TEXT_SIZE_OFFSET,
             collectLinks = comments.collectReferenceLinks,
+            expandedReferenceLinks = comments.expandedReferenceLinks,
             emphasizeMetadata = comments.highlightMetadata,
             depthMode = comments.depthIndicatorMode,
             indicatorThickness = comments.indicatorThickness,
@@ -153,6 +154,9 @@ class CommentsSettingsPresenter(
             smoothScroll = comments.smoothScroll,
         )
     }
+
+    fun setCollectedLinksMode(mode: com.simon.harmonichackernews.settings.CollectedLinksMode) =
+        repository.setCollectedLinksMode(mode)
 
     fun setDisplayStyle(value: DisplayStyle) = repository.setCommentDisplayStyle(value)
     fun setTextSizeOffset(offset: Int) =
