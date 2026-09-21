@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyLayoutScrollScope
 import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,6 +86,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
+private const val COMMENT_NAVIGATION_APPROACH_VIEWPORTS = 3f
 // Comment rows can be several viewports tall; prepare the next rows before they enter the screen.
 private const val COMMENTS_CACHE_AHEAD_FRACTION = 2f
 private const val COMMENTS_CACHE_BEHIND_FRACTION = 0.5f
@@ -122,7 +124,7 @@ internal fun commentScrollTopOffset(
     navigationTopOffsetPx: Int,
 ): Int = if (searchResult) navigationTopOffsetPx else requestedTopOffsetPx
 
-private suspend fun LazyListState.animateToCommentNavigationTarget(
+internal suspend fun LazyListState.animateToCommentNavigationTarget(
     index: Int,
     scrollOffset: Int,
     scaleLongScrollSpeed: Boolean,
@@ -138,35 +140,27 @@ private suspend fun LazyListState.animateToCommentNavigationTarget(
         return
     }
 
-    // LazyListState's built-in animation is intentionally conservative for very distant targets.
-    // Estimate the pixel distance from the currently composed rows and animate that distance with
-    // a duration scaled in the same 50-item steps as the old RecyclerView implementation. The
-    // final snap handles variable-height comment rows and the header exactly.
-    var totalVisibleCommentSize = 0L
-    var visibleCommentCount = 0
-    for (item in layoutInfo.visibleItemsInfo) {
-        if (item.index > 0 && item.size > 0) {
-            totalVisibleCommentSize += item.size
-            visibleCommentCount++
-        }
-    }
-    val averageItemSize = if (visibleCommentCount == 0) {
-        1f
-    } else {
-        (totalVisibleCommentSize.toDouble() / visibleCommentCount).toFloat()
-    }
-    val estimatedDistance =
-        (index - firstVisibleItemIndex) * averageItemSize -
-            firstVisibleItemScrollOffset - scrollOffset
+    // Scrolling an estimated whole-thread distance makes the lazy list measure every skipped
+    // row, often hundreds in one frame. Resolve the destination first, then animate only the
+    // final few viewports. Pixel bounds also cover comments that are taller than the screen.
+    val forward = index > firstVisibleItemIndex
+    val viewportSize = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
+        .coerceAtLeast(0)
     val speedMultiplier = ((distanceItems - 1) / COMMENT_NAVIGATION_SPEED_STEP) + 1
     val baseDuration = (distanceItems * 16).coerceIn(240, 1000)
     val durationMillis = (baseDuration / speedMultiplier).coerceIn(180, 520)
 
     scroll {
+        val lazyScrollScope = LazyLayoutScrollScope(this@animateToCommentNavigationTarget, this)
+        lazyScrollScope.snapToItem(index, scrollOffset)
+        // Both moves happen in the same scroll session before the next frame. Use the consumed
+        // distance so either end of the list (including a short final comment) clamps naturally.
+        val approachPixels = viewportSize * COMMENT_NAVIGATION_APPROACH_VIEWPORTS
+        val approachDistance = -scrollBy(if (forward) -approachPixels else approachPixels)
         var previousValue = 0f
         animate(
             initialValue = 0f,
-            targetValue = estimatedDistance,
+            targetValue = approachDistance,
             animationSpec = tween(
                 durationMillis = durationMillis,
                 easing = FastOutSlowInEasing,
@@ -175,8 +169,8 @@ private suspend fun LazyListState.animateToCommentNavigationTarget(
             scrollBy(value - previousValue)
             previousValue = value
         }
+        lazyScrollScope.snapToItem(index, scrollOffset)
     }
-    scrollToItem(index, scrollOffset)
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
