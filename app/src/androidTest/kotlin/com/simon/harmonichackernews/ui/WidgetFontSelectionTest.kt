@@ -40,7 +40,7 @@ class WidgetFontSelectionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 WidgetConfigScreen(WidgetConfiguration(), listOf(StoryType.TOP_STORIES, StoryType.BEST_STORIES, StoryType.UNSLOP),
-                    onConfirm = { saved = it }, onBack = {})
+                    onConfirm = { saved = it })
             }
         }
         compose.onNodeWithText("Frontpage").performClick()
@@ -70,7 +70,7 @@ class WidgetFontSelectionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 WidgetConfigScreen(WidgetConfiguration(), listOf(StoryType.TOP_STORIES),
-                    onConfirm = { saved = it }, onBack = {}, headlineFontFamily = headline.value)
+                    onConfirm = { saved = it }, headlineFontFamily = headline.value)
             }
         }
         compose.onNodeWithText("Device headline").performScrollTo().assertIsDisplayed()

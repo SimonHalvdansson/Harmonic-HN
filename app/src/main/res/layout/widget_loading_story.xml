@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Use only RemoteViews-supported views; these bars are decorative, not story content. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="76dp"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginBottom="7dp"
+    android:background="@drawable/widget_preview_card"
+    android:importantForAccessibility="noHideDescendants"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <ImageView
+        android:contentDescription="@null"
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_marginEnd="24dp"
+        android:alpha="0.18"
+        android:background="@drawable/widget_loading_bar" />
+
+    <ImageView
+        android:contentDescription="@null"
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="64dp"
+        android:alpha="0.18"
+        android:background="@drawable/widget_loading_bar" />
+
+    <ImageView
+        android:contentDescription="@null"
+        android:layout_width="80dp"
+        android:layout_height="8dp"
+        android:layout_marginTop="10dp"
+        android:alpha="0.12"
+        android:background="@drawable/widget_loading_bar" />
+</LinearLayout>

@@ -2,7 +2,8 @@ package com.simon.harmonichackernews.ui.widget
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -54,7 +55,6 @@ fun WidgetConfigScreen(
     initialConfiguration: WidgetConfiguration,
     frontpages: List<StoryType>,
     onConfirm: (WidgetConfiguration) -> Unit,
-    onBack: () -> Unit,
     paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     headlineFontFamily: FontFamily? = null,
     headlineFontLabel: String = "Device headline",
@@ -82,71 +82,82 @@ fun WidgetConfigScreen(
                 WidgetConfigurationPreview(configuration, paletteTintConfigKey, fontFamily)
             }
         }
-        SettingsPage(
-            modifier = Modifier.sharedHazeSource(hazeState),
-            title = stringResource(Res.string.widget_config_title),
-            showNavigation = true,
-            onBack = onBack,
-            extraBottomPadding = 88.dp,
-            pinnedContent = preview.takeIf { pinPreview },
-            headerContent = preview.takeUnless { pinPreview },
+        val pageScroll = rememberScrollState()
+        val settingsScroll = rememberScrollState()
+        Column(
+            Modifier.fillMaxSize().sharedHazeSource(hazeState),
         ) {
-            item {
-                SettingsCategory("Content") {
-                    Box {
-                        SettingRow(
-                            title = "Frontpage", summary = feed.label,
-                            icon = Res.drawable.ic_library_books,
-                            onClick = { choosingFeed = true },
-                        )
-                        StoryTypeDropdownMenu(
-                            expanded = choosingFeed, onDismiss = { choosingFeed = false },
-                            types = feeds, selectedType = feed,
-                            onSelected = { feed = it; choosingFeed = false },
+            Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing))
+            Column(
+                Modifier.fillMaxWidth().weight(1f)
+                    .then(if (pinPreview) Modifier else Modifier.verticalScroll(pageScroll)),
+            ) {
+                Box(Modifier.fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
+                    preview()
+                }
+                Column(
+                    Modifier.fillMaxWidth()
+                        .then(if (pinPreview) Modifier.weight(1f) else Modifier)
+                        .background(HarmonicTheme.colors.settingsPageBackground)
+                        .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                        .padding(bottom = 112.dp),
+                ) {
+                    SettingsCategory("Content") {
+                        Box {
+                            SettingRow(
+                                title = "Frontpage", summary = feed.label,
+                                icon = Res.drawable.ic_library_books,
+                                onClick = { choosingFeed = true },
+                            )
+                            StoryTypeDropdownMenu(
+                                expanded = choosingFeed, onDismiss = { choosingFeed = false },
+                                types = feeds, selectedType = feed,
+                                onSelected = { feed = it; choosingFeed = false },
+                            )
+                        }
+                        SettingsDivider()
+                        SliderSetting(
+                            title = stringResource(Res.string.widget_config_story_count_label),
+                            valueLabel = count.toString(), value = count.toFloat(),
+                            valueRange = WidgetConfiguration.MIN_STORY_COUNT.toFloat()..WidgetConfiguration.MAX_STORY_COUNT.toFloat(),
+                            steps = WidgetConfiguration.MAX_STORY_COUNT - WidgetConfiguration.MIN_STORY_COUNT - 1,
+                            onValueChange = { count = it.roundToInt() },
                         )
                     }
-                    SettingsDivider()
-                    SliderSetting(
-                        title = stringResource(Res.string.widget_config_story_count_label),
-                        valueLabel = count.toString(), value = count.toFloat(),
-                        valueRange = WidgetConfiguration.MIN_STORY_COUNT.toFloat()..WidgetConfiguration.MAX_STORY_COUNT.toFloat(),
-                        steps = WidgetConfiguration.MAX_STORY_COUNT - WidgetConfiguration.MIN_STORY_COUNT - 1,
-                        onValueChange = { count = it.roundToInt() },
-                    )
-                }
-            }
-            item {
-                SettingsCategory("Appearance") {
-                    if (headlineFontFamily != null) {
-                        SegmentedSetting(
-                            title = "Font",
-                            options = listOf(false to "Default", true to headlineFontLabel),
-                            optionWeights = if (headlineFontLabel.length > 18) mapOf(false to 1f, true to 2f) else emptyMap(),
-                            selected = useHeadlineFont, onSelected = { useHeadlineFont = it },
+                    SettingsCategory("Appearance") {
+                        SwitchSettingRow(
+                            title = "Tint", summary = "Uses preview or favicon",
+                            icon = Res.drawable.ic_palette, checked = tint,
+                            onCheckedChange = {
+                                tint = it
+                                if (it && style == DisplayStyle.FLAT) style = DisplayStyle.STANDARD
+                            },
                         )
                         SettingsDivider()
+                        SegmentedSetting(
+                            title = "Preview image",
+                            options = listOf(StoryPreviewMode.OFF to "Off", StoryPreviewMode.SMALL to "Small", StoryPreviewMode.MEDIUM to "Medium"),
+                            selected = image, onSelected = { image = it },
+                        )
+                        SettingsDivider()
+                        SegmentedSetting(
+                            title = "Display style",
+                            options = listOf(DisplayStyle.FLAT to "Flat", DisplayStyle.STANDARD to "Filled", DisplayStyle.RAISED to "Raised", DisplayStyle.OUTLINED to "Outlined"),
+                            selected = style,
+                            onSelected = { style = it; if (it == DisplayStyle.FLAT) tint = false },
+                        )
+                        if (headlineFontFamily != null) {
+                            SettingsDivider()
+                            SegmentedSetting(
+                                title = "Font",
+                                options = listOf(false to "Default", true to headlineFontLabel),
+                                optionWeights = if (headlineFontLabel.length > 18) mapOf(false to 1f, true to 2f) else emptyMap(),
+                                selected = useHeadlineFont, onSelected = { useHeadlineFont = it },
+                            )
+                        }
                     }
-                    SegmentedSetting(
-                        title = "Preview image",
-                        options = listOf(StoryPreviewMode.OFF to "Off", StoryPreviewMode.SMALL to "Small", StoryPreviewMode.MEDIUM to "Medium"),
-                        selected = image, onSelected = { image = it },
-                    )
-                    SettingsDivider()
-                    SegmentedSetting(
-                        title = "Display style",
-                        options = listOf(DisplayStyle.FLAT to "Flat", DisplayStyle.STANDARD to "Filled", DisplayStyle.RAISED to "Raised", DisplayStyle.OUTLINED to "Outlined"),
-                        selected = style,
-                        onSelected = { style = it; if (it == DisplayStyle.FLAT) tint = false },
-                    )
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Tint", summary = "Uses preview or favicon",
-                        icon = Res.drawable.ic_palette, checked = tint,
-                        onCheckedChange = {
-                            tint = it
-                            if (it && style == DisplayStyle.FLAT) style = DisplayStyle.STANDARD
-                        },
-                    )
                 }
             }
         }
@@ -233,9 +244,8 @@ private val WidgetPreviewStories = listOf(
 private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, paletteTintConfigKey: String, fontFamily: FontFamily) {
     val colors = HarmonicTheme.colors
     Column(
-        Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.settingsPageBackground)
-            .border(1.dp, colors.outlineVariant, RoundedCornerShape(24.dp)),
+        Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
+            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.settingsPageBackground),
     ) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
             Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->

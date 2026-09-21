@@ -54,7 +54,6 @@ object WidgetConfigComposeHost {
                                 initialConfiguration = initialConfiguration,
                                 frontpages = StoryTypeMenuPolicy.frontpages(story.additionalFrontpages, story.frontpageOrder),
                                 onConfirm = listener::onConfirm,
-                                onBack = activity::finish,
                                 paletteTintConfigKey = story.paletteTintConfigKey,
                                 headlineFontFamily = headlineFamily,
                                 headlineFontLabel = headlineFamilyName?.let(::widgetFontDisplayName).orEmpty(),

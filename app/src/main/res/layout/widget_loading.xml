@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Initial launcher layout, before the configured feed and saved stories are available.
+     RemoteViews supports outline clipping on API 31+; older hosts retain the rounded background. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true"
+    android:orientation="vertical"
+    tools:ignore="UnusedAttribute">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="2dp"
+        android:text="@string/widget_loading_stories"
+        android:textColor="@color/widget_title"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <include layout="@layout/widget_loading_story" />
+    <include layout="@layout/widget_loading_story" />
+    <include layout="@layout/widget_loading_story" />
+</LinearLayout>
