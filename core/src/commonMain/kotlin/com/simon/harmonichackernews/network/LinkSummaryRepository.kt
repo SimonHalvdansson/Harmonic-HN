@@ -166,12 +166,16 @@ class KtorLinkSummaryRepository(
                     "This link contains ${response.contentType}, not a web page",
                 )
             }
-            LinkSummaryParser.extract(
+            val summary = LinkSummaryParser.extract(
                 response.body,
                 fallbackTitle,
                 response.contentType,
                 response.finalUrl,
             )
+            val siteImage = SiteImageResolvers.resolve(response.finalUrl) { url ->
+                fetchText(url, "application/json").body
+            }
+            if (siteImage != null) summary.copy(imageUrl = siteImage) else summary
         }
 
     private suspend fun fetchText(url: String, accept: String): FetchedText =
