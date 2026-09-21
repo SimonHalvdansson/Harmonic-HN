@@ -812,6 +812,12 @@ private fun CommentNavigationButtons(
             Box(
                 modifier = Modifier
                     .size(56.dp)
+                    .clip(RoundedCornerShape(
+                        topStart = 28.dp,
+                        bottomStart = 28.dp,
+                        topEnd = 12.dp,
+                        bottomEnd = 12.dp,
+                    ))
                     .combinedClickable(onClick = onPrevious, onLongClick = onFirst),
                 contentAlignment = Alignment.Center,
             ) {
@@ -837,6 +843,12 @@ private fun CommentNavigationButtons(
             Box(
                 modifier = Modifier
                     .size(56.dp)
+                    .clip(RoundedCornerShape(
+                        topStart = 12.dp,
+                        bottomStart = 12.dp,
+                        topEnd = 28.dp,
+                        bottomEnd = 28.dp,
+                    ))
                     .combinedClickable(onClick = onNext, onLongClick = onLast),
                 contentAlignment = Alignment.Center,
             ) {
