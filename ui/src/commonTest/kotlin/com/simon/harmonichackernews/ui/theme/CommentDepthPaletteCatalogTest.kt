@@ -35,7 +35,7 @@ class CommentDepthPaletteCatalogTest {
 
     @Test
     fun dialogExamplesUseStableAuthorMapping() {
-        val expected = listOf("willow", "compass", "otter", "lantern", "pebble", "meadow", "saffron")
+        val expected = listOf("willow", "lantern", "pebble", "pixel", "atlas", "robin", "compass")
             .map { authorColor(it) }
         assertEquals(expected, CommentDepthPaletteCatalog.previewColors(CommentDepthPreferences.AUTHOR, "light", false))
         assertEquals(List(7) { Color.Transparent }, CommentDepthPaletteCatalog.previewColors(CommentDepthPreferences.NONE, "light", false))

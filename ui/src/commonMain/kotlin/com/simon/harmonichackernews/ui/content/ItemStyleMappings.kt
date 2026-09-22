@@ -57,6 +57,7 @@ internal fun CommentDisplaySettings.toCommentItemStyle(
         userAvatarsEnabled = userAvatarsEnabled,
         userAvatarOptions = userAvatarOptions,
         showDivider = showDividers,
+        markNewComments = markNewComments,
         preferredFont = font,
         animateChanges = context.animateChanges,
     )

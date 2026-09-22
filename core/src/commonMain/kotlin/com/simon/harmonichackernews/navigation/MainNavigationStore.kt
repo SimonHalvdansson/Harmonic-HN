@@ -28,6 +28,11 @@ data class MainNavigationSnapshot(
     val settingsRequestSerial: Int,
     val currentSettingsSectionRoute: String?,
 ) {
+    /** The actual retained parent, independent of which screen opened a destination. */
+    fun parentDestination(destination: MainDestination): MainDestination? = destinationStack
+        .indexOfLast { it.destination == destination }
+        .let { destinationStack.getOrNull(it - 1)?.destination }
+
     /** Consecutive story entries ending at the most recently opened story. */
     val storyBackStack: List<MainStoryRequest>
         get() {

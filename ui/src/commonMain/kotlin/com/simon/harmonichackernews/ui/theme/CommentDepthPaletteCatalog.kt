@@ -55,7 +55,7 @@ object CommentDepthPaletteCatalog {
     }
 
     // Fixed words keep the examples stable across recompositions and dialog openings.
-    private val previewAuthors = listOf("willow", "compass", "otter", "lantern", "pebble", "meadow", "saffron")
+    private val previewAuthors = listOf("willow", "lantern", "pebble", "pixel", "atlas", "robin", "compass")
 
     fun previewColors(mode: String, theme: String?, darkTheme: Boolean): List<Color> =
         previewAuthors.mapIndexed { depth, author -> color(mode, theme, darkTheme, depth, author) }

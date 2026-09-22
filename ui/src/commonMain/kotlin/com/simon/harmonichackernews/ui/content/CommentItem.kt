@@ -28,6 +28,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -143,6 +144,7 @@ data class CommentItemStyle(
     val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    val markNewComments: Boolean = true,
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -255,6 +257,7 @@ fun CommentItem(
     ) {
         CommentMeta(
             author = model.author,
+            isNew = style.markNewComments,
             avatarsEnabled = style.userAvatarsEnabled,
             avatarOptions = style.userAvatarOptions,
             age = model.age,
@@ -533,7 +536,7 @@ fun CommentItem(
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
-                isNew = comment.isNew,
+                isNew = style.markNewComments && comment.isNew,
                 hiddenPreview = hiddenPreview,
                 hiddenReplyCount = hiddenReplyCount.takeIf {
                     it > 0
@@ -1147,9 +1150,14 @@ private fun CommentMeta(
         } else {
             Box(Modifier.weight(1f))
         }
-        if (isNew) {
+        AnimatedVisibility(
+            visible = isNew,
+            modifier = Modifier.offset(y = (-2).dp),
+            enter = fadeIn(if (animateChanges) tween(120) else snap()),
+            exit = fadeOut(if (animateChanges) tween(120) else snap()),
+        ) {
             Box(
-                Modifier.offset(y = (-2).dp).size(6.dp)
+                Modifier.size(6.dp)
                     .background(colors.accent, RoundedCornerShape(50))
                     .semantics { contentDescription = "New comment" },
             )
@@ -1178,8 +1186,8 @@ private fun CommentMeta(
                 // offscreen buffer and clips the pill while alpha is below one.
                 modifier = Modifier.offset(y = (-2).dp),
                 visible = showHiddenReplyCount && hiddenReplyCount != null,
-                enter = fadeIn(contentTween()) + expandHorizontally(contentTween(), expandFrom = Alignment.End, clip = false),
-                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween(), shrinkTowards = Alignment.End, clip = false),
+                enter = fadeIn(contentTween()) + expandHorizontally(contentTween(), expandFrom = Alignment.End, clip = true),
+                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween(), shrinkTowards = Alignment.End, clip = true),
             ) { replyCount() }
         } else if (hiddenReplyCount != null) {
             // Older comments retain the original fixed-width, opacity-only count animation.
@@ -1271,8 +1279,8 @@ internal fun ReferenceRow(
                 ) { (title, url) ->
                     val visibilityScope = this
                     val titleSize = typography.referenceLabelSize + if (url != null) 0.5f else 0f
-                    val titleLineHeight = titleSize + if (url != null) 1f else 3f
-                    Column {
+                    val titleLineHeight = titleSize + if (url != null) 0f else 3f
+                    Column(verticalArrangement = Arrangement.spacedBy(if (url != null) (-1).dp else 0.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (marker.isNotBlank()) Text(
                                 marker,
@@ -1285,7 +1293,7 @@ internal fun ReferenceRow(
                                 color = colors.storyDisabled,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = typography.referenceMarkerSize.sp,
+                                fontSize = titleSize.sp,
                                 lineHeight = titleLineHeight.sp,
                             )
                             Text(

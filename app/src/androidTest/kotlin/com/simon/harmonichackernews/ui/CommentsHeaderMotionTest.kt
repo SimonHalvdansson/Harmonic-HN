@@ -15,12 +15,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -28,6 +30,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import android.graphics.Bitmap
+import java.io.File
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.data.*
@@ -46,6 +51,99 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CommentsHeaderMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun twoHundredReplyCollapseShrinksVisibleRowsInsteadOfOnlyFading() = assertLargeThreadCollapse(false)
+
+    @Test
+    fun commentRefreshDuringLargeCollapsePreservesMotion() = assertLargeThreadCollapse(true)
+
+    private fun assertLargeThreadCollapse(refreshDuringCollapse: Boolean) {
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val comments = (1..202).map { id ->
+            PortableCommentItem(
+                CommentSnapshot(id, author = "reader$id", text = "Body $id", expandedAnchorText = "Body $id"),
+                CommentPresentationSnapshot(expanded = true, depth = if (id in 2..201) 1 else 0),
+            )
+        }
+        val controller = CommentsComposeController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        val state = CommentsScreenState(
+            story = story, comments = comments, commentsLoaded = true, initialThreadCached = true,
+            visibleComments = comments.mapIndexed { index, item -> PortableVisibleComment(index, item, if (index == 0) 200 else 0) },
+            displaySettings = settings.copy(displayStyle = DisplayStyle.FLAT, collapseParent = false),
+        )
+        controller.updateContent(state)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        CommentsScreen(
+                            controller, Modifier, false, pullToRefreshEnabled = false,
+                            showNavigationControls = false, animateComments = true, showScrollbar = false,
+                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            headerContent = {}, searchDialog = {}, actionOverlay = {},
+                        )
+                    }
+                }
+            }
+            compose.waitForIdle()
+            val before = compose.onAllNodesWithTag("comment-row", useUnmergedTree = true).fetchSemanticsNodes()[1].boundsInRoot.height
+            compose.mainClock.autoAdvance = false
+            val captureMotion = InstrumentationRegistry.getArguments().getString("captureCollapseMotion") == "true"
+            var captureIndex = 0
+            fun captureFrame() {
+                if (!captureMotion) return
+                File(compose.activity.filesDir, "collapse-${captureIndex++.toString().padStart(3, '0')}.png")
+                    .outputStream().use { output ->
+                        compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, output)
+                    }
+            }
+            captureFrame()
+            val root = state.visibleComments.first()
+            val collapsed = state.copy(visibleComments = listOf(
+                root.copy(comment = root.comment.copy(presentation = root.comment.presentation.copy(expanded = false))),
+                state.visibleComments.last(),
+            ))
+            compose.runOnIdle { controller.updateContent(collapsed) }
+            repeat(5) { frame ->
+                compose.mainClock.advanceTimeBy(16)
+                if (refreshDuringCollapse && frame == 1) compose.runOnIdle {
+                    // A background refresh changes content, but not the collapsed tree.
+                    controller.updateContent(collapsed.copy(visibleComments = collapsed.visibleComments.map { row ->
+                        row.copy(comment = row.comment.copy(isNew = true))
+                    }))
+                }
+                captureFrame()
+            }
+            val during = compose.onAllNodesWithTag("comment-row", useUnmergedTree = true).fetchSemanticsNodes()
+            val intermediateHeights = during.map { it.boundsInRoot.height }
+            assertTrue("Collapse must stay bounded to the viewport", during.size < 30)
+            val partiallyClipped = intermediateHeights.count { it > 1f && it < before - 1f }
+            // A single shared clipping edge can intersect one row, not shorten every row into
+            // a stack of thin strips. Finish captures before asserting so failures are inspectable.
+            repeat(15) { compose.mainClock.advanceTimeBy(16); captureFrame() }
+            assertTrue("Visible children must retain intermediate heights: $intermediateHeights",
+                partiallyClipped > 0)
+            assertTrue("Children must collapse as one block, not individually: $partiallyClipped partial rows", partiallyClipped <= 1)
+            compose.mainClock.advanceTimeBy(800)
+            compose.onNodeWithText("Body 202").assertExists()
+            compose.onNodeWithText("Body 2").assertDoesNotExist()
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
 
     @Test
     fun selectedSortLabelMovesGraduallyWhileMenuDismisses() {
@@ -312,7 +410,7 @@ class CommentsHeaderMotionTest {
                 val after = frames.last()
                 assertTrue("Changing subtree visibility must move its following sibling", kotlin.math.abs(after - before) > 20f)
                 assertTrue(
-                    "The sibling must pass through intermediate positions instead of jumping",
+                    "The sibling must pass through intermediate positions: expanded=${state.visibleComments.first().comment.expanded}, before=$before, frames=$frames",
                     frames.any { it > minOf(before, after) + 1f && it < maxOf(before, after) - 1f },
                 )
             }

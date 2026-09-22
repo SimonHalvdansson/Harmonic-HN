@@ -56,6 +56,7 @@ data class CommentsSettingsUiState(
     val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    val markNewComments: Boolean = true,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -64,6 +65,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
     EmphasizeMetadata(CommentBooleanPreference.HIGHLIGHT_METADATA),
     Dividers(CommentBooleanPreference.SHOW_DIVIDERS),
+    MarkNewComments(CommentBooleanPreference.MARK_NEW_COMMENTS),
     TopLevelIndicators(CommentBooleanPreference.TOP_LEVEL_DEPTH_INDICATOR),
     Scrollbar(CommentBooleanPreference.SHOW_SCROLLBAR),
     AnimateChanges(CommentBooleanPreference.ANIMATE_CHANGES),
@@ -160,6 +162,15 @@ fun CommentsSettingsScreen(
                 )
                 SettingsDivider()
                 BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)
+                SettingsDivider()
+                BooleanRow(
+                    "Mark new comments",
+                    Res.drawable.ic_fiber_manual_record,
+                    state.markNewComments,
+                    CommentsBooleanSetting.MarkNewComments,
+                    onBooleanChanged,
+                    summary = "Marks comments added since the cached version",
+                )
             }
         }
         item {

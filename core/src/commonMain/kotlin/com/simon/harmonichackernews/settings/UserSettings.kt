@@ -102,6 +102,7 @@ data class CommentPreferences(
     val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = true,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    val markNewComments: Boolean = true,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

@@ -40,6 +40,7 @@ data class CommentDisplaySettings(
     val expandedReferenceLinks: Boolean = false,
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    val markNewComments: Boolean = true,
 ) {
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
@@ -82,6 +83,7 @@ data class CommentDisplaySettings(
             swapLongPressTap = preferences.swapLongPressTap,
             displayStyle = preferences.displayStyle,
             showDividers = preferences.showDividers,
+            markNewComments = preferences.markNewComments,
             highlightCommentMeta = preferences.highlightMetadata,
             collectReferenceLinks = preferences.collectReferenceLinks,
             expandedReferenceLinks = preferences.expandedReferenceLinks,

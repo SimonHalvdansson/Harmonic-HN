@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.ui
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.graphics.Outline
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -43,6 +45,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.widget.WidgetPreviewStoryRow
 import com.simon.harmonichackernews.ui.widget.LocalWidgetTextStyle
+import com.simon.harmonichackernews.ui.widget.WidgetDimensions
 import com.simon.harmonichackernews.widget.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -132,6 +135,17 @@ class WidgetPreviewParityTest {
                         position(nativeComments)[0] + nativeComments.width)
                 }
                 val nativeTitle = labels.single { it.text.toString() == "Patterns" }
+                val nativeIndex = labels.single { it.text.toString() == "1." }
+                assertEquals("Index column fits two digits without the old extra space",
+                    20 * context.resources.displayMetrics.density, nativeIndex.width.toFloat(), 1f)
+                if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    val favicon = descendants(requireNotNull(nativeRoot)).filterIsInstance<android.widget.ImageView>()
+                        .single { kotlin.math.abs(it.width - 14 * context.resources.displayMetrics.density) < 1f }
+                    val outline = Outline().also { favicon.outlineProvider.getOutline(favicon, it) }
+                    assertTrue("Favicon must clip to its rounded outline", favicon.clipToOutline)
+                    assertEquals(WidgetDimensions.faviconCornerRadius.value * context.resources.displayMetrics.density,
+                        outline.radius, 1f)
+                }
                 val nativePosition = position(nativeTitle)
                 assertEquals("Title x should match", previewTitle.left, nativePosition[0].toFloat(), 2f)
                 val countPosition = position(nativePoints)
@@ -154,6 +168,18 @@ class WidgetPreviewParityTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun faviconBitmapHasRoundedTransparentCornersOnEverySupportedApi() {
+        val context = compose.activity
+        val source = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) }
+        val rounded = source.roundedWidgetFavicon(context)
+        assertEquals(android.graphics.Color.TRANSPARENT, rounded.getPixel(0, 0))
+        assertEquals(android.graphics.Color.TRANSPARENT, rounded.getPixel(rounded.width - 1, rounded.height - 1))
+        assertEquals(android.graphics.Color.RED, rounded.getPixel(rounded.width / 2, 0))
+        assertEquals(android.graphics.Color.RED, rounded.getPixel(rounded.width / 2, rounded.height / 2))
+        assertEquals("The decoded/cache bitmap must remain untouched", android.graphics.Color.RED, source.getPixel(0, 0))
     }
 
     @Test

@@ -131,6 +131,7 @@ class CommentsSettingsPresenter(
             depthModeLabel = com.simon.harmonichackernews.settings.CommentDepthPreferences
                 .modeLabel(comments.depthIndicatorMode),
             showDividers = comments.showDividers,
+            markNewComments = comments.markNewComments,
             preferredFont = comments.font,
             topLevelIndicators = comments.showTopLevelDepthIndicator,
             showScrollbar = comments.showScrollbar,

@@ -192,6 +192,9 @@ object WidgetTypography {
 }
 
 object WidgetDimensions {
+    val indexWidth = 20.dp
+    val faviconSize = 14.dp
+    val faviconCornerRadius = 2.dp
     val mediumImageWidth = 120.dp
     val mediumImageHeight = 72.dp
     val mediumNoImageWidth = 64.dp

@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import com.simon.harmonichackernews.ui.navigation.LocalPredictiveBackCompletion
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -15,7 +17,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -65,12 +66,13 @@ fun SettingsShell(
     val navigation = rememberSettingsNavigationStore(initialSection, isTwoPane)
     val navigationState by navigation.state.collectAsState()
     val backAnimationScope = rememberCoroutineScope()
+    val backCompletion = LocalPredictiveBackCompletion.current
+    val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
     var activeBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
     var predictiveBackStack by remember { mutableStateOf<List<SettingsSection>?>(null) }
     var completedPredictiveBack by remember { mutableStateOf(false) }
-    var isBackAnimationRunning by remember { mutableStateOf(false) }
 
     fun popSettingsBackStack() {
         if (!navigation.navigateBack()) onBackFromSettings()
@@ -79,6 +81,7 @@ fun SettingsShell(
     PredictiveBackHandler(
         enabled = backHandlerEnabled && navigationState.canNavigateBackWithinSettings,
     ) { events ->
+        if (backCompletion.handleFollowingBack(events, dispatcher)) return@PredictiveBackHandler
         if (isTwoPane) {
             try {
                 events.collect {}
@@ -90,7 +93,6 @@ fun SettingsShell(
         }
 
         completedPredictiveBack = false
-        isBackAnimationRunning = true
         var animation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -103,27 +105,29 @@ fun SettingsShell(
             }
             val current = animation
             if (current == null) {
-                isBackAnimationRunning = false
                 popSettingsBackStack()
                 return@PredictiveBackHandler
             }
-            current.finish()
-            completedPredictiveBack = true
-            popSettingsBackStack()
-            // Keep the retained Settings surfaces under the completed predictive modifiers while
-            // the shared layer compositor observes the pop. This avoids replaying its exit.
-            repeat(3) { withFrameNanos { } }
-            activeBackAnimation = null
-            predictiveBackStack = null
-            completedPredictiveBack = false
-            isBackAnimationRunning = false
+            backCompletion.finish(
+                scope = backAnimationScope,
+                animation = current,
+                frameHoldCount = 3,
+                onCommit = {
+                    completedPredictiveBack = true
+                    popSettingsBackStack()
+                },
+                onFinished = {
+                    if (activeBackAnimation === current) activeBackAnimation = null
+                    predictiveBackStack = null
+                    completedPredictiveBack = false
+                },
+            )
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
                 animation?.cancel()
                 if (activeBackAnimation === animation) activeBackAnimation = null
                 predictiveBackStack = null
                 completedPredictiveBack = false
-                isBackAnimationRunning = false
             }
         }
     }

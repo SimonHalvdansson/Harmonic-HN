@@ -19,6 +19,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -333,14 +335,16 @@ private fun DrawScope.drawTransitionContent(
             progress
         }
         val drawing: DrawScope.() -> Unit = {
+            // Interpolate premultiplied pixels in an isolated layer. Keeping the source opaque
+            // leaves its crop visible through a transparent destination until the final frame.
+            val blendImages = image && sourceSnapshot != null && targetSnapshot != null &&
+                sourceBounds != null && targetBounds != null
+            if (blendImages) drawContext.canvas.saveLayer(destination, Paint())
             if (sourceBounds != null && sourceSnapshot != null) {
                 drawSnapshot(
                     snapshot = sourceSnapshot,
                     destination = destination,
-                    // Keep a shared image opaque beneath its destination. A conventional
-                    // source/destination alpha crossfade briefly lowers the combined opacity, and
-                    // is especially visible while Coil is warming its cache on the first open.
-                    alpha = if (image && targetBounds != null) 1f else 1f - progress,
+                    alpha = if (image && !blendImages) 1f else 1f - progress,
                 )
             }
             if (targetBounds != null && targetSnapshot != null) {
@@ -348,8 +352,10 @@ private fun DrawScope.drawTransitionContent(
                     snapshot = targetSnapshot,
                     destination = destination,
                     alpha = targetAlpha,
+                    blendMode = if (blendImages) BlendMode.Plus else BlendMode.SrcOver,
                 )
             }
+            if (blendImages) drawContext.canvas.restore()
         }
         if (imageClip != null) clipPath(imageClip, block = drawing) else drawing()
     }
@@ -421,6 +427,7 @@ private fun DrawScope.drawSnapshot(
     snapshot: ImageBitmap,
     destination: Rect,
     alpha: Float,
+    blendMode: BlendMode = BlendMode.SrcOver,
 ) {
     if (
         alpha <= 0.001f || snapshot.width <= 0 || snapshot.height <= 0 ||
@@ -439,6 +446,7 @@ private fun DrawScope.drawSnapshot(
                 destination.height.roundToInt().coerceAtLeast(1),
             ),
             alpha = alpha.coerceIn(0f, 1f),
+            blendMode = blendMode,
         )
     }
 }

@@ -62,6 +62,7 @@ object UserPreferenceKeys {
     const val TOP_LEVEL_THREAD_INDICATORS = "pref_top_level_thread_indicators"
     const val COMMENTS_SWAP_LONG = "pref_comments_swap_long"
     const val COMMENT_DIVIDERS = "pref_comment_dividers"
+    const val MARK_NEW_COMMENTS = "pref_mark_new_comments"
     const val HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta"
     const val EXPAND_COLLECTED_LINKS = "pref_expand_collected_links"
     const val COLLECT_LINKS_IN_COMMENTS = "pref_collect_links_in_comments"
@@ -208,6 +209,7 @@ class StoredUserSettings(
                     string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD),
                 ),
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
+                markNewComments = boolean(UserPreferenceKeys.MARK_NEW_COMMENTS, true),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),
                 expandedReferenceLinks = boolean(UserPreferenceKeys.EXPAND_COLLECTED_LINKS, false),
                 collectReferenceLinks =

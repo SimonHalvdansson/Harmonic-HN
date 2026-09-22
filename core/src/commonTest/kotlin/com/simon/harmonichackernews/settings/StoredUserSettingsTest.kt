@@ -9,6 +9,17 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun newCommentMarkersDefaultOnAndSurviveReopening() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, emptyFlow())
+        assertTrue(repository.snapshot().comments.markNewComments)
+        repository.setCommentBoolean(CommentBooleanPreference.MARK_NEW_COMMENTS, false)
+        assertFalse(AppSettingsRepository(store, emptyFlow()).snapshot().comments.markNewComments)
+        repository.setCommentBoolean(CommentBooleanPreference.MARK_NEW_COMMENTS, true)
+        assertTrue(AppSettingsRepository(store, emptyFlow()).snapshot().comments.markNewComments)
+    }
+
+    @Test
     fun collectedLinkModesPreserveLegacyChoicesAndSurviveReopening() {
         for (enabled in listOf(false, true)) {
             val store = TestKeyValueStore(mapOf(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS to enabled))

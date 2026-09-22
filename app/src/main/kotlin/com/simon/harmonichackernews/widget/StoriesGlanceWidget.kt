@@ -7,6 +7,11 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BitmapShader
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
 import android.view.ContextThemeWrapper
@@ -111,7 +116,7 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                             PreviewTintPolicy.calculateCardTint(base.toArgb(), it, app.userSettings.story.paletteTintConfigKey)
                         }
                         entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day.storyCardBackground),
-                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.forWidget(), tint(colors.night.storyCardBackground))
+                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night.storyCardBackground))
                     }
                 }
             }
@@ -233,7 +238,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                         (if (hasImage) WidgetDimensions.mediumImageHeight else WidgetDimensions.mediumNoImageHeight) + 16.dp))
                     Column(GlanceModifier.fillMaxWidth().padding(start = 8.dp, top = 12.dp, bottom = 12.dp)) {
                         Row {
-                            if (preferences.showIndex && availableWidth >= 240) Text(text.index, GlanceModifier.width(24.dp),
+                            if (preferences.showIndex && availableWidth >= 240) Text(text.index, GlanceModifier.width(WidgetDimensions.indexWidth),
                                 style = TextStyle(color = colors.textSecondary, fontSize = (WidgetTypography.TITLE_SIZE - 1).sp, fontFamily = fontFamily))
                             Column(GlanceModifier.defaultWeight()) {
                                 val title = if (snapshot.isComment) HtmlTextUtils.plainText(snapshot.text).take(220) else text.title
@@ -242,7 +247,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (preferences.thumbnails && !snapshot.isComment) {
                                         Image(visual?.favicon?.let(::ImageProvider) ?: ImageProvider(R.drawable.ic_public), null,
-                                            GlanceModifier.size(14.dp),
+                                            GlanceModifier.size(WidgetDimensions.faviconSize).cornerRadius(WidgetDimensions.faviconCornerRadius),
                                             colorFilter = if (visual?.favicon == null) ColorFilter.tint(colors.textSecondary) else null)
                                         Spacer(GlanceModifier.width(4.dp))
                                     }
@@ -337,6 +342,20 @@ class RefreshStoriesAction : ActionCallback {
 
 /** Parcel immutable images by shared-memory handle instead of repeating pixels in Binder. */
 internal fun Bitmap.forWidget(): Bitmap = if (Build.VERSION.SDK_INT >= 31) asShared() else this
+
+/** Bake the clipping into the bitmap so favicon corners also work before Android 12. */
+internal fun Bitmap.roundedWidgetFavicon(context: Context): Bitmap {
+    val density = context.resources.displayMetrics.density
+    val size = (WidgetDimensions.faviconSize.value * density).toInt().coerceAtLeast(1)
+    val radius = WidgetDimensions.faviconCornerRadius.value * density
+    val shader = BitmapShader(this, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+        setLocalMatrix(Matrix().apply { setScale(size.toFloat() / width, size.toFloat() / height) })
+    }
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
+        Canvas(it).drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius, radius,
+            Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply { this.shader = shader })
+    }
+}
 
 internal fun widgetFailureDescription(error: Throwable?): String = error?.let {
     listOfNotNull(it::class.simpleName, it.message?.takeIf(String::isNotBlank)).joinToString(": ")

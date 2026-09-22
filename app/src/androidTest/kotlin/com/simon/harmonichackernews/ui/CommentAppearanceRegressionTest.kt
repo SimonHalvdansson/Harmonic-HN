@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.settings.*
 import com.simon.harmonichackernews.ui.comments.*
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
@@ -34,6 +35,55 @@ import kotlin.math.abs
 @RunWith(AndroidJUnit4::class)
 class CommentAppearanceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun previewNewCommentDotFadesQuicklyInBothDirections() {
+        val showDot = mutableStateOf(true)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                HarmonicTheme(palette.colors.copy(accent = Color.Red), palette.colorScheme, palette.dark) {
+                    CommentItem(
+                        model = SettingsCommentPreviewModel,
+                        style = CommentItemStyle(
+                            displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
+                            emphasizeMeta = false, depthIndicatorMode = "none", showDivider = false,
+                            preferredFont = "default", animateChanges = true, markNewComments = showDot.value,
+                        ),
+                        modifier = Modifier.background(Color.White),
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val center = compose.onNodeWithContentDescription("New comment", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot.center - root.topLeft
+        fun dotOpacity(): Float {
+            val pixels = compose.onRoot().captureToImage().toPixelMap()
+            return 1f - pixels[center.x.toInt(), center.y.toInt()].green
+        }
+        compose.mainClock.autoAdvance = false
+        try {
+            assertTrue(dotOpacity() > 0.95f)
+            compose.runOnIdle { showDot.value = false }
+            compose.mainClock.advanceTimeBy(64)
+            assertTrue("Dot must fade out through partial opacity", dotOpacity() in 0.05f..0.95f)
+            compose.mainClock.advanceTimeBy(120)
+            assertTrue(dotOpacity() < 0.05f)
+            compose.onNodeWithContentDescription("New comment").assertDoesNotExist()
+            compose.runOnIdle { showDot.value = true }
+            compose.mainClock.advanceTimeBy(64)
+            assertTrue("Dot must fade in through partial opacity", dotOpacity() in 0.05f..0.95f)
+            compose.mainClock.advanceTimeBy(120)
+            assertTrue(dotOpacity() > 0.95f)
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
 
     @Test
     fun newCommentDotMovesSmoothlyToTheLeftOfCollapsedReplyCount() = assertReplyCountMotion(isNew = true)

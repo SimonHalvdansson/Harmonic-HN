@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -10,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -51,12 +51,15 @@ internal fun rememberDefaultActivityPredictiveBackState(
     val state = remember { DefaultActivityPredictiveBackState() }
     val animationScope = rememberCoroutineScope()
     val currentOnBack by rememberUpdatedState(onBack)
+    val completion = LocalPredictiveBackCompletion.current
+    val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
 
     LaunchedEffect(requestKey) {
         if (requestKey != null) state.completed = false
     }
 
     PredictiveBackHandler(enabled = enabled) { events ->
+        if (completion.handleFollowingBack(events, dispatcher)) return@PredictiveBackHandler
         var gestureAnimation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -74,11 +77,18 @@ internal fun rememberDefaultActivityPredictiveBackState(
                 return@PredictiveBackHandler
             }
 
-            currentAnimation.finish()
-            state.completed = true
-            currentOnBack()
-            repeat(completedFrameHoldCount) { withFrameNanos { } }
-            if (state.animation === currentAnimation) state.animation = null
+            completion.finish(
+                scope = animationScope,
+                animation = currentAnimation,
+                frameHoldCount = completedFrameHoldCount,
+                onCommit = {
+                    state.completed = true
+                    currentOnBack()
+                },
+                onFinished = {
+                    if (state.animation === currentAnimation) state.animation = null
+                },
+            )
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
                 gestureAnimation?.cancel()

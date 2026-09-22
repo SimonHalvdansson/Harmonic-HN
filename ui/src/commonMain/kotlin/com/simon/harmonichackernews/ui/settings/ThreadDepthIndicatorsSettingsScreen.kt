@@ -62,9 +62,9 @@ private fun ThreadDepthIndicatorsSettingsScreen(
         val createdAt = Clock.System.now().epochSeconds.toInt() - 3600
         listOf(
             "willow" to "Less hidden state helps.",
-            "compass" to "Much easier to reason about.",
-            "willow" to "And simpler to test.",
-            "otter" to "Small steps add up.",
+            "lantern" to "Much easier to reason about.",
+            "pebble" to "And simpler to test.",
+            "pixel" to "Small steps add up.",
         ).mapIndexed { depth, (author, body) ->
             PortableCommentItem(
                 comment = CommentSnapshot(

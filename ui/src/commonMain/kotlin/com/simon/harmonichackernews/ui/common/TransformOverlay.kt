@@ -249,7 +249,9 @@ fun TransformOverlay(
     val movingBorderColor = sourceBorderColor.copy(
         alpha = sourceBorderColor.alpha * (1f - progress),
     )
-    val movingBorderWidth = sourceBorderWidth * (1f - progress)
+    // Fade a constant-width outline. Compose rounds border widths up to whole pixels, so
+    // animating both width and alpha makes the last pixel steps pop near the source handoff.
+    val movingBorderWidth = sourceBorderWidth
     val inlineContainerAlpha = if (inlineSource) {
         ((progress - 0.18f) / 0.42f).coerceIn(0f, 1f)
     } else {
@@ -419,6 +421,15 @@ fun TransformOverlay(
                     )
                     .graphicsLayer(alpha = movingAlpha)
                     .shadow(movingElevation, movingShape, clip = false)
+                    // Draw the source outline outside the material's additive crossfade. Inside
+                    // that layer it is brightened by the source fill, then snaps back on handoff.
+                    .then(
+                        if (movingBorderWidth > 0.dp) {
+                            Modifier.border(movingBorderWidth, movingBorderColor, movingShape)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .then(
                         if (glassBackground) {
                             Modifier.sharedHazeDialogBackground(
@@ -428,13 +439,6 @@ fun TransformOverlay(
                             )
                         } else {
                             Modifier.clip(movingShape).background(movingColor)
-                        },
-                    )
-                    .then(
-                        if (movingBorderWidth > 0.dp) {
-                            Modifier.border(movingBorderWidth, movingBorderColor, movingShape)
-                        } else {
-                            Modifier
                         },
                     ),
             )

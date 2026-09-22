@@ -657,10 +657,14 @@ object MainNavigationHost {
                     HarmonicTheme(
                         selection = themeSelection,
                     ) {
-                        MainNavigation(
-                            activity = activity,
-                            controller = controller,
-                        )
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            LocalPredictiveBackCompletion provides remember { PredictiveBackCompletion() },
+                        ) {
+                            MainNavigation(
+                                activity = activity,
+                                controller = controller,
+                            )
+                        }
                     }
                 }
             }
@@ -677,6 +681,7 @@ private fun MainNavigation(
     controller: MainNavigationController,
 ) {
     val navigationSnapshot by controller.navigationState.state.collectAsState()
+    val backCompletion = LocalPredictiveBackCompletion.current
     // Include asynchronous feed population in launcher time-to-full-display. Other
     // destinations have their own loading lifecycle and must not wait for the hidden feed.
     ReportDrawnWhen {
@@ -806,6 +811,9 @@ private fun MainNavigation(
                 controller.getCommentsCoordinator()?.handlesBackInternally() == true),
     ) { events ->
         val storySerialAtGestureStart = controller.navigationState.state.value.storyRequest?.serial
+        if (backCompletion.handleFollowingBack(events, activity.onBackPressedDispatcher)) {
+            return@PredictiveBackHandler
+        }
         fun popGestureStoryIfStillCurrent() {
             if (controller.navigationState.state.value.storyRequest?.serial == storySerialAtGestureStart) {
                 controller.detailRemovedFromBackStack()
@@ -883,14 +891,21 @@ private fun MainNavigation(
                 popGestureStoryIfStillCurrent()
                 return@PredictiveBackHandler
             }
-            currentAnimation.finish()
-            completedPredictivePop = true
-            popGestureStoryIfStillCurrent()
-            // Keep the gesture's frozen current/previous destinations alive until the retained
-            // layer compositor observes the pop, so neither a blank frame nor a deeper destination
-            // appears during the handoff.
-            repeat(3) { withFrameNanos { } }
-            activeBackAnimation = null
+            val retainedWebView = frozenWebViewCoordinator
+            frozenWebViewCoordinator = null
+            backCompletion.finish(
+                scope = backAnimationScope,
+                animation = currentAnimation,
+                frameHoldCount = 3,
+                onCommit = {
+                    completedPredictivePop = true
+                    popGestureStoryIfStillCurrent()
+                },
+                onFinished = {
+                    if (activeBackAnimation === currentAnimation) activeBackAnimation = null
+                    retainedWebView?.endWebViewPredictiveBack()
+                },
+            )
         } catch (_: CancellationException) {
             withContext(NonCancellable) {
                 animation?.cancel()
@@ -968,6 +983,19 @@ private fun MainNavigation(
     }
 
     val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
+    fun parentBackModifier(destination: MainDestination): Modifier {
+        var modifier: Modifier = Modifier
+        if (navigationSnapshot.parentDestination(MainDestination.SETTINGS) == destination) {
+            modifier = modifier.then(settingsPredictiveBack.enterModifier)
+        }
+        if (navigationSnapshot.parentDestination(MainDestination.SUBMISSIONS) == destination) {
+            modifier = modifier.then(submissionsPredictiveBack.enterModifier)
+        }
+        if (navigationSnapshot.parentDestination(MainDestination.EDITOR) == destination) {
+            modifier = modifier.then(editorPredictiveBack.enterModifier)
+        }
+        return modifier
+    }
     HarmonicAppRoot(
         navigation = navigationSnapshot,
         transitionOffsetPx = settingsTransitionOffsetPx,
@@ -978,10 +1006,10 @@ private fun MainNavigation(
         submissionsInTwoPane = submissionsInTwoPane,
         modifier = Modifier.background(HarmonicTheme.colors.settingsPageBackground)
             .semantics { testTagsAsResourceId = true },
-        basePredictiveModifier = settingsPredictiveBack.enterModifier
-            .then(submissionsPredictiveBack.enterModifier)
-            .then(editorPredictiveBack.enterModifier),
+        basePredictiveModifier = parentBackModifier(MainDestination.STORIES)
+            .then(parentBackModifier(MainDestination.STORY)),
         settingsPredictiveModifier = settingsPredictiveBack.exitModifier
+            .then(parentBackModifier(MainDestination.SETTINGS))
             .then(
                 if (storyParentDestination == MainDestination.SETTINGS) {
                     activeBackAnimation?.enterModifier ?: Modifier
@@ -989,7 +1017,8 @@ private fun MainNavigation(
                     Modifier
                 },
             ),
-        submissionsPredictiveModifier = submissionsPredictiveBack.exitModifier.then(
+        submissionsPredictiveModifier = submissionsPredictiveBack.exitModifier
+            .then(parentBackModifier(MainDestination.SUBMISSIONS)).then(
             if (!submissionsInTwoPane && storyParentDestination == MainDestination.SUBMISSIONS) {
                 activeBackAnimation?.enterModifier ?: Modifier
             } else {

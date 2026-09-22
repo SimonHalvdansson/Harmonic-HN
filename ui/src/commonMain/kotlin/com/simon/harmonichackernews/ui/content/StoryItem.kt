@@ -427,6 +427,7 @@ fun StoryItem(
                                             hasPreview = hasPreview,
                                             dimAlpha = dimAlpha,
                                             onClick = onCommentClick,
+                                            onLongClick = trackedLinkLongClick,
                                             onPreviewLoadFailed = handlePreviewLoadFailed,
                                             onPreviewLoadSuccess = handlePreviewLoadSuccess,
                                             tintBaseColorArgb = tintBaseColorArgb,
@@ -456,6 +457,7 @@ fun StoryItem(
                                             typography = typography,
                                             dimAlpha = dimAlpha,
                                             onClick = onCommentClick,
+                                            onLongClick = trackedLinkLongClick,
                                             animateChanges = true,
                                             modifier = Modifier
                                                 .graphicsLayer(alpha = smallAccessoryAlpha)
@@ -481,6 +483,7 @@ fun StoryItem(
                                     hasPreview = hasPreview,
                                     dimAlpha = dimAlpha,
                                     onClick = onCommentClick,
+                                    onLongClick = trackedLinkLongClick,
                                     onPreviewLoadFailed = handlePreviewLoadFailed,
                                     onPreviewLoadSuccess = handlePreviewLoadSuccess,
                                     tintBaseColorArgb = tintBaseColorArgb,
@@ -505,6 +508,7 @@ fun StoryItem(
                                     typography = typography,
                                     dimAlpha = dimAlpha,
                                     onClick = onCommentClick,
+                                    onLongClick = trackedLinkLongClick,
                                     animateChanges = animate,
                                     modifier = Modifier.captureStoryPreviewElement(
                                         enabled = captureSourceContent,
@@ -652,6 +656,7 @@ private fun StoryMediumPreviewRail(
     hasPreview: Boolean,
     dimAlpha: Float,
     onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
     onPreviewLoadFailed: () -> Unit,
     onPreviewLoadSuccess: () -> Unit,
     tintBaseColorArgb: Int,
@@ -751,10 +756,12 @@ private fun StoryMediumPreviewRail(
         modifier = modifier
             .then(if (hasPreview) Modifier.fillMaxSize() else Modifier.fillMaxHeight())
             .then(
-                if (!hasPreview) Modifier.clickable(
+                if (!hasPreview) Modifier.combinedClickable(
                     enabled = onClick != null,
                     onClickLabel = "Open comments",
-                ) { onClick?.invoke() } else Modifier,
+                    onLongClick = onLongClick,
+                    onClick = { onClick?.invoke() },
+                ).onSecondaryClick { onLongClick?.invoke() } else Modifier,
             )
             .padding(railPadding),
         contentAlignment = if (hasPreview) Alignment.Center else Alignment.CenterEnd,
@@ -773,10 +780,12 @@ private fun StoryMediumPreviewRail(
                             bottomStart = imageStartRadius,
                         ),
                     )
-                    .clickable(
+                    .combinedClickable(
                         enabled = onClick != null,
                         onClickLabel = "Open comments",
-                    ) { onClick?.invoke() },
+                        onLongClick = onLongClick,
+                        onClick = { onClick?.invoke() },
+                    ).onSecondaryClick { onLongClick?.invoke() },
             ) {
                 StoryPreviewImage(
                     model = model,
@@ -1648,6 +1657,7 @@ private fun StoryCommentRail(
     typography: ContentTypography,
     dimAlpha: Float,
     onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
     animateChanges: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1671,7 +1681,12 @@ private fun StoryCommentRail(
             .width(60.dp)
             .fillMaxHeight()
             .then(modifier)
-            .clickable(enabled = onClick != null, onClickLabel = "Open comments") { onClick?.invoke() }
+            .combinedClickable(
+                enabled = onClick != null,
+                onClickLabel = "Open comments",
+                onLongClick = onLongClick,
+                onClick = { onClick?.invoke() },
+            ).onSecondaryClick { onLongClick?.invoke() }
             .semantics(mergeDescendants = true) {
                 contentDescription = "Open comments, ${model.commentCount} comments"
             }

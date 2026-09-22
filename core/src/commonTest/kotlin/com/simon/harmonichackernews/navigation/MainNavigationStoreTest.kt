@@ -7,6 +7,26 @@ import kotlin.test.assertNull
 
 class MainNavigationStoreTest {
     @Test
+    fun submissionsOpenedFromDebugUseTheirActualStackParent() {
+        val store = MainNavigationStore()
+        store.openSettings("debug")
+        store.showUserDialog("pg")
+        store.dismissUserDialog()
+        store.openSubmissions("pg")
+        assertEquals(MainDestination.SETTINGS, store.state.value.parentDestination(MainDestination.SUBMISSIONS))
+        store.openStory(StoryRoute(42))
+        assertEquals(MainDestination.SUBMISSIONS, store.state.value.parentDestination(MainDestination.STORY))
+        store.detailRemovedFromBackStack()
+        store.closeSubmissions()
+        assertEquals(MainDestination.SETTINGS, store.state.value.currentDestination)
+        assertEquals("debug", store.state.value.currentSettingsSectionRoute)
+        store.closeSettings()
+        store.openSubmissions("pg")
+        assertEquals(MainDestination.STORIES, store.state.value.parentDestination(MainDestination.SUBMISSIONS))
+        assertNull(store.state.value.parentDestination(MainDestination.SETTINGS))
+    }
+
+    @Test
     fun browserExitCanReturnDirectlyToStoriesFromNestedDestinations() {
         val store = MainNavigationStore()
         store.openSettings("debug")

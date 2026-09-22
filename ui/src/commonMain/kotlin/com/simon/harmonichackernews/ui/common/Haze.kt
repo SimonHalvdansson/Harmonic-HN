@@ -19,6 +19,7 @@ import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.GlassOptics
+import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.SurfaceProfile
 import dev.chrisbanes.haze.glass.ChromaticAberrationMode
 import com.simon.harmonichackernews.settings.GlassParameter
@@ -164,12 +165,12 @@ internal fun Modifier.sharedHazeBackground(
                 )
                 // Adaptive optics suppress sharp text fragments in the default frosted glass.
                 if (!glass[GlassSwitch.AdaptiveOptics]) {
-                    optics(GlassOptics.Fixed(
+                    optics(GlassOptics(
                         refractionStrength = glass[GlassParameter.RefractionStrength],
                         refractionHeightFraction = glass[GlassParameter.RefractionHeight],
                         refractionDisplacement = glass[GlassParameter.RefractionDisplacement].dp,
-                        depth = glass[GlassParameter.Depth],
-                        blurRadius = glass[GlassParameter.BlurRadius].dp,
+                        depth = OpticalSizeValue.Fixed(glass[GlassParameter.Depth]),
+                        blurRadius = OpticalSizeValue.Fixed(glass[GlassParameter.BlurRadius].dp),
                         refractionFoldStrength = glass[GlassParameter.RefractionFold],
                     ))
                 }

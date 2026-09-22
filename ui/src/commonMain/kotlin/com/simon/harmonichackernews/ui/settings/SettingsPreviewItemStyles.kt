@@ -38,6 +38,7 @@ internal fun CommentsSettingsUiState.toPreviewCommentItemStyle(): CommentItemSty
         userAvatarsEnabled = userAvatarsEnabled,
         userAvatarOptions = userAvatarOptions,
         showDivider = showDividers,
+        markNewComments = markNewComments,
         preferredFont = preferredFont,
         animateChanges = animateChanges,
     )

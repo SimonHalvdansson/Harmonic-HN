@@ -57,6 +57,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -74,6 +77,7 @@ import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentItem
 import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.toCommentItemStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -219,6 +223,7 @@ fun CommentsScreen(
     )
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
+    val animatedRows = rememberAnimatedCommentRows(visibleComments, listState, animateComments)
     val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
     com.simon.harmonichackernews.ui.content.PrefetchCommentContent(
         listState = listState,
@@ -245,7 +250,7 @@ fun CommentsScreen(
         )
     }
 
-    LaunchedEffect(listState, visibleComments) {
+    LaunchedEffect(listState, visibleComments, animatedRows.exitingIds) {
         snapshotFlow {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 0 }
             val coverage = if (header == null || topInsetPx <= 0) {
@@ -261,7 +266,8 @@ fun CommentsScreen(
                 coverage,
             )
         }.distinctUntilChanged().collect { (_, _, coverage) ->
-            controller.updateScrollPosition(listState, visibleComments)
+            // During collapse, lazy indices also contain retained exiting children.
+            if (animatedRows.exitingIds.isEmpty()) controller.updateScrollPosition(listState, visibleComments)
             controller.updateStatusBarHeaderCoverage(coverage)
             controller.listener.onHeaderCoverageChanged(coverage)
         }
@@ -376,7 +382,7 @@ fun CommentsScreen(
 
     val list: @Composable () -> Unit = {
         LazyContentList(
-            items = visibleComments,
+            items = animatedRows.rows,
             key = { item -> item.comment.id },
             contentType = { if (settings.hasBackground) "comment-card" else "comment" },
             modifier = Modifier
@@ -409,6 +415,7 @@ fun CommentsScreen(
                 }
             },
         ) { index, item ->
+                val exiting = item.comment.id in animatedRows.exitingIds
                 val tag = item.comment.by?.lowercase()?.trim()?.let(userTags::get)
                 val suppressed = item.comment.id in controller.suppressedCommentIds
                 val keepActionSourceVisible =
@@ -425,7 +432,7 @@ fun CommentsScreen(
                     hiddenReplyCount = item.hiddenReplyCount,
                     collapseParent = settings.collapseParent,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
-                    nextCommentDepth = visibleComments.getOrNull(index + 1)?.comment?.depth,
+                    nextCommentDepth = animatedRows.rows.getOrNull(index + 1)?.comment?.depth,
                     highlighted = item.comment.id == controller.highlightedCommentId,
                     suppressedReferenceUrl = suppressedReferenceUrl,
                     captureActionSource =
@@ -435,12 +442,25 @@ fun CommentsScreen(
                     modifier = Modifier
                         .testTag("comment-row")
                         .padding(start = contentInsetStart, end = contentInsetEnd)
+                        .then(if (exiting) Modifier
+                            .clearAndSetSemantics { }
+                            .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints)
+                                val clippedTop = animatedRows.exitGeometry.getValue(item.comment.id)
+                                    .clippedTop(animatedRows.exitProgress()).coerceAtMost(placeable.height)
+                                layout(placeable.width, placeable.height - clippedTop) {
+                                    placeable.placeRelative(0, -clippedTop)
+                                }
+                            }
+                            .graphicsLayer { alpha = animatedRows.exitProgress() }
+                        else Modifier)
                         // A subtree entering/leaving the list needs sibling placement motion.
                         // Otherwise follow animated header/body bounds directly without a second
                         // spring making rows lag behind the header when cached threads reopen.
                         .then(if (animateComments) Modifier.animateItem(
-                            placementSpec = if (animateCommentPlacement) {
-                                tween(COMMENT_PLACEMENT_DURATION_MILLIS)
+                            placementSpec = if (animateCommentPlacement && animatedRows.exitingIds.isEmpty()) {
+                                contentTween()
                             } else {
                                 null
                             },

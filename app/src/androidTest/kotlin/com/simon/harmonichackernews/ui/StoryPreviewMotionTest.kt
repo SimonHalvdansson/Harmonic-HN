@@ -4,9 +4,17 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -30,6 +38,47 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class StoryPreviewMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun bodyAndCommentRailUseTheSameSingleLongPressHapticForEveryImageMode() {
+        val mode = mutableStateOf(StoryPreviewMode.MEDIUM)
+        var previews = 0
+        var comments = 0
+        val haptics = mutableListOf<HapticFeedbackType>()
+        val feedback = object : HapticFeedback {
+            override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+                haptics += hapticFeedbackType
+            }
+        }
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            CompositionLocalProvider(LocalHapticFeedback provides feedback) {
+                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    StoryItem(
+                        model = SettingsStoryPreviewModel,
+                        style = previewStyle(mode.value),
+                        onCommentClick = { comments++ },
+                        onLinkLongClick = { previews++ },
+                    )
+                }
+            }
+        }
+        for ((index, imageMode) in StoryPreviewMode.entries.withIndex()) {
+            compose.runOnIdle { mode.value = imageMode; haptics.clear() }
+            compose.waitForIdle()
+            compose.onAllNodes(androidx.compose.ui.test.SemanticsMatcher("Open comments") {
+                it.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.OnClick)?.label == "Open comments"
+            }).onFirst().performTouchInput { longClick() }
+            compose.waitForIdle()
+            assertEquals(listOf(HapticFeedbackType.LongPress), haptics)
+            compose.runOnIdle { haptics.clear() }
+            compose.onNodeWithText(SettingsStoryPreviewModel.title).performTouchInput { longClick() }
+            compose.waitForIdle()
+            assertEquals("Body and rail must produce one identical pulse in $imageMode", listOf(HapticFeedbackType.LongPress), haptics)
+            assertEquals((index + 1) * 2, previews)
+            assertEquals(0, comments)
+        }
+    }
 
     @Test
     fun smallToLargeKeepsTheEntireStoryInsideItsCardOnEveryFrame() =

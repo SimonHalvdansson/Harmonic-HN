@@ -93,13 +93,14 @@ fun WidgetPreviewStoryRow(
                         (if (hasImage) WidgetDimensions.mediumImageHeight else WidgetDimensions.mediumNoImageHeight) + 16.dp else 0.dp)) {
                         Row(Modifier.align(Alignment.CenterStart).padding(start = 8.dp, top = 12.dp, bottom = 12.dp)) {
                             if (showIndex) WidgetPreviewText(model.index, fontFamily, WidgetTypography.TITLE_SIZE - 1,
-                                colors.textSecondary, Modifier.width(24.dp).testTag("widget-preview-index"))
+                                colors.textSecondary, Modifier.width(WidgetDimensions.indexWidth).testTag("widget-preview-index"))
                             Column(Modifier.weight(1f)) {
                                 WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.storyNormal,
                                     Modifier.testTag("widget-preview-title"), bold = true, maxLines = 4)
                                 Spacer(Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(painterResource(model.faviconFallback), null, Modifier.size(14.dp).alpha(if (model.tintFaviconFallback) 0.8f else 1f),
+                                    Icon(painterResource(model.faviconFallback), null, Modifier.size(WidgetDimensions.faviconSize)
+                                        .clip(RoundedCornerShape(WidgetDimensions.faviconCornerRadius)).alpha(if (model.tintFaviconFallback) 0.8f else 1f),
                                         tint = if (model.tintFaviconFallback) colors.textSecondary else Color.Unspecified)
                                     Spacer(Modifier.width(4.dp))
                                     WidgetPreviewText(listOfNotNull("${model.points} points".takeUnless { medium }, model.domain, model.age).joinToString(" · "),

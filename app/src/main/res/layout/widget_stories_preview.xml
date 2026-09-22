@@ -23,7 +23,7 @@
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
         android:background="@drawable/widget_preview_card">
-        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+        <TextView android:layout_width="20dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
             android:text="1." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="vertical">
@@ -48,7 +48,7 @@
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
         android:background="@drawable/widget_preview_card">
-        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+        <TextView android:layout_width="20dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
             android:text="2." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="vertical">
@@ -73,7 +73,7 @@
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
         android:background="@drawable/widget_preview_card">
-        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+        <TextView android:layout_width="20dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
             android:text="3." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="vertical">
@@ -98,7 +98,7 @@
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
         android:background="@drawable/widget_preview_card">
-        <TextView android:layout_width="24dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
+        <TextView android:layout_width="20dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginTop="12dp"
             android:text="4." android:textSize="13sp" android:fontFamily="variable-body-medium-emphasized" android:textColor="@color/widget_secondary_text" />
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="vertical">

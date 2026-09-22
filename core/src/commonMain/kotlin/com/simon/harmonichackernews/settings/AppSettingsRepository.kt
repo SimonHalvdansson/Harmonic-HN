@@ -33,6 +33,7 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),
     HIGHLIGHT_METADATA(UserPreferenceKeys.HIGHLIGHT_COMMENT_META),
     SHOW_DIVIDERS(UserPreferenceKeys.COMMENT_DIVIDERS),
+    MARK_NEW_COMMENTS(UserPreferenceKeys.MARK_NEW_COMMENTS),
     TOP_LEVEL_DEPTH_INDICATOR(UserPreferenceKeys.TOP_LEVEL_THREAD_INDICATORS),
     SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
     ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
