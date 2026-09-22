@@ -12,12 +12,28 @@ import com.simon.harmonichackernews.network.LinkPreviewUrls
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
+import androidx.compose.ui.unit.dp
+
+/** Paragraph-sized gaps around a reference run, compact gaps between its individual links. */
+internal fun referenceBlockTopPadding(blocks: List<CollectedReferenceLinks.ContentBlock>, index: Int) = when {
+    index == 0 -> 0.dp
+    blocks[index - 1].isLink() && blocks[index].isLink() -> 4.dp
+    else -> 12.dp
+}
 
 internal fun shouldResolveReferenceLinkTitle(url: String): Boolean =
     LinkSummaryParser.hackerNewsItemId(url) != null ||
         LinkSummaryParser.isYoutubeVideoUrl(url) ||
         LinkPreviewUrls.isWikipediaUrl(url) ||
         LinkPreviewUrls.isArxivUrl(url)
+
+internal fun hasReferenceLinkTitle(label: String, url: String): Boolean {
+    fun normalized(value: String) = value.trim().removePrefix("https://")
+        .removePrefix("http://").removePrefix("www.").trimEnd('/')
+    val title = normalized(label)
+    return title.isNotBlank() && title != normalized(url) &&
+        !label.startsWith("https://") && !label.startsWith("http://")
+}
 
 /** Resolves supported reference links to useful source titles. */
 @Composable
@@ -37,7 +53,7 @@ fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink, reso
         }.getOrNull()
         val isSupportedSummary = when {
             LinkSummaryParser.hackerNewsItemId(url) != null ->
-                summary != null && LinkSummaryParser.isHackerNewsStory(summary)
+                summary?.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE
             else -> summary != null
         }
         if (summary != null && isSupportedSummary) {

@@ -524,7 +524,7 @@ class CommentsPresenter(
             }
             cachedParsed?.let parsed@ { parsed ->
                 if (!threadLoadSession.isCurrent(requestId, storyId)) return@parsed
-                val prepared = if (thread.allComments.size <= 1) {
+                val prepared = if (!thread.hasLoadedComments) {
                     val headerChanged = parsed.updateStoryInformation(
                         action.story,
                         thread.allComments.size,
@@ -779,7 +779,7 @@ class CommentsPresenter(
             action.story,
             thread.allComments.size,
         )
-        val initialThread = prepared?.thread ?: if (thread.allComments.size <= 1) {
+        val initialThread = prepared?.thread ?: if (!thread.hasLoadedComments) {
             withContext(threadPreparationDispatcher) {
                 thread.prepareInitialParsedComments(
                     action.story, parsed.comments, action.sorting, action.collapseTopLevel,

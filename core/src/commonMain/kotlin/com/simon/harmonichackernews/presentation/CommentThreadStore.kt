@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class PortableCommentItem(
     val comment: CommentSnapshot,
     val presentation: CommentPresentationSnapshot,
+    val isNew: Boolean = false,
 ) {
     val id: Int get() = comment.id
     val by: String? get() = comment.author
@@ -73,6 +74,9 @@ class CommentThreadStore {
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
+    // The first successful load (including an empty cached thread) is this visit's baseline.
+    private var initialCommentIds: Set<Int>? = null
+    internal val hasLoadedComments: Boolean get() = initialCommentIds != null
     private var hideDelayedComments = false
     private var visibilityTopology: CommentVisibilityTopology? = null
     private var previousVisibilityTopology: CommentVisibilityTopology? = null
@@ -81,6 +85,7 @@ class CommentThreadStore {
     val portableState: StateFlow<PortableCommentThreadState> get() = state
 
     fun reset(story: Story?, header: Comment = Comment(), sorting: String = CommentSorter.DEFAULT) {
+        initialCommentIds = null
         allComments.clear()
         allComments.add(header)
         commentsById.clear()
@@ -156,6 +161,7 @@ class CommentThreadStore {
         previousVisibilityTopology = null
         allComments.clear()
         allComments.addAll(prepared.allComments)
+        initialCommentIds = prepared.allComments.drop(1).mapTo(mutableSetOf()) { it.id }
         displayedComments.clear()
         displayedComments.addAll(prepared.displayedComments)
         commentsById.clear()
@@ -305,6 +311,9 @@ class CommentThreadStore {
         commentsById.clear()
         allComments.forEach { comment -> commentsById[comment.id] = comment }
         searchableTextById.keys.retainAll(allComments.mapTo(mutableSetOf(), Comment::id))
+        if (initialCommentIds == null) {
+            initialCommentIds = comments.drop(1).mapTo(mutableSetOf()) { it.id }
+        }
         portableItemsById.clear()
         rebuildDisplayedComments()
         publish(
@@ -462,7 +471,12 @@ class CommentThreadStore {
     }
 
     private fun portableItem(comment: Comment): PortableCommentItem =
-        portableItemsById.getOrPut(comment.id) { comment.toPortableItem() }
+        portableItemsById.getOrPut(comment.id) {
+            comment.toPortableItem().copy(
+                isNew = comment !== allComments.firstOrNull() &&
+                    initialCommentIds?.let { comment.id !in it } == true,
+            )
+        }
 
     private fun Comment.toPortableItem(): PortableCommentItem = PortableCommentItem(
         comment = toSnapshot(),

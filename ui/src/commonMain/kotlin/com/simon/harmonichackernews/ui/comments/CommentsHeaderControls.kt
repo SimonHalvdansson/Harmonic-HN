@@ -9,6 +9,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -634,22 +637,34 @@ private fun MoreMenu(
                         val options = stringArrayResource(Res.array.comment_sorting)
                         options.forEach { option ->
                             val isSelected = option == controller.currentSorting
+                            val selectionColor by animateColorAsState(
+                                if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f)
+                                else HarmonicTheme.colors.accent.copy(alpha = 0f),
+                                animationSpec = tween(180),
+                                label = "comment sort selection",
+                            )
                             DropdownMenuItem(
                                 modifier = Modifier.padding(horizontal = 8.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f) else Color.Transparent)
+                                    .background(selectionColor)
                                     .semantics { selected = isSelected },
-                                text = { CommentsMenuText(option) },
-                                leadingIcon = if (isSelected) {
-                                    {
-                                        Icon(
-                                            painterResource(Res.drawable.ic_check),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                            tint = HarmonicTheme.colors.drawable,
-                                        )
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        AnimatedVisibility(
+                                            visible = isSelected,
+                                            enter = fadeIn(tween(180)) + expandHorizontally(tween(180)),
+                                            exit = fadeOut(tween(180)) + shrinkHorizontally(tween(180)),
+                                        ) {
+                                            Icon(
+                                                painterResource(Res.drawable.ic_check),
+                                                contentDescription = null,
+                                                modifier = Modifier.padding(end = 12.dp).size(24.dp),
+                                                tint = HarmonicTheme.colors.drawable,
+                                            )
+                                        }
+                                        CommentsMenuText(option)
                                     }
-                                } else null,
+                                },
                                 onClick = {
                                     onDismiss()
                                     controller.listener.onSortComments(option)

@@ -15,6 +15,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -50,6 +53,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
@@ -528,6 +533,7 @@ fun CommentItem(
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
+                isNew = comment.isNew,
                 hiddenPreview = hiddenPreview,
                 hiddenReplyCount = hiddenReplyCount.takeIf {
                     it > 0
@@ -554,7 +560,7 @@ fun CommentItem(
                             CommentBodyText(
                                 html = block.bodyHtml.orEmpty(),
                                 modifier = if (hasInterleavedReferences && index > 0) {
-                                    Modifier.padding(top = 5.dp)
+                                    Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
                                 } else {
                                     Modifier
                                 },
@@ -568,13 +574,14 @@ fun CommentItem(
                             )
                         } else {
                             ReferenceRow(
+                                topPadding = if (hasInterleavedReferences) 0.dp else 4.dp,
                                 marker = link.markerLabel.orEmpty(),
                                 label = rememberReferenceLinkLabel(link, style.expandedReferenceLinks),
                                 expandedUrl = link.url.takeIf { style.expandedReferenceLinks },
                                 typography = typography,
                                 faviconUrl = rememberReferenceLinkFaviconUrl(link),
                                 modifier = when {
-                                    hasInterleavedReferences -> Modifier.padding(bottom = 2.dp)
+                                    hasInterleavedReferences -> Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
                                     index == firstReferenceIndex -> Modifier.padding(top = 5.dp)
                                     else -> Modifier
                                 },
@@ -1033,6 +1040,7 @@ private fun CommentMeta(
     emphasized: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     animateChanges: Boolean,
+    isNew: Boolean = false,
 ) {
     val colors = HarmonicTheme.colors
     val metaColor = when {
@@ -1139,10 +1147,18 @@ private fun CommentMeta(
         } else {
             Box(Modifier.weight(1f))
         }
-        hiddenReplyCount?.let {
+        if (isNew) {
+            Box(
+                Modifier.offset(y = (-2).dp).size(6.dp)
+                    .background(colors.accent, RoundedCornerShape(50))
+                    .semantics { contentDescription = "New comment" },
+            )
+        }
+        val replyCount: @Composable () -> Unit = {
             Text(
-                "+$it",
+                "+${hiddenReplyCount ?: 0}",
                 modifier = Modifier
+                    .padding(start = if (isNew) 6.dp else 0.dp)
                     .graphicsLayer(alpha = hiddenReplyCountAlpha)
                     .clip(RoundedCornerShape(7.dp))
                     .background(colors.commentCountIndicator)
@@ -1156,6 +1172,19 @@ private fun CommentMeta(
                 style = compactCommentTextStyle,
             )
         }
+        if (isNew) {
+            AnimatedVisibility(
+                // Move the fade layer itself. Offsetting its child draws above the layer's
+                // offscreen buffer and clips the pill while alpha is below one.
+                modifier = Modifier.offset(y = (-2).dp),
+                visible = showHiddenReplyCount && hiddenReplyCount != null,
+                enter = fadeIn(contentTween()) + expandHorizontally(contentTween(), expandFrom = Alignment.End, clip = false),
+                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween(), shrinkTowards = Alignment.End, clip = false),
+            ) { replyCount() }
+        } else if (hiddenReplyCount != null) {
+            // Older comments retain the original fixed-width, opacity-only count animation.
+            Box(Modifier.offset(y = (-2).dp)) { replyCount() }
+        }
     }
 }
 
@@ -1167,20 +1196,22 @@ internal fun ReferenceRow(
     typography: ContentTypography,
     expandedUrl: String? = null,
     faviconUrl: String? = null,
+    topPadding: Dp = 4.dp,
     modifier: Modifier = Modifier,
     suppressed: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (Rect, GraphicsLayer?) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
+    val resolvedExpandedUrl = expandedUrl?.takeIf { hasReferenceLinkTitle(label, it) }
     val faviconSize by animateDpAsState(
-        targetValue = if (expandedUrl != null) 21.dp else 17.dp,
+        targetValue = if (resolvedExpandedUrl != null) 21.dp else 17.dp,
         animationSpec = contentTween(),
         label = "collected link favicon size",
     )
     var bounds by remember(label) { mutableStateOf(Rect.Zero) }
     var sourceContentLayer by remember(label) { mutableStateOf<GraphicsLayer?>(null) }
-    Box(modifier.fillMaxWidth().padding(top = 4.dp)) {
+    Box(modifier.fillMaxWidth().padding(top = topPadding)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1229,7 +1260,7 @@ internal fun ReferenceRow(
             }
             SharedTransitionLayout(Modifier.weight(1f)) {
                 AnimatedContent(
-                    targetState = label to expandedUrl,
+                    targetState = label to resolvedExpandedUrl,
                     contentAlignment = Alignment.TopStart,
                     transitionSpec = {
                         (fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 5 })
@@ -1240,7 +1271,7 @@ internal fun ReferenceRow(
                 ) { (title, url) ->
                     val visibilityScope = this
                     val titleSize = typography.referenceLabelSize + if (url != null) 0.5f else 0f
-                    val titleLineHeight = titleSize + if (url != null) 2f else 3f
+                    val titleLineHeight = titleSize + if (url != null) 1f else 3f
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (marker.isNotBlank()) Text(
@@ -1270,7 +1301,7 @@ internal fun ReferenceRow(
                                         exit = fadeOut(contentTween()),
                                         boundsTransform = BoundsTransform { _, _ -> contentTween() },
                                     ),
-                                color = if (url != null) colors.storyDisabled else colors.storyNormal,
+                                color = if (url != null) lerp(colors.storyDisabled, colors.storyNormal, 0.55f) else colors.storyNormal,
                                 fontFamily = typography.family,
                                 fontSize = titleSize.sp,
                                 lineHeight = titleLineHeight.sp,

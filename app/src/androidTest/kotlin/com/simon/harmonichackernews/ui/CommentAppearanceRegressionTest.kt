@@ -35,10 +35,137 @@ import kotlin.math.abs
 class CommentAppearanceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test
+    fun newCommentDotMovesSmoothlyToTheLeftOfCollapsedReplyCount() = assertReplyCountMotion(isNew = true)
+
+    @Test
+    fun olderCommentReplyCountFadesAtFullWidthWithoutClipping() = assertReplyCountMotion(isNew = false)
+
+    private fun assertReplyCountMotion(isNew: Boolean) {
+        val store = CommentThreadStore()
+        val story = Story().apply { id = 100 }
+        store.reset(story)
+        if (isNew) store.replaceParsedComments(story, emptyList(), "Default", false)
+        store.replaceParsedComments(story, listOf(
+            Comment().apply { id = 1; by = "reader"; text = "New root"; depth = 0; parent = -1; expanded = true },
+            Comment().apply { id = 2; by = "reply"; text = "New reply"; depth = 1; parent = 1 },
+        ), "Default", false)
+        val item = mutableStateOf(store.state.value.visibleComments.first().comment)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        val dependencies = HarmonicUiDependencies(app, scene)
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
+                    HarmonicTheme(palette.colors.copy(commentCountIndicator = Color(0xFF0066CC)), palette.colorScheme, palette.dark) {
+                        CommentItem(
+                            modifier = Modifier.background(Color.White),
+                            comment = item.value,
+                            style = CommentItemStyle(
+                                displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
+                                emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
+                                preferredFont = "default", animateChanges = true,
+                            ),
+                            storyAuthor = null, accountUser = null, userTag = null,
+                            hiddenReplyCount = 1, collapseParent = false, showTopLevelIndicator = true,
+                            onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
+                            onReferenceLongClick = { _, _, _ -> },
+                        )
+                    }
+                }
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            fun dotX() = compose.onNodeWithContentDescription("New comment", useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot.center.x
+            val expandedX = if (isNew) dotX() else 0f
+            compose.runOnIdle {
+                store.toggleExpanded(1)
+                item.value = store.state.value.visibleComments.first().comment
+            }
+            compose.mainClock.advanceTimeBy(64)
+            val movingX = if (isNew) dotX() else 0f
+            val fadingCount = compose.onNodeWithText("+1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            // Bounds alone miss offscreen alpha layers clipping raised drawing. Inspect the
+            // actual pill pixels while it is still fading, including its topmost straight edge.
+            val pixels = compose.onRoot().captureToImage().toPixelMap()
+            val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            val density = compose.activity.resources.displayMetrics.density
+            val pillCenterX = fadingCount.center.x + if (isNew) 3 * density else 0f
+            val top = pixels[(pillCenterX - rootBounds.left).toInt(), (fadingCount.top - rootBounds.top + 1).toInt()]
+            val middle = pixels[(fadingCount.right - rootBounds.left - 2 * density).toInt(), (fadingCount.center.y - rootBounds.top).toInt()]
+            fun contrastFromWhite(color: Color) = abs(1f - color.red) + abs(1f - color.green) + abs(1f - color.blue)
+            assertTrue("Pill top must remain painted during fade: top=$top middle=$middle",
+                contrastFromWhite(top) > contrastFromWhite(middle) * 0.7f)
+            compose.mainClock.advanceTimeBy(800)
+            val collapsedX = if (isNew) dotX() else 0f
+            val count = compose.onNodeWithText("+1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val author = compose.onNodeWithText("reader", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertEquals(author.center.y - 2 * compose.activity.resources.displayMetrics.density, count.center.y, 1f)
+            if (!isNew) {
+                assertEquals("Fading count retains full width", count.width, fadingCount.width, 1f)
+                assertEquals("Fading count retains its position", count.left, fadingCount.left, 1f)
+                compose.onNodeWithContentDescription("New comment").assertDoesNotExist()
+                return
+            }
+            val dot = compose.onNodeWithContentDescription("New comment", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertEquals("Dot and count share the raised center", count.center.y, dot.center.y, 1f)
+            assertTrue("Dot moves gradually while the count appears", movingX < expandedX && movingX > collapsedX)
+            assertTrue("Reply count is to the right of the dot", count.left > collapsedX)
+            compose.runOnIdle {
+                store.toggleExpanded(1)
+                item.value = store.state.value.visibleComments.first().comment
+            }
+            compose.mainClock.advanceTimeBy(64)
+            assertTrue("Dot animates back when expanded", dotX() > collapsedX && dotX() < expandedX)
+            compose.mainClock.advanceTimeBy(800)
+            assertEquals(expandedX, dotX(), 1f)
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
+
     private fun comment(id: Int, depth: Int) = PortableCommentItem(
         CommentSnapshot(id, author = "reader$id", text = "Body $id", expandedAnchorText = "Body $id"),
         CommentPresentationSnapshot(expanded = true, depth = depth),
     )
+
+    @Test
+    fun failedExtendedReferenceRendersTheUrlOnlyOnce() {
+        val url = "https://unresolvable.invalid/reference"
+        val html = "<p>[1] <a href=\"$url\">$url</a></p>"
+        val row = PortableCommentItem(
+            CommentSnapshot(1, author = "reader", text = html, expandedAnchorText = html),
+            CommentPresentationSnapshot(expanded = true),
+        )
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        val dependencies = HarmonicUiDependencies(app, scene)
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        CommentItem(
+                            comment = row,
+                            style = CommentItemStyle(
+                                displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = true,
+                                emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
+                                preferredFont = "default", expandedReferenceLinks = true,
+                            ),
+                            storyAuthor = null, accountUser = null, userTag = null,
+                            hiddenReplyCount = 0, collapseParent = false, showTopLevelIndicator = true,
+                            onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
+                            onReferenceLongClick = { _, _, _ -> },
+                        )
+                    }
+                }
+            }
+            compose.onAllNodesWithText(url, useUnmergedTree = true).assertCountEquals(1)
+        } finally { scene.close() }
+    }
 
     @Test
     fun continuousLinesCrossChildrenButStopAtNewRootAndDividersAreCentered() {

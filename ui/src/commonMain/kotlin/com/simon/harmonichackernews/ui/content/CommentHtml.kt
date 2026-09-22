@@ -45,7 +45,7 @@ internal fun prepareCommentHtml(html: String): AnnotatedString {
     return buildAnnotatedString {
         val renderer = CommentHtmlRenderer(this)
         document.body().childNodes().forEach { renderer.appendNode(it) }
-    }.trimmed()
+    }.trimmedCommentText()
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
@@ -145,7 +145,7 @@ private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
     else -> null
 }
 
-private fun AnnotatedString.trimmed(): AnnotatedString {
+internal fun AnnotatedString.trimmedCommentText(): AnnotatedString {
     // Do not trim indentation or trailing whitespace belonging to preformatted code.
     val codeSpans = spanStyles.filter { it.item.fontFamily == FontFamily.Monospace }
     val start = minOf(

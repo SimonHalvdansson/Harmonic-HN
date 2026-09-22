@@ -61,7 +61,9 @@ object CollectedReferenceLinks {
         nodes.forEachIndexed { index, node ->
             if (nodesToRemove.any { it === node }) return@forEachIndexed
             if (isIgnorable(node)) return@forEachIndexed
-            val parsedLinks = parseUnnumberedLinkNode(node)
+            // A prose footnote after a numbered link must not prevent collecting that link.
+            // Both parsers require the entire standalone node to consist of references.
+            val parsedLinks = parseUnnumberedLinkNode(node).ifEmpty { parseReferenceNode(node) }
             if (parsedLinks.isEmpty() || !hasStandaloneLineBoundaries(nodes, index, node)) {
                 return@forEachIndexed
             }

@@ -7,6 +7,28 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun numberedLinksBeforeAProseFootnoteAreCollectedInPlace() {
+        // HN emits unclosed paragraphs; [3] is an explanatory footnote, not a URL.
+        val html = "See the poster [1] and video [2]." +
+            "<p>[1] <a href=\"https://example.com/poster\">https://example.com/poster</a>" +
+            "<p>[2] <a href=\"https://www.youtube.com/watch?v=0VLAoVGf_74\">Video</a>" +
+            "<p>[3] When multiplying A by V, transform each column."
+        val result = CollectedReferenceLinks.parse(html)
+
+        assertEquals(listOf("[1]", "[2]"), result.links.map { it.markerLabel })
+        assertEquals(listOf(false, true, true, false), result.contentBlocks.map { it.isLink() })
+        assertTrue(result.contentBlocks.first().bodyHtml.orEmpty().contains("poster [1]"))
+        assertTrue(result.contentBlocks.last().bodyHtml.orEmpty().contains("[3] When multiplying"))
+        assertTrue(result.hasInterleavedLinks())
+    }
+
+    @Test
+    fun numberedLinksEmbeddedInProseRemainUntouched() {
+        val html = "Before [1] <a href=\"https://example.com\">Source</a><p>After."
+        assertFalse(CollectedReferenceLinks.parse(html).hasLinks())
+    }
+
+    @Test
     fun explicitHrefPreservesTerminalPunctuationWhileBareProseStillTrimsIt() {
         for (url in listOf(
             "https://en.wikipedia.org/wiki/Yahoo!",

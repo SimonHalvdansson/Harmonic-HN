@@ -16,6 +16,52 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentThreadStoreTest {
     @Test
+    fun refreshMarksOnlyArrivalsAndRetainsMarkersThroughSortingCollapseAndRepeatedRefresh() {
+        val store = CommentThreadStore()
+        store.reset(story())
+        store.replaceParsedComments(story(), listOf(comment(1, -1, 0, "cached")), "Default", false)
+        assertFalse(store.state.value.visibleComments.single().comment.isNew)
+        val refreshed = listOf(
+            comment(1, -1, 0, "edited cached"),
+            comment(2, -1, 0, "new root"),
+            comment(3, 2, 1, "new reply"),
+        )
+        store.replaceParsedComments(story(), refreshed, "Default", false)
+        fun newIds() = store.state.value.allComments.filter { it.isNew }.map { it.id }.toSet()
+        assertEquals(setOf(2, 3), newIds())
+        store.toggleExpanded(2)
+        store.setSorting("Newest first")
+        assertEquals(setOf(2, 3), newIds())
+        store.replaceParsedComments(story(), refreshed, "Default", false)
+        assertEquals(setOf(2, 3), newIds())
+        store.reset(story())
+        store.replaceParsedComments(story(), refreshed, "Default", false)
+        assertTrue(newIds().isEmpty())
+    }
+
+    @Test
+    fun preparedEmptyCacheIsABaselineForTheFirstNetworkComment() {
+        val store = CommentThreadStore()
+        store.reset(story())
+        val cached = store.prepareInitialParsedComments(story(), emptyList(), "Default", false)
+        store.commitPreparedInitialComments(story(), cached)
+        assertTrue(store.hasLoadedComments)
+        store.replaceParsedComments(story(), listOf(comment(1, -1, 0, "first reply")), "Default", false)
+        assertTrue(store.state.value.visibleComments.single().comment.isNew)
+    }
+
+    @Test
+    fun officialRefreshUsesTheSameBaselineAsCachedComments() {
+        val store = CommentThreadStore()
+        store.reset(story())
+        store.appendLoadedComments(story(), listOf(comment(1, -1, 0, "cached")), "Default", false)
+        store.appendLoadedComments(story(), listOf(
+            comment(1, -1, 0, "cached"), comment(2, -1, 0, "new"),
+        ), "Default", false)
+        assertEquals(listOf(false, true), store.state.value.visibleComments.map { it.comment.isNew })
+    }
+
+    @Test
     fun delayedPlaceholderCommentsCanBeHiddenWithoutRemovingTheirReplies() {
         val store = CommentThreadStore()
         store.reset(story = story())

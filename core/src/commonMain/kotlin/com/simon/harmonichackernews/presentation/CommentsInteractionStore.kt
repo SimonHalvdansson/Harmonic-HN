@@ -17,6 +17,7 @@ data class CommentScrollRequest(
     val topOffset: LayoutCoordinate,
     val animate: Boolean,
     val searchResult: Boolean,
+    val restorePosition: Boolean = false,
 ) {
     val topOffsetPx: Int get() = topOffset.value
 }
@@ -167,11 +168,13 @@ class CommentsInteractionStore(
         topOffsetPx: Int = state.topInset.value,
         animate: Boolean = true,
         searchResult: Boolean = false,
+        restorePosition: Boolean = false,
     ) = scrollToCommentAt(
         commentId = commentId,
         topOffset = LayoutCoordinate(topOffsetPx),
         animate = animate,
         searchResult = searchResult,
+        restorePosition = restorePosition,
     )
 
     fun scrollToCommentAt(
@@ -179,6 +182,7 @@ class CommentsInteractionStore(
         topOffset: LayoutCoordinate = state.topInset,
         animate: Boolean = true,
         searchResult: Boolean = false,
+        restorePosition: Boolean = false,
     ) {
         state = state.copy(
             scrollRequest = CommentScrollRequest(
@@ -187,6 +191,7 @@ class CommentsInteractionStore(
                 topOffset = topOffset,
                 animate = animate && shouldSmoothScroll(),
                 searchResult = searchResult,
+                restorePosition = restorePosition,
             ),
         )
     }

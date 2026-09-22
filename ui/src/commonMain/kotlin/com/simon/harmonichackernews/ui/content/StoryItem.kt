@@ -986,6 +986,7 @@ private fun StoryMetricPill(
                 surfaceColor = container.copy(alpha = 0.60f),
                 shape = StoryMetricPillShape,
                 blurRadius = 4.dp,
+                glassAppearance = com.simon.harmonichackernews.ui.common.HazeGlassAppearance.FloatingButton,
             )
     }
     Row(

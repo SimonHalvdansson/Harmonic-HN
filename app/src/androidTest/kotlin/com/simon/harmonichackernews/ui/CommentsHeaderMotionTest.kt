@@ -23,6 +23,8 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -44,6 +46,62 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CommentsHeaderMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun selectedSortLabelMovesGraduallyWhileMenuDismisses() {
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val state = CommentsScreenState(
+            story = story, displaySettings = settings,
+            comments = (1..3).map { PortableCommentItem(CommentSnapshot(it), CommentPresentationSnapshot()) },
+            commentsLoaded = true,
+        )
+        lateinit var controller: CommentsComposeController
+        controller = CommentsComposeController.create(
+            story = story,
+            shouldSmoothScroll = { true }, showWebsite = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            },
+            listener = object : CommentsComposeController.Listener by NoOpListener() {
+                override fun onSortComments(sortType: String) {
+                    controller.updateContent(state.copy(currentSorting = sortType))
+                }
+            },
+        )
+        controller.updateContent(state)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        HeaderActions(controller, settings, 0, false)
+                    }
+                }
+            }
+            compose.onNodeWithContentDescription("More options").performClick()
+            compose.onNodeWithText("Sort comments").performClick()
+            compose.waitForIdle()
+            val label = compose.onNodeWithText("Newest first", useUnmergedTree = true)
+            val initialX = label.fetchSemanticsNode().boundsInRoot.left
+            compose.mainClock.autoAdvance = false
+            label.performClick()
+            compose.mainClock.advanceTimeBy(32)
+            val earlyX = label.fetchSemanticsNode().boundsInRoot.left
+            compose.mainClock.advanceTimeBy(32)
+            val laterX = label.fetchSemanticsNode().boundsInRoot.left
+            assertTrue("Selected label moves into its icon slot during dismissal", laterX > earlyX && earlyX >= initialX)
+            compose.mainClock.advanceTimeBy(600)
+            label.assertDoesNotExist()
+            assertEquals("Newest first", controller.currentSorting)
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
 
     @Test
     fun refreshMovesCommentsAndFadesIndicatorAtPhoneWidth() = assertRefreshMotion(400)

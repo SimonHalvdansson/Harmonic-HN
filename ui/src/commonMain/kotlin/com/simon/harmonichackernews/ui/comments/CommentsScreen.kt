@@ -123,7 +123,12 @@ internal fun commentScrollTopOffset(
     requestedTopOffsetPx: Int,
     searchResult: Boolean,
     navigationTopOffsetPx: Int,
-): Int = if (searchResult) navigationTopOffsetPx else requestedTopOffsetPx
+    restorePosition: Boolean = false,
+): Int = when {
+    restorePosition -> requestedTopOffsetPx
+    searchResult -> navigationTopOffsetPx
+    else -> maxOf(requestedTopOffsetPx, navigationTopOffsetPx)
+}
 
 internal suspend fun LazyListState.animateToCommentNavigationTarget(
     index: Int,
@@ -317,10 +322,11 @@ fun CommentsScreen(
                 ?.plus(1)
         }
         if (listIndex != null) {
-            val scrollOffset = -commentScrollTopOffset(
+            val scrollOffset = if (listIndex == 0) -request.topOffsetPx else -commentScrollTopOffset(
                 requestedTopOffsetPx = request.topOffsetPx,
                 searchResult = request.searchResult,
                 navigationTopOffsetPx = navigationTopOffsetPx,
+                restorePosition = request.restorePosition,
             )
             if (request.animate) {
                 listState.animateToCommentNavigationTarget(

@@ -6,6 +6,17 @@ import kotlin.test.assertTrue
 
 class ReferenceLinkLabelTest {
     @Test
+    fun unresolvedUrlLabelsUseOneLine() {
+        val url = "https://example.com/article"
+        assertFalse(hasReferenceLinkTitle(url, url))
+        assertFalse(hasReferenceLinkTitle("example.com/article", url))
+        assertFalse(hasReferenceLinkTitle("https://example.com/art...", url))
+        assertFalse(hasReferenceLinkTitle("", url))
+        assertTrue(hasReferenceLinkTitle("An article title", url))
+        assertTrue(hasReferenceLinkTitle("Comment by dang", "https://news.ycombinator.com/item?id=42"))
+    }
+
+    @Test
     fun resolvesHackerNewsYoutubeAndWikipediaTitles() {
         assertTrue(shouldResolveReferenceLinkTitle("https://news.ycombinator.com/item?id=42"))
         assertTrue(shouldResolveReferenceLinkTitle("https://youtu.be/dQw4w9WgXcQ"))

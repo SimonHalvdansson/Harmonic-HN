@@ -74,6 +74,8 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.ReferenceRow
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.content.prepareCommentHtml
+import com.simon.harmonichackernews.ui.content.trimmedCommentText
+import com.simon.harmonichackernews.ui.content.referenceBlockTopPadding
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -179,17 +181,20 @@ fun HeaderStoryBody(
         ?.takeIf(CollectedReferenceLinks.Result::hasLinks)
         ?.contentBlocks
         ?: listOf(CollectedReferenceLinks.ContentBlock.text(story.text))
+    val interleaved = references?.hasInterleavedLinks() == true
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(top = 4.dp, bottom = 3.dp),
     ) {
-        contentBlocks.forEach { block ->
+        contentBlocks.forEachIndexed { index, block ->
+            if (interleaved) Spacer(Modifier.height(referenceBlockTopPadding(contentBlocks, index)))
             val link = block.getLink()
             if (link == null) {
                 HeaderStoryTextBlock(
                     bodyHtml = block.bodyHtml.orEmpty(),
+                    trimParagraphEdges = interleaved,
                     fontFamily = typography.family,
                     fontSize = typography.commentTextSize,
                     onLinkLongClick = onLinkLongClick,
@@ -198,6 +203,7 @@ fun HeaderStoryBody(
                 HeaderReferenceRow(
                     link = link,
                     settings = settings,
+                    topPadding = if (interleaved) 0.dp else 4.dp,
                     suppressed = link.url == suppressedReferenceUrl,
                     onLongClick = onReferenceLongClick,
                 )
@@ -209,6 +215,7 @@ fun HeaderStoryBody(
 @Composable
 private fun HeaderStoryTextBlock(
     bodyHtml: String,
+    trimParagraphEdges: Boolean,
     fontFamily: FontFamily,
     fontSize: Float,
     onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
@@ -231,8 +238,10 @@ private fun HeaderStoryTextBlock(
             }
         }
     }
-    val annotated = remember(bodyHtml, linkStyles, linkListener) {
-        platform.annotatedHtml(bodyHtml, linkStyles, linkListener)
+    val annotated = remember(bodyHtml, linkStyles, linkListener, trimParagraphEdges) {
+        platform.annotatedHtml(bodyHtml, linkStyles, linkListener).let {
+            if (trimParagraphEdges) it.trimmedCommentText() else it
+        }
     }
     var textLayout by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
     var textCoordinates by remember(annotated) { mutableStateOf<LayoutCoordinates?>(null) }
@@ -263,6 +272,7 @@ private fun HeaderStoryTextBlock(
 private fun HeaderReferenceRow(
     link: CollectedReferenceLinks.ReferenceLink,
     settings: CommentDisplaySettings,
+    topPadding: Dp,
     suppressed: Boolean,
     onLongClick: (
         CollectedReferenceLinks.ReferenceLink,
@@ -276,6 +286,7 @@ private fun HeaderReferenceRow(
         commentTextSize = settings.preferredTextSize,
     )
     ReferenceRow(
+        topPadding = topPadding,
         marker = if (link.hasNumber()) link.markerLabel.orEmpty() else "",
         label = rememberReferenceLinkLabel(link, settings.expandedReferenceLinks),
         typography = typography,

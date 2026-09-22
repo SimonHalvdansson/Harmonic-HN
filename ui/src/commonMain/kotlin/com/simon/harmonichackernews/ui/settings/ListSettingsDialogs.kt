@@ -480,7 +480,7 @@ fun UserTagDialog(
             onValueChange = { tag = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(HarmonicDimens.compose_settings_dialog_single_line_field_height)
+                .heightIn(min = 64.dp)
                 .focusRequester(focusRequester),
             label = { Text("Tag") },
             singleLine = true,

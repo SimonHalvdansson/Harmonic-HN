@@ -774,7 +774,14 @@ class CommentsComposeController private constructor(
 
     fun restoreReadingPosition(commentId: Int, topOffsetPx: Int) {
         initialScrollRestorationPending = true
-        scrollToComment(commentId, topOffsetPx, false)
+        interactionStore.scrollToComment(
+            commentId = commentId,
+            topOffsetPx = topOffsetPx,
+            animate = false,
+            searchResult = false,
+            restorePosition = true,
+        )
+        syncInteractionState()
     }
 
     interface Listener {
