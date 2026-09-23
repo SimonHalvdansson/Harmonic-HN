@@ -382,7 +382,7 @@ private fun PortableStoriesSettings(
     StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = HarmonicTheme.colors.storyCardBackground.toArgb(),
+            tintFallbackArgb = HarmonicTheme.colors.contentCardBackground.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,

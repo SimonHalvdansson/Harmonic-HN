@@ -434,7 +434,7 @@ private fun IosCommentsHeader(
     onBrowserBack: () -> Unit,
 ) {
     val colors = HarmonicTheme.colors
-    val tintBase = colors.storyCardBackground.toArgb()
+    val tintBase = colors.contentCardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

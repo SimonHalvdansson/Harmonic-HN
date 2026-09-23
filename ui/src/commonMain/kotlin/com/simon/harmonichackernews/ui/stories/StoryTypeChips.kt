@@ -81,7 +81,7 @@ internal fun StoryTypeChips(
                             painter = painterResource(StoryType.fromLabel(label).menuIcon),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = if (selected) colors.onSecondaryContainer else colors.drawable,
+                            tint = if (selected) colors.onSecondaryContainer else colors.iconTint,
                         )
                         Text(
                             text = label,
@@ -95,7 +95,7 @@ internal fun StoryTypeChips(
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = chipBackground,
                     labelColor = colors.textPrimary,
-                    iconColor = colors.drawable,
+                    iconColor = colors.iconTint,
                     selectedContainerColor = selectedBackground,
                     selectedLabelColor = colors.onSecondaryContainer,
                     selectedLeadingIconColor = colors.onSecondaryContainer,

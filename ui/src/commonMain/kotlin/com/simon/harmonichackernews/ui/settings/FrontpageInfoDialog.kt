@@ -22,7 +22,7 @@ internal fun FrontpageInfoButton(type: StoryType, onClick: () -> Unit) {
             painterResource(Res.drawable.ic_info),
             contentDescription = "About ${type.label}",
             modifier = Modifier.size(20.dp),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
     }
 }

@@ -972,8 +972,8 @@ private fun StoryMetricPill(
     val colors = HarmonicTheme.colors
     val container = colors.surfaceContainerHighest
     val foreground = readStateForeground(
-        colors.storyNormal,
-        colors.storyDisabled,
+        colors.contentPrimary,
+        colors.mutedText,
         dimAlpha,
         StoryMetricPillDimStrength,
     )
@@ -1085,8 +1085,8 @@ private fun StoryMainContent(
     modifier: Modifier,
 ) {
     val foreground = readStateForeground(
-        HarmonicTheme.colors.storyNormal,
-        HarmonicTheme.colors.storyDisabled,
+        HarmonicTheme.colors.contentPrimary,
+        HarmonicTheme.colors.mutedText,
         dimAlpha,
     )
     val titleSize = if (animateChanges) {
@@ -1221,7 +1221,7 @@ private fun StoryMainContent(
                                 onPositioned = { itemGeometry.summaryCoordinates = it },
                                 onLayerChanged = { itemGeometry.summaryLayer = it },
                             ),
-                        color = HarmonicTheme.colors.storyDisabled,
+                        color = HarmonicTheme.colors.mutedText,
                         fontFamily = typography.family,
                         fontSize = summarySize.sp,
                         maxLines = 3,
@@ -1521,7 +1521,7 @@ private fun StoryMeta(
             append("+")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = plusVisibility),
+                    color = HarmonicTheme.colors.mutedText.copy(alpha = plusVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = plusVisibility.coerceAtLeast(0.001f),
                     ),
@@ -1533,7 +1533,7 @@ private fun StoryMeta(
             append(model.points.toString())
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsVisibility),
+                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsVisibility.coerceAtLeast(0.001f),
                     ),
@@ -1546,7 +1546,7 @@ private fun StoryMeta(
             append(" points")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsWordVisibility),
+                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsWordVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsWordVisibility.coerceAtLeast(0.001f),
                     ),
@@ -1558,7 +1558,7 @@ private fun StoryMeta(
             append(" • ")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.storyDisabled.copy(alpha = pointsVisibility),
+                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsVisibility.coerceAtLeast(0.001f),
                     ),
@@ -1573,7 +1573,7 @@ private fun StoryMeta(
             append(domainSuffix)
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.storyDisabled.copy(
+                    color = HarmonicTheme.colors.mutedText.copy(
                         alpha = topLevelDomainProgress.value,
                     ),
                     textGeometricTransform = TextGeometricTransform(
@@ -1642,7 +1642,7 @@ private fun StoryMetaRow(
         Text(
             text = metaText,
             modifier = Modifier.weight(1f),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = typography.storyMetaFamily,
             fontSize = metaSize.sp,
             style = legacyTextStyle,
@@ -1662,8 +1662,8 @@ private fun StoryCommentRail(
     modifier: Modifier = Modifier,
 ) {
     val foreground = readStateForeground(
-        HarmonicTheme.colors.storyNormal,
-        HarmonicTheme.colors.storyDisabled,
+        HarmonicTheme.colors.contentPrimary,
+        HarmonicTheme.colors.mutedText,
         dimAlpha,
     )
     val countSize = if (animateChanges) {
@@ -1700,7 +1700,7 @@ private fun StoryCommentRail(
             ),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = HarmonicTheme.colors.drawable.copy(alpha = dimAlpha),
+            tint = HarmonicTheme.colors.iconTint.copy(alpha = dimAlpha),
         )
         StoryVisibility(
             visible = style.showCommentCount && !style.compact,

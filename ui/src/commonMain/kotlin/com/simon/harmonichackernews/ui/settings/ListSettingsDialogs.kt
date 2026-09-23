@@ -110,14 +110,14 @@ fun FontSelectionDialog(
                         ) {
                             Text(
                                 text = label,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = fontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                             )
                             Text(
                                 text = "205 points · science.org · 8h",
-                                color = HarmonicTheme.colors.storyDisabled,
+                                color = HarmonicTheme.colors.mutedText,
                                 fontFamily = fontFamily,
                                 fontSize = FontMetrics.forFont(value.storedValue).storyMeta.sp,
                             )
@@ -357,9 +357,9 @@ fun StringListEditorDialog(
                             painter = painterResource(Res.drawable.ic_add),
                             contentDescription = "Add",
                             tint = if (canAdd) {
-                                HarmonicTheme.colors.drawable
+                                HarmonicTheme.colors.iconTint
                             } else {
-                                HarmonicTheme.colors.drawable.copy(alpha = 0.38f)
+                                HarmonicTheme.colors.iconTint.copy(alpha = 0.38f)
                             },
                         )
                     }
@@ -376,7 +376,7 @@ fun StringListEditorDialog(
                             ) {
                                 Text(
                                     text = emptyMessage,
-                                    color = HarmonicTheme.colors.storyDisabled,
+                                    color = HarmonicTheme.colors.mutedText,
                                     fontFamily = ProductSansFontFamily,
                                     fontSize = 15.sp,
                                 )
@@ -414,7 +414,7 @@ fun StringListEditorDialog(
                                     Icon(
                                         painter = painterResource(Res.drawable.ic_close),
                                         contentDescription = "Remove $item",
-                                        tint = HarmonicTheme.colors.drawable,
+                                        tint = HarmonicTheme.colors.iconTint,
                                     )
                                 }
                             }
@@ -426,7 +426,7 @@ fun StringListEditorDialog(
                     Text(
                         text = suggestionsLabel,
                         modifier = Modifier.padding(top = 18.dp),
-                        color = HarmonicTheme.colors.storyNormal,
+                        color = HarmonicTheme.colors.contentPrimary,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,

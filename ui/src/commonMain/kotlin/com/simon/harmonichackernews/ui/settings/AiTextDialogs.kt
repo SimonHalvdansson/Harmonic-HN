@@ -174,7 +174,7 @@ fun AiSummaryBaseUrlDialog(
                 Text(
                     text = "Presets",
                     modifier = Modifier.padding(top = 4.dp),
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

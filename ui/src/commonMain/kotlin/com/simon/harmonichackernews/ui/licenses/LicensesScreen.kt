@@ -136,7 +136,7 @@ fun LicensesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(LicenseCardShape)
-                        .background(colors.settingsItemBackground)
+                        .background(colors.itemBackground)
                         .border(1.dp, colors.outlineVariant, LicenseCardShape),
                 ) {
                     LicenseHeader(platformTextStyle)
@@ -178,11 +178,11 @@ private fun LicenseHeader(platformTextStyle: TextStyle) {
         Text(
             text = "DEPENDENCY",
             modifier = Modifier.weight(1f),
-            color = colors.storyDisabled,
+            color = colors.mutedText,
             style = style,
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text = "CREATOR", color = colors.storyDisabled, style = style)
+        Text(text = "CREATOR", color = colors.mutedText, style = style)
     }
 }
 
@@ -224,7 +224,7 @@ private fun LicenseRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = license.name,
-                color = colors.storyNormal,
+                color = colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
@@ -232,7 +232,7 @@ private fun LicenseRow(
             )
             Text(
                 text = license.licenseType,
-                color = colors.storyDisabled,
+                color = colors.mutedText,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 style = platformTextStyle,
@@ -243,7 +243,7 @@ private fun LicenseRow(
             Text(
                 text = license.creator,
                 modifier = Modifier.widthIn(max = 180.dp),
-                color = colors.storyDisabled,
+                color = colors.mutedText,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 textAlign = TextAlign.End,

@@ -31,7 +31,7 @@ fun AnimatedBookmarkIcon(
     itemId: Int,
     description: String? = if (bookmarked) "Remove bookmark" else "Bookmark",
     modifier: Modifier = Modifier,
-    tint: Color = HarmonicTheme.colors.drawable,
+    tint: Color = HarmonicTheme.colors.iconTint,
 ) = key(itemId) {
     val transition = updateTransition(bookmarked, label = "bookmark")
     val fill by transition.animateFloat(

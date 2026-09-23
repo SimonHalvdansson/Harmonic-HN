@@ -55,7 +55,7 @@ fun CommentFeedItem(
     }
     val cardStyle = displaySettings.cardStyle
     val cardBackground = if (displaySettings.hasBackground) {
-        colors.storyCardBackground
+        colors.contentCardBackground
     } else {
         colors.background
     }
@@ -96,7 +96,7 @@ fun CommentFeedItem(
                 ) {
                     Text(
                         text = "On",
-                        color = colors.storyDisabled,
+                        color = colors.mutedText,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
@@ -110,7 +110,7 @@ fun CommentFeedItem(
                 Text(
                     text = "On \"$commentMasterTitle\"",
                     modifier = Modifier.weight(1f),
-                    color = colors.storyDisabled,
+                    color = colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -134,7 +134,7 @@ fun CommentFeedItem(
                 Text(
                     text = timeText,
                     modifier = Modifier.offset(y = timeOpticalOffset),
-                    color = colors.storyDisabled,
+                    color = colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
@@ -204,7 +204,7 @@ private fun CommentFeedBody(
     Box(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = formatted,
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = typography.family,
             fontSize = typography.commentTextSize.sp,
             maxLines = 16,
@@ -267,7 +267,7 @@ private fun CommentStoryTitleShimmer(modifier: Modifier = Modifier) {
         label = "comment story shimmer",
     )
     val base = HarmonicTheme.colors.surfaceContainerHighest
-    val highlight = HarmonicTheme.colors.storyNormal.copy(alpha = 0.12f)
+    val highlight = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.12f)
     Box(modifier.widthIn(max = 150.dp).clip(RoundedCornerShape(5.dp)).drawWithCache {
         onDrawBehind {
             drawRect(base)

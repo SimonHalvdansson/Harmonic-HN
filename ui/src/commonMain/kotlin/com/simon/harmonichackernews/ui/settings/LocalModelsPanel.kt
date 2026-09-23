@@ -151,7 +151,7 @@ fun LocalModelsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(settingsItemBackgroundColor())
+            .background(itemBackgroundColor())
             .animateContentSize(),
     ) {
         nanoRow?.let { row ->
@@ -246,7 +246,7 @@ fun ManagedLocalModelPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(settingsItemBackgroundColor())
+            .background(itemBackgroundColor())
             .padding(
                 start = HarmonicDimens.compose_settings_row_horizontal_padding,
                 top = 4.dp,
@@ -282,7 +282,7 @@ fun ManagedLocalModelPanel(
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(
                     text = title,
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
@@ -388,7 +388,7 @@ private fun LocalModelCard(
             ) {
                 Text(
                     text = row.model.displayName,
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
@@ -556,7 +556,7 @@ private fun LocalModelTrailingAction(
                     Icon(
                         painter = painterResource(icon),
                         contentDescription = description,
-                        tint = HarmonicTheme.colors.drawable,
+                        tint = HarmonicTheme.colors.iconTint,
                     )
                 }
             }

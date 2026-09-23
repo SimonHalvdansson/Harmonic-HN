@@ -62,7 +62,7 @@ internal class CommentsWebViewHost(context: Context) {
             setTextColor(
                 MaterialColors.getColor(
                     this,
-                    R.attr.storyColorNormal
+                    R.attr.contentPrimaryColor
                 )
             )
             visibility = View.GONE

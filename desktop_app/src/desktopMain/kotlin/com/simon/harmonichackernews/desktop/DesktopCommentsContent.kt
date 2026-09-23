@@ -311,7 +311,7 @@ private fun DesktopCommentsHeader(
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
 ) {
     val colors = HarmonicTheme.colors
-    val tintBase = colors.storyCardBackground.toArgb()
+    val tintBase = colors.contentCardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

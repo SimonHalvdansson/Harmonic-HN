@@ -312,7 +312,7 @@ private fun DebugOpenSetting(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(settingsItemBackgroundColor())
+            .background(itemBackgroundColor())
             .padding(
                 start = HarmonicDimens.compose_settings_row_horizontal_padding,
                 top = 12.dp,
@@ -325,7 +325,7 @@ private fun DebugOpenSetting(
                 painterResource(icon),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
             Spacer(Modifier.width(32.dp))
             Text(
@@ -368,7 +368,7 @@ private fun DebugOpenSetting(
             )
             OutlinedButton(
                 onClick = { open() },
-                border = BorderStroke(1.dp, HarmonicTheme.colors.drawable.copy(alpha = 0.2f)),
+                border = BorderStroke(1.dp, HarmonicTheme.colors.iconTint.copy(alpha = 0.2f)),
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
                     .padding(start = 10.dp, top = 12.dp)
@@ -377,7 +377,7 @@ private fun DebugOpenSetting(
                 Icon(
                     painterResource(Res.drawable.ic_chevron_right),
                     contentDescription = description,
-                    tint = HarmonicTheme.colors.drawable,
+                    tint = HarmonicTheme.colors.iconTint,
                 )
             }
         }

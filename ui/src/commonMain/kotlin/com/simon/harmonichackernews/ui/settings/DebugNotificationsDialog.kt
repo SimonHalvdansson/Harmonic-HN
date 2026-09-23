@@ -139,7 +139,7 @@ fun DebugNotificationsDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 13.sp,
                     minLines = 1,
@@ -206,7 +206,7 @@ private fun DebugNotificationButton(
             Text(
                 text = label,
                 modifier = Modifier.padding(start = 8.dp),
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,

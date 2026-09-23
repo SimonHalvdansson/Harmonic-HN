@@ -4,11 +4,15 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
+import android.view.ContextThemeWrapper
+import androidx.annotation.ColorInt
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
 
 object ThemeUtils {
     /**
@@ -66,27 +70,11 @@ object ThemeUtils {
         (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
 
-    fun getBackgroundColorResource(ctx: Context): Int = when (getPreferredTheme(ctx)) {
-        "amoled" -> android.R.color.black
-        "hacker" -> R.color.hackerBackground
-        "gray" -> R.color.grayBackground
-        "light" -> R.color.lightBackground
-        "hacker_news" -> R.color.hackerNewsBackground
-        "white" -> R.color.whiteBackground
-        ThemePreferences.MATERIAL_FIXED_DARK -> R.color.material_fixed_surface_dark
-        ThemePreferences.MATERIAL_FIXED_LIGHT -> R.color.material_fixed_surface_light
-        ThemePreferences.MATERIAL_FIXED_AUTO ->
-            if (uiModeNight(ctx)) R.color.material_fixed_surface_dark
-            else R.color.material_fixed_surface_light
-        "material_dark" -> materialBackgroundColor(dynamic = true, dark = true)
-        "material_light" -> materialBackgroundColor(dynamic = true, dark = false)
-        "material_daynight" ->
-            materialBackgroundColor(dynamic = true, dark = uiModeNight(ctx))
-        "darklight_daynight" ->
-            if (uiModeNight(ctx)) R.color.background else R.color.lightBackground
-        "amoledwhite_daynight" ->
-            if (uiModeNight(ctx)) android.R.color.black else R.color.whiteBackground
-        else -> R.color.background
+    @ColorInt
+    fun getPageBackgroundColor(ctx: Context): Int {
+        val selection = ctx.harmonicAppComposition.appearance.selection()
+        val themed = ContextThemeWrapper(ctx, themeResource(selection.theme, selection.dark))
+        return harmonicThemePalette(themed, selection).colors.background.toArgb()
     }
 
     fun getPreferredTheme(ctx: Context): String {
@@ -122,16 +110,6 @@ object ThemeUtils {
             useDynamic -> R.style.AppThemeMaterialLight
             dark -> R.style.AppThemeMaterialFixedDark
             else -> R.style.AppThemeMaterialFixedLight
-        }
-    }
-
-    private fun materialBackgroundColor(dynamic: Boolean, dark: Boolean): Int {
-        val useDynamic = dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        return when {
-            useDynamic && dark -> R.color.material_you_neutral_900
-            useDynamic -> R.color.material_you_neutral_50
-            dark -> R.color.material_fixed_surface_dark
-            else -> R.color.material_fixed_surface_light
         }
     }
 }

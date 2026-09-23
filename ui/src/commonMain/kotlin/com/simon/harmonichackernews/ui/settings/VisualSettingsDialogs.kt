@@ -79,7 +79,7 @@ fun FaviconProviderDialog(
                         Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(
                                 text = provider.label,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = ProductSansFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -87,7 +87,7 @@ fun FaviconProviderDialog(
                             )
                             Text(
                                 text = provider.urlTemplate,
-                                color = HarmonicTheme.colors.storyDisabled,
+                                color = HarmonicTheme.colors.mutedText,
                                 fontFamily = GoogleSansCodeFontFamily,
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
@@ -144,7 +144,7 @@ fun CommentsProviderDialog(
                         Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(
                                 text = provider.label,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = ProductSansFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -156,7 +156,7 @@ fun CommentsProviderDialog(
                                 } else {
                                     "Fast threaded results from Algolia's HN search API"
                                 },
-                                color = HarmonicTheme.colors.storyDisabled,
+                                color = HarmonicTheme.colors.mutedText,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 12.sp,
                                 lineHeight = 15.sp,

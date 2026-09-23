@@ -99,13 +99,13 @@ fun UserSettingsDialog(
                             Icon(
                                 painter = painterResource(Res.drawable.ic_account_circle),
                                 contentDescription = null,
-                                tint = HarmonicTheme.colors.storyNormal,
+                                tint = HarmonicTheme.colors.contentPrimary,
                                 modifier = Modifier.padding(end = 8.dp).size(28.dp),
                             )
                         }
                         Text(
                             text = userName,
-                            color = HarmonicTheme.colors.storyNormal,
+                            color = HarmonicTheme.colors.contentPrimary,
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 28.sp,
@@ -162,7 +162,7 @@ private fun UserLoadingPlaceholder() {
                     .width(width)
                     .height(16.dp)
                     .alpha(shimmerAlpha)
-                    .background(HarmonicTheme.colors.storyDisabled, RoundedCornerShape(8.dp)),
+                    .background(HarmonicTheme.colors.mutedText, RoundedCornerShape(8.dp)),
             )
         }
     }
@@ -179,7 +179,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
         Text(
             text = "Loading failed",
             modifier = Modifier.padding(vertical = 24.dp),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
@@ -225,7 +225,7 @@ private fun UserLoadedContent(
         Text(
             text = user.meta,
             modifier = Modifier.padding(bottom = 4.dp),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
@@ -234,7 +234,7 @@ private fun UserLoadedContent(
             SelectionContainer {
                 Text(
                     text = formattedAbout,
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -290,7 +290,7 @@ private fun UserOutlinedAction(
         Text(
             text = label,
             modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
@@ -310,7 +310,7 @@ private fun UserTextAction(
         Text(
             text = label,
             modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
         )

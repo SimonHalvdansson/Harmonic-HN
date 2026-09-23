@@ -522,12 +522,12 @@ internal fun IosCommentsScaffold(
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
             sheetContainerColor = HarmonicTheme.colors.background,
-            sheetContentColor = HarmonicTheme.colors.storyNormal,
+            sheetContentColor = HarmonicTheme.colors.contentPrimary,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,
             sheetSwipeEnabled = true,
             containerColor = Color.Transparent,
-            contentColor = HarmonicTheme.colors.storyNormal,
+            contentColor = HarmonicTheme.colors.contentPrimary,
             sheetContent = {
                 Box(
                     Modifier

@@ -132,7 +132,7 @@ fun UserAvatarSettingsScreen(
                             val selected = style in options.selectedStyles
                             val canToggle = !selected || options.selectedStyles.size > 1
                             Column(
-                                Modifier.fillMaxWidth().background(settingsItemBackgroundColor())
+                                Modifier.fillMaxWidth().background(itemBackgroundColor())
                                     .toggleable(
                                         value = selected, enabled = canToggle, role = Role.Checkbox,
                                         onValueChange = { checked ->
@@ -154,7 +154,7 @@ fun UserAvatarSettingsScreen(
                         }
                         SettingsDivider()
                         Row(
-                            Modifier.fillMaxWidth().background(settingsItemBackgroundColor())
+                            Modifier.fillMaxWidth().background(itemBackgroundColor())
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                         ) {
                             Button(onClick = { exampleBatch++ }, modifier = Modifier.fillMaxWidth()) {

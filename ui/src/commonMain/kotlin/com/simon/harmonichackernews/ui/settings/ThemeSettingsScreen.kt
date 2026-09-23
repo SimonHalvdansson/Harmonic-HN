@@ -366,7 +366,7 @@ private fun StoryThemePreview(
     val preview = animateStoryPreviewPalette(palette)
     // Extract against the destination palette, not every intermediate animation color. Keep the
     // existing sample tint visible while extraction runs; unchanged tints need no transition.
-    val tintBase = palette.colors.storyCardBackground.toArgb()
+    val tintBase = palette.colors.contentCardBackground.toArgb()
     val faviconTint = rememberPainterPaletteTint(
         painter = painterResource(SettingsStoryPreviewModel.faviconFallback),
         baseColorArgb = tintBase,
@@ -420,13 +420,13 @@ private fun animateStoryPreviewPalette(target: HarmonicThemePalette): HarmonicTh
     return target.copy(
         colors = colors.copy(
             background = background,
-            storyNormal = animatePreviewColor(colors.storyNormal),
-            storyDisabled = animatePreviewColor(colors.storyDisabled),
-            storyCardBackground = animatePreviewColor(colors.storyCardBackground),
+            contentPrimary = animatePreviewColor(colors.contentPrimary),
+            mutedText = animatePreviewColor(colors.mutedText),
+            contentCardBackground = animatePreviewColor(colors.contentCardBackground),
             surfaceContainerHigh = animatePreviewColor(colors.surfaceContainerHigh),
             surfaceContainerHighest = animatePreviewColor(colors.surfaceContainerHighest),
             outlineVariant = animatePreviewColor(colors.outlineVariant),
-            drawable = animatePreviewColor(colors.drawable),
+            iconTint = animatePreviewColor(colors.iconTint),
             overlayButton = animatePreviewColor(colors.overlayButton),
             overlayButtonContent = animatePreviewColor(colors.overlayButtonContent),
         ),
@@ -454,12 +454,12 @@ private fun ThemePairPicker(
 ) {
     val pairs = ThemePairPresets.filter { state.materialYouAvailable || !it.materialYou }
     Column(
-        modifier = Modifier.fillMaxWidth().background(settingsItemBackgroundColor()),
+        modifier = Modifier.fillMaxWidth().background(itemBackgroundColor()),
     ) {
         Text(
             text = "Matching light and dark palettes",
             modifier = Modifier.padding(start = 20.dp, top = 14.dp, end = 20.dp),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = ProductSansFontFamily,
             fontSize = 13.sp,
         )
@@ -541,7 +541,7 @@ private fun PairPresetCard(
                 )
                 Text(
                     text = pair.description,
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 11.sp,
@@ -598,7 +598,7 @@ private fun AccentPresetPicker(
     onSelected: (String) -> Unit,
 ) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth().background(settingsItemBackgroundColor())
+        modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
             .padding(vertical = 16.dp).selectableGroup(),
         contentPadding = PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(0.dp),
@@ -636,7 +636,7 @@ private fun AccentPresetPicker(
                     text = option.label.substringBefore(' '),
                     modifier = Modifier.padding(top = 4.dp),
                     color = if (checked) MaterialTheme.colorScheme.primary else
-                        HarmonicTheme.colors.storyDisabled,
+                        HarmonicTheme.colors.mutedText,
                     fontFamily = GoogleSansFlexRoundedFontFamily,
                     fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 12.sp,

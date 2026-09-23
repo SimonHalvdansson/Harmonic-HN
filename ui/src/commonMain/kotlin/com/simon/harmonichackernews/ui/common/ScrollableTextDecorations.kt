@@ -55,7 +55,7 @@ internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
 
 @Composable
 internal fun ScrollableTextScrollbar(state: ScrollState, modifier: Modifier = Modifier) {
-    val thumbColor = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.55f)
+    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
     Canvas(modifier) { drawScrollThumb(state, thumbColor) }
 }
 
@@ -69,7 +69,7 @@ internal fun ScrollableTextDecorations(
     val viewportSize = state.viewportSize
     if (maxValue <= 0 || viewportSize <= 0) return
 
-    val thumbColor = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.55f)
+    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
     val density = LocalDensity.current
     Canvas(modifier = modifier) {
         val fadeLengthPx = with(density) {

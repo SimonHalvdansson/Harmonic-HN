@@ -265,7 +265,7 @@ fun CommentsHeader(
                                             end = 16.dp,
                                         )
                                         .semantics { heading() },
-                                    color = colors.storyNormal,
+                                    color = colors.contentPrimary,
                                     fontFamily = headerTypography.family,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = headerTypography.commentsHeaderTitleSize.sp,
@@ -407,7 +407,7 @@ private fun CommentsSheetControls(
                 .align(Alignment.CenterHorizontally)
                 .size(width = 50.dp, height = CommentsSheetHandleHeight)
                 .clip(RoundedCornerShape(3.dp))
-                .background(colors.storyDisabled.copy(alpha = 0.6f)),
+                .background(colors.mutedText.copy(alpha = 0.6f)),
         )
         val actionAlpha = collapsedProgress * collapsedProgress * collapsedProgress
         Row(
@@ -442,7 +442,7 @@ private fun CommentsSheetControls(
                 ReaderModeSheetButton(
                     visible = readerModeAvailable,
                     enabled = readerModeEnabled,
-                    tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.drawable,
+                    tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.iconTint,
                     onClick = { onAction(CommentsSheetAction.READER) },
                 )
             }
@@ -462,7 +462,7 @@ private fun CommentsSheetControls(
 private fun RowScope.SheetButtonSlot(
     icon: DrawableResource,
     description: String,
-    tint: Color = HarmonicTheme.colors.drawable,
+    tint: Color = HarmonicTheme.colors.iconTint,
     onClick: () -> Unit,
 ) {
     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {

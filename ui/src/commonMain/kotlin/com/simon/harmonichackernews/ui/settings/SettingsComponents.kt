@@ -104,7 +104,7 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
-internal fun settingsItemBackgroundColor(): Color = HarmonicTheme.colors.settingsItemBackground
+internal fun itemBackgroundColor(): Color = HarmonicTheme.colors.itemBackground
 
 @Composable
 fun SettingsAlertDialog(
@@ -435,7 +435,7 @@ private fun SettingsNavigationRow(
                 if (selected) {
                     HarmonicTheme.colors.settingsHeaderSelected
                 } else {
-                    settingsItemBackgroundColor()
+                    itemBackgroundColor()
                 },
             )
             .clickable(role = Role.Button, onClick = onClick)
@@ -450,7 +450,7 @@ private fun SettingsNavigationRow(
             modifier = Modifier.size(
                 HarmonicDimens.compose_settings_row_icon_size,
             ),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
         Spacer(
             modifier = Modifier.width(
@@ -670,7 +670,7 @@ fun SettingRow(
             .defaultMinSize(
                 minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
-            .background(settingsItemBackgroundColor())
+            .background(itemBackgroundColor())
             .alpha(if (enabled) 1f else 0.38f)
             .then(
                 if (onClick != null) {
@@ -700,7 +700,7 @@ fun SettingRow(
                 modifier = Modifier.size(
                     HarmonicDimens.compose_settings_row_icon_size,
                 ),
-                tint = iconTint ?: HarmonicTheme.colors.drawable,
+                tint = iconTint ?: HarmonicTheme.colors.iconTint,
             )
             Spacer(
                 modifier = Modifier.width(
@@ -727,7 +727,7 @@ fun SettingRow(
             if (!summary.isNullOrBlank()) {
                 Text(
                     text = summary,
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = summaryFontSizeSp.sp,
                     lineHeight = summaryLineHeightSp.sp,
@@ -815,7 +815,7 @@ fun <T> SegmentedSetting(
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
     optionWeights: Map<T, Float> = emptyMap(),
     disabledOptions: Set<T> = emptySet(),
-    containerColor: Color = settingsItemBackgroundColor(),
+    containerColor: Color = itemBackgroundColor(),
     optionContent: (@Composable (T, Boolean) -> Unit)? = null,
     onSelected: (T) -> Unit,
 ) {
@@ -849,7 +849,7 @@ fun <T> SegmentedSetting(
                         top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
                     )
                 },
-                color = HarmonicTheme.colors.storyDisabled,
+                color = HarmonicTheme.colors.mutedText,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
@@ -941,7 +941,7 @@ fun <T> SegmentedSetting(
                                 tint = if (isSelected) {
                                     HarmonicTheme.colors.onSecondaryContainer
                                 } else {
-                                    HarmonicTheme.colors.drawable
+                                    HarmonicTheme.colors.iconTint
                                 },
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -980,7 +980,7 @@ fun SliderSetting(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(settingsItemBackgroundColor())
+            .background(itemBackgroundColor())
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
@@ -1102,7 +1102,7 @@ fun MultiChoiceDialog(
                                 end = 24.dp,
                                 bottom = 12.dp,
                             ),
-                            color = HarmonicTheme.colors.storyDisabled,
+                            color = HarmonicTheme.colors.mutedText,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,

@@ -6,58 +6,60 @@
     <color name="colorPrimaryDark">#99595e</color>
     <color name="colorAccent">#FF959E</color>
 
-    <color name="statusBarColor">@color/background</color>
+    <color name="statusBarColor">@color/base_surface_dark</color>
 
     <color name="grayStatusBarColor">@color/grayBackground</color>
 
-    <color name="lightStatusBarColor">@color/lightBackground</color>
+    <color name="lightStatusBarColor">@color/page_background_light</color>
 
     <color name="whiteStatusBarColor">@color/whiteBackground</color>
 
     <color name="colorPrimaryGreen">#4C9B7B</color>
     <color name="colorPrimaryGreenLighter">#478a74</color>
 
-    <color name="background">#222431</color>
-    <color name="darkerBackground">#14191E</color>
+    <color name="base_surface_dark">#222431</color>
+    <color name="darkSurfaceBase">#14191E</color>
     <color name="grayBackground">#292A2E</color>
-    <color name="darkStoryCardBackground">#2B2E3A</color>
-    <color name="grayStoryCardBackground">#34353A</color>
-    <color name="lightBackground">#F6F6EF</color>
+    <color name="darkContentCardBackground">#2B2E3A</color>
+    <color name="grayContentCardBackground">#34353A</color>
+    <color name="base_surface_light">#F6F6EF</color>
+    <color name="page_background_light">#F6F5EC</color>
     <color name="whiteBackground">#FFFFFF</color>
 
-    <color name="darkStoryColorNormal">#dfdfdf</color>
-    <color name="darkStoryColorDisabled">#99a</color>
+    <color name="darkContentPrimary">#dfdfdf</color>
+    <color name="darkMutedText">#99a</color>
     <color name="darkTextColorHighlighted">#ccc</color>
     <color name="darkTextColorDefault">#bbc</color>
     <color name="darkTextColorDisabled">#889</color>
     <color name="darkDividerColor">#22eeeeff</color>
-    <color name="darkDrawableColor">#fff</color>
+    <color name="darkIconTint">#fff</color>
     <color name="darkOpCommentColor">#fff08c</color>
     <color name="darkSelfCommentColor">#3c963c</color>
 
-    <color name="lightStoryColorNormal">#2f2f2f</color>
-    <color name="lightStoryColorDisabled">#777</color>
+    <color name="lightContentPrimary">#2f2f2f</color>
+    <color name="lightMutedText">#777</color>
     <color name="lightTextColorHighlighted">#3a3a3a</color>
     <color name="lightTextColorDefault">#4a4a4a</color>
     <color name="lightTextColorDisabled">#888</color>
     <color name="lightDividerColor">#aaa</color>
-    <color name="lightDrawableColor">#bb000000</color>
+    <color name="lightIconTint">#bb000000</color>
     <color name="lightOpCommentColor">#356858</color>
     <color name="lightSelfCommentColor">#3f51b5</color>
 
-    <color name="hackerNewsBackground">#F6F6EF</color>
+    <color name="base_surface_hacker_news">#F6F6EF</color>
+    <color name="page_background_hacker_news">#F7F5ED</color>
     <color name="hackerNewsAccent">#FF6600</color>
     <color name="hackerNewsAccentDark">#B34700</color>
     <color name="hackerNewsAccentContainer">#FFD5B8</color>
     <color name="hackerNewsOverlayButton">#BF5724</color>
     <color name="hackerNewsSurfaceContainer">#EEEBD9</color>
-    <color name="hackerNewsStoryColorNormal">#222222</color>
-    <color name="hackerNewsStoryColorDisabled">#828282</color>
+    <color name="hackerNewsContentPrimary">#222222</color>
+    <color name="hackerNewsMutedText">#828282</color>
     <color name="hackerNewsTextColorHighlighted">#333333</color>
     <color name="hackerNewsTextColorDefault">#555555</color>
     <color name="hackerNewsTextColorDisabled">#828282</color>
     <color name="hackerNewsDividerColor">#D8D3BE</color>
-    <color name="hackerNewsDrawableColor">#CC000000</color>
+    <color name="hackerNewsIconTint">#CC000000</color>
     <color name="hackerNewsOpCommentColor">#AF3B00</color>
     <color name="hackerNewsSelfCommentColor">#356858</color>
 
@@ -87,23 +89,23 @@
     <color name="settings_header_selected_light">#EAE6D2</color>
     <color name="settings_header_selected_white">#E1E3E5</color>
     <color name="settings_header_selected_black">#0D0F11</color>
-    <color name="settings_segment_dark">#2B2E3A</color>
-    <color name="settings_segment_amoled">#000000</color>
-    <color name="settings_segment_gray">#202124</color>
-    <color name="settings_segment_hacker">#000000</color>
-    <color name="settings_segment_light">#F0EEDC</color>
-    <color name="settings_segment_hacker_news">#F2EEDF</color>
-    <color name="settings_segment_white">#F2F4F7</color>
+    <color name="muted_surface_dark">#2B2E3A</color>
+    <color name="muted_surface_amoled">#000000</color>
+    <color name="muted_surface_gray">#202124</color>
+    <color name="muted_surface_hacker">#000000</color>
+    <color name="muted_surface_light">#F0EEDC</color>
+    <color name="muted_surface_hacker_news">#F2EEDF</color>
+    <color name="muted_surface_white">#F2F4F7</color>
 
     <color name="splash_screen_background">@color/material_you_neutral_50</color>
 
     <!-- Widget colors (light mode defaults) -->
     <color name="widget_background_surface">@color/material_you_neutral_50</color>
-    <color name="widget_title">@color/lightStoryColorNormal</color>
+    <color name="widget_title">@color/lightContentPrimary</color>
     <color name="widget_secondary_text">@color/lightTextColorDisabled</color>
     <color name="widget_story_index">@color/lightTextColorDisabled</color>
-    <color name="widget_story_title">@color/lightStoryColorNormal</color>
+    <color name="widget_story_title">@color/lightContentPrimary</color>
     <color name="widget_story_meta">@color/lightTextColorDefault</color>
-    <color name="widget_drawable_color">@color/lightDrawableColor</color>
+    <color name="widget_icon_tint">@color/lightIconTint</color>
 
 </resources>

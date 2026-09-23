@@ -107,7 +107,7 @@ fun CommentActionOverlay(
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
     val cardColor = if (settings.hasBackground) {
-        HarmonicTheme.colors.storyCardBackground
+        HarmonicTheme.colors.contentCardBackground
     } else {
         HarmonicTheme.colors.background
     }
@@ -115,7 +115,7 @@ fun CommentActionOverlay(
     val source = state.sourceGeometry?.copy(
         containerColor = commentSurfaceColor(
             cardColor,
-            HarmonicTheme.colors.storyNormal,
+            HarmonicTheme.colors.contentPrimary,
             highlighted = controller.highlightedCommentId == comment.id,
         ),
         containerBorderColor = HarmonicTheme.colors.commentDivider,
@@ -528,7 +528,7 @@ private fun CommentActionCardContent(
                     ) {
                         Text(
                             text = body,
-                            color = HarmonicTheme.colors.storyNormal,
+                            color = HarmonicTheme.colors.contentPrimary,
                             fontFamily = typography.family,
                             fontSize = commentTextSize.sp,
                             lineHeight = (commentTextSize * 1.34f).sp,
@@ -722,7 +722,7 @@ private fun RowScope.CommentActionIcon(
                         Icon(
                             painterResource(visual.icon),
                             contentDescription = visual.description,
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = HarmonicTheme.colors.iconTint,
                         )
                     }
                 }

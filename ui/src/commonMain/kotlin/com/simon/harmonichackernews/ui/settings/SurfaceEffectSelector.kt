@@ -73,7 +73,7 @@ private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
     val dark = HarmonicTheme.colors.background.luminance() < 0.5f
     val surface = if (dark) Color(0xFF252525) else Color(0xFFF5F5F5)
     val backdrop = if (selected) HarmonicTheme.colors.secondaryContainer
-        else HarmonicTheme.colors.settingsItemBackground
+        else HarmonicTheme.colors.itemBackground
     val outline = HarmonicTheme.colors.outlineVariant
     val sample = SurfaceEffectPreferences(mode = mode)
     CompositionLocalProvider(

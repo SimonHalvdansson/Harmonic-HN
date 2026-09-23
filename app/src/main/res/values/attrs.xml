@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <attr name="storyColorNormal" format="reference"/>
-    <attr name="storyColorDisabled" format="reference"/>
+    <attr name="contentPrimaryColor" format="reference"/>
+    <attr name="mutedTextColor" format="reference"/>
     <attr name="textColorHighlighted" format="reference"/>
     <attr name="textColorDefault" format="reference"/>
     <attr name="textColorDisabled" format="reference"/>
     <attr name="commentDividerColor" format="reference"/>
-    <attr name="drawableColor" format="reference"/>
+    <attr name="iconTintColor" format="reference"/>
     <attr name="opCommentColor" format="reference"/>
     <attr name="selfCommentColor" format="reference"/>
     <attr name="commentCountIndicatorColor" format="reference"/>
@@ -19,8 +19,8 @@
     <attr name="settingsHeaderSelectedColor" format="reference|color"/>
     <attr name="settingsMainToggleColor" format="reference|color"/>
     <attr name="settingsMainToggleTextColor" format="reference|color"/>
-    <attr name="settingsSegmentColor" format="reference|color"/>
-    <attr name="storyCardBackgroundColor" format="reference|color"/>
+    <attr name="mutedSurfaceColor" format="reference|color"/>
+    <attr name="contentCardBackgroundColor" format="reference|color"/>
     <attr name="popupMenuBackgroundColor" format="reference|color"/>
 
 </resources>

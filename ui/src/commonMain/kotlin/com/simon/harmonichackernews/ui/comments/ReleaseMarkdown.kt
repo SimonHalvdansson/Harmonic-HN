@@ -194,7 +194,7 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
                     baseUrl = pageUrl,
                     onOpenLink = platform.openLink,
                     modifier = Modifier.padding(vertical = 4.dp),
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     linkColor = HarmonicTheme.colors.link,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,

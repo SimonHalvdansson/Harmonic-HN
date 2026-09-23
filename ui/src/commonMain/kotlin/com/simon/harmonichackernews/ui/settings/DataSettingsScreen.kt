@@ -238,7 +238,7 @@ fun ImportBookmarksDialog(
                 Text(
                     text = "Choose what should happen to your existing bookmarks.",
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
@@ -296,7 +296,7 @@ private fun ImportBookmarksOption(
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
@@ -304,7 +304,7 @@ private fun ImportBookmarksOption(
             )
             Text(
                 text = summary,
-                color = HarmonicTheme.colors.storyDisabled,
+                color = HarmonicTheme.colors.mutedText,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,

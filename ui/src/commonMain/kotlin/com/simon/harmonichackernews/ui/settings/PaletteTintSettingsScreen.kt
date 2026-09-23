@@ -197,7 +197,7 @@ fun PaletteTintSettingsScreen(
         item {
             SettingsCategory("Adjust") {
                 Column(
-                    Modifier.background(settingsItemBackgroundColor()).padding(horizontal = 24.dp),
+                    Modifier.background(itemBackgroundColor()).padding(horizontal = 24.dp),
                 ) {
                     PaletteAdjustment(
                         label = "Tint strength",
@@ -254,7 +254,7 @@ private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
 private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) {
     val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
     val palette = preview?.palette
-    val baseColor = HarmonicTheme.colors.storyCardBackground
+    val baseColor = HarmonicTheme.colors.contentCardBackground
     val tint = remember(palette, style.paletteTintConfigKey, baseColor) {
         PreviewTintPolicy.calculateCardTint(
             baseColor.toArgb(),
@@ -296,14 +296,14 @@ private fun PaletteAdjustment(
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
             Text(
                 text = valueLabel,
-                color = HarmonicTheme.colors.storyDisabled,
+                color = HarmonicTheme.colors.mutedText,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
             )

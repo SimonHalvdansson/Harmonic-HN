@@ -133,7 +133,7 @@ fun AboutScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(colors.settingsItemBackground)
+                        .background(colors.itemBackground)
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                 ) {
                     AboutIdentity(
@@ -147,7 +147,7 @@ fun AboutScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 24.dp, bottom = 16.dp),
-                        color = colors.textPrimary,
+                        color = colors.contentPrimary,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 15.sp,
                         style = platformTextStyle,
@@ -202,7 +202,7 @@ private fun AboutIdentity(
             Text(
                 text = "Harmonic",
                 modifier = Modifier.offset(y = (-2).dp).semantics { heading() },
-                color = colors.storyNormal,
+                color = colors.contentPrimary,
                 fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(29.dp),
@@ -211,7 +211,7 @@ private fun AboutIdentity(
             Text(
                 text = versionLabel,
                 modifier = Modifier.offset(y = 34.dp),
-                color = colors.storyDisabled,
+                color = colors.mutedText,
                 fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(13.dp),
@@ -295,12 +295,12 @@ private fun AboutActionButton(
                     .padding(start = 24.dp)
                     .alpha(0.8f)
                     .size(24.dp),
-                colorFilter = ColorFilter.tint(colors.storyNormal),
+                colorFilter = ColorFilter.tint(colors.contentPrimary),
             )
             Text(
                 text = text,
                 modifier = Modifier.align(Alignment.Center).offset(x = 12.dp, y = (-0.5).dp),
-                color = colors.storyNormal,
+                color = colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,

@@ -100,12 +100,12 @@ internal fun CommentsScaffold(
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
             sheetContainerColor = HarmonicTheme.colors.background,
-            sheetContentColor = HarmonicTheme.colors.storyNormal,
+            sheetContentColor = HarmonicTheme.colors.contentPrimary,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,
             sheetSwipeEnabled = controller.integratedWebView,
             containerColor = Color.Transparent,
-            contentColor = HarmonicTheme.colors.storyNormal,
+            contentColor = HarmonicTheme.colors.contentPrimary,
             sheetContent = {
                 Box(
                     modifier = Modifier
@@ -168,7 +168,7 @@ private fun AndroidCommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
     val headerPresentation = remember(
         story.id,
         story.previewImageUrl,

@@ -97,7 +97,7 @@ fun TranslucentBackButton(
                     painter = painterResource(Res.drawable.ic_arrow_back),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(colors.drawable),
+                    colorFilter = ColorFilter.tint(colors.iconTint),
                 )
                 Text(
                     text = "Back",

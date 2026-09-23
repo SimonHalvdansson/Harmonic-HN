@@ -302,7 +302,7 @@ private fun WelcomeStoryPreview(
     textStyle: androidx.compose.ui.text.TextStyle,
     modifier: Modifier = Modifier,
 ) {
-    val baseColor = HarmonicTheme.colors.storyCardBackground
+    val baseColor = HarmonicTheme.colors.contentCardBackground
     val palette = rememberResourceTintPalette(Res.drawable.palette1)
     val targetExpressiveColor = remember(
         palette,
@@ -355,7 +355,7 @@ private fun WelcomeStoryPreviewContent(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Post title",
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.5.sp,
@@ -370,7 +370,7 @@ private fun WelcomeStoryPreviewContent(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "53 points • domain • 2h",
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = fontFamily,
                     fontSize = 13.sp,
                     style = textStyle,
@@ -397,11 +397,11 @@ private fun WelcomeStoryPreviewContent(
                 painter = painterResource(Res.drawable.ic_comment),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
             Text(
                 text = "18",
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,

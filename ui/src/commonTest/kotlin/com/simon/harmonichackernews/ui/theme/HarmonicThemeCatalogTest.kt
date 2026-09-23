@@ -96,4 +96,16 @@ class HarmonicThemeCatalogTest {
         assertEquals(Color(0xFFA74413), accented.colors.accent)
         assertEquals(Color(0xFFA74413), accented.colorScheme.primary)
     }
+
+    @Test
+    fun accentPaletteDoesNotDependOnPageBackground() {
+        val base = HarmonicThemeCatalog.resolve("light", systemDark = false)
+        val changedPage = base.copy(colors = base.colors.copy(background = Color.Magenta))
+
+        val originalAccent = ThemeAccentCatalog.apply(base, ThemePreferences.ACCENT_ORANGE)
+        val changedPageAccent = ThemeAccentCatalog.apply(changedPage, ThemePreferences.ACCENT_ORANGE)
+
+        assertEquals(originalAccent.colors.settingsMainToggle, changedPageAccent.colors.settingsMainToggle)
+        assertEquals(originalAccent.colorScheme.primaryContainer, changedPageAccent.colorScheme.primaryContainer)
+    }
 }

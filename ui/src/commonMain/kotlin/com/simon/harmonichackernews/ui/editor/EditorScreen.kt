@@ -393,7 +393,7 @@ private fun EditorMessageActionDialog(
                 } else {
                     Modifier
                 },
-                color = HarmonicTheme.colors.textPrimary,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -445,7 +445,7 @@ private fun ComposeEditorTopBar(
                 painter = painterResource(Res.drawable.ic_close),
                 contentDescription = "Close",
                 modifier = Modifier.size(24.dp),
-                tint = HarmonicTheme.colors.storyNormal,
+                tint = HarmonicTheme.colors.contentPrimary,
             )
         }
         Column(
@@ -457,7 +457,7 @@ private fun ComposeEditorTopBar(
         ) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 22.sp,
                 lineHeight = 28.sp,
@@ -534,7 +534,7 @@ private fun OriginalCommentText(
     Text(
         text = formattedParent,
         modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
-        color = HarmonicTheme.colors.storyNormal,
+        color = HarmonicTheme.colors.contentPrimary,
         fontFamily = ProductSansFontFamily,
         fontSize = 15.sp,
         lineHeight = 20.sp,
@@ -689,7 +689,7 @@ private fun ComposeEditorActionBar(
                 .height(if (compact) 48.dp else 64.dp)
                 .testTag("compose_editor_formatting_toolbar"),
             shape = RoundedCornerShape(32.dp),
-            color = if (compact) Color.Transparent else HarmonicTheme.colors.settingsSegment,
+            color = if (compact) Color.Transparent else HarmonicTheme.colors.mutedSurface,
             shadowElevation = if (compact) 0.dp else 4.dp,
         ) {
             Row(
@@ -744,7 +744,7 @@ private fun FormattingButton(
                 painter = painterResource(icon),
                 contentDescription = description,
                 modifier = Modifier.size(24.dp),
-                tint = HarmonicTheme.colors.drawable.copy(alpha = if (enabled) 1f else 0.38f),
+                tint = HarmonicTheme.colors.iconTint.copy(alpha = if (enabled) 1f else 0.38f),
             )
         }
     }

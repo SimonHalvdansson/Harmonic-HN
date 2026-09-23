@@ -98,7 +98,7 @@ fun HarmonicTopAppBar(
                         painter = painterResource(Res.drawable.ic_arrow_back),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        colorFilter = ColorFilter.tint(colors.drawable),
+                        colorFilter = ColorFilter.tint(colors.iconTint),
                     )
                 }
             }

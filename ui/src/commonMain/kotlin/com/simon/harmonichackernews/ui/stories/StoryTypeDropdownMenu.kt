@@ -43,12 +43,12 @@ internal fun StoryTypeDropdownMenu(
                     .semantics { selected = isSelected },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 text = {
-                    HarmonicMenuText(type.label, color = HarmonicTheme.colors.storyNormal,
+                    HarmonicMenuText(type.label, color = HarmonicTheme.colors.contentPrimary,
                         fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = fontSize)
                 },
                 onClick = { onSelected(type) },
                 leadingIcon = {
-                    Icon(painterResource(type.menuIcon), null, Modifier.size(24.dp), tint = HarmonicTheme.colors.drawable)
+                    Icon(painterResource(type.menuIcon), null, Modifier.size(24.dp), tint = HarmonicTheme.colors.iconTint)
                 },
             )
         }

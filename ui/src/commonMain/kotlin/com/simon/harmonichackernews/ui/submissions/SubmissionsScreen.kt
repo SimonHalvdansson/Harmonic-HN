@@ -531,7 +531,7 @@ private fun SubmissionsHeader(
                     heading()
                     contentDescription = "Submissions by $userName"
                 },
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 26.sp,
@@ -646,12 +646,12 @@ private fun EmptySubmissions(
             painter = painterResource(Res.drawable.ic_subject),
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
         Text(
             text = text,
             modifier = Modifier.padding(top = 4.dp, bottom = 36.dp),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,

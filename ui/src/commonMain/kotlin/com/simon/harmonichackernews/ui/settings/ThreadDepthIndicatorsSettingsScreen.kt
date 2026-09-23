@@ -172,7 +172,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(settingsItemBackgroundColor())
+                        .background(itemBackgroundColor())
                         .alpha(if (indicatorsEnabled) 1f else 0.38f)
                         .selectableGroup(),
                 ) {

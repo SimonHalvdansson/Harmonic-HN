@@ -62,7 +62,7 @@ object ThemeAccentCatalog {
         val scheme = palette.colorScheme
         val onAccent = if (accent.luminance() > 0.42f) Color(0xFF171717) else Color.White
         val accentContainer = lerp(
-            colors.background,
+            colors.readerModeBackground,
             accent,
             if (palette.dark) 0.34f else 0.20f,
         )

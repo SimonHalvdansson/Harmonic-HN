@@ -34,11 +34,11 @@ class FrontpageSelectionColorTest {
             val palette = HarmonicThemeCatalog.resolve(theme, false, accent.value)
             val colors = palette.colors
             val selected = frontpageSelectionColor(
-                colors.background, colors.settingsItemBackground, palette.colorScheme.primary,
+                colors.background, colors.itemBackground, palette.colorScheme.primary,
             )
             if (colors.background.luminance() > 0.5f) {
                 assertEquals(
-                    palette.colorScheme.primary.copy(alpha = 0.05f).compositeOver(colors.settingsItemBackground),
+                    palette.colorScheme.primary.copy(alpha = 0.05f).compositeOver(colors.itemBackground),
                     selected,
                     "$theme/${accent.value}",
                 )

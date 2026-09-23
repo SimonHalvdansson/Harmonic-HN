@@ -204,7 +204,7 @@ fun AiModelSelectorDialog(
             Text(
                 text = stringResource(Res.string.ai_model_choose_title),
                 modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 26.sp,
@@ -252,7 +252,7 @@ fun AiModelSelectorDialog(
                         pluralStringResource(Res.plurals.ai_model_count, it, it)
                     } ?: stringResource(Res.string.ai_model_suggestions),
                     modifier = Modifier.weight(1f),
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
@@ -408,7 +408,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
                         text = "${price.model.formattedInputPrice()} / " +
                             price.model.formattedOutputPrice(),
                         modifier = Modifier.alignByBaseline(),
-                        color = HarmonicTheme.colors.storyNormal,
+                        color = HarmonicTheme.colors.contentPrimary,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -485,7 +485,7 @@ private fun AiModelRow(
             Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
                 Text(
                     text = model.displayName(),
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,

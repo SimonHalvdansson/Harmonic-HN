@@ -115,8 +115,8 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         fun tint(base: Color) = palette?.let {
                             PreviewTintPolicy.calculateCardTint(base.toArgb(), it, app.userSettings.story.paletteTintConfigKey)
                         }
-                        entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day.storyCardBackground),
-                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night.storyCardBackground))
+                        entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day.contentCardBackground),
+                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night.contentCardBackground))
                     }
                 }
             }
@@ -182,13 +182,13 @@ internal data class WidgetVisual(val image: Bitmap?, val tint: Int?, val favicon
 /** Day/night colors are resolved by the launcher even while the application process is stopped. */
 internal data class WidgetColors(val day: HarmonicColors, val night: HarmonicColors = day) {
     val background = ColorProvider(day.background, night.background)
-    val storyCardBackground = ColorProvider(day.storyCardBackground, night.storyCardBackground)
+    val contentCardBackground = ColorProvider(day.contentCardBackground, night.contentCardBackground)
     val textPrimary = ColorProvider(day.textPrimary, night.textPrimary)
+    val contentPrimary = ColorProvider(day.contentPrimary, night.contentPrimary)
     val textSecondary = ColorProvider(day.textSecondary, night.textSecondary)
-    val storyNormal = ColorProvider(day.storyNormal, night.storyNormal)
     val outlineVariant = ColorProvider(day.outlineVariant, night.outlineVariant)
     val raisedFrame = ColorProvider(day.outlineVariant.copy(alpha = 0.5f), night.outlineVariant.copy(alpha = 0.5f))
-    val metricBackground = ColorProvider(day.storyCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha), night.storyCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha))
+    val metricBackground = ColorProvider(day.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha), night.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha))
     val standaloneMetricBackground = ColorProvider(day.surfaceContainerHighest, night.surfaceContainerHighest)
 }
 
@@ -209,7 +209,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
     val background = when {
         style == DisplayStyle.FLAT -> colors.background
         configuration.tint && visual?.tint != null -> ColorProvider(Color(visual.tint), Color(visual.nightTint ?: visual.tint))
-        else -> colors.storyCardBackground
+        else -> colors.contentCardBackground
     }
     val frame = when (style) {
         DisplayStyle.OUTLINED -> colors.outlineVariant
@@ -242,7 +242,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                                 style = TextStyle(color = colors.textSecondary, fontSize = (WidgetTypography.TITLE_SIZE - 1).sp, fontFamily = fontFamily))
                             Column(GlanceModifier.defaultWeight()) {
                                 val title = if (snapshot.isComment) HtmlTextUtils.plainText(snapshot.text).take(220) else text.title
-                                Text(title, style = TextStyle(color = colors.storyNormal, fontSize = WidgetTypography.TITLE_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 4)
+                                Text(title, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.TITLE_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 4)
                                 Spacer(GlanceModifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (preferences.thumbnails && !snapshot.isComment) {
@@ -287,8 +287,8 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                     if (!snapshot.isComment) {
                         Column(GlanceModifier.width(48.dp).fillMaxHeight().clickable(commentsAction).padding(horizontal = 6.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Image(ImageProvider(R.drawable.ic_comment), "Open comments", GlanceModifier.size(18.dp), colorFilter = ColorFilter.tint(colors.storyNormal))
-                            Text(snapshot.descendantCount.toString(), style = TextStyle(color = colors.storyNormal, fontSize = WidgetTypography.COMMENT_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily))
+                            Image(ImageProvider(R.drawable.ic_comment), "Open comments", GlanceModifier.size(18.dp), colorFilter = ColorFilter.tint(colors.contentPrimary))
+                            Text(snapshot.descendantCount.toString(), style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.COMMENT_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily))
                         }
                     }
                 }
@@ -305,9 +305,9 @@ private fun WidgetMetric(value: String, icon: Int, description: String, colors: 
             .padding(start = if (points) WidgetDimensions.pointsStartPadding else WidgetDimensions.metricStartPadding,
                 end = WidgetDimensions.metricEndPadding, top = WidgetDimensions.metricVerticalPadding, bottom = WidgetDimensions.metricVerticalPadding),
             verticalAlignment = Alignment.CenterVertically) {
-            Image(ImageProvider(icon), description, GlanceModifier.size(WidgetDimensions.metricIconSize), colorFilter = ColorFilter.tint(colors.storyNormal))
+            Image(ImageProvider(icon), description, GlanceModifier.size(WidgetDimensions.metricIconSize), colorFilter = ColorFilter.tint(colors.contentPrimary))
             if (!points) Spacer(GlanceModifier.width(2.dp))
-            Text(value, style = TextStyle(color = colors.storyNormal, fontSize = WidgetTypography.COMMENT_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 1)
+            Text(value, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.COMMENT_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 1)
         }
     }
 }

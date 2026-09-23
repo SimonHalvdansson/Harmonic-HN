@@ -203,7 +203,7 @@ fun ThemeSelectionDialog(
                             )
                             Text(
                                 text = option.description,
-                                color = HarmonicTheme.colors.storyDisabled,
+                                color = HarmonicTheme.colors.mutedText,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 13.sp,
                                 lineHeight = 16.sp,

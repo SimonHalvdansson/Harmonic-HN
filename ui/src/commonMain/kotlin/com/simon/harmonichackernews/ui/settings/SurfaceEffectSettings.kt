@@ -299,9 +299,9 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
                     Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f).height(80.dp).sharedHazeDialogBackground(
-                            HarmonicTheme.colors.storyCardBackground, RoundedCornerShape(20.dp)),
+                            HarmonicTheme.colors.contentCardBackground, RoundedCornerShape(20.dp)),
                             contentAlignment = Alignment.Center) {
-                            Text("Dialog preview", color = HarmonicTheme.colors.storyNormal, fontWeight = FontWeight.Bold)
+                            Text("Dialog preview", color = HarmonicTheme.colors.contentPrimary, fontWeight = FontWeight.Bold)
                         }
                         Box(Modifier.width(96.dp).height(48.dp).sharedHazeBackground(
                             hazeState, HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),

@@ -21,7 +21,7 @@ object ReaderModeThemeFactory {
         light = light,
         backgroundColor = css(colors.readerModeBackground.toArgb()),
         textColor = css(colors.textPrimary.toArgb()),
-        headingColor = css(colors.storyNormal.toArgb()),
+        headingColor = css(colors.contentPrimary.toArgb()),
         secondaryTextColor = css(colors.textSecondary.toArgb()),
         linkColor = css(colors.link.toArgb()),
         dividerColor = css(colors.commentDivider.toArgb()),

@@ -21,7 +21,7 @@ fun StoriesRoute(
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<com.simon.harmonichackernews.presentation.StoryListItemSnapshot>) -> Unit = {},
 ) {
-    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
     StoriesScreen(
         controller = controller,
         mainListState = mainListState,

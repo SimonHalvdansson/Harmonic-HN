@@ -496,7 +496,7 @@ fun CommentsScreen(
                             sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
                             sourceContainerColor = if (settings.hasBackground) {
-                                colors.storyCardBackground
+                                colors.contentCardBackground
                             } else {
                                 colors.background
                             },
@@ -724,7 +724,7 @@ private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifie
         }
     }
     val currentMetrics = metrics ?: return
-    val thumbColor = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.55f)
+    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
     val density = LocalDensity.current
     Canvas(modifier = modifier) {
         val widthPx = with(density) { 3.dp.toPx() }
@@ -758,11 +758,11 @@ fun EmptyCommentsScreen() {
             modifier = Modifier
                 .padding(bottom = 6.dp)
                 .size(48.dp),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
         Text(
             "Open a story",
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,

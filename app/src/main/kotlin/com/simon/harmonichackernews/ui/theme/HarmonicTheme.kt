@@ -107,13 +107,13 @@ private fun harmonicColors(
         android.R.attr.colorBackground,
         fallback.readerModeBackground,
     )
-    val settingsSegment = context.colorAttribute(
-        R.attr.settingsSegmentColor,
+    val mutedSurface = context.colorAttribute(
+        R.attr.mutedSurfaceColor,
         fallbackScheme.surfaceContainerHigh,
     )
-    fun resolveSettingsSurface(fallbackColor: Color): Color = when (fallbackColor) {
+    fun resolveThemeSurface(fallbackColor: Color): Color = when (fallbackColor) {
         fallback.readerModeBackground -> readerModeBackground
-        fallback.settingsSegment -> settingsSegment
+        fallback.mutedSurface -> mutedSurface
         else -> fallbackColor
     }
     val onSurface = context.colorAttribute(
@@ -121,7 +121,7 @@ private fun harmonicColors(
         fallbackScheme.onSurface,
     )
     return HarmonicColors(
-        background = resolveSettingsSurface(fallback.background),
+        background = resolveThemeSurface(fallback.background),
         readerModeBackground = readerModeBackground,
         accent = context.colorAttribute(
             AppCompatR.attr.colorAccent,
@@ -138,10 +138,10 @@ private fun harmonicColors(
             MaterialR.attr.colorSurfaceContainerHigh,
             fallbackScheme.surfaceContainerHigh,
         ),
-        storyCardBackground = if (canonical.dark) {
-            context.colorAttribute(R.attr.storyCardBackgroundColor, fallback.storyCardBackground)
+        contentCardBackground = if (canonical.dark) {
+            context.colorAttribute(R.attr.contentCardBackgroundColor, fallback.contentCardBackground)
         } else {
-            resolveSettingsSurface(fallback.settingsItemBackground)
+            resolveThemeSurface(fallback.itemBackground)
         },
         surfaceContainerHighest = context.colorAttribute(
             MaterialR.attr.colorSurfaceContainerHighest,
@@ -155,9 +155,12 @@ private fun harmonicColors(
             MaterialR.attr.colorOnSecondaryContainer,
             fallbackScheme.onSecondaryContainer,
         ),
-        storyNormal = context.colorAttribute(R.attr.storyColorNormal, fallbackScheme.onSurface),
-        storyDisabled = context.colorAttribute(
-            R.attr.storyColorDisabled,
+        contentPrimary = context.colorAttribute(
+            R.attr.contentPrimaryColor,
+            fallbackScheme.onSurface,
+        ),
+        mutedText = context.colorAttribute(
+            R.attr.mutedTextColor,
             fallbackScheme.onSurfaceVariant,
         ),
         outlineVariant = context.colorAttribute(
@@ -172,16 +175,16 @@ private fun harmonicColors(
             R.attr.commentCountIndicatorColor,
             fallback.commentCountIndicator,
         ),
-        drawable = context.colorAttribute(R.attr.drawableColor, fallbackScheme.onSurface).let { color ->
+        iconTint = context.colorAttribute(R.attr.iconTintColor, fallbackScheme.onSurface).let { color ->
             color.copy(alpha = color.alpha * 0.8f)
         },
         popupMenuBackground = if (canonical.dark) {
             context.colorAttribute(R.attr.popupMenuBackgroundColor, fallback.popupMenuBackground)
         } else {
-            resolveSettingsSurface(fallback.settingsItemBackground)
+            resolveThemeSurface(fallback.itemBackground)
         },
-        settingsSegment = settingsSegment,
-        settingsItemBackground = resolveSettingsSurface(fallback.settingsItemBackground),
+        mutedSurface = mutedSurface,
+        itemBackground = resolveThemeSurface(fallback.itemBackground),
         settingsHeaderSelected = context.colorAttribute(
             R.attr.settingsHeaderSelectedColor,
             fallbackScheme.surfaceContainerHigh,

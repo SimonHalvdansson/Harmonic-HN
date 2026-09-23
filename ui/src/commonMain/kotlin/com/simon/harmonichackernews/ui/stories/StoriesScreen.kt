@@ -719,13 +719,13 @@ private fun StoriesList(
                                 )
                             }
                             val untintedStoryBackground = if (style.hasBackground) {
-                                HarmonicTheme.colors.storyCardBackground
+                                HarmonicTheme.colors.contentCardBackground
                             } else {
                                 HarmonicTheme.colors.background
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
-                                    ?: HarmonicTheme.colors.storyCardBackground.toArgb()
+                                    ?: HarmonicTheme.colors.contentCardBackground.toArgb()
                             } else {
                                 untintedStoryBackground.toArgb()
                             }
@@ -1105,7 +1105,7 @@ private fun StoriesHeader(
                 ) {
                     Text(
                         text = lastUpdated.orEmpty(),
-                        color = HarmonicTheme.colors.storyDisabled,
+                        color = HarmonicTheme.colors.mutedText,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -1170,7 +1170,7 @@ private fun StoriesHeader(
                     ) { status ->
                         Text(
                             text = status,
-                            color = HarmonicTheme.colors.storyDisabled,
+                            color = HarmonicTheme.colors.mutedText,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -1305,7 +1305,7 @@ private fun MainHeader(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = visibleTitle,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = with(density) {
@@ -1324,7 +1324,7 @@ private fun MainHeader(
                             painterResource(Res.drawable.ic_keyboard_arrow_down),
                             contentDescription = "Choose story list",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = HarmonicTheme.colors.iconTint,
                         )
                     }
                 }
@@ -1348,7 +1348,7 @@ private fun MainHeader(
                     Icon(
                         painterResource(Res.drawable.ic_search),
                         "Search",
-                        tint = HarmonicTheme.colors.drawable,
+                        tint = HarmonicTheme.colors.iconTint,
                     )
                 }
             }
@@ -1360,7 +1360,7 @@ private fun MainHeader(
                         Icon(
                             painterResource(Res.drawable.ic_more_vert),
                             "More options",
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = HarmonicTheme.colors.iconTint,
                         )
                     }
                 }
@@ -1422,7 +1422,7 @@ private fun SearchHeader(
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
-        iconColor = colors.drawable,
+        iconColor = colors.iconTint,
         menuColor = colors.popupMenuBackground,
         menuTextColor = colors.textPrimary,
         fontFamily = ProductSansFontFamily,
@@ -1538,8 +1538,8 @@ private fun HeaderStatus(
             showEmptySearch = controller.showEmptySearch,
         ),
         searchMode = searchMode,
-        normalColor = colors.storyNormal,
-        disabledColor = colors.storyDisabled,
+        normalColor = colors.contentPrimary,
+        disabledColor = colors.mutedText,
         fontFamily = ProductSansFontFamily,
         loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
         centerFailure = centerFailure,
@@ -1552,7 +1552,7 @@ private fun HeaderStatus(
 @Composable
 private fun StoryLoadingItem(hasBackground: Boolean, modifier: Modifier = Modifier) {
     Surface(
-        color = if (hasBackground) HarmonicTheme.colors.storyCardBackground else Color.Transparent,
+        color = if (hasBackground) HarmonicTheme.colors.contentCardBackground else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {

@@ -14,7 +14,6 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
-import androidx.core.content.ContextCompat
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -665,10 +664,7 @@ class CommentsCoordinator(
             appliedCommentsThemeVersion = state.themeRefreshVersion
             activeContext?.let { currentContext ->
                 webViewController?.setContainerBackgroundColor(
-                    ContextCompat.getColor(
-                        currentContext,
-                        ThemeUtils.getBackgroundColorResource(currentContext),
-                    ),
+                    ThemeUtils.getPageBackgroundColor(currentContext),
                 )
             }
         }
@@ -1052,10 +1048,7 @@ class CommentsCoordinator(
                     val backgroundColor = if (statusBars.headerColor != Color.TRANSPARENT)
                         statusBars.headerColor
                     else
-                        ContextCompat.getColor(
-                            activity,
-                            ThemeUtils.getBackgroundColorResource(activity)
-                        )
+                        ThemeUtils.getPageBackgroundColor(activity)
                     val storyTitle = story?.title
                     controller.showImagePreview(
                         overlay.url,

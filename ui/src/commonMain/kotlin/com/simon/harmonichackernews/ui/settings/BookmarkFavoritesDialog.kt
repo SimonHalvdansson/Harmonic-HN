@@ -160,7 +160,7 @@ fun AddBookmarksToFavoritesDialog(
                                 "Adding bookmark ${currentIndex + 1} of ${items.size}"
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            color = HarmonicTheme.colors.storyDisabled,
+                            color = HarmonicTheme.colors.mutedText,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
@@ -290,7 +290,7 @@ private fun BookmarkFavoriteResults(
                         Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
                             Text(
                                 text = result.title,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 15.sp,
                                 lineHeight = 19.sp,
@@ -300,7 +300,7 @@ private fun BookmarkFavoriteResults(
                             Text(
                                 text = result.message,
                                 modifier = Modifier.padding(top = 2.dp),
-                                color = HarmonicTheme.colors.storyDisabled,
+                                color = HarmonicTheme.colors.mutedText,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 13.sp,
                                 lineHeight = 17.sp,

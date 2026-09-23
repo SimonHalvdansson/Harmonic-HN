@@ -143,7 +143,7 @@ fun StorySummary(
                     "Summary",
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
-                    color = HarmonicTheme.colors.storyNormal,
+                    color = HarmonicTheme.colors.contentPrimary,
                 )
                 Spacer(Modifier.weight(1f))
                 if (settings.showAdditionalSummaryInfo) {
@@ -190,7 +190,7 @@ fun StorySummary(
                         baseUrl = story.url ?: "https://news.ycombinator.com/item?id=${story.id}",
                         onOpenLink = onOpenLink,
                         modifier = Modifier.padding(top = 4.dp),
-                        color = HarmonicTheme.colors.storyNormal,
+                        color = HarmonicTheme.colors.contentPrimary,
                         linkColor = HarmonicTheme.colors.link,
                         fontFamily = typography.family,
                         fontSize = typography.commentTextSize.sp,
@@ -254,7 +254,7 @@ fun HeaderMeta(
                 painterResource(Res.drawable.ic_link),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
         }
     }
@@ -272,12 +272,12 @@ private fun HeaderMetaItem(
             painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
         Text(
             label,
             modifier = Modifier.padding(start = 3.dp),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
             style = textStyle,
@@ -371,7 +371,7 @@ fun HeaderActions(
                             painterResource(Res.drawable.ic_share),
                             contentDescription = "Share",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = HarmonicTheme.colors.iconTint,
                         )
                     }
                 }
@@ -409,7 +409,7 @@ fun HeaderActions(
                                     painterResource(Res.drawable.ic_refresh),
                                     contentDescription = "Refresh",
                                     modifier = Modifier.size(24.dp),
-                                    tint = HarmonicTheme.colors.drawable,
+                                    tint = HarmonicTheme.colors.iconTint,
                                 )
                             }
                         }
@@ -433,7 +433,7 @@ fun HeaderActions(
                             painterResource(Res.drawable.ic_more_vert),
                             contentDescription = "More options",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.drawable,
+                            tint = HarmonicTheme.colors.iconTint,
                         )
                     }
                 }
@@ -511,7 +511,7 @@ private fun HeaderActionButton(
                         painterResource(visual.icon),
                         contentDescription = visual.label,
                         modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.drawable,
+                        tint = HarmonicTheme.colors.iconTint,
                     )
                 }
             }
@@ -659,7 +659,7 @@ private fun MoreMenu(
                                                 painterResource(Res.drawable.ic_check),
                                                 contentDescription = null,
                                                 modifier = Modifier.padding(end = 12.dp).size(24.dp),
-                                                tint = HarmonicTheme.colors.drawable,
+                                                tint = HarmonicTheme.colors.iconTint,
                                             )
                                         }
                                         CommentsMenuText(option)
@@ -702,7 +702,7 @@ private fun MoreMenu(
                                     Icon(
                                         painterResource(icon),
                                         contentDescription = null,
-                                        tint = HarmonicTheme.colors.drawable,
+                                        tint = HarmonicTheme.colors.iconTint,
                                     )
                                 },
                                 onClick = {
@@ -794,7 +794,7 @@ private fun SubmenuHeader(title: String, onClick: () -> Unit) {
             Icon(
                 painterResource(Res.drawable.ic_arrow_back),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
         },
         onClick = onClick,
@@ -810,14 +810,14 @@ private fun SubmenuEntry(title: String, icon: DrawableResource, onClick: () -> U
             Icon(
                 painterResource(icon),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
         },
         trailingIcon = {
             Icon(
                 painterResource(Res.drawable.ic_chevron_right),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
         },
         onClick = onClick,
@@ -833,7 +833,7 @@ private fun CommentsMenuText(text: String) {
 fun OpFilterBanner(controller: CommentsComposeController) {
     val colors = HarmonicTheme.colors
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
-    val contentColor = if (HarmonicTheme.isDark) colors.storyNormal else colors.onSecondaryContainer
+    val contentColor = if (HarmonicTheme.isDark) colors.contentPrimary else colors.onSecondaryContainer
     AnimatedVisibility(
         visible = controller.commentsByOpFilterActive,
         enter = fadeIn() + expandVertically(),
@@ -935,7 +935,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
                 )
                 Text(
                     if (controller.loadingFailedServerError) "Loading failed" else "No internet connection",
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = HarmonicTheme.colors.contentPrimary,
                     modifier = Modifier.padding(top = 6.dp),
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,

@@ -150,7 +150,7 @@ fun ManageFrontpagesSettingsScreen(
     var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val selectedBackground = frontpageSelectionColor(
         pageBackground = HarmonicTheme.colors.background,
-        cardBackground = settingsItemBackgroundColor(),
+        cardBackground = itemBackgroundColor(),
         accent = MaterialTheme.colorScheme.primary,
     )
     // Persisting a drop must not replace the state that is still animating that drop.
@@ -247,7 +247,7 @@ fun ManageFrontpagesSettingsScreen(
                         targetValue = if (selected) {
                             selectedBackground
                         } else {
-                            settingsItemBackgroundColor()
+                            itemBackgroundColor()
                         },
                         animationSpec = tween(160),
                         label = "default frontpage background",
@@ -301,7 +301,7 @@ fun ManageFrontpagesSettingsScreen(
                                 painterResource(type.menuIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = HarmonicTheme.colors.drawable,
+                                tint = HarmonicTheme.colors.iconTint,
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
@@ -337,7 +337,7 @@ fun ManageFrontpagesSettingsScreen(
                                     painterResource(Res.drawable.ic_close),
                                     contentDescription = "Remove ${type.label}",
                                     modifier = Modifier.size(20.dp),
-                                    tint = HarmonicTheme.colors.drawable,
+                                    tint = HarmonicTheme.colors.iconTint,
                                 )
                             }
                             FrontpageInfoButton(type, onClick = { infoFrontpage = type })
@@ -356,7 +356,7 @@ fun ManageFrontpagesSettingsScreen(
                             Icon(
                                 painterResource(Res.drawable.ic_drag_handle),
                                 contentDescription = "Drag to reorder ${type.label}",
-                                tint = HarmonicTheme.colors.drawable,
+                                tint = HarmonicTheme.colors.iconTint,
                             )
                         }
                     }
@@ -378,7 +378,7 @@ fun ManageFrontpagesSettingsScreen(
                             modifier = Modifier.animateItem()
                                 .padding(horizontal = 16.dp, vertical = 2.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(focusedBackground(type, settingsItemBackgroundColor()))
+                                .background(focusedBackground(type, itemBackgroundColor()))
                                 .border(
                                     1.dp,
                                     focusAccent.copy(alpha = if (type == focusFrontpage) 0.8f * focusPulse.value else 0f),
@@ -395,7 +395,7 @@ fun ManageFrontpagesSettingsScreen(
                                 painterResource(type.menuIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = HarmonicTheme.colors.drawable,
+                                tint = HarmonicTheme.colors.iconTint,
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(

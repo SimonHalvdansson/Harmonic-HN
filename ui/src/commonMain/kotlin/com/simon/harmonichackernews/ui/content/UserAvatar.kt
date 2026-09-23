@@ -72,7 +72,7 @@ fun UserAvatar(
         if (content.style == null) {
             Icon(
                 painterResource(Res.drawable.ic_person), contentDescription = null,
-                tint = HarmonicTheme.colors.storyDisabled,
+                tint = HarmonicTheme.colors.mutedText,
                 modifier = Modifier.fillMaxSize()
                     .background(HarmonicTheme.colors.surfaceContainerHighest).padding(2.dp),
             )

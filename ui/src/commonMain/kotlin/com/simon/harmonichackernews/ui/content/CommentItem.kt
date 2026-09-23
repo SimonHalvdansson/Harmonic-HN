@@ -274,7 +274,7 @@ fun CommentItem(
         CommentBodyText(
             html = previewBody,
             searchTerm = "",
-            markedColor = HarmonicTheme.colors.storyNormal,
+            markedColor = HarmonicTheme.colors.contentPrimary,
             fontFamily = typography.family,
             fontSize = bodySize,
             animateSearchMatches = false,
@@ -320,7 +320,7 @@ fun CommentItem(
                         html = inlineReferenceHtml,
                         modifier = Modifier.padding(top = 16.dp),
                         searchTerm = "",
-                        markedColor = HarmonicTheme.colors.storyNormal,
+                        markedColor = HarmonicTheme.colors.contentPrimary,
                         fontFamily = typography.family,
                         fontSize = bodySize,
                         animateSearchMatches = false,
@@ -680,7 +680,7 @@ private fun CommentBodyText(
         animatedSearchMatches(
             body = body,
             searchTerm = searchTerm,
-            baseColor = colors.storyNormal,
+            baseColor = colors.contentPrimary,
             markedColor = markedColor,
         )
     } else {
@@ -706,7 +706,7 @@ private fun CommentBodyText(
                     onLongPress = onLinkLongClick,
                 ),
             onTextLayout = { textLayout = it },
-            color = colors.storyNormal,
+            color = colors.contentPrimary,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
             style = animatedCommentTextStyle,
@@ -823,11 +823,11 @@ private fun CommentSurface(
         bottomStart = if (showIndicator) shapeRadius * indicatorGeometry.rounding else shapeRadius,
     )
     val baseBackground = when {
-        style.hasBackground -> colors.storyCardBackground
+        style.hasBackground -> colors.contentCardBackground
         style.transparentNonCardBackground -> Color.Transparent
         else -> colors.background
     }
-    val targetBackground = commentSurfaceColor(baseBackground, colors.storyNormal, highlighted)
+    val targetBackground = commentSurfaceColor(baseBackground, colors.contentPrimary, highlighted)
     val background by animateColorAsState(
         targetValue = targetBackground,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -957,7 +957,7 @@ private fun CommentSurface(
                     }
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                        indication = ripple(color = colors.mutedText.copy(alpha = 0.35f)),
                         onClick = onClick,
                         onLongClick = onLongClick,
                     )
@@ -1049,8 +1049,8 @@ private fun CommentMeta(
     val metaColor = when {
         byUser -> colors.accent
         byOp -> colors.link
-        emphasized -> colors.storyNormal
-        else -> colors.storyDisabled
+        emphasized -> colors.contentPrimary
+        else -> colors.mutedText
     }
     val metaRadius by animateDpAsState(
         if (emphasized) 12.dp else 0.dp,
@@ -1141,7 +1141,7 @@ private fun CommentMeta(
             Text(
                 hiddenPreview,
                 modifier = Modifier.weight(1f).padding(start = 6.dp),
-                color = colors.storyDisabled,
+                color = colors.mutedText,
                 fontFamily = fontFamily,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -1230,7 +1230,7 @@ internal fun ReferenceRow(
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(color = colors.storyDisabled.copy(alpha = 0.35f)),
+                    indication = ripple(color = colors.mutedText.copy(alpha = 0.35f)),
                     onClick = onClick,
                     onLongClick = { onLongClick(bounds, sourceContentLayer) },
                 )
@@ -1244,7 +1244,7 @@ internal fun ReferenceRow(
                 Icon(
                     painter = faviconFallback,
                     contentDescription = null,
-                    tint = colors.drawable,
+                    tint = colors.iconTint,
                     modifier = Modifier.padding(end = 8.dp).size(faviconSize),
                 )
             } else {
@@ -1255,7 +1255,7 @@ internal fun ReferenceRow(
                     placeholder = faviconFallback,
                     error = faviconFallback,
                     fallback = faviconFallback,
-                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.drawable),
+                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.iconTint),
                     onLoading = { faviconLoaded = false },
                     onSuccess = { faviconLoaded = true },
                     onError = { faviconLoaded = false },
@@ -1290,7 +1290,7 @@ internal fun ReferenceRow(
                                         animatedVisibilityScope = visibilityScope,
                                         boundsTransform = BoundsTransform { _, _ -> contentTween() },
                                     ),
-                                color = colors.storyDisabled,
+                                color = colors.mutedText,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = titleSize.sp,
@@ -1309,7 +1309,7 @@ internal fun ReferenceRow(
                                         exit = fadeOut(contentTween()),
                                         boundsTransform = BoundsTransform { _, _ -> contentTween() },
                                     ),
-                                color = if (url != null) lerp(colors.storyDisabled, colors.storyNormal, 0.55f) else colors.storyNormal,
+                                color = if (url != null) lerp(colors.mutedText, colors.contentPrimary, 0.55f) else colors.contentPrimary,
                                 fontFamily = typography.family,
                                 fontSize = titleSize.sp,
                                 lineHeight = titleLineHeight.sp,
@@ -1327,7 +1327,7 @@ internal fun ReferenceRow(
                                 exit = fadeOut(contentTween()),
                                 boundsTransform = BoundsTransform { _, _ -> contentTween() },
                             ),
-                            color = colors.storyDisabled,
+                            color = colors.mutedText,
                             fontFamily = typography.family,
                             fontSize = (typography.referenceMarkerSize - 2f).sp,
                             lineHeight = (typography.referenceMarkerSize - 0.5f).sp,

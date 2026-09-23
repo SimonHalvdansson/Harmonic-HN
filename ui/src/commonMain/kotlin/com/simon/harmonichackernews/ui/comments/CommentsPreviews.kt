@@ -136,7 +136,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
                 placeholder = fallback,
                 fallback = fallback,
                 error = fallback,
-                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.drawable),
+                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.iconTint),
                 onLoading = { faviconLoaded = false },
                 onSuccess = { faviconLoaded = true },
                 onError = { faviconLoaded = false },
@@ -149,7 +149,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
         }
         Text(
             text = domain.orEmpty(),
-            color = colors.storyDisabled,
+            color = colors.mutedText,
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
             style = LocalCommentsPreviewPlatform.current.textStyle,
@@ -259,7 +259,7 @@ private fun HeaderStoryTextBlock(
                     hapticFeedback = hapticFeedback,
                     onLongPress = onLinkLongClick,
                 ),
-            color = colors.storyNormal,
+            color = colors.contentPrimary,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
             style = LocalCommentsPreviewPlatform.current.textStyle,
@@ -319,7 +319,7 @@ fun LinkPreviewContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, colors.storyDisabled, RoundedCornerShape(16.dp))
+                .border(2.dp, colors.mutedText, RoundedCornerShape(16.dp))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             transitionSpec = {
                 (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
@@ -362,7 +362,7 @@ private fun PreviewHeader(
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
             val fallback = if (tintIcon) {
-                tintedPainterResource(icon, HarmonicTheme.colors.drawable)
+                tintedPainterResource(icon, HarmonicTheme.colors.iconTint)
             } else {
                 painterResource(icon)
             }
@@ -392,7 +392,7 @@ private fun PreviewHeader(
         }
         Text(
             text.uppercase(),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
@@ -417,7 +417,7 @@ private fun PreviewBody(
     Text(
         text = text,
         modifier = Modifier.padding(top = topPadding, bottom = bottomPadding),
-        color = HarmonicTheme.colors.storyNormal,
+        color = HarmonicTheme.colors.contentPrimary,
         fontFamily = fontFamily,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         fontSize = fontSize.sp,
@@ -457,11 +457,11 @@ private fun PreviewInfoRow(
             modifier = Modifier
                 .padding(end = 4.dp)
                 .size(20.dp),
-            tint = HarmonicTheme.colors.drawable,
+            tint = HarmonicTheme.colors.iconTint,
         )
         Text(
             text,
-            color = if (onClick != null) HarmonicTheme.colors.link else HarmonicTheme.colors.storyNormal,
+            color = if (onClick != null) HarmonicTheme.colors.link else HarmonicTheme.colors.contentPrimary,
             fontFamily = ProductSansFontFamily,
             fontSize = 14.sp,
             lineHeight = 17.sp,
@@ -567,7 +567,7 @@ private fun OpenRouterPreview(story: StoryListItemSnapshot) {
             text = "${info.provider} / ${info.name}",
             icon = Res.drawable.ic_link_preview_openrouter,
             logoUrl = info.providerIconUrl,
-            logoTint = HarmonicTheme.colors.drawable,
+            logoTint = HarmonicTheme.colors.iconTint,
         )
         PreviewBody(info.description.orEmpty(), maxLines = 12)
         PreviewInfoColumns(
@@ -626,7 +626,7 @@ private fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplayS
         PreviewHeader("Abstract:")
         com.simon.harmonichackernews.ui.content.MathPreviewText(
             text = info.arxivAbstract.orEmpty(),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = typography.family,
             fontSize = abstractTextSize.sp,
             lineHeight = 18.sp,
@@ -749,7 +749,7 @@ private fun RichLinkPreview(story: StoryListItemSnapshot) {
                 baseUrl = info.url,
                 onOpenLink = platform.openLink,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                color = HarmonicTheme.colors.storyNormal,
+                color = HarmonicTheme.colors.contentPrimary,
                 linkColor = HarmonicTheme.colors.link,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
@@ -928,12 +928,12 @@ private fun PreviewCompactInfo(
         painterResource(icon),
         contentDescription = null,
         modifier = Modifier.size(width = iconWidth, height = 16.dp),
-        tint = HarmonicTheme.colors.drawable,
+        tint = HarmonicTheme.colors.iconTint,
     )
     Text(
         text,
         modifier = Modifier.padding(start = startPadding, end = endPadding),
-        color = HarmonicTheme.colors.storyNormal,
+        color = HarmonicTheme.colors.contentPrimary,
         fontFamily = ProductSansFontFamily,
         fontSize = 13.sp,
         lineHeight = 16.sp,

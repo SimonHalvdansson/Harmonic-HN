@@ -50,7 +50,7 @@ fun LinkPreviewsSettingsDialog(
                 Text(
                     text = "Choose which links get a source-aware preview above the comments.",
                     modifier = Modifier.padding(top = 6.dp, end = 16.dp, bottom = 10.dp),
-                    color = HarmonicTheme.colors.storyDisabled,
+                    color = HarmonicTheme.colors.mutedText,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,

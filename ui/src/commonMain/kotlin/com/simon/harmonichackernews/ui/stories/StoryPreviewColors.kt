@@ -30,7 +30,7 @@ internal fun rememberStoryPreviewCardColor(
     val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
         ?: StoryDisplaySettings.from(dependencies.userSettings.story)
-    val baseColor = HarmonicTheme.colors.storyCardBackground
+    val baseColor = HarmonicTheme.colors.contentCardBackground
     if (!settings.tintCardUsingPreview) {
         return if (settings.hasBackground) baseColor else HarmonicTheme.colors.background
     }

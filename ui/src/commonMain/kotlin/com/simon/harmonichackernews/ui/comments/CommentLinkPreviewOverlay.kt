@@ -395,7 +395,7 @@ fun ReferenceCardContent(
                         !description.isNullOrBlank() -> SelectionContainer {
                             Text(
                                 text = description,
-                                color = HarmonicTheme.colors.storyNormal,
+                                color = HarmonicTheme.colors.contentPrimary,
                                 fontFamily = typography.family,
                                 fontSize = typography.commentTextSize.sp,
                                 lineHeight = (typography.commentTextSize + 2f).sp,
@@ -425,7 +425,7 @@ fun ReferenceCardContent(
                         .height(52.dp),
                     colors = ButtonDefaults.elevatedButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        contentColor = HarmonicTheme.colors.storyNormal,
+                        contentColor = HarmonicTheme.colors.contentPrimary,
                     ),
                 ) {
                     Icon(
@@ -591,15 +591,15 @@ private fun ReferenceMetadata(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = favicon,
-                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
-                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.drawable),
+                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.iconTint),
+                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.iconTint),
                 contentDescription = null,
                 modifier = Modifier.size(17.dp).clip(RoundedCornerShape(3.dp)),
             )
             Text(
                 text = domain,
                 modifier = Modifier.padding(start = 6.dp),
-                color = HarmonicTheme.colors.storyDisabled,
+                color = HarmonicTheme.colors.mutedText,
                 fontFamily = fontFamily,
                 fontSize = metaSize.sp,
                 maxLines = 1,
@@ -620,7 +620,7 @@ private fun ReferenceMetadata(
                     Text(
                         text = title,
                         modifier = Modifier.padding(top = 5.dp),
-                        color = HarmonicTheme.colors.storyNormal,
+                        color = HarmonicTheme.colors.contentPrimary,
                         fontFamily = fontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = titleSize.sp,
@@ -662,7 +662,7 @@ private fun ReferenceErrorContent(
                 painterResource(Res.drawable.ic_cloud_off),
                 contentDescription = null,
                 modifier = Modifier.size(44.dp),
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
             )
         }
         Text(
@@ -670,7 +670,7 @@ private fun ReferenceErrorContent(
                 if (offline) Res.string.link_summary_offline_title else Res.string.link_summary_error_title,
             ),
             modifier = Modifier.padding(top = if (offline) 12.dp else 0.dp),
-            color = HarmonicTheme.colors.storyNormal,
+            color = HarmonicTheme.colors.contentPrimary,
             fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = (errorTextSize + 4f).sp,
@@ -678,7 +678,7 @@ private fun ReferenceErrorContent(
         Text(
             text = message,
             modifier = Modifier.padding(top = 6.dp),
-            color = HarmonicTheme.colors.storyDisabled,
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = fontFamily,
             fontSize = errorTextSize.sp,
             lineHeight = (errorTextSize + 2f).sp,
@@ -729,8 +729,8 @@ fun LinkPreviewShimmer(modifier: Modifier = Modifier) {
         ),
         label = "link preview shimmer progress",
     )
-    val base = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.15f)
-    val highlight = HarmonicTheme.colors.storyDisabled.copy(alpha = 0.22f)
+    val base = HarmonicTheme.colors.mutedText.copy(alpha = 0.15f)
+    val highlight = HarmonicTheme.colors.mutedText.copy(alpha = 0.22f)
     Box(
         modifier.background(
             Brush.horizontalGradient(

@@ -130,7 +130,7 @@ internal fun rememberStoryItemPresentation(
             }
         }
     }
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.storyCardBackground
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.contentCardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
         model.previewImageUrl,
@@ -168,7 +168,7 @@ internal fun rememberStoryItemPresentation(
     val tint = (previewTint ?: model.faviconTintArgb ?: extractedFaviconTint)?.let(::Color)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
-        style.hasBackground -> colors.storyCardBackground
+        style.hasBackground -> colors.contentCardBackground
         else -> pageBackground
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old

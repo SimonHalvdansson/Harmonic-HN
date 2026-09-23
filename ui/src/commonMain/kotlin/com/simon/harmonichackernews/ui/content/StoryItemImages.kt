@@ -155,7 +155,7 @@ internal fun StoryFavicon(
             Icon(
                 painter = painterResource(model.faviconFallback),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -194,7 +194,7 @@ internal fun StoryFavicon(
             Icon(
                 painter = fallbackPainter,
                 contentDescription = null,
-                tint = HarmonicTheme.colors.drawable,
+                tint = HarmonicTheme.colors.iconTint,
                 modifier = Modifier.padding(end = 4.dp).size(17.dp),
             )
         } else {

@@ -62,8 +62,8 @@ fun WidgetPreviewStoryRow(
     val palette = rememberResourceTintPalette(model.previewImageFallback ?: model.faviconFallback)
     val targetBackground = when {
         configuration.displayStyle == DisplayStyle.FLAT -> colors.background
-        configuration.tint && palette != null -> Color(PreviewTintPolicy.calculateCardTint(colors.storyCardBackground.toArgb(), palette, paletteTintConfigKey))
-        else -> colors.storyCardBackground
+        configuration.tint && palette != null -> Color(PreviewTintPolicy.calculateCardTint(colors.contentCardBackground.toArgb(), palette, paletteTintConfigKey))
+        else -> colors.contentCardBackground
     }
     val background by animateColorAsState(targetBackground, tween(220), label = "Widget card tint")
     val frame by animateColorAsState(when (configuration.displayStyle) {
@@ -95,7 +95,7 @@ fun WidgetPreviewStoryRow(
                             if (showIndex) WidgetPreviewText(model.index, fontFamily, WidgetTypography.TITLE_SIZE - 1,
                                 colors.textSecondary, Modifier.width(WidgetDimensions.indexWidth).testTag("widget-preview-index"))
                             Column(Modifier.weight(1f)) {
-                                WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.storyNormal,
+                                WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.contentPrimary,
                                     Modifier.testTag("widget-preview-title"), bold = true, maxLines = 4)
                                 Spacer(Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -139,8 +139,8 @@ fun WidgetPreviewStoryRow(
                         }
                         Column(Modifier.width(48.dp).fillMaxHeight().padding(horizontal = 6.dp),
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(painterResource(Res.drawable.ic_comment), null, Modifier.size(18.dp).alpha(0.8f), tint = colors.storyNormal)
-                            WidgetPreviewText(model.commentCount.toString(), fontFamily, WidgetTypography.COMMENT_COUNT_SIZE, colors.storyNormal, bold = true)
+                            Icon(painterResource(Res.drawable.ic_comment), null, Modifier.size(18.dp).alpha(0.8f), tint = colors.contentPrimary)
+                            WidgetPreviewText(model.commentCount.toString(), fontFamily, WidgetTypography.COMMENT_COUNT_SIZE, colors.contentPrimary, bold = true)
                         }
                     }
                 }
@@ -156,13 +156,13 @@ private fun WidgetPreviewMetric(value: String, icon: DrawableResource, family: F
     val outlineWidth = with(LocalDensity.current) { 1.dp.toPx().toInt().toDp() }
     Box(if (onImage) Modifier else Modifier.clip(RoundedCornerShape(20.dp)).background(colors.outlineVariant).padding(outlineWidth)) {
         Row(Modifier.clip(RoundedCornerShape(20.dp)).background(
-            if (onImage) colors.storyCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha) else colors.surfaceContainerHighest)
+            if (onImage) colors.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha) else colors.surfaceContainerHighest)
             .padding(start = if (points) WidgetDimensions.pointsStartPadding else WidgetDimensions.metricStartPadding,
                 end = WidgetDimensions.metricEndPadding, top = WidgetDimensions.metricVerticalPadding, bottom = WidgetDimensions.metricVerticalPadding),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(icon), null, Modifier.size(WidgetDimensions.metricIconSize).alpha(0.8f), tint = colors.storyNormal)
+            Icon(painterResource(icon), null, Modifier.size(WidgetDimensions.metricIconSize).alpha(0.8f), tint = colors.contentPrimary)
             if (!points) Spacer(Modifier.width(2.dp))
-            WidgetPreviewText(value, family, WidgetTypography.COMMENT_COUNT_SIZE, colors.storyNormal, bold = true)
+            WidgetPreviewText(value, family, WidgetTypography.COMMENT_COUNT_SIZE, colors.contentPrimary, bold = true)
         }
     }
 }

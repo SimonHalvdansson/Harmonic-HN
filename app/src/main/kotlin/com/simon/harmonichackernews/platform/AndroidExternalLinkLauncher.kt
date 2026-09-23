@@ -8,7 +8,6 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.utils.ThemeUtils
 import com.simon.harmonichackernews.utils.defaultBrowserPackageName
@@ -45,12 +44,7 @@ object AndroidExternalLinkLauncher {
         shareable: Boolean,
     ): CustomTabsIntent {
         val colorScheme = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(
-                ContextCompat.getColor(
-                    context,
-                    ThemeUtils.getBackgroundColorResource(context),
-                ),
-            )
+            .setToolbarColor(ThemeUtils.getPageBackgroundColor(context))
             .build()
         return CustomTabsIntent.Builder()
             .setShareState(

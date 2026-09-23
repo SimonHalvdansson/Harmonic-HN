@@ -47,7 +47,7 @@ fun SubmissionsRoute(
     SideEffect { previewResources.updateSettings(displaySettings) }
     val states by previewResources.statesFlow.collectAsState()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
-    val tintBaseColor = HarmonicTheme.colors.storyCardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
     key(store) {
         SubmissionsScreen(
             userName = userName,
