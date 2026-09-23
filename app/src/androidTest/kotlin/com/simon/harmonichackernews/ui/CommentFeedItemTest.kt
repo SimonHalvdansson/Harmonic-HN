@@ -38,7 +38,7 @@ class CommentFeedItemTest {
             val palette = HarmonicThemeCatalog.resolve("dark", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 CommentFeedItem(
-                    commentMasterTitle = title.value,
+                    rootStoryTitle = title.value,
                     timeText = "1h",
                     html = body,
                     canOpenStory = true,
@@ -71,11 +71,11 @@ class CommentFeedItemTest {
 
     private val settings = StoryDisplaySettings(
         showPoints = true, compactPoints = false, includeTopLevelDomain = true,
-        showCommentsCount = true, compactView = false, thumbnails = true,
+        showCommentsCount = true, compactView = false, showFavicons = true,
         previewImageMode = StoryPreviewMode.MEDIUM, borderlessLargePreviewImage = false,
-        showSummary = false, storyTextSize = 20f, showIndex = true, compactHeader = false,
-        leftAlign = false, displayStyle = DisplayStyle.RAISED, tintCardUsingPreview = false,
-        paletteTintMode = "default", grayOutClicked = false, hotness = 0,
+        showPreviewText = false, storyTextSize = 20f, showIndex = true, compactHeader = false,
+        commentsButtonOnLeft = false, displayStyle = DisplayStyle.RAISED, tintCardsFromImages = false,
+        paletteTintMode = "default", dimReadStories = false, hotnessThreshold = 0,
         faviconProvider = "default", font = "default", commentTextSize = 14f,
     )
 }

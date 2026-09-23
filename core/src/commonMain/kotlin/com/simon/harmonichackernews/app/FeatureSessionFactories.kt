@@ -128,9 +128,9 @@ fun HarmonicAppComposition.createStoriesStore(
             network.hackerNewsWebRepository,
             network.unslopRepository,
         ),
-        clickedStoryIds = { host.platform.history.load().map { it.id } },
-        isStoryClicked = host.platform.history::contains,
-        shouldHideClickedStories = { host.userSettings.story.hideClicked },
+        readStoryIds = { host.platform.history.load().map { it.id } },
+        isStoryRead = host.platform.history::contains,
+        shouldHideReadStories = { host.userSettings.story.hideRead },
     )
     val runtime = StoriesFeatureRuntime(
         scope = featureScope,
@@ -143,7 +143,7 @@ fun HarmonicAppComposition.createStoriesStore(
         connectivity = host.platform.connectivity,
         userSettings = host.userSettings,
         loadContentFilters = contentFilters::load,
-        commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
+        rootStoryResolver = CommentMasterResolver(network.hackerNewsRepository),
         nowMillis = nowMillis,
         hydrateCachedStory = storyCache::hydrateStory,
         loadCachedStories = storyCache::recentStories,
@@ -237,7 +237,7 @@ fun HarmonicAppComposition.createSubmissionsStore(
 ): SubmissionsFeatureStore = SubmissionsFeatureStore(
     scope = scope.childFeatureScope(),
     sessionState = sessionState,
-    commentMasterResolver = CommentMasterResolver(network.hackerNewsRepository),
+    rootStoryResolver = CommentMasterResolver(network.hackerNewsRepository),
     useIntegratedWebView = { userSettings.reading.integratedWebView },
 )
 

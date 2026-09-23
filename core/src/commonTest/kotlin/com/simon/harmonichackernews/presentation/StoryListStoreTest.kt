@@ -53,7 +53,7 @@ class StoryListStoreTest {
         store.stories.first().apply {
             title = "mutated"
             previewImageUrl = "https://example.com/mutated.png"
-            previewImageUrlLoaded = true
+            previewImageUrlResolved = true
             kids = intArrayOf(99)
         }
         assertEquals("Story 1", state.items.first().story.title)
@@ -132,63 +132,63 @@ class StoryListStoreTest {
     }
 
     @Test
-    fun historySynchronizationUpdatesClickedStateWithoutPlatformCallbacks() {
+    fun historySynchronizationUpdatesReadStateWithoutPlatformCallbacks() {
         val store = StoryListStore()
-        store.replace(listOf(story(1), story(2).also { it.clicked = true }))
+        store.replace(listOf(story(1), story(2).also { it.isRead = true }))
 
         val result = store.syncHistory(
-            clickedStoryIds = setOf(1),
-            searchingOnlyClicked = false,
+            readStoryIds = setOf(1),
+            searchingOnlyRead = false,
             showingHistory = false,
-            hideClicked = false,
+            hideRead = false,
         )
 
         assertEquals(StoryHistorySyncResult.CONTENT_CHANGED, result)
-        assertTrue(store.stories.single { it.id == 1 }.clicked)
-        assertFalse(store.stories.single { it.id == 2 }.clicked)
+        assertTrue(store.stories.single { it.id == 1 }.isRead)
+        assertFalse(store.stories.single { it.id == 2 }.isRead)
     }
 
     @Test
-    fun historySynchronizationOwnsHideClickedRemovalAndRefreshDecision() {
+    fun historySynchronizationOwnsHideReadRemovalAndRefreshDecision() {
         val store = StoryListStore()
         store.replace(listOf(story(1), story(2), story(3)))
 
         assertEquals(
             StoryHistorySyncResult.ITEMS_REMOVED,
             store.syncHistory(
-                clickedStoryIds = setOf(1, 3),
-                searchingOnlyClicked = false,
+                readStoryIds = setOf(1, 3),
+                searchingOnlyRead = false,
                 showingHistory = false,
-                hideClicked = true,
+                hideRead = true,
             ),
         )
         assertEquals(listOf(2), store.stories.map(Story::id))
         assertEquals(
             StoryHistorySyncResult.REFRESH_REQUIRED,
             store.syncHistory(
-                clickedStoryIds = emptySet(),
-                searchingOnlyClicked = false,
+                readStoryIds = emptySet(),
+                searchingOnlyRead = false,
                 showingHistory = false,
-                hideClicked = true,
+                hideRead = true,
             ),
         )
     }
 
     @Test
-    fun onlyClickedSearchClearsTransientClickedStyling() {
+    fun onlyReadSearchClearsTransientReadStyling() {
         val store = StoryListStore()
-        store.replace(listOf(story(1).also { it.clicked = true }))
+        store.replace(listOf(story(1).also { it.isRead = true }))
 
         assertEquals(
             StoryHistorySyncResult.CONTENT_CHANGED,
             store.syncHistory(
-                clickedStoryIds = setOf(1),
-                searchingOnlyClicked = true,
+                readStoryIds = setOf(1),
+                searchingOnlyRead = true,
                 showingHistory = false,
-                hideClicked = false,
+                hideRead = false,
             ),
         )
-        assertFalse(store.stories.single().clicked)
+        assertFalse(store.stories.single().isRead)
     }
 
     @Test
@@ -224,8 +224,8 @@ class StoryListStoreTest {
 
         assertTrue(store.markRead(1, true))
 
-        assertFalse(before.items[0].clicked)
-        assertTrue(store.state.value.items[0].clicked)
+        assertFalse(before.items[0].isRead)
+        assertTrue(store.state.value.items[0].isRead)
         assertSame(before.items[1], store.state.value.items[1])
         val current = store.state.value
         assertFalse(store.markRead(99, true))

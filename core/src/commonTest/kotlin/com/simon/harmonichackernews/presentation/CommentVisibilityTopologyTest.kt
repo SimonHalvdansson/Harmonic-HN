@@ -28,11 +28,11 @@ class CommentVisibilityTopologyTest {
         assertMatchesUncached(store)
         store.setHideDelayedComments(false)
         assertMatchesUncached(store)
-        store.showCommentsByOp()
+        store.enableOpThreadFilter()
         assertMatchesUncached(store)
         store.toggleExpanded(1)
         assertMatchesUncached(store)
-        store.resetCommentsByOp()
+        store.resetOpThreadFilter()
         for (sorting in listOf(CommentSorter.NEWEST_FIRST, CommentSorter.REPLY_COUNT, CommentSorter.DEFAULT)) {
             store.setSorting(sorting)
             assertMatchesUncached(store)
@@ -53,13 +53,13 @@ class CommentVisibilityTopologyTest {
 
         // Legacy callers can alter the mutable objects without replacing a list. Visibility used
         // those live fields before caching, so rebuilding visibility must continue to see them.
-        store.displayedComments[2].depth = 0
+        store.filteredComments[2].depth = 0
         store.setStory(story)
         assertMatchesUncached(store)
-        store.displayedComments[3].parent = 5
+        store.filteredComments[3].parent = 5
         store.setStory(story)
         assertMatchesUncached(store)
-        val renamedComment = store.displayedComments[2]
+        val renamedComment = store.filteredComments[2]
         val originalId = renamedComment.id
         renamedComment.id = 77
         store.setStory(story)
@@ -71,15 +71,15 @@ class CommentVisibilityTopologyTest {
         assertMatchesUncached(store)
 
         val replacement = comment(1, -1, 0).also { it.expanded = false }
-        store.displayedComments[1] = replacement
+        store.filteredComments[1] = replacement
         store.setStory(story)
         assertMatchesUncached(store)
-        val first = store.displayedComments[1]
-        store.displayedComments[1] = store.displayedComments[5]
-        store.displayedComments[5] = first
+        val first = store.filteredComments[1]
+        store.filteredComments[1] = store.filteredComments[5]
+        store.filteredComments[5] = first
         store.setStory(story)
         assertMatchesUncached(store)
-        store.displayedComments.removeAt(2)
+        store.filteredComments.removeAt(2)
         store.setStory(story)
         assertMatchesUncached(store)
         store.notifyCommentsChanged()
@@ -89,7 +89,7 @@ class CommentVisibilityTopologyTest {
     @Test
     fun inactiveFullTopologyRevalidatesDepthChangesWhenDelayedCommentsReturn() {
         val store = mutateInactiveFullTopology { it.allComments[2].depth = 0 }
-        assertEquals(0, store.state.value.visibleComments.first().hiddenReplyCount)
+        assertEquals(0, store.state.value.visibleComments.first().subtreeReplyCount)
     }
 
     @Test
@@ -226,9 +226,9 @@ class CommentVisibilityTopologyTest {
 
     private fun assertMatchesUncached(store: CommentThreadStore) {
         assertEquals(
-            uncachedVisibility(store.displayedComments),
+            uncachedVisibility(store.filteredComments),
             store.state.value.visibleComments.map {
-                Triple(it.sourceIndex, it.comment.id, it.hiddenReplyCount)
+                Triple(it.sourceIndex, it.comment.id, it.subtreeReplyCount)
             },
         )
     }

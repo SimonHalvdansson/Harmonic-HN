@@ -31,7 +31,7 @@ internal fun rememberStoryPreviewCardColor(
     val settings = controller.displaySettings
         ?: StoryDisplaySettings.from(dependencies.userSettings.story)
     val baseColor = HarmonicTheme.colors.contentCardBackground
-    if (!settings.tintCardUsingPreview) {
+    if (!settings.tintCardsFromImages) {
         return if (settings.hasBackground) baseColor else HarmonicTheme.colors.background
     }
     val baseArgb = baseColor.toArgb()

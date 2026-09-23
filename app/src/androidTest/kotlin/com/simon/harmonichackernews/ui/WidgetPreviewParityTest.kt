@@ -62,7 +62,7 @@ class WidgetPreviewParityTest {
         val configuration = WidgetConfiguration(previewImageMode = StoryPreviewMode.MEDIUM)
         val story = Story("Patterns", 1, true, false).apply {
             score = 291; descendants = 108; isLink = true; url = "https://science.org"
-            time = (System.currentTimeMillis() / 1000 - 7200).toInt()
+            createdAtEpochSeconds = (System.currentTimeMillis() / 1000 - 7200).toInt()
         }
         val imagePresent = mutableStateOf(true)
         val views = listOf(true, false).associateWith { hasImage ->

@@ -81,7 +81,7 @@ object StoryFeedRefreshPolicy {
         )
     }
 
-    fun shouldShowUpdateAffordance(
+    fun shouldShowRefreshPrompt(
         nowMillis: Long,
         lastLoadedMillis: Long,
         alwaysShow: Boolean,

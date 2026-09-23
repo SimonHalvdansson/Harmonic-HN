@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.applySnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 sealed interface AppDestination
@@ -27,9 +28,12 @@ data class StoryNavigationSeed(
     val pdfTitle: String? = null,
     val videoTitle: String? = null,
     val isLink: Boolean = false,
-    val commentMasterId: Int = 0,
-    val commentMasterTitle: String? = null,
-    val commentMasterUrl: String? = null,
+    @SerialName("commentMasterId")
+    val rootStoryId: Int = 0,
+    @SerialName("commentMasterTitle")
+    val rootStoryTitle: String? = null,
+    @SerialName("commentMasterUrl")
+    val rootStoryUrl: String? = null,
 )
 
 /** A stable route with an optional transient domain seed; no rendering/resource state is routed. */
@@ -92,9 +96,9 @@ fun Story.toDestination(
         pdfTitle = pdfTitle,
         videoTitle = videoTitle,
         isLink = isLink,
-        commentMasterId = commentMasterId,
-        commentMasterTitle = commentMasterTitle,
-        commentMasterUrl = commentMasterUrl,
+        rootStoryId = rootStoryId,
+        rootStoryTitle = rootStoryTitle,
+        rootStoryUrl = rootStoryUrl,
     ),
 )
 
@@ -106,9 +110,9 @@ fun StoryDestination.toStory(): Story = Story().also { story ->
         story.pdfTitle = initial.pdfTitle
         story.videoTitle = initial.videoTitle
         story.isLink = initial.isLink
-        story.commentMasterId = initial.commentMasterId
-        story.commentMasterTitle = initial.commentMasterTitle
-        story.commentMasterUrl = initial.commentMasterUrl
+        story.rootStoryId = initial.rootStoryId
+        story.rootStoryTitle = initial.rootStoryTitle
+        story.rootStoryUrl = initial.rootStoryUrl
         story.loaded = true
     }
 }

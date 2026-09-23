@@ -97,7 +97,7 @@ class StoriesFeatureRuntime(
     private val connectivity: ConnectivityService,
     private val userSettings: UserSettings,
     private val loadContentFilters: () -> ContentFilters,
-    private val commentMasterResolver: CommentMasterResolver,
+    private val rootStoryResolver: CommentMasterResolver,
     private val nowMillis: () -> Long,
     private val hydrateCachedStory: (Story) -> Boolean,
     private val loadCachedStories: () -> List<Story> = { emptyList() },
@@ -122,8 +122,8 @@ class StoriesFeatureRuntime(
 
     private val feedRuntime = StoryFeedRuntime(
         sessionState = sessionState,
-        clickedStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
-        shouldHideClickedStories = { hideClicked },
+        readStoryIds = { historyStore.load().mapTo(mutableSetOf()) { it.id } },
+        shouldHideReadStories = { hideRead },
         hydrateCachedStory = { false },
         shouldHideHydratedStory = { requests.shouldHideStory(it, currentType) },
     )
@@ -141,7 +141,7 @@ class StoriesFeatureRuntime(
         get() = storyResources?.states().orEmpty()
 
     private var paginationMode = false
-    private var hideClicked = false
+    private var hideRead = false
     private var alwaysOpenComments = false
     private var useIntegratedWebView = false
     private var activeLoadedThrough = -1
@@ -237,13 +237,13 @@ class StoriesFeatureRuntime(
 
     fun configure(
         pagination: Boolean,
-        hideClicked: Boolean,
+        hideRead: Boolean,
         alwaysOpenComments: Boolean,
         useIntegratedWebView: Boolean,
     ) {
         val paginationChanged = paginationMode != pagination
         paginationMode = pagination
-        this.hideClicked = hideClicked
+        this.hideRead = hideRead
         this.alwaysOpenComments = alwaysOpenComments
         this.useIntegratedWebView = useIntegratedWebView
         updatePaginationModes()
@@ -262,7 +262,7 @@ class StoriesFeatureRuntime(
         val story = settings.story
         configure(
             pagination = story.pagination,
-            hideClicked = story.hideClicked,
+            hideRead = story.hideRead,
             alwaysOpenComments = story.alwaysOpenComments,
             useIntegratedWebView = settings.reading.integratedWebView,
         )
@@ -330,7 +330,7 @@ class StoriesFeatureRuntime(
         val currentState = mutableSettingsState.value
         val nextDisplaySettings = StoryDisplaySettings.from(storyPreferences)
         val update = nextDisplaySettings.changesFrom(currentState.displaySettings)
-        val hideClickedChanged = hideClicked != storyPreferences.hideClicked
+        val hideReadChanged = hideRead != storyPreferences.hideRead
         val preferredStoryTypeChanged =
             preferredStoryTypeLabel != storyPreferences.preferredStoryType
         preferredStoryTypeLabel = storyPreferences.preferredStoryType
@@ -364,7 +364,7 @@ class StoriesFeatureRuntime(
             changed()
         }
 
-        if (sessionState.initialized && !feedRefreshStarted && hideClickedChanged) {
+        if (sessionState.initialized && !feedRefreshStarted && hideReadChanged) {
             refresh(showSwipeRefreshIndicator = false)
             feedRefreshStarted = true
         }
@@ -409,15 +409,15 @@ class StoriesFeatureRuntime(
     }
 
     fun evaluateUpdate(alwaysShow: Boolean) {
-        val updateAvailable = StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
+        val updateAvailable = StoryFeedRefreshPolicy.shouldShowRefreshPrompt(
             nowMillis = nowMillis(),
             lastLoadedMillis = sessionState.lastLoaded,
             alwaysShow = alwaysShow,
             searching = searching,
             storyType = currentType,
         )
-        if (sessionState.updateButtonShowing != updateAvailable) {
-            sessionState.updateButtonShowing = updateAvailable
+        if (sessionState.showRefreshPrompt != updateAvailable) {
+            sessionState.showRefreshPrompt = updateAvailable
             emit(StoriesRuntimeEffect.StoryChanged())
         }
     }
@@ -528,8 +528,8 @@ class StoriesFeatureRuntime(
         retrySearch()
     }
 
-    fun toggleOnlyClicked() {
-        searchOptions.toggleOnlyClicked()
+    fun toggleOnlyRead() {
+        searchOptions.toggleOnlyRead()
         retainSearchOptions()
         retrySearch()
     }
@@ -539,7 +539,7 @@ class StoriesFeatureRuntime(
         showMainLoadingIndicator: Boolean = false,
     ) {
         if (currentType.isBookmarks) bookmarksChanged = false
-        sessionState.updateButtonShowing = false
+        sessionState.showRefreshPrompt = false
         val type = currentType
         val plan = StoryFeedRefreshPolicy.plan(
             searching = searching,
@@ -652,14 +652,14 @@ class StoriesFeatureRuntime(
 
     private fun openExternalStory(story: Story) {
         val url = story.url ?: return
-        if (story.isFrontpageLink) updateStoryReadState(story, true) else markClicked(story)
+        if (story.isFrontpageLink) updateStoryReadState(story, true) else markRead(story)
         changed(story)
         emit(StoriesRuntimeEffect.OpenExternalLink(url))
     }
 
     fun selectCommentStory(story: Story) {
         if (story !in activeStories) return
-        val master = story.toCommentMasterStory()
+        val master = story.toRootStory()
         if (master == null) {
             selectStoryComments(story)
             return
@@ -670,7 +670,7 @@ class StoriesFeatureRuntime(
         }
         scope.launch {
             val resolved = try {
-                commentMasterResolver.resolve(story)
+                rootStoryResolver.resolve(story)
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Throwable) {
@@ -684,7 +684,7 @@ class StoriesFeatureRuntime(
     }
 
     fun openStory(story: Story, showWebsite: Boolean) {
-        markClicked(story)
+        markRead(story)
         changed(story)
         emit(StoriesRuntimeEffect.OpenStory(story.toDestination(showWebsite = showWebsite)))
     }
@@ -758,7 +758,7 @@ class StoriesFeatureRuntime(
         }
 
     fun lastUpdatedMillisForHeader(): Long? = sessionState.lastLoaded.takeIf {
-        sessionState.updateButtonShowing && !searching && it > 0L
+        sessionState.showRefreshPrompt && !searching && it > 0L
     }
 
     fun notifySavedItemsChanged(source: SavedItemSource) {
@@ -806,7 +806,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun toggleRead(story: Story) {
-        val read = !story.clicked
+        val read = !story.isRead
         updateStoryReadState(story, read)
         scope.launch {
             if (read) {
@@ -1011,10 +1011,10 @@ class StoriesFeatureRuntime(
         if (currentVersion == historyChangeVersion) return StoryHistorySyncResult.UNCHANGED
         historyChangeVersion = currentVersion
         val result = activeStore.syncHistory(
-            clickedStoryIds = historyStore.load().mapTo(mutableSetOf()) { it.id },
-            searchingOnlyClicked = searching && searchOptions.state.value.options.onlyClicked,
+            readStoryIds = historyStore.load().mapTo(mutableSetOf()) { it.id },
+            searchingOnlyRead = searching && searchOptions.state.value.options.onlyRead,
             showingHistory = currentType.isHistory,
-            hideClicked = hideClicked,
+            hideRead = hideRead,
         )
         when (result) {
             StoryHistorySyncResult.ITEMS_REMOVED -> loadVisibleStories()
@@ -1161,7 +1161,7 @@ class StoriesFeatureRuntime(
         if (!isCurrentRow(story, effect.generation)) return
         activeStore.finishNextPageStory(story.id, effect.generation)
         if (story.isComment && currentType.usesCommentRows()) {
-            resolveCommentMaster(story, effect.generation)
+            resolveRootStory(story, effect.generation)
         }
         if (currentType.usesSavedItemFilter() && !matchesSavedFilter(story)) {
             removeStory(story, loadReplacement = true)
@@ -1369,14 +1369,14 @@ class StoriesFeatureRuntime(
         changed()
     }
 
-    private fun resolveCommentMaster(story: Story, generation: Int) {
+    private fun resolveRootStory(story: Story, generation: Int) {
         val parentId = story.parentId
-        if (parentId <= 0 || (story.commentMasterId > 0 && !story.commentMasterTitle.isNullOrEmpty())) {
+        if (parentId <= 0 || (story.rootStoryId > 0 && !story.rootStoryTitle.isNullOrEmpty())) {
             return
         }
         scope.launch {
             try {
-                commentMasterResolver.resolveParentChain(story, parentId) ?: return@launch
+                rootStoryResolver.resolveParentChain(story, parentId) ?: return@launch
                 if (isCurrentRow(story, generation)) changed(story)
             } catch (error: CancellationException) {
                 throw error
@@ -1456,13 +1456,13 @@ class StoriesFeatureRuntime(
 
     private fun updateStoryReadState(story: Story, read: Boolean) {
         // Resolved parent stories may not be in either list yet.
-        story.clicked = read
+        story.isRead = read
         mainStore.markRead(story.id, read)
         searchStore.markRead(story.id, read)
     }
 
-    private fun markClicked(story: Story) {
-        if (!searchOptions.state.value.options.onlyClicked) updateStoryReadState(story, true)
+    private fun markRead(story: Story) {
+        if (!searchOptions.state.value.options.onlyRead) updateStoryReadState(story, true)
         scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 

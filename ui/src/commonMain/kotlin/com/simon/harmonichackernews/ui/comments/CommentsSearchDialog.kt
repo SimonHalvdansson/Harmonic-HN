@@ -123,7 +123,7 @@ fun CommentsSearchContent(
             storyAuthor = storyAuthor,
             accountUser = accountUser,
             userTag = null,
-            hiddenReplyCount = 0,
+            subtreeReplyCount = 0,
             collapseParent = false,
             showTopLevelIndicator = false,
             flattenHierarchy = true,

@@ -26,7 +26,7 @@ object CommentsScreenStateFactory {
         return CommentsScreenState(
             story = story,
             accountUser = feature.accountUser,
-            comments = thread.displayedComments,
+            comments = thread.filteredComments,
             displaySettings = settings.displaySettings,
             commentsLoaded = state.loaded,
             initialThreadCached = feature.initialThreadCached,
@@ -35,9 +35,9 @@ object CommentsScreenStateFactory {
             loadingFailedServerError = state.failure ==
                 com.simon.harmonichackernews.presentation.StoryLoadFailure.NOT_FOUND,
             usingOfficialApiFallback = state.usingOfficialApiFallback,
-            showUpdate = state.showUpdate,
+            showRefreshPrompt = state.showRefreshPrompt,
             lastRefreshed = state.lastLoadedMillis,
-            commentsByOpFilterActive = thread.commentsByOp,
+            opThreadFilterEnabled = thread.opThreadFilterEnabled,
             hasCommentsByOp = thread.hasCommentsByOp,
             adBlockActive = platform.adBlockActive,
             integratedWebView = settings.integratedWebView && platform.integratedWebViewAvailable,

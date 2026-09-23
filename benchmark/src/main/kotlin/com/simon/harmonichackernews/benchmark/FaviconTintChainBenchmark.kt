@@ -189,7 +189,7 @@ class FaviconTintChainBenchmark {
             url = pageUrl
             score = 42
             descendants = 7
-            time = 1_700_000_000
+            createdAtEpochSeconds = 1_700_000_000
         }
         val settings = StoryDisplaySettings(
             showPoints = true,
@@ -197,19 +197,19 @@ class FaviconTintChainBenchmark {
             includeTopLevelDomain = true,
             showCommentsCount = true,
             compactView = false,
-            thumbnails = false,
+            showFavicons = false,
             previewImageMode = StoryPreviewMode.OFF,
             borderlessLargePreviewImage = false,
-            showSummary = false,
+            showPreviewText = false,
             storyTextSize = 16f,
             showIndex = true,
             compactHeader = false,
-            leftAlign = false,
+            commentsButtonOnLeft = false,
             displayStyle = DisplayStyle.RAISED,
-            tintCardUsingPreview = true,
+            tintCardsFromImages = true,
             paletteTintMode = configKey,
-            grayOutClicked = true,
-            hotness = 0,
+            dimReadStories = true,
+            hotnessThreshold = 0,
             faviconProvider = FaviconUrlBuilder.PROVIDER_GOOGLE,
             font = "default",
             commentTextSize = 14f,

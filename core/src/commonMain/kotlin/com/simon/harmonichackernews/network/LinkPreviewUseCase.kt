@@ -56,7 +56,7 @@ sealed interface LinkPreviewData {
 fun LinkPreviewData.applyTo(story: Story) {
     when (this) {
         is LinkPreviewData.Arxiv -> story.arxivInfo = value
-        is LinkPreviewData.GitHub -> story.repoInfo = value
+        is LinkPreviewData.GitHub -> story.gitHubRepoInfo = value
         is LinkPreviewData.GitLab -> story.gitLabInfo = value
         is LinkPreviewData.HuggingFace -> story.huggingFaceInfo = value
         is LinkPreviewData.OpenRouter -> story.openRouterInfo = value

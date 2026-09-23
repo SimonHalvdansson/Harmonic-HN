@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.navigation
 
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,6 +11,39 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
+    @Test
+    fun rootStoryRenamesPreservePreviouslySerializedNavigationSeeds() {
+        val payload = """
+            {
+              "kind": "story",
+              "value": {
+                "storyId": 7,
+                "seed": {
+                  "story": {"id": 7, "isComment": true},
+                  "commentMasterId": 42,
+                  "commentMasterTitle": "Root story",
+                  "commentMasterUrl": "https://example.com/story"
+                }
+              }
+            }
+        """.trimIndent()
+
+        val destination = AppDestinationCodec.decode(payload) as StoryDestination
+        val story = destination.toStory()
+        assertEquals(42, story.rootStoryId)
+        assertEquals("Root story", story.rootStoryTitle)
+        assertEquals("https://example.com/story", story.rootStoryUrl)
+
+        val legacySeed = Json.parseToJsonElement(payload).jsonObject
+            .getValue("value").jsonObject.getValue("seed").jsonObject
+        val encodedSeed = Json.parseToJsonElement(AppDestinationCodec.encode(destination)).jsonObject
+            .getValue("value").jsonObject.getValue("seed").jsonObject
+        for (key in listOf("commentMasterId", "commentMasterTitle", "commentMasterUrl")) {
+            assertEquals(legacySeed[key], encodedSeed[key])
+        }
+        assertFalse(encodedSeed.keys.any { it.startsWith("rootStory") })
+    }
+
     @Test
     fun storyDestinationRoundTripsImmutableDomainSeedWithoutResourceState() {
         val source = StoryDestination(
@@ -34,10 +69,10 @@ class MainNavigationStateTest {
         assertEquals("Title", story.title)
         assertEquals("author", story.by)
         assertTrue(story.loaded)
-        assertFalse(story.previewImageUrlLoaded)
+        assertFalse(story.previewImageUrlResolved)
         assertFalse(story.previewImageTintColorLoaded)
         assertEquals(listOf(1, 2), story.kids?.toList())
-        assertEquals(listOf(3, 4), story.pollOptions?.toList())
+        assertEquals(listOf(3, 4), story.pollOptionIds?.toList())
         assertEquals(8, story.descendants)
         assertEquals(9, story.score)
         assertTrue(story.isLink)

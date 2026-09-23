@@ -38,15 +38,15 @@ data class PortableCommentItem(
 data class PortableVisibleComment(
     val sourceIndex: Int,
     val comment: PortableCommentItem,
-    val hiddenReplyCount: Int,
+    val subtreeReplyCount: Int,
 )
 
 data class PortableCommentThreadState(
     val story: StorySnapshot? = null,
     val allComments: List<PortableCommentItem> = emptyList(),
-    val displayedComments: List<PortableCommentItem> = emptyList(),
+    val filteredComments: List<PortableCommentItem> = emptyList(),
     val sorting: String = CommentSorter.DEFAULT,
-    val commentsByOp: Boolean = false,
+    val opThreadFilterEnabled: Boolean = false,
     val hasCommentsByOp: Boolean = false,
     val searchQuery: String = "",
     val searchPreparing: Boolean = false,
@@ -58,7 +58,7 @@ data class PortableCommentThreadState(
 
 internal data class PreparedInitialCommentThread(
     val allComments: List<Comment>,
-    val displayedComments: List<Comment>,
+    val filteredComments: List<Comment>,
     val state: PortableCommentThreadState,
     val visibilityTopology: CommentThreadStore.CommentVisibilityTopology?,
 )
@@ -66,7 +66,7 @@ internal data class PreparedInitialCommentThread(
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
 class CommentThreadStore {
     val allComments: MutableList<Comment> = mutableListOf()
-    val displayedComments: MutableList<Comment> = mutableListOf()
+    val filteredComments: MutableList<Comment> = mutableListOf()
 
     private val commentsById = mutableMapOf<Int, Comment>()
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
@@ -90,14 +90,14 @@ class CommentThreadStore {
         allComments.add(header)
         commentsById.clear()
         commentsById[header.id] = header
-        displayedComments.clear()
-        displayedComments.add(header)
+        filteredComments.clear()
+        filteredComments.add(header)
         searchableTextById.clear()
         portableItemsById.clear()
         publish(
             story = story,
             sorting = sorting,
-            commentsByOp = false,
+            opThreadFilterEnabled = false,
             searchQuery = "",
             rebuildSearch = true,
             rebuildVisibility = true,
@@ -143,7 +143,7 @@ class CommentThreadStore {
         }
         return PreparedInitialCommentThread(
             allComments = prepared.allComments.toList(),
-            displayedComments = prepared.displayedComments.toList(),
+            filteredComments = prepared.filteredComments.toList(),
             state = prepared.state.value,
             visibilityTopology = prepared.visibilityTopology,
         )
@@ -162,8 +162,8 @@ class CommentThreadStore {
         allComments.clear()
         allComments.addAll(prepared.allComments)
         initialCommentIds = prepared.allComments.drop(1).mapTo(mutableSetOf()) { it.id }
-        displayedComments.clear()
-        displayedComments.addAll(prepared.displayedComments)
+        filteredComments.clear()
+        filteredComments.addAll(prepared.filteredComments)
         commentsById.clear()
         allComments.forEach { comment -> commentsById[comment.id] = comment }
         searchableTextById.clear()
@@ -197,14 +197,14 @@ class CommentThreadStore {
     fun setSorting(sortType: String) {
         CommentSorter.sort(allComments, sortType)
         portableItemsById.clear()
-        rebuildDisplayedComments()
+        rebuildFilteredComments()
         publish(sorting = sortType, rebuildSearch = true, rebuildVisibility = true)
     }
 
     fun setHideDelayedComments(hide: Boolean) {
         if (hideDelayedComments == hide) return
         hideDelayedComments = hide
-        rebuildDisplayedComments()
+        rebuildFilteredComments()
         publish(rebuildSearch = true, rebuildVisibility = true)
     }
 
@@ -246,18 +246,18 @@ class CommentThreadStore {
 
     fun findComment(commentId: Int): Comment? = commentsById[commentId]
 
-    fun showCommentsByOp(): Boolean {
+    fun enableOpThreadFilter(): Boolean {
         val story = currentStory
         if (!CommentThreadFilter.hasCommentsByOp(story, allComments)) return false
-        rebuildDisplayedComments(commentsByOp = true)
-        publish(commentsByOp = true, rebuildVisibility = true)
+        rebuildFilteredComments(opThreadFilterEnabled = true)
+        publish(opThreadFilterEnabled = true, rebuildVisibility = true)
         return true
     }
 
-    fun resetCommentsByOp() {
-        if (!state.value.commentsByOp) return
-        rebuildDisplayedComments(commentsByOp = false)
-        publish(commentsByOp = false, rebuildVisibility = true)
+    fun resetOpThreadFilter() {
+        if (!state.value.opThreadFilterEnabled) return
+        rebuildFilteredComments(opThreadFilterEnabled = false)
+        publish(opThreadFilterEnabled = false, rebuildVisibility = true)
     }
 
     fun setSearchQuery(query: String) {
@@ -291,7 +291,7 @@ class CommentThreadStore {
 
     fun notifyCommentsChanged() {
         portableItemsById.clear()
-        rebuildDisplayedComments()
+        rebuildFilteredComments()
         publish(rebuildSearch = true, rebuildVisibility = true)
     }
 
@@ -315,7 +315,7 @@ class CommentThreadStore {
             initialCommentIds = comments.drop(1).mapTo(mutableSetOf()) { it.id }
         }
         portableItemsById.clear()
-        rebuildDisplayedComments()
+        rebuildFilteredComments()
         publish(
             story = story,
             sorting = sorting,
@@ -324,8 +324,8 @@ class CommentThreadStore {
         )
     }
 
-    private fun rebuildDisplayedComments(commentsByOp: Boolean = state.value.commentsByOp) {
-        val shouldFilterByOp = commentsByOp &&
+    private fun rebuildFilteredComments(opThreadFilterEnabled: Boolean = state.value.opThreadFilterEnabled) {
+        val shouldFilterByOp = opThreadFilterEnabled &&
             CommentThreadFilter.hasCommentsByOp(currentStory, allComments)
         val filteredByOp = if (shouldFilterByOp) {
             CommentThreadFilter.buildCommentsByOpThreadList(currentStory, allComments)
@@ -337,8 +337,8 @@ class CommentThreadStore {
         } else {
             filteredByOp
         }
-        displayedComments.clear()
-        displayedComments.addAll(next)
+        filteredComments.clear()
+        filteredComments.addAll(next)
     }
 
     private fun searchResultIds(query: String): List<Int> {
@@ -368,14 +368,14 @@ class CommentThreadStore {
     private fun publish(
         story: Story? = currentStory,
         sorting: String = state.value.sorting,
-        commentsByOp: Boolean = state.value.commentsByOp,
+        opThreadFilterEnabled: Boolean = state.value.opThreadFilterEnabled,
         searchQuery: String = state.value.searchQuery,
         rebuildSearch: Boolean = false,
         rebuildVisibility: Boolean = false,
     ) {
         val hasCommentsByOp = CommentThreadFilter.hasCommentsByOp(story, allComments)
-        val actualCommentsByOp = commentsByOp && hasCommentsByOp
-        if (actualCommentsByOp != commentsByOp) rebuildDisplayedComments(commentsByOp = false)
+        val opThreadFilterActive = opThreadFilterEnabled && hasCommentsByOp
+        if (opThreadFilterActive != opThreadFilterEnabled) rebuildFilteredComments(opThreadFilterEnabled = false)
         val previous = state.value
         val resultIds = if (rebuildSearch || searchQuery != previous.searchQuery) {
             searchResultIds(searchQuery)
@@ -386,19 +386,19 @@ class CommentThreadStore {
         currentStory = story
         portableItemsById.keys.retainAll(commentsById.keys)
         val allSnapshots = snapshotList(allComments, previous.allComments)
-        val displayedSnapshots = snapshotList(displayedComments, previous.displayedComments)
+        val filteredSnapshots = snapshotList(filteredComments, previous.filteredComments)
         val searchSnapshots = snapshotIds(resultIds, previous.searchResults)
         val visibleSnapshots = if (rebuildVisibility) {
-            buildVisibleComments(displayedComments)
+            buildVisibleComments(filteredComments)
         } else {
             refreshVisibleSnapshots(previous.visibleComments)
         }
         val nextState = PortableCommentThreadState(
             story = story?.toSnapshot(),
             allComments = allSnapshots,
-            displayedComments = displayedSnapshots,
+            filteredComments = filteredSnapshots,
             sorting = sorting,
-            commentsByOp = actualCommentsByOp,
+            opThreadFilterEnabled = opThreadFilterActive,
             hasCommentsByOp = hasCommentsByOp,
             searchQuery = searchQuery,
             searchPreparing = previous.searchPreparing,
@@ -490,7 +490,7 @@ class CommentThreadStore {
             return emptyList()
         }
 
-        // Keep the current and previous displayed variants so hiding/showing delayed comments can
+        // Keep the current and previous filtered variants so hiding/showing delayed comments can
         // reuse both. Validate either entry before reuse: legacy comments can still be mutated.
         val topology = visibilityTopology?.takeIf { it.matches(source) } ?: run {
             val next = previousVisibilityTopology?.takeIf { it.matches(source) }
@@ -525,7 +525,7 @@ class CommentThreadStore {
             visibleComments += PortableVisibleComment(
                 sourceIndex = index,
                 comment = portableItem(source[index]),
-                hiddenReplyCount = topology.subtreeEndExclusive[index] - index - 1,
+                subtreeReplyCount = topology.subtreeEndExclusive[index] - index - 1,
             )
         }
         return visibleComments

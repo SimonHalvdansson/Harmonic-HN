@@ -124,7 +124,7 @@ object JSONParser {
                     story.kids = IntArray(ids.length()) { ids.getInt(it) }
                 }
             }
-            story.time = item.optInt("created_at_i", item.optInt("time", story.time))
+            story.createdAtEpochSeconds = item.optInt("created_at_i", item.optInt("time", story.createdAtEpochSeconds))
             story.score = item.optInt("points", item.optInt("score", story.score))
             story.by = item.optString("author", item.optString("by", story.by))
             story.descendants = if (item.has("descendants"))
@@ -138,10 +138,10 @@ object JSONParser {
                 story.title = "Comment by " + story.by
                 story.isLink = false
                 story.parentId = item.optInt("parent_id", 0)
-                story.commentMasterId = item.optInt("story_id", 0)
-                story.commentMasterTitle = item.optString("story_title", "")
-                story.commentMasterUrl = item.optString("story_url", "")
-                val urlId = if (story.commentMasterId > 0) story.commentMasterId else story.id
+                story.rootStoryId = item.optInt("story_id", 0)
+                story.rootStoryTitle = item.optString("story_title", "")
+                story.rootStoryUrl = item.optString("story_url", "")
+                val urlId = if (story.rootStoryId > 0) story.rootStoryId else story.id
                 story.url = HackerNewsLinks.itemUrl(urlId)
             } else {
                 story.isComment = false
@@ -200,13 +200,13 @@ object JSONParser {
 
     private fun applyPreviewImageSummaryFields(story: Story, item: JSONObject) {
         val hasPreviewImageUrl = item.has(KEY_PREVIEW_IMAGE_URL)
-        val previewImageUrlLoaded =
+        val previewImageUrlResolved =
             item.optBoolean(KEY_PREVIEW_IMAGE_URL_LOADED, hasPreviewImageUrl)
-        if (previewImageUrlLoaded) {
+        if (previewImageUrlResolved) {
             val previewImageUrl = item.optString(KEY_PREVIEW_IMAGE_URL, "").trim { it <= ' ' }
             story.previewImageUrl =
                 if (previewImageUrl.isEmpty()) null else previewImageUrl
-            story.previewImageUrlLoaded = true
+            story.previewImageUrlResolved = true
         }
 
         if (item.optBoolean(KEY_PREVIEW_IMAGE_TINT_COLOR_LOADED, false)

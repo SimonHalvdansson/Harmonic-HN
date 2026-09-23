@@ -245,7 +245,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                                 Text(title, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.TITLE_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 4)
                                 Spacer(GlanceModifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (preferences.thumbnails && !snapshot.isComment) {
+                                    if (preferences.showFavicons && !snapshot.isComment) {
                                         Image(visual?.favicon?.let(::ImageProvider) ?: ImageProvider(R.drawable.ic_public), null,
                                             GlanceModifier.size(WidgetDimensions.faviconSize).cornerRadius(WidgetDimensions.faviconCornerRadius),
                                             colorFilter = if (visual?.favicon == null) ColorFilter.tint(colors.textSecondary) else null)

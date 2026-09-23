@@ -22,7 +22,7 @@ object SearchRelevanceUtils {
             compareByDescending<ScoredStory> { it.relevanceScore }
                 .thenByDescending { it.story.score }
                 .thenByDescending { it.story.descendants }
-                .thenByDescending { it.story.time }
+                .thenByDescending { it.story.createdAtEpochSeconds }
                 .thenBy { it.originalIndex },
         )
         scoredStories.forEachIndexed { index, scored -> stories[index] = scored.story }

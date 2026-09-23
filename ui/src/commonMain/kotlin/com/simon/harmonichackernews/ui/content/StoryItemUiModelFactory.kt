@@ -10,7 +10,7 @@ import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import kotlin.time.Clock
 
 data class StoryItemResourcePresentation(
-    val summary: String? = null,
+    val previewText: String? = null,
     val faviconUrl: String? = null,
     val previewImageUrl: String? = null,
     val previewImageLoadFailed: Boolean = false,
@@ -38,7 +38,7 @@ fun StoryItemResourcePresentation.withPreviewResource(
                 tint.paletteConfigKey == StoryPreviewTintState.storedMode(paletteConfigKey))
     }
     copy(
-        summary = resource.summary?.description ?: summary,
+        previewText = resource.summary?.description ?: previewText,
         previewImageUrl = resource.resolvedImageUrl(previewImageUrl),
         previewImageLoadFailed = resource.imageLoadFailed,
         previewImageTintArgb = currentPreviewTint?.tintColorArgb ?: previewImageTintArgb,
@@ -73,9 +73,9 @@ object StoryItemUiModelFactory {
                 titlePresentation.text
             },
             titleBadge = titlePresentation.badge,
-            summary = resources.summary
+            previewText = resources.previewText
                 ?: item.presentation.linkSummaryDescription
-                ?: item.presentation.summary.orEmpty(),
+                ?: item.presentation.aiSummaryText.orEmpty(),
             points = item.score,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,
@@ -115,9 +115,9 @@ object StoryItemUiModelFactory {
                 titlePresentation.text
             },
             titleBadge = titlePresentation.badge,
-            summary = resources.summary
+            previewText = resources.previewText
                 ?: story.linkSummaryDescription
-                ?: story.summary.orEmpty(),
+                ?: story.aiSummaryText.orEmpty(),
             points = story.score,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,

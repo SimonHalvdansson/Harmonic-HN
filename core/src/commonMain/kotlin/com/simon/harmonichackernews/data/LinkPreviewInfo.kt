@@ -71,7 +71,7 @@ data class LinkPreviewInfo(
 
 /** Common preview slots shared by mutable stories and immutable presentation snapshots. */
 interface LinkPreviewState {
-    val repoInfo: RepoInfo?
+    val gitHubRepoInfo: RepoInfo?
     val gitLabInfo: GitLabInfo?
     val huggingFaceInfo: HuggingFaceModelInfo?
     val openRouterInfo: OpenRouterModelInfo?
@@ -83,7 +83,7 @@ interface LinkPreviewState {
 }
 
 fun LinkPreviewState.loadedLinkPreviewType(): LinkPreviewType? = when {
-    repoInfo != null -> LinkPreviewType.GITHUB_REPOSITORY
+    gitHubRepoInfo != null -> LinkPreviewType.GITHUB_REPOSITORY
     gitLabInfo != null -> LinkPreviewType.GITLAB_PROJECT
     huggingFaceInfo != null -> LinkPreviewType.HUGGING_FACE_MODEL
     openRouterInfo != null -> LinkPreviewType.OPENROUTER_MODEL

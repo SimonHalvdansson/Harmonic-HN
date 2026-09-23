@@ -96,7 +96,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     }
                     // Publish text immediately; optional images must never turn a successful feed into an error.
                     publish(widgetId, entries, updated = System.currentTimeMillis())
-                    if (configuration.previewImageMode != StoryPreviewMode.OFF || configuration.tint || app.userSettings.story.thumbnails) {
+                    if (configuration.previewImageMode != StoryPreviewMode.OFF || configuration.tint || app.userSettings.story.showFavicons) {
                         withTimeoutOrNull(25_000) {
                             result.stories.zip(entries).chunked(4).forEach { batch ->
                                 coroutineScope {
@@ -112,7 +112,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                                                     entry.put("image", image)
                                                     entry.put("tint", image)
                                                 }
-                                                if ((configuration.tint || app.userSettings.story.thumbnails) && story.isLink) {
+                                                if ((configuration.tint || app.userSettings.story.showFavicons) && story.isLink) {
                                                     val favicon = FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), app.userSettings.story.faviconProvider)
                                                     loadImage(widgetId, story.id, favicon, "favicon")?.let {
                                                         entry.put("favicon", it)

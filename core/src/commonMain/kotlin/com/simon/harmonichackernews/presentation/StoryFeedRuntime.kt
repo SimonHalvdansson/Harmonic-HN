@@ -20,8 +20,8 @@ data class StoryFeedApplication(
  */
 class StoryFeedRuntime(
     private val sessionState: StoriesSessionState,
-    private val clickedStoryIds: () -> Set<Int>,
-    private val shouldHideClickedStories: () -> Boolean,
+    private val readStoryIds: () -> Set<Int>,
+    private val shouldHideReadStories: () -> Boolean,
     private val hydrateCachedStory: (Story) -> Boolean,
     private val shouldHideHydratedStory: (Story) -> Boolean,
 ) {
@@ -104,8 +104,8 @@ class StoryFeedRuntime(
             existingStories = store.stories,
             itemIds = page.itemIds,
             commentIds = page.commentIds.toSet(),
-            clickedIds = clickedStoryIds(),
-            hideClicked = shouldHideClickedStories(),
+            readIds = readStoryIds(),
+            hideRead = shouldHideReadStories(),
             hydrateCachedStory = hydrateCachedStory,
             shouldHideHydratedStory = shouldHideHydratedStory,
             cachedStories = cachedStories,
@@ -147,8 +147,8 @@ class StoryFeedRuntime(
         existingStories = existingStories,
         itemIds = itemIds,
         commentIds = commentIds,
-        clickedIds = clickedStoryIds(),
-        hideClicked = shouldHideClickedStories(),
+        readIds = readStoryIds(),
+        hideRead = shouldHideReadStories(),
         hydrateCachedStory = hydrateCachedStory,
         shouldHideHydratedStory = shouldHideHydratedStory,
         cachedStories = cachedStories,

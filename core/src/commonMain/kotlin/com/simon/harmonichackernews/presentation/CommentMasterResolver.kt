@@ -9,11 +9,11 @@ class CommentMasterResolver(
     private val repository: HackerNewsRepository,
 ) {
     suspend fun resolve(source: Story): Story {
-        val placeholder = source.toCommentMasterStory() ?: return source
+        val placeholder = source.toRootStory() ?: return source
         if (placeholder.loaded) return placeholder
 
         val resolved = repository.getStory(placeholder.id) ?: return placeholder
-        source.updateCommentMasterFrom(resolved)
+        source.updateRootStoryFrom(resolved)
         return resolved
     }
 
@@ -28,7 +28,7 @@ class CommentMasterResolver(
             if (nextParentId <= 0) return null
             val parent = loadParent(nextParentId, requestAttempts) ?: return null
             if (!parent.isComment) {
-                source.updateCommentMasterFrom(parent)
+                source.updateRootStoryFrom(parent)
                 return parent
             }
             nextParentId = parent.parentId

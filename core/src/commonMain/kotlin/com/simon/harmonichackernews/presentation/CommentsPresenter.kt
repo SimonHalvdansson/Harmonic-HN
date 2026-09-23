@@ -38,7 +38,7 @@ data class CommentsPresenterState(
     val refreshing: Boolean = false,
     val failure: StoryLoadFailure? = null,
     val usingOfficialApiFallback: Boolean = false,
-    val showUpdate: Boolean = false,
+    val showRefreshPrompt: Boolean = false,
     val storyVoteLoading: Boolean = false,
     val storyFavoriteLoading: Boolean = false,
     val pollVoteInFlightOptionId: Int? = null,
@@ -58,8 +58,8 @@ sealed interface CommentsAction {
     data class ToggleExpanded(val commentId: Int) : CommentsAction
     data class ExpandParents(val commentId: Int) : CommentsAction
     data class RestoreCollapsedComments(val collapsedIds: Set<Int>) : CommentsAction
-    data object ShowCommentsByOp : CommentsAction
-    data object ResetCommentsByOp : CommentsAction
+    data object EnableOpThreadFilter : CommentsAction
+    data object ResetOpThreadFilter : CommentsAction
     data class SetSearchQuery(val query: String) : CommentsAction
     data class SetSearchActive(val active: Boolean) : CommentsAction
     data class BeginThreadLoad(val nowMillis: Long) : CommentsAction
@@ -71,7 +71,7 @@ sealed interface CommentsAction {
     data class SetLoaded(val loaded: Boolean) : CommentsAction
     data class SetRefreshing(val refreshing: Boolean) : CommentsAction
     data class SetFailure(val failure: StoryLoadFailure?) : CommentsAction
-    data class SetShowUpdate(val show: Boolean) : CommentsAction
+    data class SetShowRefreshPrompt(val show: Boolean) : CommentsAction
     data class SetStoryVoteLoading(val loading: Boolean) : CommentsAction
     data class SetStoryFavoriteLoading(val loading: Boolean) : CommentsAction
     data class RequestCommentActions(val comment: PortableCommentItem) : CommentsAction
@@ -194,7 +194,7 @@ class CommentsPresenter(
                 sessionState.loadingFailedServerError -> StoryLoadFailure.NOT_FOUND
                 else -> StoryLoadFailure.GENERAL
             },
-            showUpdate = sessionState.showUpdate,
+            showRefreshPrompt = sessionState.showRefreshPrompt,
             storyVoteLoading = sessionState.storyVoteLoading,
             storyFavoriteLoading = sessionState.storyFavoriteLoading,
         ),
@@ -233,16 +233,16 @@ class CommentsPresenter(
             is CommentsAction.ExpandParents -> thread.expandParents(action.commentId)
             is CommentsAction.RestoreCollapsedComments ->
                 thread.restoreCollapsedComments(action.collapsedIds)
-            CommentsAction.ShowCommentsByOp -> thread.showCommentsByOp()
-            CommentsAction.ResetCommentsByOp -> thread.resetCommentsByOp()
+            CommentsAction.EnableOpThreadFilter -> thread.enableOpThreadFilter()
+            CommentsAction.ResetOpThreadFilter -> thread.resetOpThreadFilter()
             is CommentsAction.SetSearchQuery -> thread.setSearchQuery(action.query)
             is CommentsAction.SetSearchActive -> search.setActive(action.active)
             is CommentsAction.BeginThreadLoad -> publish(
                 lastLoadedMillis = action.nowMillis,
-                showUpdate = false,
+                showRefreshPrompt = false,
             )
             is CommentsAction.EvaluateUpdateAvailability -> publish(
-                showUpdate = CommentsPresentationPolicy.shouldShowUpdateAffordance(
+                showRefreshPrompt = CommentsPresentationPolicy.shouldShowRefreshPrompt(
                     nowMillis = action.nowMillis,
                     lastLoadedMillis = state.value.lastLoadedMillis,
                     alwaysShow = action.alwaysShow,
@@ -252,7 +252,7 @@ class CommentsPresenter(
             is CommentsAction.SetLoaded -> publish(loaded = action.loaded)
             is CommentsAction.SetRefreshing -> publish(refreshing = action.refreshing)
             is CommentsAction.SetFailure -> publish(failure = action.failure)
-            is CommentsAction.SetShowUpdate -> publish(showUpdate = action.show)
+            is CommentsAction.SetShowRefreshPrompt -> publish(showRefreshPrompt = action.show)
             is CommentsAction.SetStoryVoteLoading -> publish(storyVoteLoading = action.loading)
             is CommentsAction.SetStoryFavoriteLoading -> publish(storyFavoriteLoading = action.loading)
             is CommentsAction.RequestCommentActions ->
@@ -712,7 +712,7 @@ class CommentsPresenter(
                         val optionIds = pollOptionsLoader.findOptionIds(story.id)
                         if (pollOptionsStoryId != story.id || generation != pollOptionsGeneration) return@launch
                         if (optionIds.isNotEmpty()) {
-                            story.pollOptions = optionIds
+                            story.pollOptionIds = optionIds
                             startPollOptionsLoad(story)
                         }
                     } catch (error: kotlinx.coroutines.CancellationException) {
@@ -731,15 +731,15 @@ class CommentsPresenter(
     }
 
     private fun startPollOptionsLoad(story: Story) {
-        val optionIds = story.pollOptions ?: return
+        val optionIds = story.pollOptionIds ?: return
         pollOptionsLoadStarted = true
-        val existing = story.pollOptionArrayList.orEmpty().associateBy { it.id }
-        story.pollOptionArrayList = ArrayList(pollOptionsLoader.placeholders(optionIds).map { existing[it.id] ?: it })
+        val existing = story.pollOptions.orEmpty().associateBy { it.id }
+        story.pollOptions = ArrayList(pollOptionsLoader.placeholders(optionIds).map { existing[it.id] ?: it })
         val generation = pollOptionsGeneration
         pollOptionsLoadJob = scope.launch {
             pollOptionsLoader.loadOptions(optionIds).collect { loaded ->
                 if (pollOptionsStoryId != story.id || generation != pollOptionsGeneration) return@collect
-                val pollOption = story.pollOptionArrayList
+                val pollOption = story.pollOptions
                     ?.firstOrNull { it.id == loaded.id }
                     ?: return@collect
                 pollOption.points = loaded.points
@@ -825,7 +825,7 @@ class CommentsPresenter(
         refreshing: Boolean = state.value.refreshing,
         failure: StoryLoadFailure? = state.value.failure,
         usingOfficialApiFallback: Boolean = state.value.usingOfficialApiFallback,
-        showUpdate: Boolean = state.value.showUpdate,
+        showRefreshPrompt: Boolean = state.value.showRefreshPrompt,
         storyVoteLoading: Boolean = state.value.storyVoteLoading,
         storyFavoriteLoading: Boolean = state.value.storyFavoriteLoading,
         pollVoteInFlightOptionId: Int? = state.value.pollVoteInFlightOptionId,
@@ -839,7 +839,7 @@ class CommentsPresenter(
         sessionState.refreshInProgress = refreshing
         sessionState.loadingFailed = failure != null
         sessionState.loadingFailedServerError = failure == StoryLoadFailure.NOT_FOUND
-        sessionState.showUpdate = showUpdate
+        sessionState.showRefreshPrompt = showRefreshPrompt
         sessionState.storyVoteLoading = storyVoteLoading
         sessionState.storyFavoriteLoading = storyFavoriteLoading
         mutableState.value = CommentsPresenterState(
@@ -850,7 +850,7 @@ class CommentsPresenter(
             refreshing = refreshing,
             failure = failure,
             usingOfficialApiFallback = usingOfficialApiFallback,
-            showUpdate = showUpdate,
+            showRefreshPrompt = showRefreshPrompt,
             storyVoteLoading = storyVoteLoading,
             storyFavoriteLoading = storyFavoriteLoading,
             pollVoteInFlightOptionId = pollVoteInFlightOptionId,

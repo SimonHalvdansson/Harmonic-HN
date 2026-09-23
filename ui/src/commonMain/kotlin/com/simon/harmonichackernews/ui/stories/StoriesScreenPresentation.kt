@@ -20,7 +20,7 @@ import com.simon.harmonichackernews.resources.ic_thumb_up_filled
 data class StoriesPlatformPresentation(
     val lastUpdatedText: String? = null,
     val contentInsetStartPx: Int = 0,
-    val showUpdateOverride: Boolean? = null,
+    val showRefreshPromptOverride: Boolean? = null,
 )
 
 /** Display labels and visibility derived from feature state; no copy of feed contents. */
@@ -37,7 +37,7 @@ internal data class StoriesScreenPresentation(
     val searchDateLabels: List<String> = emptyList(),
     val searchPointsLabels: List<String> = emptyList(),
     val searchCommentsLabels: List<String> = emptyList(),
-    val searchOnlyClicked: Boolean = false,
+    val searchOnlyRead: Boolean = false,
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val loadingFailed: Boolean = false,
@@ -49,7 +49,7 @@ internal data class StoriesScreenPresentation(
     val emptySavedListText: String = "No saved stories",
     val emptySavedListIcon: DrawableResource = Res.drawable.ic_bookmark,
     val showEmptySearch: Boolean = false,
-    val showUpdate: Boolean = false,
+    val showRefreshPrompt: Boolean = false,
     val lastUpdatedText: String? = null,
     val showLoadMore: Boolean = false,
     val loadMoreLoading: Boolean = false,
@@ -124,7 +124,7 @@ internal fun storiesScreenPresentation(
         searchDateLabels = StorySearchController.dateRangeLabels,
         searchPointsLabels = StorySearchController.minimumPointsLabels,
         searchCommentsLabels = StorySearchController.minimumCommentsLabels,
-        searchOnlyClicked = state.search.options.onlyClicked,
+        searchOnlyRead = state.search.options.onlyRead,
         loading = shell.showLoading,
         refreshing = state.refreshIndicatorShowing,
         loadingFailed = listState.failure != null,
@@ -141,7 +141,7 @@ internal fun storiesScreenPresentation(
         ),
         emptySavedListIcon = emptyIcon,
         showEmptySearch = shell.showEmptySearch,
-        showUpdate = platform.showUpdateOverride ?: state.updateAvailable,
+        showRefreshPrompt = platform.showRefreshPromptOverride ?: state.updateAvailable,
         lastUpdatedText = platform.lastUpdatedText,
         showLoadMore = state.activeHasLoadMore,
         loadMoreLoading = listState.loadMoreInProgress,

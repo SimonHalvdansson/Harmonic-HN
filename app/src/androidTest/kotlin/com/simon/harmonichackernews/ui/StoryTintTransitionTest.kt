@@ -67,7 +67,7 @@ class StoryTintTransitionTest {
                 previewImageMode = StoryPreviewMode.SMALL,
                 borderlessLargeImage = false,
                 compact = false,
-                showSummary = false,
+                showPreviewText = false,
                 showFavicon = true,
                 showPoints = true,
                 compactPoints = false,

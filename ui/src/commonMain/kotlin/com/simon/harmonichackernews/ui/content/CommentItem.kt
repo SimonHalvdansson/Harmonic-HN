@@ -265,7 +265,7 @@ fun CommentItem(
             byUser = false,
             userTag = null,
             hiddenPreview = null,
-            hiddenReplyCount = null,
+            subtreeReplyCount = null,
             showHiddenReplyCount = false,
             emphasized = style.emphasizeMeta,
             fontFamily = typography.family,
@@ -345,7 +345,7 @@ fun CommentItem(
     storyAuthor: String?,
     accountUser: String?,
     userTag: String?,
-    hiddenReplyCount: Int,
+    subtreeReplyCount: Int,
     collapseParent: Boolean,
     showTopLevelIndicator: Boolean,
     nextCommentDepth: Int? = null,
@@ -538,10 +538,10 @@ fun CommentItem(
                 userTag = userTag,
                 isNew = style.markNewComments && comment.isNew,
                 hiddenPreview = hiddenPreview,
-                hiddenReplyCount = hiddenReplyCount.takeIf {
+                subtreeReplyCount = subtreeReplyCount.takeIf {
                     it > 0
                 },
-                showHiddenReplyCount = hiddenReplyCount > 0 &&
+                showHiddenReplyCount = subtreeReplyCount > 0 &&
                     !forceExpanded && !comment.expanded,
                 emphasized = style.emphasizeMeta,
                 fontFamily = typography.family,
@@ -1038,7 +1038,7 @@ private fun CommentMeta(
     byUser: Boolean,
     userTag: String?,
     hiddenPreview: String?,
-    hiddenReplyCount: Int?,
+    subtreeReplyCount: Int?,
     showHiddenReplyCount: Boolean,
     emphasized: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
@@ -1164,7 +1164,7 @@ private fun CommentMeta(
         }
         val replyCount: @Composable () -> Unit = {
             Text(
-                "+${hiddenReplyCount ?: 0}",
+                "+${subtreeReplyCount ?: 0}",
                 modifier = Modifier
                     .padding(start = if (isNew) 6.dp else 0.dp)
                     .graphicsLayer(alpha = hiddenReplyCountAlpha)
@@ -1185,11 +1185,11 @@ private fun CommentMeta(
                 // Move the fade layer itself. Offsetting its child draws above the layer's
                 // offscreen buffer and clips the pill while alpha is below one.
                 modifier = Modifier.offset(y = (-2).dp),
-                visible = showHiddenReplyCount && hiddenReplyCount != null,
+                visible = showHiddenReplyCount && subtreeReplyCount != null,
                 enter = fadeIn(contentTween()) + expandHorizontally(contentTween(), expandFrom = Alignment.End, clip = true),
                 exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween(), shrinkTowards = Alignment.End, clip = true),
             ) { replyCount() }
-        } else if (hiddenReplyCount != null) {
+        } else if (subtreeReplyCount != null) {
             // Older comments retain the original fixed-width, opacity-only count animation.
             Box(Modifier.offset(y = (-2).dp)) { replyCount() }
         }

@@ -16,7 +16,7 @@ class CommentMasterResolverTest {
         val repository = FakeRepository(loadedParent)
         val source = Story("Comment", 7, true, false).also {
             it.isComment = true
-            it.commentMasterId = 42
+            it.rootStoryId = 42
         }
 
         val resolved = CommentMasterResolver(repository).resolve(source)

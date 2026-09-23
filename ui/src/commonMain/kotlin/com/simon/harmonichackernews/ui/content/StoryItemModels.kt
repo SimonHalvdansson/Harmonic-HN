@@ -212,7 +212,7 @@ fun storyItemUiModel(
         position = position,
         resources = StoryItemResourcePresentation(
             faviconUrl = favicon,
-            summary = story.linkSummaryDescription,
+            previewText = story.linkSummaryDescription,
             previewImageUrl = previewUrl,
             previewImageLoadFailed = previewResource?.imageLoadFailed == true,
             faviconTintArgb = persistedFaviconTint
@@ -274,7 +274,7 @@ fun storyItemUiModel(
         position = position,
         resources = StoryItemResourcePresentation(
             faviconUrl = favicon,
-            summary = presentation.linkSummaryDescription,
+            previewText = presentation.linkSummaryDescription,
             previewImageUrl = previewUrl,
             previewImageLoadFailed = previewResource?.imageLoadFailed == true,
             faviconTintArgb = persistedFaviconTint
@@ -314,29 +314,29 @@ fun rememberSubmissionStoryItemUiModel(
         story.id,
         story.url,
         settings.previewImageMode,
-        settings.showSummary,
+        settings.showPreviewText,
     ) {
         previewResources.request(story)
         onDispose { }
     }
     val currentPreviewState = previewState?.takeIf { it.pageUrl == story.url }
     val previewUrl = currentPreviewState.resolvedImageUrl(story.previewImageUrl)
-    val summary = currentPreviewState?.summary?.description
+    val previewText = currentPreviewState?.summary?.description
         ?: story.linkSummaryDescription
-        ?: story.summary.orEmpty()
+        ?: story.aiSummaryText.orEmpty()
     val domainAndFavicon = remember(story.url, settings.faviconProvider) {
         val domain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
         domain to resolvedFaviconUrl(domain, story.url, settings.faviconProvider)
     }
     val domain = domainAndFavicon.first
     val faviconUrl = domainAndFavicon.second
-    val nowMillis = remember(story.id, story.time) {
+    val nowMillis = remember(story.id, story.createdAtEpochSeconds) {
         Clock.System.now().toEpochMilliseconds()
     }
     return StoryItemUiModelFactory.create(
         story = story,
         resources = StoryItemResourcePresentation(
-            summary = summary,
+            previewText = previewText,
             faviconUrl = faviconUrl,
             previewImageUrl = previewUrl,
             previewImageLoadFailed = currentPreviewState?.imageLoadFailed == true,

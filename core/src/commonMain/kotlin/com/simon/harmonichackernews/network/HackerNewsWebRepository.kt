@@ -166,7 +166,7 @@ object HackerNewsWebParser {
                             isLink = true
                             url = link.absUrl("href")
                             by = "Hacker News"
-                            time = nowSeconds
+                            createdAtEpochSeconds = nowSeconds
                         },
                 )
             }

@@ -23,7 +23,7 @@ data class StorySearchOptions(
     val dateRangeIndex: Int = 0,
     val minimumPointsIndex: Int = 0,
     val minimumCommentsIndex: Int = 0,
-    val onlyClicked: Boolean = false,
+    val onlyRead: Boolean = false,
 )
 
 enum class StorySearchMode {
@@ -46,15 +46,15 @@ data class StorySearchUiState(
     val revision: Long = 0,
 )
 
-/** Executes the complete portable Algolia/clicked-history search workflow. */
+/** Executes the complete portable Algolia/read-history search workflow. */
 class StorySearchStore(
     private val scope: CoroutineScope,
     private val algoliaRepository: AlgoliaRepository,
     private val hackerNewsRepository: HackerNewsRepository,
-    private val clickedStoryIds: () -> List<Int>,
-    private val isStoryClicked: (Int) -> Boolean,
+    private val readStoryIds: () -> List<Int>,
+    private val isStoryRead: (Int) -> Boolean,
     private val shouldFilterStory: (Story) -> Boolean,
-    private val shouldHideClickedStories: () -> Boolean,
+    private val shouldHideReadStories: () -> Boolean,
     private val controller: StorySearchController = StorySearchController(),
 ) {
     private val mutableState = MutableStateFlow(StorySearchUiState())
@@ -63,7 +63,7 @@ class StorySearchStore(
     private var request: Request? = null
     private var loadJob: Job? = null
     private var generation = 0L
-    private val clickedStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
+    private val readStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
 
     val sortLabel: String get() = controller.sortLabel
     val dateRangeLabel: String get() = controller.dateRangeLabel
@@ -83,7 +83,7 @@ class StorySearchStore(
         controller.dateRangeIndex = options.dateRangeIndex.coerceIn(StorySearchController.dateRangeLabels.indices)
         controller.minimumPointsIndex = options.minimumPointsIndex.coerceIn(StorySearchController.minimumPointsLabels.indices)
         controller.minimumCommentsIndex = options.minimumCommentsIndex.coerceIn(StorySearchController.minimumCommentsLabels.indices)
-        if (controller.isOnlyClicked != options.onlyClicked) controller.toggleOnlyClicked()
+        if (controller.isOnlyRead != options.onlyRead) controller.toggleOnlyRead()
         publish { copy(options = currentOptions()) }
     }
 
@@ -103,7 +103,7 @@ class StorySearchStore(
         controller.minimumCommentsIndex = index.coerceIn(StorySearchController.minimumCommentsLabels.indices)
     }
 
-    fun toggleOnlyClicked() = updateOption(controller::toggleOnlyClicked)
+    fun toggleOnlyRead() = updateOption(controller::toggleOnlyRead)
 
     fun search(query: String?, resetResultLimit: Boolean = true) {
         request = Request.Query(query.orEmpty())
@@ -206,8 +206,8 @@ class StorySearchStore(
         loadJob = scope.launch {
             val result = try {
                 when {
-                    activeRequest is Request.Query && controller.isOnlyClicked ->
-                        loadOnlyClickedStories(activeRequest.query)
+                    activeRequest is Request.Query && controller.isOnlyRead ->
+                        loadOnlyReadStories(activeRequest.query)
                     else -> loadAlgoliaStories(activeRequest, hitsPerPage)
                 }
             } catch (error: CancellationException) {
@@ -240,8 +240,8 @@ class StorySearchStore(
         }
         val parsedStories = algoliaRepository.search(url)
         val visibleStories = parsedStories.filter { story ->
-            story.clicked = isStoryClicked(story.id)
-            !shouldFilterStory(story) && !(shouldHideClickedStories() && story.clicked)
+            story.isRead = isStoryRead(story.id)
+            !shouldFilterStory(story) && !(shouldHideReadStories() && story.isRead)
         }
         return SearchResult(
             stories = visibleStories,
@@ -249,38 +249,38 @@ class StorySearchStore(
         )
     }
 
-    private suspend fun loadOnlyClickedStories(query: String): SearchResult = coroutineScope {
-        val ids = clickedStoryIds()
+    private suspend fun loadOnlyReadStories(query: String): SearchResult = coroutineScope {
+        val ids = readStoryIds()
         if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
 
         val normalizedQuery = controller.normalizeQuery(query)
         val outcomes = ids.map { id ->
             async {
-                clickedStoryRequests.withPermit {
+                readStoryRequests.withPermit {
                     try {
-                        ClickedStoryLoad(
-                            story = hackerNewsRepository.getStory(id)?.also { it.clicked = true },
+                        ReadStoryLoad(
+                            story = hackerNewsRepository.getStory(id)?.also { it.isRead = true },
                             failed = false,
                         )
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Exception) {
-                        ClickedStoryLoad(story = null, failed = true)
+                        ReadStoryLoad(story = null, failed = true)
                     }
                 }
             }
         }.awaitAll()
         val filter = StorySearchController.StoryFilter(shouldFilterStory)
-        val stories = outcomes.mapNotNull(ClickedStoryLoad::story)
+        val stories = outcomes.mapNotNull(ReadStoryLoad::story)
             .filter { story ->
-                controller.shouldIncludeOnlyClickedStory(story, normalizedQuery, filter)
+                controller.shouldIncludeOnlyReadStory(story, normalizedQuery, filter)
             }
             .toMutableList()
-        controller.sortOnlyClickedResults(stories, query)
+        controller.sortOnlyReadResults(stories, query)
         SearchResult(
             stories = stories,
             canLoadMore = false,
-            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(ClickedStoryLoad::failed) },
+            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(ReadStoryLoad::failed) },
         )
     }
 
@@ -304,7 +304,7 @@ class StorySearchStore(
         dateRangeIndex = controller.dateRangeIndex,
         minimumPointsIndex = controller.minimumPointsIndex,
         minimumCommentsIndex = controller.minimumCommentsIndex,
-        onlyClicked = controller.isOnlyClicked,
+        onlyRead = controller.isOnlyRead,
     )
 
     private inline fun publish(update: StorySearchUiState.() -> StorySearchUiState) {
@@ -339,7 +339,7 @@ class StorySearchStore(
         val failure: StoryLoadFailure? = null,
     )
 
-    private data class ClickedStoryLoad(val story: Story?, val failed: Boolean)
+    private data class ReadStoryLoad(val story: Story?, val failed: Boolean)
 
     private companion object {
         const val MAX_CONCURRENT_HISTORY_REQUESTS = 8

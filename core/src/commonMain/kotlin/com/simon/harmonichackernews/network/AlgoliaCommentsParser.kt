@@ -57,15 +57,15 @@ data class AlgoliaCommentsResponse(
             points != story.score ||
             oldCommentCount != comments.size + 1
 
-        story.time = createdAtEpochSeconds
+        story.createdAtEpochSeconds = createdAtEpochSeconds
         if (type == "comment") {
             story.title = "Comment by $author"
             story.isLink = false
             story.url = HackerNewsLinks.itemUrl(storyId)
             story.isComment = true
             story.parentId = parentId
-            story.commentMasterId = storyId
-            story.commentMasterTitle = storyTitle
+            story.rootStoryId = storyId
+            story.rootStoryTitle = storyTitle
         } else {
             story.title = title
             story.isLink = url.isNotEmpty() && url != JSON_NULL_LITERAL

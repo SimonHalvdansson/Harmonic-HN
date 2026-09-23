@@ -46,19 +46,18 @@ data class StoryListItemSnapshot(
     val isComment: Boolean get() = story.isComment
     val isJob: Boolean get() = story.isJob
     val loaded: Boolean get() = presentation.loaded
-    val clicked: Boolean get() = presentation.clicked
+    val isRead: Boolean get() = presentation.isRead
     val loadingFailed: Boolean get() = presentation.loadingFailed
     val isLink: Boolean get() = presentation.isLink
     val isFrontpageLink: Boolean get() = presentation.isFrontpageLink
     val by: String? get() = author
     val descendants: Int get() = descendantCount
-    val time: Int get() = createdAtEpochSeconds
     val parentId: Int get() = story.parentId
-    val commentMasterId: Int get() = presentation.commentMaster?.id ?: 0
+    val rootStoryId: Int get() = presentation.rootStory?.id ?: 0
     val kids: List<Int> get() = story.childIds
     val pdfTitle: String? get() = presentation.pdfTitle
     val videoTitle: String? get() = presentation.videoTitle
-    val summary: String? get() = presentation.summary
+    val aiSummaryText: String? get() = presentation.aiSummaryText
     val summaryGeneratedSuccessfully: Boolean
         get() = presentation.summaryGeneratedSuccessfully
     val previewImageUrl: String? get() = presentation.previewImage.url
@@ -71,8 +70,8 @@ data class StoryListItemSnapshot(
     val faviconTintColor: Int get() = presentation.faviconTint?.colorArgb ?: 0
     val faviconTintBaseColor: Int get() = presentation.faviconTint?.baseColorArgb ?: 0
     val faviconTintMode: String? get() = presentation.faviconTint?.mode
-    val pollOptionArrayList get() = presentation.pollOptions.takeIf(List<*>::isNotEmpty)
-    val repoInfo get() = presentation.repoInfo
+    val pollOptions get() = presentation.pollOptions.takeIf(List<*>::isNotEmpty)
+    val gitHubRepoInfo get() = presentation.gitHubRepoInfo
     val gitLabInfo get() = presentation.gitLabInfo
     val huggingFaceInfo get() = presentation.huggingFaceInfo
     val openRouterInfo get() = presentation.openRouterInfo
@@ -82,7 +81,7 @@ data class StoryListItemSnapshot(
     val nitterInfo get() = presentation.nitterInfo
     val linkPreviewInfo get() = presentation.linkPreviewInfo
     val linkPreviewLoading: Boolean get() = presentation.linkPreviewLoading
-    val timeFormatted: String get() = ItemTimeFormatter.formatNow(time)
+    val timeFormatted: String get() = ItemTimeFormatter.formatNow(createdAtEpochSeconds)
 
     fun getDisplayDomain(includeTopLevelDomain: Boolean): String? =
         DomainNamePolicy.fromUrl(url.orEmpty())?.let {
@@ -257,7 +256,7 @@ class StoryListStore(
     }
 
     fun markRead(storyId: Int, read: Boolean): Boolean =
-        updateStory(storyId) { clicked = read }
+        updateStory(storyId) { isRead = read }
 
     fun mergeStoryContent(update: Story): Boolean = updateStory(update.id) {
         StoryRowMergePolicy.mergeSummaryFields(this, update)
@@ -278,23 +277,23 @@ class StoryListStore(
     }
 
     fun syncHistory(
-        clickedStoryIds: Set<Int>,
-        searchingOnlyClicked: Boolean,
+        readStoryIds: Set<Int>,
+        searchingOnlyRead: Boolean,
         showingHistory: Boolean,
-        hideClicked: Boolean,
+        hideRead: Boolean,
     ): StoryHistorySyncResult {
-        if (searchingOnlyClicked) {
-            val hadClicked = stories.any(Story::clicked)
-            if (hadClicked) {
-                stories.forEach { it.clicked = false }
+        if (searchingOnlyRead) {
+            val hadRead = stories.any(Story::isRead)
+            if (hadRead) {
+                stories.forEach { it.isRead = false }
                 publish()
                 return StoryHistorySyncResult.CONTENT_CHANGED
             }
             return StoryHistorySyncResult.UNCHANGED
         }
         if (showingHistory) return StoryHistorySyncResult.REFRESH_REQUIRED
-        if (hideClicked) {
-            val removed = mutableStories.removeAll { it.id in clickedStoryIds }
+        if (hideRead) {
+            val removed = mutableStories.removeAll { it.id in readStoryIds }
             if (removed) {
                 publish()
                 return StoryHistorySyncResult.ITEMS_REMOVED
@@ -304,9 +303,9 @@ class StoryListStore(
 
         var changed = false
         stories.forEach { story ->
-            val clicked = story.id in clickedStoryIds
-            if (story.clicked != clicked) {
-                story.clicked = clicked
+            val isRead = story.id in readStoryIds
+            if (story.isRead != isRead) {
+                story.isRead = isRead
                 changed = true
             }
         }

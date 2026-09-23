@@ -101,7 +101,7 @@ import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
 private const val StoryMetricPillDimStrength = 0.75f
-private const val ClickedNoImageMetricPillAlpha = 0.8f
+private const val ReadNoImageMetricPillAlpha = 0.8f
 private val StoryCardShape = RoundedCornerShape(8.dp)
 private val MediumPreviewImageMinimumHeight = 104.dp
 private val StoryMetricPillShape = RoundedCornerShape(50)
@@ -171,7 +171,7 @@ data class StoryItemUiModel(
     val index: String,
     val title: String,
     val titleBadge: StoryTitleBadge? = null,
-    val summary: String,
+    val previewText: String,
     val points: Int,
     val domain: String,
     val domainWithoutTopLevel: String,
@@ -195,7 +195,7 @@ data class StoryItemStyle(
     val previewImageMode: StoryPreviewMode,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
-    val showSummary: Boolean,
+    val showPreviewText: Boolean,
     val showFavicon: Boolean,
     val showPoints: Boolean,
     val compactPoints: Boolean,
@@ -220,7 +220,7 @@ data class StoryItemStyle(
 val SettingsStoryPreviewModel = StoryItemUiModel(
     index = "3.",
     title = "Algorithm breaks speed limit for solving linear equations",
-    summary = "A faster method uses a new approach to solve large linear systems more efficiently.",
+    previewText = "A faster method uses a new approach to solve large linear systems more efficiently.",
     points = 53,
     domain = "science.org",
     domainWithoutTopLevel = "science",
@@ -979,7 +979,7 @@ private fun StoryMetricPill(
     )
     val pillAlpha = if (hazeState == null) {
         val dimProgress = ((1f - dimAlpha) / (1f - DimmedStoryAlpha)).coerceIn(0f, 1f)
-        1f + (ClickedNoImageMetricPillAlpha - 1f) * dimProgress
+        1f + (ReadNoImageMetricPillAlpha - 1f) * dimProgress
     } else {
         1f
     }
@@ -1210,13 +1210,13 @@ private fun StoryMainContent(
                     style = legacyTextStyle,
                 )
                 StoryVisibility(
-                    visible = style.showSummary && model.summary.isNotBlank(),
+                    visible = style.showPreviewText && model.previewText.isNotBlank(),
                     animate = animateChanges,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
                     Text(
-                        text = model.summary,
+                        text = model.previewText,
                         modifier = Modifier
                             .padding(top = 3.dp)
                             .captureStoryPreviewElement(

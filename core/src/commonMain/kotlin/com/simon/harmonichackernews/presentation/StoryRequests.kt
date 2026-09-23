@@ -71,17 +71,17 @@ class StoryRequests(
     private val userItemsLoader: HackerNewsUserItemsLoader,
     private val savedItemsRepository: SavedItemsRepository,
     private val storyFeedLoader: StoryFeedLoader,
-    clickedStoryIds: () -> List<Int>,
-    isStoryClicked: (Int) -> Boolean,
-    shouldHideClickedStories: () -> Boolean,
+    readStoryIds: () -> List<Int>,
+    isStoryRead: (Int) -> Boolean,
+    shouldHideReadStories: () -> Boolean,
 ) {
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
     val searchStore = StorySearchStore(
         scope = scope,
         algoliaRepository = algoliaRepository,
         hackerNewsRepository = hackerNewsRepository,
-        clickedStoryIds = clickedStoryIds,
-        isStoryClicked = isStoryClicked,
+        readStoryIds = readStoryIds,
+        isStoryRead = isStoryRead,
         shouldFilterStory = { story ->
             storyVisibilityPolicy.shouldHide(
                 story,
@@ -92,7 +92,7 @@ class StoryRequests(
                 },
             )
         },
-        shouldHideClickedStories = shouldHideClickedStories,
+        shouldHideReadStories = shouldHideReadStories,
     )
 
     private val mutableEffects = MutableSharedFlow<StoriesEffect>(extraBufferCapacity = 16)

@@ -30,16 +30,16 @@ class StoriesComposeControllerPreviewNavigationTest {
 
         controller.updateContent(
             state,
-            StoriesPlatformPresentation(lastUpdatedText = "Previous time", showUpdateOverride = false),
+            StoriesPlatformPresentation(lastUpdatedText = "Previous time", showRefreshPromptOverride = false),
         )
 
         assertSame(stories, controller.mainStories)
-        assertFalse(controller.showUpdate)
+        assertFalse(controller.showRefreshPrompt)
         assertEquals("Previous time", controller.lastUpdatedText)
 
         controller.updateContent(state, StoriesPlatformPresentation(lastUpdatedText = "New time"))
 
-        assertTrue(controller.showUpdate)
+        assertTrue(controller.showRefreshPrompt)
         assertEquals("New time", controller.lastUpdatedText)
         assertSame(stories, controller.mainStories)
     }
@@ -453,7 +453,7 @@ class StoriesComposeControllerPreviewNavigationTest {
         override fun onCloseSearch() = Unit
         override fun onSearch(query: String) = Unit
         override fun onSearchOption(kind: StorySearchOption, index: Int) = Unit
-        override fun onToggleOnlyClicked() = Unit
+        override fun onToggleOnlyRead() = Unit
         override fun onRefresh(showMainLoadingIndicator: Boolean) {
             refreshLoadingModes += showMainLoadingIndicator
         }

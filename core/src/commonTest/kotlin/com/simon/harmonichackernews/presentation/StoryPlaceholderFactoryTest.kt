@@ -14,8 +14,8 @@ class StoryPlaceholderFactoryTest {
             existingStories = listOf(Story("Existing", 1, true, false)),
             itemIds = listOf(1, 2, 3, 4),
             commentIds = setOf(3),
-            clickedIds = setOf(2),
-            hideClicked = true,
+            readIds = setOf(2),
+            hideRead = true,
         )
 
         assertEquals(listOf(3, 4), stories.map(Story::id))
@@ -62,10 +62,10 @@ class StoryPlaceholderFactoryTest {
         val stories = StoryPlaceholderFactory.create(
             itemIds = listOf(1, 2, 3, 2, 4, 5),
             commentIds = setOf(3, 5),
-            clickedIds = setOf(1, 2),
+            readIds = setOf(1, 2),
             cachedStories = mapOf(2 to cached),
             hydrateCachedStory = {
-                events += "hydrate:${it.id}:${it.clicked}:${it.isComment}"
+                events += "hydrate:${it.id}:${it.isRead}:${it.isComment}"
                 it.loaded = it.id != 5
                 it.loaded
             },
@@ -78,7 +78,7 @@ class StoryPlaceholderFactoryTest {
         assertEquals(listOf(1, 2, 3, 2, 5), stories.map(Story::id))
         assertSame(cached, stories[1])
         assertSame(cached, stories[3])
-        assertTrue(cached.clicked)
+        assertTrue(cached.isRead)
         assertFalse(cached.isComment)
         assertEquals(
             listOf(
@@ -91,12 +91,12 @@ class StoryPlaceholderFactoryTest {
     }
 
     @Test
-    fun hiddenClickedItemsNeverReadOrHydrateCache() {
+    fun hiddenReadItemsNeverReadOrHydrateCache() {
         val events = mutableListOf<Int>()
         val stories = StoryPlaceholderFactory.create(
             itemIds = listOf(1, 2, 3),
-            clickedIds = setOf(1, 3),
-            hideClicked = true,
+            readIds = setOf(1, 3),
+            hideRead = true,
             hydrateCachedStory = { events += it.id; false },
         )
         assertEquals(listOf(2), stories.map(Story::id))
@@ -106,57 +106,57 @@ class StoryPlaceholderFactoryTest {
     }
 
     @Test
-    fun reconcilePreservesExistingClickedStateAndOnlyHydratesNewRows() {
-        val clicked = Story("Clicked", 1, true, true)
-        val unclicked = Story("Unclicked", 2, true, false)
+    fun reconcilePreservesExistingReadStateAndOnlyHydratesNewRows() {
+        val isRead = Story("Clicked", 1, true, true)
+        val unread = Story("Unclicked", 2, true, false)
         val cached = Story("Cached", 3, true, false)
         val events = mutableListOf<String>()
         val stories = StoryPlaceholderFactory.reconcile(
-            existingStories = listOf(clicked, unclicked),
+            existingStories = listOf(isRead, unread),
             itemIds = listOf(2, 3, 1, 4, 2),
-            clickedIds = setOf(2, 3, 4),
+            readIds = setOf(2, 3, 4),
             commentIds = setOf(2, 4),
             cachedStories = mapOf(3 to cached),
             hydrateCachedStory = {
-                events += "hydrate:${it.id}:${it.clicked}:${it.isComment}"
+                events += "hydrate:${it.id}:${it.isRead}:${it.isComment}"
                 true
             },
             shouldHideHydratedStory = { events += "filter:${it.id}"; false },
         )
 
         assertEquals(listOf(2, 3, 1, 4, 2), stories.map(Story::id))
-        assertSame(unclicked, stories[0])
-        assertSame(unclicked, stories[4])
-        assertSame(clicked, stories[2])
+        assertSame(unread, stories[0])
+        assertSame(unread, stories[4])
+        assertSame(isRead, stories[2])
         assertSame(cached, stories[1])
-        assertTrue(clicked.clicked)
-        assertFalse(unclicked.clicked)
-        assertTrue(unclicked.isComment)
-        assertTrue(cached.clicked)
-        assertTrue(stories[3].clicked)
+        assertTrue(isRead.isRead)
+        assertFalse(unread.isRead)
+        assertTrue(unread.isComment)
+        assertTrue(cached.isRead)
+        assertTrue(stories[3].isRead)
         assertEquals(listOf("filter:3", "hydrate:4:true:true", "filter:4"), events)
     }
 
     @Test
-    fun reconcileHiddenClickedRowsPreservesSurvivorState() {
+    fun reconcileHiddenReadRowsPreservesSurvivorState() {
         val retained = Story("Retained", 1, true, true)
         val cached = Story("Cached", 3, true, true)
         val events = mutableListOf<String>()
         val stories = StoryPlaceholderFactory.reconcile(
             existingStories = listOf(retained, Story("Hidden", 2, true, false)),
             itemIds = listOf(1, 2, 3, 4),
-            clickedIds = setOf(2),
-            hideClicked = true,
+            readIds = setOf(2),
+            hideRead = true,
             cachedStories = mapOf(3 to cached),
-            hydrateCachedStory = { events += "hydrate:${it.id}:${it.clicked}"; false },
+            hydrateCachedStory = { events += "hydrate:${it.id}:${it.isRead}"; false },
             shouldHideHydratedStory = { events += "filter:${it.id}"; false },
         )
         assertEquals(listOf(1, 3, 4), stories.map(Story::id))
         assertSame(retained, stories[0])
-        assertTrue(retained.clicked)
+        assertTrue(retained.isRead)
         assertSame(cached, stories[1])
-        assertFalse(cached.clicked)
-        assertFalse(stories[2].clicked)
+        assertFalse(cached.isRead)
+        assertFalse(stories[2].isRead)
         assertEquals(listOf("filter:3", "hydrate:4:false"), events)
     }
 }

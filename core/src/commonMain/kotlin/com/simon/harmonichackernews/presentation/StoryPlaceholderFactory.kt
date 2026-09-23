@@ -7,17 +7,17 @@ object StoryPlaceholderFactory {
     fun create(
         itemIds: List<Int>,
         commentIds: Set<Int> = emptySet(),
-        clickedIds: Set<Int> = emptySet(),
-        hideClicked: Boolean = false,
+        readIds: Set<Int> = emptySet(),
+        hideRead: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
         cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> = itemIds.mapNotNullTo(mutableListOf()) { id ->
-        val clicked = id in clickedIds
-        if (hideClicked && clicked) return@mapNotNullTo null
+        val isRead = id in readIds
+        if (hideRead && isRead) return@mapNotNullTo null
         val cachedStory = cachedStories[id]
-        (cachedStory ?: Story("Loading...", id, false, clicked)).also { story ->
-            story.clicked = clicked
+        (cachedStory ?: Story("Loading...", id, false, isRead)).also { story ->
+            story.isRead = isRead
             story.isComment = id in commentIds
             if ((cachedStory != null || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
                 return@mapNotNullTo null
@@ -29,8 +29,8 @@ object StoryPlaceholderFactory {
         existingStories: List<Story>,
         itemIds: List<Int>,
         commentIds: Set<Int> = emptySet(),
-        clickedIds: Set<Int> = emptySet(),
-        hideClicked: Boolean = false,
+        readIds: Set<Int> = emptySet(),
+        hideRead: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
         cachedStories: Map<Int, Story> = emptyMap(),
@@ -39,8 +39,8 @@ object StoryPlaceholderFactory {
         return create(
             itemIds = itemIds.filterNot(existingIds::contains),
             commentIds = commentIds,
-            clickedIds = clickedIds,
-            hideClicked = hideClicked,
+            readIds = readIds,
+            hideRead = hideRead,
             hydrateCachedStory = hydrateCachedStory,
             shouldHideHydratedStory = shouldHideHydratedStory,
             cachedStories = cachedStories,
@@ -55,19 +55,19 @@ object StoryPlaceholderFactory {
         existingStories: List<Story>,
         itemIds: List<Int>,
         commentIds: Set<Int> = emptySet(),
-        clickedIds: Set<Int> = emptySet(),
-        hideClicked: Boolean = false,
+        readIds: Set<Int> = emptySet(),
+        hideRead: Boolean = false,
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
         cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> {
         val existingById = existingStories.associateBy(Story::id)
         return itemIds.mapNotNullTo(mutableListOf()) { id ->
-            if (hideClicked && id in clickedIds) return@mapNotNullTo null
+            if (hideRead && id in readIds) return@mapNotNullTo null
             existingById[id]?.also { story ->
                 story.isComment = id in commentIds
-            } ?: (cachedStories[id] ?: Story("Loading...", id, false, id in clickedIds)).also { story ->
-                story.clicked = id in clickedIds
+            } ?: (cachedStories[id] ?: Story("Loading...", id, false, id in readIds)).also { story ->
+                story.isRead = id in readIds
                 story.isComment = id in commentIds
                 if ((id in cachedStories || hydrateCachedStory(story)) && shouldHideHydratedStory(story)) {
                     return@mapNotNullTo null

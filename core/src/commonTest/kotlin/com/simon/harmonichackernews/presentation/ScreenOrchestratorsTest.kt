@@ -66,16 +66,16 @@ class ScreenOrchestratorsTest {
         val show = CommentsUiOrchestrator.more(
             CommentsMoreAction.COMMENTS_BY_OP,
             story,
-            commentsByOpActive = false,
+            opThreadFilterEnabled = false,
         )
         val reset = CommentsUiOrchestrator.more(
             CommentsMoreAction.COMMENTS_BY_OP,
             story,
-            commentsByOpActive = true,
+            opThreadFilterEnabled = true,
         )
 
-        assertEquals(listOf(CommentsAction.ShowCommentsByOp), show.actions)
-        assertEquals(listOf(CommentsAction.ResetCommentsByOp), reset.actions)
+        assertEquals(listOf(CommentsAction.EnableOpThreadFilter), show.actions)
+        assertEquals(listOf(CommentsAction.ResetOpThreadFilter), reset.actions)
         assertTrue(show.refreshState)
         assertTrue(show.refreshNavigation)
     }

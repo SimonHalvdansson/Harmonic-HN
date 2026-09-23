@@ -8,7 +8,7 @@ class Story : LinkPreviewState {
     var descendants: Int = 0
     var id: Int = 0
     var score: Int = 0
-    var time: Int = 0
+    var createdAtEpochSeconds: Int = 0
     var title: String? = null
     var pdfTitle: String? = null
     var videoTitle: String? = null
@@ -22,7 +22,7 @@ class Story : LinkPreviewState {
 
     var previewImageUrl: String? = null
 
-    var previewImageUrlLoaded: Boolean = false
+    var previewImageUrlResolved: Boolean = false
 
     var linkSummaryDescription: String? = null
 
@@ -48,16 +48,16 @@ class Story : LinkPreviewState {
 
     var faviconTintMode: String? = null
     var kids: IntArray? = null
-    var pollOptions: IntArray? = null
-    var pollOptionArrayList: ArrayList<PollOption>? = null
+    var pollOptionIds: IntArray? = null
+    var pollOptions: ArrayList<PollOption>? = null
     var loaded: Boolean = false
-    var clicked: Boolean = false
+    var isRead: Boolean = false
     var text: String? = null
 
     override var gitLabInfo: GitLabInfo? = null
     override var huggingFaceInfo: HuggingFaceModelInfo? = null
     override var openRouterInfo: OpenRouterModelInfo? = null
-    override var repoInfo: RepoInfo? = null
+    override var gitHubRepoInfo: RepoInfo? = null
     override var stackExchangeInfo: StackExchangeInfo? = null
     override var arxivInfo: ArxivInfo? = null
     override var wikiInfo: WikipediaInfo? = null
@@ -71,48 +71,48 @@ class Story : LinkPreviewState {
     var loadingFailed: Boolean = false
     var isComment: Boolean = false
     var isFrontpageLink: Boolean = false
-    var commentMasterTitle: String? = null
-    var commentMasterId: Int = 0
-    var commentMasterUrl: String? = null
-    var commentMasterBy: String? = null
-    var commentMasterScore: Int = 0
-    var commentMasterTime: Int = 0
-    var commentMasterDescendants: Int = 0
-    var commentMasterLoaded: Boolean = false
+    var rootStoryTitle: String? = null
+    var rootStoryId: Int = 0
+    var rootStoryUrl: String? = null
+    var rootStoryAuthor: String? = null
+    var rootStoryScore: Int = 0
+    var rootStoryCreatedAtEpochSeconds: Int = 0
+    var rootStoryDescendantCount: Int = 0
+    var rootStoryLoaded: Boolean = false
     var parentId: Int = 0 // Direct parent ID (for comments)
-    var summary: String? = null
+    var aiSummaryText: String? = null
 
     var summaryGeneratedSuccessfully: Boolean = false
 
     constructor()
 
-    constructor(title: String, id: Int, loaded: Boolean, clicked: Boolean) {
+    constructor(title: String, id: Int, loaded: Boolean, isRead: Boolean) {
         this.title = title
         this.id = id
         this.loaded = loaded
-        this.clicked = clicked
+        this.isRead = isRead
     }
 
-    constructor(title: String, id: Int, loaded: Boolean, clicked: Boolean, time: Long) {
+    constructor(title: String, id: Int, loaded: Boolean, isRead: Boolean, createdAtEpochMillis: Long) {
         this.title = title
         this.id = id
         this.loaded = loaded
-        this.clicked = clicked
-        this.time = (time / 1000).toInt()
+        this.isRead = isRead
+        this.createdAtEpochSeconds = (createdAtEpochMillis / 1000).toInt()
     }
 
-    fun update(by: String?, id: Int, score: Int, time: Int, title: String) {
+    fun update(by: String?, id: Int, score: Int, createdAtEpochSeconds: Int, title: String) {
         this.by = by
         this.id = id
         this.score = score
-        this.time = time
+        this.createdAtEpochSeconds = createdAtEpochSeconds
         this.title = title
     }
 
     val timeFormatted: String
-        get() = ItemTimeFormatter.formatNow(time)
+        get() = ItemTimeFormatter.formatNow(createdAtEpochSeconds)
 
-    fun formatTime(nowMillis: Long): String = ItemTimeFormatter.format(time, nowMillis)
+    fun formatTime(nowMillis: Long): String = ItemTimeFormatter.format(createdAtEpochSeconds, nowMillis)
 
     @Throws(Exception::class)
     fun getDisplayDomain(includeTopLevelDomain: Boolean): String? {
@@ -147,41 +147,41 @@ class Story : LinkPreviewState {
         return title.orEmpty()
     }
 
-    fun toCommentMasterStory(): Story? {
-        val targetId = if (commentMasterId > 0) commentMasterId else parentId
+    fun toRootStory(): Story? {
+        val targetId = if (rootStoryId > 0) rootStoryId else parentId
         if (targetId <= 0) {
             return null
         }
 
-        val masterStory = Story()
-        masterStory.id = targetId
-        masterStory.title = if (hasText(commentMasterTitle)) commentMasterTitle else title
-        val hasMasterUrl = hasText(commentMasterUrl)
-        val masterUrl = if (hasMasterUrl)
-            commentMasterUrl
+        val rootStory = Story()
+        rootStory.id = targetId
+        rootStory.title = if (hasText(rootStoryTitle)) rootStoryTitle else title
+        val hasRootStoryUrl = hasText(rootStoryUrl)
+        val resolvedRootStoryUrl = if (hasRootStoryUrl)
+            rootStoryUrl
         else
             HackerNewsLinks.itemUrl(targetId)
-        masterStory.url = masterUrl
-        masterStory.isLink = hasMasterUrl &&
-            !HackerNewsLinks.isItemUrl(masterUrl)
-        masterStory.by = commentMasterBy
-        masterStory.score = commentMasterScore
-        masterStory.time = commentMasterTime
-        masterStory.descendants = commentMasterDescendants
-        masterStory.loaded = commentMasterLoaded && hasText(commentMasterBy)
-        return masterStory
+        rootStory.url = resolvedRootStoryUrl
+        rootStory.isLink = hasRootStoryUrl &&
+            !HackerNewsLinks.isItemUrl(resolvedRootStoryUrl)
+        rootStory.by = rootStoryAuthor
+        rootStory.score = rootStoryScore
+        rootStory.createdAtEpochSeconds = rootStoryCreatedAtEpochSeconds
+        rootStory.descendants = rootStoryDescendantCount
+        rootStory.loaded = rootStoryLoaded && hasText(rootStoryAuthor)
+        return rootStory
     }
 
-    fun updateCommentMasterFrom(master: Story): Boolean {
-        if (master.id <= 0 || master.isComment) return false
-        commentMasterId = master.id
-        commentMasterTitle = master.title
-        commentMasterBy = master.by
-        commentMasterScore = master.score
-        commentMasterTime = master.time
-        commentMasterDescendants = master.descendants
-        commentMasterUrl = master.url
-        commentMasterLoaded = master.loaded
+    fun updateRootStoryFrom(root: Story): Boolean {
+        if (root.id <= 0 || root.isComment) return false
+        rootStoryId = root.id
+        rootStoryTitle = root.title
+        rootStoryAuthor = root.by
+        rootStoryScore = root.score
+        rootStoryCreatedAtEpochSeconds = root.createdAtEpochSeconds
+        rootStoryDescendantCount = root.descendants
+        rootStoryUrl = root.url
+        rootStoryLoaded = root.loaded
         return true
     }
 

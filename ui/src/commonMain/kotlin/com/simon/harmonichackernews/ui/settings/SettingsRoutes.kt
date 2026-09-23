@@ -328,7 +328,7 @@ fun PaletteTintSettingsRoute(
         initialColorfulness = PaletteTintPreferences.colorfulness(config),
         initialTone = PaletteTintPreferences.tone(config),
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
-            StoryItemStyleContext(score = 28, commentCount = 42, clicked = false),
+            StoryItemStyleContext(score = 28, commentCount = 42, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         showNavigation = showNavigation,
         onBack = onBack,
@@ -381,7 +381,7 @@ fun ThemeSettingsRoute(
         onDialogRequested = { dialog = it },
         resolvePreviewTheme = resolvePreviewTheme,
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
-            StoryItemStyleContext(score = 53, commentCount = 18, clicked = false),
+            StoryItemStyleContext(score = 53, commentCount = 18, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         contentVersion = settings.hashCode(),
     )
@@ -437,7 +437,7 @@ fun StoriesSettingsRoute(
                 "300" to "Points + comments > 300",
                 "400" to "Points + comments > 400",
             ),
-            story.hotness.toString(),
+            story.hotnessThreshold.toString(),
             { dialog = null },
             presenter::setHotness,
         )

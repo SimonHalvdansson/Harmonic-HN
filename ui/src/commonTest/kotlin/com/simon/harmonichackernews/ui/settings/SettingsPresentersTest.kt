@@ -58,9 +58,9 @@ class SettingsPresentersTest {
         assertTrue(presenter.snapshot.story.showIndex)
         assertEquals(
             emptySet(),
-            presenter.setBoolean(StoriesBooleanSetting.HideClicked, true),
+            presenter.setBoolean(StoriesBooleanSetting.HideRead, true),
         )
-        assertTrue(presenter.snapshot.story.hideClicked)
+        assertTrue(presenter.snapshot.story.hideRead)
         assertEquals(
             emptySet(),
             presenter.setStartingPage("best"),
@@ -72,14 +72,14 @@ class SettingsPresentersTest {
     fun storiesLayoutResetRefreshesWidgetsWithoutResettingBehavior() {
         val presenter = fixture().stories
         presenter.setBoolean(StoriesBooleanSetting.ShowIndex, false)
-        presenter.setBoolean(StoriesBooleanSetting.HideClicked, true)
+        presenter.setBoolean(StoriesBooleanSetting.HideRead, true)
 
         assertEquals(
             setOf(SettingsPlatformEffect.RefreshStoryWidgets),
             presenter.resetLayout(),
         )
         assertTrue(presenter.snapshot.story.showIndex)
-        assertTrue(presenter.snapshot.story.hideClicked)
+        assertTrue(presenter.snapshot.story.hideRead)
     }
 
     @Test

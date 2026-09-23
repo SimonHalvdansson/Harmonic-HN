@@ -128,7 +128,7 @@ class StorySearchStoreTest {
         var active = 0
         var peak = 0
         val requested = mutableListOf<Int>()
-        val store = store(backgroundScope, clickedIds = (1..30).toList(), getStory = { id ->
+        val store = store(backgroundScope, readIds = (1..30).toList(), getStory = { id ->
             requested += id
             active++
             peak = maxOf(peak, active)
@@ -139,7 +139,7 @@ class StorySearchStoreTest {
                 active--
             }
         })
-        store.toggleOnlyClicked()
+        store.toggleOnlyRead()
         store.search("")
         runCurrent()
         assertTrue(active in 1..8, "Expected at most eight active requests, found $active")
@@ -160,25 +160,25 @@ class StorySearchStoreTest {
 
     @Test
     fun historySearchKeepsPartialResultsAndReportsOnlyCompleteFailure() = runTest {
-        val store = store(backgroundScope, clickedIds = listOf(1, 2, 3), getStory = { id ->
+        val store = store(backgroundScope, readIds = listOf(1, 2, 3), getStory = { id ->
             when (id) {
                 1 -> story(id)
                 2 -> null
                 else -> error("Network unavailable")
             }
         })
-        store.toggleOnlyClicked()
+        store.toggleOnlyRead()
         store.search("")
         runCurrent()
         assertEquals(listOf(1), store.state.value.stories.map(Story::id))
-        assertTrue(store.state.value.stories.single().clicked)
+        assertTrue(store.state.value.stories.single().isRead)
         assertNull(store.state.value.failure)
         assertFalse(store.state.value.canLoadMore)
 
-        val failed = store(backgroundScope, clickedIds = listOf(1, 2), getStory = {
+        val failed = store(backgroundScope, readIds = listOf(1, 2), getStory = {
             error("Network unavailable")
         })
-        failed.toggleOnlyClicked()
+        failed.toggleOnlyRead()
         failed.search("")
         runCurrent()
         assertEquals(StoryLoadFailure.GENERAL, failed.state.value.failure)
@@ -187,10 +187,10 @@ class StorySearchStoreTest {
 
     @Test
     fun newestHistoryResultsUsePublicationTimeInsteadOfVisitOrder() = runTest {
-        val store = store(backgroundScope, clickedIds = listOf(1, 2, 3), getStory = { id ->
-            story(id).apply { time = listOf(100, 300, 200)[id - 1] }
+        val store = store(backgroundScope, readIds = listOf(1, 2, 3), getStory = { id ->
+            story(id).apply { createdAtEpochSeconds = listOf(100, 300, 200)[id - 1] }
         })
-        store.toggleOnlyClicked()
+        store.toggleOnlyRead()
         store.selectSort(1)
         store.search("")
         runCurrent()
@@ -220,7 +220,7 @@ class StorySearchStoreTest {
     private fun store(
         scope: CoroutineScope,
         search: suspend (String) -> List<Story> = { error("Unexpected Algolia request") },
-        clickedIds: List<Int> = emptyList(),
+        readIds: List<Int> = emptyList(),
         getStory: suspend (Int) -> Story? = { error("Unexpected story request") },
         filter: (Story) -> Boolean = { false },
     ) = StorySearchStore(
@@ -235,10 +235,10 @@ class StorySearchStoreTest {
             override suspend fun getComment(id: Int): Comment? = error("Not used")
             override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
         },
-        clickedStoryIds = { clickedIds },
-        isStoryClicked = { false },
+        readStoryIds = { readIds },
+        isStoryRead = { false },
         shouldFilterStory = filter,
-        shouldHideClickedStories = { false },
+        shouldHideReadStories = { false },
     )
 
     private fun story(id: Int) = Story("Kotlin", id, true, false)

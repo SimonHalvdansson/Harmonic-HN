@@ -79,7 +79,7 @@ object DebugCachedPostFixture {
         title = "A cached post for offline UI testing"
         by = "offline_author"
         score = 123
-        time = 1776345600
+        createdAtEpochSeconds = 1776345600
         descendants = 6
         text = "<p>This post is written into the local cache by the Debug settings screen. It is safe to use when testing the comments UI without an internet connection.</p>"
         url = HackerNewsLinks.itemUrl(storyId)

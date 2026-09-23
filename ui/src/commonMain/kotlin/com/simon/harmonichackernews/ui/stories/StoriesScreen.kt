@@ -376,7 +376,7 @@ fun BoxScope.StoryTapToUpdateButton(
 ) {
     val shape = RoundedCornerShape(16.dp)
     AnimatedVisibility(
-        visible = controller.showUpdate && !controller.searching &&
+        visible = controller.showRefreshPrompt && !controller.searching &&
             !controller.tapToUpdateExitInProgress,
         enter = fadeIn(tween(180, easing = StoriesEasing)),
         exit = fadeOut(tween(140, easing = StoriesEasing)),
@@ -602,7 +602,7 @@ private fun StoriesList(
                         start = startInset + safeStart,
                         top = headerHeight,
                         end = safeEnd,
-                        bottom = bottomPadding + if (controller.showUpdate) 88.dp else 8.dp,
+                        bottom = bottomPadding + if (controller.showRefreshPrompt) 88.dp else 8.dp,
                     ),
                     footerKey = "${if (searchMode) "search" else "main"}-load-more",
                     footer = if (controller.showLoadMore) {
@@ -708,13 +708,13 @@ private fun StoriesList(
                                     modelNowMillis,
                                 )
                             }
-                            val style = remember(story, settings, storyRevision, model.summary) {
+                            val style = remember(story, settings, storyRevision, model.previewText) {
                                 settings.toStoryItemStyle(
                                     StoryItemStyleContext(
                                         score = story.score,
                                         commentCount = story.descendantCount,
-                                        clicked = story.clicked,
-                                        summaryAvailable = model.summary.isNotBlank(),
+                                        isRead = story.isRead,
+                                        previewTextAvailable = model.previewText.isNotBlank(),
                                     ),
                                 )
                             }
@@ -1418,7 +1418,7 @@ private fun SearchHeader(
             dateLabels = controller.searchDateLabels,
             pointsLabels = controller.searchPointsLabels,
             commentsLabels = controller.searchCommentsLabels,
-            onlyClicked = controller.searchOnlyClicked,
+            onlyRead = controller.searchOnlyRead,
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
@@ -1430,7 +1430,7 @@ private fun SearchHeader(
         onSearch = controller.listener::onSearch,
         onClose = controller.listener::onCloseSearch,
         onOptionSelected = controller.listener::onSearchOption,
-        onToggleOnlyClicked = controller.listener::onToggleOnlyClicked,
+        onToggleOnlyRead = controller.listener::onToggleOnlyRead,
     )
 }
 
@@ -1573,10 +1573,10 @@ private fun SavedCommentStoryItem(
 ) {
     val links = com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies.current.links
     com.simon.harmonichackernews.ui.content.CommentFeedItem(
-        commentMasterTitle = story.presentation.commentMaster?.title,
+        rootStoryTitle = story.presentation.rootStory?.title,
         timeText = story.timeFormatted,
         html = story.text.orEmpty(),
-        canOpenStory = story.commentMasterId > 0 || story.parentId > 0,
+        canOpenStory = story.rootStoryId > 0 || story.parentId > 0,
         displaySettings = settings,
         onOpenLink = remember(links) { { url -> links.open(url).let { } } },
         onStoryClick = onStory,

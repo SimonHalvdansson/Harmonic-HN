@@ -30,9 +30,9 @@ fun StoryDestination.toBundle(): Bundle = Bundle().apply {
         putBoolean(CommentsContract.EXTRA_IS_LINK, initial.isLink)
         putBoolean(CommentsContract.EXTRA_IS_COMMENT, story.isComment)
         putInt(CommentsContract.EXTRA_PARENT_ID, story.parentId)
-        putInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, initial.commentMasterId)
-        putString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE, initial.commentMasterTitle)
-        putString(CommentsContract.EXTRA_COMMENT_MASTER_URL, initial.commentMasterUrl)
+        putInt(CommentsContract.EXTRA_COMMENT_MASTER_ID, initial.rootStoryId)
+        putString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE, initial.rootStoryTitle)
+        putString(CommentsContract.EXTRA_COMMENT_MASTER_URL, initial.rootStoryUrl)
     }
     putBoolean(CommentsContract.EXTRA_SHOW_WEBSITE, showWebsite)
     if (scrollToCommentId > 0) {
@@ -77,9 +77,9 @@ fun Bundle.toStoryDestinationOrNull(): StoryDestination? {
                 pdfTitle = getString(CommentsContract.EXTRA_PDF_TITLE),
                 videoTitle = getString(CommentsContract.EXTRA_VIDEO_TITLE),
                 isLink = getBoolean(CommentsContract.EXTRA_IS_LINK),
-                commentMasterId = getInt(CommentsContract.EXTRA_COMMENT_MASTER_ID),
-                commentMasterTitle = getString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE),
-                commentMasterUrl = getString(CommentsContract.EXTRA_COMMENT_MASTER_URL),
+                rootStoryId = getInt(CommentsContract.EXTRA_COMMENT_MASTER_ID),
+                rootStoryTitle = getString(CommentsContract.EXTRA_COMMENT_MASTER_TITLE),
+                rootStoryUrl = getString(CommentsContract.EXTRA_COMMENT_MASTER_URL),
             )
         } else {
             null

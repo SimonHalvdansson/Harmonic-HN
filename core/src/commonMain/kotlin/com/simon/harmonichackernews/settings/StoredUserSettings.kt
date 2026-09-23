@@ -122,11 +122,11 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.INCLUDE_TOP_LEVEL_DOMAIN, true),
                 showCommentsCount = boolean(UserPreferenceKeys.SHOW_COMMENTS_COUNT, true),
                 compactView = boolean(UserPreferenceKeys.COMPACT_VIEW, false),
-                thumbnails = boolean(UserPreferenceKeys.THUMBNAILS, true),
+                showFavicons = boolean(UserPreferenceKeys.THUMBNAILS, true),
                 previewImageMode = previewImageMode(),
                 borderlessLargePreviewImage =
                     boolean(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS, false),
-                showSummary = boolean(UserPreferenceKeys.SHOW_STORY_SUMMARY, false),
+                showPreviewText = boolean(UserPreferenceKeys.SHOW_STORY_SUMMARY, false),
                 storyTextSize = storyTextSize(),
                 commentTextSize = commentTextSize(),
                 showIndex = boolean(UserPreferenceKeys.SHOW_INDEX, true),
@@ -134,22 +134,22 @@ class StoredUserSettings(
                 listSelector = StoryListSelector.fromStored(
                     string(UserPreferenceKeys.STORY_LIST_SELECTOR, StoryListSelector.DROPDOWN.storedValue),
                 ),
-                leftAlign = boolean(UserPreferenceKeys.LEFT_ALIGN, false),
+                commentsButtonOnLeft = boolean(UserPreferenceKeys.LEFT_ALIGN, false),
                 displayStyle = DisplayStyle.forStories(
                     string(UserPreferenceKeys.STORY_DISPLAY_STYLE, STANDARD),
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 ),
-                tintCardUsingPreview =
+                tintCardsFromImages =
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
-                grayOutClicked = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
-                hotness = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,
+                dimReadStories = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
+                hotnessThreshold = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,
                 faviconProvider = FaviconPreferences.sanitizeProvider(
                     string(UserPreferenceKeys.FAVICON_PROVIDER, FaviconPreferences.GOOGLE),
                 ),
                 font = preferredFont(),
                 hideJobs = boolean(UserPreferenceKeys.HIDE_JOBS, false),
-                hideClicked = boolean(UserPreferenceKeys.HIDE_CLICKED, false),
+                hideRead = boolean(UserPreferenceKeys.HIDE_CLICKED, false),
                 alwaysOpenComments = boolean(UserPreferenceKeys.ALWAYS_OPEN_COMMENTS, false),
                 pagination = boolean(UserPreferenceKeys.PAGINATION_MODE, false),
                 alwaysShowTapToRefresh =
@@ -174,7 +174,7 @@ class StoredUserSettings(
             val headerTintEnabled = boolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true)
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
-                thumbnails = boolean(UserPreferenceKeys.THUMBNAILS, true),
+                showFavicons = boolean(UserPreferenceKeys.THUMBNAILS, true),
                 headerPreviewImageEnabled = headerPreviewImageEnabled,
                 showHeaderPreviewImage = previewImageMode() != StoryPreviewMode.OFF &&
                     headerPreviewImageEnabled,

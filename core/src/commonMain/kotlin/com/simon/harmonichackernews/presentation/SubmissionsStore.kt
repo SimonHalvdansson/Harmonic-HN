@@ -134,11 +134,11 @@ class SubmissionsStore(
                 // the boundary second when truncated: Algolia can split timestamp ties.
                 val cutoff = listOf(stories, comments)
                     .filter { it.canLoadMore }
-                    .mapNotNull { it.items.lastOrNull()?.time }
+                    .mapNotNull { it.items.lastOrNull()?.createdAtEpochSeconds }
                     .maxOrNull()
                 val bothIds = itemsById.values
-                    .filter { cutoff == null || it.time > cutoff }
-                    .sortedWith(compareByDescending<Story> { it.time }.thenByDescending { it.id })
+                    .filter { cutoff == null || it.createdAtEpochSeconds > cutoff }
+                    .sortedWith(compareByDescending<Story> { it.createdAtEpochSeconds }.thenByDescending { it.id })
                     .map(Story::id)
                 ranges[SubmissionFilter.BOTH] = LoadedRange(
                     ids = bothIds,
@@ -197,7 +197,7 @@ class SubmissionsStore(
             // Both is a complete prefix. It may extend a filtered view, but a filtered
             // response must never extend Both: the intervening other type may be missing.
             val ids = (sharedIds + previous?.ids.orEmpty()).distinct().sortedWith(
-                compareByDescending<Int> { itemsById.getValue(it).time }.thenByDescending { it },
+                compareByDescending<Int> { itemsById.getValue(it).createdAtEpochSeconds }.thenByDescending { it },
             )
             ranges[filter] = LoadedRange(
                 ids = ids,

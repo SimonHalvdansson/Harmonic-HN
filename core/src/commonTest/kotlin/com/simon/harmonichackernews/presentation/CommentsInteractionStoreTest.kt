@@ -78,11 +78,11 @@ class CommentsInteractionStoreTest {
     fun searchOnlyPinsDistantResultsWhenTheUpdateAffordanceIsHidden() {
         val store = store()
 
-        store.revealSearchResult(commentId = 7, visiblePosition = 11, showUpdate = false)
+        store.revealSearchResult(commentId = 7, visiblePosition = 11, showRefreshPrompt = false)
         assertEquals(7, store.state.highlightedCommentId)
         assertEquals(7, store.state.searchScrollTopTargetId)
 
-        store.revealSearchResult(commentId = 8, visiblePosition = 11, showUpdate = true)
+        store.revealSearchResult(commentId = 8, visiblePosition = 11, showRefreshPrompt = true)
         assertEquals(8, store.state.highlightedCommentId)
         assertEquals(-1, store.state.searchScrollTopTargetId)
 

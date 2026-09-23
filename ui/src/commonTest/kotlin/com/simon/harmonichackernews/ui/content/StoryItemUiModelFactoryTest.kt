@@ -24,14 +24,14 @@ class StoryItemUiModelFactoryTest {
             url = "https://news.example.com/article"
             score = 17
             descendants = 3
-            summary = "Generated summary"
+            aiSummaryText = "Generated summary"
         }
 
         val model = StoryItemUiModelFactory.create(
             story = story,
             position = 4,
             resources = StoryItemResourcePresentation(
-                summary = "Link summary",
+                previewText = "Link summary",
                 faviconUrl = "https://news.example.com/favicon.ico",
                 previewImageUrl = "https://news.example.com/image.png",
                 previewImageTintArgb = 0x00112233,
@@ -40,7 +40,7 @@ class StoryItemUiModelFactoryTest {
 
         assertEquals("5.", model.index)
         assertEquals("A story", model.title)
-        assertEquals("Link summary", model.summary)
+        assertEquals("Link summary", model.previewText)
         assertEquals(story.getDisplayDomain(true), model.domain)
         assertEquals(story.getDisplayDomain(false), model.domainWithoutTopLevel)
         assertEquals(17, model.points)
@@ -69,7 +69,7 @@ class StoryItemUiModelFactoryTest {
     fun usesPreResolvedDomainAndSharedModelTimestamp() {
         val story = Story("Cached presentation", 7, true, false).apply {
             url = "https://network.example/should-not-be-used"
-            time = 3_600
+            createdAtEpochSeconds = 3_600
         }
         val nowMillis = 7_200_000L
 
@@ -81,7 +81,7 @@ class StoryItemUiModelFactoryTest {
 
         assertEquals("cached.example.com", model.domain)
         assertEquals("cached.example", model.domainWithoutTopLevel)
-        assertEquals(ItemTimeFormatter.format(story.time, nowMillis), model.age)
+        assertEquals(ItemTimeFormatter.format(story.createdAtEpochSeconds, nowMillis), model.age)
     }
 
     @Test
@@ -105,7 +105,7 @@ class StoryItemUiModelFactoryTest {
     @Test
     fun keyedPreviewResourceOverridesLegacyRowResourceFieldsImmutably() {
         val legacy = StoryItemResourcePresentation(
-            summary = "Old summary",
+            previewText = "Old summary",
             previewImageUrl = "https://old.example/image.png",
         )
 
@@ -121,8 +121,8 @@ class StoryItemUiModelFactoryTest {
             ),
         )
 
-        assertEquals("Old summary", legacy.summary)
-        assertEquals("Fresh summary", projected.summary)
+        assertEquals("Old summary", legacy.previewText)
+        assertEquals("Fresh summary", projected.previewText)
         assertEquals("https://example.com/image.png", projected.previewImageUrl)
         assertTrue(projected.previewImageLoadFailed)
     }

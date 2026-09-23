@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 
@@ -26,7 +27,8 @@ data class StorySnapshot(
 @Serializable
 data class StoryPresentationSnapshot(
     val loaded: Boolean = false,
-    val clicked: Boolean = false,
+    @SerialName("clicked")
+    val isRead: Boolean = false,
     val loadingFailed: Boolean = false,
     val isLink: Boolean = false,
     val isFrontpageLink: Boolean = false,
@@ -38,11 +40,14 @@ data class StoryPresentationSnapshot(
     val faviconTint: ResourceTintSnapshot? = null,
     val linkSummaryDescription: String? = null,
     val linkSummaryLoaded: Boolean = false,
-    val commentMaster: CommentMasterSnapshot? = null,
-    val summary: String? = null,
+    @SerialName("commentMaster")
+    val rootStory: CommentMasterSnapshot? = null,
+    @SerialName("summary")
+    val aiSummaryText: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
     val pollOptions: List<PollOptionSnapshot> = emptyList(),
-    override val repoInfo: RepoInfo? = null,
+    @SerialName("repoInfo")
+    override val gitHubRepoInfo: RepoInfo? = null,
     override val gitLabInfo: GitLabInfo? = null,
     override val huggingFaceInfo: HuggingFaceModelInfo? = null,
     override val openRouterInfo: OpenRouterModelInfo? = null,
@@ -121,9 +126,9 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
     url = url,
     score = score,
     descendantCount = descendants,
-    createdAtEpochSeconds = time,
+    createdAtEpochSeconds = createdAtEpochSeconds,
     childIds = kids?.toList().orEmpty(),
-    pollOptionIds = pollOptions?.toList().orEmpty(),
+    pollOptionIds = pollOptionIds?.toList().orEmpty(),
     isJob = isJob,
     isComment = isComment,
     parentId = parentId,
@@ -131,7 +136,7 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
 
 fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationSnapshot(
     loaded = loaded,
-    clicked = clicked,
+    isRead = isRead,
     loadingFailed = loadingFailed,
     isLink = isLink,
     isFrontpageLink = isFrontpageLink,
@@ -139,7 +144,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     videoTitle = videoTitle,
     previewImage = ResourceLoadSnapshot(
         url = previewImageUrl,
-        loaded = previewImageUrlLoaded,
+        loaded = previewImageUrlResolved,
     ),
     favicon = ResourceLoadSnapshot(
         url = faviconTintSourceUrl,
@@ -161,22 +166,22 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     linkSummaryDescription = linkSummaryDescription,
     linkSummaryLoaded = linkSummaryLoaded,
-    commentMaster = CommentMasterSnapshot(
-        id = commentMasterId,
-        title = commentMasterTitle,
-        url = commentMasterUrl,
-        author = commentMasterBy,
-        score = commentMasterScore,
-        createdAtEpochSeconds = commentMasterTime,
-        descendantCount = commentMasterDescendants,
-        loaded = commentMasterLoaded,
+    rootStory = CommentMasterSnapshot(
+        id = rootStoryId,
+        title = rootStoryTitle,
+        url = rootStoryUrl,
+        author = rootStoryAuthor,
+        score = rootStoryScore,
+        createdAtEpochSeconds = rootStoryCreatedAtEpochSeconds,
+        descendantCount = rootStoryDescendantCount,
+        loaded = rootStoryLoaded,
     ),
-    summary = summary,
+    aiSummaryText = aiSummaryText,
     summaryGeneratedSuccessfully = summaryGeneratedSuccessfully,
-    pollOptions = pollOptionArrayList.orEmpty().map {
+    pollOptions = pollOptions.orEmpty().map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)
     },
-    repoInfo = repoInfo,
+    gitHubRepoInfo = gitHubRepoInfo,
     gitLabInfo = gitLabInfo,
     huggingFaceInfo = huggingFaceInfo,
     openRouterInfo = openRouterInfo,
@@ -196,9 +201,9 @@ fun Story.applySnapshot(snapshot: StorySnapshot): Story = apply {
     url = snapshot.url
     score = snapshot.score
     descendants = snapshot.descendantCount
-    time = snapshot.createdAtEpochSeconds
+    createdAtEpochSeconds = snapshot.createdAtEpochSeconds
     kids = snapshot.childIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
-    pollOptions = snapshot.pollOptionIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+    pollOptionIds = snapshot.pollOptionIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
     isJob = snapshot.isJob
     isComment = snapshot.isComment
     parentId = snapshot.parentId

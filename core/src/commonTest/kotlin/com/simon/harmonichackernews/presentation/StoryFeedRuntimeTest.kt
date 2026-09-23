@@ -39,8 +39,8 @@ class StoryFeedRuntimeTest {
         val live = Story("Live", 3, true, false)
         val runtime = StoryFeedRuntime(
             StoriesSessionState(),
-            clickedStoryIds = { setOf(1) },
-            shouldHideClickedStories = { false },
+            readStoryIds = { setOf(1) },
+            shouldHideReadStories = { false },
             hydrateCachedStory = { error("Prepared rows must not read storage during application") },
             shouldHideHydratedStory = { it.id == 2 },
         )
@@ -51,7 +51,7 @@ class StoryFeedRuntimeTest {
             mapOf(1 to cached, 2 to hidden, 3 to Story("Stale", 3, true, false)),
         )
         assertEquals(listOf(1, 3), store.stories.map(Story::id))
-        assertTrue(store.stories[0].clicked)
+        assertTrue(store.stories[0].isRead)
         assertSame(live, store.stories[1])
     }
 
@@ -117,8 +117,8 @@ class StoryFeedRuntimeTest {
 
     private fun runtime(session: StoriesSessionState) = StoryFeedRuntime(
         sessionState = session,
-        clickedStoryIds = { emptySet() },
-        shouldHideClickedStories = { false },
+        readStoryIds = { emptySet() },
+        shouldHideReadStories = { false },
         hydrateCachedStory = { false },
         shouldHideHydratedStory = { false },
     )

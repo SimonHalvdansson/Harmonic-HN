@@ -25,15 +25,15 @@ fun AlgoliaSearchHitDto.toStory(): Story? {
         story.url = itemUrl ?: HackerNewsLinks.itemUrl(id)
         story.score = points ?: 0
         story.descendants = commentCount ?: 0
-        story.time = createdAt ?: 0
+        story.createdAtEpochSeconds = createdAt ?: 0
         story.parentId = parentId ?: 0
         story.isLink = !isComment && itemUrl != null
         story.isComment = isComment
         if (isComment && (storyId ?: 0) > 0) {
-            story.commentMasterId = storyId ?: 0
-            story.commentMasterTitle = storyTitle
-            story.commentMasterUrl = masterUrl
-            story.commentMasterLoaded = false
+            story.rootStoryId = storyId ?: 0
+            story.rootStoryTitle = storyTitle
+            story.rootStoryUrl = masterUrl
+            story.rootStoryLoaded = false
         }
         story.loaded = true
         story.loadingFailed = false
@@ -48,13 +48,13 @@ fun HackerNewsItemDto.applyTo(story: Story, preserveTime: Boolean = false): Bool
     story.by = author
     story.id = id
     story.score = score
-    if (!preserveTime) story.time = time
+    if (!preserveTime) story.createdAtEpochSeconds = time
     story.title = title
     story.isComment = type == "comment"
     story.descendants = if (story.isComment) kids.size else descendants
     story.parentId = parent
     story.isJob = type == "job"
-    story.pollOptions = parts.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+    story.pollOptionIds = parts.takeIf(List<Int>::isNotEmpty)?.toIntArray()
     story.kids = kids.takeIf(List<Int>::isNotEmpty)?.toIntArray()
 
     if (story.isComment && story.title.isNullOrEmpty()) {

@@ -61,7 +61,7 @@ internal class StoryItemGeometry {
             image = imageCoordinates.windowBoundsOrNull(),
             title = titleCoordinates.windowBoundsOrNull(),
             summary = summaryCoordinates
-                .takeIf { style.showSummary }
+                .takeIf { style.showPreviewText }
                 .windowBoundsOrNull(),
             meta = metaCoordinates
                 .takeIf { !style.compact }
@@ -189,7 +189,7 @@ internal fun rememberStoryItemPreviewCapture(
     LaunchedEffect(
         capturePreviewSourceGeometry,
         style.previewImageMode,
-        style.showSummary,
+        style.showPreviewText,
         style.compact,
         hasPreview,
     ) {

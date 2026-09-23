@@ -13,7 +13,7 @@ class ItemStyleMappingsTest {
     fun displayStylesPreserveIndependentFillAndElevation() {
         for (displayStyle in DisplayStyle.entries) {
             val story = storySettings().copy(displayStyle = displayStyle).toStoryItemStyle(
-                StoryItemStyleContext(score = 0, commentCount = 0, clicked = false),
+                StoryItemStyleContext(score = 0, commentCount = 0, isRead = false),
             )
             val comments = commentSettings().copy(displayStyle = displayStyle).toCommentItemStyle(
                 CommentItemStyleContext.Thread(animateChanges = false),
@@ -38,11 +38,11 @@ class ItemStyleMappingsTest {
                 context = StoryItemStyleContext(
                     score = 80,
                     commentCount = 21,
-                    clicked = true,
-                    summaryAvailable = false,
+                    isRead = true,
+                    previewTextAvailable = false,
                 ),
                 expected = storyStyle(
-                    showSummary = false,
+                    showPreviewText = false,
                     showIndex = true,
                     useHotnessIcon = true,
                     dimmed = true,
@@ -53,11 +53,11 @@ class ItemStyleMappingsTest {
                 context = StoryItemStyleContext(
                     score = 40,
                     commentCount = 60,
-                    clicked = false,
+                    isRead = false,
                     showIndex = false,
                 ),
                 expected = storyStyle(
-                    showSummary = true,
+                    showPreviewText = true,
                     showIndex = false,
                     useHotnessIcon = false,
                     dimmed = false,
@@ -112,26 +112,26 @@ class ItemStyleMappingsTest {
         includeTopLevelDomain = false,
         showCommentsCount = true,
         compactView = true,
-        thumbnails = false,
+        showFavicons = false,
         previewImageMode = StoryPreviewMode.LARGE,
         borderlessLargePreviewImage = true,
-        showSummary = true,
+        showPreviewText = true,
         storyTextSize = 17.5f,
         showIndex = true,
         compactHeader = false,
-        leftAlign = true,
+        commentsButtonOnLeft = true,
         displayStyle = DisplayStyle.STANDARD,
-        tintCardUsingPreview = true,
+        tintCardsFromImages = true,
         paletteTintMode = "vibrant:0.75",
-        grayOutClicked = true,
-        hotness = 100,
+        dimReadStories = true,
+        hotnessThreshold = 100,
         faviconProvider = "example",
         font = "serif",
         commentTextSize = 18.5f,
     )
 
     private fun storyStyle(
-        showSummary: Boolean,
+        showPreviewText: Boolean,
         showIndex: Boolean,
         useHotnessIcon: Boolean,
         dimmed: Boolean,
@@ -139,7 +139,7 @@ class ItemStyleMappingsTest {
         previewImageMode = StoryPreviewMode.LARGE,
         borderlessLargeImage = true,
         compact = true,
-        showSummary = showSummary,
+        showPreviewText = showPreviewText,
         showFavicon = false,
         showPoints = false,
         compactPoints = true,
@@ -158,7 +158,7 @@ class ItemStyleMappingsTest {
 
     private fun commentSettings() = CommentDisplaySettings(
         collapseParent = false,
-        showThumbnail = false,
+        showFavicons = false,
         showHeaderPreviewImage = false,
         tintHeader = false,
         showUpButton = false,

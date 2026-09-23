@@ -28,7 +28,7 @@ class StoriesSessionState {
     var searching: Boolean = false
     var lastSearch: String = ""
     var lastLoaded: Long = 0
-    var updateButtonShowing: Boolean = false
+    var showRefreshPrompt: Boolean = false
     var userItemListFilter: Int = 1
     var frontPageDayUtcMillis: Long = -1L
     var scrapedFrontpageNextPageUrl: String? = null
@@ -80,7 +80,7 @@ class CommentsSessionState(
     var refreshInProgress: Boolean = false
     var loadingFailed: Boolean = false
     var loadingFailedServerError: Boolean = false
-    var showUpdate: Boolean = false
+    var showRefreshPrompt: Boolean = false
     var storyVoteLoading: Boolean = false
     var storyFavoriteLoading: Boolean = false
     var scrollToCommentId: Int = -1

@@ -110,7 +110,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                         storyAuthor = null,
                         accountUser = null,
                         userTag = null,
-                        hiddenReplyCount = 0,
+                        subtreeReplyCount = 0,
                         collapseParent = state.collapseParent,
                         showTopLevelIndicator = state.topLevelIndicators,
                         nextCommentDepth = comments.getOrNull(index + 1)?.depth,

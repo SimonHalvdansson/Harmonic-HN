@@ -24,11 +24,11 @@ class AlgoliaSubmissionsRepositoryTest {
             assertEquals("Comment by alice", seededHeader.title)
             assertEquals("A reply we already have", seededHeader.text)
             assertEquals("alice", seededHeader.by)
-            assertEquals(123, seededHeader.time)
+            assertEquals(123, seededHeader.createdAtEpochSeconds)
             assertTrue(seededHeader.loaded)
             assertTrue(seededHeader.isComment)
             assertFalse(seededHeader.isLink)
-            val parent = seededHeader.toCommentMasterStory()!!
+            val parent = seededHeader.toRootStory()!!
             assertEquals(10, parent.id)
             assertEquals("Parent story", parent.title)
             assertEquals("https://example.com/article", parent.url)

@@ -94,7 +94,7 @@ data class StorySearchPresentationState(
     val dateLabels: List<String>,
     val pointsLabels: List<String>,
     val commentsLabels: List<String>,
-    val onlyClicked: Boolean,
+    val onlyRead: Boolean,
 )
 
 private val StoriesRootEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
@@ -224,7 +224,7 @@ fun StorySearchHeader(
     onSearch: (String) -> Unit,
     onClose: () -> Unit,
     onOptionSelected: (kind: StorySearchOption, index: Int) -> Unit,
-    onToggleOnlyClicked: () -> Unit,
+    onToggleOnlyRead: () -> Unit,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -302,8 +302,8 @@ fun StorySearchHeader(
             item { SearchOptionChip(state.commentsLabel, state.commentsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.COMMENTS, it) } }
             item {
                 FilterChip(
-                    selected = state.onlyClicked,
-                    onClick = onToggleOnlyClicked,
+                    selected = state.onlyRead,
+                    onClick = onToggleOnlyRead,
                     label = { Text("From history") },
                     leadingIcon = { Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp)) },
                 )

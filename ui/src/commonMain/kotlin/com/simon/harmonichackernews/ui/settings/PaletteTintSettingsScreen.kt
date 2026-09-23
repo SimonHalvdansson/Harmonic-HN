@@ -58,27 +58,27 @@ import kotlin.math.roundToInt
 
 private val PalettePreviewSamples = listOf(
     StoryItemUiModel(
-        index = "1.", title = "How machines learn to see", summary = "",
+        index = "1.", title = "How machines learn to see", previewText = "",
         points = 28, domain = "mit.edu", domainWithoutTopLevel = "mit",
         age = "2h", commentCount = 42, previewImageFallback = Res.drawable.palette1,
     ),
     StoryItemUiModel(
-        index = "2.", title = "How New York’s skyline was built", summary = "",
+        index = "2.", title = "How New York’s skyline was built", previewText = "",
         points = 96, domain = "nyc.gov", domainWithoutTopLevel = "nyc",
         age = "4h", commentCount = 28, previewImageFallback = Res.drawable.palette2,
     ),
     StoryItemUiModel(
-        index = "3.", title = "Mapping buildings with 3D scans", summary = "",
+        index = "3.", title = "Mapping buildings with 3D scans", previewText = "",
         points = 73, domain = "ieee.org", domainWithoutTopLevel = "ieee",
         age = "3h", commentCount = 16, previewImageFallback = Res.drawable.palette3,
     ),
     StoryItemUiModel(
-        index = "4.", title = "Rendering impossible architecture", summary = "",
+        index = "4.", title = "Rendering impossible architecture", previewText = "",
         points = 54, domain = "blender.org", domainWithoutTopLevel = "blender",
         age = "5h", commentCount = 37, previewImageFallback = Res.drawable.palette4,
     ),
     StoryItemUiModel(
-        index = "5.", title = "Photographing a rocket launch at night", summary = "",
+        index = "5.", title = "Photographing a rocket launch at night", previewText = "",
         points = 85, domain = "nasa.gov", domainWithoutTopLevel = "nasa",
         age = "1h", commentCount = 61, previewImageFallback = Res.drawable.palette5,
     ),
@@ -275,7 +275,7 @@ private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) 
             previewImageBitmap = preview?.image ?: EmptyPalettePreviewImage,
         ),
         // Keep the list compact and show the sample images even when feed previews are disabled.
-        style = style.copy(previewImageMode = StoryPreviewMode.SMALL, showSummary = false),
+        style = style.copy(previewImageMode = StoryPreviewMode.SMALL, showPreviewText = false),
         listItem = true,
         // Only tint changes here; avoid constructing animations for fixed text and row geometry.
         animateChanges = false,

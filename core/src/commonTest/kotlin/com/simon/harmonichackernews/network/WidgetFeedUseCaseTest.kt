@@ -132,7 +132,7 @@ class WidgetFeedUseCaseTest {
     fun newWidgetsInheritAppearanceWhileSavedChoicesStayIndependent() {
         val story = StoredUserSettings(InMemoryKeyValueStore(), kotlinx.coroutines.flow.emptyFlow()).story.copy(
             previewImageMode = StoryPreviewMode.MEDIUM, displayStyle = DisplayStyle.OUTLINED,
-            tintCardUsingPreview = true,
+            tintCardsFromImages = true,
         )
         val defaults = WidgetConfiguration.fromStoryPreferences(story)
         val widgets = WidgetConfigurationService(InMemoryKeyValueStore(), InMemoryKeyValueStore(), FakeRepository(emptyList(), emptyMap()))

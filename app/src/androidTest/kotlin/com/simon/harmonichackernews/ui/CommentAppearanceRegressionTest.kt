@@ -118,7 +118,7 @@ class CommentAppearanceRegressionTest {
                                 preferredFont = "default", animateChanges = true,
                             ),
                             storyAuthor = null, accountUser = null, userTag = null,
-                            hiddenReplyCount = 1, collapseParent = false, showTopLevelIndicator = true,
+                            subtreeReplyCount = 1, collapseParent = false, showTopLevelIndicator = true,
                             onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
                             onReferenceLongClick = { _, _, _ -> },
                         )
@@ -206,7 +206,7 @@ class CommentAppearanceRegressionTest {
                                 preferredFont = "default", expandedReferenceLinks = true,
                             ),
                             storyAuthor = null, accountUser = null, userTag = null,
-                            hiddenReplyCount = 0, collapseParent = false, showTopLevelIndicator = true,
+                            subtreeReplyCount = 0, collapseParent = false, showTopLevelIndicator = true,
                             onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
                             onReferenceLongClick = { _, _, _ -> },
                         )
@@ -238,7 +238,7 @@ class CommentAppearanceRegressionTest {
                             rows.forEachIndexed { index, row ->
                                 CommentItem(
                                     comment = row, style = style.value, storyAuthor = null, accountUser = null,
-                                    userTag = null, hiddenReplyCount = 0, collapseParent = false,
+                                    userTag = null, subtreeReplyCount = 0, collapseParent = false,
                                     showTopLevelIndicator = true, nextCommentDepth = rows.getOrNull(index + 1)?.depth,
                                     modifier = Modifier.testTag("row-$index"),
                                     onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
@@ -407,7 +407,7 @@ class CommentAppearanceRegressionTest {
         compose.onNodeWithText("Body 1").assertDoesNotExist()
     }
     private val settings = CommentDisplaySettings(
-        collapseParent = false, showThumbnail = false, showHeaderPreviewImage = false,
+        collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,

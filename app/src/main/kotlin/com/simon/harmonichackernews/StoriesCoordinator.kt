@@ -209,7 +209,7 @@ class StoriesCoordinator(
         controller.updateContent(
             state,
             if (activity.windowEnterComplete.value) presentation else presentation.copy(
-                showUpdateOverride = controller.showUpdate,
+                showRefreshPromptOverride = controller.showRefreshPrompt,
                 lastUpdatedText = controller.lastUpdatedText,
             ),
         )

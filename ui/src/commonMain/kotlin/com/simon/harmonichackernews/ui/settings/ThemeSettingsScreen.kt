@@ -387,7 +387,7 @@ private fun StoryThemePreview(
                     faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
                 ),
                 // Keep the preview visible above the controls even with large image settings.
-                style = style.copy(previewImageMode = StoryPreviewMode.OFF, showSummary = false),
+                style = style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false),
                 animateChanges = false,
             )
             Spacer(Modifier.weight(1f))

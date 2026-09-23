@@ -19,7 +19,7 @@ class CommentsPresentationPolicyTest {
             ).toInt()
 
         assertTrue(
-            CommentsPresentationPolicy.shouldShowUpdateAffordance(
+            CommentsPresentationPolicy.shouldShowRefreshPrompt(
                 now,
                 now - CommentsPresentationPolicy.STALE_AFTER_MILLIS - 1,
                 false,
@@ -27,7 +27,7 @@ class CommentsPresentationPolicyTest {
             ),
         )
         assertFalse(
-            CommentsPresentationPolicy.shouldShowUpdateAffordance(
+            CommentsPresentationPolicy.shouldShowRefreshPrompt(
                 now,
                 now - CommentsPresentationPolicy.STALE_AFTER_MILLIS,
                 false,
@@ -35,7 +35,7 @@ class CommentsPresentationPolicyTest {
             ),
         )
         assertFalse(
-            CommentsPresentationPolicy.shouldShowUpdateAffordance(
+            CommentsPresentationPolicy.shouldShowRefreshPrompt(
                 now,
                 now - CommentsPresentationPolicy.STALE_AFTER_MILLIS - 1,
                 false,
@@ -43,7 +43,7 @@ class CommentsPresentationPolicyTest {
             ),
         )
         assertTrue(
-            CommentsPresentationPolicy.shouldShowUpdateAffordance(
+            CommentsPresentationPolicy.shouldShowRefreshPrompt(
                 now,
                 0,
                 true,
@@ -72,7 +72,7 @@ class CommentsPresentationPolicyTest {
 
     @Test
     fun pollLoadingUsesKnownIdsBeforeAttemptingTitleBasedDiscovery() {
-        val knownPoll = story("Poll: choose").also { it.pollOptions = intArrayOf(1, 2) }
+        val knownPoll = story("Poll: choose").also { it.pollOptionIds = intArrayOf(1, 2) }
         val possiblePoll = story("Ask HN: a poll about KMP")
 
         assertEquals(
@@ -100,12 +100,12 @@ class CommentsPresentationPolicyTest {
         val source = story("New").also {
             it.by = "author"
             it.score = 42
-            it.time = 123
+            it.createdAtEpochSeconds = 123
             it.url = "https://example.com"
             it.isLink = true
             it.text = "body"
             it.kids = intArrayOf(7, 8)
-            it.pollOptions = intArrayOf(9)
+            it.pollOptionIds = intArrayOf(9)
             it.descendants = 2
             it.parentId = 3
         }
@@ -117,7 +117,7 @@ class CommentsPresentationPolicyTest {
         assertEquals(42, target.score)
         assertEquals("https://example.com", target.url)
         assertContentEquals(intArrayOf(7, 8), target.kids)
-        assertContentEquals(intArrayOf(9), target.pollOptions)
+        assertContentEquals(intArrayOf(9), target.pollOptionIds)
         assertEquals(2, target.descendants)
         assertTrue(target.loaded)
     }

@@ -16,14 +16,14 @@ data class StoriesSettingsUiState(
     val previewImageMode: StoryPreviewMode,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
-    val showSummary: Boolean,
-    val showThumbnails: Boolean,
+    val showPreviewText: Boolean,
+    val showFavicons: Boolean,
     val showPoints: Boolean,
     val compactPoints: Boolean,
     val includeTopLevelDomain: Boolean,
     val showComments: Boolean,
     val showIndex: Boolean,
-    val leftAlignComments: Boolean,
+    val commentsButtonOnLeft: Boolean,
     val tint: Boolean,
     val displayStyle: String,
     val textSize: Float,
@@ -37,8 +37,8 @@ data class StoriesSettingsUiState(
     val startingPage: String,
     val alwaysOpenComments: Boolean,
     val pagination: Boolean,
-    val hideClicked: Boolean,
-    val grayOutClicked: Boolean,
+    val hideRead: Boolean,
+    val dimReadStories: Boolean,
     val faviconProvider: String,
     val faviconIcon: Painter,
 )
@@ -47,18 +47,18 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
     BorderlessLargeImage(StoryBooleanPreference.BORDERLESS_LARGE_IMAGE),
     Tint(StoryBooleanPreference.TINT_CARD_USING_PREVIEW),
     Compact(StoryBooleanPreference.COMPACT_VIEW),
-    ShowSummary(StoryBooleanPreference.SHOW_SUMMARY),
-    ShowThumbnails(StoryBooleanPreference.SHOW_THUMBNAILS),
+    ShowPreviewText(StoryBooleanPreference.SHOW_SUMMARY),
+    ShowFavicons(StoryBooleanPreference.SHOW_THUMBNAILS),
     ShowPoints(StoryBooleanPreference.SHOW_POINTS),
     CompactPoints(StoryBooleanPreference.COMPACT_POINTS),
     IncludeTopLevelDomain(StoryBooleanPreference.INCLUDE_TOP_LEVEL_DOMAIN),
     ShowComments(StoryBooleanPreference.SHOW_COMMENTS_COUNT),
     ShowIndex(StoryBooleanPreference.SHOW_INDEX),
-    LeftAlignComments(StoryBooleanPreference.LEFT_ALIGN),
+    CommentsButtonOnLeft(StoryBooleanPreference.LEFT_ALIGN),
     AlwaysOpenComments(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS),
     Pagination(StoryBooleanPreference.PAGINATION),
-    HideClicked(StoryBooleanPreference.HIDE_CLICKED),
-    GrayOutClicked(StoryBooleanPreference.GRAY_OUT_CLICKED),
+    HideRead(StoryBooleanPreference.HIDE_CLICKED),
+    DimReadStories(StoryBooleanPreference.GRAY_OUT_CLICKED),
 }
 
 enum class StoriesStringSetting { DisplayStyle }
@@ -141,9 +141,9 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Compact layout", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
                 SettingsDivider()
-                BooleanRow("Summary", Res.drawable.ic_subject, state.showSummary, StoriesBooleanSetting.ShowSummary, onBooleanChanged)
+                BooleanRow("Summary", Res.drawable.ic_subject, state.showPreviewText, StoriesBooleanSetting.ShowPreviewText, onBooleanChanged)
                 SettingsDivider()
-                BooleanRow("Thumbnails", Res.drawable.ic_public, state.showThumbnails, StoriesBooleanSetting.ShowThumbnails, onBooleanChanged, enabled = !state.compact)
+                BooleanRow("Thumbnails", Res.drawable.ic_public, state.showFavicons, StoriesBooleanSetting.ShowFavicons, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
                 BooleanRow("Points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
                 SettingsDivider()
@@ -167,8 +167,8 @@ fun StoriesSettingsScreen(
                 BooleanRow(
                     "Left align comments button",
                     Res.drawable.ic_pan_tool,
-                    state.leftAlignComments,
-                    StoriesBooleanSetting.LeftAlignComments,
+                    state.commentsButtonOnLeft,
+                    StoriesBooleanSetting.CommentsButtonOnLeft,
                     onBooleanChanged,
                     enabled = state.previewImageMode != StoryPreviewMode.MEDIUM,
                 )
@@ -200,9 +200,9 @@ fun StoriesSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Use pagination", Res.drawable.ic_swipe_vertical, state.pagination, StoriesBooleanSetting.Pagination, onBooleanChanged, summary = "Load 30 stories at a time")
                 SettingsDivider()
-                BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideClicked, StoriesBooleanSetting.HideClicked, onBooleanChanged)
+                BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideRead, StoriesBooleanSetting.HideRead, onBooleanChanged)
                 SettingsDivider()
-                BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.grayOutClicked, StoriesBooleanSetting.GrayOutClicked, onBooleanChanged, enabled = !state.hideClicked)
+                BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.dimReadStories, StoriesBooleanSetting.DimReadStories, onBooleanChanged, enabled = !state.hideRead)
                 SettingsDivider()
                 SettingRow(
                     title = "Favicon provider",
@@ -210,7 +210,7 @@ fun StoriesSettingsScreen(
                     icon = null,
                     iconPainter = state.faviconIcon,
                     iconTint = Color.Unspecified,
-                    enabled = !state.compact && state.showThumbnails,
+                    enabled = !state.compact && state.showFavicons,
                     onClick = { onDialogRequested(StoriesSettingsDialog.FaviconProvider) },
                 )
             }

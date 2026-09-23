@@ -29,7 +29,7 @@ data class WidgetConfiguration(
                 if (it == StoryPreviewMode.LARGE) StoryPreviewMode.MEDIUM else it
             },
             displayStyle = preferences.displayStyle,
-            tint = preferences.tintCardUsingPreview,
+            tint = preferences.tintCardsFromImages,
         )
     }
 }

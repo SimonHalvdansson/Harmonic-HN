@@ -78,12 +78,12 @@ class CommentThreadStoreTest {
 
         store.setHideDelayedComments(true)
 
-        assertEquals(listOf(2, 3), store.state.value.displayedComments.drop(1).map { it.id })
+        assertEquals(listOf(2, 3), store.state.value.filteredComments.drop(1).map { it.id })
         assertEquals(listOf(2, 3), store.state.value.visibleComments.map { it.comment.id })
         assertEquals(listOf(2, 3), store.state.value.searchResults.map { it.id })
 
         store.setHideDelayedComments(false)
-        assertEquals(listOf(1, 2, 3), store.state.value.displayedComments.drop(1).map { it.id })
+        assertEquals(listOf(1, 2, 3), store.state.value.filteredComments.drop(1).map { it.id })
     }
 
     @Test
@@ -98,7 +98,7 @@ class CommentThreadStoreTest {
         )
 
         assertEquals(listOf(1), store.state.value.visibleComments.map { it.comment.id })
-        assertEquals(2, store.state.value.visibleComments.single().hiddenReplyCount)
+        assertEquals(2, store.state.value.visibleComments.single().subtreeReplyCount)
 
         assertTrue(store.toggleExpanded(1))
         assertEquals(listOf(1, 2), store.state.value.visibleComments.map { it.comment.id })
@@ -127,7 +127,7 @@ class CommentThreadStoreTest {
 
         assertEquals(
             listOf(1 to 3, 2 to 1, 3 to 0, 4 to 0, 5 to 1, 6 to 0),
-            store.state.value.visibleComments.map { it.comment.id to it.hiddenReplyCount },
+            store.state.value.visibleComments.map { it.comment.id to it.subtreeReplyCount },
         )
     }
 
@@ -144,7 +144,7 @@ class CommentThreadStoreTest {
 
         val state = store.state.value
         val snapshot = state.allComments[1]
-        assertSame(snapshot, state.displayedComments[1])
+        assertSame(snapshot, state.filteredComments[1])
         assertSame(snapshot, state.searchResults[0])
         assertSame(snapshot, state.visibleComments[0].comment)
     }
@@ -167,7 +167,7 @@ class CommentThreadStoreTest {
 
         val after = store.state.value
         assertSame(before.allComments, after.allComments)
-        assertSame(before.displayedComments, after.displayedComments)
+        assertSame(before.filteredComments, after.filteredComments)
         assertSame(before.searchResults, after.searchResults)
         assertSame(before.visibleComments, after.visibleComments)
     }
@@ -192,7 +192,7 @@ class CommentThreadStoreTest {
         val after = store.state.value
         assertTrue(before.allComments[1] !== after.allComments[1])
         assertSame(before.allComments[2], after.allComments[2])
-        assertSame(before.displayedComments[2], after.displayedComments[2])
+        assertSame(before.filteredComments[2], after.filteredComments[2])
         assertSame(before.searchResults[1], after.searchResults[1])
     }
 
@@ -332,8 +332,8 @@ class CommentThreadStoreTest {
             collapseTopLevel = false,
         )
 
-        assertFalse(store.showCommentsByOp())
-        assertFalse(store.state.value.commentsByOp)
+        assertFalse(store.enableOpThreadFilter())
+        assertFalse(store.state.value.opThreadFilterEnabled)
     }
 
     @Test
@@ -350,8 +350,8 @@ class CommentThreadStoreTest {
         source.expanded = false
 
         assertEquals("Story", portable.story?.title)
-        assertEquals("original", portable.displayedComments.last().comment.text)
-        assertTrue(portable.displayedComments.last().presentation.expanded)
+        assertEquals("original", portable.filteredComments.last().comment.text)
+        assertTrue(portable.filteredComments.last().presentation.expanded)
     }
 
     @Test

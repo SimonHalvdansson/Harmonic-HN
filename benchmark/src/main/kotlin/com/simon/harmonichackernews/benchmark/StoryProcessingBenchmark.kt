@@ -17,8 +17,8 @@ class StoryProcessingBenchmark {
 
     private val thirtyIds = (1..30).toList()
     private val fiveHundredIds = (1..500).toList()
-    private val clickedIds = (1..500 step 5).toSet()
-    private val allClickedIds = fiveHundredIds.toSet()
+    private val readIds = (1..500 step 5).toSet()
+    private val allReadIds = fiveHundredIds.toSet()
     private val commentIds = (1..500 step 7).toSet()
     private val retainedStories = fiveHundredIds.map { Story("Retained $it", it, true, false) }
     private val cachedStories = (1..450).associateWith { Story("Cached $it", it, true, false) }
@@ -53,7 +53,7 @@ class StoryProcessingBenchmark {
     }
 
     @Test fun hiddenPlaceholders() = benchmarkRule.measureRepeated {
-        sink = create(fiveHundredIds, cachedStories, allClickedIds, true)
+        sink = create(fiveHundredIds, cachedStories, allReadIds, true)
     }
 
     @Test fun initialReconcile() = benchmarkRule.measureRepeated {
@@ -67,13 +67,13 @@ class StoryProcessingBenchmark {
     private fun create(
         ids: List<Int>,
         cache: Map<Int, Story> = emptyMap(),
-        clicked: Set<Int> = clickedIds,
+        isRead: Set<Int> = readIds,
         hidden: Boolean = false,
     ): MutableList<Story> = StoryPlaceholderFactory.create(
         itemIds = ids,
         commentIds = commentIds,
-        clickedIds = clicked,
-        hideClicked = hidden,
+        readIds = isRead,
+        hideRead = hidden,
         cachedStories = cache,
     )
 
@@ -82,7 +82,7 @@ class StoryProcessingBenchmark {
             existingStories = existing,
             itemIds = fiveHundredIds,
             commentIds = commentIds,
-            clickedIds = clickedIds,
+            readIds = readIds,
         )
 
 }

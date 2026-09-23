@@ -148,8 +148,8 @@ class SubmissionsStoreTest {
     @Test
     fun exhaustedCategoryDoesNotLimitBothAndTimestampTiesAreExcludedAtBoundary() = runTest {
         val store = SubmissionsStore("simon", FakeRepository(listOf(
-            item(10), item(9, comment = true), item(8, comment = true).also { it.time = 9 },
-            item(7, comment = true).also { it.time = 9 }, item(6, comment = true),
+            item(10), item(9, comment = true), item(8, comment = true).also { it.createdAtEpochSeconds = 9 },
+            item(7, comment = true).also { it.createdAtEpochSeconds = 9 }, item(6, comment = true),
         )), pageSize = 4)
         store.ensureLoaded()
         assertEquals(listOf(10), store.ids())
@@ -218,7 +218,7 @@ class SubmissionsStoreTest {
             }
             // Return fresh objects to verify that the store actually deduplicates them.
             return AlgoliaSubmissionsPage(filtered.take(limit).map { original ->
-                item(original.id, original.isComment).also { it.time = original.time }
+                item(original.id, original.isComment).also { it.createdAtEpochSeconds = original.createdAtEpochSeconds }
             }, filtered.size > limit)
         }
         override suspend fun search(url: String): List<Story> = error("Not used")
@@ -230,7 +230,7 @@ class SubmissionsStoreTest {
     private companion object {
         fun item(id: Int, comment: Boolean = false) = Story().also {
             it.id = id
-            it.time = id
+            it.createdAtEpochSeconds = id
             it.loaded = true
             it.isComment = comment
         }

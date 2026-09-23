@@ -109,7 +109,7 @@ class CommentsFeatureRuntime(
     val effects: SharedFlow<CommentsRuntimeEffect> = mutableEffects.asSharedFlow()
 
     val thread: CommentThreadStore get() = presenter.thread
-    val comments: MutableList<Comment> get() = thread.displayedComments
+    val comments: MutableList<Comment> get() = thread.filteredComments
     val allComments: MutableList<Comment> get() = thread.allComments
     val story: Story? get() = sessionState.story
     val state: CommentsPresenterState get() = presenter.state.value
@@ -305,7 +305,7 @@ class CommentsFeatureRuntime(
                 loadImage = true,
                 loadSummary = false,
                 knownImageUrl = currentStory.previewImageUrl,
-                imageUrlAlreadyResolved = currentStory.previewImageUrlLoaded,
+                imageUrlAlreadyResolved = currentStory.previewImageUrlResolved,
                 knownSummary = currentStory.linkSummaryDescription
                     ?.takeIf { currentStory.linkSummaryLoaded }
                     ?.let {
@@ -444,7 +444,7 @@ class CommentsFeatureRuntime(
             CommentsAction.EvaluateUpdateAvailability(
                 nowMillis = nowMillis(),
                 alwaysShow = alwaysShow,
-                storyTimeEpochSeconds = story?.time ?: 0,
+                storyTimeEpochSeconds = story?.createdAtEpochSeconds ?: 0,
             ),
         )
         changed()
@@ -560,7 +560,7 @@ class CommentsFeatureRuntime(
                 articleUrl = currentStory.url.orEmpty(),
                 articleText = articleText,
             ),
-            currentText = currentStory.summary,
+            currentText = currentStory.aiSummaryText,
         )
     }
 
@@ -579,7 +579,7 @@ class CommentsFeatureRuntime(
             resolveArchive(it)
             return
         }
-        execute(CommentsUiOrchestrator.more(action, story, thread.state.value.commentsByOp))
+        execute(CommentsUiOrchestrator.more(action, story, thread.state.value.opThreadFilterEnabled))
     }
 
     fun sheet(action: CommentsSheetAction) = platform(CommentsUiOrchestrator.sheet(action))
@@ -817,13 +817,13 @@ class CommentsFeatureRuntime(
             summaryPageTextRetryPending = true
             // Keep the existing action's loading indicator visible without replacing the summary
             // surface with a browser-status sentence while the hidden WebView is working.
-            currentStory.summary = null
+            currentStory.aiSummaryText = null
             currentStory.summaryGeneratedSuccessfully = false
             changed()
             mutableEffects.tryEmit(CommentsRuntimeEffect.RequestSummaryPageTextRetry)
             return
         }
-        currentStory.summary = state.text
+        currentStory.aiSummaryText = state.text
         when (state.status) {
             StorySummaryStatus.Idle,
             StorySummaryStatus.Running,

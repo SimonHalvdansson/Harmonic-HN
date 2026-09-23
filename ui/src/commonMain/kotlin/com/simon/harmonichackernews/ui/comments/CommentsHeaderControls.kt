@@ -102,7 +102,7 @@ fun StorySummary(
     streaming: Boolean = false,
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
 ) {
-    val summary = story.summary.orEmpty()
+    val summary = story.aiSummaryText.orEmpty()
     var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
         summary == GEMINI_NANO_POLICY_BLOCKED_MESSAGE
@@ -296,7 +296,7 @@ fun HeaderActions(
 ) {
     val story = controller.story
     val hasAccount = settings.hasAccountDetails
-    val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(story.time)
+    val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(story.createdAtEpochSeconds)
     var shareExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
@@ -720,7 +720,7 @@ private fun MoreMenu(
                         if (story.isComment && story.parentId > 0) {
                             action("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT)
                         }
-                        if (story.isComment && story.commentMasterId > 0) {
+                        if (story.isComment && story.rootStoryId > 0) {
                             action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
                         }
                         if (settings.hasAccountDetails && bookmarksEnabled) {
@@ -744,7 +744,7 @@ private fun MoreMenu(
                             SubmenuEntry("Sort comments", Res.drawable.ic_filter_list, onSortExpanded)
                         }
                         AnimatedCommentMenuItem(
-                            visible = !controller.commentsByOpFilterActive && controller.hasCommentsByOp,
+                            visible = !controller.opThreadFilterEnabled && controller.hasCommentsByOp,
                         ) {
                             action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
                         }
@@ -835,7 +835,7 @@ fun OpFilterBanner(controller: CommentsComposeController) {
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
     val contentColor = if (HarmonicTheme.isDark) colors.contentPrimary else colors.onSecondaryContainer
     AnimatedVisibility(
-        visible = controller.commentsByOpFilterActive,
+        visible = controller.opThreadFilterEnabled,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
@@ -900,7 +900,7 @@ fun HeaderStatus(controller: CommentsComposeController, lastRefreshedText: Strin
             showLoading -> HeaderStatusState.Loading
             controller.loadingFailed -> HeaderStatusState.Failed
             showEmpty -> HeaderStatusState.Empty
-            controller.showUpdate -> HeaderStatusState.Refresh
+            controller.showRefreshPrompt -> HeaderStatusState.Refresh
             else -> HeaderStatusState.None
         },
         transitionSpec = {

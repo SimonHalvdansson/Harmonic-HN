@@ -16,7 +16,7 @@ object CommentsPresentationPolicy {
     const val STALE_AFTER_MILLIS: Long = 60L * 60L * 1_000L
     const val MAX_STORY_AGE_FOR_UPDATE_MILLIS: Long = AgePolicy.TWO_HOURS_MILLIS
 
-    fun shouldShowUpdateAffordance(
+    fun shouldShowRefreshPrompt(
         nowMillis: Long,
         lastLoadedMillis: Long,
         alwaysShow: Boolean,
@@ -43,7 +43,7 @@ object CommentsPresentationPolicy {
         story: Story?,
     ): PollLoadAction = when {
         !active || loadStarted || story == null || story.isComment -> PollLoadAction.NONE
-        story.pollOptions != null -> PollLoadAction.LOAD_KNOWN_OPTIONS
+        story.pollOptionIds != null -> PollLoadAction.LOAD_KNOWN_OPTIONS
         lookupStarted || story.id <= 0 || !StoryTitlePolicy.mayDescribePoll(story.title) ->
             PollLoadAction.NONE
         else -> PollLoadAction.LOOK_UP_OPTIONS
@@ -53,13 +53,13 @@ object CommentsPresentationPolicy {
         target.title = source.title
         target.by = source.by
         target.score = source.score
-        target.time = source.time
+        target.createdAtEpochSeconds = source.createdAtEpochSeconds
         target.url = source.url
         target.isLink = source.isLink
         target.isComment = source.isComment
         target.text = source.text
         target.kids = source.kids
-        target.pollOptions = source.pollOptions
+        target.pollOptionIds = source.pollOptionIds
         target.descendants = source.descendants
         target.parentId = source.parentId
         target.loaded = true

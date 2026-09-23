@@ -212,11 +212,11 @@ class CommentsInteractionStore(
         state = state.copy(searchDialogVisible = false)
     }
 
-    fun revealSearchResult(commentId: Int, visiblePosition: Int, showUpdate: Boolean) {
+    fun revealSearchResult(commentId: Int, visiblePosition: Int, showRefreshPrompt: Boolean) {
         state = state.copy(
             highlightedCommentId = commentId,
             searchScrollTopTargetId = commentId.takeIf {
-                visiblePosition > SEARCH_SCROLL_TOP_THRESHOLD && !showUpdate
+                visiblePosition > SEARCH_SCROLL_TOP_THRESHOLD && !showRefreshPrompt
             } ?: -1,
         )
     }

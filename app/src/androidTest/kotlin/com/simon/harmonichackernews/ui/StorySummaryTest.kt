@@ -46,7 +46,7 @@ class StorySummaryTest {
         compose.onNodeWithText("Summary").assertDoesNotExist()
         compose.runOnIdle {
             story.value = initial.copy(presentation = initial.presentation.copy(
-                summary = "[Details](#details) and [discussion](https://news.ycombinator.com/item?id=42)",
+                aiSummaryText = "[Details](#details) and [discussion](https://news.ycombinator.com/item?id=42)",
                 summaryGeneratedSuccessfully = true,
             ))
         }
@@ -71,7 +71,7 @@ class StorySummaryTest {
     }
 
     private val settings = CommentDisplaySettings(
-        collapseParent = false, showThumbnail = false, showHeaderPreviewImage = false,
+        collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,

@@ -27,9 +27,9 @@ data class CommentsScreenState(
     val loadingFailed: Boolean = false,
     val loadingFailedServerError: Boolean = false,
     val usingOfficialApiFallback: Boolean = false,
-    val showUpdate: Boolean = false,
+    val showRefreshPrompt: Boolean = false,
     val lastRefreshed: Long = 0L,
-    val commentsByOpFilterActive: Boolean = false,
+    val opThreadFilterEnabled: Boolean = false,
     val hasCommentsByOp: Boolean = false,
     val adBlockActive: Boolean = false,
     val integratedWebView: Boolean = false,
@@ -96,9 +96,9 @@ class CommentsComposeController private constructor(
     val loadingFailed: Boolean get() = screenState.loadingFailed
     val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError
     val usingOfficialApiFallback: Boolean get() = screenState.usingOfficialApiFallback
-    val showUpdate: Boolean get() = screenState.showUpdate
+    val showRefreshPrompt: Boolean get() = screenState.showRefreshPrompt
     val lastRefreshed: Long get() = screenState.lastRefreshed
-    val commentsByOpFilterActive: Boolean get() = screenState.commentsByOpFilterActive
+    val opThreadFilterEnabled: Boolean get() = screenState.opThreadFilterEnabled
     val hasCommentsByOp: Boolean get() = screenState.hasCommentsByOp
     val adBlockActive: Boolean get() = screenState.adBlockActive
     val integratedWebView: Boolean get() = screenState.integratedWebView
@@ -244,7 +244,7 @@ class CommentsComposeController private constructor(
         savedItemState.isUpvoted(itemId, isComment)
 
     fun updateContent(state: CommentsScreenState) {
-        val updateBecameVisible = !screenState.showUpdate && state.showUpdate
+        val updateBecameVisible = !screenState.showRefreshPrompt && state.showRefreshPrompt
         val headerRefreshFinished = headerRefreshInProgress &&
             (headerRefreshObserved || screenState.commentsRefreshInProgress) &&
             !state.commentsRefreshInProgress
@@ -542,7 +542,7 @@ class CommentsComposeController private constructor(
     }
 
     fun revealSearchResult(commentId: Int, visiblePosition: Int) {
-        interactionStore.revealSearchResult(commentId, visiblePosition, showUpdate)
+        interactionStore.revealSearchResult(commentId, visiblePosition, showRefreshPrompt)
         syncInteractionState()
     }
 

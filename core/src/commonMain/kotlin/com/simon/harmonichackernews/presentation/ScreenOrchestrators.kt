@@ -115,26 +115,26 @@ object CommentsUiOrchestrator {
     fun more(
         action: CommentsMoreAction,
         story: Story,
-        commentsByOpActive: Boolean,
+        opThreadFilterEnabled: Boolean,
     ): FeatureDecision<CommentsAction, CommentsPlatformEffect> = when (action) {
         CommentsMoreAction.REFRESH -> FeatureDecision()
         CommentsMoreAction.OPEN_PARENT -> itemEffect(story.parentId)
-        CommentsMoreAction.OPEN_TOP_LEVEL -> itemEffect(story.commentMasterId)
+        CommentsMoreAction.OPEN_TOP_LEVEL -> itemEffect(story.rootStoryId)
         CommentsMoreAction.TOGGLE_BOOKMARK -> action(
             CommentsAction.ToggleBookmark(story.id),
             refreshState = true,
         )
         CommentsMoreAction.SEARCH -> FeatureDecision(
-            actions = listOf(CommentsAction.ResetCommentsByOp),
+            actions = listOf(CommentsAction.ResetOpThreadFilter),
             effects = listOf(CommentsPlatformEffect.ShowSearch),
             refreshState = true,
             refreshNavigation = true,
         )
         CommentsMoreAction.COMMENTS_BY_OP -> action(
-            if (commentsByOpActive) {
-                CommentsAction.ResetCommentsByOp
+            if (opThreadFilterEnabled) {
+                CommentsAction.ResetOpThreadFilter
             } else {
-                CommentsAction.ShowCommentsByOp
+                CommentsAction.EnableOpThreadFilter
             },
             refreshState = true,
             refreshNavigation = true,

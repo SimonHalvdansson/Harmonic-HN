@@ -22,8 +22,8 @@ class StoryListResourceRuntimeTest {
     @Test
     fun eitherListEnrichmentRequestsAndRetainsBothParsedValues() = runTest {
         listOf(
-            settings(previewImageMode = StoryPreviewMode.SMALL, showSummary = false),
-            settings(previewImageMode = StoryPreviewMode.OFF, showSummary = true),
+            settings(previewImageMode = StoryPreviewMode.SMALL, showPreviewText = false),
+            settings(previewImageMode = StoryPreviewMode.OFF, showPreviewText = true),
         ).forEach { settings ->
             val requests = mutableListOf<StoryPreviewResourceRequest>()
             val runtime = StoryListResourceRuntime(
@@ -50,7 +50,7 @@ class StoryListResourceRuntimeTest {
             service = recordingService(requests),
             settings = settings(
                 previewImageMode = StoryPreviewMode.OFF,
-                showSummary = false,
+                showPreviewText = false,
             ),
         )
         val story = story()
@@ -75,7 +75,7 @@ class StoryListResourceRuntimeTest {
             service = recordingService(mutableListOf()),
             settings = settings(
                 previewImageMode = StoryPreviewMode.SMALL,
-                showSummary = false,
+                showPreviewText = false,
             ),
         )
         val story = story()
@@ -127,26 +127,26 @@ class StoryListResourceRuntimeTest {
 
     private fun settings(
         previewImageMode: StoryPreviewMode,
-        showSummary: Boolean,
+        showPreviewText: Boolean,
     ) = StoryDisplaySettings(
         showPoints = true,
         compactPoints = false,
         includeTopLevelDomain = true,
         showCommentsCount = true,
         compactView = false,
-        thumbnails = true,
+        showFavicons = true,
         previewImageMode = previewImageMode,
         borderlessLargePreviewImage = false,
-        showSummary = showSummary,
+        showPreviewText = showPreviewText,
         storyTextSize = 16f,
         showIndex = true,
         compactHeader = false,
-        leftAlign = false,
+        commentsButtonOnLeft = false,
         displayStyle = DisplayStyle.RAISED,
-        tintCardUsingPreview = false,
+        tintCardsFromImages = false,
         paletteTintMode = "default",
-        grayOutClicked = true,
-        hotness = 0,
+        dimReadStories = true,
+        hotnessThreshold = 0,
         faviconProvider = "",
         font = "default",
         commentTextSize = 16f,

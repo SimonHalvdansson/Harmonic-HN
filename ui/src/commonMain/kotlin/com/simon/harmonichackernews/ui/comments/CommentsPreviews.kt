@@ -128,7 +128,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
             .padding(top = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (settings.showThumbnail) {
+        if (settings.showFavicons) {
             var faviconLoaded by remember(favicon) { mutableStateOf(false) }
             val fallback = painterResource(Res.drawable.ic_public)
             AsyncImage(
@@ -483,7 +483,7 @@ private fun PreviewInfoColumns(left: @Composable ColumnScope.() -> Unit, right: 
 @Composable
 private fun GitHubPreview(story: StoryListItemSnapshot) {
     val platform = LocalCommentsPreviewPlatform.current
-    val info = story.repoInfo ?: return
+    val info = story.gitHubRepoInfo ?: return
     Column {
         PreviewHeader(
             text = "${info.owner} / ${info.name}",

@@ -22,7 +22,7 @@ sealed interface SubmissionsIntent {
     data object LoadMore : SubmissionsIntent
     data class OpenStoryLink(val story: Story) : SubmissionsIntent
     data class OpenStoryComments(val story: Story) : SubmissionsIntent
-    data class OpenCommentMaster(val story: Story) : SubmissionsIntent
+    data class OpenRootStory(val story: Story) : SubmissionsIntent
     data class OpenCommentReplies(val story: Story) : SubmissionsIntent
     data class RecordScrollPosition(
         val firstVisibleStoryPosition: Int,
@@ -49,7 +49,7 @@ data class SubmissionsScrollRestoration(
 class SubmissionsFeatureStore internal constructor(
     private val scope: CoroutineScope,
     private val sessionState: SubmissionsSessionState,
-    private val commentMasterResolver: CommentMasterResolver,
+    private val rootStoryResolver: CommentMasterResolver,
     private val useIntegratedWebView: () -> Boolean,
 ) : FeatureStore<SubmissionsIntent, SubmissionsUiState, SubmissionsRuntimeEffect> {
     private val store = sessionState.submissions
@@ -102,7 +102,7 @@ class SubmissionsFeatureStore internal constructor(
             SubmissionsIntent.LoadMore -> loadMore()
             is SubmissionsIntent.OpenStoryLink -> openStoryLink(intent.story)
             is SubmissionsIntent.OpenStoryComments -> openStory(intent.story, showWebsite = false)
-            is SubmissionsIntent.OpenCommentMaster -> openCommentMaster(intent.story)
+            is SubmissionsIntent.OpenRootStory -> openRootStory(intent.story)
             is SubmissionsIntent.OpenCommentReplies -> openStory(intent.story, showWebsite = false)
             is SubmissionsIntent.RecordScrollPosition -> recordScrollPosition(
                 firstVisibleStoryPosition = intent.firstVisibleStoryPosition,
@@ -138,8 +138,8 @@ class SubmissionsFeatureStore internal constructor(
         }
     }
 
-    private fun openCommentMaster(story: Story) {
-        val masterStory = story.toCommentMasterStory()
+    private fun openRootStory(story: Story) {
+        val masterStory = story.toRootStory()
         if (masterStory == null) {
             openStory(story, showWebsite = false)
             return
@@ -151,7 +151,7 @@ class SubmissionsFeatureStore internal constructor(
 
         scope.launch {
             val resolved = try {
-                commentMasterResolver.resolve(story)
+                rootStoryResolver.resolve(story)
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {

@@ -189,7 +189,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(sample.waitForExistence(timeout: 15))
         sample.tap()
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 15))
-        // This header exists only after StoryLinkPreviewSession has populated repoInfo.
+        // This header exists only after StoryLinkPreviewSession has populated gitHubRepoInfo.
         let repo = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "salmanzafar949 / ctxdiff")).firstMatch
         for _ in 0..<5 where !repo.isHittable {
             app.swipeUp()

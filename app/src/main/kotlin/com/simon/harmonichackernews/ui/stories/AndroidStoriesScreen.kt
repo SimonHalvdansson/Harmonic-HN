@@ -57,7 +57,7 @@ private fun StoryItemFormFactorPreview() {
                 previewImageMode = StoryPreviewMode.MEDIUM,
                 borderlessLargeImage = false,
                 compact = false,
-                showSummary = true,
+                showPreviewText = true,
                 showFavicon = true,
                 showPoints = true,
                 compactPoints = false,

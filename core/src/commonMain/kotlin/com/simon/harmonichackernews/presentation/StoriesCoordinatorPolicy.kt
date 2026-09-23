@@ -127,13 +127,13 @@ object StoryRowMergePolicy {
         val changed = target.title != source.title ||
             target.descendants != source.descendants ||
             target.score != source.score ||
-            target.time != source.time ||
+            target.createdAtEpochSeconds != source.createdAtEpochSeconds ||
             target.url != source.url
         if (changed) {
             target.title = source.title
             target.descendants = source.descendants
             target.score = source.score
-            target.time = source.time
+            target.createdAtEpochSeconds = source.createdAtEpochSeconds
             target.url = source.url
         }
         return changed

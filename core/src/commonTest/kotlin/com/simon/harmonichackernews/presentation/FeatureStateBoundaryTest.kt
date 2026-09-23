@@ -34,7 +34,7 @@ class FeatureStateBoundaryTest {
 
         assertEquals(7, state.story?.id)
         assertTrue(state.story?.loaded == true)
-        assertTrue(state.thread.displayedComments.isEmpty())
+        assertTrue(state.thread.filteredComments.isEmpty())
     }
 
     private fun story(id: Int) = StoryListItemSnapshot(

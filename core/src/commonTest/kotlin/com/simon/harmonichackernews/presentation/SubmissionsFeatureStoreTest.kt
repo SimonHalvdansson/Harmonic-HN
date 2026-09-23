@@ -146,10 +146,10 @@ class SubmissionsFeatureStoreTest {
     }
 
     @Test
-    fun commentMasterIsResolvedAndContentRevisionIsPublished() = runTest {
+    fun rootStoryIsResolvedAndContentRevisionIsPublished() = runTest {
         val source = story(7).also {
             it.isComment = true
-            it.commentMasterId = 42
+            it.rootStoryId = 42
         }
         val master = story(42).also { it.title = "Master" }
         val session = SubmissionsSessionState(
@@ -166,7 +166,7 @@ class SubmissionsFeatureStoreTest {
         val effect = async { store.effects.first() }
         runCurrent()
 
-        store.accept(SubmissionsIntent.OpenCommentMaster(source))
+        store.accept(SubmissionsIntent.OpenRootStory(source))
         runCurrent()
 
         val open = assertIs<SubmissionsRuntimeEffect.OpenStory>(effect.await())
@@ -183,7 +183,7 @@ class SubmissionsFeatureStoreTest {
     ) = SubmissionsFeatureStore(
         scope = scope,
         sessionState = session,
-        commentMasterResolver = CommentMasterResolver(hackerNewsRepository),
+        rootStoryResolver = CommentMasterResolver(hackerNewsRepository),
         useIntegratedWebView = integratedWebView,
     )
 
@@ -258,7 +258,7 @@ class SubmissionsFeatureStoreTest {
         }
         fun story(id: Int) = Story().also {
             it.id = id
-            it.time = id
+            it.createdAtEpochSeconds = id
             it.loaded = true
         }
     }

@@ -69,7 +69,7 @@ class StoriesComposeController private constructor(
     val searchDateLabels: List<String> get() = shellState.searchDateLabels
     val searchPointsLabels: List<String> get() = shellState.searchPointsLabels
     val searchCommentsLabels: List<String> get() = shellState.searchCommentsLabels
-    val searchOnlyClicked: Boolean get() = shellState.searchOnlyClicked
+    val searchOnlyRead: Boolean get() = shellState.searchOnlyRead
     val loading: Boolean get() = shellState.loading
     val refreshing: Boolean get() = shellState.refreshing
     val loadingFailed: Boolean get() = shellState.loadingFailed
@@ -81,7 +81,7 @@ class StoriesComposeController private constructor(
     val emptySavedListText: String get() = shellState.emptySavedListText
     val emptySavedListIcon: DrawableResource get() = shellState.emptySavedListIcon
     val showEmptySearch: Boolean get() = shellState.showEmptySearch
-    val showUpdate: Boolean get() = shellState.showUpdate
+    val showRefreshPrompt: Boolean get() = shellState.showRefreshPrompt
     val lastUpdatedText: String? get() = shellState.lastUpdatedText
     val showLoadMore: Boolean get() = shellState.showLoadMore
     val loadMoreLoading: Boolean get() = shellState.loadMoreLoading
@@ -445,7 +445,7 @@ class StoriesComposeController private constructor(
         resetStoryPagingAlphaStates()
         storyPreviewReadStates.clear()
         stories.forEach { story ->
-            storyPreviewReadStates[story.id] = mutableStateOf(story.clicked)
+            storyPreviewReadStates[story.id] = mutableStateOf(story.isRead)
         }
         sourceCoveredByStoryPreviewTransition = false
         requestStopStoryPreviewScroll()
@@ -586,7 +586,7 @@ class StoriesComposeController private constructor(
         val target = interactionStore.beginStoryPreviewAction(page, kind) ?: return
         if (action == StoryPreviewActionKind.Read) {
             val readState = storyPreviewReadStates.getOrPut(target.story.id) {
-                mutableStateOf(target.story.clicked)
+                mutableStateOf(target.story.isRead)
             }
             readState.value = !readState.value
         }
@@ -668,7 +668,7 @@ class StoriesComposeController private constructor(
         fun onCloseSearch()
         fun onSearch(query: String)
         fun onSearchOption(kind: StorySearchOption, index: Int)
-        fun onToggleOnlyClicked()
+        fun onToggleOnlyRead()
         fun onRefresh(showMainLoadingIndicator: Boolean = false)
         fun onShowCached()
         fun onLoadMore()

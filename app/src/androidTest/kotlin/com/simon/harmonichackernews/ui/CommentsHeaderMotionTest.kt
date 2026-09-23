@@ -428,7 +428,7 @@ class CommentsHeaderMotionTest {
     }
 
     private val settings = CommentDisplaySettings(
-        collapseParent = false, showThumbnail = false, showHeaderPreviewImage = false,
+        collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,

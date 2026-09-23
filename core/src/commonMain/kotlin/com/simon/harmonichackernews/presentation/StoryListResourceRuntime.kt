@@ -67,7 +67,7 @@ class StoryListResourceRuntime(
 
     fun request(story: Story?) {
         val previewEnabled = settings.previewImageMode != StoryPreviewMode.OFF
-        if (!previewEnabled && !settings.showSummary) return
+        if (!previewEnabled && !settings.showPreviewText) return
         requestCompletePreview(story)
     }
 
@@ -94,7 +94,7 @@ class StoryListResourceRuntime(
                 loadImage = true,
                 loadSummary = true,
                 knownImageUrl = story.previewImageUrl,
-                imageUrlAlreadyResolved = story.previewImageUrlLoaded,
+                imageUrlAlreadyResolved = story.previewImageUrlResolved,
                 knownSummary = knownSummary,
             ),
         )
@@ -113,7 +113,7 @@ class StoryListResourceRuntime(
         paginationVisibleCount: Int? = null,
     ) {
         if (stories.isEmpty() ||
-            settings.previewImageMode == StoryPreviewMode.OFF && !settings.showSummary
+            settings.previewImageMode == StoryPreviewMode.OFF && !settings.showPreviewText
         ) {
             return
         }
@@ -204,7 +204,7 @@ class StoryListResourceRuntime(
         baseColor: Int,
         previewState: StoryPreviewResourceState? = story?.let { stateFor(it.id) },
     ): Int {
-        if (!settings.tintCardUsingPreview || story == null) return baseColor
+        if (!settings.tintCardsFromImages || story == null) return baseColor
         val previewTint = tintFor(
             story,
             StoryResourceTintKind.PREVIEW_IMAGE,

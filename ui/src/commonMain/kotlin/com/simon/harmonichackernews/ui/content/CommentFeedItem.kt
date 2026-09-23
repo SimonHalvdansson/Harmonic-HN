@@ -37,7 +37,7 @@ import org.jetbrains.compose.resources.painterResource
 /** The same comment card is used in saved feeds and user submissions. */
 @Composable
 fun CommentFeedItem(
-    commentMasterTitle: String?,
+    rootStoryTitle: String?,
     timeText: String,
     html: String,
     canOpenStory: Boolean,
@@ -89,7 +89,7 @@ fun CommentFeedItem(
                 .padding(bottom = 4.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            if (commentMasterTitle.isNullOrBlank()) {
+            if (rootStoryTitle.isNullOrBlank()) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
@@ -108,7 +108,7 @@ fun CommentFeedItem(
                 }
             } else {
                 Text(
-                    text = "On \"$commentMasterTitle\"",
+                    text = "On \"$rootStoryTitle\"",
                     modifier = Modifier.weight(1f),
                     color = colors.mutedText,
                     fontFamily = ProductSansFontFamily,

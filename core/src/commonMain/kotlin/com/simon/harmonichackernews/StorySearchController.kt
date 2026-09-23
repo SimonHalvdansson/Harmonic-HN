@@ -16,7 +16,7 @@ class StorySearchController(
     var dateRangeIndex: Int = 0
     var minimumPointsIndex: Int = 0
     var minimumCommentsIndex: Int = 0
-    var isOnlyClicked: Boolean = false
+    var isOnlyRead: Boolean = false
         private set
 
     fun resetOptions() {
@@ -24,11 +24,11 @@ class StorySearchController(
         dateRangeIndex = 0
         minimumPointsIndex = 0
         minimumCommentsIndex = 0
-        isOnlyClicked = false
+        isOnlyRead = false
     }
 
-    fun toggleOnlyClicked() {
-        isOnlyClicked = !isOnlyClicked
+    fun toggleOnlyRead() {
+        isOnlyRead = !isOnlyRead
     }
 
     val sortLabel: String
@@ -105,7 +105,7 @@ class StorySearchController(
         return query.orEmpty().trim { it <= ' ' }.lowercase()
     }
 
-    fun shouldIncludeOnlyClickedStory(
+    fun shouldIncludeOnlyReadStory(
         story: Story,
         normalizedQuery: String,
         storyFilter: StoryFilter
@@ -115,7 +115,7 @@ class StorySearchController(
         }
 
         val minimumTime = minimumTimeSeconds
-        if (minimumTime > 0 && story.time < minimumTime) {
+        if (minimumTime > 0 && story.createdAtEpochSeconds < minimumTime) {
             return false
         }
 
@@ -132,11 +132,11 @@ class StorySearchController(
         return !storyFilter.shouldFilterStory(story)
     }
 
-    fun sortOnlyClickedResults(stories: MutableList<Story>, query: String?) {
+    fun sortOnlyReadResults(stories: MutableList<Story>, query: String?) {
         if (sortIndex == 0) {
             SearchRelevanceUtils.sortStoriesByRelevance(stories, query)
         } else {
-            stories.sortByDescending(Story::time)
+            stories.sortByDescending(Story::createdAtEpochSeconds)
         }
     }
 

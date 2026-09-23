@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,12 +15,12 @@ class DomainSnapshotsTest {
             id = 42
             by = "alice"
             title = "KMP"
-            time = 1_700_000_000
+            createdAtEpochSeconds = 1_700_000_000
             kids = intArrayOf(1, 2)
             loaded = true
-            clicked = true
+            isRead = true
             previewImageUrl = "https://example.com/image.png"
-            previewImageUrlLoaded = true
+            previewImageUrlResolved = true
         }
 
         val domain = story.toSnapshot()
@@ -52,7 +53,7 @@ class DomainSnapshotsTest {
 
     @Test
     fun relativeTimeFormattingAcceptsAnExplicitClockValue() {
-        val story = Story().apply { time = 100 }
+        val story = Story().apply { createdAtEpochSeconds = 100 }
 
         assertEquals("1m", story.formatTime(nowMillis = 160_000))
     }
@@ -83,30 +84,30 @@ class DomainSnapshotsTest {
         )
         val story = Story().apply {
             id = 42
-            pollOptionArrayList = arrayListOf(option)
-            repoInfo = repo
+            pollOptions = arrayListOf(option)
+            gitHubRepoInfo = repo
             huggingFaceInfo = huggingFace
             openRouterInfo = openRouter
         }
 
         val snapshot = story.presentationSnapshot()
         option.text = "Changed"
-        assertSame(repo, snapshot.repoInfo)
+        assertSame(repo, snapshot.gitHubRepoInfo)
         assertSame(huggingFace, snapshot.huggingFaceInfo)
         assertSame(openRouter, snapshot.openRouterInfo)
-        story.repoInfo = repo.copy(name = "changed", avatarUrl = "https://example.com/changed.png")
+        story.gitHubRepoInfo = repo.copy(name = "changed", avatarUrl = "https://example.com/changed.png")
         story.huggingFaceInfo = huggingFace.copy(name = "changed")
         story.openRouterInfo = openRouter.copy(name = "changed")
-        story.pollOptionArrayList = null
-        story.repoInfo = null
+        story.pollOptions = null
+        story.gitHubRepoInfo = null
         story.huggingFaceInfo = null
         story.openRouterInfo = null
 
         assertEquals("Kotlin", snapshot.pollOptions.single().text)
-        assertEquals("harmonic", snapshot.repoInfo?.name)
+        assertEquals("harmonic", snapshot.gitHubRepoInfo?.name)
         assertEquals(
             "https://avatars.githubusercontent.com/u/1?v=4",
-            snapshot.repoInfo?.avatarUrl,
+            snapshot.gitHubRepoInfo?.avatarUrl,
         )
         assertEquals("Kimi-K3", snapshot.huggingFaceInfo?.name)
         assertEquals(
@@ -116,13 +117,13 @@ class DomainSnapshotsTest {
         assertEquals("10.8K likes", snapshot.huggingFaceInfo?.formatLikes())
         assertEquals("GPT-5.6 Sol", snapshot.openRouterInfo?.name)
         assertEquals("1.05M context", snapshot.openRouterInfo?.formatContext())
-        assertNull(story.repoInfo)
+        assertNull(story.gitHubRepoInfo)
     }
 
     @Test
     fun canonicalPreviewValuesSurvivePresentationSerialization() {
         val story = Story().apply {
-            repoInfo = RepoInfo(
+            gitHubRepoInfo = RepoInfo(
                 name = "repo",
                 owner = "owner",
                 avatarUrl = "https://example.com/avatar.png",
@@ -232,7 +233,7 @@ class DomainSnapshotsTest {
                 watching = 2,
                 forks = 3,
             ),
-            snapshot.repoInfo,
+            snapshot.gitHubRepoInfo,
         )
         assertEquals(
             GitLabInfo(
@@ -341,6 +342,9 @@ class DomainSnapshotsTest {
         // The old snapshot classes wrote these same field names and array values.
         val json = """
             {
+              "clicked": true,
+              "summary": "Saved AI summary",
+              "commentMaster": {"id": 42, "title": "Root story"},
               "repoInfo": {
                 "name": "repo", "owner": "owner", "about": null,
                 "website": null, "license": null, "language": "Kotlin",
@@ -362,13 +366,24 @@ class DomainSnapshotsTest {
 
         val presentation = Json.decodeFromString<StoryPresentationSnapshot>(json)
 
+        assertEquals(true, presentation.isRead)
+        assertEquals("Saved AI summary", presentation.aiSummaryText)
+        assertEquals(42, presentation.rootStory?.id)
+        assertEquals("Root story", presentation.rootStory?.title)
+        val encoded = Json.parseToJsonElement(Json.encodeToString(presentation)).jsonObject
+        val legacy = Json.parseToJsonElement(json).jsonObject
+        for (key in listOf("clicked", "summary", "commentMaster")) {
+            assertEquals(legacy[key], encoded[key])
+        }
+        assertEquals(setOf("repoInfo"), encoded.keys.intersect(setOf("repoInfo", "gitHubRepoInfo")))
+        assertEquals(emptySet(), encoded.keys.intersect(setOf("isRead", "aiSummaryText", "rootStory")))
         assertEquals(
             RepoInfo(name = "repo", owner = "owner", language = "Kotlin", stars = 12, forks = 2),
-            presentation.repoInfo,
+            presentation.gitHubRepoInfo,
         )
         assertEquals(listOf("Author", null), presentation.arxivInfo?.authors)
         assertEquals(listOf("kotlin", null), presentation.stackExchangeInfo?.tags)
-        assertEquals("12 stars", presentation.repoInfo?.formatStars())
+        assertEquals("12 stars", presentation.gitHubRepoInfo?.formatStars())
         assertNull(presentation.arxivInfo?.htmlUrl)
     }
 

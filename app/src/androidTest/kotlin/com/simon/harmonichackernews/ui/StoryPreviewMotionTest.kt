@@ -146,7 +146,7 @@ class StoryPreviewMotionTest {
         val mode = mutableStateOf(initialMode)
         val model = SettingsStoryPreviewModel.copy(
             title = "A preview with a title that wraps across multiple lines",
-            summary = "The story summary stays visible below the expanding image.",
+            previewText = "The story summary stays visible below the expanding image.",
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
@@ -165,7 +165,7 @@ class StoryPreviewMotionTest {
         val story = compose.onNodeWithTag("story-preview")
         val textNodes = listOf(
             compose.onNodeWithText(model.title, useUnmergedTree = true),
-            compose.onNodeWithText(model.summary, useUnmergedTree = true),
+            compose.onNodeWithText(model.previewText, useUnmergedTree = true),
             compose.onNodeWithText(model.domain, substring = true, useUnmergedTree = true),
         )
         val initialBounds = story.getUnclippedBoundsInRoot()
@@ -200,7 +200,7 @@ class StoryPreviewMotionTest {
         previewImageMode = mode,
         borderlessLargeImage = true,
         compact = false,
-        showSummary = true,
+        showPreviewText = true,
         showFavicon = false,
         showPoints = true,
         compactPoints = false,

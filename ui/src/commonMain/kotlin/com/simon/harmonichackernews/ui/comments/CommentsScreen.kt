@@ -429,7 +429,7 @@ fun CommentsScreen(
                     storyAuthor = controller.story.by,
                     accountUser = controller.accountUser,
                     userTag = tag,
-                    hiddenReplyCount = item.hiddenReplyCount,
+                    subtreeReplyCount = item.subtreeReplyCount,
                     collapseParent = settings.collapseParent,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
                     nextCommentDepth = animatedRows.rows.getOrNull(index + 1)?.comment?.depth,

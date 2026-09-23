@@ -74,17 +74,17 @@ class CommentsPresenterTest {
         val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
             CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
             options, savedItemActions(), UnusedVotingService)
-        val story = Story("Poll: choose", 42, true, false).apply { pollOptions = intArrayOf(7) }
+        val story = Story("Poll: choose", 42, true, false).apply { pollOptionIds = intArrayOf(7) }
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
         runCurrent()
-        assertTrue(story.pollOptionArrayList!!.single().loadFailed)
+        assertTrue(story.pollOptions!!.single().loadFailed)
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
         runCurrent()
         assertEquals(1, loads)
         for (expected in listOf(20, 30)) {
             presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = true))
             runCurrent()
-            val option = story.pollOptionArrayList!!.single()
+            val option = story.pollOptions!!.single()
             assertTrue(option.loaded)
             assertFalse(option.loadFailed)
             assertEquals(expected, option.points)
@@ -441,7 +441,7 @@ class CommentsPresenterTest {
         runCurrent()
 
         assertTrue(runtime.summaryLoading)
-        assertEquals(null, story.summary)
+        assertEquals(null, story.aiSummaryText)
         assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
 
         runtime.startSummary("text extracted from the loaded WebView")
@@ -511,7 +511,7 @@ class CommentsPresenterTest {
         runCurrent()
 
         assertTrue(runtime.summaryLoading)
-        assertEquals(null, story.summary)
+        assertEquals(null, story.aiSummaryText)
         assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
 
         runtime.startSummary("text extracted from the loaded WebView")
@@ -1048,7 +1048,7 @@ class CommentsPresenterTest {
             UnusedVotingService,
         )
         val story = Story("Poll: choose", 42, true, false).also {
-            it.pollOptions = intArrayOf(7)
+            it.pollOptionIds = intArrayOf(7)
         }
         val effect = async { presenter.effects.first() }
         runCurrent()
@@ -1057,7 +1057,7 @@ class CommentsPresenterTest {
         val changed = assertIs<CommentsEffect.PollOptionsChanged>(effect.await())
 
         assertEquals(42, changed.storyId)
-        val option = story.pollOptionArrayList?.single()
+        val option = story.pollOptions?.single()
         assertEquals(7, option?.id)
         assertEquals("Kotlin", option?.text)
         assertEquals(12, option?.points)

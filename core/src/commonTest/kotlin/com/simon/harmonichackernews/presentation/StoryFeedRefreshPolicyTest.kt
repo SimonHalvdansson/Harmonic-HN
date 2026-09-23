@@ -99,7 +99,7 @@ class StoryFeedRefreshPolicyTest {
         assertFalse(updateVisible(staleNow, StoryType.LAST_WEEK))
         assertFalse(updateVisible(staleNow, StoryType.TOP_STORIES, searching = true))
         assertTrue(
-            StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
+            StoryFeedRefreshPolicy.shouldShowRefreshPrompt(
                 nowMillis = 0,
                 lastLoadedMillis = 0,
                 alwaysShow = true,
@@ -138,7 +138,7 @@ class StoryFeedRefreshPolicyTest {
         nowMillis: Long,
         type: StoryType,
         searching: Boolean = false,
-    ) = StoryFeedRefreshPolicy.shouldShowUpdateAffordance(
+    ) = StoryFeedRefreshPolicy.shouldShowRefreshPrompt(
         nowMillis = nowMillis,
         lastLoadedMillis = 0,
         alwaysShow = false,

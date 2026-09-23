@@ -101,8 +101,8 @@ fun CommentsHeader(
         pdfTitle = story.pdfTitle,
         videoTitle = story.videoTitle,
     )
-    val pollOptions = remember(story.pollOptionArrayList, contentVersion) {
-        story.pollOptionArrayList?.map { option ->
+    val pollOptions = remember(story.pollOptions, contentVersion) {
+        story.pollOptions?.map { option ->
             PollOptionUi(
                 id = option.id,
                 loaded = option.loaded,
@@ -319,7 +319,7 @@ fun CommentsHeader(
                             if (story.isComment) {
                                 val actions = buildList {
                                     if (story.parentId > 0) add(Triple("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT))
-                                    if (story.commentMasterId > 0) add(Triple("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL))
+                                    if (story.rootStoryId > 0) add(Triple("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL))
                                 }
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),

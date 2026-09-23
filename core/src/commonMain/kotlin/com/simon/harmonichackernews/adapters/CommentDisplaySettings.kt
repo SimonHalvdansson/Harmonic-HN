@@ -11,7 +11,7 @@ import com.simon.harmonichackernews.settings.TextPreferences
 
 data class CommentDisplaySettings(
     val collapseParent: Boolean,
-    val showThumbnail: Boolean,
+    val showFavicons: Boolean,
     val showHeaderPreviewImage: Boolean,
     val tintHeader: Boolean,
     val showUpButton: Boolean,
@@ -62,7 +62,7 @@ data class CommentDisplaySettings(
                 preferences.depthIndicatorMode != CommentDepthPreferences.AUTHOR,
             userAvatarsEnabled = preferences.userAvatarsEnabled,
             userAvatarOptions = preferences.userAvatarOptions,
-            showThumbnail = preferences.thumbnails,
+            showFavicons = preferences.showFavicons,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,
             showUpButton = preferences.showUpButton,

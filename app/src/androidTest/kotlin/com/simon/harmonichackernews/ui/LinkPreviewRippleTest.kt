@@ -64,7 +64,7 @@ class LinkPreviewRippleTest {
         )
         val story = StoryListItemSnapshot(
             StorySnapshot(42, url = "https://github.com/harmonic/preview-fixture"),
-            StoryPresentationSnapshot(loaded = true, isLink = true, repoInfo = repo),
+            StoryPresentationSnapshot(loaded = true, isLink = true, gitHubRepoInfo = repo),
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
@@ -135,7 +135,7 @@ class LinkPreviewRippleTest {
                     plainText = { it }, annotatedHtml = { text, _, _ -> AnnotatedString(text) },
                 )) {
                     Column(Modifier.fillMaxWidth().background(Color.Magenta).testTag("favicon")) {
-                        HeaderLinkInfo(story, settings.copy(showThumbnail = true))
+                        HeaderLinkInfo(story, settings.copy(showFavicons = true))
                     }
                 }
             }
@@ -184,7 +184,7 @@ class LinkPreviewRippleTest {
     }
 
     private val settings = CommentDisplaySettings(
-        collapseParent = false, showThumbnail = false, showHeaderPreviewImage = false,
+        collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",
         preferredTextSize = 14f, commentDepthIndicatorMode = "threads", showNavigationBar = false,
         font = "default", showInvert = false, showTopLevelDepthIndicator = false, theme = null,

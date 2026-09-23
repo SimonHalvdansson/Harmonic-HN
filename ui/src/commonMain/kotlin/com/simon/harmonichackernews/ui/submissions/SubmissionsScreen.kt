@@ -345,13 +345,13 @@ private fun BoxScope.SubmissionsList(
             ) {
                 if (story.isComment) {
                     CommentFeedItem(
-                        commentMasterTitle = story.commentMasterTitle,
+                        rootStoryTitle = story.rootStoryTitle,
                         timeText = story.timeFormatted,
                         html = story.text.orEmpty(),
-                        canOpenStory = story.commentMasterId > 0 || story.parentId > 0,
+                        canOpenStory = story.rootStoryId > 0 || story.parentId > 0,
                         displaySettings = displaySettings,
                         onOpenLink = onOpenLink,
-                        onStoryClick = { onIntent(SubmissionsIntent.OpenCommentMaster(story)) },
+                        onStoryClick = { onIntent(SubmissionsIntent.OpenRootStory(story)) },
                         onRepliesClick = { onIntent(SubmissionsIntent.OpenCommentReplies(story)) },
                     )
                 } else {
@@ -362,7 +362,7 @@ private fun BoxScope.SubmissionsList(
                             StoryItemStyleContext(
                                 score = story.score,
                                 commentCount = story.descendants,
-                                clicked = story.clicked,
+                                isRead = story.isRead,
                                 showIndex = false,
                             ),
                         ),

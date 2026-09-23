@@ -87,7 +87,7 @@ class StoryRequestsTest {
         assertEquals("Fresh title", row.title)
         assertEquals(99, row.score)
         assertEquals(77, row.descendants)
-        assertTrue(row.clicked)
+        assertTrue(row.isRead)
         assertEquals("https://example.com/image.png", row.previewImageUrl)
         assertTrue(runtime.mainStories.last() === retained)
         runtime.loadVisibleStories()
@@ -109,7 +109,7 @@ class StoryRequestsTest {
         runtime.selectSearchOption(StorySearchOption.DATE, 2)
         runtime.selectSearchOption(StorySearchOption.POINTS, 3)
         runtime.selectSearchOption(StorySearchOption.COMMENTS, 2)
-        runtime.toggleOnlyClicked()
+        runtime.toggleOnlyRead()
 
         val restored = cacheRuntime(
             backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
@@ -117,7 +117,7 @@ class StoryRequestsTest {
         )
         assertTrue(restored.searching)
         assertEquals(
-            StorySearchOptions(1, 2, 3, 2, onlyClicked = true),
+            StorySearchOptions(1, 2, 3, 2, onlyRead = true),
             restored.searchOptions.state.value.options,
         )
         assertEquals(listOf(42), restored.mainStore.state.value.items.map { it.id })
@@ -148,10 +148,10 @@ class StoryRequestsTest {
         assertEquals(StoryType.NEW_STORIES, runtime.currentType)
         assertEquals(listOf(42), runtime.mainStore.state.value.items.map { it.id })
         runtime.evaluateUpdate(alwaysShow = true)
-        assertTrue(session.updateButtonShowing)
+        assertTrue(session.showRefreshPrompt)
         runtime.openSearch()
         runtime.evaluateUpdate(alwaysShow = false)
-        assertFalse(session.updateButtonShowing)
+        assertFalse(session.showRefreshPrompt)
     }
 
     @Test
@@ -175,7 +175,7 @@ class StoryRequestsTest {
         val update = Story("Updated title", 42, true, false).apply {
             score = 25
             descendants = 8
-            time = 123
+            createdAtEpochSeconds = 123
             url = "https://example.com/updated"
         }
 
@@ -186,12 +186,12 @@ class StoryRequestsTest {
             assertEquals("Updated title", row.title)
             assertEquals(25, row.score)
             assertEquals(8, row.descendants)
-            assertEquals(123, row.time)
+            assertEquals(123, row.createdAtEpochSeconds)
             assertEquals(update.url, row.url)
         }
         assertEquals("Feed title", previousFeed.items.first().title)
         assertEquals("Search title", previousSearch.items.first().title)
-        assertTrue(runtime.mainStore.state.value.items.first().clicked)
+        assertTrue(runtime.mainStore.state.value.items.first().isRead)
         assertEquals(feedStory.previewImageUrl, runtime.mainStore.state.value.items.first().previewImageUrl)
         assertTrue(runtime.mainStories.first() === feedStory)
         assertEquals(previousFeed.items.last(), runtime.mainStore.state.value.items.last())
@@ -311,7 +311,7 @@ class StoryRequestsTest {
         connectivity = AlwaysOnline,
         userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
         loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
-        commentMasterResolver = CommentMasterResolver(UnusedHackerNewsRepository),
+        rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
         nowMillis = { 1_000L },
         hydrateCachedStory = hydrate,
         loadCachedStories = cached,
@@ -351,7 +351,7 @@ class StoryRequestsTest {
             connectivity = AlwaysOnline,
             userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
             loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
-            commentMasterResolver = CommentMasterResolver(UnusedHackerNewsRepository),
+            rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
             nowMillis = { 1_000L },
             hydrateCachedStory = { false },
         )
@@ -389,9 +389,9 @@ class StoryRequestsTest {
             userItemsLoader = UnusedUserItemsLoader,
             savedItemsRepository = SavedItemsRepository(MemoryKeyValueStore()),
             storyFeedLoader = feedLoader,
-            clickedStoryIds = { emptyList() },
-            isStoryClicked = { false },
-            shouldHideClickedStories = { false },
+            readStoryIds = { emptyList() },
+            isStoryRead = { false },
+            shouldHideReadStories = { false },
         )
         val result = requests.loadFeed(StoryType.TOP_STORIES, frontDay = null)
         assertEquals(listOf(1, 2, 3), assertIs<StoryFeedResult.ItemIds>(result).ids)
@@ -415,9 +415,9 @@ class StoryRequestsTest {
             userItemsLoader = userItemsLoader,
             savedItemsRepository = savedItems,
             storyFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
-            clickedStoryIds = { emptyList() },
-            isStoryClicked = { false },
-            shouldHideClickedStories = { false },
+            readStoryIds = { emptyList() },
+            isStoryRead = { false },
+            shouldHideReadStories = { false },
         )
         val effect = async { requests.effects.first() }
         runCurrent()
@@ -495,9 +495,9 @@ class StoryRequestsTest {
         userItemsLoader = userItemsLoader,
         savedItemsRepository = savedItems,
         storyFeedLoader = feedLoader,
-        clickedStoryIds = { emptyList() },
-        isStoryClicked = { false },
-        shouldHideClickedStories = { false },
+        readStoryIds = { emptyList() },
+        isStoryRead = { false },
+        shouldHideReadStories = { false },
     )
 
     private class MemoryHistoryStore : ObservableHistoryStore {

@@ -8,8 +8,8 @@ import com.simon.harmonichackernews.settings.CommentDepthPreferences
 internal data class StoryItemStyleContext(
     val score: Int,
     val commentCount: Int,
-    val clicked: Boolean,
-    val summaryAvailable: Boolean = true,
+    val isRead: Boolean,
+    val previewTextAvailable: Boolean = true,
     val showIndex: Boolean? = null,
 )
 
@@ -19,20 +19,20 @@ internal fun StoryDisplaySettings.toStoryItemStyle(
     previewImageMode = previewImageMode,
     borderlessLargeImage = borderlessLargePreviewImage,
     compact = compactView,
-    showSummary = showSummary && context.summaryAvailable,
-    showFavicon = thumbnails,
+    showPreviewText = showPreviewText && context.previewTextAvailable,
+    showFavicon = showFavicons,
     showPoints = showPoints,
     compactPoints = compactPoints,
     includeTopLevelDomain = includeTopLevelDomain,
     showCommentCount = showCommentsCount,
     showIndex = context.showIndex ?: showIndex,
-    commentsOnLeft = leftAlign,
-    tintCard = tintCardUsingPreview,
+    commentsOnLeft = commentsButtonOnLeft,
+    tintCard = tintCardsFromImages,
     displayStyle = displayStyle,
-    useHotnessIcon = hotness > 0 && context.score + context.commentCount > hotness,
+    useHotnessIcon = hotnessThreshold > 0 && context.score + context.commentCount > hotnessThreshold,
     preferredFont = font,
     textSize = storyTextSize,
-    dimmed = grayOutClicked && context.clicked,
+    dimmed = dimReadStories && context.isRead,
     paletteTintConfigKey = paletteTintMode,
 )
 
