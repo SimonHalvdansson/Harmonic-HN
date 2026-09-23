@@ -8,6 +8,22 @@ import kotlin.test.assertTrue
 
 class HuggingFaceLinkPreviewTest {
     @Test
+    fun quantizationUsesTheFirstWholeMatchingTagAcrossRepeatedParses() {
+        val tags = """"bit", "-4-bit", "4-BIT", "x4-bit", "4-bit-extra", "4-bit", "8-bit""""
+        repeat(2) {
+            assertEquals(
+                "4-bit",
+                LinkPreviewParsers.parseHuggingFace("""{"id":"example/model","tags":[$tags]}""")
+                    .quantization,
+            )
+            assertNull(
+                LinkPreviewParsers.parseHuggingFace("""{"id":"example/model","tags":["4-BIT"," 4-bit"]}""")
+                    .quantization,
+            )
+        }
+    }
+
+    @Test
     fun recognizesModelPagesAndIgnoresOtherHuggingFaceProducts() {
         assertEquals(
             HuggingFaceModel("moonshotai", "Kimi-K3"),

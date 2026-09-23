@@ -7,6 +7,16 @@ import kotlin.test.assertTrue
 
 class StoryCacheIndexTest {
     @Test
+    fun recordKeepsFirstIdPositionAndLastTimestampWhileNormalizingValidEntries() {
+        val entries = linkedSetOf("3-100", "+1-+200", "broken", "3-300", "02-0400")
+        val result = StoryCacheIndex.record(entries, 1, 500, maximumEntries = 3)
+
+        assertEquals(listOf("3-300", "1-500", "2-400"), result.encodedEntries.toList())
+        assertEquals(emptyList(), result.evictedStoryIds)
+        assertEquals(listOf("3-100", "+1-+200", "broken", "3-300", "02-0400"), entries.toList())
+    }
+
+    @Test
     fun recordDeduplicatesAndEvictsTheOldestValidEntry() {
         val result = StoryCacheIndex.record(
             encodedEntries = setOf("1-100", "2-200", "broken"),

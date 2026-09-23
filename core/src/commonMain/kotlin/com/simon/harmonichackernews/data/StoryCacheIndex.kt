@@ -18,10 +18,11 @@ object StoryCacheIndex {
         cachedAtMillis: Long,
         maximumEntries: Int,
     ): StoryCacheIndexUpdate {
-        val validEntries = encodedEntries.mapNotNull(::parse).associateByTo(
-            linkedMapOf(),
-            StoryCacheEntry::storyId,
-        ).toMutableMap()
+        val validEntries = LinkedHashMap<Int, StoryCacheEntry>(encodedEntries.size)
+        encodedEntries.forEach { value ->
+            val entry = parse(value) ?: return@forEach
+            validEntries[entry.storyId] = entry
+        }
         validEntries[storyId] = StoryCacheEntry(storyId, cachedAtMillis)
         val evictionCount = validEntries.size - maximumEntries.coerceAtLeast(0)
         val evicted = if (evictionCount > 0) {

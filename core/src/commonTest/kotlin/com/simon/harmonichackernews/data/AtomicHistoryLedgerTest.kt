@@ -8,6 +8,26 @@ import kotlin.test.assertTrue
 
 class AtomicHistoryLedgerTest {
     @Test
+    fun serializationPreservesOrderDuplicatesAndNumericBoundaries() {
+        val ledger = HistoryLedger()
+        assertEquals("", ledger.serialize())
+        ledger.initialize("1q100-1q200-2q200")
+        assertEquals("1q200-2q200-1q100", ledger.serialize())
+
+        ledger.record(Int.MIN_VALUE, Long.MIN_VALUE)
+        ledger.record(Int.MAX_VALUE, Long.MAX_VALUE)
+        ledger.record(0, 0)
+        val version = ledger.changeVersion
+        val entries = ledger.load()
+        assertEquals(
+            "1q200-2q200-1q100--2147483648q-9223372036854775808-2147483647q9223372036854775807-0q0",
+            ledger.serialize(),
+        )
+        assertEquals(entries, ledger.load())
+        assertEquals(version, ledger.changeVersion)
+    }
+
+    @Test
     fun stateTracksOnlyEffectiveMutations() = runTest {
         val ledger = AtomicHistoryLedger("1q100")
         val initialVersion = ledger.state.value.changeVersion

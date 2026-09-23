@@ -17,6 +17,8 @@ internal data class HuggingFacePreviewTarget(
 )
 
 internal object HuggingFaceLinkPreview {
+    private val quantizationTagPattern = Regex("\\d+-bit")
+
     fun isHuggingFaceUrl(url: String?): Boolean = huggingFaceModel(url) != null
 
     fun huggingFaceModel(url: String?): HuggingFaceModel? {
@@ -91,7 +93,7 @@ internal object HuggingFaceLinkPreview {
             },
             pipelineTag = json.optString<String?>("pipeline_tag", null),
             libraryName = json.optString<String?>("library_name", null),
-            quantization = tags.firstOrNull { it.matches(Regex("\\d+-bit")) },
+            quantization = tags.firstOrNull { quantizationTagPattern.matches(it) },
             licenseName = cardData?.optString<String?>("license_name", null)
                 ?: cardData?.optString<String?>("license", null),
             lastModified = json.optString<String?>("lastModified", null),

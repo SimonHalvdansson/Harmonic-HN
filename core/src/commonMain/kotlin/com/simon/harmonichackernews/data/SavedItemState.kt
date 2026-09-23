@@ -11,6 +11,19 @@ data class TimestampedItem(
     val created: Long,
 )
 
+private inline fun <T> encodeTimestampedItems(
+    items: List<T>,
+    id: (T) -> Int,
+    created: (T) -> Long,
+): String = buildString {
+    for (item in items) {
+        if (isNotEmpty()) append('-')
+        append(id(item))
+        append('q')
+        append(created(item))
+    }
+}
+
 object SavedItemCodec {
     fun decode(value: String?, sortedByCreated: Boolean = false): List<TimestampedItem> {
         if (value.isNullOrEmpty()) return emptyList()
@@ -71,14 +84,8 @@ object SavedItemCodec {
         return if (negative) result else -result
     }
 
-    fun encode(items: List<TimestampedItem>): String = buildString {
-        for (item in items) {
-            if (isNotEmpty()) append('-')
-            append(item.id)
-            append('q')
-            append(item.created)
-        }
-    }
+    fun encode(items: List<TimestampedItem>): String =
+        encodeTimestampedItems(items, TimestampedItem::id, TimestampedItem::created)
 
     /** Keeps the newest timestamp for each ID without moving its first position in the list. */
     internal fun deduplicate(items: List<TimestampedItem>): List<TimestampedItem> {
@@ -199,9 +206,7 @@ class HistoryLedger(
         changeVersion++
     }
 
-    fun serialize(): String = SavedItemCodec.encode(
-        histories.map { TimestampedItem(it.id, it.created) },
-    )
+    fun serialize(): String = encodeTimestampedItems(histories, History::id, History::created)
 
     companion object {
         const val DEFAULT_MAXIMUM_ENTRIES = 10_000
