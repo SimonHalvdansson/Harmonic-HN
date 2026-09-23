@@ -12,9 +12,9 @@ object HtmlTextUtils {
 
         val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
         for (link in document.select("a[href]")) {
-            val decodedHref = Ksoup.parse(link.attr("href")).text()
             val decodedLinkText = Ksoup.parse(link.text()).text()
             if (!decodedLinkText.endsWith("...")) continue
+            val decodedHref = Ksoup.parse(link.attr("href")).text()
             val prefix = decodedLinkText.dropLast(3)
             if (decodedHref.startsWith(prefix)) link.text(decodedHref)
         }

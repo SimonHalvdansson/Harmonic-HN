@@ -18,6 +18,22 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun codecEncodingPreservesOrderDuplicatesSeparatorsAndNumericLimits() {
+        assertEquals("", SavedItemCodec.encode(emptyList()))
+        assertEquals("42q100", SavedItemCodec.encode(listOf(TimestampedItem(42, 100))))
+        assertEquals(
+            "42q100-0q0-42q200-2147483647q9223372036854775807--2147483648q-9223372036854775808",
+            SavedItemCodec.encode(listOf(
+                TimestampedItem(42, 100),
+                TimestampedItem(0, 0),
+                TimestampedItem(42, 200),
+                TimestampedItem(Int.MAX_VALUE, Long.MAX_VALUE),
+                TimestampedItem(Int.MIN_VALUE, Long.MIN_VALUE),
+            )),
+        )
+    }
+
+    @Test
     fun remoteMembershipIsAccountScopedWhileBookmarksRemainLocal() = runTest {
         val store = TestKeyValueStore(mapOf(SavedItemKeys.FAVORITES to "999q1"))
         var account: String? = "alice"

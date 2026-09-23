@@ -71,8 +71,14 @@ object SavedItemCodec {
         return if (negative) result else -result
     }
 
-    fun encode(items: List<TimestampedItem>): String =
-        items.joinToString("-") { "${it.id}q${it.created}" }
+    fun encode(items: List<TimestampedItem>): String = buildString {
+        for (item in items) {
+            if (isNotEmpty()) append('-')
+            append(item.id)
+            append('q')
+            append(item.created)
+        }
+    }
 
     /** Keeps the newest timestamp for each ID without moving its first position in the list. */
     internal fun deduplicate(items: List<TimestampedItem>): List<TimestampedItem> {
