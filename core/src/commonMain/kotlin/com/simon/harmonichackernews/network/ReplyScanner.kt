@@ -125,12 +125,13 @@ class DefaultReplyScanner(
 
 object ReplyText {
     const val EMPTY_REPLY_TEXT = "Tap to view the reply."
+    private val whitespace = Regex("\\s+")
 
     fun normalizeUsername(username: String?): String = username.orEmpty().trim()
 
     fun plainReplyText(html: String?): String {
         if (html.isNullOrBlank()) return EMPTY_REPLY_TEXT
-        val text = Ksoup.parse(html).text().replace(Regex("\\s+"), " ").trim()
+        val text = Ksoup.parse(html).text().replace(whitespace, " ").trim()
         if (text.isEmpty()) return EMPTY_REPLY_TEXT
         return if (text.length > 240) text.take(237) + "..." else text
     }

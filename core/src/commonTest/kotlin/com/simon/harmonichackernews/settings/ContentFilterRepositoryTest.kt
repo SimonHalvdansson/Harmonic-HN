@@ -7,6 +7,24 @@ import kotlin.test.assertTrue
 
 class ContentFilterRepositoryTest {
     @Test
+    fun userLookupMatchesLoadedFiltersAndObservesPreferenceChanges() {
+        val store = TestKeyValueStore()
+        val repository = ContentFilterRepository(store)
+        val usernames = listOf("alice", " BOB ", "İ", "i", "i\u0307", "Σ", "ς", "missing", "", null)
+        for (serialized in listOf(null, "", ", ,", " Alice,BOB,alice, İ,Σ,ς,, ")) {
+            store.putString(ContentFilterKeys.USERS, serialized)
+            val users = repository.load().users
+            for (username in usernames) {
+                assertEquals(
+                    username?.trim()?.lowercase() in users,
+                    repository.containsUser(username),
+                    "users=$serialized; username=$username",
+                )
+            }
+        }
+    }
+
+    @Test
     fun filtersAreTrimmedAndUsernamesAreCaseInsensitive() {
         val repository = ContentFilterRepository(
             TestKeyValueStore(

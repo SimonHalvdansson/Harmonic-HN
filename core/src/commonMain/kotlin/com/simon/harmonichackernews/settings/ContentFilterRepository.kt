@@ -33,7 +33,9 @@ class ContentFilterRepository(
 
     fun containsUser(username: String?): Boolean {
         val normalized = normalizeUsername(username) ?: return false
-        return normalized in load().users
+        return store.getString(ContentFilterKeys.USERS).orEmpty()
+            .splitToSequence(',')
+            .any { it.trim().lowercase() == normalized }
     }
 
     fun items(type: ContentFilterType): List<String> = when (type) {

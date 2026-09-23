@@ -27,7 +27,20 @@ object UserTagCodec {
     fun tagFor(serialized: String?, username: String?): String {
         val normalizedUsername = username?.trim()?.takeIf(String::isNotEmpty)?.lowercase()
             ?: return ""
-        return decode(serialized, normalizeUsernames = true)[normalizedUsername].orEmpty()
+        if (serialized.isNullOrEmpty()) return ""
+        return runCatching {
+            val json = JsonObject(serialized)
+            var tag = ""
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val storedKey = keys.next()
+                if (storedKey.trim().lowercase() == normalizedUsername) {
+                    // Keep the last normalized match, just as decode's map does.
+                    tag = json.optString(storedKey, "")
+                }
+            }
+            tag
+        }.getOrDefault("")
     }
 
     fun update(serialized: String?, username: String?, tag: String?): String? {
