@@ -1,0 +1,3 @@
+# Hide vendored llama.cpp from default ripgrep searches and file listings.
+# For upstream runtime work, search its directory explicitly with rg --no-ignore.
+/local_ai_runtime/src/main/cpp/third_party/llama.cpp/

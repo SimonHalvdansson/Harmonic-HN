@@ -1197,7 +1197,7 @@ class CommentsCoordinator(
         private const val COMMENTS_PERFORMANCE_TAG = "CommentsPerformance"
         private const val TRACE_CONTENT_READY = "CommentsOpen.contentReady"
         private const val COMMENTS_BENCHMARK_APPLICATION_ID =
-            "com.simon.harmonichackernews.compose.benchmark"
+            "com.simon.harmonichackernews.benchmark.app"
         private const val STATE_COMMENT_ACTION_COMMENT_ID =
             "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID"
         private const val STATE_ADBLOCK_DISABLED_FOR_SESSION =

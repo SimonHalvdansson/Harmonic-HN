@@ -10,7 +10,7 @@ import androidx.test.uiautomator.Until
 import java.util.regex.Pattern
 
 internal const val BenchmarkPackageName =
-    "com.simon.harmonichackernews.compose.benchmark"
+    "com.simon.harmonichackernews.benchmark.app"
 private const val SeedCommentsBenchmarkAction =
     "com.simon.harmonichackernews.action.BENCHMARK_SEED_COMMENTS"
 private const val OpenCommentsBenchmarkAction =

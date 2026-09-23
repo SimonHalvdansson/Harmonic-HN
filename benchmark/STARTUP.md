@@ -47,7 +47,8 @@ Startup Profile DEX layout optimization requires R8. Both versions must use the 
 The two annotation warnings suppressed in `app/benchmark-rules.pro` are compile-time-only
 Tink annotations missing from the benchmark's classpath.
 
-The test uses its own `com.simon.harmonichackernews.compose.benchmark` package. Do not uninstall
+The benchmark app uses `com.simon.harmonichackernews.benchmark.app`, separate from the
+`com.simon.harmonichackernews.benchmark` test runner. Do not uninstall
 or clear the normal Harmonic packages. Keep connectivity, animations, display settings and
 battery conditions consistent. Do not suppress device-mirroring or thermal errors. Cold starts
 kill the app process; they do not mean fresh installation or cleared HTTP caches.

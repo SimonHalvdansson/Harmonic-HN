@@ -172,7 +172,7 @@ class MainActivity : BaseActivity() {
 
     private companion object {
         const val COMMENTS_BENCHMARK_APPLICATION_ID =
-            "com.simon.harmonichackernews.compose.benchmark"
+            "com.simon.harmonichackernews.benchmark.app"
         const val ACTION_BENCHMARK_SEED_COMMENTS =
             "com.simon.harmonichackernews.action.BENCHMARK_SEED_COMMENTS"
         const val ACTION_BENCHMARK_OPEN_COMMENTS =

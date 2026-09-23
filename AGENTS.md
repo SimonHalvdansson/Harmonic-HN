@@ -8,7 +8,7 @@ Kotlin tests, and Android release builds are checked by GitHub Actions.
 General tips:
 - `app/` is the Android application shell. Portable application logic belongs in `core/`,
   Compose UI belongs in `ui/`, portable assets belong in `resources/`, and
-  `desktop_app/` is the ready, unreleased desktop application host.
+  `ios_app/` and `desktop_app/` are the ready, unreleased iOS and desktop hosts.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
 - Keep generated build logs, benchmark output, diagnostic captures, and temporary research or
@@ -24,6 +24,9 @@ General tips:
 
 ## Kotlin Multiplatform Boundaries
 
+For changes to state ownership, feature stores, or platform boundaries, consult
+[KMP architecture](docs/architecture/KMP_ARCHITECTURE.md).
+
 - `core/` targets Android, iOS, and desktop. It owns platform-neutral models, parsing,
   filtering, formatting, repositories, state machines, settings contracts, suspend-first networking,
   and portable filesystem implementations. Keep `commonMain` free of Android, AndroidX, Foundation,
@@ -32,8 +35,8 @@ General tips:
   Platform source sets should contain only host-specific UI integration.
 - Put platform facilities behind the contracts in
   `core/src/commonMain/kotlin/com/simon/harmonichackernews/platform/`; Android
-  implementations belong in the app module's Android main source set, while
-  Apple adapters belong in `core/src/iosMain/` until a dedicated Xcode host exists.
+  implementations belong in the app module's Android main source set. iOS Kotlin adapters
+  belong in `core/src/iosMain/`, and native host services belong in `ios_app/`.
 - Prefer coroutines and suspend APIs for portable networking. Ktor engines, native directory choices,
   credential/keychain access, notifications, intents, native browser views, and background-work
   schedulers stay in platform code.
@@ -117,19 +120,6 @@ When device use is authorized, use Google's Android CLI as the primary interface
 - Inspect UI state with `android layout --device=<serial> --pretty`. Re-observe after every action and prefer `--diff` for subsequent checks. Use semantic text, content descriptions, interactions, state, bounds, and center coordinates instead of raw hierarchy dumps.
 - When layout data is insufficient, use `android screen capture --annotate`, visually inspect the image, and resolve a verified label with `android screen resolve --screenshot=<path> --string='tap #N'`.
 - Keep ADB as a narrow fallback for capabilities Android CLI does not yet provide: discovering connected serials, `adb shell input` taps/text/swipes/key events, launching an already-installed package without reinstalling it, and screen recording. Confirm a text field is focused before typing, scroll slowly, and re-inspect with `android layout` after each input.
-
-### Legacy/Compose side-by-side QA
-
-On 2026-08-01, the `main` branch's `debugFast` build was installed on every connected QA target: the physical Pixel 8 Pro plus the Pixel 9a, foldable, and tablet emulators. It remains installed as `com.simon.harmonichackernews` with the label **Harmonic** for legacy View comparisons.
-
-While the `codex/compose` migration branch is in progress, its debug and debugFast variants use the temporary application ID `com.simon.harmonichackernews.compose` and label **Harmonic Compose**. This lets both builds remain installed. Re-check serials with `adb devices -l`, then use the appropriate explicit package when launching an already-installed build:
-
-```
-adb -s <serial> shell monkey -p com.simon.harmonichackernews -c android.intent.category.LAUNCHER 1
-adb -s <serial> shell monkey -p com.simon.harmonichackernews.compose -c android.intent.category.LAUNCHER 1
-```
-
-Do not remove the temporary suffix until legacy side-by-side QA is finished. Do not uninstall either package or clear its data as part of comparison testing.
 
 If a required ADB fallback is not on `PATH`, use `/Users/simon/Library/Android/sdk/platform-tools/adb` rather than searching the system repeatedly.
 
