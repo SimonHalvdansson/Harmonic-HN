@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
+import com.simon.harmonichackernews.network.ApiDecodingException
 import com.simon.harmonichackernews.network.CachedDownloadService
 import com.simon.harmonichackernews.network.DownloadCachePolicy
 import com.simon.harmonichackernews.network.DownloadStore
@@ -102,16 +103,16 @@ class StoryCacheService(
                 throw error
             } catch (_: IllegalArgumentException) {
                 null
-            } catch (_: com.simon.harmonichackernews.network.ApiDecodingException) {
+            } catch (_: ApiDecodingException) {
                 null
             }
         }
     }
 
-    fun hydrateStory(story: com.simon.harmonichackernews.data.Story?): Boolean =
+    fun hydrateStory(story: Story?): Boolean =
         repository.hydrateStory(story)
 
-    fun recentStories(): List<com.simon.harmonichackernews.data.Story> =
+    fun recentStories(): List<Story> =
         repository.recentStories(nowMillis())
 
     fun hasRecentStories(): Boolean = repository.hasRecentStories(nowMillis())
@@ -139,7 +140,7 @@ class StoryCacheService(
             throw error
         } catch (_: IllegalArgumentException) {
             null
-        } catch (_: com.simon.harmonichackernews.network.ApiDecodingException) {
+        } catch (_: ApiDecodingException) {
             null
         }
         writeMutex.withLock { repository.storeStory(id, payload, nowMillis(), summary) }

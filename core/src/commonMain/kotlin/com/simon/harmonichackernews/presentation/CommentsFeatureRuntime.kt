@@ -24,6 +24,7 @@ import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
+import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
@@ -142,7 +143,7 @@ class CommentsFeatureRuntime(
         get() = summaryPageTextRetryPending ||
             summaryRuntime?.state?.value?.status is StorySummaryStatus.Running
 
-    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics?
+    val summaryDiagnostics: StorySummaryDiagnostics?
         get() = summaryRuntime?.state?.value?.diagnostics
 
     init {

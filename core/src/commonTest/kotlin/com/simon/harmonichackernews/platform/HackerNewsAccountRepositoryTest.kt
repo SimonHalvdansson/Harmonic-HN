@@ -1,5 +1,10 @@
 package com.simon.harmonichackernews.platform
 
+import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.presentation.SavedItemActionOutcome
+import com.simon.harmonichackernews.presentation.SavedItemActionUseCase
+import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -41,24 +46,24 @@ class HackerNewsAccountRepositoryTest {
         )
         val alice = HackerNewsAccount("alice", "password")
         accounts.saveAccount(alice)
-        val saved = com.simon.harmonichackernews.data.SavedItemsRepository(
-            com.simon.harmonichackernews.settings.TestKeyValueStore(),
+        val saved = SavedItemsRepository(
+            TestKeyValueStore(),
         ).also {
             it.bindAccountScope(accountSession = { accounts.accountState.value }) {
                 accounts.currentAccount?.username
             }
         }
         var requests = 0
-        val actions = com.simon.harmonichackernews.presentation.SavedItemActionUseCase(
+        val actions = SavedItemActionUseCase(
             saved, { 10 },
-            voteRequest = { _, _ -> requests++; com.simon.harmonichackernews.network.HackerNewsActionResult.Success() },
-            favoriteRequest = { _, _ -> requests++; com.simon.harmonichackernews.network.HackerNewsActionResult.Success() },
+            voteRequest = { _, _ -> requests++; HackerNewsActionResult.Success() },
+            favoriteRequest = { _, _ -> requests++; HackerNewsActionResult.Success() },
         )
         val pending = actions.beginVoteAtomic(42, false, "up")
         accounts.saveAccount(HackerNewsAccount("bob", "password"))
         accounts.saveAccount(alice)
         // No saved-item reader or collector runs during the intermediate account.
-        assertIs<com.simon.harmonichackernews.presentation.SavedItemActionOutcome.Failure>(actions.execute(pending))
+        assertIs<SavedItemActionOutcome.Failure>(actions.execute(pending))
         assertEquals(0, requests)
         assertFalse(actions.isUpvoted(42, false))
         accounts.close()

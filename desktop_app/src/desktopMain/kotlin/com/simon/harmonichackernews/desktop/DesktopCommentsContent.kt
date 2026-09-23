@@ -30,6 +30,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainStoryRequest
@@ -308,7 +309,7 @@ private fun DesktopCommentsHeader(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     controller: CommentsScreenController,
-    settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
+    settings: CommentDisplaySettings,
 ) {
     val colors = HarmonicTheme.colors
     val tintBase = colors.contentCardBackground.toArgb()

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
 import com.simon.harmonichackernews.network.CommentThreadRepository
@@ -768,7 +769,7 @@ class CommentsPresenter(
     private suspend fun applyAlgoliaThread(
         action: CommentsAction.LoadThread,
         requestId: Int,
-        parsed: com.simon.harmonichackernews.network.AlgoliaCommentsResponse,
+        parsed: AlgoliaCommentsResponse,
         networkCompleted: Boolean,
         responseToCache: String?,
         restoreScroll: Boolean,

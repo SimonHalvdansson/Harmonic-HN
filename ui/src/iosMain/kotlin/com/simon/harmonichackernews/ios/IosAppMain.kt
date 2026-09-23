@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import com.simon.harmonichackernews.app.IosHostRuntimeBindings
+import com.simon.harmonichackernews.platform.IosAppearanceController
+import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -89,8 +92,8 @@ private enum class IosBackVisualTarget { None, Story, Settings, Submissions, Edi
  * the returned controller; Compose dispatches iOS edge gestures through Navigation Event.
  */
 class IosHarmonicApplication(
-    bindings: com.simon.harmonichackernews.platform.IosPlatformBindings,
-    runtime: com.simon.harmonichackernews.app.IosHostRuntimeBindings,
+    bindings: IosPlatformBindings,
+    runtime: IosHostRuntimeBindings,
 ) {
     private val appearance = bindings.appearance
     private val bootstrap = IosHarmonicAppBootstrap(
@@ -134,7 +137,7 @@ class IosHarmonicApplication(
 private fun IosApp(
     bootstrap: IosHarmonicAppBootstrap,
     scene: HarmonicSceneComposition,
-    appearance: com.simon.harmonichackernews.platform.IosAppearanceController,
+    appearance: IosAppearanceController,
 ) {
     val foreground = LocalIosForeground.current
     LaunchedEffect(foreground, bootstrap.app) {

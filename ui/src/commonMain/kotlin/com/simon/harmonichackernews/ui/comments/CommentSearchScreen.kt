@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
+import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
 import org.jetbrains.compose.resources.painterResource
 
 /** Stateless comment-search surface backed by the shared comment-thread store. */
@@ -56,7 +57,7 @@ fun CommentSearchScreen(
     commentContent: @Composable (PortableCommentItem) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    com.simon.harmonichackernews.ui.content.PrefetchCommentContent(listState, visibleComments, collectLinks)
+    PrefetchCommentContent(listState, visibleComments, collectLinks)
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     // Keep selection/composition state local to the field. On desktop, feeding the asynchronously

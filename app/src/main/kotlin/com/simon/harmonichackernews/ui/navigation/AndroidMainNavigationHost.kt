@@ -80,6 +80,7 @@ import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
+import com.simon.harmonichackernews.widget.refreshStoryWidgets
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -596,7 +597,7 @@ private fun MainNavigation(
                                 onThemeChanged = {
                                     AndroidActivityTheme.setupTheme(activity)
                                     appearance.refreshSelection()
-                                    com.simon.harmonichackernews.widget.refreshStoryWidgets(activity, reloadStories = false)
+                                    refreshStoryWidgets(activity, reloadStories = false)
                                 },
                             )
                         }

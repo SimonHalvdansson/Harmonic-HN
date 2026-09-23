@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.summary.local
 
 import android.content.Context
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
@@ -20,7 +21,7 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
 
         override fun isInstalled(runtime: LocalModelRuntime): Boolean = false
 
-        override fun request(model: com.simon.harmonichackernews.summary.LocalModelDefinition): String =
+        override fun request(model: LocalModelDefinition): String =
             unavailableMessage
 
         override fun cancel(runtime: LocalModelRuntime) = Unit

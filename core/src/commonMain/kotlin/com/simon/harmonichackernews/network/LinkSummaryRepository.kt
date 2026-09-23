@@ -6,6 +6,7 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.simon.harmonichackernews.serialization.JsonObject
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import io.ktor.client.HttpClient
@@ -474,7 +475,7 @@ object LinkSummaryParser {
                 language = "en",
                 contentType = HACKER_NEWS_ITEM_CONTENT_TYPE,
                 description = if (comment) {
-                    com.simon.harmonichackernews.utils.HtmlTextUtils
+                    HtmlTextUtils
                         .normalizeAndTruncatePlainText(description, MAX_DESCRIPTION_CHARS)
                 } else truncate(description, MAX_DESCRIPTION_CHARS),
                 finalUrl = pageUrl,

@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.FileResumableDownloadDestination
 import com.simon.harmonichackernews.network.KtorTransferClient
 import com.simon.harmonichackernews.network.ResumableDownloadService
+import com.simon.harmonichackernews.network.TransferProgress
 import com.simon.harmonichackernews.summary.LocalModelFilePolicy
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
 import kotlin.math.min
@@ -161,6 +162,6 @@ class LocalModelDownloadWorker(
 
 }
 
-private fun com.simon.harmonichackernews.network.TransferProgress.percentOf(
+private fun TransferProgress.percentOf(
     expectedBytes: Long,
 ): Int = min(100L, bytesWritten.coerceAtMost(expectedBytes) * 100L / expectedBytes).toInt()

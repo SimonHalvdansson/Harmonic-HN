@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.NitterInfo
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.ReadingPreferences
@@ -39,7 +40,7 @@ class StoryLinkPreviewSession(
     fun shouldInitializeWebPage(): Boolean =
         nitter.shouldInitializeWebPage(story?.url, nitterPreferences())
 
-    fun prepareLoad(url: String, extractor: WebPageExtractor<com.simon.harmonichackernews.data.NitterInfo>?): String {
+    fun prepareLoad(url: String, extractor: WebPageExtractor<NitterInfo>?): String {
         if (extractor == null) {
             nitter.cancel()
             return url
@@ -54,7 +55,7 @@ class StoryLinkPreviewSession(
 
     fun onPageFinished(
         url: String?,
-        extractor: WebPageExtractor<com.simon.harmonichackernews.data.NitterInfo>,
+        extractor: WebPageExtractor<NitterInfo>,
     ) {
         nitter.onPageFinished(
             loadedUrl = url,

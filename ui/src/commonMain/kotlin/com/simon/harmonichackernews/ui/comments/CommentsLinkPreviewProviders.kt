@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.content.MathPreviewText
 import org.jetbrains.compose.resources.DrawableResource
 
 
@@ -192,7 +193,7 @@ internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplay
     }
     Column {
         PreviewHeader("Abstract:")
-        com.simon.harmonichackernews.ui.content.MathPreviewText(
+        MathPreviewText(
             text = info.arxivAbstract.orEmpty(),
             color = HarmonicTheme.colors.contentPrimary,
             fontFamily = typography.family,

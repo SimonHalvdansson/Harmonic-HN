@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,8 +25,8 @@ data class CommentsState(
     val presenter: CommentsPresenterState = CommentsPresenterState(),
     val settings: CommentsSettingsState? = null,
     val summaryLoading: Boolean = false,
-    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics? = null,
-    val headerPreviewResource: com.simon.harmonichackernews.network.StoryPreviewResourceState? = null,
+    val summaryDiagnostics: StorySummaryDiagnostics? = null,
+    val headerPreviewResource: StoryPreviewResourceState? = null,
 ) {
     val thread: PortableCommentThreadState get() = presenter.thread
 }

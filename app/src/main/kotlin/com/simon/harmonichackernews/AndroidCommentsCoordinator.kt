@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
+import com.simon.harmonichackernews.presentation.ActionFailurePresentation
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsBackContext
 import com.simon.harmonichackernews.presentation.CommentsBackPolicy
@@ -1129,7 +1130,7 @@ class AndroidCommentsCoordinator(
     }
 
     private fun showActionFailure(
-        presentation: com.simon.harmonichackernews.presentation.ActionFailurePresentation,
+        presentation: ActionFailurePresentation,
     ) {
         if (presentation.requestLogin) {
             navigation.showLoginDialog()

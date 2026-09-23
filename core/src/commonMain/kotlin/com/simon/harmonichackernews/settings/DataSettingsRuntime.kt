@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -33,7 +34,7 @@ sealed interface DataSettingsRuntimeEffect {
 class DataSettingsRuntime(
     private val scope: CoroutineScope,
     private val service: DataSettingsService,
-    private val today: () -> com.simon.harmonichackernews.platform.LocalCalendarDate,
+    private val today: () -> LocalCalendarDate,
 ) {
     private val mutableState = MutableStateFlow(DataSettingsRuntimeState(service.snapshot()))
     private val mutableEffects = MutableSharedFlow<DataSettingsRuntimeEffect>(extraBufferCapacity = 8)

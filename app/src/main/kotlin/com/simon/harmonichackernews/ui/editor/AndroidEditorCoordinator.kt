@@ -4,6 +4,7 @@ import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
@@ -93,7 +94,7 @@ class AndroidEditorCoordinator(
                 result.challenge,
                 object : CaptchaResultHandler {
                     override fun onCaptchaResponse(
-                        challenge: com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge,
+                        challenge: HackerNewsCaptchaChallenge,
                         captchaResponse: String,
                     ) {
                         screenSession.respondToCaptcha(challenge, captchaResponse)

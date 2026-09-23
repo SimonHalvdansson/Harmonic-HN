@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.data.Story
+
 enum class SavedListKind {
     HISTORY,
     FAVORITES,
@@ -34,12 +36,12 @@ object SavedListPresentationPolicy {
 
 data class SavedItemStoryReconciliation(
     val changed: Boolean,
-    val stories: List<com.simon.harmonichackernews.data.Story>,
+    val stories: List<Story>,
 )
 
 object SavedItemStoryReconciler {
     fun reconcile(
-        currentStories: List<com.simon.harmonichackernews.data.Story>,
+        currentStories: List<Story>,
         currentCommentIds: Set<Int>,
         itemIds: List<Int>,
         commentIds: Set<Int>,
@@ -51,7 +53,7 @@ object SavedItemStoryReconciler {
 
         val existingById = currentStories.associateBy { it.id }
         val reconciled = itemIds.map { id ->
-            (existingById[id] ?: com.simon.harmonichackernews.data.Story(
+            (existingById[id] ?: Story(
                 "Loading...",
                 id,
                 false,

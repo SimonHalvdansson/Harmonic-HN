@@ -4,6 +4,7 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -123,7 +124,7 @@ fun StoryPreviewOverlay(
     pageOnScrollWheel: Boolean = false,
     onScrimAlphaChanged: (Float) -> Unit = {},
     cardContent: @Composable (
-        story: com.simon.harmonichackernews.presentation.StoryListItemSnapshot,
+        story: StoryListItemSnapshot,
         page: Int,
         cardColor: Color,
         modifier: Modifier,

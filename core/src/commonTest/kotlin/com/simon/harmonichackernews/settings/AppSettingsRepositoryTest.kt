@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -55,7 +57,7 @@ class AppSettingsRepositoryTest {
         assertEquals(StoryListSelector.CHIPS, restored.listSelector)
         assertEquals(
             StoryListSelector.CHIPS,
-            com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(restored).listSelector,
+            StoryDisplaySettings.from(restored).listSelector,
         )
         assertFalse(restored.compactHeader)
 
@@ -88,7 +90,7 @@ class AppSettingsRepositoryTest {
         assertEquals(CommentIndicatorThickness.WIDE, restored.indicatorThickness)
         assertTrue(restored.roundedDepthIndicators)
         assertTrue(restored.continuousDepthIndicators)
-        val display = com.simon.harmonichackernews.adapters.CommentDisplaySettings.from(
+        val display = CommentDisplaySettings.from(
             restored, showInvert = false, isTablet = false, hasAccountDetails = false, canProvideSummary = false,
         )
         assertFalse(display.continuousDepthIndicators)

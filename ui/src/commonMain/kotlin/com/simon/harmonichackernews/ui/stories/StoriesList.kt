@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.common.OutlinedButton
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.ui.content.CommentFeedItem
 import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.StoryRowModel
@@ -542,8 +544,8 @@ private fun SavedCommentStoryRow(
     onReplies: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val links = com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies.current.links
-    com.simon.harmonichackernews.ui.content.CommentFeedItem(
+    val links = LocalHarmonicUiDependencies.current.links
+    CommentFeedItem(
         rootStoryTitle = story.presentation.rootStory?.title,
         timeText = story.timeFormatted,
         html = story.text.orEmpty(),

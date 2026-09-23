@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.ui.graphics.painter.Painter
+import com.simon.harmonichackernews.settings.CollectedLinksMode
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
+import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.settings.AppFont
@@ -128,7 +131,7 @@ class CommentsSettingsPresenter(
             continuousDepthIndicators = comments.continuousDepthIndicators,
             userAvatarsEnabled = comments.userAvatarsEnabled,
             userAvatarOptions = comments.userAvatarOptions,
-            depthModeLabel = com.simon.harmonichackernews.settings.CommentDepthPreferences
+            depthModeLabel = CommentDepthPreferences
                 .modeLabel(comments.depthIndicatorMode),
             showDividers = comments.showDividers,
             markNewComments = comments.markNewComments,
@@ -156,7 +159,7 @@ class CommentsSettingsPresenter(
         )
     }
 
-    fun setCollectedLinksMode(mode: com.simon.harmonichackernews.settings.CollectedLinksMode) =
+    fun setCollectedLinksMode(mode: CollectedLinksMode) =
         repository.setCollectedLinksMode(mode)
 
     fun setDisplayStyle(value: DisplayStyle) = repository.setCommentDisplayStyle(value)
@@ -177,7 +180,7 @@ class CommentsSettingsPresenter(
     )
 
     fun setDepthIndicatorMode(value: String) = repository.setCommentDepthIndicatorMode(value)
-    fun setIndicatorThickness(value: com.simon.harmonichackernews.settings.CommentIndicatorThickness) =
+    fun setIndicatorThickness(value: CommentIndicatorThickness) =
         repository.setCommentIndicatorThickness(value)
     fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         repository.setCommentsPreload(mode, minimumBattery)

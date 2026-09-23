@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.platform
 
+import com.simon.harmonichackernews.network.ReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.KeyValueStore
 
 /** Lets shared appearance state update the containing UIKit traits and status-bar foreground. */
@@ -23,7 +24,7 @@ class IosPlatformBindings(
     val timeFormatting: PlatformTimeFormatter,
     val appearance: IosAppearanceController,
     val textDocuments: TextDocumentService,
-    val replyNotifications: com.simon.harmonichackernews.network.ReplyNotificationPlatform? = null,
+    val replyNotifications: ReplyNotificationPlatform? = null,
     localSummary: LocalSummaryEngine? = null,
     nativeLocalSummary: IosNativeSummaryBridge? = null,
 ) {

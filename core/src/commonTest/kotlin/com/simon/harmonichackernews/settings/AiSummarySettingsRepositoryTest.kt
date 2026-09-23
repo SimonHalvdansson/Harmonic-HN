@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.settings
 
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
+import com.simon.harmonichackernews.platform.CredentialIds
 import com.simon.harmonichackernews.platform.CredentialStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -91,7 +92,7 @@ class AiSummarySettingsRepositoryTest {
     @Test
     fun snapshotDoesNotSynchronouslyReadCredentials() = runTest {
         val credentials = TestCredentialStore(
-            mapOf(com.simon.harmonichackernews.platform.CredentialIds.AI_SUMMARY_API_KEY to "secret"),
+            mapOf(CredentialIds.AI_SUMMARY_API_KEY to "secret"),
         )
         val repository = AiSummarySettingsRepository(TestKeyValueStore(), credentials, emptyFlow())
 

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 
@@ -63,7 +64,7 @@ fun AndroidNighttimeRangeDialog(
             .uses24HourClock(),
         onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
             appearance.saveSchedule(
-                com.simon.harmonichackernews.settings.NighttimeSchedule(
+                NighttimeSchedule(
                     fromHour,
                     fromMinute,
                     toHour,

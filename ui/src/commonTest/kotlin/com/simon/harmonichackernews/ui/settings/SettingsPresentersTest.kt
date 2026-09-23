@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.StoryListSelector
 import com.simon.harmonichackernews.settings.SurfaceEffectMode
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
@@ -39,10 +40,10 @@ class SettingsPresentersTest {
         val store = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(store, store.changes)
         val presenter = AppearanceSettingsPresenter(repository)
-        repository.setStoryListSelector(com.simon.harmonichackernews.settings.StoryListSelector.CHIPS)
+        repository.setStoryListSelector(StoryListSelector.CHIPS)
 
         assertEquals(
-            com.simon.harmonichackernews.settings.StoryListSelector.CHIPS,
+            StoryListSelector.CHIPS,
             presenter.state("Default", "Default", showTransparentStatusBar = true).storyListSelector,
         )
     }

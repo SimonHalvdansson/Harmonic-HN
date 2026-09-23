@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.network.NitterInstance
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
@@ -155,7 +156,7 @@ class StoredUserSettings(
                 alwaysShowTapToRefresh =
                     boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
                 preferredStoryType = preferredStoryType(),
-                frontpageOrder = com.simon.harmonichackernews.StoryTypeMenuPolicy.sanitizeOrder(
+                frontpageOrder = StoryTypeMenuPolicy.sanitizeOrder(
                     string(UserPreferenceKeys.FRONTPAGE_ORDER, "").split(','),
                 ),
                 additionalFrontpages = AdditionalFrontpagePreferences.sanitize(

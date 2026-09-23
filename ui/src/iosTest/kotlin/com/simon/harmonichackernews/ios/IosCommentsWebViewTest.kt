@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
@@ -160,7 +161,7 @@ class IosBrowserIntegrationTest {
             assertNull(browser.view)
             browser.ensureLoaded()
             assertEquals(
-                com.simon.harmonichackernews.presentation.WebContentPolicy.resolveUrl(original, listOf("nytimes.com"))?.loadUrl,
+                WebContentPolicy.resolveUrl(original, listOf("nytimes.com"))?.loadUrl,
                 browser.currentUrl(),
             )
             assertNotNull(browser.view?.navigationDelegate)

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.network.NitterInstance
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
@@ -64,7 +65,7 @@ class StoredSettingsMutator(
     fun setFrontpageOrder(value: List<String>) {
         store.putString(
             UserPreferenceKeys.FRONTPAGE_ORDER,
-            com.simon.harmonichackernews.StoryTypeMenuPolicy.sanitizeOrder(value).joinToString(","),
+            StoryTypeMenuPolicy.sanitizeOrder(value).joinToString(","),
         )
     }
 

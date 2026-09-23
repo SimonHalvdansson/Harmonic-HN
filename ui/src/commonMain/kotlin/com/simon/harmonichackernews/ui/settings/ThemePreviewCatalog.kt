@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 
@@ -7,7 +8,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 object ThemePreviewCatalog {
     fun palettes(
         theme: String,
-        accentPreset: String = com.simon.harmonichackernews.settings.ThemePreferences.ACCENT_DEFAULT,
+        accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
     ): Pair<ThemePreviewPalette, ThemePreviewPalette?> = when (theme) {
         "material_daynight", "material_fixed_daynight", "darklight_daynight",
         "amoledwhite_daynight" ->
@@ -18,7 +19,7 @@ object ThemePreviewCatalog {
     fun preview(
         theme: String,
         systemDark: Boolean,
-        accentPreset: String = com.simon.harmonichackernews.settings.ThemePreferences.ACCENT_DEFAULT,
+        accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
     ): ThemePreviewPalette =
         fromPalette(HarmonicThemeCatalog.resolve(theme, systemDark, accentPreset))
 

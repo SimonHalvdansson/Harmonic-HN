@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.data.SavedItemSnapshot
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.network.HackerNewsActionFailureReason
 import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -193,7 +194,7 @@ class SavedItemActionUseCaseTest {
     @Test
     fun failedFavoriteRestoresPreviousState() = runTest {
         favoriteResult = HackerNewsActionResult.Captcha(
-            com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge(
+            HackerNewsCaptchaChallenge(
                 actionUrl = "https://news.ycombinator.com/favorite",
                 siteKey = "site-key",
                 formFields = emptyList(),

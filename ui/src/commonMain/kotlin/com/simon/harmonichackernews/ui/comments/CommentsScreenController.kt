@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
@@ -44,7 +45,7 @@ data class CommentsScreenState(
     val storyFavoriteLoading: Boolean = false,
     val pollVoteInFlightOptionId: Int? = null,
     val storySummaryLoading: Boolean = false,
-    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics? = null,
+    val summaryDiagnostics: StorySummaryDiagnostics? = null,
     val headerPreviewResource: StoryPreviewResourceState? = null,
     val commentFavoriteLoadingId: Int = -1,
     val commentVoteLoadingId: Int = -1,
@@ -110,7 +111,7 @@ class CommentsScreenController private constructor(
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
     val storySummaryLoading: Boolean get() = screenState.storySummaryLoading
-    val summaryDiagnostics: com.simon.harmonichackernews.summary.StorySummaryDiagnostics?
+    val summaryDiagnostics: StorySummaryDiagnostics?
         get() = screenState.summaryDiagnostics
     val headerPreviewResource: StoryPreviewResourceState?
         get() = screenState.headerPreviewResource

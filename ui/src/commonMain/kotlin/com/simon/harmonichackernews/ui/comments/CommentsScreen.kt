@@ -77,6 +77,7 @@ import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.CommentRowStyleContext
+import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
 import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.toCommentRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -225,7 +226,7 @@ fun CommentsScreen(
     val visibleComments = controller.visibleComments
     val animatedRows = rememberAnimatedCommentRows(visibleComments, listState, animateComments)
     val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
-    com.simon.harmonichackernews.ui.content.PrefetchCommentContent(
+    PrefetchCommentContent(
         listState = listState,
         comments = remember(visibleComments) { visibleComments.map { it.comment } },
         collectLinks = settings.collectReferenceLinks,

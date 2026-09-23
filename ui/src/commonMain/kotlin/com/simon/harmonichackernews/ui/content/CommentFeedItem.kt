@@ -195,7 +195,7 @@ private fun CommentFeedBody(
             linkListener,
         )
     }
-    val typography = com.simon.harmonichackernews.ui.content.rememberContentTypography(
+    val typography = rememberContentTypography(
         preferredFont = preferredFont,
         commentTextSize = textSize,
     )

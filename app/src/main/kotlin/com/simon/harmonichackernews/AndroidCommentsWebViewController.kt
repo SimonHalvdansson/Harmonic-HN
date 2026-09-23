@@ -44,6 +44,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
+import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.presentation.WebContentFailure
 import com.simon.harmonichackernews.presentation.WebContentAssets
 import com.simon.harmonichackernews.presentation.WebContentPageKind
@@ -67,6 +68,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.settings.AndroidSettingsResources
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.WebViewPreferences
+import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.cache.StoryCacheService
@@ -143,7 +145,7 @@ internal class AndroidCommentsWebViewController(
     }
     private var showWebsite = false
     private var integratedWebview = true
-    private var preloadWebview = com.simon.harmonichackernews.settings.WebViewPreloadMode.NEVER
+    private var preloadWebview = WebViewPreloadMode.NEVER
     private var preloadWebviewMinimumBattery = WebViewPreferences.DEFAULT_MINIMUM_BATTERY
     private var matchWebviewTheme = true
     private lateinit var readingPreferences: ReadingPreferences
@@ -1019,7 +1021,7 @@ internal class AndroidCommentsWebViewController(
                         )
                         if (!AndroidExternalLinkLauncher.openExternalBrowser(
                                 view.context,
-                                com.simon.harmonichackernews.platform.ExternalLinkRequest(
+                                ExternalLinkRequest(
                                     url.orEmpty(),
                                     preferInApp = false,
                                 ),

@@ -53,6 +53,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_comment
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.settings.StoryPreviewMode
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
@@ -110,7 +111,7 @@ internal fun StoryMetricPill(
                 surfaceColor = container.copy(alpha = 0.60f),
                 shape = StoryMetricPillShape,
                 blurRadius = 4.dp,
-                glassAppearance = com.simon.harmonichackernews.ui.common.HazeGlassAppearance.FloatingButton,
+                glassAppearance = HazeGlassAppearance.FloatingButton,
             )
     }
     Row(

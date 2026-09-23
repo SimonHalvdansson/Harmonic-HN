@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.network.ReplyNotificationRuntime
 import com.simon.harmonichackernews.network.ReplyNotificationUseCase
 import com.simon.harmonichackernews.platform.AppPlatformDependencies
 import com.simon.harmonichackernews.platform.CommentsPlatformDependencies
+import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.platform.StoriesPlatformDependencies
 import com.simon.harmonichackernews.platform.ConfiguredExternalLinkOpener
 import com.simon.harmonichackernews.presentation.LoginWorkflow
@@ -215,7 +216,7 @@ class HarmonicAppComposition(
 
     fun createDataSettingsRuntime(
         scope: CoroutineScope,
-        today: () -> com.simon.harmonichackernews.platform.LocalCalendarDate,
+        today: () -> LocalCalendarDate,
     ): DataSettingsRuntime = DataSettingsRuntime(scope, dataSettings, today)
 
     fun createStoryCacheRuntime(scope: CoroutineScope): StoryCacheRuntime {

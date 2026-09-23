@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.storyRowModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -19,7 +20,7 @@ fun StoriesRoute(
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
-    onVisibleStoriesChanged: (List<com.simon.harmonichackernews.presentation.StoryListItemSnapshot>) -> Unit = {},
+    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
     val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
     StoriesScreen(

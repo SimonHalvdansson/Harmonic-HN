@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.presentation.CommentsState
+import com.simon.harmonichackernews.presentation.StoryLoadFailure
 
 data class CommentsPlatformPresentation(
     val adBlockActive: Boolean,
@@ -33,7 +34,7 @@ object CommentsScreenStateFactory {
             commentsRefreshInProgress = state.refreshing,
             loadingFailed = state.failure != null,
             loadingFailedServerError = state.failure ==
-                com.simon.harmonichackernews.presentation.StoryLoadFailure.NOT_FOUND,
+                StoryLoadFailure.NOT_FOUND,
             usingOfficialApiFallback = state.usingOfficialApiFallback,
             showRefreshPrompt = state.showRefreshPrompt,
             lastRefreshed = state.lastLoadedMillis,

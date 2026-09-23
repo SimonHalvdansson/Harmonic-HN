@@ -30,8 +30,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
+import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
@@ -136,7 +138,7 @@ class IosCommentsWebView(
 
     suspend fun preloadAfterOpening(
         firstDraw: Deferred<Unit>,
-        mode: com.simon.harmonichackernews.settings.WebViewPreloadMode,
+        mode: WebViewPreloadMode,
         minimumBatteryPercent: Int,
         environment: () -> WebPreloadEnvironment,
     ) {
@@ -560,7 +562,7 @@ internal fun IosCommentsScaffold(
                         TextButton(onClick = webView::reload) { Text("Retry") }
                         TextButton(onClick = {
                             controller.listener.onSheetAction(
-                                com.simon.harmonichackernews.presentation.CommentsSheetAction.BROWSER,
+                                CommentsSheetAction.BROWSER,
                             )
                         }) { Text("Open in browser") }
                     }

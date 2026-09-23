@@ -33,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -40,6 +41,8 @@ import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.accountOrNull
+import com.simon.harmonichackernews.presentation.CommentsFeatureEffect
+import com.simon.harmonichackernews.presentation.CommentsPerformanceTrace
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
@@ -125,7 +128,7 @@ internal fun IosCommentsContent(
             scope = scope,
             canLoadArticleTextOnDemand = true,
             performanceTrace = openingProfile?.trace
-                ?: com.simon.harmonichackernews.presentation.CommentsPerformanceTrace(),
+                ?: CommentsPerformanceTrace(),
         )
         IosCommentsHost(
             binding = binding,
@@ -237,7 +240,7 @@ internal fun IosCommentsContent(
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
-            if (effect is com.simon.harmonichackernews.presentation.CommentsFeatureEffect.ThreadReady) {
+            if (effect is CommentsFeatureEffect.ThreadReady) {
                 openingProfile?.event("threadReady")
             }
             host.binding.handleEffect(
@@ -430,7 +433,7 @@ private fun IosCommentsHeader(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     controller: CommentsScreenController,
-    settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
+    settings: CommentDisplaySettings,
     onBrowserBack: () -> Unit,
 ) {
     val colors = HarmonicTheme.colors

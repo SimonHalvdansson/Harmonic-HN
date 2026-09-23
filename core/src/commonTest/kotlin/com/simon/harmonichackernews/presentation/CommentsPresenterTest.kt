@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
+import com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore
+import com.simon.harmonichackernews.data.StoryCacheRepository
 import kotlin.test.assertNotNull
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PollOption
@@ -167,9 +170,9 @@ class CommentsPresenterTest {
         val cacheStarted = CompletableDeferred<Unit>()
         val allowCacheWrite = CompletableDeferred<Unit>()
         val cacheFinished = CompletableDeferred<Unit>()
-        val repository = com.simon.harmonichackernews.data.StoryCacheRepository(
-            com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore(),
-            com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore(),
+        val repository = StoryCacheRepository(
+            InMemoryStoryCacheFileStore(),
+            InMemoryStoryCacheMetadataStore(),
         )
         val runtime = CommentsFeatureRuntime(
             backgroundScope, session, presenter,

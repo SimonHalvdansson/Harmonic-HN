@@ -1,9 +1,12 @@
 package com.simon.harmonichackernews.data
 
+import com.simon.harmonichackernews.CommentListDiff
 import com.simon.harmonichackernews.cache.ArticleSnapshotService
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
+import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.KtorHttpClient
+import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.platform.Crc32
 import com.simon.harmonichackernews.platform.KotlinCrc32
 import com.simon.harmonichackernews.presentation.CommentThreadStore
@@ -49,7 +52,7 @@ class PreparedCommentThreadTest {
         var hashes = 0
         val displayParser = AlgoliaCommentsParser(sourceDigest = {
             hashes++
-            com.simon.harmonichackernews.network.StableHash.sha256Hex(it)
+            StableHash.sha256Hex(it)
         })
         val unchanged = displayParser.parseForDisplay(raw, cachedThread = cached)
         assertEquals(1, hashes)
@@ -110,7 +113,7 @@ class PreparedCommentThreadTest {
                     for (sorting in listOf(CommentSorter.DEFAULT, CommentSorter.NEWEST_FIRST,
                         CommentSorter.OLDEST_FIRST, CommentSorter.REPLY_COUNT)) {
                         for (collapsed in listOf(false, true)) {
-                            fun store(response: com.simon.harmonichackernews.network.AlgoliaCommentsResponse) =
+                            fun store(response: AlgoliaCommentsResponse) =
                                 CommentThreadStore().apply {
                                     val story = Story()
                                     response.updateStoryInformation(story, 0)
@@ -177,7 +180,7 @@ class PreparedCommentThreadTest {
         }
         val parsed = parser.prepare(raw).restore().comments.first()
         val existing = Comment().apply { text = "old" }
-        com.simon.harmonichackernews.CommentListDiff.updateExistingComment(existing, parsed)
+        CommentListDiff.updateExistingComment(existing, parsed)
         assertSame(parsed.expandedAnchorText, existing.expandedAnchorText)
         existing.text = "new text"
         assertEquals("new text", existing.expandedAnchorText)

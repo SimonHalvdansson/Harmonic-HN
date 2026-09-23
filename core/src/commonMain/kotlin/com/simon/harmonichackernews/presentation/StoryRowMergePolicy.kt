@@ -1,9 +1,11 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.data.Story
+
 object StoryRowMergePolicy {
     fun mergeSummaryFields(
-        target: com.simon.harmonichackernews.data.Story,
-        source: com.simon.harmonichackernews.data.Story,
+        target: Story,
+        source: Story,
     ): Boolean {
         if (target.id != source.id) return false
         val changed = target.title != source.title ||

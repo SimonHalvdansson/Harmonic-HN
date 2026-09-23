@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.network.AiSummaryProviders
+import com.simon.harmonichackernews.settings.GeneralBooleanPreference
+import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,13 +66,13 @@ fun DataSettingsRoute(
         onBack = onBack,
         onBookmarksEnabledChanged = {
             repository.setGeneralBoolean(
-                com.simon.harmonichackernews.settings.GeneralBooleanPreference.BOOKMARKS_ENABLED,
+                GeneralBooleanPreference.BOOKMARKS_ENABLED,
                 it,
             )
         },
         onShowChangelogChanged = {
             repository.setGeneralBoolean(
-                com.simon.harmonichackernews.settings.GeneralBooleanPreference.SHOW_CHANGELOG,
+                GeneralBooleanPreference.SHOW_CHANGELOG,
                 it,
             )
         },
@@ -110,7 +113,7 @@ fun AiSummarySettingsRoute(
     LaunchedEffect(modelDefaults, persistedSettings.baseUrl) {
         modelDefaults.ensureInitialDefault()
         if (!repository.hasModelSelection()) {
-            com.simon.harmonichackernews.network.AiSummaryProviders
+            AiSummaryProviders
                 .getProviderForBaseUrl(persistedSettings.baseUrl)
                 ?.let { modelDefaults.ensureProviderDefault(it) }
         }
@@ -172,7 +175,7 @@ fun AiSummarySettingsRoute(
             showAdditionalInfo = persistedSettings.showAdditionalInfo,
             geminiNanoSelected = geminiNanoAvailable &&
                 selectedLocalModelId ==
-                com.simon.harmonichackernews.summary.LocalModelCatalog.MODEL_GEMINI_NANO,
+                LocalModelCatalog.MODEL_GEMINI_NANO,
             geminiNanoSummaryMode = persistedSettings.geminiNanoSummaryMode,
         ),
         showNavigation = showNavigation,

@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.ThemeSelection
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -173,7 +174,7 @@ fun AndroidThemeSettingsScreen(
 }
 
 private fun formatNighttimeRange(
-    schedule: com.simon.harmonichackernews.settings.NighttimeSchedule,
+    schedule: NighttimeSchedule,
     use24HourClock: Boolean,
 ): String = ThemeSelectionPolicy.formatSchedule(
     schedule = schedule,

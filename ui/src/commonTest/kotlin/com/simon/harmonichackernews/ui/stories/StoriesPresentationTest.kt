@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.cache.StoryCacheState
+import com.simon.harmonichackernews.cache.StoryCacheStatus
+import com.simon.harmonichackernews.presentation.StoriesState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,9 +12,9 @@ class StoriesPresentationTest {
     @Test
     fun partialCacheCompletionExplainsThatSomeItemsFailed() {
         val presentation = storiesScreenPresentation(
-            com.simon.harmonichackernews.presentation.StoriesState(
-                cache = com.simon.harmonichackernews.cache.StoryCacheState(
-                    status = com.simon.harmonichackernews.cache.StoryCacheStatus.PARTIAL,
+            StoriesState(
+                cache = StoryCacheState(
+                    status = StoryCacheStatus.PARTIAL,
                     progressVisible = true,
                 ),
             ),

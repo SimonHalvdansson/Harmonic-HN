@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.SavedItemSnapshot
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.Story
@@ -25,6 +26,7 @@ import com.simon.harmonichackernews.network.StoryFeedLoader
 import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
+import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredUserSettings
 import kotlinx.coroutines.CompletableDeferred
@@ -310,7 +312,7 @@ class StoryRequestsTest {
         accounts = MemoryAccounts(),
         connectivity = AlwaysOnline,
         userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
-        loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
+        loadContentFilters = { ContentFilters() },
         rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
         nowMillis = { 1_000L },
         hydrateCachedStory = hydrate,
@@ -350,7 +352,7 @@ class StoryRequestsTest {
             accounts = MemoryAccounts(),
             connectivity = AlwaysOnline,
             userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
-            loadContentFilters = { com.simon.harmonichackernews.settings.ContentFilters() },
+            loadContentFilters = { ContentFilters() },
             rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
             nowMillis = { 1_000L },
             hydrateCachedStory = { false },
@@ -455,7 +457,7 @@ class StoryRequestsTest {
             savedItems.refreshAccountScope()
             if (switchBack) account = "alice"
             savedItems.saveSnapshotAtomic(SavedItemSource.FAVORITES,
-                com.simon.harmonichackernews.data.SavedItemSnapshot(listOf(9), emptySet()), 20)
+                SavedItemSnapshot(listOf(9), emptySet()), 20)
             response.complete(HackerNewsUserItemsResult.Success(HackerNewsUserItems(listOf(1), emptyList())))
             runCurrent()
             assertEquals(listOf(9), savedItems.loadSnapshot(SavedItemSource.FAVORITES).itemIds)

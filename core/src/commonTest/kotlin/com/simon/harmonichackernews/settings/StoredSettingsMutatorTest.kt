@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
+import com.simon.harmonichackernews.StoryTypeSettingsPolicy
 import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,19 +14,19 @@ class StoredSettingsMutatorTest {
     fun unslopCanBeEnabledAndUsedAsStartingPageThenDisabled() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
-        val label = com.simon.harmonichackernews.StoryType.UNSLOP.label
+        val label = StoryType.UNSLOP.label
         repository.setAdditionalFrontpages(setOf(label))
         repository.setPreferredStoryType(label)
         val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
         assertEquals(setOf(label), reopened.snapshot().story.additionalFrontpages)
         assertEquals(label, reopened.snapshot().story.preferredStoryType)
-        assertTrue(label in com.simon.harmonichackernews.StoryTypeSettingsPolicy.startingPageLabels(setOf(label)))
-        assertTrue(com.simon.harmonichackernews.StoryType.UNSLOP in
-            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(setOf(label), false))
+        assertTrue(label in StoryTypeSettingsPolicy.startingPageLabels(setOf(label)))
+        assertTrue(StoryType.UNSLOP in
+            StoryTypeMenuPolicy.availableTypes(setOf(label), false))
         repository.setAdditionalFrontpages(emptySet())
         assertEquals("Top Stories", reopened.snapshot().story.preferredStoryType)
-        assertFalse(com.simon.harmonichackernews.StoryType.UNSLOP in
-            com.simon.harmonichackernews.StoryTypeMenuPolicy.availableTypes(emptySet(), false))
+        assertFalse(StoryType.UNSLOP in
+            StoryTypeMenuPolicy.availableTypes(emptySet(), false))
     }
 
     @Test

@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
+import com.simon.harmonichackernews.presentation.StoryPreviewDeck
 import com.simon.harmonichackernews.presentation.StorySearchOption
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
@@ -459,7 +460,7 @@ class StoriesScreenController private constructor(
         openedStoryId: Int,
     ) = showStoryPreview(stories, cardColors.toList(), openedStoryId)
 
-    fun showStoryPreview(deck: com.simon.harmonichackernews.presentation.StoryPreviewDeck) =
+    fun showStoryPreview(deck: StoryPreviewDeck) =
         showStoryPreview(deck.stories, deck.cardColors, deck.openedStoryId)
 
     fun isStoryPreviewShowing(): Boolean = storyPreviewOverlay != null
@@ -685,7 +686,7 @@ class StoriesScreenController private constructor(
         fun onStoryLongClick(
             story: StoryListItemSnapshot,
             tintBaseColorArgb: Int,
-        ): com.simon.harmonichackernews.presentation.StoryPreviewDeck?
+        ): StoryPreviewDeck?
         fun onStoryPreviewImageLoaded(storyId: Int, pageUrl: String, imageUrl: String)
         fun onStoryPreviewImageLoadFailed(storyId: Int, pageUrl: String, imageUrl: String)
         fun onStoryTintExtracted(

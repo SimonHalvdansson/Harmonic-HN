@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.FileLocalModelStorage
+import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelDeviceCapabilities
 import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
@@ -79,7 +80,7 @@ private class AndroidLocalModelTransferScheduler(
         if (observing) return
         observing = true
         var registering = true
-        com.simon.harmonichackernews.summary.LocalModelCatalog.models
+        LocalModelCatalog.models
             .filter(LocalModelDefinition::downloadable)
             .forEach { model ->
                 manager.getWorkInfosForUniqueWorkLiveData(workName(model.id))
