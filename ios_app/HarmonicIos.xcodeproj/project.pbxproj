@@ -8,9 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* AppDelegate.swift */; };
-		A10000000000000000000002 /* PlatformServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* PlatformServices.swift */; };
+		A10000000000000000000002 /* IosNativeServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* IosNativeServices.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Assets.xcassets */; };
 		B10000000000000000000001 /* HarmonicIosUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* HarmonicIosUITests.swift */; };
+		A10000000000000000000006 /* IosAccountStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* IosAccountStorage.swift */; };
+		A10000000000000000000007 /* IosBrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* IosBrowserViewController.swift */; };
+		A10000000000000000000008 /* IosTextDocumentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* IosTextDocumentService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,12 +28,15 @@
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A20000000000000000000002 /* PlatformServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformServices.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* IosNativeServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosNativeServices.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000005 /* HarmonicIos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HarmonicIos.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* HarmonicIosUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmonicIosUITests.swift; sourceTree = "<group>"; };
 		B20000000000000000000002 /* HarmonicIosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HarmonicIosUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000006 /* IosAccountStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosAccountStorage.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* IosBrowserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBrowserViewController.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* IosTextDocumentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosTextDocumentService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,7 +70,10 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* AppDelegate.swift */,
-				A20000000000000000000002 /* PlatformServices.swift */,
+				A20000000000000000000002 /* IosNativeServices.swift */,
+				A20000000000000000000008 /* IosTextDocumentService.swift */,
+				A20000000000000000000007 /* IosBrowserViewController.swift */,
+				A20000000000000000000006 /* IosAccountStorage.swift */,
 				A20000000000000000000004 /* Assets.xcassets */,
 				A20000000000000000000003 /* Info.plist */,
 			);
@@ -212,7 +221,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* AppDelegate.swift in Sources */,
-				A10000000000000000000002 /* PlatformServices.swift in Sources */,
+				A10000000000000000000002 /* IosNativeServices.swift in Sources */,
+				A10000000000000000000008 /* IosTextDocumentService.swift in Sources */,
+				A10000000000000000000007 /* IosBrowserViewController.swift in Sources */,
+				A10000000000000000000006 /* IosAccountStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

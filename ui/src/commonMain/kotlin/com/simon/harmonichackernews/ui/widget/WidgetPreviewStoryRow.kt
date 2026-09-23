@@ -38,7 +38,7 @@ import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.DrawableResource
@@ -50,7 +50,7 @@ val LocalWidgetTextStyle = staticCompositionLocalOf { TextStyle.Default }
 /** Mirrors Glance's rows, including its solid metric pills and simulated raised edge. */
 @Composable
 fun WidgetPreviewStoryRow(
-    model: StoryItemUiModel,
+    model: StoryRowModel,
     configuration: WidgetConfiguration,
     fontFamily: FontFamily = FontFamily.SansSerif,
     paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,

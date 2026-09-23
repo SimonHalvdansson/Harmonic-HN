@@ -43,7 +43,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun AndroidCommentLinkPreviewOverlay(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     CommentLinkPreviewOverlay(
@@ -58,7 +58,7 @@ internal fun AndroidCommentLinkPreviewOverlay(
 
 @Composable
 private fun ReferencePreviewCard(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val appComposition = LocalHarmonicUiDependencies.current

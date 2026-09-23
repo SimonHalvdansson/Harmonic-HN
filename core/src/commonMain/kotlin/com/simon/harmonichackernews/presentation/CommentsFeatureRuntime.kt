@@ -41,17 +41,17 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-sealed interface CommentsRuntimeEffect {
-    data class Platform(val effect: CommentsPlatformEffect) : CommentsRuntimeEffect
-    data class StateChanged(val refreshNavigation: Boolean = false) : CommentsRuntimeEffect
-    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsRuntimeEffect
+sealed interface CommentsFeatureEffect {
+    data class Platform(val effect: CommentsPlatformEffect) : CommentsFeatureEffect
+    data class StateChanged(val refreshNavigation: Boolean = false) : CommentsFeatureEffect
+    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsFeatureEffect
     data class ThreadReady(
         val restoreScroll: Boolean,
         val headerChanged: Boolean,
-    ) : CommentsRuntimeEffect
-    data class Diagnostic(val message: String, val cause: Throwable? = null) : CommentsRuntimeEffect
-    data class ActionFailed(val presentation: ActionFailurePresentation) : CommentsRuntimeEffect
-    data object RequestSummaryPageTextRetry : CommentsRuntimeEffect
+    ) : CommentsFeatureEffect
+    data class Diagnostic(val message: String, val cause: Throwable? = null) : CommentsFeatureEffect
+    data class ActionFailed(val presentation: ActionFailurePresentation) : CommentsFeatureEffect
+    data object RequestSummaryPageTextRetry : CommentsFeatureEffect
 }
 
 data class CommentsScrollRestoration(
@@ -105,8 +105,8 @@ class CommentsFeatureRuntime(
     private val storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
     private val nowMillis: () -> Long,
 ) {
-    private val mutableEffects = MutableSharedFlow<CommentsRuntimeEffect>(extraBufferCapacity = 32)
-    val effects: SharedFlow<CommentsRuntimeEffect> = mutableEffects.asSharedFlow()
+    private val mutableEffects = MutableSharedFlow<CommentsFeatureEffect>(extraBufferCapacity = 32)
+    val effects: SharedFlow<CommentsFeatureEffect> = mutableEffects.asSharedFlow()
 
     val thread: CommentThreadStore get() = presenter.thread
     val comments: MutableList<Comment> get() = thread.filteredComments
@@ -521,7 +521,7 @@ class CommentsFeatureRuntime(
         }
     }
 
-    fun header(action: CommentsHeaderAction) {
+    fun handleHeaderAction(action: CommentsHeaderAction) {
         val story = story ?: return
         if (action == CommentsHeaderAction.REFRESH) {
             retry()
@@ -564,11 +564,11 @@ class CommentsFeatureRuntime(
         )
     }
 
-    fun share(action: CommentsShareAction) {
+    fun handleShareAction(action: CommentsShareAction) {
         story?.let { platform(CommentsUiOrchestrator.share(action, it)) }
     }
 
-    fun more(action: CommentsMoreAction) {
+    fun handleMoreAction(action: CommentsMoreAction) {
         val story = story ?: return
         if (action == CommentsMoreAction.REFRESH) {
             retry()
@@ -582,7 +582,7 @@ class CommentsFeatureRuntime(
         execute(CommentsUiOrchestrator.more(action, story, thread.state.value.opThreadFilterEnabled))
     }
 
-    fun sheet(action: CommentsSheetAction) = platform(CommentsUiOrchestrator.sheet(action))
+    fun handleSheetAction(action: CommentsSheetAction) = platform(CommentsUiOrchestrator.sheet(action))
 
     fun commentAction(
         action: CommentMenuAction,
@@ -625,7 +625,7 @@ class CommentsFeatureRuntime(
     }
 
     private fun platform(effect: CommentsPlatformEffect) {
-        mutableEffects.tryEmit(CommentsRuntimeEffect.Platform(effect))
+        mutableEffects.tryEmit(CommentsFeatureEffect.Platform(effect))
     }
 
     private fun resolveArchive(provider: ArchiveProvider) {
@@ -655,14 +655,14 @@ class CommentsFeatureRuntime(
     }
 
     private fun changed(refreshNavigation: Boolean = false) {
-        mutableEffects.tryEmit(CommentsRuntimeEffect.StateChanged(refreshNavigation))
+        mutableEffects.tryEmit(CommentsFeatureEffect.StateChanged(refreshNavigation))
     }
 
-    private suspend fun applyPresenterEffect(effect: CommentsEffect) {
+    private suspend fun applyPresenterEffect(effect: CommentsPresenterEffect) {
         when (effect) {
-            is CommentsEffect.ShowCommentActions ->
-                mutableEffects.tryEmit(CommentsRuntimeEffect.ShowCommentActions(effect.comment))
-            is CommentsEffect.ThreadApplied -> {
+            is CommentsPresenterEffect.ShowCommentActions ->
+                mutableEffects.tryEmit(CommentsFeatureEffect.ShowCommentActions(effect.comment))
+            is CommentsPresenterEffect.ThreadApplied -> {
                 if (!presenter.isCurrentThreadLoad(effect.requestId, effect.storyId) ||
                     story?.id != effect.storyId
                 ) return
@@ -675,7 +675,7 @@ class CommentsFeatureRuntime(
                     reloadPollOptions()
                     changed(refreshNavigation = true)
                     mutableEffects.tryEmit(
-                        CommentsRuntimeEffect.ThreadReady(
+                        CommentsFeatureEffect.ThreadReady(
                             restoreScroll = effect.restoreScroll,
                             headerChanged = effect.headerChanged,
                         ),
@@ -688,9 +688,9 @@ class CommentsFeatureRuntime(
                     storeCachedThread(effect.storyId, response, effect.cacheSummary)
                 }
             }
-            is CommentsEffect.ThreadFailed -> {
+            is CommentsPresenterEffect.ThreadFailed -> {
                 mutableEffects.tryEmit(
-                    CommentsRuntimeEffect.Diagnostic(
+                    CommentsFeatureEffect.Diagnostic(
                         message = "${effect.result.source} comments load failed for " +
                             "storyId=${effect.storyId}, noInternet=${effect.result.noInternet}",
                         cause = effect.result.cause,
@@ -698,26 +698,26 @@ class CommentsFeatureRuntime(
                 )
                 changed()
             }
-            is CommentsEffect.PollOptionsChanged -> {
+            is CommentsPresenterEffect.PollOptionsChanged -> {
                 effect.failedOptionId?.let { failedId ->
                     mutableEffects.tryEmit(
-                        CommentsRuntimeEffect.Diagnostic("Poll option request failed for id=$failedId"),
+                        CommentsFeatureEffect.Diagnostic("Poll option request failed for id=$failedId"),
                     )
                 }
                 if (story?.id == effect.storyId) changed()
             }
-            is CommentsEffect.PollOptionsLookupFailed -> {
+            is CommentsPresenterEffect.PollOptionsLookupFailed -> {
                 if (story?.id == effect.storyId) {
                     mutableEffects.tryEmit(
-                        CommentsRuntimeEffect.Diagnostic(
+                        CommentsFeatureEffect.Diagnostic(
                             "Poll lookup failed for id=${effect.storyId}",
                             effect.cause,
                         ),
                     )
                 }
             }
-            is CommentsEffect.PollVoteStarted -> changed()
-            is CommentsEffect.PollVoteCompleted -> {
+            is CommentsPresenterEffect.PollVoteStarted -> changed()
+            is CommentsPresenterEffect.PollVoteCompleted -> {
                 changed()
                 when (val outcome = effect.outcome) {
                     PollVoteOutcome.Success -> {
@@ -725,7 +725,7 @@ class CommentsFeatureRuntime(
                         platform(CommentsPlatformEffect.ShowMessage("Poll vote successful"))
                     }
                     is PollVoteOutcome.Failure -> mutableEffects.tryEmit(
-                        CommentsRuntimeEffect.ActionFailed(
+                        CommentsFeatureEffect.ActionFailed(
                             ActionFailurePresentation(
                                 result = outcome.result,
                                 message = "Vote unsuccessful, see dialog for response",
@@ -736,11 +736,11 @@ class CommentsFeatureRuntime(
                     )
                 }
             }
-            is CommentsEffect.SavedItemActionStarted -> changed()
-            is CommentsEffect.SavedItemActionStartFailed -> {
+            is CommentsPresenterEffect.SavedItemActionStarted -> changed()
+            is CommentsPresenterEffect.SavedItemActionStartFailed -> {
                 changed()
                 mutableEffects.tryEmit(
-                    CommentsRuntimeEffect.ActionFailed(
+                    CommentsFeatureEffect.ActionFailed(
                         ActionFailurePresentation(
                             result = HackerNewsActionResult.Failure(
                                 summary = "Saved-item update failed",
@@ -753,7 +753,7 @@ class CommentsFeatureRuntime(
                     ),
                 )
             }
-            is CommentsEffect.SavedItemActionCompleted -> {
+            is CommentsPresenterEffect.SavedItemActionCompleted -> {
                 changed()
                 val unsuccessful = when (val outcome = effect.outcome) {
                     is SavedItemActionOutcome.Failure ->
@@ -767,7 +767,7 @@ class CommentsFeatureRuntime(
                         is CommentsSavedItemRequest.CommentFavorite,
                         is CommentsSavedItemRequest.StoryFavorite,
                         -> mutableEffects.tryEmit(
-                            CommentsRuntimeEffect.ActionFailed(
+                            CommentsFeatureEffect.ActionFailed(
                                 ActionFailurePresentation(
                                     result = result,
                                     message = if (indeterminate) {
@@ -785,7 +785,7 @@ class CommentsFeatureRuntime(
                         is CommentsSavedItemRequest.CommentVote,
                         is CommentsSavedItemRequest.StoryVote,
                         -> mutableEffects.tryEmit(
-                            CommentsRuntimeEffect.ActionFailed(
+                            CommentsFeatureEffect.ActionFailed(
                                 ActionFailurePresentation(
                                     result = result,
                                     message = if (indeterminate) {
@@ -820,7 +820,7 @@ class CommentsFeatureRuntime(
             currentStory.aiSummaryText = null
             currentStory.summaryGeneratedSuccessfully = false
             changed()
-            mutableEffects.tryEmit(CommentsRuntimeEffect.RequestSummaryPageTextRetry)
+            mutableEffects.tryEmit(CommentsFeatureEffect.RequestSummaryPageTextRetry)
             return
         }
         currentStory.aiSummaryText = state.text

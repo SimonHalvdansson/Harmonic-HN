@@ -11,14 +11,14 @@ import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.ui.stories.StoryPreviewCard
 import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
-import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSummaryState
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
 internal fun IosStoryPreviewOverlay(
     app: HarmonicAppComposition,
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
 ) {
     val fallbackSettings = remember(app.userSettings.story) {
         StoryDisplaySettings.from(app.userSettings.story)

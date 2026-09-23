@@ -8,17 +8,17 @@ import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SettingsPreviewItemStylesTest {
     @Test
     fun previewsUseOutlinedWithElevation() {
-        val story = storiesState().copy(displayStyle = "outlined").toPreviewStoryItemStyle()
-        val comment = commentsState().copy(displayStyle = DisplayStyle.OUTLINED).toPreviewCommentItemStyle()
+        val story = storiesState().copy(displayStyle = "outlined").toPreviewStoryRowStyle()
+        val comment = commentsState().copy(displayStyle = DisplayStyle.OUTLINED).toPreviewCommentRowStyle()
         for (outlined in listOf(story.showOutline, comment.showOutline)) assertEquals(true, outlined)
         for (raised in listOf(story.cardStyle, comment.cardStyle)) assertEquals(true, raised)
     }
@@ -27,7 +27,7 @@ class SettingsPreviewItemStylesTest {
     fun storyPreviewStyleReflectsEachSettingsState() {
         val base = storiesState()
         val cases = listOf(
-            base to StoryItemStyle(
+            base to StoryRowStyle(
                 previewImageMode = StoryPreviewMode.SMALL,
                 borderlessLargeImage = false,
                 compact = true,
@@ -51,7 +51,7 @@ class SettingsPreviewItemStylesTest {
                 showPreviewText = true,
                 showIndex = true,
                 hotnessEnabled = false,
-            ) to StoryItemStyle(
+            ) to StoryRowStyle(
                 previewImageMode = StoryPreviewMode.SMALL,
                 borderlessLargeImage = false,
                 compact = true,
@@ -73,7 +73,7 @@ class SettingsPreviewItemStylesTest {
         )
 
         cases.forEachIndexed { index, (state, expected) ->
-            assertEquals(expected, state.toPreviewStoryItemStyle(), "story preview case $index")
+            assertEquals(expected, state.toPreviewStoryRowStyle(), "story preview case $index")
         }
     }
 
@@ -81,7 +81,7 @@ class SettingsPreviewItemStylesTest {
     fun commentPreviewStyleReflectsEachSettingsState() {
         val base = commentsState()
         val cases = listOf(
-            base to CommentItemStyle(
+            base to CommentRowStyle(
                 displayStyle = DisplayStyle.RAISED,
                 textSize = 18f,
                 collectLinks = true,
@@ -94,7 +94,7 @@ class SettingsPreviewItemStylesTest {
                 displayStyle = DisplayStyle.STANDARD,
                 collectLinks = false,
                 emphasizeMetadata = true,
-            ) to CommentItemStyle(
+            ) to CommentRowStyle(
                 displayStyle = DisplayStyle.STANDARD,
                 textSize = 18f,
                 collectLinks = false,
@@ -106,7 +106,7 @@ class SettingsPreviewItemStylesTest {
         )
 
         cases.forEachIndexed { index, (state, expected) ->
-            assertEquals(expected, state.toPreviewCommentItemStyle(), "comment preview case $index")
+            assertEquals(expected, state.toPreviewCommentRowStyle(), "comment preview case $index")
         }
     }
 

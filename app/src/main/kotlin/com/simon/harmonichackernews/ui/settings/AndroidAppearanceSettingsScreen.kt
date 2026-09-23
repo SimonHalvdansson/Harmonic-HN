@@ -14,7 +14,7 @@ import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
-import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 
 @Composable
 fun AndroidAppearanceSettingsScreen(
@@ -100,7 +100,7 @@ fun AndroidThemeSettingsScreen(
                 }
                 val themedContext = ContextThemeWrapper(
                     context.createConfigurationContext(configuration),
-                    ThemeUtils.themeResource(theme, dark),
+                    AndroidActivityTheme.themeResource(theme, dark),
                 )
                 harmonicThemePalette(themedContext, ThemeSelection(theme, dark, accent))
             }

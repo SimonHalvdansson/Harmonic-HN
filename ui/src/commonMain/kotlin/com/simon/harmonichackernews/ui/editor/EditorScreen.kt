@@ -57,7 +57,6 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -120,16 +119,6 @@ private enum class PostEditorField {
     Title,
     Url,
     Text,
-}
-
-@Stable
-class EditorComposeController {
-    var submitting by mutableStateOf(false)
-        private set
-
-    fun updateSubmitting(value: Boolean) {
-        submitting = value
-    }
 }
 
 @Composable

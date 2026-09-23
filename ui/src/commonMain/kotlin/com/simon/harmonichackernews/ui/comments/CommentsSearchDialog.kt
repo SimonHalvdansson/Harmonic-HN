@@ -15,9 +15,9 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.Dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
-import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
-import com.simon.harmonichackernews.ui.content.toCommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.CommentRowStyleContext
+import com.simon.harmonichackernews.ui.content.toCommentRowStyle
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -104,7 +104,7 @@ fun CommentsSearchContent(
     preparing: Boolean = false,
 ) {
     val itemStyle = remember(settings) {
-        settings.toCommentItemStyle(CommentItemStyleContext.Search)
+        settings.toCommentRowStyle(CommentRowStyleContext.Search)
     }
 
     CommentSearchScreen(
@@ -117,7 +117,7 @@ fun CommentsSearchContent(
         preparing = preparing,
         collectLinks = settings.collectReferenceLinks,
     ) { comment ->
-        CommentItem(
+        CommentRow(
             comment = comment,
             style = itemStyle,
             storyAuthor = storyAuthor,

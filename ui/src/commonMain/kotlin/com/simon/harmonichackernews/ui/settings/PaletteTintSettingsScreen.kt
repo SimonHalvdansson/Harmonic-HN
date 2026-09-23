@@ -38,9 +38,9 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
+import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.rememberResourcePreview
@@ -57,27 +57,27 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 private val PalettePreviewSamples = listOf(
-    StoryItemUiModel(
+    StoryRowModel(
         index = "1.", title = "How machines learn to see", previewText = "",
         points = 28, domain = "mit.edu", domainWithoutTopLevel = "mit",
         age = "2h", commentCount = 42, previewImageFallback = Res.drawable.palette1,
     ),
-    StoryItemUiModel(
+    StoryRowModel(
         index = "2.", title = "How New York’s skyline was built", previewText = "",
         points = 96, domain = "nyc.gov", domainWithoutTopLevel = "nyc",
         age = "4h", commentCount = 28, previewImageFallback = Res.drawable.palette2,
     ),
-    StoryItemUiModel(
+    StoryRowModel(
         index = "3.", title = "Mapping buildings with 3D scans", previewText = "",
         points = 73, domain = "ieee.org", domainWithoutTopLevel = "ieee",
         age = "3h", commentCount = 16, previewImageFallback = Res.drawable.palette3,
     ),
-    StoryItemUiModel(
+    StoryRowModel(
         index = "4.", title = "Rendering impossible architecture", previewText = "",
         points = 54, domain = "blender.org", domainWithoutTopLevel = "blender",
         age = "5h", commentCount = 37, previewImageFallback = Res.drawable.palette4,
     ),
-    StoryItemUiModel(
+    StoryRowModel(
         index = "5.", title = "Photographing a rocket launch at night", previewText = "",
         points = 85, domain = "nasa.gov", domainWithoutTopLevel = "nasa",
         age = "1h", commentCount = 61, previewImageFallback = Res.drawable.palette5,
@@ -102,7 +102,7 @@ fun PaletteTintSettingsScreen(
     initialStrength: Int,
     initialColorfulness: Int,
     initialTone: Int,
-    previewStyle: StoryItemStyle,
+    previewStyle: StoryRowStyle,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onSettingsChanged: (mode: String, strength: Int, colorfulness: Int, tone: Int) -> Unit,
@@ -251,7 +251,7 @@ private fun interpolatedPaletteValue(start: Int, target: Int, progress: Float): 
 private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
 
 @Composable
-private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) {
+private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
     val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
     val palette = preview?.palette
     val baseColor = HarmonicTheme.colors.contentCardBackground
@@ -267,7 +267,7 @@ private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) 
         animationSpec = contentTween(),
         label = "palette settings sample tint",
     )
-    StoryItem(
+    StoryRow(
         model = model.copy(
             previewImageTintArgb = animatedTint.toArgb(),
             // Reserve the thumbnail's layout while decoding without a blocking resource painter.

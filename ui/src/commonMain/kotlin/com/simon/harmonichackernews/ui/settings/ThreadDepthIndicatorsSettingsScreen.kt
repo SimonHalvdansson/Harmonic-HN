@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
-import com.simon.harmonichackernews.ui.content.CommentItem
+import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlin.time.Clock
@@ -104,9 +104,9 @@ private fun ThreadDepthIndicatorsSettingsScreen(
             // follow the same preferences as the actual thread.
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 comments.forEachIndexed { index, comment ->
-                    CommentItem(
+                    CommentRow(
                         comment = comment,
-                        style = state.toPreviewCommentItemStyle(),
+                        style = state.toPreviewCommentRowStyle(),
                         storyAuthor = null,
                         accountUser = null,
                         userTag = null,

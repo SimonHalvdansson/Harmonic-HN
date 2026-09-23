@@ -429,7 +429,7 @@ class StoryRequestsTest {
             )
         runCurrent()
 
-        val synced = assertIs<StoriesEffect.UserItemsSynced>(effect.await())
+        val synced = assertIs<StoryRequestEvent.UserItemsSynced>(effect.await())
         assertEquals(listOf(5, 3), synced.snapshot.itemIds)
         assertEquals(setOf(3), synced.snapshot.commentIds)
         assertEquals(synced.snapshot, savedItems.loadSnapshot(SavedItemSource.UPVOTED))
@@ -447,7 +447,7 @@ class StoryRequestsTest {
                     override suspend fun getUserItems(path: String, loginRequired: Boolean) = response.await()
                 },
             )
-            val effects = mutableListOf<StoriesEffect>()
+            val effects = mutableListOf<StoryRequestEvent>()
             backgroundScope.launch { requests.effects.collect { effects += it } }
             requests.syncUserItems(SavedItemSource.FAVORITES, 1, 10)
             runCurrent()

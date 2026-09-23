@@ -20,8 +20,8 @@ import com.simon.harmonichackernews.data.*
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.settings.*
 import com.simon.harmonichackernews.ui.comments.*
-import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -45,9 +45,9 @@ class CommentAppearanceRegressionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
                 HarmonicTheme(palette.colors.copy(accent = Color.Red), palette.colorScheme, palette.dark) {
-                    CommentItem(
+                    CommentRow(
                         model = SettingsCommentPreviewModel,
-                        style = CommentItemStyle(
+                        style = CommentRowStyle(
                             displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
                             emphasizeMeta = false, depthIndicatorMode = "none", showDivider = false,
                             preferredFont = "default", animateChanges = true, markNewComments = showDot.value,
@@ -109,10 +109,10 @@ class CommentAppearanceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                     HarmonicTheme(palette.colors.copy(commentCountIndicator = Color(0xFF0066CC)), palette.colorScheme, palette.dark) {
-                        CommentItem(
+                        CommentRow(
                             modifier = Modifier.background(Color.White),
                             comment = item.value,
-                            style = CommentItemStyle(
+                            style = CommentRowStyle(
                                 displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
                                 emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
                                 preferredFont = "default", animateChanges = true,
@@ -198,9 +198,9 @@ class CommentAppearanceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        CommentItem(
+                        CommentRow(
                             comment = row,
-                            style = CommentItemStyle(
+                            style = CommentRowStyle(
                                 displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = true,
                                 emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
                                 preferredFont = "default", expandedReferenceLinks = true,
@@ -219,7 +219,7 @@ class CommentAppearanceRegressionTest {
 
     @Test
     fun continuousLinesCrossChildrenButStopAtNewRootAndDividersAreCentered() {
-        val style = mutableStateOf(CommentItemStyle(
+        val style = mutableStateOf(CommentRowStyle(
             displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
             emphasizeMeta = false, depthIndicatorMode = "colors", showDivider = true,
             preferredFont = "default",
@@ -236,7 +236,7 @@ class CommentAppearanceRegressionTest {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                         Column(Modifier.fillMaxWidth().background(palette.colors.background).testTag("thread")) {
                             rows.forEachIndexed { index, row ->
-                                CommentItem(
+                                CommentRow(
                                     comment = row, style = style.value, storyAuthor = null, accountUser = null,
                                     userTag = null, subtreeReplyCount = 0, collapseParent = false,
                                     showTopLevelIndicator = true, nextCommentDepth = rows.getOrNull(index + 1)?.depth,
@@ -370,7 +370,7 @@ class CommentAppearanceRegressionTest {
     @Test
     fun dialogSurvivesGeometryChangesBackgroundingAndCanBeDismissed() {
         val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
-        val controller = CommentsComposeController.create(
+        val controller = CommentsScreenController.create(
             shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
             showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
             savedItemState = object : SavedItemStateReader {
@@ -417,7 +417,7 @@ class CommentAppearanceRegressionTest {
         canProvideSummary = false, showAdditionalSummaryInfo = false, enableSummaryBoldFormatting = true,
     )
 
-    private class NoOpListener : CommentsComposeController.Listener {
+    private class NoOpListener : CommentsScreenController.Listener {
         override fun onToggleComment(comment: PortableCommentItem, position: Int) = Unit
         override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) = Unit
         override fun onCommentActionOverlayVisibilityChanged(showing: Boolean) = Unit

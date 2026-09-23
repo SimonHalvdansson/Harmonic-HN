@@ -90,7 +90,7 @@ class CommentsSessionState(
 
 /** Canonical state for a submissions session, including its visible list position. */
 class SubmissionsSessionState(
-    val submissions: SubmissionsStore,
+    val submissions: SubmissionsListStore,
 ) {
     var initialized: Boolean = false
     var firstVisibleStoryPosition: Int = 0

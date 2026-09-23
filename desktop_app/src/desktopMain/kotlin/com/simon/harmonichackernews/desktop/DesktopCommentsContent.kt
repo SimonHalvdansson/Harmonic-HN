@@ -39,7 +39,7 @@ import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
@@ -77,7 +77,7 @@ internal fun DesktopCommentsContent(
     showNavigation: Boolean,
     webViewForegroundAllowed: Boolean,
     onClose: () -> Unit,
-    onControllerChanged: (CommentsComposeController?) -> Unit,
+    onControllerChanged: (CommentsScreenController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val integratedBrowserAvailable = remember {
@@ -307,7 +307,7 @@ private fun handleDesktopCommentsPlatformEffect(
 private fun DesktopCommentsHeader(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
 ) {
     val colors = HarmonicTheme.colors
@@ -405,7 +405,7 @@ private fun DesktopCommentsHeader(
 internal fun DesktopCommentLinkPreview(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
 ) {
     CommentLinkPreviewOverlay(
         controller = controller,
@@ -440,7 +440,7 @@ internal fun DesktopCommentLinkPreview(
 private fun DesktopReferencePreview(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val scope = rememberCoroutineScope()

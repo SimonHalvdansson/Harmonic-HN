@@ -25,7 +25,7 @@ import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.presentation.EditorPresentationCopy
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
-import com.simon.harmonichackernews.presentation.SubmissionsRuntimeEffect
+import com.simon.harmonichackernews.presentation.SubmissionsFeatureEffect
 import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.common.TranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.EditorScreen
@@ -59,10 +59,10 @@ internal fun DesktopSubmissionsContent(
     LaunchedEffect(store, scene) {
         store.effects.collect { effect ->
             when (effect) {
-                is SubmissionsRuntimeEffect.OpenStory -> {
+                is SubmissionsFeatureEffect.OpenStory -> {
                     scene.navigation.openStory(effect.destination)
                 }
-                is SubmissionsRuntimeEffect.OpenExternalLink ->
+                is SubmissionsFeatureEffect.OpenExternalLink ->
                     scene.links.openExternal(ExternalLinkRequest(effect.url))
             }
         }

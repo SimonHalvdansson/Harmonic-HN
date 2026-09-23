@@ -21,8 +21,8 @@ import coil3.request.SuccessResult
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import kotlinx.coroutines.CompletableDeferred
@@ -63,7 +63,7 @@ class StoryTintTransitionTest {
                 faviconTintArgb = faviconTint,
                 tintFallbackArgb = baseColor,
             ))
-            val style = mutableStateOf(StoryItemStyle(
+            val style = mutableStateOf(StoryRowStyle(
                 previewImageMode = StoryPreviewMode.SMALL,
                 borderlessLargeImage = false,
                 compact = false,
@@ -84,7 +84,7 @@ class StoryTintTransitionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                    StoryItem(
+                    StoryRow(
                         model.value, style.value, Modifier.testTag("story"), listItem = true,
                         onPreviewTintExtracted = { extractedTint.complete(it) },
                     )

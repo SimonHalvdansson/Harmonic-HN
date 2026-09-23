@@ -6,14 +6,14 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 import com.simon.harmonichackernews.ui.settings.PortableAppForeground
-import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 
 @Composable
 internal fun BoxScope.DesktopAppForeground(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     navigation: MainNavigationSnapshot,
-    storiesController: StoriesComposeController?,
+    storiesController: StoriesScreenController?,
 ) {
     PortableAppForeground(
         app = app,

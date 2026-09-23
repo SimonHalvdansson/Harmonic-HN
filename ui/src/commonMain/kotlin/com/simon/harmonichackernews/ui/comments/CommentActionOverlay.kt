@@ -95,7 +95,7 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun CommentActionOverlay(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
@@ -430,7 +430,7 @@ fun CommentActionOverlay(
 
 @Composable
 private fun CommentActionCardContent(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     comment: PortableCommentItem,
     hasAccount: Boolean,

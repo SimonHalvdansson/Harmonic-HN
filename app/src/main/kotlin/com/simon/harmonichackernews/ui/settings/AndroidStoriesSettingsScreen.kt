@@ -5,7 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.utils.PreviewImageTintUtils
+import com.simon.harmonichackernews.ui.theme.previewTintBaseColor
 import com.simon.harmonichackernews.widget.refreshStoryWidgets
 
 @Composable
@@ -19,7 +19,7 @@ fun AndroidStoriesSettingsScreen(
     val story = repository.snapshot().story
     val previewModel = remember(context, story.paletteTintConfigKey) {
         SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = PreviewImageTintUtils.getTintBaseColor(context),
+            tintFallbackArgb = previewTintBaseColor(context),
         )
     }
     StoriesSettingsRoute(

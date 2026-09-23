@@ -6,7 +6,7 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.simon.harmonichackernews.utils.ViewUtils
+import com.simon.harmonichackernews.utils.AndroidViewInsets
 
 open class BaseActivity : ComponentActivity() {
     private var navBarHeight = 0
@@ -21,7 +21,7 @@ open class BaseActivity : ComponentActivity() {
                 .bottom
             windowInsets
         }
-        ViewUtils.requestApplyInsetsWhenAttached(content)
+        AndroidViewInsets.requestApplyInsetsWhenAttached(content)
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {

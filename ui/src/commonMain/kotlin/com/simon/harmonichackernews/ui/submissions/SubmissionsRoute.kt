@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsIntent
 import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
-import com.simon.harmonichackernews.ui.content.rememberSubmissionStoryItemUiModel
+import com.simon.harmonichackernews.ui.content.rememberSubmissionStoryRowModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Portable submissions Compose bridge; hosts provide only the final URL effect. */
@@ -60,7 +60,7 @@ fun SubmissionsRoute(
             reserveBackButtonSpace = reserveBackButtonSpace,
             pullToRefreshEnabled = pullToRefreshEnabled,
             storyItemModel = { story, settings ->
-                rememberSubmissionStoryItemUiModel(
+                rememberSubmissionStoryRowModel(
                     story = story,
                     settings = settings,
                     previewState = states[story.id],

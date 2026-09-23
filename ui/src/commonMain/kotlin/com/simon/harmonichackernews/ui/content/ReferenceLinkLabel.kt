@@ -11,7 +11,7 @@ import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.LinkPreviewUrls
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
-import com.simon.harmonichackernews.utils.ReferenceLinkRowUtils
+import com.simon.harmonichackernews.utils.referenceLinkFallbackLabel
 import androidx.compose.ui.unit.dp
 
 /** Paragraph-sized gaps around a reference run, compact gaps between its individual links. */
@@ -39,7 +39,7 @@ internal fun hasReferenceLinkTitle(label: String, url: String): Boolean {
 @Composable
 fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink, resolveAllTitles: Boolean = false): String {
     val url = link.url.orEmpty()
-    val fallback = ReferenceLinkRowUtils.getReferenceLinkLabel(link)
+    val fallback = referenceLinkFallbackLabel(link)
     if (!resolveAllTitles && !shouldResolveReferenceLinkTitle(url)) return fallback
     val dependencies = LocalHarmonicUiDependencies.current
     var label by remember(url, link.resolvedTitle) { mutableStateOf(fallback) }

@@ -20,8 +20,8 @@ import android.view.WindowManager
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.utils.ThemeUtils.setupTheme
-import com.simon.harmonichackernews.widget.WidgetConfigComposeHost.install
+import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
+import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
 
 class WidgetConfigActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -112,7 +112,7 @@ class WidgetConfigActivity : ComponentActivity() {
         install(
             this,
             widgets.configuration(appWidgetId, WidgetConfiguration.fromStoryPreferences(harmonicAppComposition.userSettings.story)),
-            WidgetConfigComposeHost.Listener(::confirmConfiguration)
+            AndroidWidgetConfigHost.Listener(::confirmConfiguration)
         )
     }
 

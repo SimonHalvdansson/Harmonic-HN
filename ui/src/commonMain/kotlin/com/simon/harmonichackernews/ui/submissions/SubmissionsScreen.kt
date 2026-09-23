@@ -92,10 +92,10 @@ import com.simon.harmonichackernews.presentation.SubmissionsIntent
 import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.presentation.SubmissionsUiState
 import com.simon.harmonichackernews.ui.content.CommentFeedItem
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
-import com.simon.harmonichackernews.ui.content.toStoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
+import com.simon.harmonichackernews.ui.content.StoryRowModel
+import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
@@ -115,7 +115,7 @@ fun SubmissionsScreen(
     includeStatusBarInset: Boolean = true,
     reserveBackButtonSpace: Boolean = false,
     pullToRefreshEnabled: Boolean = true,
-    storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
+    storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryRowModel,
     onOpenLink: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
@@ -252,7 +252,7 @@ private fun BoxScope.SubmissionsList(
     previewResources: StoryListResourceRuntime,
     includeStatusBarInset: Boolean,
     reserveBackButtonSpace: Boolean,
-    storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryItemUiModel,
+    storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryRowModel,
     onOpenLink: (String) -> Unit,
 ) {
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -356,10 +356,10 @@ private fun BoxScope.SubmissionsList(
                     )
                 } else {
                     val model = storyItemModel(story, displaySettings)
-                    StoryItem(
+                    StoryRow(
                         model = model,
-                        style = displaySettings.toStoryItemStyle(
-                            StoryItemStyleContext(
+                        style = displaySettings.toStoryRowStyle(
+                            StoryRowStyleContext(
                                 score = story.score,
                                 commentCount = story.descendants,
                                 isRead = story.isRead,

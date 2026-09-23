@@ -1,0 +1,208 @@
+package com.simon.harmonichackernews.ui.content
+
+import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.adapters.CommentDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
+import com.simon.harmonichackernews.settings.StoryPreviewMode
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class RowStyleMappingsTest {
+    @Test
+    fun displayStylesPreserveIndependentFillAndElevation() {
+        for (displayStyle in DisplayStyle.entries) {
+            val story = storySettings().copy(displayStyle = displayStyle).toStoryRowStyle(
+                StoryRowStyleContext(score = 0, commentCount = 0, isRead = false),
+            )
+            val comments = commentSettings().copy(displayStyle = displayStyle).toCommentRowStyle(
+                CommentRowStyleContext.Thread(animateChanges = false),
+            )
+            assertEquals(displayStyle == DisplayStyle.OUTLINED, story.showOutline)
+            assertEquals(displayStyle == DisplayStyle.OUTLINED, comments.showOutline)
+            assertEquals(displayStyle, story.displayStyle)
+            assertEquals(displayStyle, comments.displayStyle)
+            assertEquals(displayStyle != DisplayStyle.FLAT, story.hasBackground)
+            assertEquals(displayStyle != DisplayStyle.FLAT, comments.hasBackground)
+            assertEquals((displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED), story.cardStyle)
+            assertEquals((displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED), comments.cardStyle)
+        }
+    }
+
+    @Test
+    fun storyStyleCombinesDisplaySettingsWithScreenContext() {
+        val settings = storySettings()
+        val cases = listOf(
+            StoryStyleCase(
+                name = "stories row with unavailable summary",
+                context = StoryRowStyleContext(
+                    score = 80,
+                    commentCount = 21,
+                    isRead = true,
+                    previewTextAvailable = false,
+                ),
+                expected = storyStyle(
+                    showPreviewText = false,
+                    showIndex = true,
+                    useHotnessIcon = true,
+                    dimmed = true,
+                ),
+            ),
+            StoryStyleCase(
+                name = "submission row at the hotness threshold",
+                context = StoryRowStyleContext(
+                    score = 40,
+                    commentCount = 60,
+                    isRead = false,
+                    showIndex = false,
+                ),
+                expected = storyStyle(
+                    showPreviewText = true,
+                    showIndex = false,
+                    useHotnessIcon = false,
+                    dimmed = false,
+                ),
+            ),
+        )
+
+        cases.forEach { case ->
+            assertEquals(case.expected, settings.toStoryRowStyle(case.context), case.name)
+        }
+    }
+
+    @Test
+    fun commentStyleAppliesOnlyTheOverridesForItsScreen() {
+        val settings = commentSettings()
+        val cases = listOf(
+            CommentStyleCase(
+                name = "animated thread",
+                context = CommentRowStyleContext.Thread(animateChanges = true),
+                expected = threadCommentStyle(animateChanges = true),
+            ),
+            CommentStyleCase(
+                name = "non-animated thread",
+                context = CommentRowStyleContext.Thread(animateChanges = false),
+                expected = threadCommentStyle(animateChanges = false),
+            ),
+            CommentStyleCase(
+                name = "flat search result",
+                context = CommentRowStyleContext.Search,
+                expected = CommentRowStyle(
+                    displayStyle = DisplayStyle.RAISED,
+                    textSize = 18.5f,
+                    collectLinks = false,
+                    emphasizeMeta = false,
+                    depthIndicatorMode = CommentDepthPreferences.NONE,
+                    showDivider = false,
+                    preferredFont = "serif",
+                    animateChanges = false,
+                    transparentNonCardBackground = true,
+                ),
+            ),
+        )
+
+        cases.forEach { case ->
+            assertEquals(case.expected, settings.toCommentRowStyle(case.context), case.name)
+        }
+    }
+
+    private fun storySettings() = StoryDisplaySettings(
+        showPoints = false,
+        compactPoints = true,
+        includeTopLevelDomain = false,
+        showCommentsCount = true,
+        compactView = true,
+        showFavicons = false,
+        previewImageMode = StoryPreviewMode.LARGE,
+        borderlessLargePreviewImage = true,
+        showPreviewText = true,
+        storyTextSize = 17.5f,
+        showIndex = true,
+        compactHeader = false,
+        commentsButtonOnLeft = true,
+        displayStyle = DisplayStyle.STANDARD,
+        tintCardsFromImages = true,
+        paletteTintMode = "vibrant:0.75",
+        dimReadStories = true,
+        hotnessThreshold = 100,
+        faviconProvider = "example",
+        font = "serif",
+        commentTextSize = 18.5f,
+    )
+
+    private fun storyStyle(
+        showPreviewText: Boolean,
+        showIndex: Boolean,
+        useHotnessIcon: Boolean,
+        dimmed: Boolean,
+    ) = StoryRowStyle(
+        previewImageMode = StoryPreviewMode.LARGE,
+        borderlessLargeImage = true,
+        compact = true,
+        showPreviewText = showPreviewText,
+        showFavicon = false,
+        showPoints = false,
+        compactPoints = true,
+        includeTopLevelDomain = false,
+        showCommentCount = true,
+        showIndex = showIndex,
+        commentsOnLeft = true,
+        tintCard = true,
+        displayStyle = DisplayStyle.STANDARD,
+        useHotnessIcon = useHotnessIcon,
+        preferredFont = "serif",
+        textSize = 17.5f,
+        dimmed = dimmed,
+        paletteTintConfigKey = "vibrant:0.75",
+    )
+
+    private fun commentSettings() = CommentDisplaySettings(
+        collapseParent = false,
+        showFavicons = false,
+        showHeaderPreviewImage = false,
+        tintHeader = false,
+        showUpButton = false,
+        paletteTintMode = "default",
+        preferredTextSize = 18.5f,
+        commentDepthIndicatorMode = "threads",
+        showNavigationBar = false,
+        font = "serif",
+        showInvert = false,
+        showTopLevelDepthIndicator = false,
+        theme = null,
+        isTablet = false,
+        faviconProvider = "example",
+        swapLongPressTap = false,
+        displayStyle = DisplayStyle.RAISED,
+        showDividers = true,
+        highlightCommentMeta = false,
+        collectReferenceLinks = true,
+        hasAccountDetails = false,
+        canProvideSummary = false,
+        showAdditionalSummaryInfo = false,
+        enableSummaryBoldFormatting = true,
+    )
+
+    private fun threadCommentStyle(animateChanges: Boolean) = CommentRowStyle(
+        displayStyle = DisplayStyle.RAISED,
+        textSize = 18.5f,
+        collectLinks = true,
+        emphasizeMeta = false,
+        depthIndicatorMode = "threads",
+        showDivider = true,
+        preferredFont = "serif",
+        animateChanges = animateChanges,
+    )
+
+    private data class StoryStyleCase(
+        val name: String,
+        val context: StoryRowStyleContext,
+        val expected: StoryRowStyle,
+    )
+
+    private data class CommentStyleCase(
+        val name: String,
+        val context: CommentRowStyleContext,
+        val expected: CommentRowStyle,
+    )
+}

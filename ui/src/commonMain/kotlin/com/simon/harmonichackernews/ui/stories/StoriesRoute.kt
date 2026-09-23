@@ -6,13 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
-import com.simon.harmonichackernews.ui.content.storyItemUiModel
+import com.simon.harmonichackernews.ui.content.storyRowModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Portable stories Compose bridge; host inputs are limited to form-factor resource flags. */
 @Composable
 fun StoriesRoute(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     mainListState: LazyListState = rememberLazyListState(),
     showTapToUpdateButton: Boolean = true,
     tintStore: StoryResourceTintStore,
@@ -28,7 +28,7 @@ fun StoriesRoute(
         showTapToUpdateButton = showTapToUpdateButton,
         storyItemModelCacheKey = tintBaseColor,
         storyItemModel = { story, position, settings, previewResource, nowMillis ->
-            storyItemUiModel(
+            storyRowModel(
                 story,
                 position,
                 settings,

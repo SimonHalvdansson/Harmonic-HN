@@ -28,7 +28,7 @@ class SubmissionsFeatureStoreTest {
     fun initializeLoadsContentAndLaterRestoresScrollPosition() = runTest {
         val story = story(1)
         val session = SubmissionsSessionState(
-            SubmissionsStore("alice", FakeAlgoliaRepository(listOf(story)), pageSize = 10),
+            SubmissionsListStore("alice", FakeAlgoliaRepository(listOf(story)), pageSize = 10),
         )
         val store = featureStore(this, session)
 
@@ -50,7 +50,7 @@ class SubmissionsFeatureStoreTest {
         val store = featureStore(
             scope = this,
             session = SubmissionsSessionState(
-                SubmissionsStore("alice", repository, pageSize = 10),
+                SubmissionsListStore("alice", repository, pageSize = 10),
             ),
         )
 
@@ -67,7 +67,7 @@ class SubmissionsFeatureStoreTest {
         val response = CompletableDeferred<List<Story>>()
         val repository = DeferredAlgoliaRepository(response)
         val session = SubmissionsSessionState(
-            SubmissionsStore("alice", repository, pageSize = 10),
+            SubmissionsListStore("alice", repository, pageSize = 10),
         )
         val store = featureStore(backgroundScope, session)
 
@@ -94,7 +94,7 @@ class SubmissionsFeatureStoreTest {
         val response = CompletableDeferred<List<Story>>()
         val repository = PagingAlgoliaRepository(response)
         val session = SubmissionsSessionState(
-            SubmissionsStore("alice", repository, pageSize = 1),
+            SubmissionsListStore("alice", repository, pageSize = 1),
         )
         val store = featureStore(backgroundScope, session)
 
@@ -131,7 +131,7 @@ class SubmissionsFeatureStoreTest {
         runCurrent()
         store.accept(SubmissionsIntent.OpenStoryLink(story))
         assertEquals(
-            SubmissionsRuntimeEffect.OpenStory(story.toDestination(showWebsite = true)),
+            SubmissionsFeatureEffect.OpenStory(story.toDestination(showWebsite = true)),
             integratedEffect.await(),
         )
 
@@ -140,7 +140,7 @@ class SubmissionsFeatureStoreTest {
         runCurrent()
         store.accept(SubmissionsIntent.OpenStoryLink(story))
         assertEquals(
-            SubmissionsRuntimeEffect.OpenExternalLink("https://example.com"),
+            SubmissionsFeatureEffect.OpenExternalLink("https://example.com"),
             externalEffect.await(),
         )
     }
@@ -153,7 +153,7 @@ class SubmissionsFeatureStoreTest {
         }
         val master = story(42).also { it.title = "Master" }
         val session = SubmissionsSessionState(
-            SubmissionsStore("alice", FakeAlgoliaRepository(listOf(source)), pageSize = 10),
+            SubmissionsListStore("alice", FakeAlgoliaRepository(listOf(source)), pageSize = 10),
         )
         val store = featureStore(
             this,
@@ -169,7 +169,7 @@ class SubmissionsFeatureStoreTest {
         store.accept(SubmissionsIntent.OpenRootStory(source))
         runCurrent()
 
-        val open = assertIs<SubmissionsRuntimeEffect.OpenStory>(effect.await())
+        val open = assertIs<SubmissionsFeatureEffect.OpenStory>(effect.await())
         assertEquals(master.id, open.destination.storyId)
         assertFalse(open.destination.showWebsite)
         assertTrue(store.state.value.revision > revision)
@@ -188,7 +188,7 @@ class SubmissionsFeatureStoreTest {
     )
 
     private fun session() = SubmissionsSessionState(
-        SubmissionsStore("alice", FakeAlgoliaRepository(emptyList()), pageSize = 10),
+        SubmissionsListStore("alice", FakeAlgoliaRepository(emptyList()), pageSize = 10),
     )
 
     private class FakeAlgoliaRepository(

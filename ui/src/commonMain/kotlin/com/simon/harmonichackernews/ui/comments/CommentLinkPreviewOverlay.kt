@@ -91,7 +91,7 @@ private const val ReferenceImageExpandedGapDp = 18
 
 @Composable
 fun CommentLinkPreviewOverlay(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     tablet: Boolean,
     referenceContent: @Composable (CommentLinkPreviewOverlayState.Reference) -> Unit,
     imageContent: @Composable (CommentLinkPreviewOverlayState.Image) -> Unit,

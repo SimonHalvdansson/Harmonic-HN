@@ -10,7 +10,7 @@ import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -105,7 +105,7 @@ class CommentsVolumeNavigationTest {
         }
     }
 
-    private fun assertVisibleKeys(controller: CommentsComposeController, topLevelOnly: Boolean) {
+    private fun assertVisibleKeys(controller: CommentsScreenController, topLevelOnly: Boolean) {
         compose.runOnIdle {
             assertTrue(requireNotNull(compose.activity.navigationController.getCommentsCoordinator())
                 .canNavigateCommentsWithVolumeButtons())
@@ -122,7 +122,7 @@ class CommentsVolumeNavigationTest {
         }
     }
 
-    private fun assertKeysDoNotNavigate(controller: CommentsComposeController) {
+    private fun assertKeysDoNotNavigate(controller: CommentsScreenController) {
         controller.navigationRequest?.let(controller::consumeNavigationRequest)
         for (code in listOf(KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP)) {
             // Calling the Activity callback directly does not inject an OS volume change.

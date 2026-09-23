@@ -17,7 +17,7 @@ import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.ui.content.CommentItem
+import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 
 data class CommentsSettingsUiState(
@@ -103,9 +103,9 @@ fun CommentsSettingsScreen(
         contentVersion = contentVersion,
         pinnedContent = {
             Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background)) {
-                CommentItem(
+                CommentRow(
                     model = SettingsCommentPreviewModel,
-                    style = state.toPreviewCommentItemStyle(),
+                    style = state.toPreviewCommentRowStyle(),
                 )
             }
         },

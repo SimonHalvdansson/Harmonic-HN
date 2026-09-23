@@ -13,8 +13,8 @@ data class GitLabInfo(
     val stars: Int = 0,
     val forks: Int = 0,
 ) {
-    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
-    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
+    fun formatStars(): String = LinkPreviewDisplayFormatter.formatCount(stars, "star", "stars")
+    fun formatForks(): String = LinkPreviewDisplayFormatter.formatCount(forks, "fork", "forks")
     fun formatVisibility(): String? = visibility?.replaceFirstChar { it.uppercase() }
-    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+    val shortenedUrl: String? get() = LinkPreviewDisplayFormatter.formatDisplayUrl(website)
 }

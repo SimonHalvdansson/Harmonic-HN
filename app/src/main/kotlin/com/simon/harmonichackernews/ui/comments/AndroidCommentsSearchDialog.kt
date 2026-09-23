@@ -11,7 +11,7 @@ import kotlinx.coroutines.CancellationException
 
 @Composable
 fun AndroidCommentsSearchDialog(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     searchTerm: String,
     visibleComments: List<PortableCommentItem>,
     settings: CommentDisplaySettings,
@@ -67,7 +67,7 @@ fun AndroidCommentsSearchDialog(
 }
 
 @Composable
-private fun AndroidSearchLinkPreviewBackHandler(controller: CommentsComposeController) {
+private fun AndroidSearchLinkPreviewBackHandler(controller: CommentsScreenController) {
     PredictiveBackHandler(enabled = controller.linkPreviewOverlay != null) { events ->
         var predictiveBackStarted = false
         try {

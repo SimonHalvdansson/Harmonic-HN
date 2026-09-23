@@ -18,13 +18,13 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.paletteCompatible
 import com.simon.harmonichackernews.ui.content.rememberCoilImagePaletteTint
 import com.simon.harmonichackernews.ui.content.rememberPreviewImagePaletteTint
-import com.simon.harmonichackernews.ui.content.storyItemUiModel
+import com.simon.harmonichackernews.ui.content.storyRowModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Resolve against the live theme without replacing the deck or resetting its pager/animations. */
 @Composable
 internal fun rememberStoryPreviewCardColor(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     story: StoryListItemSnapshot,
 ): Color {
     val dependencies = LocalHarmonicUiDependencies.current
@@ -38,7 +38,7 @@ internal fun rememberStoryPreviewCardColor(
     val revision = controller.storyRevision(story.id)
     val resource = controller.previewResource(story.id)?.takeIf { it.pageUrl == story.url }
     val model = remember(story, settings, baseArgb, revision, resource) {
-        storyItemUiModel(story, 0, settings, resource, baseArgb, dependencies.storyResourceTints)
+        storyRowModel(story, 0, settings, resource, baseArgb, dependencies.storyResourceTints)
     }
     val previewUrl = model.previewImageUrl?.takeIf {
         settings.previewImageMode != StoryPreviewMode.OFF && resource?.imageLoadFailed != true
@@ -61,7 +61,7 @@ internal fun rememberStoryPreviewCardColor(
 /** A paged preview must also refresh tints when its source list row is no longer composed. */
 @Composable
 private fun rememberPreviewResourceTint(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     story: StoryListItemSnapshot,
     url: String,
     baseArgb: Int,

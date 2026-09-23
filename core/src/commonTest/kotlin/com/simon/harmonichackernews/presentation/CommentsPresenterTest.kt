@@ -182,9 +182,9 @@ class CommentsPresenterTest {
             },
             nowMillis = { 0L },
         )
-        val effects = mutableListOf<CommentsRuntimeEffect.ThreadReady>()
+        val effects = mutableListOf<CommentsFeatureEffect.ThreadReady>()
         backgroundScope.launch {
-            runtime.effects.filterIsInstance<CommentsRuntimeEffect.ThreadReady>().collect { effects += it }
+            runtime.effects.filterIsInstance<CommentsFeatureEffect.ThreadReady>().collect { effects += it }
         }
         val story = Story("Fresh", 42, true, false).apply { kids = intArrayOf(7) }
         runtime.initialize(story, false, -1, "Default", restoring = false)
@@ -228,8 +228,8 @@ class CommentsPresenterTest {
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = dispatcher,
         )
-        val effects = mutableListOf<CommentsEffect.ThreadApplied>()
-        backgroundScope.launch { presenter.effects.filterIsInstance<CommentsEffect.ThreadApplied>().collect { effects += it } }
+        val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
+        backgroundScope.launch { presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it } }
         presenter.dispatch(CommentsAction.LoadThread(
             story = Story("Cached", 42, true, false), useAlgolia = true,
             filteredUsers = setOf("blocked"), sorting = "Default", collapseTopLevel = false,
@@ -287,7 +287,7 @@ class CommentsPresenterTest {
 
             val appliedOrders = mutableListOf<List<Int>>()
             backgroundScope.launch {
-                presenter.effects.filterIsInstance<CommentsEffect.ThreadApplied>().collect {
+                presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect {
                     appliedOrders += presenter.thread.state.value.allComments.drop(1).map { it.id }
                 }
             }
@@ -360,7 +360,7 @@ class CommentsPresenterTest {
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
-        val effects = mutableListOf<CommentsEffect>()
+        val effects = mutableListOf<CommentsPresenterEffect>()
         backgroundScope.launch { presenter.effects.collect { effects += it } }
         val story = Story("Loading", 42, false, false)
         presenter.dispatch(
@@ -373,13 +373,13 @@ class CommentsPresenterTest {
         assertEquals(listOf(7, 8), presenter.thread.state.value.allComments.drop(1).map { it.id })
         assertTrue(presenter.state.value.loaded)
         assertFalse(ranking.isCompleted)
-        assertFalse(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().networkCompleted)
+        assertFalse(effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().single().networkCompleted)
 
         ranking.complete(Story().apply { id = 42; kids = intArrayOf(8, 7) })
         runCurrent()
         assertEquals(listOf(8, 7), presenter.thread.state.value.allComments.drop(1).map { it.id })
         assertEquals(listOf(8, 7), story.kids?.toList())
-        val applied = effects.filterIsInstance<CommentsEffect.ThreadApplied>().last()
+        val applied = effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().last()
         assertTrue(applied.networkCompleted)
         assertTrue(applied.contentApplied)
         assertEquals(response, applied.responseToCache)
@@ -433,7 +433,7 @@ class CommentsPresenterTest {
             isLink = true
         }
         runtime.initialize(story, false, -1, "Default", restoring = false)
-        val effects = mutableListOf<CommentsRuntimeEffect>()
+        val effects = mutableListOf<CommentsFeatureEffect>()
         backgroundScope.launch { runtime.effects.collect(effects::add) }
         runCurrent()
 
@@ -442,14 +442,14 @@ class CommentsPresenterTest {
 
         assertTrue(runtime.summaryLoading)
         assertEquals(null, story.aiSummaryText)
-        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+        assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
 
         runtime.startSummary("text extracted from the loaded WebView")
         runCurrent()
 
         assertFalse(runtime.summaryLoading)
         assertEquals(2, attempts)
-        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+        assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
     }
 
     @Test
@@ -503,7 +503,7 @@ class CommentsPresenterTest {
             isLink = true
         }
         runtime.initialize(story, false, -1, "Default", restoring = false)
-        val effects = mutableListOf<CommentsRuntimeEffect>()
+        val effects = mutableListOf<CommentsFeatureEffect>()
         backgroundScope.launch { runtime.effects.collect(effects::add) }
         runCurrent()
 
@@ -512,14 +512,14 @@ class CommentsPresenterTest {
 
         assertTrue(runtime.summaryLoading)
         assertEquals(null, story.aiSummaryText)
-        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+        assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
 
         runtime.startSummary("text extracted from the loaded WebView")
         runCurrent()
 
         assertFalse(runtime.summaryLoading)
         assertEquals(2, attempts)
-        assertEquals(1, effects.count { it == CommentsRuntimeEffect.RequestSummaryPageTextRetry })
+        assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
     }
 
     @Test
@@ -565,7 +565,7 @@ class CommentsPresenterTest {
             UnusedVotingService,
         )
         val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L }
-        val store = CommentsStore(backgroundScope, runtime)
+        val store = CommentsFeatureStore(backgroundScope, runtime)
         val initialState = store.state.value
         val emissions = mutableListOf<CommentsState>()
         val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -604,7 +604,7 @@ class CommentsPresenterTest {
             savedItemActions(),
             UnusedVotingService,
         )
-        val store = CommentsStore(
+        val store = CommentsFeatureStore(
             backgroundScope,
             CommentsFeatureRuntime(backgroundScope, session, presenter) { 123L },
         )
@@ -644,10 +644,10 @@ class CommentsPresenterTest {
         assertEquals("kotlin", runtime.thread.state.value.searchQuery)
 
         val effect = async {
-            runtime.effects.filterIsInstance<CommentsRuntimeEffect.Platform>().first()
+            runtime.effects.filterIsInstance<CommentsFeatureEffect.Platform>().first()
         }
         runCurrent()
-        runtime.header(CommentsHeaderAction.REPLY)
+        runtime.handleHeaderAction(CommentsHeaderAction.REPLY)
         assertIs<CommentsPlatformEffect.RequestLogin>(effect.await().effect)
     }
 
@@ -742,7 +742,7 @@ class CommentsPresenterTest {
                 restoreScrollFromCache = false,
             ),
         )
-        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+        val applied = assertIs<CommentsPresenterEffect.ThreadApplied>(effect.await())
 
         assertEquals("Shared comments", story.title)
         assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.comment.id })
@@ -805,7 +805,7 @@ class CommentsPresenterTest {
         )
         assertEquals(0, cacheReads)
 
-        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+        val applied = assertIs<CommentsPresenterEffect.ThreadApplied>(effect.await())
 
         assertEquals(1, cacheReads)
         assertFalse(applied.networkCompleted)
@@ -892,7 +892,7 @@ class CommentsPresenterTest {
                 CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads),
                 UnusedPollOptions, savedItemActions(), UnusedVotingService,
             )
-            val effects = mutableListOf<CommentsEffect>()
+            val effects = mutableListOf<CommentsPresenterEffect>()
             backgroundScope.launch { presenter.effects.collect { effects += it } }
             val story = Story("Feed title", 42, true, false).also { it.kids = intArrayOf(7) }
             presenter.dispatch(
@@ -906,14 +906,14 @@ class CommentsPresenterTest {
             runCurrent()
             assertEquals("Cached", story.title)
             assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
-            assertTrue(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().restoreScroll)
-            assertFalse(effects.filterIsInstance<CommentsEffect.ThreadApplied>().single().broadcastStoryUpdate)
+            assertTrue(effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().single().restoreScroll)
+            assertFalse(effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().single().broadcastStoryUpdate)
             assertFalse(networkResponse.isCompleted)
 
             networkResponse.complete(liveResponse)
             runCurrent()
             assertEquals(1, networkRequests)
-            val completed = effects.filterIsInstance<CommentsEffect.ThreadApplied>().last()
+            val completed = effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().last()
             assertTrue(completed.networkCompleted)
             assertEquals(changedResponse, completed.contentApplied)
             assertTrue(completed.broadcastStoryUpdate)
@@ -975,7 +975,7 @@ class CommentsPresenterTest {
                 restoreScrollFromCache = false,
             ),
         )
-        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+        val applied = assertIs<CommentsPresenterEffect.ThreadApplied>(effect.await())
 
         assertEquals(1, source.itemRequests)
         assertEquals("Prepared comments", story.title)
@@ -1022,7 +1022,7 @@ class CommentsPresenterTest {
                 restoreScrollFromCache = false,
             ),
         )
-        val applied = assertIs<CommentsEffect.ThreadApplied>(effect.await())
+        val applied = assertIs<CommentsPresenterEffect.ThreadApplied>(effect.await())
 
         assertEquals(1, official.storyRequests)
         assertEquals(listOf(7), official.commentRequests)
@@ -1054,7 +1054,7 @@ class CommentsPresenterTest {
         runCurrent()
 
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
-        val changed = assertIs<CommentsEffect.PollOptionsChanged>(effect.await())
+        val changed = assertIs<CommentsPresenterEffect.PollOptionsChanged>(effect.await())
 
         assertEquals(42, changed.storyId)
         val option = story.pollOptions?.single()
@@ -1084,8 +1084,8 @@ class CommentsPresenterTest {
         assertTrue(presenter.state.value.storyVoteLoading)
         runCurrent()
 
-        assertIs<CommentsEffect.SavedItemActionStarted>(effects.await()[0])
-        assertIs<CommentsEffect.SavedItemActionCompleted>(effects.await()[1])
+        assertIs<CommentsPresenterEffect.SavedItemActionStarted>(effects.await()[0])
+        assertIs<CommentsPresenterEffect.SavedItemActionCompleted>(effects.await()[1])
         assertTrue(presenter.savedItemState.isUpvoted(42, false))
         assertEquals(false, presenter.state.value.storyVoteLoading)
     }
@@ -1122,8 +1122,8 @@ class CommentsPresenterTest {
         runCurrent()
 
         val emitted = effects.await()
-        assertIs<CommentsEffect.SavedItemActionStartFailed>(emitted[1])
-        assertIs<CommentsEffect.SavedItemActionCompleted>(emitted[3])
+        assertIs<CommentsPresenterEffect.SavedItemActionStartFailed>(emitted[1])
+        assertIs<CommentsPresenterEffect.SavedItemActionCompleted>(emitted[3])
         assertTrue(actions.isUpvoted(42, false))
         assertFalse(presenter.state.value.storyVoteLoading)
     }
@@ -1198,8 +1198,8 @@ class CommentsPresenterTest {
         runCurrent()
 
         val emitted = effects.await()
-        assertEquals(7, assertIs<CommentsEffect.PollVoteStarted>(emitted[0]).optionId)
-        val completed = assertIs<CommentsEffect.PollVoteCompleted>(emitted[1])
+        assertEquals(7, assertIs<CommentsPresenterEffect.PollVoteStarted>(emitted[0]).optionId)
+        val completed = assertIs<CommentsPresenterEffect.PollVoteCompleted>(emitted[1])
         val failure = assertIs<PollVoteOutcome.Failure>(completed.outcome)
         assertEquals("Vote failed", assertIs<HackerNewsActionResult.Failure>(failure.result).summary)
         assertEquals(null, presenter.state.value.pollVoteInFlightOptionId)
@@ -1222,7 +1222,7 @@ class CommentsPresenterTest {
             voting,
         )
         val completed = async {
-            presenter.effects.filterIsInstance<CommentsEffect.PollVoteCompleted>().first()
+            presenter.effects.filterIsInstance<CommentsPresenterEffect.PollVoteCompleted>().first()
         }
         runCurrent()
 

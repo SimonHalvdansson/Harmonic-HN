@@ -41,7 +41,7 @@ import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.StoriesFeatureHost
-import com.simon.harmonichackernews.app.createStoriesStore
+import com.simon.harmonichackernews.app.createStoriesFeatureStore
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.MainDestination
@@ -51,14 +51,14 @@ import com.simon.harmonichackernews.platform.PresentationCopy
 import com.simon.harmonichackernews.network.CommentThreadSource
 import com.simon.harmonichackernews.presentation.CommentsPreloadCoordinator
 import com.simon.harmonichackernews.presentation.StoriesPlatformEffect
-import com.simon.harmonichackernews.presentation.StoriesRuntimeEffect
+import com.simon.harmonichackernews.presentation.StoriesFeatureEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
@@ -71,7 +71,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
-import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -101,8 +101,8 @@ fun main() {
         application {
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
             val navigation by bootstrap.scene.navigation.state.collectAsState()
-            var storiesController by remember { mutableStateOf<StoriesComposeController?>(null) }
-            var commentsController by remember { mutableStateOf<CommentsComposeController?>(null) }
+            var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
+            var commentsController by remember { mutableStateOf<CommentsScreenController?>(null) }
             var settingsNavigation by remember { mutableStateOf<SettingsNavigationStore?>(null) }
             var editorBackRequestVersion by remember { mutableIntStateOf(0) }
             Window(
@@ -236,8 +236,8 @@ private fun installTaskbarIcon(icon: BufferedImage?) {
 private fun handleDesktopBack(
     navigation: MainNavigationSnapshot,
     scene: HarmonicSceneComposition,
-    storiesController: StoriesComposeController?,
-    commentsController: CommentsComposeController?,
+    storiesController: StoriesScreenController?,
+    commentsController: CommentsScreenController?,
     settingsNavigation: SettingsNavigationStore?,
     onEditorBackRequested: () -> Unit,
 ): Boolean {
@@ -279,11 +279,11 @@ private fun handleDesktopBack(
 private fun DesktopAppContent(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    storiesController: StoriesComposeController?,
-    commentsController: CommentsComposeController?,
+    storiesController: StoriesScreenController?,
+    commentsController: CommentsScreenController?,
     editorBackRequestVersion: Int,
-    onStoriesControllerChanged: (StoriesComposeController?) -> Unit,
-    onCommentsControllerChanged: (CommentsComposeController?) -> Unit,
+    onStoriesControllerChanged: (StoriesScreenController?) -> Unit,
+    onCommentsControllerChanged: (CommentsScreenController?) -> Unit,
     onSettingsNavigationChanged: (SettingsNavigationStore?) -> Unit,
 ) {
     val navigation by scene.navigation.state.collectAsState()
@@ -445,7 +445,7 @@ private fun DesktopStoriesContent(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     isSplitLayout: Boolean,
-    onControllerChanged: (StoriesComposeController?) -> Unit,
+    onControllerChanged: (StoriesScreenController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
@@ -482,7 +482,7 @@ private fun DesktopStoriesContent(
         if (isSplitLayout) DesktopWidePaneHorizontalPadding.roundToPx() else 0
     }
     val store = remember(app, scene, scope) {
-        app.createStoriesStore(
+        app.createStoriesFeatureStore(
             StoriesFeatureHost(
                 scope = scope,
                 sessionState = scene.sessions.stories,
@@ -492,7 +492,7 @@ private fun DesktopStoriesContent(
         )
     }
     val controller = remember(store, defaultStoryHeightPx) {
-        lateinit var created: StoriesComposeController
+        lateinit var created: StoriesScreenController
         val callbacks = object : StoriesFeatureListener.PlatformCallbacks {
             override fun onSearchStateChanged(searching: Boolean) {
                 created.endPredictiveBack()
@@ -510,7 +510,7 @@ private fun DesktopStoriesContent(
             override fun onStoryPreviewVisibilityChanged(showing: Boolean) = Unit
             override fun isSplitLayout(): Boolean = currentSplitLayout
         }
-        created = StoriesComposeController.create(
+        created = StoriesScreenController.create(
             defaultStoryHeightPx = defaultStoryHeightPx,
             savedItemState = store.savedItemState,
             listener = StoriesFeatureListener(store, callbacks),
@@ -556,10 +556,10 @@ private fun DesktopStoriesContent(
     LaunchedEffect(store, controller, scene) {
         store.effects.collect { effect ->
             when (effect) {
-                is StoriesRuntimeEffect.OpenStory -> scene.navigation.openStory(effect.destination)
-                is StoriesRuntimeEffect.OpenExternalLink ->
+                is StoriesFeatureEffect.OpenStory -> scene.navigation.openStory(effect.destination)
+                is StoriesFeatureEffect.OpenExternalLink ->
                     scene.links.openExternal(ExternalLinkRequest(effect.url))
-                is StoriesRuntimeEffect.Platform -> when (val platform = effect.effect) {
+                is StoriesFeatureEffect.Platform -> when (val platform = effect.effect) {
                     StoriesPlatformEffect.OpenSettings -> scene.navigation.openSettings(null)
                     StoriesPlatformEffect.RequestLogin -> scene.navigation.showLoginDialog()
                     is StoriesPlatformEffect.OpenProfile ->
@@ -569,11 +569,11 @@ private fun DesktopStoriesContent(
                     StoriesPlatformEffect.OpenSubmitEditor ->
                         scene.navigation.openEditor(EditorDestination(EditorType.POST))
                 }
-                is StoriesRuntimeEffect.StoryChanged ->
+                is StoriesFeatureEffect.StoryChanged ->
                     effect.storyId?.let(controller::invalidateStory)
-                StoriesRuntimeEffect.LoginRequired -> scene.navigation.showLoginDialog()
-                is StoriesRuntimeEffect.UserMessage -> scene.userMessages.show(effect.message)
-                is StoriesRuntimeEffect.SavedActionFailed -> {
+                StoriesFeatureEffect.LoginRequired -> scene.navigation.showLoginDialog()
+                is StoriesFeatureEffect.UserMessage -> scene.userMessages.show(effect.message)
+                is StoriesFeatureEffect.SavedActionFailed -> {
                     if (effect.presentation.showDetails) {
                         scene.navigation.showFailureDetailDialog(
                             effect.presentation.failureSummary,

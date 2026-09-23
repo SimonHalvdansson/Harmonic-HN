@@ -45,9 +45,9 @@ import com.simon.harmonichackernews.resources.ic_shuffle
 import com.simon.harmonichackernews.resources.ic_person
 import com.simon.harmonichackernews.resources.ic_palette
 import org.jetbrains.compose.resources.painterResource
-import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
-import com.simon.harmonichackernews.ui.content.CommentItemUiModel
+import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
+import com.simon.harmonichackernews.ui.content.CommentRowModel
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -69,7 +69,7 @@ fun UserAvatarSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
     UserAvatarSettingsScreen(
         enabled = settings.comments.userAvatarsEnabled,
         options = settings.comments.userAvatarOptions,
-        previewStyle = presenter.state(settings).toPreviewCommentItemStyle(),
+        previewStyle = presenter.state(settings).toPreviewCommentRowStyle(),
         onEnabledChanged = repository::setUserAvatarsEnabled,
         onOptionsChanged = repository::setUserAvatarOptions,
         onBack = onBack,
@@ -80,7 +80,7 @@ fun UserAvatarSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
 fun UserAvatarSettingsScreen(
     enabled: Boolean,
     options: UserAvatarOptions,
-    previewStyle: CommentItemStyle,
+    previewStyle: CommentRowStyle,
     onEnabledChanged: (Boolean) -> Unit,
     onOptionsChanged: (UserAvatarOptions) -> Unit,
     onBack: () -> Unit,
@@ -189,7 +189,7 @@ fun UserAvatarSettingsScreen(
 }
 
 @Composable
-private fun AvatarCommentPreview(authors: List<String>, row: Int, style: CommentItemStyle) {
+private fun AvatarCommentPreview(authors: List<String>, row: Int, style: CommentRowStyle) {
     var exampleIndex by remember(authors, row) { mutableIntStateOf(row) }
     LaunchedEffect(authors, style.userAvatarsEnabled, style.userAvatarOptions.generic) {
         if (style.userAvatarsEnabled && !style.userAvatarOptions.generic) {
@@ -200,8 +200,8 @@ private fun AvatarCommentPreview(authors: List<String>, row: Int, style: Comment
             }
         }
     }
-    CommentItem(
-        model = CommentItemUiModel(
+    CommentRow(
+        model = CommentRowModel(
             author = authors[exampleIndex], age = "1h",
             body = when (row) {
                 0 -> "Small details make a difference."

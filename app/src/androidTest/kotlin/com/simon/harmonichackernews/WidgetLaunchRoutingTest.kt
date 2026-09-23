@@ -7,7 +7,7 @@ import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
-import com.simon.harmonichackernews.ui.navigation.MainNavigationController
+import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationController
 import com.simon.harmonichackernews.widget.widgetStoryIntent
 import com.simon.harmonichackernews.widget.widgetStoriesIntent
 import com.simon.harmonichackernews.navigation.MainDestination
@@ -23,7 +23,7 @@ class WidgetLaunchRoutingTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val context = InstrumentationRegistry.getInstrumentation().targetContext
             val scene = context.harmonicAppComposition.createScene()
-            val navigation = MainNavigationController(scene)
+            val navigation = AndroidMainNavigationController(scene)
             try {
                 navigation.openSettings("appearance")
                 assertEquals(MainDestination.SETTINGS, navigation.navigationState.state.value.currentDestination)
@@ -41,7 +41,7 @@ class WidgetLaunchRoutingTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val context = InstrumentationRegistry.getInstrumentation().targetContext
             val scene = context.harmonicAppComposition.createScene()
-            val navigation = MainNavigationController(scene)
+            val navigation = AndroidMainNavigationController(scene)
             val router = MainLaunchIntentRouter(navigation)
             try {
                 for (isLink in listOf(true, false)) {
@@ -56,7 +56,7 @@ class WidgetLaunchRoutingTest {
                         click.getStringExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA),
                     ) as StoryDestination
                     assertEquals(isLink, encoded.showWebsite)
-                    assertEquals(isLink, click.getBooleanExtra(CommentsContract.EXTRA_SHOW_WEBSITE, false))
+                    assertEquals(isLink, click.getBooleanExtra(CommentsIntentExtras.EXTRA_SHOW_WEBSITE, false))
                     assertTrue(router.route(click))
                     val destination = requireNotNull(navigation.navigationState.state.value.storyRequest).destination
                     assertEquals(encoded, destination)

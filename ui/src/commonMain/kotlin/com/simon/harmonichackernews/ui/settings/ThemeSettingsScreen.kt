@@ -70,8 +70,8 @@ import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.ThemePreferences
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -178,7 +178,7 @@ fun ThemeSettingsScreen(
     onSpecialNighttimeChanged: (Boolean) -> Unit,
     onDialogRequested: (ThemeSettingsDialog) -> Unit,
     resolvePreviewTheme: (theme: String, dark: Boolean, accentPreset: String) -> HarmonicThemePalette,
-    previewStyle: StoryItemStyle,
+    previewStyle: StoryRowStyle,
     contentVersion: Int = 0,
 ) {
     val previewPalette = { theme: String, dark: Boolean, accent: String ->
@@ -312,7 +312,7 @@ fun ThemeSettingsScreen(
 @Composable
 private fun ThemeLivePreview(
     state: ThemeSettingsUiState,
-    style: StoryItemStyle,
+    style: StoryRowStyle,
     resolveTheme: (String, Boolean, String) -> HarmonicThemePalette,
 ) {
     val lightFraction by animateFloatAsState(
@@ -360,7 +360,7 @@ private fun themePreviewFont(theme: String, configuredFont: String): String =
 @Composable
 private fun StoryThemePreview(
     palette: HarmonicThemePalette,
-    style: StoryItemStyle,
+    style: StoryRowStyle,
     modifier: Modifier = Modifier,
 ) {
     val preview = animateStoryPreviewPalette(palette)
@@ -382,7 +382,7 @@ private fun StoryThemePreview(
             modifier = modifier.fillMaxWidth().fillMaxHeight().background(preview.colors.background)
                 .padding(vertical = 6.dp),
         ) {
-            StoryItem(
+            StoryRow(
                 model = SettingsStoryPreviewModel.copy(
                     faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
                 ),
@@ -412,7 +412,7 @@ private fun StoryThemePreview(
     }
 }
 
-/** Animate the colors consumed by StoryItem and the sample button without fading their opacity. */
+/** Animate the colors consumed by StoryRow and the sample button without fading their opacity. */
 @Composable
 private fun animateStoryPreviewPalette(target: HarmonicThemePalette): HarmonicThemePalette {
     val colors = target.colors

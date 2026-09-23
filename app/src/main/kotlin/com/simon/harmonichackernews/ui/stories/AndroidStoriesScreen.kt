@@ -16,8 +16,8 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.settings.StoryPreviewMode
@@ -30,7 +30,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
  */
 @Composable
 internal fun AndroidStoriesScreen(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     mainListState: LazyListState,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
 ) {
@@ -49,11 +49,11 @@ internal fun AndroidStoriesScreen(
 @Preview(name = "Fold inner", widthDp = 673, heightDp = 841, showBackground = true)
 @Preview(name = "Tablet pane", widthDp = 600, heightDp = 960, showBackground = true)
 @Composable
-private fun StoryItemFormFactorPreview() {
+private fun StoryRowFormFactorPreview() {
     HarmonicTheme {
-        StoryItem(
+        StoryRow(
             model = SettingsStoryPreviewModel,
-            style = StoryItemStyle(
+            style = StoryRowStyle(
                 previewImageMode = StoryPreviewMode.MEDIUM,
                 borderlessLargeImage = false,
                 compact = false,

@@ -11,10 +11,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
-import com.simon.harmonichackernews.ui.navigation.MainNavigationController
-import com.simon.harmonichackernews.ui.navigation.MainNavigationHost.install
+import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationController
+import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationHost.install
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
-import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : BaseActivity() {
-    internal lateinit var navigationController: MainNavigationController
+    internal lateinit var navigationController: AndroidMainNavigationController
         private set
     private lateinit var launchIntentRouter: MainLaunchIntentRouter
     private val mutableWindowEnterComplete = MutableStateFlow(false)
@@ -35,7 +35,7 @@ class MainActivity : BaseActivity() {
                 (application as HarmonicApplication).startDeferredServices()
             }
         }
-        ThemeUtils.setupTheme(this)
+        AndroidActivityTheme.setupTheme(this)
 
         navigationController = install(this, savedInstanceState)
         launchIntentRouter = MainLaunchIntentRouter(navigationController)
@@ -165,7 +165,7 @@ class MainActivity : BaseActivity() {
 
     public override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        ThemeUtils.setupTheme(this)
+        AndroidActivityTheme.setupTheme(this)
         harmonicAppComposition.appearance.refreshSelection()
         navigationController.onConfigurationChanged(newConfig)
     }

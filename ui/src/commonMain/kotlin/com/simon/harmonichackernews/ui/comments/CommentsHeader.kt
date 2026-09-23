@@ -77,7 +77,7 @@ import org.jetbrains.compose.resources.painterResource
  */
 @Composable
 fun CommentsHeader(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     contentVersion: Int,
     storyPosterTag: String,
@@ -307,7 +307,7 @@ fun CommentsHeader(
                             // Keep selectable summary text outside the article click target so a
                             // long press starts text selection instead of opening the WebView.
                             CommentsPreviewPlatformProvider(previewPlatform) {
-                                StorySummary(
+                                StoryAiSummary(
                                     story = story,
                                     settings = settings,
                                     onOpenLink = previewPlatform.openLink,
@@ -348,13 +348,13 @@ fun CommentsHeader(
                                     }
                                 }
                             }
-                            HeaderMeta(
+                            CommentsHeaderMetadata(
                                 story = story,
                                 settings = settings,
                                 storyPosterTag = storyPosterTag,
                                 textStyle = textStyle,
                             )
-                            HeaderActions(
+                            CommentsHeaderActions(
                                 controller = controller,
                                 settings = settings,
                                 contentVersion = contentVersion,
@@ -381,7 +381,7 @@ fun CommentsHeader(
                 .background(fadeBrush),
         )
         OpFilterBanner(controller)
-        HeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
+        CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
     }
 }
 

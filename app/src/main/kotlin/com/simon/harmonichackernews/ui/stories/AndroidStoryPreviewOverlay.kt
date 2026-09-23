@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
 internal fun AndroidStoryPreviewOverlay(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val dependencies = LocalHarmonicUiDependencies.current

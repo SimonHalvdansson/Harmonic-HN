@@ -24,8 +24,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import org.junit.Assert.assertTrue
@@ -54,7 +54,7 @@ class StoryPreviewMotionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             CompositionLocalProvider(LocalHapticFeedback provides feedback) {
                 HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                    StoryItem(
+                    StoryRow(
                         model = SettingsStoryPreviewModel,
                         style = previewStyle(mode.value),
                         onCommentClick = { comments++ },
@@ -95,7 +95,7 @@ class StoryPreviewMotionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 Box(Modifier.width(360.dp)) {
-                    StoryItem(
+                    StoryRow(
                         model = SettingsStoryPreviewModel,
                         style = previewStyle(mode.value),
                         onCommentClick = {},
@@ -152,7 +152,7 @@ class StoryPreviewMotionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 Box(Modifier.width(360.dp)) {
-                    StoryItem(
+                    StoryRow(
                         model = model,
                         style = previewStyle(mode.value),
                         modifier = Modifier.testTag("story-preview"),
@@ -174,7 +174,7 @@ class StoryPreviewMotionTest {
         val heights = (1..24).map { frame ->
             compose.mainClock.advanceTimeByFrame()
             val storyBounds = story.getUnclippedBoundsInRoot()
-            // The public StoryItem includes 10dp outer + 4dp inner padding below its card.
+            // The public StoryRow includes 10dp outer + 4dp inner padding below its card.
             // Use unclipped text bounds: clipped semantics could hide the very regression
             // under test by reporting only the portion still visible inside the card.
             val cardBottom = storyBounds.bottom.value - 14f
@@ -196,7 +196,7 @@ class StoryPreviewMotionTest {
         )
     }
 
-    private fun previewStyle(mode: StoryPreviewMode) = StoryItemStyle(
+    private fun previewStyle(mode: StoryPreviewMode) = StoryRowStyle(
         previewImageMode = mode,
         borderlessLargeImage = true,
         compact = false,

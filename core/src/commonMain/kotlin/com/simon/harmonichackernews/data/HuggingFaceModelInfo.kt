@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.data
 
-import com.simon.harmonichackernews.data.LinkPreviewFormatUtils.shortenUrl
+import com.simon.harmonichackernews.data.LinkPreviewDisplayFormatter.formatDisplayUrl
 import kotlin.math.round
 import kotlinx.serialization.Serializable
 
@@ -47,7 +47,7 @@ data class HuggingFaceModelInfo(
     }
 
     val shortenedUrl: String?
-        get() = shortenUrl(website)
+        get() = formatDisplayUrl(website)
 
     private fun String.toPreviewLabel(): String = replaceFirstChar(Char::uppercase)
 

@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.ui.theme.ReaderModeFontData
 import com.simon.harmonichackernews.ui.theme.ReaderModeThemeFactory
 import com.simon.harmonichackernews.ui.theme.harmonicColors
-import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
@@ -38,7 +38,7 @@ internal class AndroidReaderModeResources {
     fun theme(context: Context, preferences: ReadingPreferences): ReaderModeTheme =
         ReaderModeThemeFactory.create(
             colors = harmonicColors(context),
-            light = ThemeUtils.isLightMode(context),
+            light = AndroidActivityTheme.isLightMode(context),
             font = preferences.readerModeFont.storedValue,
             fontSizePx = preferences.readerModeFontSize,
             fontData = fontData(context, preferences.readerModeFont.storedValue),

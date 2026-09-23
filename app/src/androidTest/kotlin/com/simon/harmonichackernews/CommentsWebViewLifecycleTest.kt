@@ -431,7 +431,7 @@ class CommentsWebViewLifecycleTest {
         val host = CommentsWebViewHost(context)
         private val previews = LinkPreviewController(null, app, reading) {}
         var externalUrl: String? = null
-        val controller = CommentsWebViewController(
+        val controller = AndroidCommentsWebViewController(
             hostGateway = object : CommentsWebViewHostGateway {
                 override val context: Context get() = this@BrowserFixture.context
                 override val isAttached = true
@@ -452,7 +452,7 @@ class CommentsWebViewLifecycleTest {
                 nowMillis = System::currentTimeMillis,
             ),
             coroutineScope = scope,
-            callbacks = object : CommentsWebViewController.Callbacks {
+            callbacks = object : AndroidCommentsWebViewController.Callbacks {
                 override fun openExternalLink(url: String) { externalUrl = url }
                 override fun showMessage(message: String?, duration: UserMessageDuration) = Unit
                 override fun setFullscreenSystemBarsHidden(hidden: Boolean) = Unit

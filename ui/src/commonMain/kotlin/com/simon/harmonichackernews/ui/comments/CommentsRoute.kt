@@ -12,7 +12,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
  */
 @Composable
 fun CommentsRoute(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     listModifier: Modifier = Modifier,
     reserveUpButtonInset: Boolean = false,
     pullToRefreshEnabled: Boolean = true,

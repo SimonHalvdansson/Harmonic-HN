@@ -7,13 +7,13 @@ import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
-import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.CommentsFeatureStore
 
 /** Shared comments UI binding; callbacks are limited to platform UI and facilities. */
 class CommentsFeatureListener(
-    private val store: CommentsStore,
+    private val store: CommentsFeatureStore,
     private val platform: PlatformCallbacks,
-) : CommentsComposeController.Listener {
+) : CommentsScreenController.Listener {
     override fun onToggleComment(comment: PortableCommentItem, position: Int) =
         store.accept(CommentsIntent.ToggleComment(comment.id))
 

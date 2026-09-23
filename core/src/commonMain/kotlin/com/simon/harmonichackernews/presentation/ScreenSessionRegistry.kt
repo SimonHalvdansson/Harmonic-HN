@@ -45,7 +45,7 @@ class ScreenSessionRegistry(
             submissionsKey = key
             submissionsUserName = userName
             submissionsState = SubmissionsSessionState(
-                SubmissionsStore(userName, repository),
+                SubmissionsListStore(userName, repository),
             )
         }
         return checkNotNull(submissionsState)

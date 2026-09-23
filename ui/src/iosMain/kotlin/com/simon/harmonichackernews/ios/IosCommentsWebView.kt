@@ -32,7 +32,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -456,7 +456,7 @@ private class IosBrowserDelegate(private val owner: IosCommentsWebView) :
 )
 @Composable
 internal fun IosCommentsScaffold(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     webView: IosCommentsWebView,
     reserveUpButtonInset: Boolean,
     comments: @Composable () -> Unit,

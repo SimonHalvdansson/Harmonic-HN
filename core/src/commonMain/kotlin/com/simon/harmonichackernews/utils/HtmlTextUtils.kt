@@ -81,10 +81,3 @@ object HtmlTextUtils {
         this == ' ' || this == '\t' || this == '\u000B' || this == '\u000C' ||
             this == '\u00A0'
 }
-
-object StoryTitlePolicy {
-    private val pollWord = Regex("\\bpoll\\b", RegexOption.IGNORE_CASE)
-
-    fun mayDescribePoll(title: String?): Boolean =
-        !title.isNullOrEmpty() && pollWord.containsMatchIn(title)
-}

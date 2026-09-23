@@ -19,7 +19,7 @@ import com.simon.harmonichackernews.settings.StoryStringPreference
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryRowModel
 
 /** Platform work requested by a portable settings action. */
 enum class SettingsPlatformEffect { RefreshStoryWidgets, ThemeChanged }
@@ -29,7 +29,7 @@ class StoriesSettingsPresenter(
 ) {
     fun state(
         settings: AppSettings = repository.snapshot(),
-        previewModel: StoryItemUiModel,
+        previewModel: StoryRowModel,
         faviconIcon: Painter,
     ): StoriesSettingsUiState {
         val story = settings.story

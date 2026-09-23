@@ -1,0 +1,134 @@
+package com.simon.harmonichackernews.ui.content
+
+import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.utils.DomainNamePolicy
+import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.network.resolvedImageUrl
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
+import kotlin.time.Clock
+
+data class StoryRowResourcePresentation(
+    val previewText: String? = null,
+    val faviconUrl: String? = null,
+    val previewImageUrl: String? = null,
+    val previewImageLoadFailed: Boolean = false,
+    val faviconTintArgb: Int? = null,
+    val previewImageTintArgb: Int? = null,
+    val tintFallbackArgb: Int? = null,
+)
+
+fun StoryRowResourcePresentation.withPreviewResource(
+    resource: StoryPreviewResourceState?,
+    paletteConfigKey: String? = null,
+): StoryRowResourcePresentation = if (resource == null) {
+    this
+} else {
+    val currentPreviewTint = resource.previewTint?.takeIf { tint ->
+        tint.sourceUrl == resource.imageUrl &&
+            tint.baseColorArgb == tintFallbackArgb &&
+            (paletteConfigKey == null ||
+                tint.paletteConfigKey == StoryPreviewTintState.storedMode(paletteConfigKey))
+    }
+    val currentFaviconTint = resource.faviconTint?.takeIf { tint ->
+        tint.sourceUrl == faviconUrl &&
+            tint.baseColorArgb == tintFallbackArgb &&
+            (paletteConfigKey == null ||
+                tint.paletteConfigKey == StoryPreviewTintState.storedMode(paletteConfigKey))
+    }
+    copy(
+        previewText = resource.summary?.description ?: previewText,
+        previewImageUrl = resource.resolvedImageUrl(previewImageUrl),
+        previewImageLoadFailed = resource.imageLoadFailed,
+        previewImageTintArgb = currentPreviewTint?.tintColorArgb ?: previewImageTintArgb,
+        faviconTintArgb = currentFaviconTint?.tintColorArgb ?: faviconTintArgb,
+    )
+}
+
+/** Pure Story/resource-snapshot to shared row-model mapping used by every platform list. */
+object StoryRowModelFactory {
+    fun create(
+        item: StoryListItemSnapshot,
+        position: Int? = null,
+        resources: StoryRowResourcePresentation = StoryRowResourcePresentation(),
+        loadingTitle: String = "Loading…",
+        failedTitle: String = "Tap to retry",
+        resolvedDomain: String? = null,
+        nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    ): StoryRowModel {
+        val fullDomain = resolvedDomain
+            ?: item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
+        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
+        val titlePresentation = storyTitlePresentation(
+            title = item.title,
+            pdfTitle = item.pdfTitle,
+            videoTitle = item.videoTitle,
+        )
+        return StoryRowModel(
+            index = position?.let { "${it + 1}." }.orEmpty(),
+            title = if (item.title == null) {
+                if (item.loadingFailed) failedTitle else loadingTitle
+            } else {
+                titlePresentation.text
+            },
+            titleBadge = titlePresentation.badge,
+            previewText = resources.previewText
+                ?: item.presentation.linkSummaryDescription
+                ?: item.presentation.aiSummaryText.orEmpty(),
+            points = item.score,
+            domain = fullDomain,
+            domainWithoutTopLevel = shortDomain,
+            age = ItemTimeFormatter.format(item.createdAtEpochSeconds, nowMillis),
+            commentCount = item.descendantCount,
+            faviconUrl = resources.faviconUrl,
+            previewImageUrl = resources.previewImageUrl,
+            previewImageLoadFailed = resources.previewImageLoadFailed,
+            faviconTintArgb = resources.faviconTintArgb,
+            previewImageTintArgb = resources.previewImageTintArgb,
+            tintFallbackArgb = resources.tintFallbackArgb,
+        )
+    }
+
+    fun create(
+        story: Story,
+        position: Int? = null,
+        resources: StoryRowResourcePresentation = StoryRowResourcePresentation(),
+        loadingTitle: String = "Loading…",
+        failedTitle: String = "Tap to retry",
+        resolvedDomain: String? = null,
+        nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    ): StoryRowModel {
+        val fullDomain = resolvedDomain
+            ?: runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
+        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
+        val titlePresentation = storyTitlePresentation(
+            title = story.title,
+            pdfTitle = story.pdfTitle,
+            videoTitle = story.videoTitle,
+        )
+        return StoryRowModel(
+            index = position?.let { "${it + 1}." }.orEmpty(),
+            title = if (story.title == null) {
+                if (story.loadingFailed) failedTitle else loadingTitle
+            } else {
+                titlePresentation.text
+            },
+            titleBadge = titlePresentation.badge,
+            previewText = resources.previewText
+                ?: story.linkSummaryDescription
+                ?: story.aiSummaryText.orEmpty(),
+            points = story.score,
+            domain = fullDomain,
+            domainWithoutTopLevel = shortDomain,
+            age = story.formatTime(nowMillis),
+            commentCount = story.descendants,
+            faviconUrl = resources.faviconUrl,
+            previewImageUrl = resources.previewImageUrl,
+            previewImageLoadFailed = resources.previewImageLoadFailed,
+            faviconTintArgb = resources.faviconTintArgb,
+            previewImageTintArgb = resources.previewImageTintArgb,
+            tintFallbackArgb = resources.tintFallbackArgb,
+        )
+    }
+}

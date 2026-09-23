@@ -1,10 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.settings.DisplayStyle
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
-import com.simon.harmonichackernews.ui.content.StoryItemStyle
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
 
-internal fun StoriesSettingsUiState.toPreviewStoryItemStyle(): StoryItemStyle = StoryItemStyle(
+internal fun StoriesSettingsUiState.toPreviewStoryRowStyle(): StoryRowStyle = StoryRowStyle(
     previewImageMode = previewImageMode,
     borderlessLargeImage = borderlessLargeImage,
     compact = compact,
@@ -24,8 +24,8 @@ internal fun StoriesSettingsUiState.toPreviewStoryItemStyle(): StoryItemStyle = 
     paletteTintConfigKey = paletteTintConfigKey,
 )
 
-internal fun CommentsSettingsUiState.toPreviewCommentItemStyle(): CommentItemStyle =
-    CommentItemStyle(
+internal fun CommentsSettingsUiState.toPreviewCommentRowStyle(): CommentRowStyle =
+    CommentRowStyle(
         displayStyle = displayStyle,
         textSize = textSize,
         collectLinks = collectLinks,

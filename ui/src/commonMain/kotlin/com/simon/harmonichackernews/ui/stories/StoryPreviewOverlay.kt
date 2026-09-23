@@ -118,7 +118,7 @@ internal fun storyPreviewScrollWheelTarget(
 /** Shared pager, list synchronization, container transform, and predictive-back presentation. */
 @Composable
 fun StoryPreviewOverlay(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     tablet: Boolean,
     pageOnScrollWheel: Boolean = false,
     onScrimAlphaChanged: (Float) -> Unit = {},

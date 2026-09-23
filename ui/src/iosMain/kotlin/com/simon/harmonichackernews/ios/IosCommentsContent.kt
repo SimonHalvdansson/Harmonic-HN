@@ -44,7 +44,7 @@ import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
@@ -110,7 +110,7 @@ internal fun IosCommentsContent(
     isTablet: Boolean,
     isTwoPane: Boolean,
     showUpButton: Boolean,
-    onControllerChanged: (CommentsComposeController?) -> Unit,
+    onControllerChanged: (CommentsScreenController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
@@ -237,7 +237,7 @@ internal fun IosCommentsContent(
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
-            if (effect is com.simon.harmonichackernews.presentation.CommentsRuntimeEffect.ThreadReady) {
+            if (effect is com.simon.harmonichackernews.presentation.CommentsFeatureEffect.ThreadReady) {
                 openingProfile?.event("threadReady")
             }
             host.binding.handleEffect(
@@ -429,7 +429,7 @@ private fun handleIosCommentsPlatformEffect(
 private fun IosCommentsHeader(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: com.simon.harmonichackernews.adapters.CommentDisplaySettings,
     onBrowserBack: () -> Unit,
 ) {
@@ -530,7 +530,7 @@ private fun IosCommentsHeader(
 internal fun IosCommentLinkPreview(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
 ) {
     CommentLinkPreviewOverlay(
         controller = controller,
@@ -565,7 +565,7 @@ internal fun IosCommentLinkPreview(
 private fun IosReferencePreview(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val scope = rememberCoroutineScope()

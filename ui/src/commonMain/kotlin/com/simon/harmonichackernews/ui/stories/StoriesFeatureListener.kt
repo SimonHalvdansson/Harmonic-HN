@@ -3,16 +3,16 @@ package com.simon.harmonichackernews.ui.stories
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesIntent
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
-import com.simon.harmonichackernews.presentation.StoriesStore
+import com.simon.harmonichackernews.presentation.StoriesFeatureStore
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.presentation.StorySearchOption
 
 /** Common UI-to-feature binding. Hosts implement only operations that need platform facilities. */
 class StoriesFeatureListener(
-    private val store: StoriesStore,
+    private val store: StoriesFeatureStore,
     private val platform: PlatformCallbacks,
-) : StoriesComposeController.Listener {
+) : StoriesScreenController.Listener {
     override fun onTypeSelected(index: Int) {
         store.accept(StoriesIntent.SelectType(index))
         activeListChanged(searching = false)

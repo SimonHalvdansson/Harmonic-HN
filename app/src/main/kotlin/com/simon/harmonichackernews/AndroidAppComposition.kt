@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.platform.createAndroidPlatformDependencies
 import com.simon.harmonichackernews.platform.AndroidCrc32
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
-import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.summary.local.createAndroidLocalModelService
 import java.util.Calendar
 import kotlinx.io.files.Path
@@ -79,7 +79,7 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
                     )
                 }
             },
-            systemDark = { ThemeUtils.uiModeNight(context) },
+            systemDark = { AndroidActivityTheme.uiModeNight(context) },
             localModels = localModels,
             storyCacheRepository = persistentStorage.storyCacheRepository,
             articleSnapshotStore = persistentStorage.articleSnapshotStore,

@@ -8,11 +8,11 @@ import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.content.StoryItem
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowModel
 
 data class StoriesSettingsUiState(
-    val previewModel: StoryItemUiModel,
+    val previewModel: StoryRowModel,
     val previewImageMode: StoryPreviewMode,
     val borderlessLargeImage: Boolean,
     val compact: Boolean,
@@ -84,9 +84,9 @@ fun StoriesSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            StoryItem(
+            StoryRow(
                 model = state.previewModel,
-                style = state.toPreviewStoryItemStyle(),
+                style = state.toPreviewStoryRowStyle(),
             )
         },
     ) {

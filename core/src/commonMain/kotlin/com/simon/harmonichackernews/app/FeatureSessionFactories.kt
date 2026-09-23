@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.presentation.CommentsFeatureRuntime
 import com.simon.harmonichackernews.presentation.CommentsPresenter
 import com.simon.harmonichackernews.presentation.CommentsPerformanceTrace
 import com.simon.harmonichackernews.presentation.CommentsSessionState
-import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.CommentsFeatureStore
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import com.simon.harmonichackernews.presentation.EditorSubmissionWorkflow
 import com.simon.harmonichackernews.presentation.EditorWorkflowResult
@@ -25,7 +25,7 @@ import com.simon.harmonichackernews.presentation.SavedItemActionKind
 import com.simon.harmonichackernews.presentation.StoriesFeatureRuntime
 import com.simon.harmonichackernews.presentation.StoryRequests
 import com.simon.harmonichackernews.presentation.StoriesSessionState
-import com.simon.harmonichackernews.presentation.StoriesStore
+import com.simon.harmonichackernews.presentation.StoriesFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.settings.ReadingPreferences
@@ -92,9 +92,9 @@ data class CommentsFeatureHost(
  * Application-scoped factories keep feature construction identical across Android, iOS and
  * desktop. Hosts supply only lifecycle scopes and facilities that are still genuinely native.
  */
-fun HarmonicAppComposition.createStoriesStore(
+fun HarmonicAppComposition.createStoriesFeatureStore(
     host: StoriesFeatureHost,
-): StoriesStore {
+): StoriesFeatureStore {
     val featureScope = host.scope.childFeatureScope()
     val storyCacheRuntime = createStoryCacheRuntime(featureScope)
     val actions = SavedItemActionUseCase(
@@ -152,7 +152,7 @@ fun HarmonicAppComposition.createStoriesStore(
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return StoriesStore(
+    return StoriesFeatureStore(
         scope = featureScope,
         sessionState = host.sessionState,
         runtime = runtime,
@@ -162,9 +162,9 @@ fun HarmonicAppComposition.createStoriesStore(
     )
 }
 
-fun HarmonicAppComposition.createCommentsStore(
+fun HarmonicAppComposition.createCommentsFeatureStore(
     host: CommentsFeatureHost,
-): CommentsStore {
+): CommentsFeatureStore {
     val featureScope = host.scope.childFeatureScope()
     val actions = SavedItemActionUseCase(
         repository = savedItems,
@@ -223,7 +223,7 @@ fun HarmonicAppComposition.createCommentsStore(
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return CommentsStore(featureScope, runtime)
+    return CommentsFeatureStore(featureScope, runtime)
 }
 
 private fun CoroutineScope.childFeatureScope(): CoroutineScope = CoroutineScope(

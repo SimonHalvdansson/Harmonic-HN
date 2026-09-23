@@ -43,17 +43,17 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** Platform operations that remain after the shared stories feature has made a decision. */
-sealed interface StoriesRuntimeEffect {
-    data class OpenStory(val destination: StoryDestination) : StoriesRuntimeEffect
+sealed interface StoriesFeatureEffect {
+    data class OpenStory(val destination: StoryDestination) : StoriesFeatureEffect
 
-    data class OpenExternalLink(val url: String) : StoriesRuntimeEffect
-    data class Platform(val effect: StoriesPlatformEffect) : StoriesRuntimeEffect
-    data class StoryChanged(val storyId: Int? = null) : StoriesRuntimeEffect
-    data object LoginRequired : StoriesRuntimeEffect
-    data class UserMessage(val message: String) : StoriesRuntimeEffect
+    data class OpenExternalLink(val url: String) : StoriesFeatureEffect
+    data class Platform(val effect: StoriesPlatformEffect) : StoriesFeatureEffect
+    data class StoryChanged(val storyId: Int? = null) : StoriesFeatureEffect
+    data object LoginRequired : StoriesFeatureEffect
+    data class UserMessage(val message: String) : StoriesFeatureEffect
     data class SavedActionFailed(
         val presentation: ActionFailurePresentation,
-    ) : StoriesRuntimeEffect
+    ) : StoriesFeatureEffect
 }
 
 /**
@@ -107,8 +107,8 @@ class StoriesFeatureRuntime(
     storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
     private val cacheDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    private val mutableEffects = MutableSharedFlow<StoriesRuntimeEffect>(extraBufferCapacity = 32)
-    val effects: SharedFlow<StoriesRuntimeEffect> = mutableEffects.asSharedFlow()
+    private val mutableEffects = MutableSharedFlow<StoriesFeatureEffect>(extraBufferCapacity = 32)
+    val effects: SharedFlow<StoriesFeatureEffect> = mutableEffects.asSharedFlow()
 
     val mainStore: StoryListStore = sessionState.mainStoryList
     val searchStore: StoryListStore = sessionState.searchStoryList
@@ -230,7 +230,7 @@ class StoriesFeatureRuntime(
         cacheAvailabilityJob = scope.launch {
             mainStore.state.map { it.failure }.distinctUntilChanged().collectLatest { failure ->
                 cachedStoriesAvailable = failure != null && withContext(cacheDispatcher) { hasCachedStories() }
-                emit(StoriesRuntimeEffect.StoryChanged())
+                emit(StoriesFeatureEffect.StoryChanged())
             }
         }
     }
@@ -418,7 +418,7 @@ class StoriesFeatureRuntime(
         )
         if (sessionState.showRefreshPrompt != updateAvailable) {
             sessionState.showRefreshPrompt = updateAvailable
-            emit(StoriesRuntimeEffect.StoryChanged())
+            emit(StoriesFeatureEffect.StoryChanged())
         }
     }
 
@@ -654,7 +654,7 @@ class StoriesFeatureRuntime(
         val url = story.url ?: return
         if (story.isFrontpageLink) updateStoryReadState(story, true) else markRead(story)
         changed(story)
-        emit(StoriesRuntimeEffect.OpenExternalLink(url))
+        emit(StoriesFeatureEffect.OpenExternalLink(url))
     }
 
     fun selectCommentStory(story: Story) {
@@ -686,7 +686,7 @@ class StoriesFeatureRuntime(
     fun openStory(story: Story, showWebsite: Boolean) {
         markRead(story)
         changed(story)
-        emit(StoriesRuntimeEffect.OpenStory(story.toDestination(showWebsite = showWebsite)))
+        emit(StoriesFeatureEffect.OpenStory(story.toDestination(showWebsite = showWebsite)))
     }
 
     fun previewStories(openedStoryId: Int): List<Story> {
@@ -765,7 +765,7 @@ class StoriesFeatureRuntime(
         if (source == SavedItemSource.BOOKMARKS) bookmarksChanged = true
     }
 
-    fun menu(action: StoriesMenuAction) {
+    fun handleMenuAction(action: StoriesMenuAction) {
         if (action == StoriesMenuAction.CLEAR_HISTORY) {
             scope.launch {
                 historyStore.clearHistory()
@@ -778,17 +778,17 @@ class StoriesFeatureRuntime(
             scope.launch {
                 accounts.clearAccount()
                 updateAvailableStoryTypes(enabledAdditionalFrontpages, hasAccount = false)
-                emit(StoriesRuntimeEffect.UserMessage("Logged out"))
+                emit(StoriesFeatureEffect.UserMessage("Logged out"))
             }
             return
         }
         when (val effect = StoriesUiOrchestrator.menu(action, account?.username)) {
             null -> Unit
-            else -> emit(StoriesRuntimeEffect.Platform(effect))
+            else -> emit(StoriesFeatureEffect.Platform(effect))
         }
     }
 
-    fun previewAction(story: Story, action: StoryPreviewActionKind) {
+    fun handlePreviewAction(story: Story, action: StoryPreviewActionKind) {
         if (story !in activeStories) return
         when (action) {
             StoryPreviewActionKind.Vote -> toggleVote(story)
@@ -850,7 +850,7 @@ class StoriesFeatureRuntime(
                     is SavedItemActionOutcome.Failure -> {
                         if (isCurrentActionContext(generation, expectedStore)) changed(story)
                         emit(
-                            StoriesRuntimeEffect.SavedActionFailed(
+                            StoriesFeatureEffect.SavedActionFailed(
                                 ActionFailurePresentation(
                                     result = outcome.result,
                                     message = "Action unsuccessful, see dialog for response",
@@ -860,7 +860,7 @@ class StoriesFeatureRuntime(
                         )
                     }
                     is SavedItemActionOutcome.Indeterminate -> emit(
-                        StoriesRuntimeEffect.SavedActionFailed(
+                        StoriesFeatureEffect.SavedActionFailed(
                             ActionFailurePresentation(
                                 result = outcome.result,
                                 message = "Action sent, but HN confirmation was interrupted",
@@ -910,7 +910,7 @@ class StoriesFeatureRuntime(
                             }
                         }
                         emit(
-                            StoriesRuntimeEffect.SavedActionFailed(
+                            StoriesFeatureEffect.SavedActionFailed(
                                 ActionFailurePresentation(
                                     result = outcome.result,
                                     message = "Action unsuccessful, see dialog for response",
@@ -920,7 +920,7 @@ class StoriesFeatureRuntime(
                         )
                     }
                     is SavedItemActionOutcome.Indeterminate -> emit(
-                        StoriesRuntimeEffect.SavedActionFailed(
+                        StoriesFeatureEffect.SavedActionFailed(
                             ActionFailurePresentation(
                                 result = outcome.result,
                                 message = "Action sent, but HN confirmation was interrupted",
@@ -1031,7 +1031,7 @@ class StoriesFeatureRuntime(
         for (store in listOf(mainStore, searchStore)) {
             if (store.mergeStoryContent(update)) matched = true
         }
-        if (matched) emit(StoriesRuntimeEffect.StoryChanged(update.id))
+        if (matched) emit(StoriesFeatureEffect.StoryChanged(update.id))
         return matched
     }
 
@@ -1050,13 +1050,13 @@ class StoriesFeatureRuntime(
         storyResources?.dispose()
     }
 
-    private fun applyRequestEffect(effect: StoriesEffect) {
+    private fun applyRequestEffect(effect: StoryRequestEvent) {
         when (effect) {
-            is StoriesEffect.StoryRowLoaded -> applyRowLoaded(effect)
-            is StoriesEffect.StoryRowRejected -> if (isCurrentRow(effect.story, effect.generation)) {
+            is StoryRequestEvent.StoryRowLoaded -> applyRowLoaded(effect)
+            is StoryRequestEvent.StoryRowRejected -> if (isCurrentRow(effect.story, effect.generation)) {
                 removeStory(effect.story)
             }
-            is StoriesEffect.StoryRowLoadAttemptFailed -> if (
+            is StoryRequestEvent.StoryRowLoadAttemptFailed -> if (
                 isCurrentRow(effect.story, effect.generation)
             ) {
                 if (effect.finalAttempt) activeStore.finishNextPageStory(
@@ -1065,8 +1065,8 @@ class StoriesFeatureRuntime(
                 )
                 changed(effect.story)
             }
-            is StoriesEffect.UserItemsSynced -> applyUserItems(effect)
-            is StoriesEffect.UserItemsSyncFailed -> applyUserItemsFailure(effect)
+            is StoryRequestEvent.UserItemsSynced -> applyUserItems(effect)
+            is StoryRequestEvent.UserItemsSyncFailed -> applyUserItemsFailure(effect)
         }
     }
 
@@ -1156,7 +1156,7 @@ class StoriesFeatureRuntime(
         }
     }
 
-    private fun applyRowLoaded(effect: StoriesEffect.StoryRowLoaded) {
+    private fun applyRowLoaded(effect: StoryRequestEvent.StoryRowLoaded) {
         val story = effect.story
         if (!isCurrentRow(story, effect.generation)) return
         activeStore.finishNextPageStory(story.id, effect.generation)
@@ -1198,7 +1198,7 @@ class StoriesFeatureRuntime(
             targetStore.stories.filter(Story::loaded).forEach(::prefetch)
         }
         targetStore.contentChanged()
-        emit(StoriesRuntimeEffect.StoryChanged())
+        emit(StoriesFeatureEffect.StoryChanged())
     }
 
     private fun loadBookmarks() {
@@ -1231,7 +1231,7 @@ class StoriesFeatureRuntime(
             refreshIndicatorShowing = false
             userItemsInitialLoadInProgress = false
             if (activeStories.isEmpty()) activeStore.fail(StoryLoadFailure.GENERAL)
-            emit(StoriesRuntimeEffect.LoginRequired)
+            emit(StoriesFeatureEffect.LoginRequired)
             changed()
             return
         }
@@ -1240,7 +1240,7 @@ class StoriesFeatureRuntime(
         changed()
     }
 
-    private fun applyUserItems(effect: StoriesEffect.UserItemsSynced) {
+    private fun applyUserItems(effect: StoryRequestEvent.UserItemsSynced) {
         if (!isCurrentUserItems(effect.source, effect.generation)) return
         syncUserItemStories(effect.snapshot.itemIds, effect.snapshot.commentIds)
         userItemsInitialLoadInProgress = false
@@ -1249,7 +1249,7 @@ class StoriesFeatureRuntime(
         changed()
     }
 
-    private fun applyUserItemsFailure(effect: StoriesEffect.UserItemsSyncFailed) {
+    private fun applyUserItemsFailure(effect: StoryRequestEvent.UserItemsSyncFailed) {
         if (!isCurrentUserItems(effect.source, effect.generation)) return
         refreshIndicatorShowing = false
         userItemsInitialLoadInProgress = false
@@ -1258,7 +1258,7 @@ class StoriesFeatureRuntime(
         if (activeStories.isEmpty()) activeStore.fail(
             if (rateLimited) StoryLoadFailure.RATE_LIMITED else StoryLoadFailure.GENERAL,
         )
-        emit(StoriesRuntimeEffect.UserMessage(effect.summary))
+        emit(StoriesFeatureEffect.UserMessage(effect.summary))
         changed()
     }
 
@@ -1481,10 +1481,10 @@ class StoriesFeatureRuntime(
             mainStories.contains(story) -> mainStore.contentChanged(story)
             searchStories.contains(story) -> searchStore.contentChanged(story)
         }
-        emit(StoriesRuntimeEffect.StoryChanged(story?.id))
+        emit(StoriesFeatureEffect.StoryChanged(story?.id))
     }
 
-    private fun emit(effect: StoriesRuntimeEffect) {
+    private fun emit(effect: StoriesFeatureEffect) {
         mutableEffects.tryEmit(effect)
     }
 

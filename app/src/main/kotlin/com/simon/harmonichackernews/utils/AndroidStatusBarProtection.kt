@@ -1,0 +1,38 @@
+package com.simon.harmonichackernews.utils
+
+import android.content.Context
+import androidx.annotation.ColorInt
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.insets.GradientProtection
+import androidx.core.view.insets.ProtectionLayout
+
+object AndroidStatusBarProtection {
+    @ColorInt
+    fun getPaneBackgroundColor(context: Context): Int = AndroidActivityTheme.getPageBackgroundColor(context)
+
+    fun setTopProtection(
+        layout: ProtectionLayout?,
+        @ColorInt color: Int,
+    ) {
+        setTopProtection(layout, true, color)
+    }
+
+    fun setTopProtection(
+        layout: ProtectionLayout?,
+        enabled: Boolean,
+        @ColorInt color: Int,
+    ) {
+        if (layout == null) {
+            return
+        }
+
+        if (!enabled) {
+            layout.setProtections(emptyList())
+            return
+        }
+
+        layout.setProtections(
+            listOf(GradientProtection(WindowInsetsCompat.Side.TOP, color)),
+        )
+    }
+}

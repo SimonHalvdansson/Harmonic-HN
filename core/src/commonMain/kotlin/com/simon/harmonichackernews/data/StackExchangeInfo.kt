@@ -15,10 +15,10 @@ data class StackExchangeInfo(
     val isAnswered: Boolean = false,
     val hasAcceptedAnswer: Boolean = false,
 ) {
-    fun formatScore(): String = LinkPreviewFormatUtils.formatCount(score, "point", "points")
+    fun formatScore(): String = LinkPreviewDisplayFormatter.formatCount(score, "point", "points")
     fun formatAnswerCount(): String =
-        LinkPreviewFormatUtils.formatCount(answerCount, "answer", "answers")
-    fun formatViewCount(): String = LinkPreviewFormatUtils.formatCount(viewCount, "view", "views")
+        LinkPreviewDisplayFormatter.formatCount(answerCount, "answer", "answers")
+    fun formatViewCount(): String = LinkPreviewDisplayFormatter.formatCount(viewCount, "view", "views")
     fun formatAnswerState(): String = when {
         hasAcceptedAnswer -> "Accepted answer"
         isAnswered -> "Answered"

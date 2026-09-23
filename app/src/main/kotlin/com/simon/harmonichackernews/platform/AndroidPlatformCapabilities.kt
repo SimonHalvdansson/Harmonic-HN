@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.utils.AndroidAiSummaryApiKeyStore
 import com.simon.harmonichackernews.utils.AndroidConnectivityCapabilities
 import com.simon.harmonichackernews.utils.AndroidConnectivityStatus
 import com.simon.harmonichackernews.utils.AndroidNetworkStatus
-import com.simon.harmonichackernews.utils.ShareUtils
+import com.simon.harmonichackernews.utils.AndroidShareIntents
 import com.simon.harmonichackernews.summary.LocalModelService
 import java.util.Calendar
 import java.util.Date
@@ -169,7 +169,7 @@ class AndroidShareService(context: Context) : ShareService {
     override fun share(text: String, title: String?) {
         val content = title?.let { "$it | $text" } ?: text
         appContext.startActivity(
-            ShareUtils.getShareIntent(content).apply {
+            AndroidShareIntents.createTextShareChooser(content).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )

@@ -66,7 +66,7 @@ class CommentsHeaderMotionTest {
                 CommentPresentationSnapshot(expanded = true, depth = if (id in 2..201) 1 else 0),
             )
         }
-        val controller = CommentsComposeController.create(
+        val controller = CommentsScreenController.create(
             shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
             showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
             savedItemState = object : SavedItemStateReader {
@@ -153,8 +153,8 @@ class CommentsHeaderMotionTest {
             comments = (1..3).map { PortableCommentItem(CommentSnapshot(it), CommentPresentationSnapshot()) },
             commentsLoaded = true,
         )
-        lateinit var controller: CommentsComposeController
-        controller = CommentsComposeController.create(
+        lateinit var controller: CommentsScreenController
+        controller = CommentsScreenController.create(
             story = story,
             shouldSmoothScroll = { true }, showWebsite = false, accountUser = null,
             savedItemState = object : SavedItemStateReader {
@@ -162,7 +162,7 @@ class CommentsHeaderMotionTest {
                 override fun isFavorited(itemId: Int) = false
                 override fun isUpvoted(itemId: Int, isComment: Boolean) = false
             },
-            listener = object : CommentsComposeController.Listener by NoOpListener() {
+            listener = object : CommentsScreenController.Listener by NoOpListener() {
                 override fun onSortComments(sortType: String) {
                     controller.updateContent(state.copy(currentSorting = sortType))
                 }
@@ -176,7 +176,7 @@ class CommentsHeaderMotionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        HeaderActions(controller, settings, 0, false)
+                        CommentsHeaderActions(controller, settings, 0, false)
                     }
                 }
             }
@@ -215,7 +215,7 @@ class CommentsHeaderMotionTest {
                 CommentPresentationSnapshot(expanded = true),
             )
         }
-        val controller = CommentsComposeController.create(
+        val controller = CommentsScreenController.create(
             shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
             showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
             savedItemState = object : SavedItemStateReader {
@@ -257,7 +257,7 @@ class CommentsHeaderMotionTest {
                                     headerContent = {
                                         Column(Modifier.fillMaxWidth().background(Color.White).testTag("refresh-header")) {
                                             Box(Modifier.height(80.dp))
-                                            HeaderStatus(controller, lastRefreshedText = null)
+                                            CommentsHeaderStatus(controller, lastRefreshedText = null)
                                         }
                                     },
                                 )
@@ -334,7 +334,7 @@ class CommentsHeaderMotionTest {
                 CommentPresentationSnapshot(expanded = true, depth = if (id == 2) 1 else 0),
             )
         }
-        val controller = CommentsComposeController.create(
+        val controller = CommentsScreenController.create(
             shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
             showWebsite = false, initialScrollRestorationPending = true, accountUser = null,
             savedItemState = object : SavedItemStateReader {
@@ -438,7 +438,7 @@ class CommentsHeaderMotionTest {
         canProvideSummary = false, showAdditionalSummaryInfo = false, enableSummaryBoldFormatting = true,
     )
 
-    private class NoOpListener : CommentsComposeController.Listener {
+    private class NoOpListener : CommentsScreenController.Listener {
         override fun onToggleComment(comment: PortableCommentItem, position: Int) = Unit
         override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) = Unit
         override fun onCommentActionOverlayVisibilityChanged(showing: Boolean) = Unit

@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.ui.navigation
 
 import android.content.Intent
 import android.os.Bundle
-import com.simon.harmonichackernews.CommentsContract
+import com.simon.harmonichackernews.CommentsIntentExtras
 import com.simon.harmonichackernews.data.toEditorDestination
 import com.simon.harmonichackernews.data.toStoryDestinationOrNull
 import com.simon.harmonichackernews.navigation.AppLaunchRequest
@@ -20,7 +20,7 @@ import com.simon.harmonichackernews.widget.ACTION_OPEN_WIDGET_STORIES
 
 /** Android decoder for the platform-neutral application launch router. */
 internal class MainLaunchIntentRouter(
-    private val navigation: MainNavigationController,
+    private val navigation: AndroidMainNavigationController,
 ) {
     private val launches = AppLaunchRouter(navigation.navigationState)
 
@@ -70,7 +70,7 @@ internal class MainLaunchIntentRouter(
     private fun Intent.directStoryDestination(): StoryDestination? {
         decodedDestination<StoryDestination>()?.let { return it }
         val arguments = extras ?: return null
-        return if (arguments.getInt(CommentsContract.EXTRA_ID, -1) <= 0) null
+        return if (arguments.getInt(CommentsIntentExtras.EXTRA_ID, -1) <= 0) null
         else arguments.toStoryDestinationOrNull()
     }
 

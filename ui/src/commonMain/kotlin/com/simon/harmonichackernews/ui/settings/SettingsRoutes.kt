@@ -29,9 +29,9 @@ import com.simon.harmonichackernews.settings.DebugBooleanPreference
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsPolicy
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
-import com.simon.harmonichackernews.ui.content.StoryItemUiModel
-import com.simon.harmonichackernews.ui.content.StoryItemStyleContext
-import com.simon.harmonichackernews.ui.content.toStoryItemStyle
+import com.simon.harmonichackernews.ui.content.StoryRowModel
+import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
+import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
@@ -327,8 +327,8 @@ fun PaletteTintSettingsRoute(
         initialStrength = PaletteTintPreferences.strength(config),
         initialColorfulness = PaletteTintPreferences.colorfulness(config),
         initialTone = PaletteTintPreferences.tone(config),
-        previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
-            StoryItemStyleContext(score = 28, commentCount = 42, isRead = false),
+        previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
+            StoryRowStyleContext(score = 28, commentCount = 42, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         showNavigation = showNavigation,
         onBack = onBack,
@@ -380,8 +380,8 @@ fun ThemeSettingsRoute(
         },
         onDialogRequested = { dialog = it },
         resolvePreviewTheme = resolvePreviewTheme,
-        previewStyle = StoryDisplaySettings.from(settings.story).toStoryItemStyle(
-            StoryItemStyleContext(score = 53, commentCount = 18, isRead = false),
+        previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
+            StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         contentVersion = settings.hashCode(),
     )
@@ -391,7 +391,7 @@ fun ThemeSettingsRoute(
 @Composable
 fun StoriesSettingsRoute(
     repository: AppSettingsRepository,
-    previewModel: StoryItemUiModel,
+    previewModel: StoryRowModel,
     faviconIcon: Painter,
     showNavigation: Boolean,
     onBack: () -> Unit,

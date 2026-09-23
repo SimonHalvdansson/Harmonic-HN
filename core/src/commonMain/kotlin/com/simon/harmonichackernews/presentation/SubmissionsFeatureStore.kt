@@ -31,12 +31,12 @@ sealed interface SubmissionsIntent {
     ) : SubmissionsIntent
 }
 
-sealed interface SubmissionsRuntimeEffect {
+sealed interface SubmissionsFeatureEffect {
     data class OpenStory(
         val destination: StoryDestination,
-    ) : SubmissionsRuntimeEffect
+    ) : SubmissionsFeatureEffect
 
-    data class OpenExternalLink(val url: String) : SubmissionsRuntimeEffect
+    data class OpenExternalLink(val url: String) : SubmissionsFeatureEffect
 }
 
 data class SubmissionsScrollRestoration(
@@ -51,12 +51,12 @@ class SubmissionsFeatureStore internal constructor(
     private val sessionState: SubmissionsSessionState,
     private val rootStoryResolver: CommentMasterResolver,
     private val useIntegratedWebView: () -> Boolean,
-) : FeatureStore<SubmissionsIntent, SubmissionsUiState, SubmissionsRuntimeEffect> {
+) : FeatureStore<SubmissionsIntent, SubmissionsUiState, SubmissionsFeatureEffect> {
     private val store = sessionState.submissions
-    private val mutableEffects = MutableSharedFlow<SubmissionsRuntimeEffect>(
+    private val mutableEffects = MutableSharedFlow<SubmissionsFeatureEffect>(
         extraBufferCapacity = 16,
     )
-    override val effects: SharedFlow<SubmissionsRuntimeEffect> = mutableEffects.asSharedFlow()
+    override val effects: SharedFlow<SubmissionsFeatureEffect> = mutableEffects.asSharedFlow()
     override val state: StateFlow<SubmissionsUiState> = store.state
 
     private var loadJob: Job? = null
@@ -134,7 +134,7 @@ class SubmissionsFeatureStore internal constructor(
         if (useIntegratedWebView()) {
             openStory(story, showWebsite = true)
         } else {
-            story.url?.let { mutableEffects.tryEmit(SubmissionsRuntimeEffect.OpenExternalLink(it)) }
+            story.url?.let { mutableEffects.tryEmit(SubmissionsFeatureEffect.OpenExternalLink(it)) }
         }
     }
 
@@ -187,7 +187,7 @@ class SubmissionsFeatureStore internal constructor(
 
     private fun openStory(story: Story, showWebsite: Boolean) {
         mutableEffects.tryEmit(
-            SubmissionsRuntimeEffect.OpenStory(story.toDestination(showWebsite = showWebsite)),
+            SubmissionsFeatureEffect.OpenStory(story.toDestination(showWebsite = showWebsite)),
         )
     }
 }

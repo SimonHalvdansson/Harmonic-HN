@@ -109,7 +109,7 @@ data class StoryPreviewSummaryState(
 
 @Composable
 fun StoryPreviewCard(
-    controller: StoriesComposeController,
+    controller: StoriesScreenController,
     story: StoryListItemSnapshot,
     page: Int,
     cardColor: Color,

@@ -4,7 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import androidx.core.view.insets.ProtectionLayout
 import androidx.core.graphics.ColorUtils
-import com.simon.harmonichackernews.utils.StatusBarProtectionUtils
+import com.simon.harmonichackernews.utils.AndroidStatusBarProtection
 
 /** Owns the comments pane's system-bar colors and restores the host window on disposal. */
 internal class CommentsStatusBarAppearance(private val activity: Activity) {
@@ -24,7 +24,7 @@ internal class CommentsStatusBarAppearance(private val activity: Activity) {
     }
 
     fun refreshPaneColor() {
-        paneColor = StatusBarProtectionUtils.getPaneBackgroundColor(activity)
+        paneColor = AndroidStatusBarProtection.getPaneBackgroundColor(activity)
     }
 
     fun update(root: ProtectionLayout, sheetExpanded: Boolean, adaptive: Boolean, transparent: Boolean) {
@@ -35,7 +35,7 @@ internal class CommentsStatusBarAppearance(private val activity: Activity) {
         }
         val protection = sheetExpanded to if (sheetExpanded) color else Color.TRANSPARENT
         if (appliedProtection != protection) {
-            StatusBarProtectionUtils.setTopProtection(root, sheetExpanded, color)
+            AndroidStatusBarProtection.setTopProtection(root, sheetExpanded, color)
             appliedProtection = protection
         }
         val windowColor = if (adaptive || transparent) Color.TRANSPARENT else color

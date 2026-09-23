@@ -11,7 +11,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
 internal fun AndroidCommentActionOverlay(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {

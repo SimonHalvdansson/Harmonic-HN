@@ -25,34 +25,34 @@ import kotlinx.coroutines.launch
 
 enum class StoryListTarget { MAIN, SEARCH }
 
-sealed interface StoriesEffect {
+sealed interface StoryRequestEvent {
     data class StoryRowLoaded(
         val story: Story,
         val generation: Int,
-    ) : StoriesEffect
+    ) : StoryRequestEvent
     data class StoryRowRejected(
         val story: Story,
         val generation: Int,
-    ) : StoriesEffect
+    ) : StoryRequestEvent
     data class StoryRowLoadAttemptFailed(
         val story: Story,
         val generation: Int,
         val attempt: Int,
         val finalAttempt: Boolean,
         val cause: Throwable,
-    ) : StoriesEffect
+    ) : StoryRequestEvent
     data class UserItemsSynced(
         val source: SavedItemSource,
         val generation: Int,
         val snapshot: SavedItemSnapshot,
-    ) : StoriesEffect
+    ) : StoryRequestEvent
     data class UserItemsSyncFailed(
         val source: SavedItemSource,
         val generation: Int,
         val summary: String,
         val detail: String? = null,
         val cause: Throwable? = null,
-    ) : StoriesEffect
+    ) : StoryRequestEvent
 }
 
 /**
@@ -95,8 +95,8 @@ class StoryRequests(
         shouldHideReadStories = shouldHideReadStories,
     )
 
-    private val mutableEffects = MutableSharedFlow<StoriesEffect>(extraBufferCapacity = 16)
-    val effects: SharedFlow<StoriesEffect> = mutableEffects.asSharedFlow()
+    private val mutableEffects = MutableSharedFlow<StoryRequestEvent>(extraBufferCapacity = 16)
+    val effects: SharedFlow<StoryRequestEvent> = mutableEffects.asSharedFlow()
 
     fun configureVisibility(filters: ContentFilters, hideJobs: Boolean): Boolean =
         storyVisibilityPolicy.update(filters, hideJobs)
@@ -160,7 +160,7 @@ class StoryRequests(
                             )) return@launch
                         }
                         mutableEffects.emit(
-                            StoriesEffect.UserItemsSynced(
+                            StoryRequestEvent.UserItemsSynced(
                                 source,
                                 generation,
                                 snapshot,
@@ -168,7 +168,7 @@ class StoryRequests(
                         )
                     }
                     is HackerNewsUserItemsResult.Failure -> mutableEffects.emit(
-                        StoriesEffect.UserItemsSyncFailed(
+                        StoryRequestEvent.UserItemsSyncFailed(
                             source = source,
                             generation = generation,
                             summary = result.summary,
@@ -176,7 +176,7 @@ class StoryRequests(
                         ),
                     )
                     is HackerNewsUserItemsResult.Captcha -> mutableEffects.emit(
-                        StoriesEffect.UserItemsSyncFailed(
+                        StoryRequestEvent.UserItemsSyncFailed(
                             source = source,
                             generation = generation,
                             summary = "Captcha required",
@@ -189,7 +189,7 @@ class StoryRequests(
             } catch (error: Throwable) {
                 if (savedItemsRepository.currentAccountRevision != accountRevision) return@launch
                 mutableEffects.emit(
-                    StoriesEffect.UserItemsSyncFailed(
+                    StoryRequestEvent.UserItemsSyncFailed(
                         source = source,
                         generation = generation,
                         summary = "Couldn't sync $path",
@@ -222,17 +222,17 @@ class StoryRequests(
         mutableEffects.emitAsStoriesEffect(effect)
     }
 
-    private suspend fun MutableSharedFlow<StoriesEffect>.emitAsStoriesEffect(
+    private suspend fun MutableSharedFlow<StoryRequestEvent>.emitAsStoriesEffect(
         effect: StoryRowLoadEffect,
     ) {
         emit(
             when (effect) {
                 is StoryRowLoadEffect.Loaded ->
-                    StoriesEffect.StoryRowLoaded(effect.story, effect.generation)
+                    StoryRequestEvent.StoryRowLoaded(effect.story, effect.generation)
                 is StoryRowLoadEffect.Rejected ->
-                    StoriesEffect.StoryRowRejected(effect.story, effect.generation)
+                    StoryRequestEvent.StoryRowRejected(effect.story, effect.generation)
                 is StoryRowLoadEffect.AttemptFailed ->
-                    StoriesEffect.StoryRowLoadAttemptFailed(
+                    StoryRequestEvent.StoryRowLoadAttemptFailed(
                         story = effect.story,
                         generation = effect.generation,
                         attempt = effect.attempt,

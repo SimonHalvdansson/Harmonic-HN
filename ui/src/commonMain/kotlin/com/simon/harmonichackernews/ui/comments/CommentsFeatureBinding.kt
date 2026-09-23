@@ -3,15 +3,15 @@ package com.simon.harmonichackernews.ui.comments
 import com.simon.harmonichackernews.app.CommentsFeatureHost
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
-import com.simon.harmonichackernews.app.createCommentsStore
+import com.simon.harmonichackernews.app.createCommentsFeatureStore
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.toStory
 import com.simon.harmonichackernews.presentation.CommentTargetResolution
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.CommentsPresentationCapabilities
-import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
-import com.simon.harmonichackernews.presentation.CommentsStore
+import com.simon.harmonichackernews.presentation.CommentsFeatureEffect
+import com.simon.harmonichackernews.presentation.CommentsFeatureStore
 import com.simon.harmonichackernews.presentation.CommentsSessionState
 import com.simon.harmonichackernews.presentation.CommentsPerformanceTrace
 import com.simon.harmonichackernews.presentation.CommentsScrollRestoration
@@ -19,8 +19,8 @@ import kotlinx.coroutines.CoroutineScope
 
 /** Shared store/controller assembly used by non-Android Compose hosts. */
 class CommentsFeatureBinding private constructor(
-    val store: CommentsStore,
-    val controller: CommentsComposeController,
+    val store: CommentsFeatureStore,
+    val controller: CommentsScreenController,
     private var restoringStoredProgress: Boolean,
     private val sessionState: CommentsSessionState,
 ) {
@@ -67,15 +67,15 @@ class CommentsFeatureBinding private constructor(
     }
 
     fun handleEffect(
-        effect: CommentsRuntimeEffect,
+        effect: CommentsFeatureEffect,
         scene: HarmonicSceneComposition,
         onSummaryPageTextRetry: () -> Unit = {},
         onPlatformEffect: (CommentsPlatformEffect) -> Unit,
     ) {
         when (effect) {
-            is CommentsRuntimeEffect.Platform -> onPlatformEffect(effect.effect)
-            is CommentsRuntimeEffect.ShowCommentActions -> controller.showCommentActions(effect.comment)
-            is CommentsRuntimeEffect.ThreadReady -> {
+            is CommentsFeatureEffect.Platform -> onPlatformEffect(effect.effect)
+            is CommentsFeatureEffect.ShowCommentActions -> controller.showCommentActions(effect.comment)
+            is CommentsFeatureEffect.ThreadReady -> {
                 if (restoringStoredProgress) {
                     store.restoreScrollProgress()?.let { restoration ->
                         // Install the restored thread before issuing a visual scroll request.
@@ -107,7 +107,7 @@ class CommentsFeatureBinding private constructor(
                 }
                 if (controller.scrollToCommentRequest == null) controller.completeInitialScrollRestoration()
             }
-            is CommentsRuntimeEffect.ActionFailed -> {
+            is CommentsFeatureEffect.ActionFailed -> {
                 if (effect.presentation.requestLogin) {
                     scene.navigation.showLoginDialog()
                 } else if (effect.presentation.showDetails) {
@@ -120,9 +120,9 @@ class CommentsFeatureBinding private constructor(
                     scene.userMessages.show(effect.presentation.message)
                 }
             }
-            is CommentsRuntimeEffect.Diagnostic -> effect.cause?.printStackTrace()
-            is CommentsRuntimeEffect.StateChanged -> Unit
-            CommentsRuntimeEffect.RequestSummaryPageTextRetry -> onSummaryPageTextRetry()
+            is CommentsFeatureEffect.Diagnostic -> effect.cause?.printStackTrace()
+            is CommentsFeatureEffect.StateChanged -> Unit
+            CommentsFeatureEffect.RequestSummaryPageTextRetry -> onSummaryPageTextRetry()
         }
     }
 
@@ -147,7 +147,7 @@ class CommentsFeatureBinding private constructor(
             val restoreProgress = sessionState.scrollProgress.initialized &&
                 (restoring || scene.navigation.state.value.storyStackParentDestination !=
                     MainDestination.SUBMISSIONS)
-            val store = app.createCommentsStore(
+            val store = app.createCommentsFeatureStore(
                 CommentsFeatureHost(
                     scope = scope,
                     sessionState = sessionState,
@@ -165,7 +165,7 @@ class CommentsFeatureBinding private constructor(
                 restoredSorting = null,
             )
             lateinit var binding: CommentsFeatureBinding
-            lateinit var controller: CommentsComposeController
+            lateinit var controller: CommentsScreenController
             val callbacks = object : CommentsFeatureListener.PlatformCallbacks {
                 override fun isRestoringScroll(): Boolean = binding.restoringStoredProgress ||
                     controller.initialScrollRestorationPending || binding.deferredReadingPosition != null
@@ -189,7 +189,7 @@ class CommentsFeatureBinding private constructor(
                 override fun onHeaderCoverageChanged(coverage: Float) = Unit
             }
             val initialState = checkNotNull(store.state.value.story)
-            controller = CommentsComposeController.create(
+            controller = CommentsScreenController.create(
                 shouldSmoothScroll = { store.state.value.settings?.smoothScroll ?: true },
                 story = initialState,
                 initialThreadCached = store.state.value.initialThreadCached,

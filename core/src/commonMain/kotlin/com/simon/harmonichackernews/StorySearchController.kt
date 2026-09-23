@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews
 
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.utils.SearchRelevanceUtils
+import com.simon.harmonichackernews.utils.StorySearchRanking
 import io.ktor.http.URLBuilder
 import kotlin.time.Clock
 
@@ -134,7 +134,7 @@ class StorySearchController(
 
     fun sortOnlyReadResults(stories: MutableList<Story>, query: String?) {
         if (sortIndex == 0) {
-            SearchRelevanceUtils.sortStoriesByRelevance(stories, query)
+            StorySearchRanking.sortStoriesByRelevance(stories, query)
         } else {
             stories.sortByDescending(Story::createdAtEpochSeconds)
         }

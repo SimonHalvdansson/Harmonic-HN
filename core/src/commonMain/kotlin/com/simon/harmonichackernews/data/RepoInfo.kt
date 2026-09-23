@@ -15,8 +15,8 @@ data class RepoInfo(
     val watching: Int = 0,
     val forks: Int = 0,
 ) {
-    fun formatStars(): String = LinkPreviewFormatUtils.formatCount(stars, "star", "stars")
-    fun formatWatching(): String = "${LinkPreviewFormatUtils.kFormat(watching)} watching"
-    fun formatForks(): String = LinkPreviewFormatUtils.formatCount(forks, "fork", "forks")
-    val shortenedUrl: String? get() = LinkPreviewFormatUtils.shortenUrl(website)
+    fun formatStars(): String = LinkPreviewDisplayFormatter.formatCount(stars, "star", "stars")
+    fun formatWatching(): String = "${LinkPreviewDisplayFormatter.formatCompactCount(watching)} watching"
+    fun formatForks(): String = LinkPreviewDisplayFormatter.formatCount(forks, "fork", "forks")
+    val shortenedUrl: String? get() = LinkPreviewDisplayFormatter.formatDisplayUrl(website)
 }

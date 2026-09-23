@@ -40,7 +40,7 @@ import com.simon.harmonichackernews.ui.content.PaletteTintCache
 import com.simon.harmonichackernews.ui.content.BitmapPaletteExtractor
 import com.simon.harmonichackernews.ui.content.toPainterPaletteSample
 import com.simon.harmonichackernews.ui.content.PaletteTintCacheKey
-import com.simon.harmonichackernews.ui.content.storyItemUiModel
+import com.simon.harmonichackernews.ui.content.storyRowModel
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -216,7 +216,7 @@ class FaviconTintChainBenchmark {
         )
         benchmarkRule.measureRepeated {
             check(
-                storyItemUiModel(
+                storyRowModel(
                     story = story,
                     position = 0,
                     settings = settings,

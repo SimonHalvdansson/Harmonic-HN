@@ -75,10 +75,10 @@ import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
-import com.simon.harmonichackernews.ui.content.CommentItem
-import com.simon.harmonichackernews.ui.content.CommentItemStyleContext
+import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.CommentRowStyleContext
 import com.simon.harmonichackernews.ui.content.contentTween
-import com.simon.harmonichackernews.ui.content.toCommentItemStyle
+import com.simon.harmonichackernews.ui.content.toCommentRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
@@ -186,7 +186,7 @@ internal suspend fun LazyListState.animateToCommentNavigationTarget(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsScreen(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     listModifier: Modifier,
     reserveUpButtonInset: Boolean,
     pullToRefreshEnabled: Boolean = true,
@@ -245,8 +245,8 @@ fun CommentsScreen(
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
     val itemStyle = remember(settings, animateComments) {
-        settings.toCommentItemStyle(
-            CommentItemStyleContext.Thread(animateChanges = animateComments),
+        settings.toCommentRowStyle(
+            CommentRowStyleContext.Thread(animateChanges = animateComments),
         )
     }
 
@@ -423,7 +423,7 @@ fun CommentsScreen(
                 val suppressRow = suppressed && !keepActionSourceVisible
                 val suppressedReferenceUrl =
                     controller.suppressedReferenceUrlForComment(item.comment.id)
-                CommentItem(
+                CommentRow(
                     comment = item.comment,
                     style = itemStyle,
                     storyAuthor = controller.story.by,
@@ -627,7 +627,7 @@ fun CommentsScreen(
  */
 @Composable
 fun BoxScope.CommentNavigationControls(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     modifier: Modifier = Modifier,
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,

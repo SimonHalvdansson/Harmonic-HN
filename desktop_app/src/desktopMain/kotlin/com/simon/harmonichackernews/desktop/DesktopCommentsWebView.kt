@@ -56,7 +56,7 @@ import com.simon.harmonichackernews.resources.ic_forum
 import com.simon.harmonichackernews.resources.ic_open_in_new
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_refresh
-import com.simon.harmonichackernews.ui.comments.CommentsComposeController
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import java.awt.Canvas
@@ -169,7 +169,7 @@ internal class DesktopCommentsWebViewSession(
  */
 @Composable
 internal fun DesktopCommentsWebViewScaffold(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     initialUrl: String,
     dark: Boolean,
     matchTheme: Boolean,

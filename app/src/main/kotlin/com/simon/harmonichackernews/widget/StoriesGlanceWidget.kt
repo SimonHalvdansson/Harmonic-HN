@@ -41,7 +41,7 @@ import androidx.glance.unit.ColorProvider
 import androidx.glance.color.ColorProvider
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.CommentsContract
+import com.simon.harmonichackernews.CommentsIntentExtras
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.AppDestinationCodec
@@ -58,7 +58,7 @@ import com.simon.harmonichackernews.ui.widget.WidgetTypography
 import com.simon.harmonichackernews.ui.widget.WidgetDimensions
 import com.simon.harmonichackernews.ui.widget.widgetMetricText
 import com.simon.harmonichackernews.utils.HtmlTextUtils
-import com.simon.harmonichackernews.utils.ThemeUtils
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.utils.HarmonicLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -197,7 +197,7 @@ private fun widgetPalette(context: Context, selection: ThemeSelection): Harmonic
         uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
             if (selection.dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
     }
-    val themed = ContextThemeWrapper(context.createConfigurationContext(configuration), ThemeUtils.themeResource(selection.theme, selection.dark))
+    val themed = ContextThemeWrapper(context.createConfigurationContext(configuration), AndroidActivityTheme.themeResource(selection.theme, selection.dark))
     return harmonicThemePalette(themed, selection).colors
 }
 
@@ -330,8 +330,8 @@ internal fun widgetStoryIntent(context: Context, destination: StoryDestination):
             seed.copy(story = seed.story.copy(text = null, childIds = emptyList(), pollOptionIds = emptyList()))
         })
         putExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA, AppDestinationCodec.encode(compact))
-        putExtra(CommentsContract.EXTRA_ID, destination.storyId)
-        putExtra(CommentsContract.EXTRA_SHOW_WEBSITE, destination.showWebsite)
+        putExtra(CommentsIntentExtras.EXTRA_ID, destination.storyId)
+        putExtra(CommentsIntentExtras.EXTRA_SHOW_WEBSITE, destination.showWebsite)
     }
 
 class RefreshStoriesAction : ActionCallback {
@@ -364,7 +364,7 @@ internal fun widgetFailureDescription(error: Throwable?): String = error?.let {
 internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable): RemoteViews {
     val app = context.harmonicAppComposition
     val selection = app.appearance.selection()
-    val themed = ContextThemeWrapper(context, ThemeUtils.themeResource(selection.theme, selection.dark))
+    val themed = ContextThemeWrapper(context, AndroidActivityTheme.themeResource(selection.theme, selection.dark))
     val colors = harmonicThemePalette(themed, selection).colors
     val message = if (app.userSettings.debug.showWidgetDebugInfo) {
         "Widget $widgetId could not render\n${widgetFailureDescription(error)}\nTap to retry."

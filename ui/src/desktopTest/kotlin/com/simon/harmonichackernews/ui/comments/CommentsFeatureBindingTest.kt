@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.presentation.CommentsIntent
-import com.simon.harmonichackernews.presentation.CommentsRuntimeEffect
+import com.simon.harmonichackernews.presentation.CommentsFeatureEffect
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -44,7 +44,7 @@ class CommentsFeatureBindingTest {
 
             val reopened = open()
             assertTrue(reopened.controller.initialScrollRestorationPending)
-            reopened.handleEffect(CommentsRuntimeEffect.ThreadReady(false, false), scene) {}
+            reopened.handleEffect(CommentsFeatureEffect.ThreadReady(false, false), scene) {}
             assertTrue(reopened.controller.initialScrollRestorationPending)
             reopened.controller.completeInitialScrollRestoration()
             assertFalse(reopened.controller.initialScrollRestorationPending)
@@ -55,7 +55,7 @@ class CommentsFeatureBindingTest {
             scene.navigation.detailRemovedFromBackStack()
 
             val targeted = open(202)
-            targeted.handleEffect(CommentsRuntimeEffect.ThreadReady(false, false), scene) {}
+            targeted.handleEffect(CommentsFeatureEffect.ThreadReady(false, false), scene) {}
             assertEquals(202, targeted.controller.scrollToCommentRequest?.commentId)
             assertTrue(checkNotNull(targeted.store.comment(201)).expanded)
             targeted.close()
@@ -103,7 +103,7 @@ class CommentsFeatureBindingTest {
             session.commentThread.replaceParsedComments(binding.story,
                 listOf(comment(201, 42, 0), comment(202, 201, 1), comment(203, 42, 0)), "Default", false)
             runCurrent()
-            binding.handleEffect(CommentsRuntimeEffect.ThreadReady(true, false), scene) {}
+            binding.handleEffect(CommentsFeatureEffect.ThreadReady(true, false), scene) {}
             assertTrue(binding.controller.integratedWebView, "Link fixture enables the integrated browser")
             assertEquals(0f, binding.controller.sheetSlideOffset)
             kotlin.test.assertNull(binding.controller.scrollToCommentRequest)

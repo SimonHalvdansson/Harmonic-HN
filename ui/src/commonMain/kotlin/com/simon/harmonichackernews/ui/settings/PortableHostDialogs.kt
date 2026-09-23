@@ -24,14 +24,14 @@ import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
-import com.simon.harmonichackernews.ui.stories.StoriesComposeController
+import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 
 @Composable
 fun BoxScope.PortableAppForeground(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     navigation: MainNavigationSnapshot,
-    storiesController: StoriesComposeController?,
+    storiesController: StoriesScreenController?,
     appIcon: Painter,
     captchaMessage: String,
 ) {

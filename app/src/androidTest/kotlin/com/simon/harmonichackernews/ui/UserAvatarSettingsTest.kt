@@ -13,7 +13,7 @@ import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.UserAvatarStyle
-import com.simon.harmonichackernews.ui.content.CommentItemStyle
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.settings.UserAvatarSettingsScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
@@ -41,7 +41,7 @@ class UserAvatarSettingsTest {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                         UserAvatarSettingsScreen(
                             enabled = enabled.value, options = options.value,
-                            previewStyle = CommentItemStyle(
+                            previewStyle = CommentRowStyle(
                                 displayStyle = DisplayStyle.STANDARD, textSize = 14f,
                                 collectLinks = false, emphasizeMeta = false,
                                 depthIndicatorMode = "none", showDivider = false,

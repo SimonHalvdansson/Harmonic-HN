@@ -109,8 +109,8 @@ sealed interface CommentsAction {
     data object CancelPollVote : CommentsAction
 }
 
-sealed interface CommentsEffect {
-    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsEffect
+sealed interface CommentsPresenterEffect {
+    data class ShowCommentActions(val comment: PortableCommentItem) : CommentsPresenterEffect
     data class ThreadApplied(
         val requestId: Int,
         val storyId: Int,
@@ -122,34 +122,34 @@ sealed interface CommentsEffect {
         val broadcastStoryUpdate: Boolean = false,
         val headerChanged: Boolean = false,
         val usedOfficialFallback: Boolean = false,
-    ) : CommentsEffect
+    ) : CommentsPresenterEffect
     data class ThreadFailed(
         val requestId: Int,
         val storyId: Int,
         val result: CommentThreadLoadResult.Failure,
-    ) : CommentsEffect
+    ) : CommentsPresenterEffect
     data class PollOptionsChanged(
         val storyId: Int,
         val failedOptionId: Int? = null,
-    ) : CommentsEffect
+    ) : CommentsPresenterEffect
     data class PollOptionsLookupFailed(
         val storyId: Int,
         val cause: Throwable,
-    ) : CommentsEffect
-    data class PollVoteStarted(val optionId: Int) : CommentsEffect
+    ) : CommentsPresenterEffect
+    data class PollVoteStarted(val optionId: Int) : CommentsPresenterEffect
     data class PollVoteCompleted(
         val optionId: Int,
         val outcome: PollVoteOutcome,
-    ) : CommentsEffect
-    data class SavedItemActionStarted(val request: CommentsSavedItemRequest) : CommentsEffect
+    ) : CommentsPresenterEffect
+    data class SavedItemActionStarted(val request: CommentsSavedItemRequest) : CommentsPresenterEffect
     data class SavedItemActionCompleted(
         val request: CommentsSavedItemRequest,
         val outcome: SavedItemActionOutcome,
-    ) : CommentsEffect
+    ) : CommentsPresenterEffect
     data class SavedItemActionStartFailed(
         val request: CommentsSavedItemRequest,
         val cause: Throwable,
-    ) : CommentsEffect
+    ) : CommentsPresenterEffect
 }
 
 sealed interface PollVoteOutcome {
@@ -180,7 +180,7 @@ class CommentsPresenter(
     private val votingService: HackerNewsVotingService,
     private val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
     private val threadPreparationDispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
-) : Feature<CommentsAction, CommentsPresenterState, CommentsEffect> {
+) : Feature<CommentsAction, CommentsPresenterState, CommentsPresenterEffect> {
     val thread: CommentThreadStore = sessionState.commentThread
     private val search = CommentSearchSession(scope, thread, threadPreparationDispatcher)
     private val mutableState = MutableStateFlow(
@@ -201,8 +201,8 @@ class CommentsPresenter(
     )
     override val state: StateFlow<CommentsPresenterState> = mutableState.asStateFlow()
 
-    private val mutableEffects = MutableSharedFlow<CommentsEffect>(extraBufferCapacity = 8)
-    override val effects: SharedFlow<CommentsEffect> = mutableEffects.asSharedFlow()
+    private val mutableEffects = MutableSharedFlow<CommentsPresenterEffect>(extraBufferCapacity = 8)
+    override val effects: SharedFlow<CommentsPresenterEffect> = mutableEffects.asSharedFlow()
     private var threadLoadJob: Job? = null
     private var pollOptionsLoadJob: Job? = null
     private var pollOptionsStoryId: Int = 0
@@ -256,7 +256,7 @@ class CommentsPresenter(
             is CommentsAction.SetStoryVoteLoading -> publish(storyVoteLoading = action.loading)
             is CommentsAction.SetStoryFavoriteLoading -> publish(storyFavoriteLoading = action.loading)
             is CommentsAction.RequestCommentActions ->
-                mutableEffects.tryEmit(CommentsEffect.ShowCommentActions(action.comment))
+                mutableEffects.tryEmit(CommentsPresenterEffect.ShowCommentActions(action.comment))
             is CommentsAction.ToggleBookmark -> {
                 scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     savedItemActions.toggleBookmarkAtomic(action.itemId)
@@ -310,7 +310,7 @@ class CommentsPresenter(
         if (optionId <= 0 || pollVoteJob?.isActive == true) return
         val generation = ++pollVoteGeneration
         publish(pollVoteInFlightOptionId = optionId)
-        mutableEffects.tryEmit(CommentsEffect.PollVoteStarted(optionId))
+        mutableEffects.tryEmit(CommentsPresenterEffect.PollVoteStarted(optionId))
         val job = scope.launch {
             val outcome = try {
                 val result = votingService.vote(optionId.toString(), POLL_VOTE_DIRECTION)
@@ -329,7 +329,7 @@ class CommentsPresenter(
                     publish(pollVoteInFlightOptionId = null)
                 }
             }
-            mutableEffects.emit(CommentsEffect.PollVoteCompleted(optionId, outcome))
+            mutableEffects.emit(CommentsPresenterEffect.PollVoteCompleted(optionId, outcome))
         }
         pollVoteJob = job
         job.invokeOnCompletion {
@@ -380,7 +380,7 @@ class CommentsPresenter(
                 )
             }
         }
-        mutableEffects.tryEmit(CommentsEffect.SavedItemActionStarted(request))
+        mutableEffects.tryEmit(CommentsPresenterEffect.SavedItemActionStarted(request))
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             var outcome: SavedItemActionOutcome? = null
             var startError: Throwable? = null
@@ -394,10 +394,10 @@ class CommentsPresenter(
                 finishSavedItemAction(request, outcome)
             }
             startError?.let { error ->
-                mutableEffects.emit(CommentsEffect.SavedItemActionStartFailed(request, error))
+                mutableEffects.emit(CommentsPresenterEffect.SavedItemActionStartFailed(request, error))
             }
             outcome?.let { completed ->
-                mutableEffects.emit(CommentsEffect.SavedItemActionCompleted(request, completed))
+                mutableEffects.emit(CommentsPresenterEffect.SavedItemActionCompleted(request, completed))
             }
         }
         savedItemActionJobs[key] = job
@@ -613,7 +613,7 @@ class CommentsPresenter(
                     } else {
                         publish(loaded = true, refreshing = false, failure = null)
                         mutableEffects.emit(
-                            CommentsEffect.ThreadApplied(
+                            CommentsPresenterEffect.ThreadApplied(
                                 requestId = requestId,
                                 storyId = storyId,
                                 contentApplied = false,
@@ -641,7 +641,7 @@ class CommentsPresenter(
                         failure = CommentsPresentationPolicy.failureFor(result),
                     )
                     mutableEffects.emit(
-                        CommentsEffect.ThreadFailed(requestId, storyId, result),
+                        CommentsPresenterEffect.ThreadFailed(requestId, storyId, result),
                     )
                 }
             }
@@ -677,7 +677,7 @@ class CommentsPresenter(
         )
         publish(loaded = true, refreshing = false, failure = null)
         mutableEffects.emit(
-            CommentsEffect.ThreadApplied(
+            CommentsPresenterEffect.ThreadApplied(
                 requestId = requestId,
                 storyId = action.story.id,
                 contentApplied = true,
@@ -721,7 +721,7 @@ class CommentsPresenter(
                         if (pollOptionsStoryId == story.id && generation == pollOptionsGeneration) {
                             pollOptionsLookupStarted = false
                             mutableEffects.emit(
-                                CommentsEffect.PollOptionsLookupFailed(story.id, error),
+                                CommentsPresenterEffect.PollOptionsLookupFailed(story.id, error),
                             )
                         }
                     }
@@ -747,7 +747,7 @@ class CommentsPresenter(
                 pollOption.loaded = loaded.loaded
                 pollOption.loadFailed = loaded.loadFailed
                 mutableEffects.emit(
-                    CommentsEffect.PollOptionsChanged(
+                    CommentsPresenterEffect.PollOptionsChanged(
                         storyId = story.id,
                         failedOptionId = loaded.id.takeIf { loaded.loadFailed },
                     ),
@@ -803,7 +803,7 @@ class CommentsPresenter(
             failure = null,
         )
         mutableEffects.emit(
-            CommentsEffect.ThreadApplied(
+            CommentsPresenterEffect.ThreadApplied(
                 requestId = requestId,
                 storyId = action.story.id,
                 contentApplied = true,

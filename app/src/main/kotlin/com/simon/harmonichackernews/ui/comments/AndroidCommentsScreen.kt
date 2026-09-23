@@ -47,7 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CommentsScaffold(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     reserveUpButtonInset: Boolean,
 ) {
     val density = LocalDensity.current
@@ -122,7 +122,7 @@ internal fun CommentsScaffold(
 
 @Composable
 internal fun AndroidCommentsScreen(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     reserveUpButtonInset: Boolean,
 ) {
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
@@ -160,7 +160,7 @@ internal fun AndroidCommentsScreen(
 
 @Composable
 private fun AndroidCommentsHeader(
-    controller: CommentsComposeController,
+    controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     contentVersion: Int,
 ) {
