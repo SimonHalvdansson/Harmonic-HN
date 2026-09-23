@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,6 +50,12 @@ fun CommentsSearchDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
         modifier = Modifier.heightIn(max = maxDialogHeight),
+        // Filled cards share surfaceContainerHigh in dark themes.
+        containerColor = if (HarmonicTheme.isDark) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
         text = {
             // animateContentSize clips its bounds; keep it inside the elevated surface so
             // the dialog's shadow can draw outside those bounds throughout resizing.

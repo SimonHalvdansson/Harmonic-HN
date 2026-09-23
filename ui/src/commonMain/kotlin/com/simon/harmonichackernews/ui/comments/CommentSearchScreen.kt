@@ -41,6 +41,7 @@ import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 /** Stateless comment-search surface backed by the shared comment-thread store. */
@@ -78,6 +79,11 @@ fun CommentSearchScreen(
         }
     }
     val matchLabel = if (visibleComments.size == 1) "MATCH" else "MATCHES"
+    val searchFieldColor = if (HarmonicTheme.isDark) {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    }
 
     Column(Modifier.fillMaxWidth()) {
         Text(
@@ -107,8 +113,8 @@ fun CommentSearchScreen(
             leadingIcon = { Icon(painterResource(Res.drawable.ic_search), null) },
             shape = RoundedCornerShape(32.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                focusedContainerColor = searchFieldColor,
+                unfocusedContainerColor = searchFieldColor,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),

@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +62,7 @@ fun SettingsAlertDialog(
     separateDismissButton: Boolean = false,
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = false,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     PredictiveBackDialog(
@@ -85,6 +87,7 @@ fun SettingsAlertDialog(
             dismissOnClickOutside = properties.dismissOnClickOutside,
             scrollableContent = scrollableContent,
             foreground = foreground,
+            containerColor = containerColor,
         )
     }
 }
@@ -103,6 +106,7 @@ private fun SettingsAlertDialogLayout(
     separateDismissButton: Boolean = false,
     dismissOnClickOutside: Boolean = true,
     scrollableContent: Boolean = false,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val contentWindowInsets = synchronizedSettingsDialogInsets()
@@ -146,7 +150,7 @@ private fun SettingsAlertDialogLayout(
                         }
                     },
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = containerColor,
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
             ) {
