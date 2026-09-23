@@ -26,13 +26,20 @@ class StoredUserSettingsTest {
             val repository = AppSettingsRepository(store, emptyFlow())
             val legacy = repository.snapshot().comments
             assertEquals(enabled, legacy.collectReferenceLinks)
-            assertFalse(legacy.expandedReferenceLinks)
+            assertTrue(legacy.expandedReferenceLinks)
             for (mode in CollectedLinksMode.entries) {
                 repository.setCollectedLinksMode(mode)
                 val reopened = AppSettingsRepository(store, emptyFlow()).snapshot().comments
                 assertEquals(mode, CollectedLinksMode.from(reopened.collectReferenceLinks, reopened.expandedReferenceLinks))
             }
         }
+    }
+
+    @Test
+    fun explicitSingleLineReferencesRemainSingleLine() {
+        val store = TestKeyValueStore(mapOf(UserPreferenceKeys.EXPAND_COLLECTED_LINKS to false))
+        assertFalse(StoredUserSettings(store, emptyFlow()).comments.expandedReferenceLinks)
+        assertTrue(StoredUserSettings(TestKeyValueStore(), emptyFlow()).comments.expandedReferenceLinks)
     }
 
     @Test

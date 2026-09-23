@@ -17,8 +17,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.glass.GlassDefaults
 import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.GlassOptics
+import dev.chrisbanes.haze.glass.OpticalSizePoint
 import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.SurfaceProfile
 import dev.chrisbanes.haze.glass.ChromaticAberrationMode
@@ -163,8 +165,18 @@ internal fun Modifier.sharedHazeBackground(
                     if (glass[GlassSwitch.FullChromaticAberration]) ChromaticAberrationMode.Full
                     else ChromaticAberrationMode.Simple,
                 )
-                // Adaptive optics suppress sharp text fragments in the default frosted glass.
-                if (!glass[GlassSwitch.AdaptiveOptics]) {
+                // Haze 2's Regular optics mix sharp content into compact surfaces (depth < 1).
+                // Keep full diffusion with a 20% lighter size-aware blur and Regular refraction.
+                if (glass[GlassSwitch.AdaptiveOptics]) {
+                    optics(GlassDefaults.optics.copy(
+                        depth = OpticalSizeValue.Fixed(1f),
+                        blurRadius = OpticalSizeValue.Responsive(
+                            OpticalSizePoint(64.dp, 16.dp),
+                            OpticalSizePoint(176.dp, 19.2.dp),
+                            OpticalSizePoint(220.dp, 20.dp),
+                        ),
+                    ))
+                } else {
                     optics(GlassOptics(
                         refractionStrength = glass[GlassParameter.RefractionStrength],
                         refractionHeightFraction = glass[GlassParameter.RefractionHeight],

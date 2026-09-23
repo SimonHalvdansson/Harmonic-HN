@@ -99,7 +99,7 @@ data class CommentPreferences(
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val roundedDepthIndicators: Boolean = true,
     val continuousDepthIndicators: Boolean = false,
-    val expandedReferenceLinks: Boolean = false,
+    val expandedReferenceLinks: Boolean = true,
     val userAvatarsEnabled: Boolean = true,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,

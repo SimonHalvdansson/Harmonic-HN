@@ -146,7 +146,7 @@ fun AboutScreen(
                         text = aboutBody,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 24.dp, bottom = 16.dp),
+                            .padding(top = 22.dp, bottom = 18.dp),
                         color = colors.contentPrimary,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 15.sp,

@@ -521,7 +521,14 @@ class MainNavigationController internal constructor(
     }
 
     internal fun updateCommentsHostDestination(destination: MainDestination) {
-        commentsCoordinator?.setHostActive(destination == MainDestination.STORY)
+        // A retained pane may be revealed without recomposing CommentsPane. Resolve the host
+        // from the stack here instead of relying on that pane's attachment SideEffect to run.
+        val active = navigationState.state.value.storyRequest?.serial
+            ?.let(commentsCoordinatorCache::get)
+        commentsCoordinator?.takeIf { it !== active }?.setHostActive(false)
+        commentsCoordinator = active
+        commentsComposeController = active?.composeUiController
+        active?.setHostActive(destination == MainDestination.STORY)
     }
 
     internal fun updateStoriesHostDestination(destination: MainDestination) {

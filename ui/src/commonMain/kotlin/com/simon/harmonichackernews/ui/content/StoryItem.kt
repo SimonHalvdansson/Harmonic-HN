@@ -1002,8 +1002,11 @@ private fun StoryMetricPill(
         modifier = Modifier
             .graphicsLayer(alpha = pillAlpha)
             .then(backgroundModifier)
-            .height(StoryMetricPillHeight)
-            .padding(start = startPadding, end = endPadding)
+            .height(if (hazeState != null) 22.dp else StoryMetricPillHeight)
+            .padding(
+                start = if (hazeState != null) (startPadding - 1.dp).coerceAtLeast(0.dp) else startPadding,
+                end = if (hazeState != null) endPadding - 1.dp else endPadding,
+            )
             .clearAndSetSemantics { this.contentDescription = contentDescription },
         horizontalArrangement = Arrangement.spacedBy(if (text == null) 0.dp else iconTextSpacing),
         verticalAlignment = Alignment.CenterVertically,
@@ -1027,8 +1030,8 @@ private fun StoryMetricPill(
                 color = foreground,
                 fontFamily = typography.storyMetaFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
-                lineHeight = 14.sp,
+                fontSize = if (hazeState != null) 11.sp else 12.sp,
+                lineHeight = if (hazeState != null) 13.sp else 14.sp,
                 maxLines = 1,
                 style = legacyTextStyle,
             )

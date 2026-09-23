@@ -211,7 +211,7 @@ class StoredUserSettings(
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
                 markNewComments = boolean(UserPreferenceKeys.MARK_NEW_COMMENTS, true),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),
-                expandedReferenceLinks = boolean(UserPreferenceKeys.EXPAND_COLLECTED_LINKS, false),
+                expandedReferenceLinks = boolean(UserPreferenceKeys.EXPAND_COLLECTED_LINKS, true),
                 collectReferenceLinks =
                     boolean(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS, true),
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
