@@ -57,7 +57,7 @@ fun CommentFeedItem(
     val cardBackground = if (displaySettings.hasBackground) {
         colors.storyCardBackground
     } else {
-        colors.settingsPageBackground
+        colors.background
     }
     val shape = RoundedCornerShape(8.dp)
     val container = modifier

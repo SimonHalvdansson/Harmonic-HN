@@ -70,7 +70,7 @@ private val SurfaceEffectMode.displayLabel: String
 @Composable
 private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
     val shape = RoundedCornerShape(10.dp)
-    val dark = HarmonicTheme.colors.settingsPageBackground.luminance() < 0.5f
+    val dark = HarmonicTheme.colors.background.luminance() < 0.5f
     val surface = if (dark) Color(0xFF252525) else Color(0xFFF5F5F5)
     val backdrop = if (selected) HarmonicTheme.colors.secondaryContainer
         else HarmonicTheme.colors.settingsItemBackground

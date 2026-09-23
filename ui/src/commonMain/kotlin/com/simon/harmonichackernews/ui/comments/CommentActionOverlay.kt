@@ -109,7 +109,7 @@ fun CommentActionOverlay(
     val cardColor = if (settings.hasBackground) {
         HarmonicTheme.colors.storyCardBackground
     } else {
-        HarmonicTheme.colors.settingsPageBackground
+        HarmonicTheme.colors.background
     }
     // Geometry belongs to the opening gesture, but its colors must follow the live row's theme.
     val source = state.sourceGeometry?.copy(

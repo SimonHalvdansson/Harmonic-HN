@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 @Immutable
 data class HarmonicColors(
     val background: Color,
+    val readerModeBackground: Color,
     val accent: Color,
     val onSurface: Color,
     val textPrimary: Color,
@@ -33,7 +34,6 @@ data class HarmonicColors(
     val drawable: Color,
     val popupMenuBackground: Color,
     val settingsSegment: Color,
-    val settingsPageBackground: Color,
     val settingsItemBackground: Color,
     val settingsHeaderSelected: Color,
     val settingsMainToggle: Color,

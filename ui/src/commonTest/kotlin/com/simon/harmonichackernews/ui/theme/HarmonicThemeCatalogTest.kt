@@ -47,9 +47,28 @@ class HarmonicThemeCatalogTest {
         )
 
         assertEquals(Color(0xFF6750A4), palette.colorScheme.primary)
-        assertEquals(Color(0xFFF3EDF7), palette.colors.settingsPageBackground)
+        assertEquals(Color(0xFFF3EDF7), palette.colors.background)
+        assertEquals(Color(0xFFFFFBFE), palette.colors.readerModeBackground)
+        assertEquals(palette.colors.background, palette.colorScheme.background)
         assertEquals(Color(0xFFEADDFF), palette.colors.overlayButton)
         assertEquals(Color(0xFF21005D), palette.colors.overlayButtonContent)
+    }
+
+    @Test
+    fun pageBackgroundUsesFormerSettingsColorWhileReaderModeKeepsItsColor() {
+        val light = HarmonicThemeCatalog.resolve("light", systemDark = false)
+        assertEquals(Color(0xFFF6F5EC), light.colors.background)
+        assertEquals(Color(0xFFF6F6EF), light.colors.readerModeBackground)
+        assertEquals(light.colors.background, light.colorScheme.background)
+        assertEquals(
+            "#F6F6EF",
+            ReaderModeThemeFactory.create(light.colors, light = true, font = null, fontSizePx = 16).backgroundColor,
+        )
+
+        val hackerNews = HarmonicThemeCatalog.resolve("hacker_news", systemDark = false)
+        assertEquals(Color(0xFFF7F5ED), hackerNews.colors.background)
+        assertEquals(Color(0xFFF6F6EF), hackerNews.colors.readerModeBackground)
+        assertEquals(hackerNews.colors.background, hackerNews.colorScheme.background)
     }
 
     @Test

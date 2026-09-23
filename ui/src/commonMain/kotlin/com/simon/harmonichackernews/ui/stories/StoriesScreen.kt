@@ -304,7 +304,7 @@ fun StoriesScreen(
         suppressSearchAutoFocus = controller.suppressSearchAutoFocus,
         predictiveBackActive = controller.predictiveBackActive,
         predictiveBackProgress = controller.predictiveBackProgress,
-        backgroundColor = HarmonicTheme.colors.settingsPageBackground,
+        backgroundColor = HarmonicTheme.colors.background,
         mainLayer = {
             Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                 StoriesList(
@@ -721,7 +721,7 @@ private fun StoriesList(
                             val untintedStoryBackground = if (style.hasBackground) {
                                 HarmonicTheme.colors.storyCardBackground
                             } else {
-                                HarmonicTheme.colors.settingsPageBackground
+                                HarmonicTheme.colors.background
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
@@ -758,7 +758,7 @@ private fun StoriesList(
                                 style = style,
                                 modifier = itemModifier,
                                 listItem = true,
-                                pageBackground = HarmonicTheme.colors.settingsPageBackground,
+                                pageBackground = HarmonicTheme.colors.background,
                                 animateChanges = true,
                                 onLinkClick = {
                                     dismissSearchKeyboard()
@@ -971,7 +971,7 @@ private fun StoriesHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HarmonicTheme.colors.settingsPageBackground)
+                .background(HarmonicTheme.colors.background)
                 .padding(top = topInset + topSpacing),
         ) {
             if (searchMode) {

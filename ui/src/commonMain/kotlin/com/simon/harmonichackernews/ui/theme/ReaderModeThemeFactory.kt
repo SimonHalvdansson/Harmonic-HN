@@ -19,7 +19,7 @@ object ReaderModeThemeFactory {
         fontData: ReaderModeFontData? = null,
     ): ReaderModeTheme = ReaderModeTheme(
         light = light,
-        backgroundColor = css(colors.background.toArgb()),
+        backgroundColor = css(colors.readerModeBackground.toArgb()),
         textColor = css(colors.textPrimary.toArgb()),
         headingColor = css(colors.storyNormal.toArgb()),
         secondaryTextColor = css(colors.textSecondary.toArgb()),

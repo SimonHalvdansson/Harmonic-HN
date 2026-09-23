@@ -55,6 +55,7 @@ import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
 import com.simon.harmonichackernews.ui.navigation.activityNavigationOpenContentTransform
 import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTransform
 import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.flow.first
 
 /** The retained destination keeps its own navigation origin, including in two-pane layouts. */
@@ -135,7 +136,7 @@ fun SettingsNavigationShell(
         defaultRatio = paneProportion,
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
-        modifier = modifier.fillMaxSize().background(settingsPageBackgroundColor())
+        modifier = modifier.fillMaxSize().background(HarmonicTheme.colors.background)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState ->
         val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
@@ -234,7 +235,7 @@ fun SettingsNavigationShell(
         }
 
         Box(
-            modifier = Modifier.fillMaxSize().background(settingsPageBackgroundColor()),
+            modifier = Modifier.fillMaxSize().background(HarmonicTheme.colors.background),
         ) {
             if (showDetailNavigation) {
                 SinglePaneSettingsNavigation(
@@ -340,7 +341,7 @@ private fun SinglePaneSettingsNavigation(
         },
         label = "settings list navigation offset",
     )
-    val pageBackground = settingsPageBackgroundColor()
+    val pageBackground = HarmonicTheme.colors.background
     val predictiveBackActive = predictiveBackOverlay != null
     // These identities are captured when the gesture starts. Deriving them from detailStack would
     // reassign the exit modifier to the parent in the composition that observes the completed pop.

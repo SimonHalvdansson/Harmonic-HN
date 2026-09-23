@@ -768,7 +768,7 @@ private fun MainNavigation(
     val usesTwoPaneStoryScene = isTwoPane &&
         (storyRequest == null || storyParentDestination == MainDestination.STORIES ||
             submissionsInTwoPane)
-    val paneStatusBarColor = HarmonicTheme.colors.settingsPageBackground
+    val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
         lerp(
@@ -1004,7 +1004,7 @@ private fun MainNavigation(
         completedEditorPredictiveBack = editorPredictiveBack.completed,
         completedStoryPredictiveBack = completedPredictivePop,
         submissionsInTwoPane = submissionsInTwoPane,
-        modifier = Modifier.background(HarmonicTheme.colors.settingsPageBackground)
+        modifier = Modifier.background(HarmonicTheme.colors.background)
             .semantics { testTagsAsResourceId = true },
         basePredictiveModifier = parentBackModifier(MainDestination.STORIES)
             .then(parentBackModifier(MainDestination.STORY)),
@@ -1180,7 +1180,7 @@ private fun MainNavigation(
                                 onBack = ::popMainBackStack,
                                 stories = submissionsContent,
                                 emptyDetail = { EmptyCommentsScreen() },
-                                modifier = Modifier.background(HarmonicTheme.colors.settingsPageBackground),
+                                modifier = Modifier.background(HarmonicTheme.colors.background),
                                 comments = { detail ->
                                     CommentsPane(
                                         request = detail,

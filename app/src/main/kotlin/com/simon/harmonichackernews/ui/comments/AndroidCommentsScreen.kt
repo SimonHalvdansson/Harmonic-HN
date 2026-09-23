@@ -99,7 +99,7 @@ internal fun CommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = HarmonicTheme.colors.settingsPageBackground,
+            sheetContainerColor = HarmonicTheme.colors.background,
             sheetContentColor = HarmonicTheme.colors.storyNormal,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,

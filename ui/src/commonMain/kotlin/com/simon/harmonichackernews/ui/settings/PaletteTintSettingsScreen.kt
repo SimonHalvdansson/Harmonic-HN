@@ -279,7 +279,7 @@ private fun PaletteStoryPreview(model: StoryItemUiModel, style: StoryItemStyle) 
         listItem = true,
         // Only tint changes here; avoid constructing animations for fixed text and row geometry.
         animateChanges = false,
-        pageBackground = settingsPageBackgroundColor(),
+        pageBackground = HarmonicTheme.colors.background,
     )
 }
 

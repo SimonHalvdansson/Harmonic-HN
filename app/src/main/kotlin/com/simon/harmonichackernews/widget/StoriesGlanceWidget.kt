@@ -121,7 +121,7 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 }
             }
             Column(
-                GlanceModifier.fillMaxSize().background(colors.settingsPageBackground).appWidgetBackground()
+                GlanceModifier.fillMaxSize().background(colors.background).appWidgetBackground()
                     .cornerRadius(24.dp),
             ) {
                 val error = state[WidgetState.error]?.let {
@@ -181,7 +181,7 @@ internal data class WidgetVisual(val image: Bitmap?, val tint: Int?, val favicon
 
 /** Day/night colors are resolved by the launcher even while the application process is stopped. */
 internal data class WidgetColors(val day: HarmonicColors, val night: HarmonicColors = day) {
-    val settingsPageBackground = ColorProvider(day.settingsPageBackground, night.settingsPageBackground)
+    val background = ColorProvider(day.background, night.background)
     val storyCardBackground = ColorProvider(day.storyCardBackground, night.storyCardBackground)
     val textPrimary = ColorProvider(day.textPrimary, night.textPrimary)
     val textSecondary = ColorProvider(day.textSecondary, night.textSecondary)
@@ -207,7 +207,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
     val preferences = context.harmonicAppComposition.userSettings.story
     val style = configuration.displayStyle
     val background = when {
-        style == DisplayStyle.FLAT -> colors.settingsPageBackground
+        style == DisplayStyle.FLAT -> colors.background
         configuration.tint && visual?.tint != null -> ColorProvider(Color(visual.tint), Color(visual.nightTint ?: visual.tint))
         else -> colors.storyCardBackground
     }
@@ -375,7 +375,7 @@ internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable)
     return RemoteViews(context.packageName, R.layout.widget_error).apply {
         setTextViewText(R.id.widget_error_message, message)
         setTextColor(R.id.widget_error_message, colors.textPrimary.toArgb())
-        setInt(R.id.widget_error_message, "setBackgroundColor", colors.settingsPageBackground.toArgb())
+        setInt(R.id.widget_error_message, "setBackgroundColor", colors.background.toArgb())
         setOnClickPendingIntent(R.id.widget_error_message,
             PendingIntent.getBroadcast(context, widgetId, retry, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }

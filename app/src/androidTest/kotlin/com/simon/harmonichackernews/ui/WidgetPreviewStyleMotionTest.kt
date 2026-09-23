@@ -37,7 +37,7 @@ class WidgetPreviewStyleMotionTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                Box(Modifier.width(360.dp).background(palette.colors.settingsPageBackground).testTag("preview")) {
+                Box(Modifier.width(360.dp).background(palette.colors.background).testTag("preview")) {
                     WidgetPreviewStoryRow(
                         SettingsStoryPreviewModel.copy(previewImageFallback = null),
                         WidgetConfiguration(previewImageMode = StoryPreviewMode.OFF, displayStyle = displayStyle.value),

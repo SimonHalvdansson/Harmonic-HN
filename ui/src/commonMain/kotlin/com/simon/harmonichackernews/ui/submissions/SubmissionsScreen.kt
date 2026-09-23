@@ -169,7 +169,7 @@ fun SubmissionsScreen(
 
     val modifier = Modifier
         .fillMaxSize()
-        .background(HarmonicTheme.colors.settingsPageBackground)
+        .background(HarmonicTheme.colors.background)
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         // Render bounce/stretch once around both layers so the header stays with the rows.
@@ -502,7 +502,7 @@ private fun SubmissionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.settingsPageBackground)
+            .background(HarmonicTheme.colors.background)
             .padding(horizontal = sideMargin)
             .padding(horizontal = 16.dp)
             .then(

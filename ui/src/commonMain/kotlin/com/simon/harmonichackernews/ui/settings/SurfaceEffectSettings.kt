@@ -286,7 +286,7 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
     CompositionLocalProvider(LocalHazePreferences provides preferences) {
         HazeHost {
             val hazeState = currentSharedHazeState()
-            Box(Modifier.fillMaxWidth().background(settingsPageBackgroundColor()).padding(16.dp)) {
+            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background).padding(16.dp)) {
                 Box(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(20.dp))) {
                     Row(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                         listOf(Color(0xFF78A6C8), Color(0xFFE7A493), Color(0xFF8BBAA5)).forEachIndexed { index, color ->

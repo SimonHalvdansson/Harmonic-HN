@@ -102,7 +102,7 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.settingsPageBackground)) {
+            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background)) {
                 CommentItem(
                     model = SettingsCommentPreviewModel,
                     style = state.toPreviewCommentItemStyle(),

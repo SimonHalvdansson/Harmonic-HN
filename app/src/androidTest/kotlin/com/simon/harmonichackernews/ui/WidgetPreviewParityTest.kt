@@ -81,7 +81,7 @@ class WidgetPreviewParityTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalWidgetTextStyle provides TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))) {
-                    Column(Modifier.width(360.dp).background(palette.colors.settingsPageBackground)) {
+                    Column(Modifier.width(360.dp).background(palette.colors.background)) {
                         Text("Configuration preview")
                         WidgetPreviewStoryRow(SettingsStoryPreviewModel.copy(index = "1.", title = "Patterns", points = 291,
                             commentCount = 108, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,

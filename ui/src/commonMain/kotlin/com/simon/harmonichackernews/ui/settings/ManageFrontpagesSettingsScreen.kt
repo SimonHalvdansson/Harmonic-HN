@@ -149,7 +149,7 @@ fun ManageFrontpagesSettingsScreen(
     val density = LocalDensity.current
     var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val selectedBackground = frontpageSelectionColor(
-        pageBackground = settingsPageBackgroundColor(),
+        pageBackground = HarmonicTheme.colors.background,
         cardBackground = settingsItemBackgroundColor(),
         accent = MaterialTheme.colorScheme.primary,
     )

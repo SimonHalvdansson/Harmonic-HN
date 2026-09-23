@@ -121,7 +121,7 @@ fun CommentsHeader(
     var loadedTint by remember(story.id, contentVersion, initialTint) {
         mutableStateOf(initialTint)
     }
-    val normalBackground = colors.settingsPageBackground
+    val normalBackground = colors.background
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
         loadedTint?.let(::Color) ?: Color(tintBaseColor)
     } else {

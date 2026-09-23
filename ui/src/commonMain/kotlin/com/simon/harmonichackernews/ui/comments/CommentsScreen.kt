@@ -205,7 +205,7 @@ fun CommentsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.settingsPageBackground),
+                .background(HarmonicTheme.colors.background),
             contentAlignment = Alignment.Center,
         ) {
             HarmonicLoadingIndicator(Modifier.size(42.dp))
@@ -387,7 +387,7 @@ fun CommentsScreen(
             contentType = { if (settings.hasBackground) "comment-card" else "comment" },
             modifier = Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.settingsPageBackground)
+                .background(HarmonicTheme.colors.background)
                 // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
                     alpha = if (
@@ -498,7 +498,7 @@ fun CommentsScreen(
                             sourceContainerColor = if (settings.hasBackground) {
                                 colors.storyCardBackground
                             } else {
-                                colors.settingsPageBackground
+                                colors.background
                             },
                             sourceContentLayer = sourceContentLayer,
                         )
@@ -748,7 +748,7 @@ fun EmptyCommentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.settingsPageBackground),
+            .background(HarmonicTheme.colors.background),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

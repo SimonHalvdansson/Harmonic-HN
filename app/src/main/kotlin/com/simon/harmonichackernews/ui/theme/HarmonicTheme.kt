@@ -103,16 +103,16 @@ private fun harmonicColors(
 ): HarmonicColors {
     val fallback = canonical.colors
     val fallbackScheme = canonical.colorScheme
-    val background = context.colorAttribute(
+    val readerModeBackground = context.colorAttribute(
         android.R.attr.colorBackground,
-        fallbackScheme.background,
+        fallback.readerModeBackground,
     )
     val settingsSegment = context.colorAttribute(
         R.attr.settingsSegmentColor,
         fallbackScheme.surfaceContainerHigh,
     )
     fun resolveSettingsSurface(fallbackColor: Color): Color = when (fallbackColor) {
-        fallback.background -> background
+        fallback.readerModeBackground -> readerModeBackground
         fallback.settingsSegment -> settingsSegment
         else -> fallbackColor
     }
@@ -121,7 +121,8 @@ private fun harmonicColors(
         fallbackScheme.onSurface,
     )
     return HarmonicColors(
-        background = background,
+        background = resolveSettingsSurface(fallback.background),
+        readerModeBackground = readerModeBackground,
         accent = context.colorAttribute(
             AppCompatR.attr.colorAccent,
             fallback.accent,
@@ -180,7 +181,6 @@ private fun harmonicColors(
             resolveSettingsSurface(fallback.settingsItemBackground)
         },
         settingsSegment = settingsSegment,
-        settingsPageBackground = resolveSettingsSurface(fallback.settingsPageBackground),
         settingsItemBackground = resolveSettingsSurface(fallback.settingsItemBackground),
         settingsHeaderSelected = context.colorAttribute(
             R.attr.settingsHeaderSelectedColor,

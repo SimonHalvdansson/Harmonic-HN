@@ -253,7 +253,7 @@ fun StoryItem(
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
-    pageBackground: Color = HarmonicTheme.colors.settingsPageBackground,
+    pageBackground: Color = HarmonicTheme.colors.background,
     typographyOverride: ContentTypography? = null,
     cardPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
 ) {

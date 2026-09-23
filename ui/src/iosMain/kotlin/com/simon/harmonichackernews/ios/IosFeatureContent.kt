@@ -78,7 +78,7 @@ internal fun IosSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.settingsPageBackground)
+                .background(HarmonicTheme.colors.background)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(
                         WindowInsetsSides.Horizontal,
@@ -96,7 +96,7 @@ internal fun IosSubmissionsContent(
                 reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
             )
-            IosStatusBarProtection(HarmonicTheme.colors.settingsPageBackground)
+            IosStatusBarProtection(HarmonicTheme.colors.background)
             TranslucentBackButton(
                 onClick = scene.navigation::closeSubmissions,
                 modifier = Modifier

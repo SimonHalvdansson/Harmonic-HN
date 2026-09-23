@@ -234,7 +234,7 @@ class CommentAppearanceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        Column(Modifier.fillMaxWidth().background(palette.colors.settingsPageBackground).testTag("thread")) {
+                        Column(Modifier.fillMaxWidth().background(palette.colors.background).testTag("thread")) {
                             rows.forEachIndexed { index, row ->
                                 CommentItem(
                                     comment = row, style = style.value, storyAuthor = null, accountUser = null,

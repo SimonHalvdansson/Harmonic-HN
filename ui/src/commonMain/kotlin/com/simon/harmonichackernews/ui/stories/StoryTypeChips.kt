@@ -43,7 +43,7 @@ internal fun StoryTypeChips(
     )
     val colors = HarmonicTheme.colors
     val isDark = HarmonicTheme.isDark
-    val chipBackground = lerp(colors.settingsPageBackground, Color.White, if (isDark) 0.08f else 0.45f)
+    val chipBackground = lerp(colors.background, Color.White, if (isDark) 0.08f else 0.45f)
     val selectedBackground = if (isDark) {
         lerp(chipBackground, colors.secondaryContainer, 0.55f)
     } else {

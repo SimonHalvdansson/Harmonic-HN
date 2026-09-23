@@ -104,9 +104,6 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
-internal fun settingsPageBackgroundColor(): Color = HarmonicTheme.colors.settingsPageBackground
-
-@Composable
 internal fun settingsItemBackgroundColor(): Color = HarmonicTheme.colors.settingsItemBackground
 
 @Composable
@@ -362,7 +359,7 @@ fun SettingsListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(settingsPageBackgroundColor())
+            .background(HarmonicTheme.colors.background)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -489,7 +486,7 @@ fun SettingsPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(settingsPageBackgroundColor())
+            .background(HarmonicTheme.colors.background)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -523,7 +520,7 @@ fun SettingsPage(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(settingsPageBackgroundColor()),
+                            .background(HarmonicTheme.colors.background),
                     ) {
                         preview()
                     }
@@ -799,7 +796,7 @@ fun SettingsDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(HarmonicDimens.settings_list_segment_internal_gap)
-            .background(settingsPageBackgroundColor()),
+            .background(HarmonicTheme.colors.background),
     )
 }
 

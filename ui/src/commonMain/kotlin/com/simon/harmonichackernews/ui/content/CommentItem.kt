@@ -825,7 +825,7 @@ private fun CommentSurface(
     val baseBackground = when {
         style.hasBackground -> colors.storyCardBackground
         style.transparentNonCardBackground -> Color.Transparent
-        else -> colors.settingsPageBackground
+        else -> colors.background
     }
     val targetBackground = commentSurfaceColor(baseBackground, colors.storyNormal, highlighted)
     val background by animateColorAsState(

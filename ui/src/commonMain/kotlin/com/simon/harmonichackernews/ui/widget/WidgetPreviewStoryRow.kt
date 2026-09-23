@@ -61,7 +61,7 @@ fun WidgetPreviewStoryRow(
     val outlineWidth = with(LocalDensity.current) { 1.dp.toPx().toInt().toDp() }
     val palette = rememberResourceTintPalette(model.previewImageFallback ?: model.faviconFallback)
     val targetBackground = when {
-        configuration.displayStyle == DisplayStyle.FLAT -> colors.settingsPageBackground
+        configuration.displayStyle == DisplayStyle.FLAT -> colors.background
         configuration.tint && palette != null -> Color(PreviewTintPolicy.calculateCardTint(colors.storyCardBackground.toArgb(), palette, paletteTintConfigKey))
         else -> colors.storyCardBackground
     }

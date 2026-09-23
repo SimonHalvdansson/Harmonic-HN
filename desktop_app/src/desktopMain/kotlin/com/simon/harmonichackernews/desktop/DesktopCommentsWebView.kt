@@ -58,6 +58,7 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_refresh
 import com.simon.harmonichackernews.ui.comments.CommentsComposeController
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import java.awt.Canvas
 import java.awt.EventQueue
 import java.awt.event.ComponentAdapter
@@ -220,7 +221,7 @@ internal fun DesktopCommentsWebViewScaffold(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background),
+                .background(HarmonicTheme.colors.background),
         ) {
             if (browserStarted) {
                 DesktopEmbeddedBrowserSurface(
@@ -688,7 +689,7 @@ private fun DesktopWebViewToolbar(
     val openInBrowserInteractions = remember { MutableInteractionSource() }
     val openInBrowserHovered by openInBrowserInteractions.collectIsHoveredAsState()
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = HarmonicTheme.colors.background,
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(

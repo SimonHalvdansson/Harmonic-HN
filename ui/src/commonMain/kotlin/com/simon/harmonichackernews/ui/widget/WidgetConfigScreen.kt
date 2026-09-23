@@ -99,7 +99,7 @@ fun WidgetConfigScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .then(if (pinPreview) Modifier.weight(1f) else Modifier)
-                        .background(HarmonicTheme.colors.settingsPageBackground)
+                        .background(HarmonicTheme.colors.background)
                         .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                         .padding(bottom = 112.dp),
@@ -248,7 +248,7 @@ private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, palet
     val colors = HarmonicTheme.colors
     Column(
         Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
-            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.settingsPageBackground),
+            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.background),
     ) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
             Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->

@@ -245,7 +245,7 @@ class CommentsHeaderMotionTest {
                         LocalDensity provides density,
                     ) {
                         HarmonicTheme(
-                            palette.colors.copy(settingsPageBackground = Color.White),
+                            palette.colors.copy(background = Color.White),
                             palette.colorScheme, palette.dark,
                         ) {
                             Box(Modifier.fillMaxSize().background(Color.White).testTag("refresh-root")) {

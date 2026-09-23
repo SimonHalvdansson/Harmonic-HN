@@ -39,7 +39,7 @@ object HarmonicThemeCatalog {
 
     private val dark = create(
         dark = true,
-        background = Color(0xFF222431),
+        readerModeBackground = Color(0xFF222431),
         surface = Color(0xFF14191E),
         accent = Color(0xFFFF959E),
         commentCountIndicator = Color(0xFF99595E),
@@ -60,7 +60,7 @@ object HarmonicThemeCatalog {
     )
     private val gray = create(
         dark = true,
-        background = Color(0xFF292A2E),
+        readerModeBackground = Color(0xFF292A2E),
         surface = Color(0xFF292A2E),
         accent = Color(0xFFFF959E),
         commentCountIndicator = Color(0xFF99595E),
@@ -79,7 +79,7 @@ object HarmonicThemeCatalog {
     )
     private val amoled = create(
         dark = true,
-        background = Color.Black,
+        readerModeBackground = Color.Black,
         surface = Color.Black,
         accent = Color(0xFFFF959E),
         commentCountIndicator = Color(0xFF99595E),
@@ -100,7 +100,7 @@ object HarmonicThemeCatalog {
     )
     private val hacker = create(
         dark = true,
-        background = Color.Black,
+        readerModeBackground = Color.Black,
         surface = Color.Black,
         accent = Color(0xFF00FF00),
         primary = Color(0xFF00FF00),
@@ -123,7 +123,7 @@ object HarmonicThemeCatalog {
     )
     private val light = create(
         dark = false,
-        background = Color(0xFFF6F6EF),
+        readerModeBackground = Color(0xFFF6F6EF),
         surface = Color(0xFFF6F6EF),
         accent = Color(0xFF4C9B7B),
         primary = Color(0xFF4C9B7B),
@@ -136,13 +136,13 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFC6E9D8),
         settingsToggleText = Color(0xFF245B46),
         settingsSegment = Color(0xFFF0EEDC),
-        settingsPageBackground = Color(0xFFF6F5EC),
+        background = Color(0xFFF6F5EC),
         settingsItemBackground = Color(0xFFFCFCFA),
         onSecondary = Color.White,
     )
     private val white = create(
         dark = false,
-        background = Color.White,
+        readerModeBackground = Color.White,
         surface = Color.White,
         accent = Color(0xFF4C9B7B),
         primary = Color(0xFF4C9B7B),
@@ -159,7 +159,7 @@ object HarmonicThemeCatalog {
     )
     private val hackerNews = create(
         dark = false,
-        background = Color(0xFFF6F6EF),
+        readerModeBackground = Color(0xFFF6F6EF),
         surface = Color(0xFFEEEBD9),
         accent = Color(0xFFFF6600),
         commentCountIndicator = Color(0xFFB34700),
@@ -173,7 +173,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFFFD5B8),
         settingsToggleText = Color(0xFF7A3100),
         settingsSegment = Color(0xFFF2EEDF),
-        settingsPageBackground = Color(0xFFF7F5ED),
+        background = Color(0xFFF7F5ED),
         settingsItemBackground = Color(0xFFFCFCFA),
         onPrimary = Color.White,
         onSecondary = Color.White,
@@ -182,7 +182,7 @@ object HarmonicThemeCatalog {
     )
     private val materialFixedLight = create(
         dark = false,
-        background = Color(0xFFFFFBFE),
+        readerModeBackground = Color(0xFFFFFBFE),
         surface = Color(0xFFECE6F0),
         accent = Color(0xFF6750A4),
         primary = Color(0xFF6750A4),
@@ -196,7 +196,7 @@ object HarmonicThemeCatalog {
         settingsToggle = Color(0xFFE8DEF8),
         settingsToggleText = Color(0xFF1D192B),
         settingsSegment = Color(0xFFF3EDF7),
-        settingsPageBackground = Color(0xFFF3EDF7),
+        background = Color(0xFFF3EDF7),
         settingsItemBackground = Color(0xFFFFFBFE),
         storyCardBackground = Color(0xFFF3EDF7),
         onPrimary = Color.White,
@@ -208,7 +208,7 @@ object HarmonicThemeCatalog {
     )
     private val materialFixedDark = create(
         dark = true,
-        background = Color(0xFF1C1B1F),
+        readerModeBackground = Color(0xFF1C1B1F),
         surface = Color(0xFF2B2930),
         accent = Color(0xFFD0BCFF),
         commentCountIndicator = Color(0xFF6750A4),
@@ -234,7 +234,7 @@ object HarmonicThemeCatalog {
     )
     private val materialLight = create(
         dark = false,
-        background = Color(0xFFF0F0F3),
+        readerModeBackground = Color(0xFFF0F0F3),
         surface = Color(0xFFEBF1F8),
         accent = Color(0xFF00668B),
         primary = Color(0xFF8094A0),
@@ -254,7 +254,7 @@ object HarmonicThemeCatalog {
     )
     private val materialDark = create(
         dark = true,
-        background = Color(0xFF191C1E),
+        readerModeBackground = Color(0xFF191C1E),
         surface = Color(0xFF2A3136),
         accent = Color(0xFF8094A0),
         commentCountIndicator = Color(0xFF00668B),
@@ -277,7 +277,7 @@ object HarmonicThemeCatalog {
 
     private fun create(
         dark: Boolean,
-        background: Color,
+        readerModeBackground: Color,
         surface: Color,
         accent: Color,
         commentCountIndicator: Color = accent,
@@ -292,7 +292,7 @@ object HarmonicThemeCatalog {
         settingsToggle: Color,
         settingsToggleText: Color,
         settingsSegment: Color,
-        settingsPageBackground: Color? = null,
+        background: Color? = null,
         settingsItemBackground: Color? = null,
         storyCardBackground: Color = surface,
         onPrimary: Color? = null,
@@ -306,7 +306,8 @@ object HarmonicThemeCatalog {
     ): HarmonicThemePalette {
         val base = if (dark) darkColorScheme() else lightColorScheme()
         val surfaceHighest = lerp(surface, text, if (dark) 0.10f else 0.06f)
-        val outline = lerp(background, text, 0.24f)
+        val resolvedBackground = background ?: if (dark) readerModeBackground else settingsSegment
+        val outline = lerp(readerModeBackground, text, 0.24f)
         val resolvedSecondaryContainer = secondaryContainer ?: base.secondaryContainer
         val resolvedOnSecondaryContainer = onSecondaryContainer ?: base.onSecondaryContainer
         val resolvedOverlayButton = overlayButton ?: if (dark) {
@@ -327,11 +328,11 @@ object HarmonicThemeCatalog {
             onSecondary = onSecondary ?: base.onSecondary,
             secondaryContainer = resolvedSecondaryContainer,
             onSecondaryContainer = resolvedOnSecondaryContainer,
-            background = background,
+            background = resolvedBackground,
             onBackground = text,
-            surface = background,
+            surface = readerModeBackground,
             onSurface = text,
-            surfaceContainerLow = background,
+            surfaceContainerLow = readerModeBackground,
             surfaceContainerHigh = surface,
             surfaceContainerHighest = surfaceHighest,
             surfaceVariant = surface,
@@ -342,7 +343,8 @@ object HarmonicThemeCatalog {
         return HarmonicThemePalette(
             dark = dark,
             colors = HarmonicColors(
-                background = background,
+                background = resolvedBackground,
+                readerModeBackground = readerModeBackground,
                 accent = accent,
                 onSurface = text,
                 textPrimary = text,
@@ -352,7 +354,7 @@ object HarmonicThemeCatalog {
                 storyCardBackground = if (dark) {
                     storyCardBackground
                 } else {
-                    settingsItemBackground ?: background
+                    settingsItemBackground ?: readerModeBackground
                 },
                 surfaceContainerHighest = surfaceHighest,
                 secondaryContainer = resolvedSecondaryContainer,
@@ -363,17 +365,12 @@ object HarmonicThemeCatalog {
                 commentDivider = divider,
                 commentCountIndicator = commentCountIndicator,
                 drawable = text.copy(alpha = text.alpha * 0.8f),
-                popupMenuBackground = if (dark) popup else settingsItemBackground ?: background,
+                popupMenuBackground = if (dark) popup else settingsItemBackground ?: readerModeBackground,
                 settingsSegment = settingsSegment,
-                settingsPageBackground = settingsPageBackground ?: if (dark) {
-                    background
-                } else {
-                    settingsSegment
-                },
                 settingsItemBackground = settingsItemBackground ?: if (dark) {
                     settingsSegment
                 } else {
-                    background
+                    readerModeBackground
                 },
                 settingsHeaderSelected = settingsHeader,
                 settingsMainToggle = settingsToggle,
@@ -381,7 +378,7 @@ object HarmonicThemeCatalog {
                 overlayButton = resolvedOverlayButton,
                 overlayButtonContent = resolvedOverlayButtonContent,
                 submissionsCommentTimeBackground = if (submissionsOutline != null) {
-                    background
+                    readerModeBackground
                 } else {
                     surfaceHighest
                 },

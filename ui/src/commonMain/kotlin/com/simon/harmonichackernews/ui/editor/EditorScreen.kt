@@ -234,7 +234,7 @@ fun EditorScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.settingsPageBackground)
+            .background(HarmonicTheme.colors.background)
             .testTag("compose_editor_container")
             .windowInsetsPadding(topAndSideInsets.union(bottomInsets)),
     ) {
@@ -507,7 +507,7 @@ private fun ReplyPreview(
         )
         ScrollableTextDecorations(
             state = scrollState,
-            containerColor = HarmonicTheme.colors.settingsPageBackground,
+            containerColor = HarmonicTheme.colors.background,
             modifier = Modifier.matchParentSize(),
         )
     }
