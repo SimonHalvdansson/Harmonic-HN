@@ -145,7 +145,7 @@ internal fun StoryMetricPill(
                 text = text,
                 color = foreground,
                 fontFamily = typography.storyMetaFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 fontSize = if (hazeState != null) 11.sp else 12.sp,
                 lineHeight = if (hazeState != null) 13.sp else 14.sp,
                 maxLines = 1,
