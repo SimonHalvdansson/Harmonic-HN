@@ -381,9 +381,9 @@ private fun WelcomeStoryPreviewContent(
                 contentDescription = null,
                 modifier = Modifier
                     .padding(start = 12.dp)
-                    .width(72.dp)
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(6.dp)),
+                    .width(124.dp)
+                    .height(88.dp)
+                    .clip(RoundedCornerShape(10.dp)),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             )
         }

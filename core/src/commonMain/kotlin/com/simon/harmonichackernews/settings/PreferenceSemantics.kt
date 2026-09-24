@@ -328,7 +328,7 @@ enum class StoryPreviewMode(val storedValue: String) {
 
     companion object {
         fun fromStored(value: String?): StoryPreviewMode =
-            entries.firstOrNull { it.storedValue == value } ?: SMALL
+            entries.firstOrNull { it.storedValue == value } ?: MEDIUM
     }
 }
 

@@ -299,7 +299,7 @@ class StoredSettingsMutator(
             )
             putString(
                 UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
-                if (expressive) StoryPreviewMode.SMALL.storedValue else StoryPreviewMode.OFF.storedValue,
+                if (expressive) StoryPreviewMode.MEDIUM.storedValue else StoryPreviewMode.OFF.storedValue,
             )
         }
     }

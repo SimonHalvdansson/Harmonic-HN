@@ -202,7 +202,7 @@ class StoredUserSettingsTest {
         assertEquals(100, settings.comments.preloadCommentsMinimumBattery)
         assertEquals(200, settings.cache.storiesToCache)
         assertEquals(FaviconPreferences.GOOGLE, settings.story.faviconProvider)
-        assertEquals(StoryPreviewMode.SMALL, settings.story.previewImageMode)
+        assertEquals(StoryPreviewMode.MEDIUM, settings.story.previewImageMode)
         assertEquals(24, settings.reading.readerModeFontSize)
         assertEquals(listOf("example.com"), settings.reading.archiveRedirectDomains)
         assertEquals(CommentSortingPreference.DEFAULT, settings.comments.sorting)

@@ -27,7 +27,7 @@ class TypedPreferenceValuesTest {
             StoryPreviewMode.MEDIUM,
             StoryPreviewMode.fromStored(StoryPreviewMode.MEDIUM.storedValue),
         )
-        assertEquals(StoryPreviewMode.SMALL, StoryPreviewMode.fromStored("unsupported"))
+        assertEquals(StoryPreviewMode.MEDIUM, StoryPreviewMode.fromStored("unsupported"))
     }
 
     @Test
