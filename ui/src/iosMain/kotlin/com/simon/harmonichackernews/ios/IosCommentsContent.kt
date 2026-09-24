@@ -52,7 +52,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
-import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
+import com.simon.harmonichackernews.ui.comments.referenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsHeader
@@ -602,13 +602,7 @@ private fun IosReferencePreview(
     ReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
-        summary = ReferenceSummaryUiState(
-            loading = runtimeState.loading,
-            showFallback = runtimeState.showFallback,
-            result = runtimeState.summary,
-            error = runtimeState.error,
-            retrying = runtimeState.retrying,
-        ),
+        summary = referenceSummaryUiState(runtimeState, state.resolvedSummary),
         preferredFont = settings?.font ?: app.userSettings.story.font,
         commentTextSize = settings?.preferredTextSize ?: app.userSettings.comments.textSize,
         favicon = favicon,

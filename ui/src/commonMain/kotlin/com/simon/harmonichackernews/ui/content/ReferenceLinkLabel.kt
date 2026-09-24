@@ -57,6 +57,7 @@ fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink, reso
             else -> summary != null
         }
         if (summary != null && isSupportedSummary) {
+            link.resolvedSummary = summary
             summary.title.takeIf(String::isNotBlank)?.let { title ->
                 link.resolvedTitle = title
                 label = title

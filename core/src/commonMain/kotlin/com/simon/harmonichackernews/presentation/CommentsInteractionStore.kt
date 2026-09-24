@@ -34,6 +34,7 @@ sealed interface CommentLinkPreview {
         val originalUrl: String,
         val fallbackTitle: String,
         val resolvedTitle: String?,
+        val resolvedSummary: com.simon.harmonichackernews.network.LinkSummary?,
         val sourceCommentId: Int?,
         val headerReference: Boolean,
     ) : CommentLinkPreview
@@ -358,6 +359,7 @@ class CommentsInteractionStore(
         resolvedTitle: String?,
         sourceCommentId: Int?,
         headerReference: Boolean,
+        resolvedSummary: com.simon.harmonichackernews.network.LinkSummary? = null,
     ): Boolean {
         if (originalUrl.isBlank()) return false
         resetLinkPreviewAnimationState()
@@ -366,6 +368,7 @@ class CommentsInteractionStore(
                 originalUrl = originalUrl,
                 fallbackTitle = fallbackTitle,
                 resolvedTitle = resolvedTitle,
+                resolvedSummary = resolvedSummary,
                 sourceCommentId = sourceCommentId,
                 headerReference = headerReference,
             ),

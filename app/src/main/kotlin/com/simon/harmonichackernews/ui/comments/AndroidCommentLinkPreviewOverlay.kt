@@ -80,13 +80,7 @@ private fun ReferencePreviewCard(
         }
     }
 
-    val summary = ReferenceSummaryUiState(
-        loading = runtimeState.loading,
-        showFallback = runtimeState.showFallback,
-        result = runtimeState.summary,
-        error = runtimeState.error,
-        retrying = runtimeState.retrying,
-    )
+    val summary = referenceSummaryUiState(runtimeState, state.resolvedSummary)
     val currentUrl = runtimeState.url.takeIf(String::isNotBlank)
         ?: controller.linkPreviewVisibleUrl
         ?: state.originalUrl

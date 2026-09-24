@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.LinkSummaryParser
+import com.simon.harmonichackernews.network.ReferenceLinkPreviewState
 import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -191,6 +192,22 @@ data class ReferenceSummaryUiState(
     val error: String? = null,
     val retrying: Boolean = false,
 )
+
+fun referenceSummaryUiState(
+    runtime: ReferenceLinkPreviewState,
+    knownSummary: LinkSummary?,
+): ReferenceSummaryUiState {
+    val displayedSummary = runtime.summary ?: knownSummary.takeIf {
+        runtime.loading || runtime.url.isBlank()
+    }
+    return ReferenceSummaryUiState(
+        loading = runtime.loading && displayedSummary == null,
+        showFallback = runtime.showFallback,
+        result = displayedSummary,
+        error = runtime.error,
+        retrying = runtime.retrying,
+    )
+}
 
 private data class ReferenceSummaryContentState(
     val loading: Boolean,

@@ -510,6 +510,7 @@ object CollectedReferenceLinks {
         val label: String?,
     ) {
         var resolvedTitle: String? = null
+        var resolvedSummary: com.simon.harmonichackernews.network.LinkSummary? = null
 
         constructor(number: String?, url: String?, label: String?) : this(
             number,
