@@ -22,19 +22,65 @@ import org.junit.runner.RunWith
 class NavigationBackRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun tabletUpRetainsStandaloneStoryUntilItsExitFinishes() {
+        org.junit.Assume.assumeTrue(compose.activity.resources.configuration.smallestScreenWidthDp >= 600)
+        val navigation = compose.activity.navigationController
+        val original = navigation.navigationState.restoration()
+        try {
+            // Exercise both an empty detail pane and an existing story beneath Settings.
+            for (underlyingStory in listOf(false, true)) {
+                compose.runOnIdle {
+                    navigation.navigationState.returnToStories()
+                    if (underlyingStory) navigation.navigationState.openStory(StoryRoute(47938725))
+                    navigation.openSettings("debug")
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    navigation.navigationState.openStory(StoryRoute(48352939))
+                }
+                compose.waitForIdle()
+                val outgoingRoot = requireNotNull(navigation.getCommentsCoordinator()).webViewRoot
+                compose.mainClock.autoAdvance = false
+                compose.runOnUiThread { navigation.closeStory() }
+                compose.mainClock.advanceTimeBy(64)
+                compose.runOnUiThread {
+                    assertEquals(MainDestination.SETTINGS, navigation.navigationState.state.value.currentDestination)
+                    assertTrue("Up must retain the outgoing story during its exit", outgoingRoot.isAttachedToWindow)
+                }
+                compose.mainClock.advanceTimeBy(600)
+                compose.runOnUiThread {
+                    assertFalse("The outgoing story must be released after its exit", outgoingRoot.isAttachedToWindow)
+                }
+                compose.mainClock.autoAdvance = true
+                compose.waitForIdle()
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+            compose.runOnIdle { navigation.navigationState.restore(original) }
+        }
+    }
+
     @Test fun secondGestureDuringSettingsPopIsNotLost() {
+        val activity = compose.activity
+        val twoPane = activity.resources.configuration.smallestScreenWidthDp >= 600
         compose.runOnIdle {
             compose.activity.navigationController.navigationState.returnToStories()
             compose.activity.navigationController.openSettings("debug")
         }
         compose.waitForIdle()
         doubleBack()
-        compose.runOnIdle {
-            assertEquals(MainDestination.STORIES, compose.activity.navigationController.navigationState.state.value.currentDestination)
+        if (twoPane) {
+            // Tablet Settings has no separate list destination: the second back exits the app.
+            assertTrue(activity.isFinishing || activity.isDestroyed)
+        } else {
+            compose.runOnIdle {
+                assertEquals(MainDestination.STORIES, activity.navigationController.navigationState.state.value.currentDestination)
+            }
         }
     }
 
     @Test fun secondGestureFromSubmissionsPopsTheUnderlyingDebugPage() {
+        val twoPane = compose.activity.resources.configuration.smallestScreenWidthDp >= 600
         compose.runOnIdle {
             compose.activity.navigationController.navigationState.returnToStories()
             compose.activity.navigationController.openSettings("debug")
@@ -44,8 +90,12 @@ class NavigationBackRegressionTest {
         compose.waitForIdle()
         doubleBack()
         compose.runOnIdle {
-            assertEquals(MainDestination.SETTINGS, compose.activity.navigationController.navigationState.state.value.currentDestination)
+            assertEquals(
+                if (twoPane) MainDestination.STORIES else MainDestination.SETTINGS,
+                compose.activity.navigationController.navigationState.state.value.currentDestination,
+            )
         }
+        if (twoPane) return
         // Debug was popped by the second gesture; one more back must leave the settings list.
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()

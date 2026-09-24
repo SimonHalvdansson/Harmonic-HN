@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,9 +66,16 @@ fun MainDestinationLayers(
     editorPredictiveModifier: Modifier = Modifier,
     linkPreview: (@Composable () -> Unit)? = null,
     completedStoryPredictiveBack: Boolean = false,
+    // Hosts retaining a separate story scene can report its actual lifetime. Other hosts
+    // retain the existing animation-clock fallback until they expose that lifetime too.
+    storyExitInProgress: Boolean? = null,
 ) {
-    val settingsBehindStory = retainStoryParentDuringExit(state.settingsBehindStory, completedStoryPredictiveBack)
-    val submissionsBehindStory = retainStoryParentDuringExit(state.submissionsBehindStory, completedStoryPredictiveBack)
+    val settingsBehindStory = retainStoryParentDuringExit(
+        state.settingsBehindStory, completedStoryPredictiveBack, storyExitInProgress,
+    )
+    val submissionsBehindStory = retainStoryParentDuringExit(
+        state.submissionsBehindStory, completedStoryPredictiveBack, storyExitInProgress,
+    )
     Box(modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -214,8 +222,18 @@ fun MainDestinationLayers(
 
 /** A popped story still paints above its parent for the duration of its retained exit. */
 @Composable
-private fun retainStoryParentDuringExit(behindStory: Boolean, exitCompleted: Boolean): Boolean {
+private fun retainStoryParentDuringExit(
+    behindStory: Boolean,
+    exitCompleted: Boolean,
+    storyExitInProgress: Boolean?,
+): Boolean {
     var retained by remember { mutableStateOf(behindStory) }
+    if (storyExitInProgress != null) {
+        SideEffect {
+            if (behindStory || !storyExitInProgress || exitCompleted) retained = behindStory
+        }
+        return behindStory || (retained && storyExitInProgress && !exitCompleted)
+    }
     LaunchedEffect(behindStory, exitCompleted) {
         if (!behindStory && !exitCompleted) {
             // Use a Compose animation so the retention honors the system's animation scale.

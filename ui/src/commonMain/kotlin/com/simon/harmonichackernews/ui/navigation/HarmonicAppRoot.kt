@@ -31,6 +31,7 @@ fun HarmonicAppRoot(
     linkPreview: (@Composable () -> Unit)? = null,
     completedStoryPredictiveBack: Boolean = false,
     submissionsInTwoPane: Boolean = false,
+    storyExitInProgress: Boolean? = null,
 ) {
     MainDestinationLayers(
         state = mainDestinationLayerState(navigation, submissionsInTwoPane),
@@ -51,6 +52,7 @@ fun HarmonicAppRoot(
         editorPredictiveModifier = editorPredictiveModifier,
         linkPreview = linkPreview,
         completedStoryPredictiveBack = completedStoryPredictiveBack,
+        storyExitInProgress = storyExitInProgress,
     )
 }
 

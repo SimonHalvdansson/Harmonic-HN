@@ -245,7 +245,10 @@ private fun MainNavigation(
         }
     }
     val renderTwoPaneStoryScene = usesTwoPaneStoryScene &&
-        !(retainSinglePaneStoryScene && storyRequests.isEmpty() && !completedPredictivePop)
+        !(retainSinglePaneStoryScene && !completedPredictivePop)
+    // On return to Settings there may still be a different story beneath Settings. That
+    // belongs to the adaptive scene; it must not replace the outgoing full-screen story.
+    val singlePaneStoryRequests = if (usesTwoPaneStoryScene) emptyList() else storyRequests
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -481,6 +484,11 @@ private fun MainNavigation(
         completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
         completedEditorPredictiveBack = editorPredictiveBack.completed,
         completedStoryPredictiveBack = completedPredictivePop,
+        storyExitInProgress = if (isTwoPane) {
+            retainSinglePaneStoryScene && usesTwoPaneStoryScene && !completedPredictivePop
+        } else {
+            null
+        },
         submissionsInTwoPane = submissionsInTwoPane,
         modifier = Modifier.background(HarmonicTheme.colors.background)
             .semantics { testTagsAsResourceId = true },
@@ -534,12 +542,13 @@ private fun MainNavigation(
                 )
             } else {
                 SinglePaneNavigationScene(
-                    storyRequests = storyRequests,
+                    storyRequests = singlePaneStoryRequests,
                     onStoryLayersEmpty = { retainSinglePaneStoryScene = false },
                     completedPredictivePop = completedPredictivePop,
                     predictiveBackActive = activeBackAnimation != null,
-                    showStoriesRoot = storyRequests.isEmpty() ||
-                        navigationSnapshot.storyStackParentDestination == MainDestination.STORIES,
+                    showStoriesRoot = navigationSnapshot.currentDestination == MainDestination.STORIES ||
+                        (navigationSnapshot.currentDestination == MainDestination.STORY &&
+                            navigationSnapshot.storyStackParentDestination == MainDestination.STORIES),
                     animateInitialStory = isTwoPane && storyRequest != null &&
                         storyParentDestination != MainDestination.STORIES,
                     storiesPredictiveModifier = if (
